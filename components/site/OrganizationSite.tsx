@@ -1,6 +1,6 @@
 import type { OrganizationWithDetails } from '@/types/database'
 import type { BusinessTypeConfig } from '@/types/organization'
-import { getTemplate } from '@/lib/templates'
+import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { SiteHeader } from './SiteHeader'
 import { SiteHero } from './SiteHero'
 import { SiteFooter } from './SiteFooter'
@@ -20,8 +20,10 @@ export function OrganizationSite({ organization, businessType }: OrganizationSit
   const settings = organization.website_settings
   const orgType = organization.organization_types
   
-  // Obtener configuración del template
-  const template = getTemplate(settings?.template_id || 'modern')
+  // Obtener configuración del template - priorizar el configurado, sino usar el del tipo de negocio
+  const template = settings?.template_id 
+    ? getTemplate(settings.template_id) 
+    : getTemplateByBusinessType(organization.type_id)
   
   // Colores del sitio
   const primaryColor = settings?.primary_color || organization.primary_color || '#3B82F6'
@@ -45,6 +47,7 @@ export function OrganizationSite({ organization, businessType }: OrganizationSit
       <SiteHeader 
         organization={organization}
         primaryColor={primaryColor}
+        template={template}
       />
       
       {/* Hero Section */}
@@ -114,6 +117,7 @@ export function OrganizationSite({ organization, businessType }: OrganizationSit
         organization={organization}
         settings={settings}
         primaryColor={primaryColor}
+        template={template}
       />
       
       {/* CSS Personalizado */}

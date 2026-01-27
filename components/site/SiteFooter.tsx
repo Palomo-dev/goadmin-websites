@@ -2,11 +2,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Facebook, Twitter, Instagram, Linkedin, Youtube, MapPin, Phone, Mail, Clock } from 'lucide-react'
 import type { OrganizationWithDetails, WebsiteSettings, Json } from '@/types/database'
+import type { TemplateConfig } from '@/lib/templates'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
   settings: WebsiteSettings | null
   primaryColor: string
+  template?: TemplateConfig
 }
 
 interface SocialLinks {
@@ -23,10 +25,13 @@ interface BusinessHours {
   [key: string]: { open: string; close: string; closed?: boolean }
 }
 
-export function SiteFooter({ organization, settings, primaryColor }: SiteFooterProps) {
+export function SiteFooter({ organization, settings, primaryColor, template }: SiteFooterProps) {
   const socialLinks = (settings?.social_links || {}) as SocialLinks
   const businessHours = (settings?.business_hours || {}) as BusinessHours
   const footerText = settings?.footer_text || `© ${new Date().getFullYear()} ${organization.name}. Todos los derechos reservados.`
+  
+  // Usar navegación del template si está disponible
+  const navItems = template?.navigation || []
   
   const socialIcons = {
     facebook: Facebook,
@@ -151,26 +156,41 @@ export function SiteFooter({ organization, settings, primaryColor }: SiteFooterP
           <div>
             <h3 className="text-lg font-semibold mb-6">Enlaces</h3>
             <ul className="space-y-3">
-              <li>
-                <a href="#productos" className="text-gray-400 hover:text-white transition-colors">
-                  Productos
-                </a>
-              </li>
-              <li>
-                <a href="#servicios" className="text-gray-400 hover:text-white transition-colors">
-                  Servicios
-                </a>
-              </li>
-              <li>
-                <a href="#nosotros" className="text-gray-400 hover:text-white transition-colors">
-                  Nosotros
-                </a>
-              </li>
-              <li>
-                <a href="#contacto" className="text-gray-400 hover:text-white transition-colors">
-                  Contacto
-                </a>
-              </li>
+              {navItems.length > 0 ? (
+                navItems.slice(0, 6).map((item) => (
+                  <li key={item.name}>
+                    <Link 
+                      href={item.href} 
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li>
+                    <Link href="/productos" className="text-gray-400 hover:text-white transition-colors">
+                      Productos
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/servicios" className="text-gray-400 hover:text-white transition-colors">
+                      Servicios
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/nosotros" className="text-gray-400 hover:text-white transition-colors">
+                      Nosotros
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/contacto" className="text-gray-400 hover:text-white transition-colors">
+                      Contacto
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         </div>

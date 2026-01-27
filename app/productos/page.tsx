@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { getOrganizationByHost, getOrganizationProducts } from '@/lib/supabase/queries'
 import { getBusinessTypeConfig } from '@/types/organization'
+import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -27,6 +28,11 @@ export default async function ProductosPage() {
   const businessType = getBusinessTypeConfig(organization.type_id)
   const primaryColor = settings?.primary_color || organization.primary_color || '#3B82F6'
   
+  // Obtener template según configuración o tipo de negocio
+  const template = settings?.template_id 
+    ? getTemplate(settings.template_id) 
+    : getTemplateByBusinessType(organization.type_id)
+  
   const sectionTitle = {
     restaurant: 'Nuestro Menú',
     retail: 'Nuestros Productos',
@@ -39,7 +45,7 @@ export default async function ProductosPage() {
   
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader organization={organization} primaryColor={primaryColor} />
+      <SiteHeader organization={organization} primaryColor={primaryColor} template={template} />
       
       <main className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}

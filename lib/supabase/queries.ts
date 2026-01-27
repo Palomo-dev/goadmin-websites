@@ -6,36 +6,39 @@ import type { Organization, WebsiteSettings, OrganizationWithDetails } from '@/t
  */
 export async function getOrganizationBySubdomain(subdomain: string): Promise<OrganizationWithDetails | null> {
   const supabase = createPublicClient()
+  const subdomainLower = subdomain.toLowerCase().trim()
   
-  // Construir el host del subdominio
-  const host = `${subdomain.toLowerCase()}.goadmin.io`
+  // PRIMERO: Buscar directamente en organizations.subdomain
+  const { data: orgDirect } = await supabase
+    .from('organizations')
+    .select(`
+      *,
+      organization_types (*),
+      website_settings (*)
+    `)
+    .ilike('subdomain', subdomainLower)
+    .eq('status', 'active')
+    .limit(1)
   
-  // Buscar en organization_domains
-  const { data: domainData, error: domainError } = await supabase
-    .from('organization_domains')
-    .select('organization_id')
-    .eq('host', host)
-    .eq('is_active', true)
-    .single()
-  
-  if (domainError || !domainData) {
-    // Intentar buscar directamente por subdomain en organizations como fallback
-    const { data, error } = await supabase
-      .from('organizations')
-      .select(`
-        *,
-        organization_types (*),
-        website_settings (*)
-      `)
-      .ilike('subdomain', subdomain)
-      .eq('status', 'active')
-      .single()
-    
-    if (error || !data) return null
-    return data as OrganizationWithDetails
+  if (orgDirect && orgDirect.length > 0) {
+    return orgDirect[0] as OrganizationWithDetails
   }
   
-  const orgId = (domainData as { organization_id: number }).organization_id
+  // SEGUNDO: Buscar en organization_domains
+  const host = `${subdomainLower}.goadmin.io`
+  
+  const { data: domainData } = await supabase
+    .from('organization_domains')
+    .select('organization_id')
+    .ilike('host', host)
+    .eq('is_active', true)
+    .limit(1)
+  
+  if (!domainData || domainData.length === 0) {
+    return null
+  }
+  
+  const orgId = domainData[0].organization_id
   
   // Obtener la organización completa
   const { data, error } = await supabase
@@ -47,10 +50,10 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
     `)
     .eq('id', orgId)
     .eq('status', 'active')
-    .single()
+    .limit(1)
   
-  if (error || !data) return null
-  return data as OrganizationWithDetails
+  if (error || !data || data.length === 0) return null
+  return data[0] as OrganizationWithDetails
 }
 
 /**
@@ -90,30 +93,34 @@ export async function getOrganizationByCustomDomain(domain: string): Promise<Org
 
 /**
  * Obtiene una organización por host (subdominio o dominio personalizado)
+ * El host puede ser:
+ * - Un subdominio simple: "miempresa"
+ * - Un host completo: "miempresa.goadmin.io"
+ * - Un dominio personalizado: "www.miempresa.com"
  */
-export async function getOrganizationByHost(host: string): Promise<OrganizationWithDetails | null> {
+export async function getOrganizationByHost(identifier: string): Promise<OrganizationWithDetails | null> {
+  if (!identifier) return null
+  
+  // Si el identificador no contiene punto, es un subdominio simple
+  if (!identifier.includes('.')) {
+    return getOrganizationBySubdomain(identifier)
+  }
+  
   // Verificar si es un subdominio del sistema (*.goadmin.io)
-  const systemDomains = ['goadmin.io', 'localhost:3000']
-  const isSystemSubdomain = systemDomains.some(d => host.endsWith(d) || host.includes('localhost'))
+  const systemDomains = ['goadmin.io', 'localhost']
+  const isSystemSubdomain = systemDomains.some(d => identifier.includes(d))
   
   if (isSystemSubdomain) {
-    // Extraer el subdominio
-    let subdomain = host.split('.')[0]
-    
-    // Si es localhost con puerto, manejar diferente
-    if (host.includes('localhost')) {
-      const params = new URLSearchParams(host.split('?')[1] || '')
-      subdomain = params.get('subdomain') || host.split('.')[0]
-      if (subdomain === 'localhost' || subdomain === 'localhost:3000') {
-        return null // No hay subdominio específico
-      }
+    // Extraer el subdominio del host completo
+    const subdomain = identifier.split('.')[0]
+    if (subdomain === 'localhost' || subdomain === 'www') {
+      return null
     }
-    
     return getOrganizationBySubdomain(subdomain)
   }
   
   // Es un dominio personalizado
-  return getOrganizationByCustomDomain(host)
+  return getOrganizationByCustomDomain(identifier)
 }
 
 /**

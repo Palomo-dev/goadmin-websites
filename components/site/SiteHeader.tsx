@@ -6,22 +6,25 @@ import Image from 'next/image'
 import { Menu, X, Phone, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails } from '@/types/database'
+import type { NavItem, TemplateConfig } from '@/lib/templates'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
   primaryColor: string
+  template: TemplateConfig
 }
 
-export function SiteHeader({ organization, primaryColor }: SiteHeaderProps) {
+export function SiteHeader({ organization, primaryColor, template }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  const navItems = [
-    { name: 'Inicio', href: '/' },
-    { name: 'Productos', href: '#productos' },
-    { name: 'Servicios', href: '#servicios' },
-    { name: 'Nosotros', href: '#nosotros' },
-    { name: 'Contacto', href: '#contacto' },
-  ]
+  // Usar navegación del template
+  const navItems: NavItem[] = template.navigation
+  
+  // Obtener el CTA del hero del template
+  const ctaText = template.hero.ctaText || 'Contáctanos'
+  const ctaHref = template.navigation.find(n => 
+    n.href.includes('reserva') || n.href.includes('contacto')
+  )?.href || '/contacto'
   
   return (
     <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
@@ -84,12 +87,14 @@ export function SiteHeader({ organization, primaryColor }: SiteHeaderProps) {
           
           {/* CTA Button */}
           <div className="hidden md:block">
-            <Button 
-              style={{ backgroundColor: primaryColor }}
-              className="hover:opacity-90"
-            >
-              Contáctanos
-            </Button>
+            <Link href={ctaHref}>
+              <Button 
+                style={{ backgroundColor: primaryColor }}
+                className="hover:opacity-90"
+              >
+                {ctaText}
+              </Button>
+            </Link>
           </div>
           
           {/* Mobile Menu Button */}
@@ -119,12 +124,14 @@ export function SiteHeader({ organization, primaryColor }: SiteHeaderProps) {
                   {item.name}
                 </a>
               ))}
-              <Button 
-                style={{ backgroundColor: primaryColor }}
-                className="hover:opacity-90 w-full"
-              >
-                Contáctanos
-              </Button>
+              <Link href={ctaHref} className="w-full">
+                <Button 
+                  style={{ backgroundColor: primaryColor }}
+                  className="hover:opacity-90 w-full"
+                >
+                  {ctaText}
+                </Button>
+              </Link>
             </nav>
           </div>
         )}
