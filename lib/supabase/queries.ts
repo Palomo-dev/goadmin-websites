@@ -38,7 +38,7 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
     return null
   }
   
-  const orgId = domainData[0].organization_id
+  const orgId = (domainData[0] as { organization_id: number }).organization_id
   
   // Obtener la organización completa
   const { data, error } = await supabase
