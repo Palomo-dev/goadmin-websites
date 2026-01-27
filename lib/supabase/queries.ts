@@ -1,11 +1,15 @@
-import { createPublicClient } from './server'
+import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails } from '@/types/database'
+
+function getSupabaseForPublicRead() {
+  return createAdminClient() || createPublicClient()
+}
 
 /**
  * Obtiene una organización por su subdominio (busca en organization_domains)
  */
 export async function getOrganizationBySubdomain(subdomain: string): Promise<OrganizationWithDetails | null> {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   const subdomainLower = subdomain.toLowerCase().trim()
   
   // PRIMERO: Buscar directamente en organizations.subdomain
@@ -60,7 +64,7 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
  * Obtiene una organización por dominio personalizado
  */
 export async function getOrganizationByCustomDomain(domain: string): Promise<OrganizationWithDetails | null> {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   // Primero buscar en organization_domains
   const { data: domainData, error: domainError } = await supabase
