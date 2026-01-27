@@ -6,23 +6,32 @@ import Image from 'next/image'
 import { Menu, X, Phone, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails } from '@/types/database'
-import type { NavItem, TemplateConfig } from '@/lib/templates'
+import { getTemplate, type NavItem, type TemplateConfig } from '@/lib/templates'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
   primaryColor: string
-  template: TemplateConfig
+  template?: TemplateConfig
 }
+
+// Navegación por defecto si no hay template
+const defaultNavItems: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Productos', href: '/productos' },
+  { name: 'Servicios', href: '/servicios' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
 
 export function SiteHeader({ organization, primaryColor, template }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  // Usar navegación del template
-  const navItems: NavItem[] = template.navigation
+  // Usar navegación del template o la navegación por defecto
+  const navItems: NavItem[] = template?.navigation || defaultNavItems
   
   // Obtener el CTA del hero del template
-  const ctaText = template.hero.ctaText || 'Contáctanos'
-  const ctaHref = template.navigation.find(n => 
+  const ctaText = template?.hero?.ctaText || 'Contáctanos'
+  const ctaHref = template?.navigation?.find(n => 
     n.href.includes('reserva') || n.href.includes('contacto')
   )?.href || '/contacto'
   
