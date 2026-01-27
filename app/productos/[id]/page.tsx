@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { createPublicClient } from '@/lib/supabase/server'
+import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -51,9 +52,14 @@ export default async function ProductoDetailPage({ params }: Props) {
   const primaryColor = settings?.primary_color || organization.primary_color || '#3B82F6'
   const price = product.product_prices?.[0]
   
+  // Obtener template
+  const template = settings?.template_id 
+    ? getTemplate(settings.template_id) 
+    : getTemplateByBusinessType(organization.type_id)
+  
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader organization={organization} primaryColor={primaryColor} />
+      <SiteHeader organization={organization} primaryColor={primaryColor} template={template} />
       
       <main className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
@@ -172,7 +178,7 @@ export default async function ProductoDetailPage({ params }: Props) {
         </div>
       </main>
       
-      <SiteFooter organization={organization} settings={settings} primaryColor={primaryColor} />
+      <SiteFooter organization={organization} settings={settings} primaryColor={primaryColor} template={template} />
     </div>
   )
 }
