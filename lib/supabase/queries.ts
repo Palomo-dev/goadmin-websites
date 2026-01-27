@@ -17,7 +17,7 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
       website_settings (*)
     `)
     .ilike('subdomain', subdomainLower)
-    .eq('status', 'active')
+    .or('status.eq.active,status.is.null')
     .limit(1)
   
   if (orgDirect && orgDirect.length > 0) {
@@ -49,7 +49,7 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
       website_settings (*)
     `)
     .eq('id', orgId)
-    .eq('status', 'active')
+    .or('status.eq.active,status.is.null')
     .limit(1)
   
   if (error || !data || data.length === 0) return null
@@ -84,11 +84,11 @@ export async function getOrganizationByCustomDomain(domain: string): Promise<Org
       website_settings (*)
     `)
     .eq('id', orgId)
-    .eq('status', 'active')
-    .single()
+    .or('status.eq.active,status.is.null')
+    .limit(1)
   
-  if (error || !data) return null
-  return data as OrganizationWithDetails
+  if (error || !data || data.length === 0) return null
+  return data[0] as OrganizationWithDetails
 }
 
 /**
