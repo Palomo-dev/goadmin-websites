@@ -131,7 +131,7 @@ export async function getOrganizationByHost(identifier: string): Promise<Organiz
  * Obtiene los productos de una organización para mostrar en el sitio
  */
 export async function getOrganizationProducts(organizationId: number, limit = 12) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('products')
@@ -151,7 +151,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
  * Obtiene los servicios de una organización (usando productos tipo servicio)
  */
 export async function getOrganizationServices(organizationId: number, limit = 12) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   // Los servicios se manejan como productos con unit_code 'SV' (Servicio)
   const { data, error } = await supabase
@@ -173,7 +173,7 @@ export async function getOrganizationServices(organizationId: number, limit = 12
  * Obtiene los espacios/habitaciones de una organización (para hoteles, parking, etc.)
  */
 export async function getOrganizationSpaces(organizationId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   // Primero obtener las sucursales de la organización
   const { data: branches } = await supabase
@@ -202,7 +202,7 @@ export async function getOrganizationSpaces(organizationId: number) {
  * Obtiene las sucursales de una organización
  */
 export async function getOrganizationBranches(organizationId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('branches')
@@ -218,7 +218,7 @@ export async function getOrganizationBranches(organizationId: number) {
  * Obtiene las categorías de productos de una organización
  */
 export async function getOrganizationCategories(organizationId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('categories')
@@ -234,7 +234,7 @@ export async function getOrganizationCategories(organizationId: number) {
  * Obtiene productos por categoría
  */
 export async function getProductsByCategory(organizationId: number, categoryId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('products')
@@ -251,7 +251,7 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
  * Obtiene los tipos de espacios de una organización (habitaciones, mesas, etc.)
  */
 export async function getOrganizationSpaceTypes(organizationId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('space_types')
@@ -268,7 +268,7 @@ export async function getOrganizationSpaceTypes(organizationId: number) {
  * Obtiene espacios disponibles por tipo
  */
 export async function getAvailableSpaces(organizationId: number, spaceTypeId: string, checkin: string, checkout: string) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   // Primero obtener branches de la organización
   const { data: branches } = await supabase
@@ -356,7 +356,7 @@ export async function createReservation(data: {
  * Obtiene un producto por ID
  */
 export async function getProductById(productId: number) {
-  const supabase = createPublicClient()
+  const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('products')
