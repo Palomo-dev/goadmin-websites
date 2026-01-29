@@ -3,15 +3,18 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Phone, Mail } from 'lucide-react'
+import { Menu, X, Phone, Mail, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails } from '@/types/database'
-import { getTemplate, type NavItem, type TemplateConfig } from '@/lib/templates'
+import { type NavItem, type TemplateConfig } from '@/lib/templates'
+import { CartIndicator } from './CartIndicator'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
   primaryColor: string
   template?: TemplateConfig
+  onCartClick?: () => void
+  showCart?: boolean
 }
 
 // Navegación por defecto si no hay template
@@ -23,7 +26,7 @@ const defaultNavItems: NavItem[] = [
   { name: 'Contacto', href: '/contacto' },
 ]
 
-export function SiteHeader({ organization, primaryColor, template }: SiteHeaderProps) {
+export function SiteHeader({ organization, primaryColor, template, onCartClick, showCart = true }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Usar navegación del template o la navegación por defecto
@@ -94,8 +97,18 @@ export function SiteHeader({ organization, primaryColor, template }: SiteHeaderP
             ))}
           </nav>
           
-          {/* CTA Button */}
-          <div className="hidden md:block">
+          {/* Actions: Cart, Login, CTA */}
+          <div className="hidden md:flex items-center space-x-4">
+            {showCart && (
+              <div onClick={onCartClick} className="cursor-pointer">
+                <CartIndicator primaryColor={primaryColor} />
+              </div>
+            )}
+            
+            <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+              <User className="h-6 w-6 text-gray-700" />
+            </Link>
+            
             <Link href={ctaHref}>
               <Button 
                 style={{ backgroundColor: primaryColor }}

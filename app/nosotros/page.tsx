@@ -3,8 +3,7 @@ import { Metadata } from 'next'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { getBusinessTypeConfig } from '@/types/organization'
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
-import { SiteHeader } from '@/components/site/SiteHeader'
-import { SiteFooter } from '@/components/site/SiteFooter'
+import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import Link from 'next/link'
 import { ArrowLeft, Users, Target, Award, Heart } from 'lucide-react'
@@ -76,10 +75,11 @@ export default async function NosotrosPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white">
-      <SiteHeader organization={organization} primaryColor={primaryColor} template={template} />
-      
-      <main>
+    <OrganizationLayout
+      organization={organization}
+      template={template}
+      primaryColor={primaryColor}
+    >
         {/* Hero Section */}
         <section 
           className="relative py-20 md:py-32"
@@ -248,9 +248,6 @@ export default async function NosotrosPage() {
             </div>
           </section>
         )}
-      </main>
-      
-      <SiteFooter organization={organization} settings={settings} primaryColor={primaryColor} template={template} />
-    </div>
+    </OrganizationLayout>
   )
 }

@@ -1,6 +1,11 @@
 import { headers } from 'next/headers'
 import { Metadata } from 'next'
-import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { 
+  getOrganizationByHost, 
+  getOrganizationProducts, 
+  getOrganizationCategories,
+  getOrganizationSpaceTypes 
+} from '@/lib/supabase/queries'
 import { getBusinessTypeConfig } from '@/types/organization'
 import { OrganizationSite } from '@/components/site/OrganizationSite'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -100,11 +105,21 @@ export default async function HomePage() {
   // Obtener configuración del tipo de negocio
   const businessType = getBusinessTypeConfig(organization.type_id)
   
+  // Obtener datos según el tipo de organización
+  const [products, categories, spaceTypes] = await Promise.all([
+    getOrganizationProducts(organization.id, 20),
+    getOrganizationCategories(organization.id),
+    getOrganizationSpaceTypes(organization.id)
+  ])
+  
   // Renderizar el sitio de la organización
   return (
     <OrganizationSite 
       organization={organization}
       businessType={businessType}
+      products={products}
+      categories={categories}
+      spaceTypes={spaceTypes}
     />
   )
 }

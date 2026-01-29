@@ -213,3 +213,195 @@ export async function getOrganizationBranches(organizationId: number) {
   if (error) return []
   return data || []
 }
+
+/**
+ * Obtiene las categorías de productos de una organización
+ */
+export async function getOrganizationCategories(organizationId: number) {
+  const supabase = createPublicClient()
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .order('rank', { ascending: true })
+  
+  if (error) return []
+  return data || []
+}
+
+/**
+ * Obtiene productos por categoría
+ */
+export async function getProductsByCategory(organizationId: number, categoryId: number) {
+  const supabase = createPublicClient()
+  
+  const { data, error } = await supabase
+    .from('products')
+    .select(`*, product_prices (*)`)
+    .eq('organization_id', organizationId)
+    .eq('category_id', categoryId)
+    .eq('status', 'active')
+  
+  if (error) return []
+  return data || []
+}
+
+/**
+ * Obtiene los tipos de espacios de una organización (habitaciones, mesas, etc.)
+ */
+export async function getOrganizationSpaceTypes(organizationId: number) {
+  const supabase = createPublicClient()
+  
+  const { data, error } = await supabase
+    .from('space_types')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('base_rate', { ascending: true })
+  
+  if (error) return []
+  return data || []
+}
+
+/**
+ * Obtiene espacios disponibles por tipo
+ */
+export async function getAvailableSpaces(organizationId: number, spaceTypeId: string, checkin: string, checkout: string) {
+  const supabase = createPublicClient()
+  
+  // Primero obtener branches de la organización
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+  
+  if (!branches || branches.length === 0) return []
+  
+  const branchIds = branches.map((b: any) => b.id)
+  
+  // Obtener espacios del tipo solicitado
+  const { data: spaces, error } = await supabase
+    .from('spaces')
+    .select(`*, space_types (*)`)
+    .in('branch_id', branchIds)
+    .eq('space_type_id', spaceTypeId)
+    .eq('status', 'available')
+  
+  if (error) return []
+  
+  // Filtrar los que no tienen reserva en las fechas
+  const { data: reservations } = await supabase
+    .from('reservations')
+    .select('space_id')
+    .in('space_id', spaces?.map((s: any) => s.id) || [])
+    .gte('checkout', checkin)
+    .lte('checkin', checkout)
+    .in('status', ['confirmed', 'pending'])
+  
+  const reservedSpaceIds = new Set(reservations?.map((r: any) => r.space_id) || [])
+  
+  return spaces?.filter((s: any) => !reservedSpaceIds.has(s.id)) || []
+}
+
+/**
+ * Crea una reservación
+ */
+export async function createReservation(data: {
+  organizationId: number
+  branchId?: number
+  customerId?: string
+  spaceId: string
+  spaceTypeId: string
+  checkin: string
+  checkout: string
+  occupantCount: number
+  totalEstimated: number
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  notes?: string
+}) {
+  const supabase = getSupabaseForPublicRead()
+  
+  const { data: reservation, error } = await supabase
+    .from('reservations')
+    .insert({
+      organization_id: data.organizationId,
+      branch_id: data.branchId,
+      customer_id: data.customerId,
+      space_id: data.spaceId,
+      space_type_id: data.spaceTypeId,
+      checkin: data.checkin,
+      checkout: data.checkout,
+      occupant_count: data.occupantCount,
+      total_estimated: data.totalEstimated,
+      status: 'pending',
+      channel: 'website',
+      metadata: {
+        customer_name: data.customerName,
+        customer_email: data.customerEmail,
+        customer_phone: data.customerPhone,
+        notes: data.notes
+      }
+    } as any)
+    .select()
+    .single()
+  
+  if (error) return { error: error.message }
+  return { data: reservation }
+}
+
+/**
+ * Obtiene un producto por ID
+ */
+export async function getProductById(productId: number) {
+  const supabase = createPublicClient()
+  
+  const { data, error } = await supabase
+    .from('products')
+    .select(`*, product_prices (*), categories (*)`)
+    .eq('id', productId)
+    .single()
+  
+  if (error) return null
+  return data
+}
+
+/**
+ * Obtiene o crea un customer por email
+ */
+export async function getOrCreateCustomer(organizationId: number, email: string, data: {
+  firstName?: string
+  lastName?: string
+  phone?: string
+}) {
+  const supabase = getSupabaseForPublicRead()
+  
+  // Buscar si ya existe
+  const { data: existing } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('email', email)
+    .single()
+  
+  if (existing) return existing
+  
+  // Crear nuevo
+  const { data: newCustomer, error } = await supabase
+    .from('customers')
+    .insert({
+      organization_id: organizationId,
+      email,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      phone: data.phone,
+      is_registered: false
+    } as any)
+    .select()
+    .single()
+  
+  if (error) return null
+  return newCustomer
+}
