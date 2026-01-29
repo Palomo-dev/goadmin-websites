@@ -24,9 +24,8 @@ export function OrganizationLayout({
   const settings = organization.website_settings as any
   const subdomain = organization.subdomain || ''
   
-  // Determinar si mostrar carrito según tipo de organización
-  const orgType = organization.organization_types?.name || ''
-  const showCart = orgType === 'retail'
+  // El carrito está disponible para todos los tipos de organización
+  const showCart = true
   
   // CSS Variables para colores personalizados
   const secondaryColor = settings?.secondary_color || organization.secondary_color || '#1E40AF'
@@ -65,7 +64,7 @@ export function OrganizationLayout({
         template={template}
       />
       
-      {/* Cart Drawer solo para retail */}
+      {/* Cart Drawer disponible para todos */}
       {showCart && (
         <CartDrawer 
           isOpen={cartOpen}

@@ -137,7 +137,17 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     .from('products')
     .select(`
       *,
-      product_prices (*)
+      product_prices (*),
+      product_images (
+        id,
+        storage_path,
+        is_primary,
+        display_order,
+        shared_image_id,
+        shared_images (
+          storage_path
+        )
+      )
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active')

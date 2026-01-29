@@ -277,8 +277,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
     businessType: 'hotel',
     navigation: [
       { name: 'Inicio', href: '/' },
-      { name: 'Habitaciones', href: '/productos' },
-      { name: 'Reservar', href: '/reservas' },
+      { name: 'Productos', href: '/productos' },
+      { name: 'Espacios', href: '/espacios' },
       { name: 'Servicios', href: '/servicios' },
       { name: 'Galería', href: '/#galeria' },
       { name: 'Contacto', href: '/contacto' },

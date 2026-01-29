@@ -1,10 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ShoppingCart, Plus, Check } from 'lucide-react'
+import { Plus, Check, Package } from 'lucide-react'
+
+interface ProductImage {
+  id: number
+  storage_path: string | null
+  is_primary: boolean
+  display_order: number
+  shared_image_id: number | null
+  shared_images?: {
+    storage_path: string
+  } | null
+}
 
 interface Product {
   id: number
@@ -12,6 +24,25 @@ interface Product {
   description?: string
   category_id?: number
   product_prices?: { price: number; currency_code?: string }[]
+  product_images?: ProductImage[]
+}
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+function getProductImageUrl(product: Product): string | null {
+  if (!product.product_images || product.product_images.length === 0) return null
+  
+  // Buscar imagen primaria primero
+  const primaryImage = product.product_images.find(img => img.is_primary)
+  const image = primaryImage || product.product_images[0]
+  
+  // Obtener el path de storage
+  const storagePath = image.storage_path || image.shared_images?.storage_path
+  
+  if (!storagePath) return null
+  
+  // Construir URL de Supabase Storage
+  return `${SUPABASE_URL}/storage/v1/object/public/product_images/${storagePath}`
 }
 
 interface Category {
@@ -118,12 +149,22 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
               <Card key={product.id} className="group overflow-hidden hover:shadow-lg transition-all h-full">
                 <Link href={`/productos/${product.id}`}>
                   <div 
-                    className="aspect-square flex items-center justify-center"
+                    className="aspect-square flex items-center justify-center relative overflow-hidden"
                     style={{ 
                       background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` 
                     }}
                   >
-                    <span className="text-5xl opacity-50">📦</span>
+                    {getProductImageUrl(product) ? (
+                      <Image
+                        src={getProductImageUrl(product)!}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      />
+                    ) : (
+                      <Package className="h-16 w-16 opacity-30" style={{ color: primaryColor }} />
+                    )}
                   </div>
                 </Link>
                 
