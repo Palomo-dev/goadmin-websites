@@ -5,6 +5,7 @@ import {
   getOrganizationProducts, 
   getOrganizationCategories,
   getOrganizationSpaceTypes,
+  getOrganizationSpaces,
   getOrganizationServices,
   getWebsitePageBySlug,
   getWebsiteHeaderNav,
@@ -328,12 +329,12 @@ async function renderSlugFallback(
     case 'espacios': {
       const pageConfig = {
         restaurant: { title: 'Nuestras Mesas', subtitle: 'Reserva tu mesa' },
-        hotel: { title: 'Habitaciones', subtitle: 'Encuentra tu espacio ideal' },
+        hotel: { title: 'Habitaciones', subtitle: 'Diseñadas para su comodidad' },
         gym: { title: 'Espacios', subtitle: 'Reserva tu clase o espacio' },
         parking: { title: 'Espacios de Parqueo', subtitle: 'Reserva tu espacio' },
       }[businessType.type as string] || { title: 'Espacios', subtitle: 'Espacios disponibles' }
 
-      const spaceTypes = await getOrganizationSpaceTypes(organization.id)
+      const spaces = await getOrganizationSpaces(organization.id)
 
       return (
         <Layout>
@@ -342,26 +343,76 @@ async function renderSlugFallback(
               <h1 className="text-4xl font-bold text-gray-900 mb-4">{pageConfig.title}</h1>
               <p className="text-gray-600 max-w-2xl mx-auto">{pageConfig.subtitle}</p>
             </div>
-            {spaceTypes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {spaceTypes.map((st: any) => (
-                  <a key={st.id} href={`/espacios/${st.id}`} className="bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all">
-                    <div className="h-48 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primaryColor}20 0%, ${primaryColor}10 100%)` }}>
-                      <span className="text-5xl">🏠</span>
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">{st.name}</h3>
-                      <p className="text-gray-600 text-sm mb-4">Capacidad: {st.capacity} personas</p>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm text-gray-500">Desde</span>
-                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>${Number(st.base_rate).toLocaleString()}</p>
-                        </div>
-                        <span className="px-4 py-2 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: primaryColor }}>Reservar</span>
+            {spaces.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {spaces.map((sp: any) => {
+                  const st = sp.space_types
+                  return (
+                    <a key={sp.id} href={`/espacios/${sp.id}`} className="group bg-white rounded-2xl border overflow-hidden hover:shadow-xl transition-all duration-300">
+                      {/* Imagen */}
+                      <div className="relative h-56 overflow-hidden">
+                        {sp.primaryImage ? (
+                          <img
+                            src={sp.primaryImage}
+                            alt={sp.label}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primaryColor}20 0%, ${primaryColor}08 100%)` }}>
+                            <span className="text-5xl">🏠</span>
+                          </div>
+                        )}
+                        {/* Badge tipo */}
+                        {st?.name && (
+                          <span className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold text-white backdrop-blur-sm" style={{ backgroundColor: `${primaryColor}cc` }}>
+                            {st.name}
+                          </span>
+                        )}
+                        {/* Badge status */}
+                        <span className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white">
+                          Disponible
+                        </span>
                       </div>
-                    </div>
-                  </a>
-                ))}
+                      {/* Info */}
+                      <div className="p-5">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{sp.label}</h3>
+                        <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                          {sp.floor_zone && <span>📍 {sp.floor_zone}</span>}
+                          {st?.capacity && <span>👤 {st.capacity} personas</span>}
+                          {st?.area_sqm && <span>📐 {st.area_sqm} m²</span>}
+                        </div>
+                        {/* Servicios (máximo 4) */}
+                        {sp.services?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {sp.services.slice(0, 4).map((svc: any, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}>
+                                {svc.name}
+                              </span>
+                            ))}
+                            {sp.services.length > 4 && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500">
+                                +{sp.services.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Precio + CTA */}
+                        <div className="flex items-center justify-between pt-3 border-t">
+                          <div>
+                            <span className="text-xs text-gray-400">Desde</span>
+                            <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                              ${Number(st?.base_rate || 0).toLocaleString()}
+                              <span className="text-xs font-normal text-gray-400"> /noche</span>
+                            </p>
+                          </div>
+                          <span className="px-4 py-2 rounded-xl text-white text-sm font-medium group-hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
+                            Ver detalle
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-20">

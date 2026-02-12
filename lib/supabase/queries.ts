@@ -205,34 +205,7 @@ export async function getOrganizationServices(organizationId: number, limit = 12
   return data || []
 }
 
-/**
- * Obtiene los espacios/habitaciones de una organización (para hoteles, parking, etc.)
- */
-export async function getOrganizationSpaces(organizationId: number) {
-  const supabase = getSupabaseForPublicRead()
-  
-  // Primero obtener las sucursales de la organización
-  const { data: branches } = await supabase
-    .from('branches')
-    .select('id')
-    .eq('organization_id', organizationId)
-  
-  if (!branches || branches.length === 0) return []
-  
-  const branchIds = (branches as { id: number }[]).map(b => b.id)
-  
-  const { data, error } = await supabase
-    .from('spaces')
-    .select(`
-      *,
-      space_types (*)
-    `)
-    .in('branch_id', branchIds)
-    .eq('status', 'available')
-  
-  if (error) return []
-  return data || []
-}
+// getOrganizationSpaces movida más abajo con soporte de imágenes y servicios
 
 /**
  * Obtiene las sucursales de una organización
@@ -326,6 +299,136 @@ export async function getOrganizationSpaceTypes(organizationId: number) {
   
   if (error) return []
   return data || []
+}
+
+/**
+ * Obtiene los espacios reales (habitaciones) de una organización con imágenes, servicios y tipo.
+ */
+export async function getOrganizationSpaces(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  // Branches de la org
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+
+  if (!branches || branches.length === 0) return []
+  const branchIds = branches.map((b: any) => b.id)
+
+  // Spaces con tipo
+  const { data: spaces, error } = await supabase
+    .from('spaces')
+    .select(`
+      id, label, floor_zone, status, description, metadata, space_type_id,
+      space_types ( id, name, short_name, category_code, base_rate, capacity, area_sqm, amenities, booking_rules )
+    `)
+    .in('branch_id', branchIds)
+    .eq('status', 'available')
+    .order('label', { ascending: true })
+
+  if (error || !spaces) return []
+
+  const spaceIds = spaces.map((s: any) => s.id)
+  if (spaceIds.length === 0) return spaces
+
+  // Imágenes primarias (una por espacio)
+  const { data: images } = await (supabase as any)
+    .from('space_images')
+    .select('space_id, image_url, storage_path, is_primary, display_order')
+    .in('space_id', spaceIds)
+    .order('is_primary', { ascending: false })
+    .order('display_order', { ascending: true })
+
+  // Servicios por espacio
+  const { data: svcData } = await (supabase as any)
+    .from('space_services')
+    .select('space_id, organization_services ( custom_name, custom_icon, service_id, services ( name, icon ) )')
+    .in('space_id', spaceIds)
+
+  // Mapear imágenes por space_id (solo la primera)
+  const imgMap: Record<string, string> = {}
+  for (const img of (images || []) as any[]) {
+    if (!imgMap[img.space_id]) {
+      imgMap[img.space_id] = img.image_url || `https://jgmgphmzusbluqhuqihj.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+    }
+  }
+
+  // Mapear servicios por space_id
+  const svcMap: Record<string, { name: string; icon: string | null }[]> = {}
+  for (const s of (svcData || []) as any[]) {
+    const os = s.organization_services
+    if (!os) continue
+    const svc = os.services
+    const name = os.custom_name || svc?.name || 'Servicio'
+    const icon = os.custom_icon || svc?.icon || null
+    if (!svcMap[s.space_id]) svcMap[s.space_id] = []
+    svcMap[s.space_id].push({ name, icon })
+  }
+
+  return spaces.map((s: any) => ({
+    ...s,
+    primaryImage: imgMap[s.id] || null,
+    services: svcMap[s.id] || [],
+  }))
+}
+
+/**
+ * Obtiene un espacio individual con todas sus imágenes, servicios y tipo.
+ */
+export async function getSpaceById(spaceId: string, organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  // Branches
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+
+  if (!branches || branches.length === 0) return null
+  const branchIds = branches.map((b: any) => b.id)
+
+  const { data: space, error } = await (supabase as any)
+    .from('spaces')
+    .select(`
+      id, label, floor_zone, status, description, metadata, space_type_id,
+      space_types ( id, name, short_name, category_code, base_rate, capacity, area_sqm, amenities, booking_rules )
+    `)
+    .eq('id', spaceId)
+    .in('branch_id', branchIds)
+    .single()
+
+  if (error || !space) return null
+
+  // Todas las imágenes
+  const { data: images } = await (supabase as any)
+    .from('space_images')
+    .select('image_url, storage_path, is_primary, display_order')
+    .eq('space_id', spaceId)
+    .order('is_primary', { ascending: false })
+    .order('display_order', { ascending: true })
+
+  const imageUrls = (images || []).map((img: any) =>
+    img.image_url || `https://jgmgphmzusbluqhuqihj.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+  )
+
+  // Servicios
+  const { data: svcData } = await (supabase as any)
+    .from('space_services')
+    .select('organization_services ( custom_name, custom_icon, service_id, services ( name, icon, category ) )')
+    .eq('space_id', spaceId)
+
+  const services = (svcData || []).map((s: any) => {
+    const os = s.organization_services
+    const svc = os?.services
+    return {
+      name: os?.custom_name || svc?.name || 'Servicio',
+      icon: os?.custom_icon || svc?.icon || null,
+      category: svc?.category || null,
+    }
+  })
+
+  return { ...(space as any), images: imageUrls, services }
 }
 
 /**
