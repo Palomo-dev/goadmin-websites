@@ -158,6 +158,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug?
 
     if (sectionTypes.includes('room_types')) {
       data.spaceTypes = await getOrganizationSpaceTypes(organization.id)
+      data.spaces = await getOrganizationSpaces(organization.id)
     }
     if (sectionTypes.includes('products_grid') || sectionTypes.includes('featured_products')) {
       data.products = await getOrganizationProducts(organization.id, 20)
@@ -185,10 +186,12 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug?
   if (currentSlug === 'home') {
     const businessType = getBusinessTypeConfig(organization.type_id)
     const isGym = businessType.type === 'gym'
-    const [products, categories, spaceTypes, membershipPlans, gymClasses] = await Promise.all([
+    const isHotel = businessType.type === 'hotel'
+    const [products, categories, spaceTypes, spaces, membershipPlans, gymClasses] = await Promise.all([
       getOrganizationProducts(organization.id, 20),
       getOrganizationCategories(organization.id),
       getOrganizationSpaceTypes(organization.id),
+      isHotel ? getOrganizationSpaces(organization.id) : Promise.resolve([]),
       isGym ? getMembershipPlans(organization.id) : Promise.resolve([]),
       isGym ? getGymClasses(organization.id) : Promise.resolve([])
     ])
@@ -206,6 +209,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug?
         products={products}
         categories={categories}
         spaceTypes={spaceTypes}
+        spaces={spaces}
         membershipPlans={membershipPlans}
         gymClasses={gymClasses}
         reservationCounts={reservationCounts}

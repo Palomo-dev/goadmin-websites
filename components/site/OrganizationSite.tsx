@@ -26,6 +26,7 @@ interface OrganizationSiteProps {
   products?: any[]
   categories?: any[]
   spaceTypes?: any[]
+  spaces?: any[]
   membershipPlans?: any[]
   gymClasses?: any[]
   reservationCounts?: Record<number, number>
@@ -37,6 +38,7 @@ export function OrganizationSite({
   products = [],
   categories = [],
   spaceTypes = [],
+  spaces = [],
   membershipPlans = [],
   gymClasses = [],
   reservationCounts = {}
@@ -74,6 +76,7 @@ export function OrganizationSite({
         template={template}
         primaryColor={primaryColor}
         spaceTypes={spaceTypes}
+        spaces={spaces}
       />
     )
   }

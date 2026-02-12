@@ -529,7 +529,7 @@ const hotel_luxury: TemplatePreset = {
       ],
     },
     {
-      slug: 'habitaciones', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
+      slug: 'espacios', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'room_types', section_variant: 'detailed' },
@@ -581,7 +581,7 @@ const hotel_boutique: TemplatePreset = {
       ],
     },
     {
-      slug: 'habitaciones', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
+      slug: 'espacios', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'room_types', section_variant: 'detailed' },
@@ -620,7 +620,7 @@ const hotel_minimal: TemplatePreset = {
       ],
     },
     {
-      slug: 'habitaciones', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
+      slug: 'espacios', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'room_types', section_variant: 'detailed' },
@@ -663,7 +663,7 @@ const hotel_resort: TemplatePreset = {
       ],
     },
     {
-      slug: 'habitaciones', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
+      slug: 'espacios', title: 'Habitaciones', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'room_types', section_variant: 'detailed' },

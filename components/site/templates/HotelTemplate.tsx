@@ -21,14 +21,16 @@ interface HotelTemplateProps {
   organization: OrganizationWithDetails
   template: TemplateConfig
   primaryColor: string
-  spaceTypes: SpaceType[]
+  spaceTypes?: SpaceType[]
+  spaces?: any[]
 }
 
 export function HotelTemplate({ 
   organization, 
   template, 
   primaryColor, 
-  spaceTypes
+  spaceTypes,
+  spaces
 }: HotelTemplateProps) {
   const settings = organization.website_settings as any
   
@@ -53,6 +55,7 @@ export function HotelTemplate({
         
         {/* Room Types */}
         <RoomTypes 
+          spaces={spaces}
           spaceTypes={spaceTypes}
           primaryColor={primaryColor}
         />
