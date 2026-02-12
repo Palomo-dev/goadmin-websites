@@ -38,7 +38,7 @@ interface PricingData {
 
 interface SpaceBookingFormProps {
   organizationId: number
-  spaceTypeId: string
+  spaceId: string
   spaceTypeName: string
   capacity: number
   baseRate: number
@@ -46,7 +46,7 @@ interface SpaceBookingFormProps {
   gateways: Gateway[]
 }
 
-export function SpaceBookingForm({ organizationId, spaceTypeId, spaceTypeName, capacity, baseRate, primaryColor, gateways }: SpaceBookingFormProps) {
+export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capacity, baseRate, primaryColor, gateways }: SpaceBookingFormProps) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     checkin: '',
@@ -93,12 +93,12 @@ export function SpaceBookingForm({ organizationId, spaceTypeId, spaceTypeName, c
         fetch('/api/reservations/availability', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, spaceTypeId, checkin, checkout })
+          body: JSON.stringify({ organizationId, spaceId, checkin, checkout })
         }),
         fetch('/api/reservations/pricing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, spaceTypeId, checkin, checkout, occupantCount: formData.guests, selectedExtras })
+          body: JSON.stringify({ organizationId, spaceId, checkin, checkout, occupantCount: formData.guests, selectedExtras })
         })
       ])
 
@@ -120,7 +120,7 @@ export function SpaceBookingForm({ organizationId, spaceTypeId, spaceTypeName, c
     } finally {
       setLoadingCheck(false)
     }
-  }, [organizationId, spaceTypeId, formData.guests, selectedExtras])
+  }, [organizationId, spaceId, formData.guests, selectedExtras])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -137,7 +137,7 @@ export function SpaceBookingForm({ organizationId, spaceTypeId, spaceTypeName, c
         const res = await fetch('/api/reservations/pricing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, spaceTypeId, checkin: formData.checkin, checkout: formData.checkout, occupantCount: formData.guests, selectedExtras })
+          body: JSON.stringify({ organizationId, spaceId, checkin: formData.checkin, checkout: formData.checkout, occupantCount: formData.guests, selectedExtras })
         })
         if (res.ok) setPricing(await res.json())
       } catch { /* silently fail */ }
@@ -161,7 +161,7 @@ export function SpaceBookingForm({ organizationId, spaceTypeId, spaceTypeName, c
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId,
-          spaceTypeId,
+          spaceId,
           checkin: formData.checkin,
           checkout: formData.checkout,
           occupantCount: formData.guests,

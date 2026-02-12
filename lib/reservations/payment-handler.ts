@@ -167,7 +167,11 @@ export async function handleReservationPayment(
         const meta = resForAssign?.metadata as any
         const isMultiRoom = meta?.is_multi_room && Array.isArray(meta?.rooms)
 
-        if (isMultiRoom) {
+        // Si ya tiene space_id asignado (reserva directa por espacio), solo marcar como reserved
+        if (resForAssign?.space_id && !isMultiRoom) {
+          await supabase.from('spaces').update({ status: 'reserved', updated_at: new Date().toISOString() }).eq('id', resForAssign.space_id)
+          console.log(`[ReservationPayment] Espacio ${resForAssign.space_id} ya asignado, marcado como reserved`)
+        } else if (isMultiRoom) {
           // Multi-room: asignar N spaces por cada room type vía reservation_spaces
           for (const room of meta.rooms) {
             const { spaceTypeId: roomTypeId, quantity } = room

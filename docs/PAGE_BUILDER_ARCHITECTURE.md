@@ -1304,31 +1304,32 @@ Todas estas páginas **sí muestran** `SiteHeader` y `SiteFooter` con la navegac
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 2. DETALLE  →  /espacios/[spaceTypeId]                          │
+│ 2. DETALLE  →  /espacios/[spaceId]                               │
 │    Galería de imágenes (space_images)                            │
 │    Amenidades y servicios (space_services → organization_services)│
 │    Precio dinámico según fechas (rates → base_rate fallback)     │
-│    Capacidad, área, booking_rules                                │
-│    Widget selector: fechas + huéspedes + consultar disponibilidad│
+│    Capacidad, área, booking_rules (heredados de space_type)      │
+│    Calendario disponibilidad + formulario reserva por ESTE space │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 3. DISPONIBILIDAD  →  POST /api/reservations/availability       │
-│    Input: spaceTypeId, checkin, checkout, organizationId         │
-│    Validar:                                                      │
-│      a) No hay reservaciones activas para esas fechas            │
-│         (status NOT IN cancelled, no_show, checked_out)          │
-│      b) No hay reservation_blocks en ese rango                   │
-│      c) Existen spaces del space_type con status = available     │
-│      d) Cumple booking_rules (min_stay, max_stay)               │
-│    Output: { available: bool, spacesAvailable: N, pricePerNight }│
+│    Dos modos:                                                    │
+│    A) Por spaceId (detalle): verifica si ESE espacio está libre  │
+│       - Reservaciones con space_id = spaceId que solapan         │
+│       - Bloqueos por space_id O space_type_id que solapan        │
+│       - Cumple booking_rules del space_type (min/max stay)       │
+│    B) Por spaceTypeId (multi-room/legacy): cuenta disponibles    │
+│       - totalSpaces - reservedCount - blockedCount               │
+│    Output: { available, spacesAvailable, nights, errors[] }      │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 4. PRICING  →  POST /api/reservations/pricing                   │
-│    Input: spaceTypeId, checkin, checkout, organizationId         │
+│    Input: spaceId (o spaceTypeId), checkin, checkout             │
+│    Si viene spaceId → resuelve spaceTypeId via spaces.space_type │
 │    Lógica:                                                       │
 │      Para cada noche del rango:                                  │
 │        1. Buscar en `rates` (is_active, fecha entre date_from y  │
@@ -1495,6 +1496,25 @@ Todas estas páginas **sí muestran** `SiteHeader` y `SiteFooter` con la navegac
 - `lib/queries/customer-portal.ts` — getCustomerReservations incluye join a space_types(name)
 - `app/reservas/ReservationWizard.tsx` — Multi-room: selectores de cantidad por tipo (+/-), pricing multi, resumen multi-habitación en pasos 2-4
 - `app/reservas/page.tsx` — Pasa gateways SSR al ReservationWizard
+
+#### Fase D — Refactor: Reservas por Espacio (spaceId) ✅
+
+El flujo original centraba toda la lógica de reserva en `spaceTypeId` (tipo de espacio).
+Cuando el usuario veía "Habitación 301" y reservaba, la API buscaba el tipo pero no verificaba ESE espacio específico.
+Ahora las 4 APIs y los componentes frontend soportan `spaceId` como parámetro principal.
+
+| # | Cambio | Archivo(s) |
+|---|--------|------------|
+| D1 | **Availability API**: Modo A (spaceId) verifica reservaciones y bloqueos para ESE espacio. Modo B (spaceTypeId) cuenta por tipo (legacy/multi-room) | `app/api/reservations/availability/route.ts` |
+| D2 | **Pricing API**: Si viene `spaceId`, resuelve `spaceTypeId` via `spaces.space_type_id`. Pricing sigue usando `rates` + `base_rate` del tipo | `app/api/reservations/pricing/route.ts` |
+| D3 | **Calendar API**: Modo A muestra disponibilidad día a día para ESE espacio. Modo B agrega por tipo | `app/api/reservations/calendar/route.ts` |
+| D4 | **Reservations POST**: Valida disponibilidad por `spaceId` directo. Crea reservación con `space_id` ya seteado (sin necesidad de auto-asignación posterior) | `app/api/reservations/route.ts` |
+| D5 | **SpaceBookingForm**: Prop `spaceId` reemplaza `spaceTypeId`. Envía `spaceId` a availability, pricing y reservations | `app/espacios/[id]/SpaceBookingForm.tsx` |
+| D6 | **AvailabilityCalendar**: Prop opcional `spaceId`. Si existe, envía a calendar API en modo espacio | `components/site/AvailabilityCalendar.tsx` |
+| D7 | **Payment handler**: Si `space_id` ya está asignado, solo marca como `reserved` (skip auto-assignment) | `lib/reservations/payment-handler.ts` |
+| D8 | **Page /espacios/[id]**: Pasa `space.id` a Calendar y BookingForm | `app/espacios/[id]/page.tsx` |
+
+**Compatibilidad**: El flujo multi-room (`/reservas` con `ReservationWizard`) sigue usando `spaceTypeId` (Modo B) sin cambios.
 
 ### 7.7 Relación entre Tablas (ER Simplificado)
 

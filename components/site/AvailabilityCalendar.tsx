@@ -16,12 +16,13 @@ interface CalendarDay {
 
 interface AvailabilityCalendarProps {
   organizationId: number
-  spaceTypeId: string
+  spaceId?: string
+  spaceTypeId?: string
   primaryColor: string
   onSelectDates?: (checkin: string, checkout: string) => void
 }
 
-export function AvailabilityCalendar({ organizationId, spaceTypeId, primaryColor, onSelectDates }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ organizationId, spaceId, spaceTypeId, primaryColor, onSelectDates }: AvailabilityCalendarProps) {
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(() => {
     const y = today.getFullYear()
@@ -40,7 +41,7 @@ export function AvailabilityCalendar({ organizationId, spaceTypeId, primaryColor
       const res = await fetch('/api/reservations/calendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId, spaceTypeId, month })
+        body: JSON.stringify({ organizationId, ...(spaceId ? { spaceId } : { spaceTypeId }), month })
       })
       if (res.ok) {
         const data = await res.json()
@@ -52,7 +53,7 @@ export function AvailabilityCalendar({ organizationId, spaceTypeId, primaryColor
     } finally {
       setLoading(false)
     }
-  }, [organizationId, spaceTypeId])
+  }, [organizationId, spaceId, spaceTypeId])
 
   useEffect(() => {
     fetchCalendar(currentMonth)

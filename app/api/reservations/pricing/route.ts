@@ -12,18 +12,34 @@ export const dynamic = 'force-dynamic'
  * 3. `service_charges` obligatorios (is_optional=false)
  * 4. `organization_taxes` (is_default, is_active)
  *
- * Input:  { organizationId, spaceTypeId, checkin (YYYY-MM-DD), checkout (YYYY-MM-DD), occupantCount?, selectedExtras?: number[] }
+ * Input:  { organizationId, spaceId?, spaceTypeId?, checkin, checkout, occupantCount?, selectedExtras?: number[] }
  * Output: { nights, priceBreakdown[], subtotal, serviceCharges[], optionalExtras[], selectedExtrasCharges[], taxRate, taxName, taxAmount, total }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { organizationId, spaceTypeId, checkin, checkout, occupantCount, selectedExtras } = await request.json()
+    const { organizationId, spaceId, spaceTypeId: rawSpaceTypeId, checkin, checkout, occupantCount, selectedExtras } = await request.json()
 
-    if (!organizationId || !spaceTypeId || !checkin || !checkout) {
+    if (!organizationId || (!spaceId && !rawSpaceTypeId) || !checkin || !checkout) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: organizationId, spaceTypeId, checkin, checkout' },
+        { error: 'Faltan campos requeridos: organizationId, (spaceId o spaceTypeId), checkin, checkout' },
         { status: 400 }
       )
+    }
+
+    // Resolver spaceTypeId desde spaceId si es necesario
+    let spaceTypeId = rawSpaceTypeId
+    if (spaceId && !spaceTypeId) {
+      const supabaseResolve = createPublicClient()
+      const { data: space } = await (supabaseResolve as any)
+        .from('spaces')
+        .select('space_type_id')
+        .eq('id', spaceId)
+        .single()
+      if (space) spaceTypeId = space.space_type_id
+    }
+
+    if (!spaceTypeId) {
+      return NextResponse.json({ error: 'No se pudo resolver el tipo de espacio' }, { status: 404 })
     }
 
     const checkinDate = new Date(checkin)

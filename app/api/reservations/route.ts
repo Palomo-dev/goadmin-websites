@@ -41,51 +41,79 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase()
-    const isSpaceReservation = !!(spaceTypeId || checkin)
+    const isSpaceReservation = !!(spaceTypeId || spaceId || checkin)
+
+    // ── Resolver spaceTypeId desde spaceId si no viene ──
+    let resolvedSpaceTypeId = spaceTypeId
+    if (spaceId && !resolvedSpaceTypeId) {
+      const { data: spaceData } = await (supabase as any)
+        .from('spaces')
+        .select('space_type_id')
+        .eq('id', spaceId)
+        .single()
+      if (spaceData) resolvedSpaceTypeId = spaceData.space_type_id
+    }
 
     // ── Validar disponibilidad para reservas de espacio ──
-    if (isSpaceReservation && spaceTypeId && checkin && checkout) {
-      // Contar spaces físicos del tipo
-      const { data: spacesData } = await (supabase as any)
-        .from('spaces')
-        .select('id')
-        .eq('space_type_id', spaceTypeId)
-        .not('status', 'in', '("maintenance","cleaning","out_of_order")')
+    if (isSpaceReservation && checkin && checkout) {
+      if (spaceId) {
+        // MODO A: Verificar ESE espacio específico
+        const { data: overlapping } = await (supabase as any)
+          .from('reservations')
+          .select('id')
+          .eq('space_id', spaceId)
+          .in('status', ['tentative', 'confirmed', 'checked_in'])
+          .lt('checkin', checkout)
+          .gt('checkout', checkin)
 
-      const totalSpaces = spacesData?.length || 0
+        const { data: blocks } = await (supabase as any)
+          .from('reservation_blocks')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .or(`space_id.eq.${spaceId},space_type_id.eq.${resolvedSpaceTypeId}`)
+          .lt('date_from', checkout)
+          .gt('date_to', checkin)
 
-      // Contar reservaciones activas que se solapan
-      const { data: overlapping } = await (supabase as any)
-        .from('reservations')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('space_type_id', spaceTypeId)
-        .in('status', ['tentative', 'confirmed', 'checked_in'])
-        .lt('checkin', checkout)
-        .gt('checkout', checkin)
+        if ((overlapping?.length || 0) > 0 || (blocks?.length || 0) > 0) {
+          return NextResponse.json(
+            { error: 'Este espacio no está disponible para las fechas seleccionadas' },
+            { status: 409 }
+          )
+        }
+      } else if (resolvedSpaceTypeId) {
+        // MODO B: Contar por tipo (legacy)
+        const { data: spacesData } = await (supabase as any)
+          .from('spaces')
+          .select('id')
+          .eq('space_type_id', resolvedSpaceTypeId)
+          .not('status', 'in', '("maintenance","cleaning","out_of_order")')
 
-      const reservedCount = overlapping?.length || 0
+        const totalSpaces = spacesData?.length || 0
 
-      // Contar bloqueos que se solapan
-      const { data: blocks } = await (supabase as any)
-        .from('reservation_blocks')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .or(`space_type_id.eq.${spaceTypeId}`)
-        .lt('date_from', checkout)
-        .gt('date_to', checkin)
+        const { data: overlapping } = await (supabase as any)
+          .from('reservations')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('space_type_id', resolvedSpaceTypeId)
+          .in('status', ['tentative', 'confirmed', 'checked_in'])
+          .lt('checkin', checkout)
+          .gt('checkout', checkin)
 
-      const blockedCount = blocks?.length || 0
-      const available = totalSpaces - reservedCount - blockedCount
+        const { data: blocks } = await (supabase as any)
+          .from('reservation_blocks')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .or(`space_type_id.eq.${resolvedSpaceTypeId}`)
+          .lt('date_from', checkout)
+          .gt('date_to', checkin)
 
-      if (available <= 0) {
-        return NextResponse.json(
-          {
-            error: 'No hay disponibilidad para las fechas seleccionadas',
-            details: { totalSpaces, reservedCount, blockedCount, available: 0 }
-          },
-          { status: 409 }
-        )
+        const available = totalSpaces - (overlapping?.length || 0) - (blocks?.length || 0)
+        if (available <= 0) {
+          return NextResponse.json(
+            { error: 'No hay disponibilidad para las fechas seleccionadas', details: { totalSpaces, available: 0 } },
+            { status: 409 }
+          )
+        }
       }
     }
 
@@ -185,7 +213,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Determinar space_type_id principal (para multi-room usa el primero) ──
-    const primarySpaceTypeId = isMultiRoom ? rooms[0]?.spaceTypeId : spaceTypeId
+    const primarySpaceTypeId = isMultiRoom ? rooms[0]?.spaceTypeId : (resolvedSpaceTypeId || spaceTypeId)
 
     // ── Construir datos de la reservación ──
     const reservationData = (isSpaceReservation || isMultiRoom) ? {

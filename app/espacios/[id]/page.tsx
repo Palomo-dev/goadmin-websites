@@ -107,14 +107,14 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
               <h3 className="font-semibold text-gray-900 mb-3">Disponibilidad y precios</h3>
               <AvailabilityCalendar
                 organizationId={organization.id}
-                spaceTypeId={st?.id || space.space_type_id}
+                spaceId={space.id}
                 primaryColor={primaryColor}
               />
             </div>
 
             <SpaceBookingForm
               organizationId={organization.id}
-              spaceTypeId={st?.id || space.space_type_id}
+              spaceId={space.id}
               spaceTypeName={st?.short_name || st?.name || space.label}
               capacity={st?.capacity || 2}
               baseRate={Number(st?.base_rate || 0)}
