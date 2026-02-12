@@ -1,4 +1,4 @@
 export { HeroBooking } from './HeroBooking'
-export { RoomTypes } from './RoomTypes'
+export { SpacesSection, SpacesSection as RoomTypes } from './SpacesSection'
 export { Amenities } from './Amenities'
 export { WhyChooseUs } from './WhyChooseUs'

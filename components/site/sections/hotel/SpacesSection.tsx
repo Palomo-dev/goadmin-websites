@@ -20,13 +20,13 @@ interface Space {
   }
 }
 
-interface RoomTypesProps {
+interface SpacesSectionProps {
   spaces?: Space[]
   spaceTypes?: any[]
   primaryColor: string
 }
 
-export function RoomTypes({ spaces, spaceTypes, primaryColor }: RoomTypesProps) {
+export function SpacesSection({ spaces, spaceTypes, primaryColor }: SpacesSectionProps) {
   const items = spaces && spaces.length > 0 ? spaces : (spaceTypes || [])
   if (items.length === 0) return null
 
@@ -154,3 +154,6 @@ export function RoomTypes({ spaces, spaceTypes, primaryColor }: RoomTypesProps) 
     </section>
   )
 }
+
+// Re-export con nombre legacy para compatibilidad
+export { SpacesSection as RoomTypes }

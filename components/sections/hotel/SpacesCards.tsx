@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-interface RoomTypesCardsProps {
+interface SpacesCardsProps {
   content: {
     title?: string
     subtitle?: string
@@ -10,7 +10,7 @@ interface RoomTypesCardsProps {
   data?: { spaces?: any[]; spaceTypes?: any[] }
 }
 
-export function RoomTypesCards({ content, primaryColor, data }: RoomTypesCardsProps) {
+export function SpacesCards({ content, primaryColor, data }: SpacesCardsProps) {
   const spaces = data?.spaces || []
   const spaceTypes = data?.spaceTypes || []
   const useSpaces = spaces.length > 0
@@ -43,7 +43,7 @@ export function RoomTypesCards({ content, primaryColor, data }: RoomTypesCardsPr
                     <img src={image} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primaryColor}20 0%, ${primaryColor}08 100%)` }}>
-                      <span className="text-5xl">�</span>
+                      <span className="text-5xl">🏠</span>
                     </div>
                   )}
                   {typeName && (

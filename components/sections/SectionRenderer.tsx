@@ -77,9 +77,9 @@ import { FeaturedProducts } from './products/FeaturedProducts'
 import { FeaturedProductsCarousel } from './products/FeaturedProductsCarousel'
 import { FeaturedProductsHero } from './products/FeaturedProductsHero'
 
-// Secciones hotel
-import { RoomTypesCards } from './hotel/RoomTypesCards'
-import { RoomTypesDetailed } from './hotel/RoomTypesDetailed'
+// Secciones hotel (spaces)
+import { SpacesCards } from './hotel/SpacesCards'
+import { SpacesDetailed } from './hotel/SpacesDetailed'
 import { AmenitiesIcons } from './amenities/AmenitiesIcons'
 import { AmenitiesGrid } from './amenities/AmenitiesGrid'
 import { BookingCtaBanner } from './hotel/BookingCtaBanner'
@@ -206,8 +206,8 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
     carousel: PartnersCarousel,
   },
   room_types: {
-    cards: RoomTypesCards,
-    detailed: RoomTypesDetailed,
+    cards: SpacesCards,
+    detailed: SpacesDetailed,
   },
   amenities: {
     icons: AmenitiesIcons,

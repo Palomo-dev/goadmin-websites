@@ -2,7 +2,7 @@
 
 import { SiteHeader } from '../SiteHeader'
 import { SiteFooter } from '../SiteFooter'
-import { HeroBooking, RoomTypes, Amenities, WhyChooseUs } from '../sections/hotel'
+import { HeroBooking, SpacesSection, Amenities, WhyChooseUs } from '../sections/hotel'
 import { GallerySection } from '../sections/GallerySection'
 import { ContactSection } from '../sections/ContactSection'
 import type { OrganizationWithDetails } from '@/types/database'
@@ -53,8 +53,8 @@ export function HotelTemplate({
           location={organization.address || undefined}
         />
         
-        {/* Room Types */}
-        <RoomTypes 
+        {/* Espacios */}
+        <SpacesSection 
           spaces={spaces}
           spaceTypes={spaceTypes}
           primaryColor={primaryColor}
