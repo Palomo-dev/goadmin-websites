@@ -3,42 +3,58 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Check, Star, Zap } from 'lucide-react'
+import { Check, Star, Zap, Clock } from 'lucide-react'
 
-interface Product {
+interface MembershipPlan {
   id: number
   name: string
   description?: string
-  product_prices?: { price: number }[]
+  price: number
+  duration_days: number
+  frequency?: string
+  access_rules?: {
+    features?: string[]
+    classes_included?: boolean
+    branches?: string[]
+    max_freezes?: number
+    [key: string]: any
+  }
 }
 
 interface MembershipPlansProps {
-  products: Product[]
+  plans?: MembershipPlan[]
   primaryColor: string
 }
 
-const defaultFeatures = [
-  'Acceso ilimitado al gimnasio',
-  'Equipos de última generación',
-  'Vestuarios con duchas',
-  'WiFi gratuito',
+const defaultPlans: MembershipPlan[] = [
+  { id: 1, name: 'Plan Básico', description: 'Ideal para comenzar', price: 49900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito'] } },
+  { id: 2, name: 'Plan Premium', description: 'El más popular', price: 89900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)'], classes_included: true } },
+  { id: 3, name: 'Plan VIP', description: 'Experiencia completa', price: 149900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)', 'Acceso a spa y sauna', 'Estacionamiento gratuito'], classes_included: true } },
 ]
 
-const premiumFeatures = [
-  ...defaultFeatures,
-  'Clases grupales incluidas',
-  'Entrenador personal (2 sesiones/mes)',
-  'Acceso a spa y sauna',
-  'Estacionamiento gratuito',
-]
+function formatFrequency(frequency?: string): string {
+  switch (frequency) {
+    case 'monthly': return '/mes'
+    case 'quarterly': return '/trimestre'
+    case 'semiannual': return '/semestre'
+    case 'annual': return '/año'
+    case 'weekly': return '/semana'
+    default: return '/mes'
+  }
+}
 
-export function MembershipPlans({ products, primaryColor }: MembershipPlansProps) {
-  // Si no hay productos, mostrar planes por defecto
-  const plans = products.length > 0 ? products : [
-    { id: 1, name: 'Plan Básico', description: 'Ideal para comenzar', product_prices: [{ price: 49900 }] },
-    { id: 2, name: 'Plan Premium', description: 'El más popular', product_prices: [{ price: 89900 }] },
-    { id: 3, name: 'Plan VIP', description: 'Experiencia completa', product_prices: [{ price: 149900 }] },
-  ]
+function formatDuration(days: number): string {
+  if (days === 1) return '1 día'
+  if (days === 7) return '1 semana'
+  if (days === 30 || days === 31) return '1 mes'
+  if (days === 90) return '3 meses'
+  if (days === 180) return '6 meses'
+  if (days === 365 || days === 366) return '1 año'
+  return `${days} días`
+}
+
+export function MembershipPlans({ plans: propPlans, primaryColor }: MembershipPlansProps) {
+  const plans = propPlans && propPlans.length > 0 ? propPlans : defaultPlans
   
   return (
     <section className="py-16">
@@ -58,10 +74,14 @@ export function MembershipPlans({ products, primaryColor }: MembershipPlansProps
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {plans.slice(0, 3).map((plan, idx) => {
-            const price = plan.product_prices?.[0]
-            const isPremium = idx === 1
+        <div className={`grid grid-cols-1 gap-8 max-w-5xl mx-auto ${
+          plans.length === 1 ? 'md:grid-cols-1 max-w-md' :
+          plans.length === 2 ? 'md:grid-cols-2 max-w-3xl' :
+          'md:grid-cols-3'
+        }`}>
+          {plans.slice(0, 4).map((plan, idx) => {
+            const isPremium = plans.length >= 3 ? idx === 1 : idx === plans.length - 1
+            const features = plan.access_rules?.features || []
             
             return (
               <Card 
@@ -89,34 +109,36 @@ export function MembershipPlans({ products, primaryColor }: MembershipPlansProps
                     )}
                   </div>
                   
-                  <div className="text-center mb-6">
-                    {price && (
-                      <>
-                        <span 
-                          className="text-5xl font-black"
-                          style={{ color: primaryColor }}
-                        >
-                          ${Math.floor(Number(price.price) / 1000)}
-                        </span>
-                        <span className="text-gray-500">.{String(Number(price.price) % 1000).padStart(3, '0')}</span>
-                        <p className="text-gray-500 text-sm mt-1">/mes</p>
-                      </>
-                    )}
+                  <div className="text-center mb-4">
+                    <span 
+                      className="text-5xl font-black"
+                      style={{ color: primaryColor }}
+                    >
+                      ${Number(plan.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-gray-500 text-sm">{formatFrequency(plan.frequency)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-1 text-xs text-gray-400 mb-6">
+                    <Clock className="w-3 h-3" />
+                    <span>Duración: {formatDuration(plan.duration_days)}</span>
                   </div>
                   
-                  <ul className="space-y-3 mb-8">
-                    {(isPremium || idx === 2 ? premiumFeatures : defaultFeatures).slice(0, idx === 0 ? 4 : idx === 1 ? 6 : 8).map((feature, fidx) => (
-                      <li key={fidx} className="flex items-center text-sm text-gray-600">
-                        <Check 
-                          className="w-5 h-5 mr-2 flex-shrink-0" 
-                          style={{ color: primaryColor }} 
-                        />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                  {features.length > 0 && (
+                    <ul className="space-y-3 mb-8">
+                      {features.map((feature, fidx) => (
+                        <li key={fidx} className="flex items-center text-sm text-gray-600">
+                          <Check 
+                            className="w-5 h-5 mr-2 flex-shrink-0" 
+                            style={{ color: primaryColor }} 
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   
-                  <Link href={`/productos/${plan.id}`}>
+                  <Link href={`/checkout?plan=${plan.id}`}>
                     <Button 
                       className="w-full font-semibold"
                       variant={isPremium ? 'default' : 'outline'}

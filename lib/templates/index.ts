@@ -618,6 +618,12 @@ export function getTemplateByBusinessType(typeId: number | null): TemplateConfig
  * @param organization Organización con sus settings
  * @returns Array de items de navegación
  */
+// Re-export presets y apply-template
+export { TEMPLATE_PRESETS, getTemplatePreset, getPresetsForBusinessType, getDefaultPreset, getDefaultPresetByTypeId } from './presets'
+export type { TemplatePreset, PagePreset, SectionPreset } from './presets'
+export { applyTemplateToOrganization } from './apply-template'
+export type { ApplyTemplateResult } from './apply-template'
+
 export function getNavigationForOrganization(
   typeId: number | null,
   templateId?: string

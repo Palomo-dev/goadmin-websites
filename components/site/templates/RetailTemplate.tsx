@@ -11,6 +11,7 @@ import type { TemplateConfig } from '@/lib/templates'
 
 interface Product {
   id: number
+  uuid: string
   name: string
   description?: string
   category_id?: number

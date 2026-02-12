@@ -26,6 +26,9 @@ interface OrganizationSiteProps {
   products?: any[]
   categories?: any[]
   spaceTypes?: any[]
+  membershipPlans?: any[]
+  gymClasses?: any[]
+  reservationCounts?: Record<number, number>
 }
 
 export function OrganizationSite({ 
@@ -33,7 +36,10 @@ export function OrganizationSite({
   businessType,
   products = [],
   categories = [],
-  spaceTypes = []
+  spaceTypes = [],
+  membershipPlans = [],
+  gymClasses = [],
+  reservationCounts = {}
 }: OrganizationSiteProps) {
   const settings = organization.website_settings
   
@@ -90,7 +96,9 @@ export function OrganizationSite({
         organization={organization}
         template={template}
         primaryColor={primaryColor}
-        products={products}
+        membershipPlans={membershipPlans}
+        gymClasses={gymClasses}
+        reservationCounts={reservationCounts}
       />
     )
   }

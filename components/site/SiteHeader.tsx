@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, X, Phone, Mail, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { OrganizationWithDetails } from '@/types/database'
+import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
 import { CartIndicator } from './CartIndicator'
 
@@ -15,6 +15,7 @@ interface SiteHeaderProps {
   template?: TemplateConfig
   onCartClick?: () => void
   showCart?: boolean
+  headerNav?: WebsitePage[]
 }
 
 // Navegación por defecto si no hay template
@@ -26,23 +27,31 @@ const defaultNavItems: NavItem[] = [
   { name: 'Contacto', href: '/contacto' },
 ]
 
-export function SiteHeader({ organization, primaryColor, template, onCartClick, showCart = true }: SiteHeaderProps) {
+export function SiteHeader({ organization, primaryColor, template, onCartClick, showCart = true, headerNav }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const settings = organization.website_settings as any
   
-  // Usar navegación del template o la navegación por defecto
-  const navItems: NavItem[] = template?.navigation || defaultNavItems
+  // Prioridad: headerNav (website_pages) > template.navigation > defaultNavItems
+  const navItems: NavItem[] = headerNav && headerNav.length > 0
+    ? headerNav.map(p => ({ name: p.title, href: p.slug === 'home' ? '/' : `/${p.slug}` }))
+    : template?.navigation || defaultNavItems
   
-  // Obtener el CTA del hero del template
-  const ctaText = template?.hero?.ctaText || 'Contáctanos'
-  const ctaHref = template?.navigation?.find(n => 
+  // CTA del header: prioridad website_settings > template
+  const ctaText = settings?.header_cta_text || template?.hero?.ctaText || 'Contáctanos'
+  const ctaHref = settings?.header_cta_url || template?.navigation?.find((n: NavItem) => 
     n.href.includes('reserva') || n.href.includes('contacto')
   )?.href || '/contacto'
+  
+  // Flags de visibilidad desde website_settings
+  const showTopbar = settings?.show_topbar !== false
+  const showHeaderCart = settings?.show_header_cart !== false && showCart
+  const showHeaderAuth = settings?.show_header_auth !== false
   
   return (
     <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4">
         {/* Top bar con información de contacto */}
-        {(organization.phone || organization.email) && (
+        {showTopbar && (organization.phone || organization.email) && (
           <div className="hidden md:flex justify-end items-center py-2 text-sm border-b border-gray-100">
             {organization.phone && (
               <a href={`tel:${organization.phone}`} className="flex items-center text-gray-600 hover:text-gray-900 mr-4">
@@ -99,15 +108,17 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           
           {/* Actions: Cart, Login, CTA */}
           <div className="hidden md:flex items-center space-x-4">
-            {showCart && (
+            {showHeaderCart && (
               <div onClick={onCartClick} className="cursor-pointer">
                 <CartIndicator primaryColor={primaryColor} />
               </div>
             )}
             
-            <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <User className="h-6 w-6 text-gray-700" />
-            </Link>
+            {showHeaderAuth && (
+              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <User className="h-6 w-6 text-gray-700" />
+              </Link>
+            )}
             
             <Link href={ctaHref}>
               <Button 

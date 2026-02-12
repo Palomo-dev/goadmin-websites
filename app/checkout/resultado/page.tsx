@@ -1,0 +1,198 @@
+import { getOrgContext } from '@/lib/get-org-context'
+import { createPublicClient } from '@/lib/supabase/server'
+import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { Metadata } from 'next'
+import Link from 'next/link'
+import { CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
+
+async function getOrderByRef(orderNumber: string) {
+  const supabase = createPublicClient()
+
+  const { data, error } = await (supabase as any)
+    .from('web_orders')
+    .select('id, order_number, total, payment_status, status, payment_method, customer_email, created_at')
+    .eq('order_number', orderNumber)
+    .single()
+
+  if (error || !data) return null
+  return data
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const ctx = await getOrgContext()
+  if (!ctx) return { title: 'Resultado del pago' }
+  return {
+    title: `Resultado del pago | ${ctx.organization.name}`,
+  }
+}
+
+const STATUS_CONFIG: Record<string, {
+  icon: React.ReactNode
+  title: string
+  description: string
+  color: string
+  bgColor: string
+}> = {
+  paid: {
+    icon: <CheckCircle2 className="h-12 w-12" />,
+    title: '¡Pago exitoso!',
+    description: 'Tu pago ha sido confirmado. Recibirás un correo con los detalles de tu pedido.',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+  },
+  pending: {
+    icon: <Clock className="h-12 w-12" />,
+    title: 'Pago pendiente',
+    description: 'Tu pago está siendo procesado. Te notificaremos cuando sea confirmado.',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+  },
+  failed: {
+    icon: <XCircle className="h-12 w-12" />,
+    title: 'Pago no completado',
+    description: 'No pudimos procesar tu pago. Puedes intentarlo de nuevo o elegir otro método de pago.',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+  },
+  refunded: {
+    icon: <AlertTriangle className="h-12 w-12" />,
+    title: 'Pago reembolsado',
+    description: 'El pago de esta orden ha sido reembolsado.',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+  },
+}
+
+export default async function CheckoutResultadoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string; status?: string }>
+}) {
+  const ctx = await getOrgContext()
+  if (!ctx) return <NotFoundPage />
+
+  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const params = await searchParams
+  const orderRef = params.ref
+
+  if (!orderRef) {
+    return (
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <AlertTriangle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Sin referencia de orden</h1>
+          <p className="text-gray-500 mb-8">No se proporcionó una referencia de pedido válida.</p>
+          <Link
+            href="/"
+            className="inline-block px-6 py-3 rounded-lg text-white font-medium"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Volver al inicio
+          </Link>
+        </div>
+      </OrganizationLayout>
+    )
+  }
+
+  const order = await getOrderByRef(orderRef)
+
+  if (!order) {
+    return (
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <AlertTriangle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Orden no encontrada</h1>
+          <p className="text-gray-500 mb-8">No pudimos encontrar la orden <strong>{orderRef}</strong>.</p>
+          <Link
+            href="/"
+            className="inline-block px-6 py-3 rounded-lg text-white font-medium"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Volver al inicio
+          </Link>
+        </div>
+      </OrganizationLayout>
+    )
+  }
+
+  const paymentStatus = order.payment_status || 'pending'
+  const config = STATUS_CONFIG[paymentStatus] || STATUS_CONFIG.pending
+
+  return (
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-lg mx-auto text-center">
+          {/* Icono de estado */}
+          <div className={`w-24 h-24 rounded-full ${config.bgColor} flex items-center justify-center mx-auto mb-6`}>
+            <span className={config.color}>{config.icon}</span>
+          </div>
+
+          {/* Título y descripción */}
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">{config.title}</h1>
+          <p className="text-gray-600 mb-6">{config.description}</p>
+
+          {/* Detalles de la orden */}
+          <div className="bg-gray-50 rounded-xl p-6 mb-8 text-left">
+            <h3 className="font-semibold text-gray-900 mb-3">Detalles del pedido</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Número de orden</span>
+                <span className="font-medium text-gray-900">{order.order_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Total</span>
+                <span className="font-bold" style={{ color: primaryColor }}>
+                  ${Number(order.total).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Estado del pago</span>
+                <span className={`font-medium ${config.color}`}>
+                  {paymentStatus === 'paid' ? 'Pagado' :
+                   paymentStatus === 'pending' ? 'Pendiente' :
+                   paymentStatus === 'failed' ? 'Fallido' :
+                   paymentStatus === 'refunded' ? 'Reembolsado' : paymentStatus}
+                </span>
+              </div>
+              {order.customer_email && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Email</span>
+                  <span className="text-gray-900">{order.customer_email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Acciones */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {paymentStatus === 'failed' && (
+              <Link
+                href="/checkout"
+                className="inline-block px-6 py-3 rounded-lg text-white font-medium"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Intentar de nuevo
+              </Link>
+            )}
+            <Link
+              href="/mi-cuenta/pedidos"
+              className="inline-block px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+            >
+              Mis pedidos
+            </Link>
+            <Link
+              href="/productos"
+              className="inline-block px-6 py-3 rounded-lg font-medium text-white"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Seguir comprando
+            </Link>
+          </div>
+        </div>
+      </div>
+    </OrganizationLayout>
+  )
+}

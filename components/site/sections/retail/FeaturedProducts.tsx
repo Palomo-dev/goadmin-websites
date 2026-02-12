@@ -8,6 +8,7 @@ import { ShoppingCart, Heart, Eye, Star, ArrowRight } from 'lucide-react'
 
 interface Product {
   id: number
+  uuid: string
   name: string
   description?: string
   product_prices?: { price: number; compare_price?: number }[]
@@ -69,7 +70,7 @@ export function FeaturedProducts({
             return (
               <Card key={product.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300">
                 <div className="relative">
-                  <Link href={`/productos/${product.id}`}>
+                  <Link href={`/productos/${product.uuid}`}>
                     <div 
                       className="aspect-square flex items-center justify-center relative overflow-hidden"
                       style={{ 
@@ -116,7 +117,7 @@ export function FeaturedProducts({
                     <span className="text-sm text-gray-500 ml-1">(4.8)</span>
                   </div>
                   
-                  <Link href={`/productos/${product.id}`}>
+                  <Link href={`/productos/${product.uuid}`}>
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                       {product.name}
                     </h3>

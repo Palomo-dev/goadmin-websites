@@ -132,6 +132,14 @@ export interface Database {
           footer_links: Json
           is_published: boolean
           published_at: string | null
+          header_style: 'default' | 'transparent' | 'minimal' | 'centered'
+          footer_style: 'default' | 'minimal' | 'centered' | 'three_columns'
+          header_cta_text: string | null
+          header_cta_url: string | null
+          show_header_cart: boolean
+          show_header_auth: boolean
+          show_topbar: boolean
+          logo_position: 'left' | 'center'
           created_at: string
           updated_at: string
         }
@@ -139,13 +147,112 @@ export interface Database {
           organization_id: number
           template_id?: string
           theme_mode?: 'light' | 'dark' | 'auto'
+          header_style?: 'default' | 'transparent' | 'minimal' | 'centered'
+          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
         }
         Update: {
           template_id?: string
           theme_mode?: 'light' | 'dark' | 'auto'
+          primary_color?: string | null
+          secondary_color?: string | null
+          accent_color?: string | null
+          background_color?: string | null
+          text_color?: string | null
+          font_heading?: string | null
+          font_body?: string | null
           hero_title?: string | null
           hero_subtitle?: string | null
           is_published?: boolean
+          header_style?: 'default' | 'transparent' | 'minimal' | 'centered'
+          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
+          header_cta_text?: string | null
+          header_cta_url?: string | null
+          show_header_cart?: boolean
+          show_header_auth?: boolean
+          show_topbar?: boolean
+          logo_position?: 'left' | 'center'
+          updated_at?: string
+        }
+      }
+      website_pages: {
+        Row: {
+          id: string
+          organization_id: number
+          slug: string
+          title: string
+          description: string | null
+          page_type: 'builtin' | 'custom'
+          show_in_header: boolean
+          show_in_footer: boolean
+          header_order: number
+          footer_order: number
+          is_published: boolean
+          meta_title: string | null
+          meta_description: string | null
+          og_image_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: number
+          slug: string
+          title: string
+          description?: string | null
+          page_type?: 'builtin' | 'custom'
+          show_in_header?: boolean
+          show_in_footer?: boolean
+          header_order?: number
+          footer_order?: number
+          is_published?: boolean
+          meta_title?: string | null
+          meta_description?: string | null
+          og_image_url?: string | null
+        }
+        Update: {
+          slug?: string
+          title?: string
+          description?: string | null
+          show_in_header?: boolean
+          show_in_footer?: boolean
+          header_order?: number
+          footer_order?: number
+          is_published?: boolean
+          meta_title?: string | null
+          meta_description?: string | null
+          og_image_url?: string | null
+        }
+      }
+      website_page_sections: {
+        Row: {
+          id: string
+          page_id: string
+          organization_id: number
+          section_type: string
+          section_variant: string
+          content: Json
+          settings: Json
+          sort_order: number
+          is_visible: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          page_id: string
+          organization_id: number
+          section_type: string
+          section_variant?: string
+          content?: Json
+          settings?: Json
+          sort_order?: number
+          is_visible?: boolean
+        }
+        Update: {
+          section_type?: string
+          section_variant?: string
+          content?: Json
+          settings?: Json
+          sort_order?: number
+          is_visible?: boolean
         }
       }
       products: {
@@ -219,6 +326,10 @@ export type Organization = Database['public']['Tables']['organizations']['Row']
 export type OrganizationType = Database['public']['Tables']['organization_types']['Row']
 export type OrganizationDomain = Database['public']['Tables']['organization_domains']['Row']
 export type WebsiteSettings = Database['public']['Tables']['website_settings']['Row']
+export type WebsitePage = Database['public']['Tables']['website_pages']['Row']
+export type WebsitePageInsert = Database['public']['Tables']['website_pages']['Insert']
+export type WebsitePageSection = Database['public']['Tables']['website_page_sections']['Row']
+export type WebsitePageSectionInsert = Database['public']['Tables']['website_page_sections']['Insert']
 export type Product = Database['public']['Tables']['products']['Row']
 export type Service = Database['public']['Tables']['services']['Row']
 export type Space = Database['public']['Tables']['spaces']['Row']
@@ -231,6 +342,11 @@ export interface OrganizationWithDetails extends Organization {
 
 // Tipos de templates disponibles
 export type TemplateId = 'modern' | 'classic' | 'minimal' | 'bold'
+
+// Tipo de página con sus secciones
+export interface WebsitePageWithSections extends WebsitePage {
+  website_page_sections: WebsitePageSection[]
+}
 
 // Tipos de negocio
 export type BusinessType = 'restaurant' | 'hotel' | 'retail' | 'saas' | 'gym' | 'transport' | 'parking'

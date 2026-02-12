@@ -10,6 +10,7 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  imageUrl?: string | null
 }
 
 interface CartDrawerProps {
@@ -116,10 +117,14 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               {items.map((item) => (
                 <div key={item.id} className="flex gap-4 p-3 bg-gray-50 rounded-xl">
                   <div 
-                    className="w-20 h-20 rounded-lg flex items-center justify-center flex-shrink-0"
+                    className="w-20 h-20 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                     style={{ backgroundColor: `${primaryColor}10` }}
                   >
-                    <span className="text-3xl">📦</span>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl">📦</span>
+                    )}
                   </div>
                   
                   <div className="flex-1 min-w-0">

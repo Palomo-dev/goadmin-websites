@@ -7,25 +7,33 @@ import { ContactSection } from '../sections/ContactSection'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
-interface Product {
+interface MembershipPlan {
   id: number
   name: string
   description?: string
-  product_prices?: { price: number }[]
+  price: number
+  duration_days: number
+  frequency?: string
+  access_rules?: Record<string, any>
 }
 
 interface GymTemplateProps {
   organization: OrganizationWithDetails
   template: TemplateConfig
   primaryColor: string
-  products: Product[]
+  products?: any[]
+  membershipPlans?: MembershipPlan[]
+  gymClasses?: any[]
+  reservationCounts?: Record<number, number>
 }
 
 export function GymTemplate({ 
   organization, 
   template, 
   primaryColor, 
-  products
+  membershipPlans,
+  gymClasses,
+  reservationCounts
 }: GymTemplateProps) {
   const settings = organization.website_settings as any
   
@@ -49,12 +57,16 @@ export function GymTemplate({
         
         {/* Membership Plans */}
         <MembershipPlans 
-          products={products}
+          plans={membershipPlans}
           primaryColor={primaryColor}
         />
         
         {/* Classes Schedule */}
-        <ClassesSchedule primaryColor={primaryColor} />
+        <ClassesSchedule 
+          classes={gymClasses}
+          reservationCounts={reservationCounts}
+          primaryColor={primaryColor}
+        />
         
         {/* Trainers */}
         <Trainers primaryColor={primaryColor} />

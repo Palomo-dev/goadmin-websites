@@ -1,28 +1,29 @@
-import { headers } from 'next/headers'
-import { notFound } from 'next/navigation'
-import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { getOrgContext } from '@/lib/get-org-context'
 import { createPublicClient } from '@/lib/supabase/server'
-import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
-import { SiteHeader } from '@/components/site/SiteHeader'
-import { SiteFooter } from '@/components/site/SiteFooter'
+import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
+import { AddToCartButton } from '@/components/site/AddToCartButton'
+import { ProductImageGallery } from '@/components/site/ProductImageGallery'
+import { getProductVariants } from '@/lib/supabase/queries'
+import { ProductDetailActions } from './ProductDetailActions'
 
 export const dynamic = 'force-dynamic'
 
-async function getProduct(productId: string, organizationId: number): Promise<any | null> {
+async function getProduct(productUuid: string, organizationId: number): Promise<any | null> {
   const supabase = createPublicClient()
   
   const { data, error } = await supabase
     .from('products')
     .select(`
       *,
-      product_prices (*)
+      product_prices (*),
+      product_images (*)
     `)
-    .eq('id', productId)
+    .eq('uuid', productUuid)
     .eq('organization_id', organizationId)
     .single()
   
@@ -30,38 +31,63 @@ async function getProduct(productId: string, organizationId: number): Promise<an
   return data as any
 }
 
-interface Props {
-  params: { id: string }
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const ctx = await getOrgContext()
+  if (!ctx) return { title: 'Producto' }
+  const { id } = await params
+  const product = await getProduct(id, ctx.organization.id)
+  return {
+    title: product ? `${product.name} | ${ctx.organization.name}` : `Producto | ${ctx.organization.name}`,
+    description: product?.description || undefined
+  }
 }
 
-export default async function ProductoDetailPage({ params }: Props) {
-  const headersList = await headers()
-  const subdomain = headersList.get('x-subdomain')
-  const customDomain = headersList.get('x-custom-domain')
-  const identifier = customDomain || subdomain
-  
-  if (!identifier) return <NotFoundPage />
-  
-  const organization = await getOrganizationByHost(identifier)
-  if (!organization) return <NotFoundPage subdomain={identifier} />
-  
-  const product = await getProduct(params.id, organization.id)
-  if (!product) return notFound()
-  
-  const settings = organization.website_settings
-  const primaryColor = settings?.primary_color || organization.primary_color || '#3B82F6'
+export default async function ProductoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getOrgContext()
+  if (!ctx) return <NotFoundPage />
+
+  const { id } = await params
+  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+
+  const product = await getProduct(id, organization.id)
+  if (!product) {
+    return (
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-4xl mb-3">📦</p>
+            <h1 className="text-xl font-bold text-gray-800 mb-2">Producto no encontrado</h1>
+            <Link href="/productos" className="text-sm hover:underline" style={{ color: primaryColor }}>Ver todos los productos</Link>
+          </div>
+        </div>
+      </OrganizationLayout>
+    )
+  }
+
   const price = product.product_prices?.[0]
-  
-  // Obtener template
-  const template = settings?.template_id 
-    ? getTemplate(settings.template_id) 
-    : getTemplateByBusinessType(organization.type_id)
-  
+  const isParent = product.is_parent === true
+
+  // Obtener variantes si es producto padre
+  let variants: any[] = []
+  if (isParent) {
+    variants = await getProductVariants(product.id, organization.id)
+  }
+
+  // Construir URLs de imágenes
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const sortedImages = (product.product_images || [])
+    .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.display_order - b.display_order)
+  const allImageUrls: string[] = sortedImages
+    .map((img: any) => {
+      const path = img.storage_path || img.shared_images?.storage_path
+      return path ? `${SUPABASE_URL}/storage/v1/object/public/product_images/${path}` : null
+    })
+    .filter(Boolean) as string[]
+  const imageUrl = allImageUrls[0] || null
+
   return (
-    <div className="min-h-screen bg-white">
-      <SiteHeader organization={organization} primaryColor={primaryColor} template={template} />
-      
-      <main className="container mx-auto px-4 py-12">
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link 
@@ -74,17 +100,12 @@ export default async function ProductoDetailPage({ params }: Props) {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Imagen del producto */}
-          <div className="space-y-4">
-            <div 
-              className="aspect-square rounded-2xl flex items-center justify-center"
-              style={{ 
-                background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)` 
-              }}
-            >
-              <span className="text-8xl">📦</span>
-            </div>
-          </div>
+          {/* Galería de imágenes */}
+          <ProductImageGallery
+            images={allImageUrls}
+            productName={product.name}
+            primaryColor={primaryColor}
+          />
           
           {/* Información del producto */}
           <div className="space-y-6">
@@ -112,25 +133,14 @@ export default async function ProductoDetailPage({ params }: Props) {
             )}
             
             {/* Acciones */}
-            <div className="space-y-3 pt-4">
-              <Button 
-                size="lg"
-                className="w-full text-lg py-6"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Agregar al carrito
-              </Button>
-              
-              <Button 
-                size="lg"
-                variant="outline"
-                className="w-full"
-                style={{ borderColor: primaryColor, color: primaryColor }}
-              >
-                Comprar ahora
-              </Button>
-            </div>
+            <ProductDetailActions
+              product={product}
+              variants={variants}
+              price={Number(price?.price || 0)}
+              imageUrl={imageUrl}
+              primaryColor={primaryColor}
+              isParent={isParent}
+            />
             
             {/* Beneficios */}
             <div className="grid grid-cols-2 gap-4 pt-6 border-t">
@@ -176,9 +186,7 @@ export default async function ProductoDetailPage({ params }: Props) {
             </div>
           </div>
         </div>
-      </main>
-      
-      <SiteFooter organization={organization} settings={settings} primaryColor={primaryColor} template={template} />
-    </div>
+      </div>
+    </OrganizationLayout>
   )
 }

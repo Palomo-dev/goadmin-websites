@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Facebook, Twitter, Instagram, Linkedin, Youtube, MapPin, Phone, Mail, Clock } from 'lucide-react'
-import type { OrganizationWithDetails, WebsiteSettings, Json } from '@/types/database'
+import type { OrganizationWithDetails, WebsiteSettings, WebsitePage, Json } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
 interface SiteFooterProps {
@@ -9,6 +9,7 @@ interface SiteFooterProps {
   settings: WebsiteSettings | null
   primaryColor: string
   template?: TemplateConfig
+  footerNav?: WebsitePage[]
 }
 
 interface SocialLinks {
@@ -25,13 +26,15 @@ interface BusinessHours {
   [key: string]: { open: string; close: string; closed?: boolean }
 }
 
-export function SiteFooter({ organization, settings, primaryColor, template }: SiteFooterProps) {
+export function SiteFooter({ organization, settings, primaryColor, template, footerNav }: SiteFooterProps) {
   const socialLinks = (settings?.social_links || {}) as SocialLinks
   const businessHours = (settings?.business_hours || {}) as BusinessHours
   const footerText = settings?.footer_text || `© ${new Date().getFullYear()} ${organization.name}. Todos los derechos reservados.`
   
-  // Usar navegación del template si está disponible
-  const navItems = template?.navigation || []
+  // Prioridad: footerNav (website_pages) > template.navigation > vacío
+  const navItems = footerNav && footerNav.length > 0
+    ? footerNav.map(p => ({ name: p.title, href: p.slug === 'home' ? '/' : `/${p.slug}` }))
+    : template?.navigation || []
   
   const socialIcons = {
     facebook: Facebook,

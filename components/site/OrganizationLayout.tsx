@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { SiteHeader } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
-import type { OrganizationWithDetails } from '@/types/database'
+import MetaPixel from './MetaPixel'
+import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
 interface OrganizationLayoutProps {
@@ -12,13 +13,19 @@ interface OrganizationLayoutProps {
   template: TemplateConfig
   primaryColor: string
   children: React.ReactNode
+  headerNav?: WebsitePage[]
+  footerNav?: WebsitePage[]
+  metaPixelId?: string | null
 }
 
 export function OrganizationLayout({
   organization,
   template,
   primaryColor,
-  children
+  children,
+  headerNav,
+  footerNav,
+  metaPixelId
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
@@ -49,6 +56,7 @@ export function OrganizationLayout({
         template={template}
         showCart={showCart}
         onCartClick={() => setCartOpen(true)}
+        headerNav={headerNav}
       />
       
       {/* Contenido de la página */}
@@ -62,6 +70,7 @@ export function OrganizationLayout({
         settings={settings}
         primaryColor={primaryColor}
         template={template}
+        footerNav={footerNav}
       />
       
       {/* Cart Drawer disponible para todos */}
@@ -73,6 +82,9 @@ export function OrganizationLayout({
           organizationSubdomain={subdomain}
         />
       )}
+      
+      {/* Meta Pixel (Facebook) */}
+      {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
       
       {/* CSS Personalizado */}
       {settings?.custom_css && (

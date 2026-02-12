@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Plus, Check, Package } from 'lucide-react'
+import { Plus, Check, Package, Layers } from 'lucide-react'
+import { VariantSelector } from './VariantSelector'
 
 interface ProductImage {
   id: number
@@ -18,13 +19,30 @@ interface ProductImage {
   } | null
 }
 
+interface StockLevel {
+  qty_on_hand: number
+  qty_reserved: number
+}
+
 interface Product {
   id: number
+  uuid: string
   name: string
   description?: string
   category_id?: number
+  is_parent?: boolean
+  has_variants?: boolean
+  variant_count?: number
   product_prices?: { price: number; currency_code?: string }[]
   product_images?: ProductImage[]
+  stock_levels?: StockLevel[]
+}
+
+function getAvailableStock(product: Product): number | null {
+  if (!product.stock_levels || product.stock_levels.length === 0) return null
+  return product.stock_levels.reduce(
+    (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
+  )
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -56,16 +74,36 @@ interface ProductGridProps {
   categories: Category[]
   primaryColor: string
   organizationSubdomain: string
+  organizationId?: number
 }
 
-export function ProductGrid({ products, categories, primaryColor, organizationSubdomain }: ProductGridProps) {
+export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId }: ProductGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+  const [variantParent, setVariantParent] = useState<Product | null>(null)
+  const [variantChildren, setVariantChildren] = useState<any[]>([])
+  const [loadingVariants, setLoadingVariants] = useState(false)
   
   const filteredProducts = selectedCategory 
     ? products.filter(p => p.category_id === selectedCategory)
     : products
   
+  const openVariantSelector = async (product: Product) => {
+    if (!organizationId) return
+    setVariantParent(product)
+    setLoadingVariants(true)
+    try {
+      const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}`)
+      const data = await res.json()
+      setVariantChildren(data.variants || [])
+    } catch (err) {
+      console.error('Error loading variants:', err)
+      setVariantChildren([])
+    } finally {
+      setLoadingVariants(false)
+    }
+  }
+
   const addToCart = (product: Product) => {
     const price = product.product_prices?.[0]?.price || 0
     
@@ -79,11 +117,13 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
     if (existingIndex >= 0) {
       existingCart[existingIndex].quantity += 1
     } else {
+      const imgUrl = getProductImageUrl(product)
       existingCart.push({
         id: product.id,
         name: product.name,
         price: Number(price),
-        quantity: 1
+        quantity: 1,
+        ...(imgUrl && { imageUrl: imgUrl })
       })
     }
     
@@ -147,13 +187,27 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             
             return (
               <Card key={product.id} className="group overflow-hidden hover:shadow-lg transition-all h-full">
-                <Link href={`/productos/${product.id}`}>
+                <Link href={`/productos/${product.uuid}`}>
                   <div 
                     className="aspect-square flex items-center justify-center relative overflow-hidden"
                     style={{ 
                       background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` 
                     }}
                   >
+                    {(() => {
+                      const stock = getAvailableStock(product)
+                      return stock !== null && stock <= 0 ? (
+                        <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                          Agotado
+                        </span>
+                      ) : null
+                    })()}
+                    {product.has_variants && (product.variant_count ?? 0) > 0 && (
+                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <Layers className="h-3 w-3" />
+                        {product.variant_count} variantes
+                      </span>
+                    )}
                     {getProductImageUrl(product) ? (
                       <Image
                         src={getProductImageUrl(product)!}
@@ -169,7 +223,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                 </Link>
                 
                 <CardContent className="p-4">
-                  <Link href={`/productos/${product.id}`}>
+                  <Link href={`/productos/${product.uuid}`}>
                     <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
                       {product.name}
                     </h3>
@@ -191,27 +245,48 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                       </span>
                     )}
                     
-                    <Button 
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        addToCart(product)
-                      }}
-                      className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                      style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                    >
-                      {isAdded ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Agregado
-                        </>
+                    {(() => {
+                      const stock = getAvailableStock(product)
+                      const outOfStock = stock !== null && stock <= 0
+                      const isParent = product.has_variants && (product.variant_count ?? 0) > 0
+                      return outOfStock && !isParent ? (
+                        <span className="text-xs text-red-500 font-medium">Sin stock</span>
+                      ) : isParent ? (
+                        <Button 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            openVariantSelector(product)
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          <Layers className="h-4 w-4 mr-1" />
+                          Elegir
+                        </Button>
                       ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Agregar
-                        </>
-                      )}
-                    </Button>
+                        <Button 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            addToCart(product)
+                          }}
+                          className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                        >
+                          {isAdded ? (
+                            <>
+                              <Check className="h-4 w-4 mr-1" />
+                              Agregado
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-1" />
+                              Agregar
+                            </>
+                          )}
+                        </Button>
+                      )
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -235,6 +310,21 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             </Button>
           )}
         </div>
+      )}
+      {/* Variant Selector Dialog */}
+      {variantParent && (
+        <VariantSelector
+          parentName={variantParent.name}
+          variants={variantChildren}
+          primaryColor={primaryColor}
+          mode="dialog"
+          onClose={() => { setVariantParent(null); setVariantChildren([]) }}
+          onSelect={(variant) => {
+            addToCart(variant as any)
+            setVariantParent(null)
+            setVariantChildren([])
+          }}
+        />
       )}
     </div>
   )
