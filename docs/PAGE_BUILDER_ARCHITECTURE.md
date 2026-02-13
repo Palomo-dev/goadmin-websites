@@ -2448,6 +2448,361 @@ organization_taxes (name, rate, is_default, is_active)
 | **Header** | `default` |
 | **Footer** | `three_columns` |
 
+### 9.3 Análisis de Tablas del Módulo
+
+#### Tablas Core — Infraestructura de Transporte (gestionadas desde ERP admin)
+
+| Tabla | Columnas Clave | Propósito |
+|-------|---------------|-----------|
+| `transport_carriers` | id, organization_id, name, code, carrier_type (`own_fleet`/`third_party`), service_type (`cargo`/`passenger`/`both`), api_provider (coordinadora/envia/servientrega/tcc/interrapidisimo/deprisa/shippo), tracking_url_template, contact_* | Transportadoras propias o tercerizadas con integración de APIs de envío |
+| `transport_routes` | id, organization_id, carrier_id, name, code, route_type (`passenger`/`cargo`/`mixed`), origin_stop_id, destination_stop_id, estimated_distance_km, estimated_duration_minutes, polyline_encoded, waypoints_json, base_fare, base_shipping_fee | Rutas con geometría para mapas y tarifas base |
+| `transport_stops` | id, organization_id, name, code, stop_type, address, city, department, country_code, latitude, longitude, google_place_id, contact_*, operating_hours (jsonb), branch_id | Terminales/paradas con geolocalización |
+| `route_stops` | id, route_id, stop_id, stop_order, estimated_arrival_minutes, estimated_departure_minutes, dwell_time_minutes, fare_from_origin, is_boarding_allowed, is_alighting_allowed | N:N ruta↔parada con orden, tiempos estimados y tarifa incremental |
+| `route_schedules` | id, organization_id, route_id, schedule_name, recurrence_type, days_of_week[], specific_dates[], departure_time, arrival_time, default_vehicle_id, default_driver_id, available_seats, fare_override, valid_from, valid_until | Horarios recurrentes con asignación de vehículo/conductor por defecto |
+| `vehicles` | id, organization_id, carrier_id, branch_id, plate, vehicle_type (`motorcycle`/`car`/`van`/`truck`/`bus`/`minibus`/`trailer`), capacity_kg, capacity_m3, passenger_capacity, brand, model, year, color, vin, soat_expiry, techno_expiry, insurance_expiry, operating_card_expiry, current_driver_id, status (`available`/`in_use`/`maintenance`/`inactive`) | Flota con documentos legales (SOAT, tecno, seguro, tarjeta de operación) |
+| `vehicle_seats` | id, organization_id, vehicle_id, seat_label, seat_row, seat_column, seat_type (`passenger`/...), is_available, position_x, position_y, price_modifier | Mapa de asientos del vehículo con coordenadas para render visual |
+| `driver_credentials` | id, employment_id, license_number, license_category, license_expiry, medical_certificate_expiry, hazmat_certified, passenger_certified, emergency_contact_*, blood_type | Credenciales del conductor vinculadas a HRM (employment_id) |
+| `transport_fares` | id, organization_id, route_id, fare_name, fare_code, fare_type (`standard`/`student`/`senior`/`child`/`infant`/`military`/`disabled`/`promotional`/`corporate`/`round_trip`), from_stop_id, to_stop_id, amount, discount_percent, discount_amount, min_age, max_age, requires_id, requires_approval, valid_from, valid_until, applicable_days[], applicable_from_time, applicable_to_time | Tarifas dinámicas por ruta, tipo pasajero, tramo y horario |
+
+#### Tablas de Operación — Viajes y Boletos
+
+| Tabla | Columnas Clave | Propósito |
+|-------|---------------|-----------|
+| `trips` | id, organization_id, branch_id, schedule_id, route_id, trip_code, trip_date, scheduled_departure, scheduled_arrival, actual_departure, actual_arrival, vehicle_id, driver_id, co_driver_id, total_seats, available_seats, base_fare, status (`scheduled`→`boarding`→`in_transit`→`arrived`→`completed`/`cancelled`/`delayed`), delay_reason, delay_minutes | Instancia de viaje: un bus específico en una fecha/hora con ruta asignada |
+| `trip_seats` | id, organization_id, trip_id, vehicle_seat_id, ticket_id, seat_label, status (`available`/...), reserved_until, reserved_by | Estado de cada asiento para un viaje: disponible, reservado temporalmente, vendido |
+| `trip_tickets` | id, organization_id, trip_id, ticket_number, customer_id, passenger_name, passenger_doc_type, passenger_doc_number, passenger_phone, passenger_email, boarding_stop_id, alighting_stop_id, seat_number, fare, discount, total, currency, status (`reserved`→`confirmed`→`paid`→`boarded`→`completed`/`no_show`/`cancelled`/`refunded`), payment_status (`pending`/`paid`/`partial`/`refunded`/`cancelled`), boarded_at, alighted_at, sale_id, qr_code, checkin_code, cancelled_at, cancellation_reason, refund_amount | Pasaje/boleto: el "producto" que compra el pasajero online |
+
+#### Tablas de Logística — Envíos y Entregas
+
+| Tabla | Columnas Clave | Propósito |
+|-------|---------------|-----------|
+| `shipments` | id, organization_id, branch_id, source_type (`sale`/`invoice_sale`/`manual`/`return`/`transfer`), source_id, carrier_id, shipment_number, tracking_number, service_level (`economy`/`standard`/`express`/`same_day`/`next_day`), sender_* (name, phone, address, city, lat/lng), receiver_* (idem), total_weight_kg, total_volume_m3, total_packages, declared_value, shipping_fee, insurance_fee, cod_amount, total_cost, expected_pickup/delivery_date, picked_at, dispatched_at, delivered_at, status (`draft`→`ready`→`picked`→`dispatched`→`in_transit`→`out_for_delivery`→`delivered`/`failed`/`returned`/`cancelled`) | Envío/encomienda con datos de remitente, destinatario y tracking completo |
+| `shipment_items` | id, shipment_id, description, quantity, weight_kg, length/width/height_cm, declared_value | Ítems individuales del envío con dimensiones |
+| `dispatch_manifests` | id, organization_id, branch_id, manifest_number, manifest_date, manifest_type (`delivery`/`pickup`/`transfer`/`return`), carrier_id, vehicle_id, driver_id, route_id, planned_start/end, started_at, completed_at, total_shipments, total_weight_kg, total_packages, total_cod_amount, delivered/failed/pending_count, status (`draft`→`confirmed`→`in_progress`→`completed`/`cancelled`) | Manifiesto de despacho: agrupa envíos por vehículo/conductor/ruta |
+| `manifest_shipments` | id, manifest_id, shipment_id, stop_sequence, eta, status, arrived_at, completed_at, failure_reason, distance_from_prev_km, duration_from_prev_minutes | Orden de entrega dentro del manifiesto |
+| `delivery_attempts` | id, shipment_id, attempt_number, attempted_at, status, failure_reason_code/text, lat/lng, driver_id, driver_notes, reschedule_date, photo_urls[] | Intentos de entrega con geolocalización y evidencia |
+| `proof_of_delivery` | id, shipment_id, delivery_attempt_id, receiver_name, receiver_doc, relationship, signature_url, photo_urls[], lat/lng, notes, confirmed_at | Prueba de entrega con firma digital y fotos |
+
+#### Tablas Operativas — Eventos e Incidentes
+
+| Tabla | Columnas Clave | Propósito |
+|-------|---------------|-----------|
+| `transport_events` | id, organization_id, reference_type, reference_id, event_type, event_time, stop_id, lat/lng, location_text, actor_type, actor_id, description, payload (jsonb), sequence, source (`internal`/...), correlation_id | Timeline de eventos polimórfica: aplica a trips, shipments, tickets |
+| `transport_incidents` | id, organization_id, reference_type, reference_id, incident_type, severity (`low`/`medium`/`high`/`critical`), title, description, status (`open`→`acknowledged`→`resolved`→`closed`), assigned_to, reported_by, occurred_at, sla_hours, sla_breached, lat/lng, estimated/actual_cost, resolution_summary, root_cause, corrective_actions | Incidentes operativos con SLA y análisis de causa raíz |
+
+### 9.4 ERP Admin — Módulos ya implementados (go-admin-erp)
+
+El ERP admin ya tiene módulos completos bajo `/app/transporte/`:
+
+```
+transporte/
+├── page.tsx              ← Dashboard: KPIs (viajes, envíos, boletos, incidentes) + filtros + eventos recientes
+├── boletos/              ← CRUD trip_tickets: listado, detalle, estado
+├── conductores/          ← Credenciales de conductores vinculados a HRM
+├── direcciones-clientes/ ← Gestión de direcciones para envíos
+├── envios/               ← CRUD shipments: lifecycle completo, tracking interno
+│   └── [id]/             ← Detalle envío con timeline de eventos
+├── etiquetas/            ← Generación de etiquetas de envío
+├── horarios/             ← CRUD route_schedules: horarios recurrentes
+├── incidentes/           ← CRUD transport_incidents: reporte, asignación, resolución
+│   └── [id]/             ← Detalle incidente con SLA
+├── manifiestos/          ← CRUD dispatch_manifests: agrupar envíos por ruta
+│   └── [id]/             ← Detalle manifiesto con envíos asignados
+├── paradas/              ← CRUD transport_stops: terminales y paradas
+├── rutas/                ← CRUD transport_routes: rutas con paradas y geometría
+│   └── [id]/             ← Detalle ruta con mapa y paradas
+├── tarifas-envio/        ← Configuración de tarifas de envío
+├── tarifas-pasajeros/    ← CRUD transport_fares: tarifas por tipo pasajero
+├── tracking/             ← Panel de tracking en tiempo real
+├── transportadoras/      ← CRUD transport_carriers: propias y tercerizadas
+├── vehiculos/            ← CRUD vehicles: flota con documentos legales
+└── viajes/               ← CRUD trips: programación y operación de viajes
+    └── [id]/             ← Detalle viaje con asientos y boletos
+```
+
+**Módulos relacionados en ERP:**
+
+```
+hrm/
+├── empleados/    ← Empleados (conductores son empleados con driver_credentials)
+├── turnos/       ← Turnos de trabajo
+├── asistencia/   ← Control de asistencia
+└── nomina/       ← Nómina
+
+crm/
+├── clientes/     ← Base de clientes (compartida con transporte)
+├── conversaciones/  ← Comunicación con clientes
+└── campanas/     ← Marketing y notificaciones
+```
+
+### 9.5 Separación de Responsabilidades
+
+| Responsabilidad | ERP Admin (go-admin-erp) | Website (goadmin-websites) |
+|----------------|--------------------------|---------------------------|
+| **Crear rutas, paradas, horarios** | ✅ CRUD completo | ❌ Solo lectura |
+| **Gestionar vehículos y flota** | ✅ CRUD + documentos | ❌ Solo lectura (mostrar flota) |
+| **Programar viajes (trips)** | ✅ Crear desde schedule o manual | ❌ Solo lectura + comprar asientos |
+| **Configurar tarifas** | ✅ CRUD transport_fares | ❌ Solo lectura (calcular precio) |
+| **Vender boletos (ventanilla)** | ✅ POS → sale_id en trip_tickets | ❌ |
+| **Comprar boletos online** | ❌ | ✅ Flujo completo: buscar → seleccionar → pagar |
+| **Check-in / boarding** | ✅ Escanear QR en terminal | ❌ (el pasajero muestra QR) |
+| **Crear envíos** | ✅ CRUD + manifiestos | ⚠️ Cotización + crear envío online (futuro) |
+| **Tracking envíos** | ✅ Panel interno completo | ✅ Tracking público por guía |
+| **Gestionar incidentes** | ✅ CRUD + SLA | ❌ |
+| **Reportes operativos** | ✅ Dashboard + exportación | ❌ |
+| **Mi cuenta (pasajero)** | ❌ | ✅ Mis tickets, historial, perfil |
+
+### 9.6 Flujos del Website
+
+#### Flujo A — Compra de Pasajes Online (Prioridad Alta)
+
+Modelo similar a **RedBus / BusBud / Pinbus**. Este es el flujo principal que genera ingresos desde el website.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. BUSCAR VIAJE  →  /viajes                                     │
+│    Widget de búsqueda:                                           │
+│      - Origen (autocomplete desde transport_stops.city)          │
+│      - Destino (autocomplete desde transport_stops.city)         │
+│      - Fecha de viaje                                            │
+│      - Cantidad de pasajeros                                     │
+│    POST /api/transport/search                                    │
+│    → Busca en trips: trip_date + ruta que conecte origen→destino │
+│    → Filtra: status='scheduled', available_seats >= pasajeros    │
+│    → Devuelve: viajes con horarios, precios, asientos libres     │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. RESULTADOS  →  /viajes?origen=X&destino=Y&fecha=Z            │
+│    Lista de viajes disponibles:                                  │
+│      - Hora salida → Hora llegada (duración)                     │
+│      - Ruta: origen → paradas intermedias → destino              │
+│      - Tipo de vehículo (bus, minibus, van)                      │
+│      - Asientos disponibles / total                              │
+│      - Precio desde $X (tarifa estándar)                         │
+│      - Botón "Seleccionar"                                       │
+│    Filtros: horario, precio, tipo vehículo, transportadora       │
+│    Ordenar: precio, hora salida, duración                        │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. DETALLE + ASIENTOS  →  /viajes/[tripId]                      │
+│    Info del viaje: ruta, horarios, paradas, vehículo             │
+│    Mapa de ruta (polyline_encoded → Google Maps / Leaflet)       │
+│    Selector de asientos interactivo:                             │
+│      - Render visual del bus (vehicle_seats: position_x/y)       │
+│      - Colores: verde=libre, rojo=vendido, amarillo=reservado    │
+│      - Click para seleccionar (1 asiento por pasajero)           │
+│      - Precio base + price_modifier del asiento                  │
+│    Selector de tarifa: estándar, estudiante, adulto mayor, etc.  │
+│    POST /api/transport/reserve-seat (reserva temporal 10 min)    │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 4. CHECKOUT  →  /viajes/checkout                                 │
+│    Para cada pasajero:                                           │
+│      - Nombre completo                                           │
+│      - Tipo documento (CC, TI, CE, pasaporte)                    │
+│      - Número documento                                          │
+│      - Email, teléfono                                           │
+│      - Parada de abordaje (boarding_stop_id)                     │
+│      - Parada de descenso (alighting_stop_id)                    │
+│    Resumen: asiento + tarifa + descuento + total                 │
+│    POST /api/transport/tickets → crea trip_tickets               │
+│    POST /api/checkout/init (source:'trip_ticket')                │
+│    → Pasarela de pago (Wompi/Stripe/PayPal/MercadoPago/PayU)    │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 5. CONFIRMACIÓN  →  /ticket/[ticketNumber]                       │
+│    Ticket digital con QR code                                    │
+│    Datos: pasajero, ruta, fecha, hora, asiento, paradas          │
+│    Email de confirmación con QR adjunto                          │
+│    Opción: descargar PDF, agregar a calendario                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Ciclo de vida del ticket:**
+```
+reserved → confirmed → paid → boarded → completed
+                                    ↓
+              cancelled ← ← ← ← ← ┤ → no_show
+                    ↓               
+                 refunded           
+```
+
+#### Flujo B — Tracking de Envíos (Prioridad Media)
+
+Permite a clientes rastrear sus envíos sin autenticarse.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ TRACKING PÚBLICO  →  /tracking                                   │
+│    Input: número de guía (shipment.tracking_number)              │
+│    GET /api/transport/tracking?number=XXX                        │
+│    Output:                                                       │
+│      - Estado actual del envío                                   │
+│      - Timeline de eventos (transport_events)                    │
+│      - Fecha estimada de entrega                                 │
+│      - Último punto conocido (lat/lng)                           │
+│      - Datos del remitente/destinatario (parciales)              │
+│      - Proof of delivery si entregado (firma + fotos)            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Ciclo de vida del envío:**
+```
+draft → ready → picked → dispatched → in_transit → out_for_delivery → delivered
+                                                          ↓
+                                              failed → returned
+                                                ↓
+                                             cancelled
+```
+
+#### Flujo C — Cotización de Envíos (Prioridad Baja / Futuro)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ COTIZAR ENVÍO  →  /envios/cotizar                                │
+│    Input: origen, destino, peso, dimensiones, servicio           │
+│    GET /api/transport/shipping-quote                              │
+│    Output: precio por servicio (economy, standard, express)      │
+│    → Si acepta: crear shipment + pago online                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 9.7 APIs Necesarias para el Website
+
+| API | Método | Input | Output | Prioridad |
+|-----|--------|-------|--------|-----------|
+| `/api/transport/search` | POST | organizationId, originCity, destinationCity, date, passengers | trips[] con ruta, horarios, asientos, precio | 🔴 Alta |
+| `/api/transport/trip/[id]` | GET | tripId | Detalle viaje + asientos (trip_seats con estado) + ruta + paradas | 🔴 Alta |
+| `/api/transport/fares` | POST | tripId, fromStopId, toStopId, fareType | Tarifa calculada con descuentos aplicables | 🔴 Alta |
+| `/api/transport/reserve-seat` | POST | tripId, seatId, passengerCount | Reserva temporal (10 min), actualiza trip_seats.status | 🔴 Alta |
+| `/api/transport/tickets` | POST | tripId, passengers[], seatIds[], fareType, boarding/alightingStopId | Crea trip_tickets + reduce available_seats | 🔴 Alta |
+| `/api/transport/tracking` | GET | trackingNumber | Estado envío + timeline eventos + POD | 🟡 Media |
+| `/api/transport/stops` | GET | organizationId, ?city | Lista de paradas/ciudades para autocomplete | 🔴 Alta |
+| `/api/transport/routes` | GET | organizationId | Rutas activas con origen/destino para mostrar en website | 🟢 Baja |
+| `/api/transport/shipping-quote` | POST | origin, destination, weight, dimensions, serviceLevel | Cotización de envío | 🟢 Baja |
+
+### 9.8 Análisis Crítico — Problemas y Gaps
+
+#### 🔴 Problemas Graves
+
+1. **No existe NINGÚN endpoint API** para el website de transporte — toda la lógica está solo en el ERP admin
+2. **No hay flujo de pago online** para boletos — solo se venden por ventanilla (sale_id en trip_tickets)
+3. **No hay componentes frontend** para transporte en goadmin-websites (0 implementado)
+4. **trip_tickets no tiene campo `web_order_id`** ni referencia directa a `payments` — el pago se vincula via `sale_id` que es del POS
+
+#### 🟡 Gaps Importantes
+
+5. **Reserva temporal de asientos** — trip_seats tiene `reserved_until` y `reserved_by` pero no hay lógica de expiración automática (cron/función)
+6. **QR code** — trip_tickets tiene `qr_code` y `checkin_code` pero no hay generación automática
+7. **Búsqueda por ciudad** — transport_stops tiene `city` pero no hay índice de texto para autocomplete
+8. **Notificaciones** — No hay envío de email al comprar boleto ni al cambiar estado del envío
+9. **Integración con pasarelas** — Existe `payments` universal pero trip_tickets no usa source='trip_ticket' en payments
+
+#### 🟢 Oportunidades
+
+10. **Mapa de asientos** — vehicle_seats tiene position_x/y perfecto para render SVG/Canvas interactivo
+11. **Tarifas muy flexibles** — transport_fares soporta por horario, día, tramo, tipo pasajero
+12. **Polyline en rutas** — Permite render de ruta en Google Maps/Leaflet directamente
+13. **COD (contra-entrega)** — shipments soporta cod_amount para pagos en destino
+
+### 9.9 Plan de Implementación
+
+#### Fase A — Backend: APIs de búsqueda + disponibilidad
+
+| # | Tarea | Prioridad | Archivo(s) |
+|---|-------|-----------|------------|
+| A1 | **API `/api/transport/stops`**: Lista paradas activas con city para autocomplete. Cacheable | 🔴 | `app/api/transport/stops/route.ts` |
+| A2 | **API `/api/transport/search`**: Buscar viajes por origen+destino+fecha. Join trips→routes→route_stops→stops. Filtrar status=scheduled, available_seats > 0 | 🔴 | `app/api/transport/search/route.ts` |
+| A3 | **API `/api/transport/trip/[id]`**: Detalle viaje con asientos (trip_seats + vehicle_seats para mapa), ruta con paradas, tarifas disponibles | 🔴 | `app/api/transport/trip/[id]/route.ts` |
+| A4 | **API `/api/transport/fares`**: Calcular tarifa: base_fare + price_modifier del asiento + descuento por tipo (student, senior, etc.) + impuestos | 🔴 | `app/api/transport/fares/route.ts` |
+| A5 | **API `/api/transport/reserve-seat`**: Reserva temporal: actualizar trip_seats.status='reserved', reserved_until=now()+10min, reserved_by | 🔴 | `app/api/transport/reserve-seat/route.ts` |
+
+#### Fase B — Backend: Compra + Pago + Tracking
+
+| # | Tarea | Prioridad |
+|---|-------|-----------|
+| B1 | **API `/api/transport/tickets`**: Crear trip_tickets, decrementar available_seats, generar ticket_number + QR code + checkin_code |
+| B2 | **Adaptar `/api/checkout/init`**: Soportar source:'trip_ticket' + sourceId para conectar con pasarelas existentes |
+| B3 | **`lib/transport/payment-handler.ts`**: Handler compartido: confirmar ticket, generar QR, enviar email, liberar asientos si falla |
+| B4 | **Adaptar 5 webhooks**: Detectar referencia TKT-* para trip_tickets (mismo patrón que RES-* para reservaciones) |
+| B5 | **API `/api/transport/tracking`**: Buscar shipment por tracking_number, devolver timeline de transport_events + proof_of_delivery |
+| B6 | **Email confirmación**: Template HTML con QR, datos del viaje, instrucciones de abordaje |
+
+#### Fase C — Frontend: Búsqueda + Selección + Checkout
+
+| # | Tarea | Prioridad |
+|---|-------|-----------|
+| C1 | **`/viajes` page**: SSR con widget de búsqueda (origen/destino autocomplete, fecha, pasajeros) + resultados |
+| C2 | **`/viajes/[id]` page**: Detalle viaje + mapa de ruta + selector de asientos interactivo (SVG) |
+| C3 | **`SeatMap` componente**: Render visual del bus desde vehicle_seats (position_x/y), estados por colores, click para seleccionar |
+| C4 | **`TripSearchWidget` componente**: Buscador reutilizable para home y /viajes |
+| C5 | **Checkout de tickets**: Formulario datos pasajero + resumen + pago (reutilizar pasarelas existentes) |
+| C6 | **`/ticket/[number]` page**: Ticket digital con QR, datos del viaje, opción descargar PDF |
+| C7 | **`/tracking` page**: Input guía + timeline visual del envío |
+| C8 | **`/mi-cuenta/tickets`**: Lista de tickets del usuario con estado, QR, link a detalle |
+
+### 9.10 Relación entre Tablas (ER Simplificado)
+
+```
+transport_carriers (org)
+    │
+    ├── vehicles (plate, type, capacity, docs legales)
+    │       │
+    │       └── vehicle_seats (mapa de asientos: row, col, position_x/y)
+    │
+    └── transport_routes (origin→destination, polyline, base_fare)
+            │
+            ├── route_stops (N:N → transport_stops, stop_order, fare)
+            │       │
+            │       └── transport_stops (city, lat/lng, google_place_id)
+            │
+            ├── route_schedules (horarios recurrentes, default vehicle/driver)
+            │
+            └── transport_fares (por tipo pasajero, tramo, horario)
+
+trips (route + fecha + vehicle + driver → instancia de viaje)
+    │
+    ├── trip_seats (vehicle_seat + status: available/reserved/sold)
+    │
+    └── trip_tickets (pasajero + asiento + boarding/alighting stops + fare + QR)
+            │
+            └── payments (source='trip_ticket', source_id=ticket.id)
+
+shipments (envío: sender→receiver, weight, tracking, status lifecycle)
+    │
+    ├── shipment_items (descripción, peso, dimensiones)
+    ├── delivery_attempts (intentos con geolocalización)
+    ├── proof_of_delivery (firma + fotos)
+    └── manifest_shipments → dispatch_manifests (agrupación por ruta/vehículo)
+
+transport_events (timeline polimórfica: trips, shipments, tickets)
+transport_incidents (incidentes con SLA y resolución)
+```
+
+### 9.11 Diferencias clave vs otros módulos
+
+| Aspecto | Retail | Hotel | Transport (Pasajeros) | Transport (Logística) |
+|---------|--------|-------|----------------------|----------------------|
+| **Producto** | `products` | `space_types` + `rates` | `trips` + `transport_fares` | `shipments` |
+| **Inventario** | `stock_levels` (qty) | `spaces` (instancias) | `trip_seats` (asientos) | N/A |
+| **Orden** | `web_orders` | `reservations` + `folios` | `trip_tickets` | `shipments` |
+| **Pago** | `payments` (source: web_order) | `payments` (source: reservation) | `payments` (source: trip_ticket) | `payments` (source: shipment) |
+| **Estado** | pending→confirmed→shipped→delivered | tentative→confirmed→checked_in→checked_out | reserved→confirmed→paid→boarded→completed | draft→dispatched→in_transit→delivered |
+| **Selección** | Agregar al carrito | Elegir fechas + espacio | Elegir viaje + asiento | Elegir origen/destino + servicio |
+| **Tracking** | `/pedido/[orderNumber]` | `/reserva/[id]` | `/ticket/[number]` (QR) | `/tracking?number=XXX` |
+| **Email** | `send-order-confirmation` | `send-reservation-confirmation` | `send-ticket-confirmation` (por crear) | `send-shipment-notification` (por crear) |
+| **Impuesto** | `organization_taxes` | `organization_taxes` | `organization_taxes` | Incluido en shipping_fee |
+| **Temporal** | No | Reserva temporal (folio) | Asiento reservado 10 min | N/A |
+| **Mapa/Visual** | ProductImageGallery | AvailabilityCalendar | SeatMap (bus) + RouteMap | TrackingTimeline |
+
 ---
 
 ## 10. Parking — Parqueadero / Estacionamiento
