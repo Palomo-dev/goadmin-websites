@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { isReservationReference, handleReservationPayment } from '@/lib/reservations/payment-handler'
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
+import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 
 export const dynamic = 'force-dynamic'
 
@@ -182,6 +183,28 @@ export async function POST(request: NextRequest) {
         received: true,
         source: 'membership',
         membershipId: result.membershipId,
+        payment_status: paymentStatus,
+      })
+    }
+
+    // ── Verificar si es pago de ticket de transporte ──
+    if (isTicketReference(reference)) {
+      const paymentStatus = mapWompiStatus(wompiStatus)
+      const amountDecimal = amountInCents ? amountInCents / 100 : 0
+
+      const result = await handleTicketPayment(supabase, reference, paymentStatus, {
+        transactionId,
+        amount: amountDecimal,
+        currency: currency || 'COP',
+        method: paymentMethodType?.toLowerCase() || 'card',
+        processorResponse: transaction,
+        gateway: 'wompi_co',
+      })
+
+      return NextResponse.json({
+        received: true,
+        source: 'trip_ticket',
+        ticketId: result.ticketId,
         payment_status: paymentStatus,
       })
     }

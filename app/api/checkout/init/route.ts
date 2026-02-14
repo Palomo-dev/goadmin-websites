@@ -324,6 +324,33 @@ async function buildPayPalCheckout(
 }
 
 /**
+ * Obtiene un ticket de transporte por ID para generar pago.
+ * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
+ */
+async function getTripTicket(supabase: any, ticketId: string) {
+  const { data, error } = await supabase
+    .from('trip_tickets')
+    .select('id, organization_id, ticket_number, passenger_name, passenger_email, total, currency, status, payment_status')
+    .eq('id', ticketId)
+    .single()
+
+  if (error || !data) return null
+
+  return {
+    id: data.id,
+    organization_id: data.organization_id,
+    order_number: data.ticket_number,
+    total: Number(data.total || 0),
+    currency: data.currency || 'COP',
+    status: data.status,
+    payment_status: data.payment_status === 'paid' ? 'paid' : 'pending',
+    customer_email: data.passenger_email || '',
+    customer_name: data.passenger_name || '',
+    _source: 'trip_ticket' as const,
+  }
+}
+
+/**
  * Obtiene una membresía por ID para generar pago.
  * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
  */
@@ -378,12 +405,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Obtener la orden, reservación o membresía según source
+    // 1. Obtener la orden, reservación, membresía o ticket según source
     let order: any = null
     const isReservation = source === 'reservation' && sourceId
     const isMembership = source === 'membership' && sourceId
+    const isTripTicket = source === 'trip_ticket' && sourceId
 
-    if (isMembership) {
+    if (isTripTicket) {
+      order = await getTripTicket(supabase, sourceId)
+    } else if (isMembership) {
       order = await getMembership(supabase, sourceId)
     } else if (isReservation) {
       order = await getReservation(supabase, sourceId)
@@ -392,17 +422,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      const label = isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
+      const label = isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
       return NextResponse.json(
-        { error: `${label} no encontrada` },
+        { error: `${label} no encontrado` },
         { status: 404 }
       )
     }
 
     if (order.payment_status === 'paid') {
-      const label = isMembership ? 'Esta membresía' : isReservation ? 'Esta reservación' : 'Esta orden'
+      const label = isTripTicket ? 'Este boleto' : isMembership ? 'Esta membresía' : isReservation ? 'Esta reservación' : 'Esta orden'
       return NextResponse.json(
-        { error: `${label} ya fue pagada` },
+        { error: `${label} ya fue pagado` },
         { status: 400 }
       )
     }
@@ -468,8 +498,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. Actualizar orden/reservación/membresía con el gateway seleccionado
-    if (isMembership) {
+    // 5. Actualizar orden/reservación/membresía/ticket con el gateway seleccionado
+    if (isTripTicket) {
+      await (supabase as any)
+        .from('trip_tickets')
+        .update({
+          metadata: {
+            ...(order.metadata || {}),
+            payment_gateway: gateway,
+            payment_reference: order.order_number,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.id)
+    } else if (isMembership) {
       await (supabase as any)
         .from('memberships')
         .update({
@@ -505,7 +547,7 @@ export async function POST(request: NextRequest) {
         .eq('id', order.id)
     }
 
-    const resolvedSource = isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
+    const resolvedSource = isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
 
     return NextResponse.json({
       success: true,
@@ -513,7 +555,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       orderNumber: order.order_number,
       source: resolvedSource,
-      sourceId: isMembership ? sourceId : isReservation ? sourceId : order.id,
+      sourceId: isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)

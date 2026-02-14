@@ -935,6 +935,256 @@ export async function getProductVariantRelations(organizationId: number) {
   return data || []
 }
 
+// ==========================================
+// Transport Queries
+// ==========================================
+
+/**
+ * Obtiene las paradas/terminales activas de una organización para autocomplete
+ */
+export async function getTransportStops(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('transport_stops')
+    .select('id, name, code, stop_type, city, department, latitude, longitude')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('city', { ascending: true })
+
+  if (error) return []
+  return data || []
+}
+
+/**
+ * Busca viajes disponibles por origen, destino y fecha.
+ * Join: trips → transport_routes → route_stops → transport_stops
+ */
+export async function searchTrips(
+  organizationId: number,
+  originCity: string,
+  destinationCity: string,
+  date: string,
+  passengers: number = 1
+) {
+  const supabase = getSupabaseForPublicRead()
+
+  // 1. Buscar rutas que conecten origen → destino
+  const { data: originStops } = await supabase
+    .from('transport_stops')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .ilike('city', originCity)
+    .eq('is_active', true)
+
+  const { data: destStops } = await supabase
+    .from('transport_stops')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .ilike('city', destinationCity)
+    .eq('is_active', true)
+
+  if (!originStops?.length || !destStops?.length) return []
+
+  const originIds = originStops.map((s: any) => s.id)
+  const destIds = destStops.map((s: any) => s.id)
+
+  // 2. Buscar rutas que tengan paradas en ambas ciudades (origen antes que destino)
+  const { data: originRouteStops } = await supabase
+    .from('route_stops')
+    .select('route_id, stop_order')
+    .in('stop_id', originIds)
+
+  const { data: destRouteStops } = await supabase
+    .from('route_stops')
+    .select('route_id, stop_order')
+    .in('stop_id', destIds)
+
+  if (!originRouteStops?.length || !destRouteStops?.length) return []
+
+  // Encontrar rutas donde origin.stop_order < dest.stop_order
+  const originByRoute: Record<string, number> = {}
+  for (const rs of originRouteStops as any[]) {
+    if (!originByRoute[rs.route_id] || rs.stop_order < originByRoute[rs.route_id]) {
+      originByRoute[rs.route_id] = rs.stop_order
+    }
+  }
+
+  const validRouteIds: string[] = []
+  for (const rs of destRouteStops as any[]) {
+    const originOrder = originByRoute[rs.route_id]
+    if (originOrder !== undefined && originOrder < rs.stop_order) {
+      if (!validRouteIds.includes(rs.route_id)) {
+        validRouteIds.push(rs.route_id)
+      }
+    }
+  }
+
+  if (validRouteIds.length === 0) return []
+
+  // 3. Buscar viajes en esas rutas para la fecha
+  const { data: trips, error } = await supabase
+    .from('trips')
+    .select(`
+      id, trip_code, trip_date, scheduled_departure, scheduled_arrival,
+      total_seats, available_seats, base_fare, currency, status,
+      transport_routes (
+        id, name, code, route_type, origin_stop_id, destination_stop_id,
+        estimated_distance_km, estimated_duration_minutes
+      ),
+      vehicles (
+        id, plate, vehicle_type, brand, model, passenger_capacity
+      )
+    `)
+    .eq('organization_id', organizationId)
+    .in('route_id', validRouteIds)
+    .eq('trip_date', date)
+    .eq('status', 'scheduled')
+    .gte('available_seats', passengers)
+    .order('scheduled_departure', { ascending: true })
+
+  if (error) return []
+  return trips || []
+}
+
+/**
+ * Obtiene un viaje por ID con asientos, ruta completa y tarifas
+ */
+export async function getTripById(tripId: string, organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  // Viaje con ruta y vehículo
+  const { data: trip, error } = await supabase
+    .from('trips')
+    .select(`
+      *,
+      transport_routes (
+        id, name, code, route_type, origin_stop_id, destination_stop_id,
+        estimated_distance_km, estimated_duration_minutes, polyline_encoded
+      ),
+      vehicles (
+        id, plate, vehicle_type, brand, model, year, passenger_capacity
+      )
+    `)
+    .eq('id', tripId)
+    .eq('organization_id', organizationId)
+    .single()
+
+  if (error || !trip) return null
+
+  // Asientos del viaje con layout del vehículo
+  const { data: seats } = await supabase
+    .from('trip_seats')
+    .select(`
+      id, seat_label, status, reserved_until,
+      vehicle_seats (
+        seat_row, seat_column, seat_type, position_x, position_y, price_modifier, is_available
+      )
+    `)
+    .eq('trip_id', tripId)
+    .order('seat_label', { ascending: true })
+
+  // Paradas de la ruta en orden
+  const routeId = (trip as any).transport_routes?.id || (trip as any).route_id
+  const { data: stops } = await supabase
+    .from('route_stops')
+    .select(`
+      stop_order, estimated_arrival_minutes, estimated_departure_minutes,
+      fare_from_origin, is_boarding_allowed, is_alighting_allowed,
+      transport_stops ( id, name, code, city, department, address, latitude, longitude )
+    `)
+    .eq('route_id', routeId)
+    .order('stop_order', { ascending: true })
+
+  // Tarifas disponibles para esta ruta
+  const { data: fares } = await supabase
+    .from('transport_fares')
+    .select('id, fare_name, fare_code, fare_type, amount, discount_percent, discount_amount, from_stop_id, to_stop_id')
+    .eq('route_id', routeId)
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  return {
+    ...(trip as any),
+    seats: seats || [],
+    stops: stops || [],
+    fares: fares || [],
+  }
+}
+
+/**
+ * Obtiene un envío por número de tracking para seguimiento público
+ */
+export async function getShipmentByTracking(trackingNumber: string) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data: shipment, error } = await supabase
+    .from('shipments')
+    .select(`
+      id, shipment_number, tracking_number, service_level,
+      sender_city, sender_department,
+      receiver_city, receiver_department,
+      total_weight_kg, total_packages,
+      expected_delivery_date, delivered_at,
+      status, created_at
+    `)
+    .eq('tracking_number', trackingNumber)
+    .single()
+
+  if (error || !shipment) return null
+
+  const shipmentId = (shipment as any).id
+
+  // Timeline de eventos
+  const { data: events } = await supabase
+    .from('transport_events')
+    .select('event_type, event_time, location_text, description')
+    .eq('reference_type', 'shipment')
+    .eq('reference_id', shipmentId)
+    .order('event_time', { ascending: false })
+
+  // Proof of delivery si entregado
+  let pod = null
+  if ((shipment as any).status === 'delivered') {
+    const { data: podData } = await supabase
+      .from('proof_of_delivery')
+      .select('receiver_name, relationship, confirmed_at, photo_urls')
+      .eq('shipment_id', shipmentId)
+      .order('confirmed_at', { ascending: false })
+      .limit(1)
+
+    pod = podData?.[0] || null
+  }
+
+  return {
+    ...(shipment as any),
+    events: events || [],
+    proof_of_delivery: pod,
+  }
+}
+
+/**
+ * Obtiene rutas activas de una organización con paradas origen/destino
+ */
+export async function getTransportRoutes(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('transport_routes')
+    .select(`
+      id, name, code, route_type, estimated_distance_km, estimated_duration_minutes,
+      base_fare, currency, is_active,
+      origin:transport_stops!origin_stop_id ( id, name, city ),
+      destination:transport_stops!destination_stop_id ( id, name, city )
+    `)
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+
+  if (error) return []
+  return data || []
+}
+
 export async function getWebsitePages(organizationId: number): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 

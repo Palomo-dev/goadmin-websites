@@ -2675,36 +2675,59 @@ draft → ready → picked → dispatched → in_transit → out_for_delivery �
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 9.7 APIs Necesarias para el Website
+### 9.7 Arquitectura Backend — Queries directas vs API Routes
 
-| API | Método | Input | Output | Prioridad |
-|-----|--------|-------|--------|-----------|
-| `/api/transport/search` | POST | organizationId, originCity, destinationCity, date, passengers | trips[] con ruta, horarios, asientos, precio | 🔴 Alta |
-| `/api/transport/trip/[id]` | GET | tripId | Detalle viaje + asientos (trip_seats con estado) + ruta + paradas | 🔴 Alta |
-| `/api/transport/fares` | POST | tripId, fromStopId, toStopId, fareType | Tarifa calculada con descuentos aplicables | 🔴 Alta |
-| `/api/transport/reserve-seat` | POST | tripId, seatId, passengerCount | Reserva temporal (10 min), actualiza trip_seats.status | 🔴 Alta |
-| `/api/transport/tickets` | POST | tripId, passengers[], seatIds[], fareType, boarding/alightingStopId | Crea trip_tickets + reduce available_seats | 🔴 Alta |
-| `/api/transport/tracking` | GET | trackingNumber | Estado envío + timeline eventos + POD | 🟡 Media |
-| `/api/transport/stops` | GET | organizationId, ?city | Lista de paradas/ciudades para autocomplete | 🔴 Alta |
-| `/api/transport/routes` | GET | organizationId | Rutas activas con origen/destino para mostrar en website | 🟢 Baja |
-| `/api/transport/shipping-quote` | POST | origin, destination, weight, dimensions, serviceLevel | Cotización de envío | 🟢 Baja |
+> **Principio**: Ambos proyectos (ERP admin y website) comparten la misma BD Supabase.
+> No se necesitan APIs separadas para lecturas que se hacen desde Server Components (SSR).
+> Solo se necesitan API routes para operaciones llamadas desde client components interactivos o transacciones.
+
+#### Lecturas directas (funciones en `lib/supabase/queries.ts` → Server Components)
+
+| Función | Uso en SSR | Tablas |
+|---------|-----------|--------|
+| `getTransportStops(orgId)` | `/viajes` page (autocomplete ciudades) | `transport_stops` |
+| `searchTrips(orgId, origin, dest, date, passengers)` | `/viajes` page (resultados) | `transport_stops` → `route_stops` → `trips` + `transport_routes` + `vehicles` |
+| `getTripById(tripId, orgId)` | `/viajes/[id]` page (detalle) | `trips` + `transport_routes` + `vehicles` + `trip_seats` + `vehicle_seats` + `route_stops` + `transport_stops` + `transport_fares` |
+| `getShipmentByTracking(number)` | `/tracking` page | `shipments` + `transport_events` + `proof_of_delivery` |
+| `getTransportRoutes(orgId)` | `/rutas` page (listado) | `transport_routes` + `transport_stops` (origin/destination) |
+
+#### API Routes (llamadas desde client components interactivos)
+
+| API Route | Archivo | Propósito |
+|-----------|---------|-----------|
+| `POST /api/transport/fares` | `app/api/transport/fares/route.ts` | Cálculo de tarifa dinámica: base_fare + price_modifier del asiento + descuento por tipo (student/senior/etc) + impuestos org. Llamado desde SeatMap al cambiar selección |
+| `POST /api/transport/reserve-seat` | `app/api/transport/reserve-seat/route.ts` | Reserva temporal 10 min: verifica disponibilidad → actualiza trip_seats.status='reserved' + reserved_until → decrementa trips.available_seats. Con rollback si falla |
+| `POST /api/transport/tickets` | `app/api/transport/tickets/route.ts` | Crear boletos: valida asientos → genera ticket_number (TKT-{tripCode}-{hex}) + QR code + checkin_code → inserta trip_tickets → marca trip_seats como 'sold' |
+
+#### Adaptaciones pendientes (reutilizar infraestructura existente)
+
+| Componente | Cambio necesario |
+|-----------|-----------------|
+| `POST /api/checkout/init` | Agregar `source: 'trip_ticket'` + `sourceId` (misma lógica que reservation/web_order) |
+| Webhooks (5 existentes) | Detectar referencia `TKT-*` → confirmar ticket (status→confirmed, payment_status→paid) |
+| `lib/transport/payment-handler.ts` | Nuevo handler: confirmar ticket + enviar email con QR + liberar asientos si falla pago |
+
+#### RLS aplicado (migración `add_public_read_policies_transport_tables`)
+
+Tablas con SELECT público: `trips`, `trip_seats`, `trip_tickets`, `transport_routes`, `transport_stops`, `route_stops`, `route_schedules`, `vehicles`, `vehicle_seats`, `transport_fares`, `transport_carriers`, `shipments`, `delivery_attempts`, `proof_of_delivery`.
+Además: `trip_tickets` INSERT público, `trip_seats` UPDATE público.
 
 ### 9.8 Análisis Crítico — Problemas y Gaps
 
 #### 🔴 Problemas Graves
 
-1. **No existe NINGÚN endpoint API** para el website de transporte — toda la lógica está solo en el ERP admin
-2. **No hay flujo de pago online** para boletos — solo se venden por ventanilla (sale_id en trip_tickets)
+1. ~~**No existe NINGÚN endpoint API** para el website de transporte~~ → ✅ Resuelto: 3 API routes + 5 funciones en queries.ts
+2. ~~**No hay flujo de pago online** para boletos~~ → ✅ Resuelto: checkout/init soporta source:'trip_ticket', 5 webhooks detectan TKT-*, payment-handler confirma/libera + email
 3. **No hay componentes frontend** para transporte en goadmin-websites (0 implementado)
 4. **trip_tickets no tiene campo `web_order_id`** ni referencia directa a `payments` — el pago se vincula via `sale_id` que es del POS
 
 #### 🟡 Gaps Importantes
 
-5. **Reserva temporal de asientos** — trip_seats tiene `reserved_until` y `reserved_by` pero no hay lógica de expiración automática (cron/función)
-6. **QR code** — trip_tickets tiene `qr_code` y `checkin_code` pero no hay generación automática
+5. ~~**Reserva temporal de asientos**~~ → ✅ API `/api/transport/reserve-seat` implementada (10 min timeout + rollback). Falta: cron/función para expirar reservas abandonadas
+6. ~~**QR code**~~ → ✅ API `/api/transport/tickets` genera `qr_code` y `checkin_code` automáticamente con crypto.randomBytes
 7. **Búsqueda por ciudad** — transport_stops tiene `city` pero no hay índice de texto para autocomplete
-8. **Notificaciones** — No hay envío de email al comprar boleto ni al cambiar estado del envío
-9. **Integración con pasarelas** — Existe `payments` universal pero trip_tickets no usa source='trip_ticket' en payments
+8. ~~**Notificaciones**~~ → ✅ Parcial: `send-ticket-confirmation.ts` envía email con datos viaje + check-in code al confirmar pago. Pendiente: email cambio estado envío
+9. ~~**Integración con pasarelas**~~ → ✅ Resuelto: payment-handler inserta en `payments` con source='trip_ticket', source_id=ticket.id
 
 #### 🟢 Oportunidades
 
@@ -2715,26 +2738,26 @@ draft → ready → picked → dispatched → in_transit → out_for_delivery �
 
 ### 9.9 Plan de Implementación
 
-#### Fase A — Backend: APIs de búsqueda + disponibilidad
+#### Fase A — Backend: APIs de búsqueda + disponibilidad ✅ COMPLETADA
 
-| # | Tarea | Prioridad | Archivo(s) |
-|---|-------|-----------|------------|
-| A1 | **API `/api/transport/stops`**: Lista paradas activas con city para autocomplete. Cacheable | 🔴 | `app/api/transport/stops/route.ts` |
-| A2 | **API `/api/transport/search`**: Buscar viajes por origen+destino+fecha. Join trips→routes→route_stops→stops. Filtrar status=scheduled, available_seats > 0 | 🔴 | `app/api/transport/search/route.ts` |
-| A3 | **API `/api/transport/trip/[id]`**: Detalle viaje con asientos (trip_seats + vehicle_seats para mapa), ruta con paradas, tarifas disponibles | 🔴 | `app/api/transport/trip/[id]/route.ts` |
-| A4 | **API `/api/transport/fares`**: Calcular tarifa: base_fare + price_modifier del asiento + descuento por tipo (student, senior, etc.) + impuestos | 🔴 | `app/api/transport/fares/route.ts` |
-| A5 | **API `/api/transport/reserve-seat`**: Reserva temporal: actualizar trip_seats.status='reserved', reserved_until=now()+10min, reserved_by | 🔴 | `app/api/transport/reserve-seat/route.ts` |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| A1 | **Paradas** (query SSR) | ✅ | `getTransportStops()` en `lib/supabase/queries.ts` |
+| A2 | **Buscar viajes** (query SSR) | ✅ | `searchTrips()` en `lib/supabase/queries.ts` |
+| A3 | **Detalle viaje + asientos** (query SSR) | ✅ | `getTripById()` en `lib/supabase/queries.ts` |
+| A4 | **Calcular tarifa** (API route) | ✅ | `app/api/transport/fares/route.ts` |
+| A5 | **Reserva temporal asiento** (API route) | ✅ | `app/api/transport/reserve-seat/route.ts` |
 
-#### Fase B — Backend: Compra + Pago + Tracking
+#### Fase B — Backend: Compra + Pago + Tracking ✅ COMPLETADA
 
-| # | Tarea | Prioridad |
-|---|-------|-----------|
-| B1 | **API `/api/transport/tickets`**: Crear trip_tickets, decrementar available_seats, generar ticket_number + QR code + checkin_code |
-| B2 | **Adaptar `/api/checkout/init`**: Soportar source:'trip_ticket' + sourceId para conectar con pasarelas existentes |
-| B3 | **`lib/transport/payment-handler.ts`**: Handler compartido: confirmar ticket, generar QR, enviar email, liberar asientos si falla |
-| B4 | **Adaptar 5 webhooks**: Detectar referencia TKT-* para trip_tickets (mismo patrón que RES-* para reservaciones) |
-| B5 | **API `/api/transport/tracking`**: Buscar shipment por tracking_number, devolver timeline de transport_events + proof_of_delivery |
-| B6 | **Email confirmación**: Template HTML con QR, datos del viaje, instrucciones de abordaje |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| B1 | **API `/api/transport/tickets`** | ✅ | `app/api/transport/tickets/route.ts` |
+| B2 | **Adaptar `/api/checkout/init`** — source:'trip_ticket' | ✅ | `app/api/checkout/init/route.ts` (función `getTripTicket`) |
+| B3 | **`lib/transport/payment-handler.ts`** — confirmar, liberar, email | ✅ | `lib/transport/payment-handler.ts` |
+| B4 | **Adaptar 5 webhooks** — detectar TKT-* | ✅ | wompi_co, stripe, mercadopago, payu, paypal |
+| B5 | **Tracking envíos** (query SSR) | ✅ | `getShipmentByTracking()` en `lib/supabase/queries.ts` |
+| B6 | **Email confirmación** con datos viaje + check-in | ✅ | `lib/email/send-ticket-confirmation.ts` |
 
 #### Fase C — Frontend: Búsqueda + Selección + Checkout
 
