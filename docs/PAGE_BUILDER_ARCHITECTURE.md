@@ -2718,7 +2718,7 @@ Además: `trip_tickets` INSERT público, `trip_seats` UPDATE público.
 
 1. ~~**No existe NINGÚN endpoint API** para el website de transporte~~ → ✅ Resuelto: 3 API routes + 5 funciones en queries.ts
 2. ~~**No hay flujo de pago online** para boletos~~ → ✅ Resuelto: checkout/init soporta source:'trip_ticket', 5 webhooks detectan TKT-*, payment-handler confirma/libera + email
-3. **No hay componentes frontend** para transporte en goadmin-websites (0 implementado)
+3. ~~**No hay componentes frontend** para transporte~~ → ✅ Resuelto: 3 componentes (SeatMap, TripSearchWidget, TripBookingForm) + 5 páginas (/viajes, /viajes/[id], /ticket/[number], /tracking, /mi-cuenta/tickets)
 4. **trip_tickets no tiene campo `web_order_id`** ni referencia directa a `payments` — el pago se vincula via `sale_id` que es del POS
 
 #### 🟡 Gaps Importantes
@@ -2759,18 +2759,18 @@ Además: `trip_tickets` INSERT público, `trip_seats` UPDATE público.
 | B5 | **Tracking envíos** (query SSR) | ✅ | `getShipmentByTracking()` en `lib/supabase/queries.ts` |
 | B6 | **Email confirmación** con datos viaje + check-in | ✅ | `lib/email/send-ticket-confirmation.ts` |
 
-#### Fase C — Frontend: Búsqueda + Selección + Checkout
+#### Fase C — Frontend: Búsqueda + Selección + Checkout ✅ COMPLETADA
 
-| # | Tarea | Prioridad |
-|---|-------|-----------|
-| C1 | **`/viajes` page**: SSR con widget de búsqueda (origen/destino autocomplete, fecha, pasajeros) + resultados |
-| C2 | **`/viajes/[id]` page**: Detalle viaje + mapa de ruta + selector de asientos interactivo (SVG) |
-| C3 | **`SeatMap` componente**: Render visual del bus desde vehicle_seats (position_x/y), estados por colores, click para seleccionar |
-| C4 | **`TripSearchWidget` componente**: Buscador reutilizable para home y /viajes |
-| C5 | **Checkout de tickets**: Formulario datos pasajero + resumen + pago (reutilizar pasarelas existentes) |
-| C6 | **`/ticket/[number]` page**: Ticket digital con QR, datos del viaje, opción descargar PDF |
-| C7 | **`/tracking` page**: Input guía + timeline visual del envío |
-| C8 | **`/mi-cuenta/tickets`**: Lista de tickets del usuario con estado, QR, link a detalle |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| C1 | **`/viajes` page** SSR + búsqueda interactiva | ✅ | `app/viajes/page.tsx` + `TripSearchClient.tsx` |
+| C2 | **`/viajes/[id]` page** Detalle + asientos + checkout | ✅ | `app/viajes/[id]/page.tsx` + `TripDetailClient.tsx` |
+| C3 | **`SeatMap` componente** SVG interactivo (position_x/y) | ✅ | `components/site/transport/SeatMap.tsx` |
+| C4 | **`TripSearchWidget`** Autocomplete ciudades + fecha | ✅ | `components/site/transport/TripSearchWidget.tsx` |
+| C5 | **`TripBookingForm`** Datos pasajero + pasarela + pago | ✅ | `components/site/transport/TripBookingForm.tsx` |
+| C6 | **`/ticket/[number]`** Boleto digital + check-in code | ✅ | `app/ticket/[number]/page.tsx` |
+| C7 | **`/tracking`** Rastreo envíos + timeline eventos | ✅ | `app/tracking/page.tsx` |
+| C8 | **`/mi-cuenta/tickets`** Lista tickets con data real | ✅ | `app/mi-cuenta/tickets/page.tsx` |
 
 ### 9.10 Relación entre Tablas (ER Simplificado)
 
