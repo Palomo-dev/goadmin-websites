@@ -1185,6 +1185,85 @@ export async function getTransportRoutes(organizationId: number) {
   return data || []
 }
 
+/**
+ * Obtiene un ticket de transporte por su ticket_number (TKT-*) con datos del viaje
+ */
+export async function getTicketByNumber(ticketNumber: string) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data: ticket, error } = await supabase
+    .from('trip_tickets')
+    .select(`
+      id, ticket_number, passenger_name, passenger_email, passenger_phone,
+      passenger_doc_type, passenger_doc_number, seat_number, fare, total, currency,
+      status, payment_status, qr_code, checkin_code, boarding_stop_id, alighting_stop_id,
+      created_at,
+      trips (
+        id, trip_code, trip_date, scheduled_departure, scheduled_arrival, status,
+        transport_routes ( id, name, code, estimated_duration_minutes ),
+        vehicles ( brand, model, vehicle_type, plate ),
+        organizations ( name )
+      )
+    `)
+    .eq('ticket_number', ticketNumber)
+    .single()
+
+  if (error || !ticket) return null
+
+  // Obtener nombres de paradas de boarding/alighting
+  let boardingStop = null
+  let alightingStop = null
+
+  if ((ticket as any).boarding_stop_id) {
+    const { data } = await supabase
+      .from('transport_stops')
+      .select('id, name, city, department, address')
+      .eq('id', (ticket as any).boarding_stop_id)
+      .single()
+    boardingStop = data
+  }
+
+  if ((ticket as any).alighting_stop_id) {
+    const { data } = await supabase
+      .from('transport_stops')
+      .select('id, name, city, department, address')
+      .eq('id', (ticket as any).alighting_stop_id)
+      .single()
+    alightingStop = data
+  }
+
+  return {
+    ...(ticket as any),
+    boardingStop,
+    alightingStop,
+  }
+}
+
+/**
+ * Obtiene los tickets de un cliente por email para el portal /mi-cuenta
+ */
+export async function getCustomerTickets(email: string, organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('trip_tickets')
+    .select(`
+      id, ticket_number, passenger_name, seat_number, fare, total, currency,
+      status, payment_status, checkin_code, created_at,
+      trips (
+        trip_code, trip_date, scheduled_departure,
+        transport_routes ( name )
+      )
+    `)
+    .eq('passenger_email', email)
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) return []
+  return data || []
+}
+
 export async function getWebsitePages(organizationId: number): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
