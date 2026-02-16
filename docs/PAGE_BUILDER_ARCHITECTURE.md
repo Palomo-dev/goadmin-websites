@@ -2936,6 +2936,259 @@ transport_incidents (incidentes con SLA y resolución)
 | **Header** | `transparent` |
 | **Footer** | `centered` |
 
+### 10.3 Relación entre Tablas (ER Simplificado)
+
+```
+parking_zones (branch → org, name, capacity, rate_multiplier, is_covered, is_vip)
+    │
+    └── parking_spaces (label, zone, type: car|motor|disabled, state: free|occupied|reserved)
+
+parking_rates (org, vehicle_type, rate_name, unit: minute|hour|day, price, grace_period_min, lost_ticket_fee)
+
+parking_sessions (branch, space_id?, vehicle_plate, vehicle_type, entry_at, exit_at, duration_min, rate_id, amount, status: open|closed|cancelled)
+    │
+    └── parking_payments (junction) ──→ payments (source, source_id, amount, method, status)
+
+parking_pass_types (org, name, duration_days, price, max_entries_per_day, includes_car_wash, includes_valet, allowed_vehicle_types[])
+    │
+    └── parking_passes (org, customer_id, plan_name, start_date, end_date, price, status: active|expired|cancelled|suspended)
+            │
+            ├── parking_pass_vehicles (vehicle_id, is_primary) ──→ parking_vehicles
+            │
+            └── parking_payments (junction) ──→ payments
+
+parking_vehicles (org, customer_id?, plate, brand, model, color, vehicle_type, notes)
+```
+
+**Tablas relacionadas del ERP:**
+- `branches` (id, organization_id, name, address, city, lat, lng, opening_hours, capacity) — parking opera a nivel branch
+- `customers` (id, organization_id, user_id, email, phone, full_name, doc_type, doc_number)
+- `payments` (id, organization_id, branch_id, source, source_id, method, amount, currency, reference, status)
+- `sales` (id, organization_id, branch_id, customer_id, total, status, payment_status)
+- `invoice_sales` (facturación electrónica vinculada a sales)
+- `cash_sessions` / `cash_movements` / `cash_counts` (control de caja en POS)
+
+### 10.4 Enums de Parking
+
+| Enum | Valores |
+|------|---------|
+| `parking_space_type` | `car`, `motor`, `disabled` |
+| `parking_space_state` | `free`, `occupied`, `reserved` |
+| `parking_session_status` | `open`, `closed`, `cancelled` |
+| `parking_pass_status` | `active`, `expired`, `cancelled`, `suspended` |
+| `parking_rate_unit` | `minute`, `hour`, `day` |
+
+### 10.5 Separación de Responsabilidades: ERP vs Website
+
+#### ERP Admin (`go-admin-erp/src/components/parking/`) — 44 componentes
+
+| Módulo | Componentes | Responsabilidad |
+|--------|-------------|-----------------|
+| **Dashboard** | OccupancyStats, RevenueStats, ActiveSessionsList, ExpiringPassesList, HourlyChart, AlertsPanel, TopPlatesList | KPIs en tiempo real: ocupación, ingresos, alertas |
+| **Operación** | EntryDialog, ExitDialog, VehicleSearch, ActiveSessionsPanel, RatesPanel | Flujo core: registrar entrada → calcular cobro → registrar salida → pago |
+| **Espacios** | EspaciosGrid, EspacioDialog, BulkActionsBar, ZoneAvailability, ImportDialog | CRUD de espacios, asignación masiva, filtros por zona/tipo/estado |
+| **Mapa** | SpaceGrid, SpaceCard, SpaceDetailDialog, MapaLegend, MapaStats | Vista visual del parqueadero en tiempo real |
+| **Configuración** | AlertsSection, LostTicketSection, MessagesSection, PoliciesSection, ScheduleSection, TolerancesSection | Reglas de negocio: tolerancias, ticket perdido, horarios, mensajes |
+| **Pagos** | PagosFilters, PagosHeader + listados | Historial de cobros, filtros, exportación |
+
+**Conclusión**: El ERP maneja la **operación presencial** del parqueadero. El flujo es: vehículo llega → operador registra entrada → vehículo sale → operador calcula cobro → cobra en caja.
+
+#### Website (`goadmin-websites`) — Lo que el CLIENTE ve
+
+| Qué debe hacer el website | Estado actual |
+|---------------------------|---------------|
+| Mostrar zonas, tarifas, disponibilidad | ⚠️ Secciones builder existen pero sin data real (no hay queries SSR) |
+| Vender pases/abonos mensuales online | ❌ No existe flujo de compra |
+| Portal: ver pases activos, vehículos, historial | ⚠️ Páginas placeholder existen, queries con bugs |
+| Reservar espacio por adelantado | ❌ No existe modelo ni flujo |
+
+### 10.6 Análisis Crítico — Problemas y Gaps
+
+#### 🔴 Problemas Graves
+
+1. **`parking_sessions` NO tiene `customer_id`** — La query `getCustomerParkingSessions` en `customer-portal.ts` filtra por `customer_id` pero esa columna NO EXISTE. Las sesiones se identifican solo por `vehicle_plate`. **La página `/mi-cuenta/historial` no puede funcionar** sin mapear plates→customer.
+
+2. **`getCustomerVehicles` consulta tabla `vehicles`** en `customer-portal.ts` (línea 213-221) pero la tabla real es `parking_vehicles`. Error de nombre de tabla.
+
+3. **NO hay RLS público en NINGUNA tabla de parking** — Todas las 9 políticas son `organization_members` (solo admins). El website público NO puede leer tarifas, zonas ni planes. Sin RLS público, las queries SSR fallarán con error 403.
+
+4. **NO hay flujo de compra de pases online** — `parking_pass_types` define planes con precio, pero:
+   - No hay API `/api/parking/passes` para crear un pase
+   - No hay adaptación en `/api/checkout/init` para `source:'parking_pass'`
+   - No hay handler `handleParkingPassPayment` en los webhooks
+   - No hay email de confirmación de pase
+   - No hay prefijo de referencia tipo "PKP-*" para detectar en webhooks
+
+5. **NO hay queries SSR** para el website — No existe ninguna función en `queries.ts` para parking (ni `getParkingRates`, ni `getParkingZones`, ni `getParkingPassTypes`). Las secciones del builder reciben `data` como prop pero nadie la alimenta.
+
+#### 🟡 Gaps Importantes
+
+6. **Secciones builder son estáticas** — `ParkingAvailabilitySummary`, `ParkingPricingCards`, `ParkingPassPlansCards` existen pero muestran placeholders vacíos porque no hay data pipeline.
+
+7. **No hay concepto de "reserva de espacio"** — El modelo es 100% operacional (entrada→salida). `parking_spaces.state` tiene valor `reserved` en el enum pero no hay tabla `parking_reservations` ni lógica temporal. Si se quiere ofrecer reserva online, se necesita nuevo modelo.
+
+8. **Disponibilidad en tiempo real** — `ParkingAvailabilitySummary` asume `zone.available_spaces` pero parking_zones no tiene ese campo calculado. Requiere un COUNT de parking_spaces WHERE state='free' por zona.
+
+9. **parking opera a nivel `branch_id`** — Zonas, espacios y sesiones usan `branch_id`, no `organization_id`. El website opera a nivel org. Necesita resolver org→branch(es) para queries.
+
+10. **Historial del cliente depende de placa** — Sin `customer_id` en sessions, el historial requiere: obtener placas del customer → filtrar sessions por esas placas. Es un JOIN indirecto: `customers → parking_vehicles.plate → parking_sessions.vehicle_plate`.
+
+#### 🟢 Oportunidades
+
+11. **`parking_pass_types` es muy rico** — Soporta `includes_car_wash`, `includes_valet`, `max_entries_per_day`, `allowed_vehicle_types[]`. Perfecto para venta online con comparación de planes.
+
+12. **`parking_zones.rate_multiplier`** — Permite zonas VIP con tarifa multiplicada. Ideal para pricing dinámico en el website.
+
+13. **`parking_rates.lost_ticket_fee`** — Ya contempla cobro por ticket perdido, útil para informar en la web.
+
+14. **`branches.opening_hours` (jsonb) + `branches.lat/lng`** — Permite mostrar horarios y mapa de ubicación del parqueadero.
+
+### 10.7 Análisis de Tablas Transversales (Restaurante, POS, Facturación, Finanzas)
+
+Estas tablas son **operadas exclusivamente por el ERP** pero el website puede necesitar leerlas:
+
+#### Restaurante (ERP only)
+| Tabla | Uso ERP | Uso Website |
+|-------|---------|-------------|
+| `restaurant_tables` | Mapa de mesas, estados, asignación | ❌ Solo admin |
+| `restaurant_reservations` | Reservas de mesa (date, time, guests, status) | ⚠️ Potencial: permitir reservar mesa online |
+| `table_sessions` | Sesión activa de mesa (sale_id, server_id) | ❌ Solo admin |
+| `kitchen_tickets` + `kitchen_ticket_items` | Comanda a cocina | ❌ Solo admin |
+
+#### POS / Ventas (ERP only)
+| Tabla | Uso ERP | Uso Website |
+|-------|---------|-------------|
+| `sales` | Venta presencial (total, status, payment_status) | ❌ Creado desde POS |
+| `sale_items` | Ítems de venta (product_id, qty, unit_price) | ❌ Solo admin |
+| `sale_sequences` | Consecutivo de ventas por branch | ❌ Solo admin |
+
+#### Facturación (ERP only)
+| Tabla | Uso ERP | Uso Website |
+|-------|---------|-------------|
+| `invoice_sales` | Factura electrónica (DIAN Colombia) vinculada a sale | ❌ Generada desde ERP |
+| `invoice_purchase` | Factura de compra | ❌ Solo admin |
+| `invoice_items` | Detalle de ítems de factura | ❌ Solo admin |
+| `invoice_sequences` | Numeración autorizada DIAN | ❌ Solo admin |
+
+#### Finanzas (ERP only)
+| Tabla | Uso ERP | Uso Website |
+|-------|---------|-------------|
+| `cash_sessions` | Apertura/cierre de caja (branch, opened_by, amounts) | ❌ Solo admin |
+| `cash_movements` | Entradas/salidas de caja (type, concept, amount) | ❌ Solo admin |
+| `cash_counts` | Arqueo de caja (denominaciones, diferencia) | ❌ Solo admin |
+| `chart_of_accounts` | Plan de cuentas contable | ❌ Solo admin |
+| `journal_entries` + `journal_lines` | Asientos contables | ❌ Solo admin |
+| `accounts_receivable` / `accounts_payable` | CxC / CxP | ❌ Solo admin |
+| `bank_accounts` | Cuentas bancarias | ❌ Solo admin |
+| `finance_audit_log` | Log de auditoría financiera | ❌ Solo admin |
+
+**Conclusión tablas transversales**: Restaurante, POS, facturación y finanzas son **100% responsabilidad del ERP admin**. El website NO debe crear ventas, facturas ni movimientos de caja. El único punto de contacto es la tabla `payments` (que sí se usa desde el website para registrar pagos online vía webhooks).
+
+### 10.8 Flujo Recomendado para Website de Parking
+
+#### Flujo A — Informativo (sin login)
+
+```
+Visitante → Home
+  ├── Ver zonas del parqueadero (nombre, cubierta, VIP, capacidad)
+  ├── Ver tarifas (por tipo vehículo, por hora/día, gracia)
+  ├── Ver planes de pases mensuales (precio, duración, beneficios)
+  ├── Ver disponibilidad en tiempo real por zona
+  └── Ver ubicación + horarios (branches)
+```
+
+#### Flujo B — Compra de Pase/Abono Online
+
+```
+1. /pases → Lista de parking_pass_types con pricing y comparación
+2. Cliente selecciona plan → Formulario:
+   - Datos personales (nombre, email, teléfono, doc)
+   - Datos vehículo (placa, marca, modelo, color, tipo)
+   - Fecha inicio deseada
+3. POST /api/parking/passes → Crea:
+   - parking_vehicle (si no existe por placa)
+   - parking_pass (status: pending, pass_type_id, customer_id)
+   - parking_pass_vehicles (junction)
+   → Retorna passId + passNumber (PKP-XXXXXXXX)
+4. POST /api/checkout/init → source:'parking_pass', sourceId=passId
+   → Retorna checkoutUrl de pasarela
+5. Cliente paga en pasarela
+6. Webhook detecta PKP-* → handleParkingPassPayment():
+   - paid: status=active, inserta payment, envía email confirmación
+   - failed: status=cancelled
+   - refunded: status=cancelled
+7. /mi-cuenta/pases → Ver pase activo con vigencia y beneficios
+```
+
+#### Flujo C — Portal del Cliente (con login)
+
+```
+/mi-cuenta/pases → Pases activos/expirados del customer
+/mi-cuenta/vehiculos → parking_vehicles del customer (CRUD)
+/mi-cuenta/historial → Sesiones: JOIN parking_vehicles.plate → parking_sessions.vehicle_plate
+```
+
+#### Flujo D — Reserva de Espacio (FUTURO, requiere nueva tabla)
+
+```
+⚠️ NO IMPLEMENTAR AÚN — requiere:
+- Nueva tabla parking_reservations (customer_id, space_id, zone_id, vehicle_type, start_at, end_at, status, amount)
+- API de disponibilidad por zona/fecha/hora
+- Lógica de conflicto: no doble-reservar mismo espacio
+- Integración con parking_sessions del ERP (operador valida reserva al llegar)
+```
+
+### 10.9 Plan de Implementación
+
+#### Fase A — Backend: Queries SSR + RLS
+
+| # | Tarea | Prioridad | Archivo(s) |
+|---|-------|-----------|------------|
+| A1 | **RLS público SELECT** en: `parking_zones`, `parking_spaces`, `parking_rates`, `parking_pass_types` | 🔴 Alta | Migración Supabase |
+| A2 | **`getParkingZones(orgId)`** — zonas + COUNT spaces por estado | 🔴 Alta | `lib/supabase/queries.ts` |
+| A3 | **`getParkingRates(orgId)`** — tarifas activas | 🔴 Alta | `lib/supabase/queries.ts` |
+| A4 | **`getParkingPassTypes(orgId)`** — planes de pases activos | 🔴 Alta | `lib/supabase/queries.ts` |
+| A5 | **`getParkingAvailability(orgId)`** — disponibilidad por zona (spaces free vs total) | 🟡 Media | `lib/supabase/queries.ts` |
+| A6 | **Resolver org→branches** para queries a nivel branch | 🟡 Media | `lib/supabase/queries.ts` |
+| A7 | **Fix `getCustomerVehicles`** — cambiar `vehicles` → `parking_vehicles` | 🔴 Alta | `lib/queries/customer-portal.ts` |
+| A8 | **Fix `getCustomerParkingSessions`** — cambiar a JOIN via parking_vehicles.plate | 🔴 Alta | `lib/queries/customer-portal.ts` |
+
+#### Fase B — Backend: Compra de Pases + Pago
+
+| # | Tarea | Prioridad | Archivo(s) |
+|---|-------|-----------|------------|
+| B1 | **API `POST /api/parking/passes`** — crear pass + vehicle + junction | 🔴 Alta | `app/api/parking/passes/route.ts` |
+| B2 | **Adaptar `/api/checkout/init`** — source:'parking_pass' + `getParkingPass()` | 🔴 Alta | `app/api/checkout/init/route.ts` |
+| B3 | **`lib/parking/payment-handler.ts`** — `isParkingPassReference(ref)` + `handleParkingPassPayment()` | 🔴 Alta | `lib/parking/payment-handler.ts` |
+| B4 | **Adaptar 5 webhooks** — detectar PKP-* → handleParkingPassPayment | 🔴 Alta | 5 webhooks |
+| B5 | **Email confirmación de pase** — datos del plan, vigencia, placa, beneficios | 🟡 Media | `lib/email/send-pass-confirmation.ts` |
+
+#### Fase C — Frontend: Páginas + Componentes
+
+| # | Tarea | Prioridad | Archivo(s) |
+|---|-------|-----------|------------|
+| C1 | **`/pases` page** — SSR con getParkingPassTypes + formulario de compra | 🔴 Alta | `app/pases/page.tsx` |
+| C2 | **`ParkingPassCheckoutForm`** — datos persona + vehículo + gateway + pago | 🔴 Alta | `components/site/parking/ParkingPassCheckoutForm.tsx` |
+| C3 | **Alimentar secciones builder** — conectar ParkingPricingCards, ParkingPassPlansCards, ParkingAvailabilitySummary con queries reales | 🟡 Media | SectionRenderer + queries |
+| C4 | **Fix `/mi-cuenta/vehiculos`** — usar parking_vehicles | 🟡 Media | `app/mi-cuenta/vehiculos/page.tsx` |
+| C5 | **Fix `/mi-cuenta/historial`** — JOIN por placas del customer | 🟡 Media | `app/mi-cuenta/historial/page.tsx` |
+| C6 | **`/mi-cuenta/pases` con data real** — mostrar vigencia, status, vehículos vinculados | 🟡 Media | `app/mi-cuenta/pases/page.tsx` |
+
+### 10.10 Diferencias clave vs otros módulos
+
+| Aspecto | Transport (Pasajeros) | Parking | Hotel |
+|---------|-----------------------|---------|-------|
+| **Producto** | `trips` + `transport_fares` | `parking_pass_types` + `parking_rates` | `space_types` + `rates` |
+| **Inventario** | `trip_seats` (asientos) | `parking_spaces` (espacios) | `spaces` (habitaciones) |
+| **Orden** | `trip_tickets` | `parking_passes` | `reservations` |
+| **Pago** | `payments` (source: trip_ticket) | `parking_payments` → `payments` | `payments` (source: reservation) |
+| **Temporal** | Asiento reservado 10 min | No hay reserva temporal | Reserva temporal (folio) |
+| **Referencia** | `TKT-XXXXXXXX` | `PKP-XXXXXXXX` (propuesto) | `RES-XXXXXXXX` |
+| **Operación** | ERP: gestión viajes/rutas | ERP: entrada/salida/cobro | ERP: check-in/check-out |
+| **Website** | Buscar viaje + comprar boleto | Ver tarifas + comprar pase | Reservar habitación |
+| **Email** | Boleto con check-in code | Pase con vigencia + placa | Confirmación con folio |
+| **Portal** | /mi-cuenta/tickets | /mi-cuenta/pases + vehiculos + historial | /mi-cuenta/reservas |
+
 ---
 
 ## 11. SaaS — Software como Servicio
