@@ -81,8 +81,8 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
 
   return (
     <div className="text-left">
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-5 md:p-6 max-w-3xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-5 md:p-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_minmax(160px,1fr)_auto] gap-3 lg:gap-4">
 
           {/* Check-in */}
           <div>
@@ -134,7 +134,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
             </button>
 
             {guestOpen && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
+              <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50 min-w-[260px]">
                 {/* Adultos */}
                 <div className="flex items-center justify-between py-2.5">
                   <div>
@@ -188,7 +188,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
           <div className="flex items-end">
             <button
               onClick={handleSearch}
-              className="w-full h-11 rounded-xl text-white text-sm font-semibold shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+              className="w-full lg:w-auto h-11 px-6 rounded-xl text-white text-sm font-semibold shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 whitespace-nowrap"
               style={{ backgroundColor: primaryColor }}
             >
               <Search className="w-4 h-4" />
