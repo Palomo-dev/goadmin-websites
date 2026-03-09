@@ -28,8 +28,12 @@ function getAccountNav(typeId: number) {
       { href: '/mi-cuenta/direcciones', label: 'Direcciones', icon: '📍' },
       { href: '/mi-cuenta/cupones', label: 'Cupones', icon: '🎟️' },
     ],
-    // saas (4)
-    4: [],
+    // services (4)
+    4: [
+      { href: '/mi-cuenta/citas', label: 'Mis Citas', icon: '📅' },
+      { href: '/mi-cuenta/facturas', label: 'Facturas', icon: '📄' },
+      { href: '/mi-cuenta/cotizaciones', label: 'Cotizaciones', icon: '📋' },
+    ],
     // gym (5)
     5: [
       { href: '/mi-cuenta/membresia', label: 'Membresía', icon: '💪' },
@@ -70,19 +74,19 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
         <div className="flex flex-col md:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full md:w-64 flex-shrink-0">
-            <nav className="bg-white rounded-xl border p-4 space-y-1 sticky top-24">
+            <nav className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 space-y-1 sticky top-24">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm"
                 >
                   <span>{item.icon}</span>
                   <span>{item.label}</span>
                 </Link>
               ))}
-              <hr className="my-2" />
-              <button className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-sm w-full text-left">
+              <hr className="my-2 dark:border-gray-700" />
+              <button className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm w-full text-left">
                 <span>🚪</span>
                 <span>Cerrar Sesión</span>
               </button>

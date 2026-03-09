@@ -46,6 +46,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
   const showTopbar = settings?.show_topbar !== false
   const showHeaderCart = settings?.show_header_cart !== false && showCart
   const showHeaderAuth = settings?.show_header_auth !== false
+  const cartBehavior: 'drawer' | 'redirect' = settings?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer'
   
   return (
     <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
@@ -109,9 +110,11 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           {/* Actions: Cart, Login, CTA */}
           <div className="hidden md:flex items-center space-x-4">
             {showHeaderCart && (
-              <div onClick={onCartClick} className="cursor-pointer">
-                <CartIndicator primaryColor={primaryColor} />
-              </div>
+              <CartIndicator
+                primaryColor={primaryColor}
+                cartBehavior={cartBehavior}
+                onClick={onCartClick}
+              />
             )}
             
             {showHeaderAuth && (

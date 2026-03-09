@@ -10,6 +10,7 @@ import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
 import { getProductVariants } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
+import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +88,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      {/* Meta Pixel ViewContent */}
+      <MetaPixelViewContent
+        contentId={product.sku || String(product.id)}
+        contentName={product.name}
+        value={price?.price ? Number(price.price) : undefined}
+      />
       <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
         <div className="mb-8">

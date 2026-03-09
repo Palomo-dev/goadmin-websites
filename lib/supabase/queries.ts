@@ -697,6 +697,54 @@ export async function getMetaPixelId(organizationId: number): Promise<string | n
 }
 
 // ==========================================
+// Google Ads (gtag.js)
+// ==========================================
+
+/**
+ * Obtiene la configuración de Google Ads para inyectar gtag.js.
+ * Busca conversion_id (AW-XXXXXXX) y conversion_label en integration_credentials.
+ * Retorna null si no hay integración activa.
+ */
+export async function getGoogleAdsConfig(organizationId: number): Promise<{ conversionId: string; conversionLabel?: string } | null> {
+  const supabase = getSupabaseForPublicRead()
+
+  const GOOGLE_ADS_CONNECTOR_ID = '876a3948-ddd2-4a80-9ffe-ed6d3882aa04'
+
+  // Buscar conexión activa
+  const { data: connections } = await supabase
+    .from('integration_connections')
+    .select('id')
+    .eq('connector_id', GOOGLE_ADS_CONNECTOR_ID)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .limit(1)
+
+  if (!connections || connections.length === 0) return null
+
+  const connectionId = (connections[0] as any).id
+
+  // Buscar credenciales: conversion_id y conversion_label
+  const { data: credentials } = await supabase
+    .from('integration_credentials')
+    .select('purpose, secret_ref')
+    .eq('connection_id', connectionId)
+    .in('purpose', ['conversion_id', 'conversion_label'])
+    .eq('status', 'active')
+
+  if (!credentials || credentials.length === 0) return null
+
+  const conversionIdCred = (credentials as any[]).find((c: any) => c.purpose === 'conversion_id')
+  if (!conversionIdCred?.secret_ref) return null
+
+  const conversionLabelCred = (credentials as any[]).find((c: any) => c.purpose === 'conversion_label')
+
+  return {
+    conversionId: conversionIdCred.secret_ref,
+    conversionLabel: conversionLabelCred?.secret_ref || undefined,
+  }
+}
+
+// ==========================================
 // Gym / Membership Queries
 // ==========================================
 
@@ -1262,6 +1310,155 @@ export async function getCustomerTickets(email: string, organizationId: number) 
 
   if (error) return []
   return data || []
+}
+
+// ─── Parking: Queries SSR ─────────────────────────────────────
+
+export async function getBranchesByOrg(organizationId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id, name, address, city, phone, latitude, longitude, opening_hours, capacity, is_active')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('is_main', { ascending: false })
+  if (error) return [] as any[]
+  return (data || []) as any[]
+}
+
+export async function getParkingZones(organizationId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const branches = await getBranchesByOrg(organizationId)
+  if (branches.length === 0) return [] as any[]
+
+  const branchIds = branches.map((b: any) => b.id)
+  const { data, error } = await supabase
+    .from('parking_zones')
+    .select('id, branch_id, name, description, capacity, rate_multiplier, is_covered, is_vip')
+    .in('branch_id', branchIds)
+    .eq('is_active', true)
+    .order('name')
+  if (error) return [] as any[]
+  return (data || []) as any[]
+}
+
+export async function getParkingRates(organizationId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const { data, error } = await supabase
+    .from('parking_rates')
+    .select('id, vehicle_type, rate_name, unit, price, grace_period_min, lost_ticket_fee')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('vehicle_type')
+  if (error) return [] as any[]
+  return (data || []) as any[]
+}
+
+export async function getParkingPassTypes(organizationId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const { data, error } = await supabase
+    .from('parking_pass_types')
+    .select('id, name, description, duration_days, price, max_entries_per_day, includes_car_wash, includes_valet, allowed_vehicle_types')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('price')
+  if (error) return [] as any[]
+  return (data || []) as any[]
+}
+
+export async function getParkingAvailability(organizationId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const branches = await getBranchesByOrg(organizationId)
+  if (branches.length === 0) return [] as any[]
+
+  const branchIds = branches.map((b: any) => b.id)
+
+  const [zonesRes, spacesRes] = await Promise.all([
+    supabase
+      .from('parking_zones')
+      .select('id, branch_id, name, capacity, is_covered, is_vip')
+      .in('branch_id', branchIds)
+      .eq('is_active', true),
+    supabase
+      .from('parking_spaces')
+      .select('id, zone_id, state')
+      .in('branch_id', branchIds),
+  ])
+
+  const zones = (zonesRes.data || []) as any[]
+  const spaces = (spacesRes.data || []) as any[]
+
+  return zones.map((zone: any) => {
+    const zoneSpaces = spaces.filter((s: any) => s.zone_id === zone.id)
+    const free = zoneSpaces.filter((s: any) => s.state === 'free').length
+    const occupied = zoneSpaces.filter((s: any) => s.state === 'occupied').length
+    const reserved = zoneSpaces.filter((s: any) => s.state === 'reserved').length
+    return {
+      ...zone,
+      total_spaces: zoneSpaces.length,
+      available_spaces: free,
+      occupied_spaces: occupied,
+      reserved_spaces: reserved,
+    }
+  })
+}
+
+// ─── Servicios (type_id=4) ───────────────────────────────────────────────────
+
+/**
+ * Obtiene el catálogo de servicios activos (organization_services + service_charges)
+ * Para orgs type_id=4 (services). Diferente de getOrganizationServices que usa products.
+ */
+export async function getOrgServiceCatalog(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data: orgServices } = await supabase
+    .from('organization_services')
+    .select('*, services(*)')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+
+  const { data: charges } = await supabase
+    .from('service_charges')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+
+  return {
+    services: (orgServices || []) as any[],
+    charges: (charges || []) as any[],
+  }
+}
+
+/**
+ * Obtiene el detalle de un servicio específico con sus tarifas asociadas
+ */
+export async function getServiceById(serviceId: string, organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data: orgService } = await supabase
+    .from('organization_services')
+    .select('*, services(*)')
+    .eq('id', serviceId)
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .single()
+
+  if (!orgService) return null
+
+  const { data: charges } = await supabase
+    .from('service_charges')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+
+  return {
+    service: orgService as any,
+    charges: (charges || []) as any[],
+  }
 }
 
 export async function getWebsitePages(organizationId: number): Promise<WebsitePage[]> {

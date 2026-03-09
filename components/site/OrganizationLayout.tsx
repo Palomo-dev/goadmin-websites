@@ -5,6 +5,7 @@ import { SiteHeader } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
 import MetaPixel from './MetaPixel'
+import GoogleAdsTag from './GoogleAdsTag'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
@@ -16,6 +17,7 @@ interface OrganizationLayoutProps {
   headerNav?: WebsitePage[]
   footerNav?: WebsitePage[]
   metaPixelId?: string | null
+  googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
 }
 
 export function OrganizationLayout({
@@ -25,7 +27,8 @@ export function OrganizationLayout({
   children,
   headerNav,
   footerNav,
-  metaPixelId
+  metaPixelId,
+  googleAdsConfig
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
@@ -85,6 +88,9 @@ export function OrganizationLayout({
       
       {/* Meta Pixel (Facebook) */}
       {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
+      
+      {/* Google Ads Tag (gtag.js) */}
+      {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
       
       {/* CSS Personalizado */}
       {settings?.custom_css && (

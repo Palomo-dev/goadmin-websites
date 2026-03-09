@@ -17,7 +17,7 @@
 8. [Gym — Gimnasio / Centro Deportivo](#8-gym--gimnasio--centro-deportivo)
 9. [Transport — Transporte de Pasajeros / Logística](#9-transport--transporte-de-pasajeros--logística)
 10. [Parking — Parqueadero / Estacionamiento](#10-parking--parqueadero--estacionamiento)
-11. [SaaS — Software como Servicio](#11-saas--software-como-servicio)
+11. [Servicios — Consultoría, Agencias, Freelancers, Profesionales](#11-servicios--consultoría-agencias-freelancers-profesionales)
 12. [Flujo Frontend](#12-flujo-frontend)
 13. [Resumen de Tablas y Volumen](#13-resumen-de-tablas-y-volumen)
 14. [Pagos Online — Integración Wompi Colombia](#14-pagos-online--integración-wompi-colombia)
@@ -3140,39 +3140,53 @@ Visitante → Home
 
 ### 10.9 Plan de Implementación
 
-#### Fase A — Backend: Queries SSR + RLS
+#### Fase A — Backend: Queries SSR + RLS ✅ COMPLETADA
 
-| # | Tarea | Prioridad | Archivo(s) |
-|---|-------|-----------|------------|
-| A1 | **RLS público SELECT** en: `parking_zones`, `parking_spaces`, `parking_rates`, `parking_pass_types` | 🔴 Alta | Migración Supabase |
-| A2 | **`getParkingZones(orgId)`** — zonas + COUNT spaces por estado | 🔴 Alta | `lib/supabase/queries.ts` |
-| A3 | **`getParkingRates(orgId)`** — tarifas activas | 🔴 Alta | `lib/supabase/queries.ts` |
-| A4 | **`getParkingPassTypes(orgId)`** — planes de pases activos | 🔴 Alta | `lib/supabase/queries.ts` |
-| A5 | **`getParkingAvailability(orgId)`** — disponibilidad por zona (spaces free vs total) | 🟡 Media | `lib/supabase/queries.ts` |
-| A6 | **Resolver org→branches** para queries a nivel branch | 🟡 Media | `lib/supabase/queries.ts` |
-| A7 | **Fix `getCustomerVehicles`** — cambiar `vehicles` → `parking_vehicles` | 🔴 Alta | `lib/queries/customer-portal.ts` |
-| A8 | **Fix `getCustomerParkingSessions`** — cambiar a JOIN via parking_vehicles.plate | 🔴 Alta | `lib/queries/customer-portal.ts` |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| A1 | **RLS público SELECT** en: `parking_zones`, `parking_spaces`, `parking_rates`, `parking_pass_types` | ✅ | Migración `parking_public_read_policies` |
+| A2 | **`getParkingZones(orgId)`** — zonas activas via branches | ✅ | `lib/supabase/queries.ts` |
+| A3 | **`getParkingRates(orgId)`** — tarifas activas | ✅ | `lib/supabase/queries.ts` |
+| A4 | **`getParkingPassTypes(orgId)`** — planes de pases activos | ✅ | `lib/supabase/queries.ts` |
+| A5 | **`getParkingAvailability(orgId)`** — disponibilidad por zona (spaces free/occupied/reserved) | ✅ | `lib/supabase/queries.ts` |
+| A6 | **`getBranchesByOrg(orgId)`** — resolver org→branches | ✅ | `lib/supabase/queries.ts` |
+| A7 | **Fix `getCustomerVehicles`** — `vehicles` → `parking_vehicles` | ✅ | `lib/queries/customer-portal.ts` |
+| A8 | **Fix `getCustomerParkingSessions`** — JOIN via parking_vehicles.plate | ✅ | `lib/queries/customer-portal.ts` |
+| A9 | **Fix `getCustomerDashboardCounts`** — vehicles + sessions corregidos | ✅ | `lib/queries/customer-portal.ts` |
 
-#### Fase B — Backend: Compra de Pases + Pago
+#### Fase B — Backend: Compra de Pases + Pago ✅ COMPLETADA
 
-| # | Tarea | Prioridad | Archivo(s) |
-|---|-------|-----------|------------|
-| B1 | **API `POST /api/parking/passes`** — crear pass + vehicle + junction | 🔴 Alta | `app/api/parking/passes/route.ts` |
-| B2 | **Adaptar `/api/checkout/init`** — source:'parking_pass' + `getParkingPass()` | 🔴 Alta | `app/api/checkout/init/route.ts` |
-| B3 | **`lib/parking/payment-handler.ts`** — `isParkingPassReference(ref)` + `handleParkingPassPayment()` | 🔴 Alta | `lib/parking/payment-handler.ts` |
-| B4 | **Adaptar 5 webhooks** — detectar PKP-* → handleParkingPassPayment | 🔴 Alta | 5 webhooks |
-| B5 | **Email confirmación de pase** — datos del plan, vigencia, placa, beneficios | 🟡 Media | `lib/email/send-pass-confirmation.ts` |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| B1 | **API `POST /api/parking/passes`** — crear customer + vehicle + pass + junction, validar plan, referencia PKP-* | ✅ | `app/api/parking/passes/route.ts` |
+| B2 | **Adaptar `/api/checkout/init`** — `getParkingPass()` + source:'parking_pass' | ✅ | `app/api/checkout/init/route.ts` |
+| B3 | **`lib/parking/payment-handler.ts`** — `isParkingPassReference()` + `handleParkingPassPayment()` (activa pase + payment + parking_payments + email) | ✅ | `lib/parking/payment-handler.ts` |
+| B4 | **5 webhooks detectan PKP-*** — wompi, stripe, mercadopago, payu, paypal | ✅ | `app/api/webhooks/*/route.ts` |
+| B5 | **Email confirmación de pase** — vigencia, beneficios, vehículos, referencia | ✅ | `lib/email/send-pass-confirmation.ts` |
 
-#### Fase C — Frontend: Páginas + Componentes
+#### Fase C — Frontend: Páginas + Portal Cliente ✅ COMPLETADA
 
-| # | Tarea | Prioridad | Archivo(s) |
-|---|-------|-----------|------------|
-| C1 | **`/pases` page** — SSR con getParkingPassTypes + formulario de compra | 🔴 Alta | `app/pases/page.tsx` |
-| C2 | **`ParkingPassCheckoutForm`** — datos persona + vehículo + gateway + pago | 🔴 Alta | `components/site/parking/ParkingPassCheckoutForm.tsx` |
-| C3 | **Alimentar secciones builder** — conectar ParkingPricingCards, ParkingPassPlansCards, ParkingAvailabilitySummary con queries reales | 🟡 Media | SectionRenderer + queries |
-| C4 | **Fix `/mi-cuenta/vehiculos`** — usar parking_vehicles | 🟡 Media | `app/mi-cuenta/vehiculos/page.tsx` |
-| C5 | **Fix `/mi-cuenta/historial`** — JOIN por placas del customer | 🟡 Media | `app/mi-cuenta/historial/page.tsx` |
-| C6 | **`/mi-cuenta/pases` con data real** — mostrar vigencia, status, vehículos vinculados | 🟡 Media | `app/mi-cuenta/pases/page.tsx` |
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| C1 | **Pre-fetch parking data en Page Builder** — rates, passTypes, zones, availability | ✅ | `app/[[...slug]]/page.tsx` |
+| C2 | **Secciones builder reciben data real** — ParkingPricingCards, ParkingPassPlansCards, ParkingAvailabilitySummary, ParkingZonesGrid | ✅ | Via `data` prop en SectionRenderer |
+| C3 | **`/pases` page SSR** — Hero + PassPlans + Rates + Availability + Benefits + FAQ + CTA | ✅ | `app/pases/page.tsx` + `app/pases/PasesClient.tsx` |
+| C4 | **`/pases/[id]` checkout** — Formulario persona + vehículo + gateway + resumen lateral + pago | ✅ | `app/pases/[id]/page.tsx` + `app/pases/[id]/PaseCheckoutClient.tsx` |
+| C5 | **Fix `/mi-cuenta/vehiculos`** — `plate` (no plate_number), quitar `year` inexistente | ✅ | `app/mi-cuenta/vehiculos/page.tsx` |
+| C6 | **Fix `/mi-cuenta/historial`** — `entry_at`, `exit_at`, `amount`, `vehicle_plate`, `duration_min` | ✅ | `app/mi-cuenta/historial/page.tsx` |
+| C7 | **Fix `/mi-cuenta/pases`** — link `/tarifas` → `/pases` | ✅ | `app/mi-cuenta/pases/page.tsx` |
+
+#### Flujo end-to-end completo:
+
+```
+1. Secciones builder → getParkingRates/getParkingPassTypes/getParkingAvailability → data real
+2. /pases → listado de planes SSR → cliente elige plan → /pases/[id]
+3. /pases/[id] → formulario: persona + vehículo + gateway
+4. Submit → POST /api/parking/passes → crea pass (suspended) + vehicle + junction (ref PKP-*)
+5. POST /api/checkout/init { source:'parking_pass', sourceId } → URL de pasarela
+6. Cliente paga → webhook detecta PKP-* → handleParkingPassPayment → activa pase + email
+7. /mi-cuenta/pases → pases activos | /mi-cuenta/vehiculos → vehículos | /mi-cuenta/historial → sesiones
+```
 
 ### 10.10 Diferencias clave vs otros módulos
 
@@ -3191,40 +3205,336 @@ Visitante → Home
 
 ---
 
-## 11. SaaS — Software como Servicio
+## 11. Servicios — Consultoría, Agencias, Freelancers, Profesionales
+
+> **Nota**: El tipo de organización `services` (id=4) reemplaza al anterior "SaaS". Abarca cualquier negocio
+> basado en servicios: consultorías, agencias de marketing, firmas contables, abogados, arquitectos,
+> freelancers, coaches, asesores financieros, empresas de software/TI, etc.
+
+### 11.0 Análisis Crítico — Tablas Existentes vs Necesidades del Website
+
+#### Tablas disponibles en Supabase (ya creadas por el ERP)
+
+| Tabla | Columnas clave | Uso para Website |
+|-------|---------------|------------------|
+| `services` | id, name, icon, category, is_default | Catálogo global de tipos de servicio |
+| `organization_services` | organization_id, service_id, custom_name, custom_icon, custom_category, is_active | Servicios que ofrece ESTA organización |
+| `service_charges` | organization_id, name, charge_type, charge_value, min_amount, applies_to, is_optional | Tarifas/cargos por servicio |
+| `calendar_events` | organization_id, customer_id, assigned_to, title, description, location, start_at, end_at, event_type, status, metadata | **Citas/reuniones** — es la tabla clave para agendar |
+| `customers` | organization_id, email, first_name, last_name, company_name, trade_name, phone, tags, roles, metadata | Clientes con datos empresariales |
+| `pipelines` | organization_id, name, is_default, goal_amount, goal_period | Pipelines de ventas |
+| `stages` | pipeline_id, name, position, probability, color | Etapas del pipeline |
+| `opportunities` | organization_id, pipeline_id, stage_id, customer_id, name, amount, currency, expected_close_date, status | Oportunidades de venta |
+| `opportunity_products` | opportunity_id, product_id, quantity, unit_price, total_price | Items de una oportunidad |
+| `invoice_sales` | organization_id, customer_id, number, issue_date, due_date, subtotal, tax_total, total, balance, status, document_type | Facturas de venta |
+| `invoice_items` | invoice_id, description, qty, unit_price, tax_rate, total_line | Items de factura |
+| `accounts_receivable` | organization_id, customer_id, invoice_id, amount, balance, due_date, status, days_overdue | Cuentas por cobrar |
+| `payments` | organization_id, source, source_id, method, amount, currency, reference, status | Pagos recibidos |
+| `campaigns` | organization_id, name, channel, status, scheduled_at, content, statistics | Campañas de marketing |
+
+#### Separación de Responsabilidades: ERP Admin vs Website
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ERP ADMIN (go-admin-erp)                                          │
+│                                                                     │
+│  /app/crm/           → Pipeline, oportunidades, actividades,       │
+│                         conversaciones, segmentos, pronóstico       │
+│  /app/clientes/      → CRUD completo de clientes, historial,       │
+│                         documentos, facturas asociadas              │
+│  /app/calendario/    → Calendario interno del equipo, gestión de   │
+│                         citas, recurrencias, importar/exportar     │
+│  /app/finanzas/      → Facturación electrónica, cuentas por       │
+│                         cobrar/pagar, reportes financieros          │
+│  /app/pos/           → Ventas POS, cobros directos                 │
+│  /app/hrm/           → Nómina, empleados, vacaciones, asistencia   │
+│                                                                     │
+│  ⚠️ El admin CREA servicios, configura tarifas, gestiona pipeline  │
+│  ⚠️ El admin CONFIRMA/RECHAZA citas solicitadas desde el website   │
+│  ⚠️ El admin EMITE facturas y gestiona cobros                      │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                    Misma base de datos (Supabase)
+                              │
+┌─────────────────────────────────────────────────────────────────────┐
+│  WEBSITE (goadmin-websites)                                         │
+│                                                                     │
+│  /servicios          → Catálogo público de servicios (READ-ONLY)   │
+│  /servicios/[id]     → Detalle del servicio + CTA cotizar/agendar  │
+│  /agendar            → Formulario de solicitud de cita (WRITE)     │
+│  /cotizar            → Formulario de solicitud de cotización (WRITE)│
+│  /contacto           → Formulario de contacto general              │
+│                                                                     │
+│  /mi-cuenta/         → Dashboard del cliente                       │
+│  /mi-cuenta/citas    → Mis citas (próximas + historial)            │
+│  /mi-cuenta/facturas → Mis facturas + pago online                  │
+│  /mi-cuenta/cotizaciones → Cotizaciones recibidas                  │
+│                                                                     │
+│  ⚠️ El website MUESTRA servicios (no los crea)                     │
+│  ⚠️ El website SOLICITA citas (no las confirma)                    │
+│  ⚠️ El website permite PAGAR facturas pendientes online            │
+│  ⚠️ El website CAPTURA leads/cotizaciones para el CRM              │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Análisis: ¿Qué flujos tiene sentido implementar en el Website?
+
+| Flujo | ¿Viable? | Razón |
+|-------|----------|-------|
+| **Mostrar catálogo de servicios** | ✅ Sí | `organization_services` + `services` + `service_charges` → READ-ONLY |
+| **Solicitar cita online** | ✅ Sí | Crea `calendar_events` con status `pending` → admin confirma en ERP |
+| **Solicitar cotización** | ✅ Sí | Crea `opportunities` con status `new` en pipeline → admin gestiona en CRM |
+| **Pagar factura pendiente online** | ✅ Sí | Lee `invoice_sales` del cliente → `checkout/init` → webhook → marca pagada |
+| **Portal cliente: ver citas** | ✅ Sí | `calendar_events` filtrado por `customer_id` |
+| **Portal cliente: ver facturas** | ✅ Sí | `invoice_sales` + `accounts_receivable` filtrado por `customer_id` |
+| **Gestionar pipeline completo** | ❌ No | Es responsabilidad del ERP admin, no del website |
+| **Crear facturas** | ❌ No | Solo el admin crea facturas (facturación electrónica) |
+| **Gestionar empleados/HRM** | ❌ No | Solo el admin gestiona nómina y empleados |
 
 ### 11.1 Páginas del Builder (personalizables por secciones)
 
 | # | Slug | Título Default | En Header | En Footer | Tipo |
 |---|------|---------------|-----------|-----------|------|
 | 1 | `home` | Inicio | ✅ | ❌ | builtin |
-| 2 | `features` | Características | ✅ | ✅ | builtin |
-| 3 | `precios` | Precios | ✅ | ✅ | builtin |
-| 4 | `integraciones` | Integraciones | ✅ | ✅ | builtin |
-| 5 | `nosotros` | Nosotros | ✅ | ✅ | builtin |
-| 6 | `contacto` | Contacto | ✅ | ✅ | builtin |
-| 7 | `blog` | Blog | ❌ | ✅ | builtin |
-| 8 | `casos-de-exito` | Casos de Éxito | ❌ | ✅ | builtin |
+| 2 | `servicios` | Servicios | ✅ | ✅ | builtin |
+| 3 | `nosotros` | Nosotros | ✅ | ✅ | builtin |
+| 4 | `equipo` | Nuestro Equipo | ❌ | ✅ | builtin |
+| 5 | `casos-de-exito` | Casos de Éxito | ✅ | ✅ | builtin |
+| 6 | `blog` | Blog | ❌ | ✅ | builtin |
+| 7 | `contacto` | Contacto | ✅ | ✅ | builtin |
+| 8 | `faq` | Preguntas Frecuentes | ❌ | ✅ | builtin |
 
-### Páginas de Sistema (lógica fija)
+### 11.2 Páginas de Sistema (lógica fija)
 
-| Ruta | Descripción | Tablas |
-|------|-------------|--------|
-| `/auth` | Registro / Login + Solicitar demo (lead) | `customers` + `profiles` + `leads` (source='website', si pide demo) |
-| `/checkout` | Suscripción a plan: selección → datos empresa → pago (Stripe/pasarela) | Flujo externo de pago |
-| `/mi-cuenta` | Dashboard del suscriptor: plan activo, uso, facturación | `customers` + datos de suscripción |
-| `/mi-cuenta/perfil` | Editar datos personales y de empresa | `customers` |
+| Ruta | Descripción | Tablas | Flujo |
+|------|-------------|--------|-------|
+| `/servicios/[id]` | Detalle del servicio + tarifas + CTA agendar/cotizar | `organization_services` + `services` + `service_charges` | READ |
+| `/agendar` | Solicitar cita: servicio + fecha/hora + datos cliente | `calendar_events` (status:'pending') + `customers` | WRITE |
+| `/cotizar` | Solicitar cotización: servicio + descripción + datos empresa | `opportunities` (status:'new') + `customers` | WRITE |
+| `/auth` | Registro / Login del cliente | `customers` + Supabase Auth | AUTH |
+| `/mi-cuenta` | Dashboard: próximas citas, facturas pendientes, resumen | `calendar_events` + `invoice_sales` + `accounts_receivable` | READ |
+| `/mi-cuenta/perfil` | Editar datos personales y de empresa | `customers` | READ/WRITE |
+| `/mi-cuenta/citas` | Próximas citas + historial + cancelar | `calendar_events` WHERE customer_id | READ/WRITE |
+| `/mi-cuenta/facturas` | Facturas emitidas + pagar online | `invoice_sales` + `accounts_receivable` + `payments` | READ + PAY |
+| `/mi-cuenta/facturas/[id]` | Detalle factura + items + botón pagar | `invoice_sales` + `invoice_items` + checkout/init | READ + PAY |
+| `/mi-cuenta/cotizaciones` | Cotizaciones/propuestas recibidas | `opportunities` WHERE customer_id AND status | READ |
 
-### 11.2 Templates
+### 11.3 Flujos End-to-End
 
-#### `saas_modern` ⭐ (Default)
+#### Flujo A — Catálogo de Servicios (READ-ONLY)
+
+```
+1. Page Builder sección `services_grid` → getParkingRates-style query
+2. SSR: getOrganizationServices(orgId)
+   → organization_services JOIN services + service_charges
+3. /servicios → listado con categorías, iconos, descripción
+4. /servicios/[id] → detalle + tarifas + botones: "Agendar Cita" | "Solicitar Cotización"
+```
+
+#### Flujo B — Solicitud de Cita Online
+
+```
+1. Cliente visita /agendar (o CTA desde /servicios/[id])
+2. Formulario: servicio + fecha preferida + hora + nombre + email + teléfono + notas
+3. POST /api/services/appointments
+   a. Buscar/crear customer (mismo patrón que parking/passes)
+   b. Validar disponibilidad básica (no duplicar misma hora/assigned_to)
+   c. INSERT calendar_events:
+      - organization_id, customer_id
+      - title: "Cita: {servicio} - {cliente}"
+      - start_at, end_at (duración default del servicio o 1h)
+      - event_type: 'appointment'
+      - status: 'pending'    ← CLAVE: el admin confirma en el ERP
+      - metadata: { service_id, source: 'website', notes }
+   d. Enviar email de confirmación al cliente (solicitud recibida)
+   e. Enviar notificación al admin (nueva solicitud de cita)
+4. Admin en ERP → /app/calendario → ve la cita pending → confirma/rechaza
+5. Al confirmar, status → 'confirmed' → email al cliente con fecha confirmada
+6. /mi-cuenta/citas → cliente ve sus citas (pending, confirmed, completed, cancelled)
+```
+
+**Referencia:** `APT-{id corto}` (Appointment)
+
+#### Flujo C — Solicitud de Cotización / Propuesta
+
+```
+1. Cliente visita /cotizar (o CTA desde /servicios/[id])
+2. Formulario: servicio + descripción del proyecto + empresa + email + presupuesto estimado
+3. POST /api/services/quotes
+   a. Buscar/crear customer (con company_name)
+   b. Buscar pipeline default de la org (o crear uno)
+   c. INSERT opportunities:
+      - organization_id, pipeline_id, stage_id (primera etapa)
+      - customer_id
+      - name: "Cotización Web: {servicio} - {empresa}"
+      - amount: presupuesto estimado (o 0)
+      - status: 'open'
+      - metadata en opportunity → NO existe ← usar notes del customer o description del stage
+   d. Enviar email de confirmación al cliente (solicitud recibida)
+   e. Notificación al admin (nueva oportunidad en pipeline)
+4. Admin en ERP → /app/crm/pipeline → gestiona la oportunidad
+5. Admin envía propuesta/cotización → genera invoice_sales (status: 'draft')
+6. /mi-cuenta/cotizaciones → cliente ve oportunidades asociadas a su customer_id
+```
+
+**Nota:** Las cotizaciones formales las genera el admin como `invoice_sales` con document_type `quote`.
+
+#### Flujo D — Pago de Factura Online
+
+```
+1. Cliente autenticado → /mi-cuenta/facturas
+2. SSR: getCustomerInvoices(customerId, orgId)
+   → invoice_sales WHERE customer_id AND status IN ('sent','overdue','partial')
+3. Cliente selecciona factura → /mi-cuenta/facturas/[id]
+4. Detalle: items, subtotal, tax_total, total, balance pendiente
+5. Botón "Pagar" → POST /api/checkout/init:
+   {
+     source: 'invoice',
+     sourceId: invoice_sales.id,
+     gateway: selectedGateway,
+     returnUrl: '/mi-cuenta/facturas?status=success'
+   }
+6. checkout/init:
+   a. getInvoice(supabase, sourceId) → { order_number: invoice.number, total: invoice.balance }
+   b. Genera URL de pasarela
+7. Webhook detecta ref INV-{number}:
+   a. isInvoiceReference(reference)
+   b. handleInvoicePayment():
+      - Actualiza invoice_sales.balance -= amount, status → 'paid' si balance=0
+      - Inserta payment (source: 'invoice', source_id: invoice_sales.id)
+      - Actualiza accounts_receivable.balance, status → 'paid'
+      - Envía email de confirmación de pago
+8. /mi-cuenta/facturas → factura marcada como pagada
+```
+
+**Referencia:** `INV-{invoice.number}` (Invoice)
+
+### 11.4 Separación de Responsabilidades Detallada
+
+| Acción | ERP Admin | Website |
+|--------|-----------|---------|
+| **Crear servicios** | ✅ CRUD completo | ❌ Solo lectura |
+| **Configurar tarifas** | ✅ service_charges | ❌ Solo lectura |
+| **Confirmar/rechazar citas** | ✅ calendar_events.status | ❌ Solo solicita (pending) |
+| **Cancelar cita (cliente)** | — | ✅ Si status=pending o confirmed (con política) |
+| **Gestionar pipeline CRM** | ✅ Mover oportunidades entre etapas | ❌ Solo ve sus cotizaciones |
+| **Crear facturas** | ✅ invoice_sales + invoice_items | ❌ Solo lectura + pagar |
+| **Recibir pagos (caja)** | ✅ POS, pagos manuales | — |
+| **Pagar facturas online** | — | ✅ checkout/init → pasarela → webhook |
+| **Gestionar empleados** | ✅ HRM completo | ❌ No aplica |
+| **Marketing/Campañas** | ✅ campaigns, segmentos | ❌ No aplica |
+| **Ver reportes financieros** | ✅ Completo | ❌ No aplica |
+
+### 11.5 Tablas que el Website lee (RLS: public SELECT o customer-filtered)
+
+| Tabla | RLS Requerido | Filtro |
+|-------|--------------|--------|
+| `services` | Public SELECT | is_default (catálogo global) |
+| `organization_services` | Public SELECT | organization_id + is_active |
+| `service_charges` | Public SELECT | organization_id + is_active |
+| `calendar_events` | Customer-filtered | customer_id = auth.uid() |
+| `invoice_sales` | Customer-filtered | customer_id = auth.uid() |
+| `invoice_items` | Customer-filtered | invoice_id IN (facturas del customer) |
+| `accounts_receivable` | Customer-filtered | customer_id = auth.uid() |
+| `opportunities` | Customer-filtered | customer_id = auth.uid() |
+
+### 11.6 Tablas que el Website escribe (RLS: INSERT con validación)
+
+| Tabla | Operación | Condiciones |
+|-------|-----------|-------------|
+| `customers` | INSERT/UPDATE | Via API (admin client), no directo |
+| `calendar_events` | INSERT | Solo status='pending', event_type='appointment' |
+| `opportunities` | INSERT | Solo status='open', stage_id=primera etapa |
+| `payments` | INSERT | Solo via webhook (server-side) |
+
+### 11.7 APIs necesarias
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `POST /api/services/appointments` | POST | Solicitar cita: crea customer + calendar_event (pending) |
+| `POST /api/services/quotes` | POST | Solicitar cotización: crea customer + opportunity (open) |
+| `PUT /api/services/appointments/[id]/cancel` | PUT | Cancelar cita (política: ≥24h antes) |
+| `GET → checkout/init` con source:'invoice' | POST | Pagar factura online |
+| `lib/services/payment-handler.ts` | — | isInvoiceReference + handleInvoicePayment |
+| `lib/email/send-appointment-confirmation.ts` | — | Email solicitud/confirmación de cita |
+| `lib/email/send-invoice-payment-confirmation.ts` | — | Email pago de factura recibido |
+
+### 11.8 Queries SSR necesarias
+
+```typescript
+// lib/supabase/queries.ts
+getOrganizationServices(orgId)       // organization_services JOIN services + charges
+getServiceById(serviceId, orgId)     // Detalle de un servicio + tarifas
+
+// lib/queries/customer-portal.ts
+getCustomerAppointments(customerId, orgId)    // calendar_events WHERE event_type='appointment'
+getCustomerInvoices(customerId, orgId)        // invoice_sales con status + balance
+getCustomerInvoiceDetail(invoiceId, custId)   // invoice_sales + invoice_items + accounts_receivable
+getCustomerQuotes(customerId, orgId)          // opportunities WHERE customer_id
+getCustomerServiceDashboard(customerId, orgId) // Conteos: citas próximas, facturas pendientes, total pagado
+```
+
+### 11.9 Plan de Implementación
+
+#### Fase A — Backend: Queries SSR + RLS
+
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| A1 | **RLS público SELECT** en: `services`, `organization_services`, `service_charges` | 🔴 | Migración |
+| A2 | **`getOrganizationServices(orgId)`** — servicios activos con tarifas | 🔴 | `lib/supabase/queries.ts` |
+| A3 | **`getServiceById(serviceId, orgId)`** — detalle + charges | 🔴 | `lib/supabase/queries.ts` |
+| A4 | **Queries customer-portal** — appointments, invoices, quotes, dashboard | 🔴 | `lib/queries/customer-portal.ts` |
+
+#### Fase B — Backend: Citas + Cotizaciones + Pagos
+
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| B1 | **API `POST /api/services/appointments`** — solicitar cita | 🔴 | `app/api/services/appointments/route.ts` |
+| B2 | **API `POST /api/services/quotes`** — solicitar cotización | 🔴 | `app/api/services/quotes/route.ts` |
+| B3 | **API `PUT /api/services/appointments/[id]/cancel`** — cancelar cita | 🔴 | `app/api/services/appointments/[id]/cancel/route.ts` |
+| B4 | **Adaptar `checkout/init`** — source:'invoice' + `getInvoice()` | 🔴 | `app/api/checkout/init/route.ts` |
+| B5 | **`lib/services/payment-handler.ts`** — isInvoiceReference + handleInvoicePayment | 🔴 | `lib/services/payment-handler.ts` |
+| B6 | **5 webhooks detectan INV-*** | 🔴 | `app/api/webhooks/*/route.ts` |
+| B7 | **Email confirmación cita** | 🔴 | `lib/email/send-appointment-confirmation.ts` |
+| B8 | **Email pago factura** | 🔴 | `lib/email/send-invoice-payment-confirmation.ts` |
+
+#### Fase C — Frontend: Páginas + Portal Cliente
+
+| # | Tarea | Estado | Archivo(s) |
+|---|-------|--------|------------|
+| C1 | **Pre-fetch services data en Page Builder** — services, charges | 🔴 | `app/[[...slug]]/page.tsx` |
+| C2 | **`/servicios/[id]`** page SSR — detalle + tarifas + CTA | 🔴 | `app/servicios/[id]/page.tsx` |
+| C3 | **`/agendar`** page — formulario de solicitud de cita | 🔴 | `app/agendar/page.tsx` |
+| C4 | **`/cotizar`** page — formulario de solicitud de cotización | 🔴 | `app/cotizar/page.tsx` |
+| C5 | **`/mi-cuenta/citas`** — próximas + historial + cancelar | 🔴 | `app/mi-cuenta/citas/page.tsx` |
+| C6 | **`/mi-cuenta/facturas`** — listado + pagar online | 🔴 | `app/mi-cuenta/facturas/page.tsx` |
+| C7 | **`/mi-cuenta/facturas/[id]`** — detalle + items + pagar | 🔴 | `app/mi-cuenta/facturas/[id]/page.tsx` |
+| C8 | **`/mi-cuenta/cotizaciones`** — cotizaciones recibidas | 🔴 | `app/mi-cuenta/cotizaciones/page.tsx` |
+
+### 11.10 Diferencias clave vs otros módulos
+
+| Aspecto | Retail | Restaurant | Parking | **Servicios** |
+|---------|--------|------------|---------|---------------|
+| **Producto** | `products` | `products` (menú) | `parking_pass_types` | `organization_services` |
+| **Inventario** | `stock_levels` | `stock_levels` | `parking_spaces` | N/A (servicios no tienen stock) |
+| **Orden** | `web_orders` | `web_orders` | `parking_passes` | `calendar_events` (citas) + `opportunities` (cotizaciones) |
+| **Factura** | `invoice_sales` (auto) | `invoice_sales` (POS) | N/A | `invoice_sales` (admin genera, cliente paga online) |
+| **Pago web** | Checkout carrito | Checkout pedido | Checkout pase | **Pago de factura pendiente** |
+| **Referencia** | `ORD-*` | `ORD-*` | `PKP-*` | `INV-{number}` (factura) + `APT-*` (cita) |
+| **CRM** | Bajo | Bajo | Bajo | **Alto** — pipeline, oportunidades, seguimiento |
+| **Calendario** | No | Reservas de mesa | No | **Citas** — core del negocio |
+| **Portal** | pedidos, direcciones | pedidos, tracking | pases, vehículos | **citas, facturas, cotizaciones** |
+
+### 11.11 Templates
+
+#### `services_modern` ⭐ (Default)
 
 | Propiedad | Valor |
 |-----------|-------|
-| **Estilo** | Clean tech startup, gradientes suaves, ilustraciones |
+| **Estilo** | Clean profesional, confianza, gradientes suaves |
 | **Colores** | `#6366F1` (indigo), `#0F172A` (slate) |
 | **Fuentes** | Inter / Inter |
-| **Header** | `default` — CTA "Empezar Gratis" |
+| **Header** | `default` — CTA "Agendar Cita" |
 | **Footer** | `three_columns` con links organizados |
 
 **Página Home:**
@@ -3233,69 +3543,48 @@ Visitante → Home
 |-------|---------|----------|
 | 1 | `hero` | `split` |
 | 2 | `partners` | `logos` |
-| 3 | `features_grid` | `alternating` |
+| 3 | `services_grid` | `cards` |
 | 4 | `stats` | `counters` |
 | 5 | `how_it_works` | `steps` |
-| 6 | `pricing_table` | `three_columns` |
-| 7 | `testimonials` | `carousel` |
-| 8 | `integrations` | `logos` |
-| 9 | `faq` | `accordion` |
-| 10 | `demo_cta` | `form` |
+| 6 | `testimonials` | `carousel` |
+| 7 | `team` | `grid` |
+| 8 | `faq` | `accordion` |
+| 9 | `cta` | `appointment_form` |
 
-**Página Features:**
-
-| Orden | Sección | Variante |
-|-------|---------|----------|
-| 1 | `hero` | `minimal` |
-| 2 | `features_grid` | `tabs` |
-| 3 | `image_text` | `image_right` |
-| 4 | `image_text` | `image_left` |
-| 5 | `cta` | `centered` |
-
-**Página Precios:**
+**Página Servicios:**
 
 | Orden | Sección | Variante |
 |-------|---------|----------|
 | 1 | `hero` | `minimal` |
-| 2 | `pricing_table` | `toggle` |
-| 3 | `faq` | `two_columns` |
-| 4 | `cta` | `banner` |
+| 2 | `services_grid` | `detailed` |
+| 3 | `pricing_table` | `service_charges` |
+| 4 | `cta` | `centered` |
 
-**Página Integraciones:**
-
-| Orden | Sección | Variante |
-|-------|---------|----------|
-| 1 | `hero` | `minimal` |
-| 2 | `integrations` | `categories` |
-| 3 | `cta` | `centered` |
-
----
-
-#### `saas_corporate`
+#### `services_corporate`
 
 | Propiedad | Valor |
 |-----------|-------|
-| **Estilo** | Enterprise, profesional, confiable |
+| **Estilo** | Enterprise, B2B, profesional |
 | **Colores** | `#1976D2` (azul corp), `#1A237E` (azul oscuro) |
 | **Fuentes** | Roboto / Roboto |
-| **Header** | `default` con topbar |
+| **Header** | `default` con topbar — CTA "Solicitar Cotización" |
 | **Footer** | `three_columns` |
 
-#### `saas_creative`
+#### `services_creative`
 
 | Propiedad | Valor |
 |-----------|-------|
-| **Estilo** | Creativo, playful, gradientes coloridos |
+| **Estilo** | Agencia creativa, portafolio visual, bold |
 | **Colores** | `#FF6B6B` (coral), `#4ECDC4` (teal) |
 | **Fuentes** | Poppins / Nunito |
 | **Header** | `default` |
 | **Footer** | `minimal` |
 
-#### `saas_minimal`
+#### `services_minimal`
 
 | Propiedad | Valor |
 |-----------|-------|
-| **Estilo** | Ultra minimalista, mucho espacio, elegante |
+| **Estilo** | Ultra limpio, mucho espacio, elegante |
 | **Colores** | `#000000` (negro), `#FFFFFF` (blanco) |
 | **Fuentes** | Outfit / Inter |
 | **Header** | `minimal` |
@@ -3317,6 +3606,9 @@ app/
 ├── clases/[id]/page.tsx           ← Detalle de clase (gym)
 ├── viajes/page.tsx                ← Buscador de viajes (transport)
 ├── viajes/[id]/page.tsx           ← Detalle de viaje + selección asiento (transport)
+├── servicios/[id]/page.tsx        ← Detalle de servicio + tarifas + CTA (services)
+├── agendar/page.tsx               ← Solicitar cita online (services)
+├── cotizar/page.tsx               ← Solicitar cotización (services)
 │
 ├── carrito/page.tsx               ← Vista completa del carrito (retail, restaurant)
 ├── checkout/page.tsx              ← Flujo de pago multi-step
@@ -3340,7 +3632,11 @@ app/
 │   ├── tickets/[id]/page.tsx      ← Detalle de ticket + QR (transport)
 │   ├── pases/page.tsx             ← Pases/abonos (parking)
 │   ├── vehiculos/page.tsx         ← Mis vehículos (parking)
-│   └── historial/page.tsx         ← Historial sesiones (parking)
+│   ├── historial/page.tsx         ← Historial sesiones (parking)
+│   ├── citas/page.tsx             ← Próximas citas + historial (services)
+│   ├── facturas/page.tsx          ← Facturas + pagar online (services)
+│   ├── facturas/[id]/page.tsx     ← Detalle factura + items + pagar (services)
+│   └── cotizaciones/page.tsx      ← Cotizaciones recibidas (services)
 │
 └── api/                           ← API routes (sin cambios)
 ```

@@ -4,6 +4,8 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CheckoutWizard } from '@/components/site/CheckoutWizard'
 import { Metadata } from 'next'
+import { getMetaPixelId, getGoogleAdsConfig } from '@/lib/supabase/queries'
+import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,7 +53,11 @@ export default async function CheckoutPage() {
   if (!ctx) return <NotFoundPage />
 
   const { organization, primaryColor, template, headerNav, footerNav } = ctx
-  const gateways = await getAvailableGateways(organization.id)
+  const [gateways, metaPixelId, googleAdsConfig] = await Promise.all([
+    getAvailableGateways(organization.id),
+    getMetaPixelId(organization.id),
+    getGoogleAdsConfig(organization.id)
+  ])
 
   // Impuesto: desde organization_taxes (fuente real)
   const supabaseTax = createPublicClient()
@@ -81,7 +87,11 @@ export default async function CheckoutPage() {
       primaryColor={primaryColor}
       headerNav={headerNav}
       footerNav={footerNav}
+      metaPixelId={metaPixelId}
+      googleAdsConfig={googleAdsConfig}
     >
+      {/* Meta Pixel InitiateCheckout */}
+      {metaPixelId && <MetaPixelInitiateCheckout />}
       <CheckoutWizard
         organizationId={organization.id}
         primaryColor={primaryColor}

@@ -15,7 +15,7 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
   const supabase = await getSb()
   const sb = supabase as any
 
-  const [orders, reservations, addresses, coupons, memberships, checkins, tickets, passes, vehicles, sessions] = await Promise.all([
+  const [orders, reservations, addresses, coupons, memberships, checkins, tickets, passes, vehicles] = await Promise.all([
     sb.from('web_orders').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('reservations').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('customer_addresses').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
@@ -24,9 +24,24 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
     sb.from('member_checkins').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('tickets').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('parking_passes').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId).eq('status', 'active'),
-    sb.from('vehicles').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
-    sb.from('parking_sessions').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
+    sb.from('parking_vehicles').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
   ])
+
+  // Conteo de sesiones via placas del customer (parking_sessions no tiene customer_id)
+  let sessionsCount = 0
+  const { data: customerPlates } = await sb
+    .from('parking_vehicles')
+    .select('plate')
+    .eq('customer_id', customerId)
+    .eq('organization_id', organizationId)
+  if (customerPlates && customerPlates.length > 0) {
+    const plates = customerPlates.map((v: any) => v.plate)
+    const sessionsRes = await sb
+      .from('parking_sessions')
+      .select('id', { count: 'exact', head: true })
+      .in('vehicle_plate', plates)
+    sessionsCount = sessionsRes.count ?? 0
+  }
 
   return {
     orders: orders.count ?? 0,
@@ -38,7 +53,7 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
     tickets: tickets.count ?? 0,
     passes: passes.count ?? 0,
     vehicles: vehicles.count ?? 0,
-    sessions: sessions.count ?? 0,
+    sessions: sessionsCount,
   }
 }
 
@@ -212,7 +227,7 @@ export async function getCustomerParkingPasses(customerId: string, organizationI
 export async function getCustomerVehicles(customerId: string, organizationId: number) {
   const supabase = await getSb()
   const { data } = await (supabase as any)
-    .from('vehicles')
+    .from('parking_vehicles')
     .select('*')
     .eq('customer_id', customerId)
     .eq('organization_id', organizationId)
@@ -224,12 +239,23 @@ export async function getCustomerVehicles(customerId: string, organizationId: nu
 
 export async function getCustomerParkingSessions(customerId: string, organizationId: number, limit = 30) {
   const supabase = await getSb()
-  const { data } = await (supabase as any)
-    .from('parking_sessions')
-    .select('*')
+  const sb = supabase as any
+
+  // parking_sessions no tiene customer_id — buscar por placas del customer
+  const { data: customerVehicles } = await sb
+    .from('parking_vehicles')
+    .select('plate')
     .eq('customer_id', customerId)
     .eq('organization_id', organizationId)
-    .order('entry_time', { ascending: false })
+
+  const plates = (customerVehicles || []).map((v: any) => v.plate)
+  if (plates.length === 0) return []
+
+  const { data } = await sb
+    .from('parking_sessions')
+    .select('*')
+    .in('vehicle_plate', plates)
+    .order('entry_at', { ascending: false })
     .limit(limit)
   return (data || []) as any[]
 }
@@ -266,4 +292,124 @@ export async function getCustomerRecentActivity(customerId: string, organization
   }
 
   return activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8)
+}
+
+// ─── Citas / Appointments (services) ─────────────────────────
+
+export async function getCustomerAppointments(customerId: string, organizationId: number, limit = 30) {
+  const supabase = await getSb()
+  const { data } = await (supabase as any)
+    .from('calendar_events')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('organization_id', organizationId)
+    .eq('event_type', 'appointment')
+    .order('start_at', { ascending: false })
+    .limit(limit)
+  return (data || []) as any[]
+}
+
+// ─── Facturas / Invoices (services) ──────────────────────────
+
+export async function getCustomerInvoices(customerId: string, organizationId: number, limit = 30) {
+  const supabase = await getSb()
+  const { data } = await (supabase as any)
+    .from('invoice_sales')
+    .select('id, number, issue_date, due_date, subtotal, tax_total, total, balance, status, document_type, currency')
+    .eq('customer_id', customerId)
+    .eq('organization_id', organizationId)
+    .order('issue_date', { ascending: false })
+    .limit(limit)
+  return (data || []) as any[]
+}
+
+export async function getCustomerInvoiceDetail(invoiceId: string, customerId: string) {
+  const supabase = await getSb()
+  const sb = supabase as any
+
+  const { data: invoice } = await sb
+    .from('invoice_sales')
+    .select('*')
+    .eq('id', invoiceId)
+    .eq('customer_id', customerId)
+    .single()
+
+  if (!invoice) return null
+
+  const { data: items } = await sb
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_sales_id', invoiceId)
+    .order('created_at', { ascending: true })
+
+  const { data: receivable } = await sb
+    .from('accounts_receivable')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .eq('customer_id', customerId)
+    .limit(1)
+
+  return {
+    ...invoice,
+    items: (items || []) as any[],
+    receivable: receivable?.[0] || null,
+  }
+}
+
+// ─── Cotizaciones / Quotes (services) ────────────────────────
+
+export async function getCustomerQuotes(customerId: string, organizationId: number, limit = 20) {
+  const supabase = await getSb()
+  const { data } = await (supabase as any)
+    .from('opportunities')
+    .select('id, name, amount, currency, expected_close_date, status, created_at')
+    .eq('customer_id', customerId)
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  return (data || []) as any[]
+}
+
+// ─── Dashboard Servicios (conteos) ───────────────────────────
+
+export async function getCustomerServiceDashboard(customerId: string, organizationId: number) {
+  const supabase = await getSb()
+  const sb = supabase as any
+  const now = new Date().toISOString()
+
+  const [upcomingAppts, pendingInvoices, totalPaid, openQuotes] = await Promise.all([
+    sb.from('calendar_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', customerId)
+      .eq('organization_id', organizationId)
+      .eq('event_type', 'appointment')
+      .in('status', ['pending', 'confirmed'])
+      .gte('start_at', now),
+    sb.from('invoice_sales')
+      .select('id, balance')
+      .eq('customer_id', customerId)
+      .eq('organization_id', organizationId)
+      .in('status', ['sent', 'overdue', 'partial']),
+    sb.from('payments')
+      .select('amount')
+      .eq('customer_id', customerId)
+      .eq('organization_id', organizationId)
+      .eq('status', 'approved'),
+    sb.from('opportunities')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', customerId)
+      .eq('organization_id', organizationId)
+      .eq('status', 'open'),
+  ])
+
+  const pendingBalance = (pendingInvoices.data || []).reduce((sum: number, inv: any) => sum + Number(inv.balance || 0), 0)
+  const paidTotal = (totalPaid.data || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+
+  return {
+    upcomingAppointments: upcomingAppts.count ?? 0,
+    pendingInvoices: (pendingInvoices.data || []).length,
+    pendingBalance,
+    totalPaid: paidTotal,
+    openQuotes: openQuotes.count ?? 0,
+  }
 }

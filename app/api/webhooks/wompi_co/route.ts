@@ -3,6 +3,10 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { isReservationReference, handleReservationPayment } from '@/lib/reservations/payment-handler'
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
+import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
+import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
+import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
+import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 
 export const dynamic = 'force-dynamic'
 
@@ -209,6 +213,49 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // ── Verificar si es pago de pase de parking ──
+    if (isParkingPassReference(reference)) {
+      const paymentStatus = mapWompiStatus(wompiStatus)
+      const amountDecimal = amountInCents ? amountInCents / 100 : 0
+
+      const result = await handleParkingPassPayment(supabase, reference, paymentStatus, {
+        transactionId,
+        amount: amountDecimal,
+        currency: currency || 'COP',
+        method: paymentMethodType?.toLowerCase() || 'card',
+        processorResponse: transaction,
+        gateway: 'wompi_co',
+      })
+
+      return NextResponse.json({
+        received: true,
+        source: 'parking_pass',
+        passId: result.passId,
+        payment_status: paymentStatus,
+      })
+    }
+
+    // ── Verificar si es pago de factura (services) ──
+    if (isInvoiceReference(reference)) {
+      const paymentStatus = mapWompiStatus(wompiStatus)
+      const amountDecimal = amountInCents ? amountInCents / 100 : 0
+
+      const result = await handleInvoicePayment(supabase, reference, paymentStatus, {
+        transactionId,
+        amount: amountDecimal,
+        currency: currency || 'COP',
+        method: paymentMethodType?.toLowerCase() || 'card',
+        gateway: 'wompi_co',
+      })
+
+      return NextResponse.json({
+        received: true,
+        source: 'invoice',
+        invoiceId: result.invoiceId,
+        payment_status: paymentStatus,
+      })
+    }
+
     // ── Flujo normal: buscar web_order por referencia ──
     const { data: webOrder, error: orderError } = await (supabase as any)
       .from('web_orders')
@@ -334,6 +381,24 @@ export async function POST(request: NextRequest) {
         .update({ last_received_at: new Date().toISOString() })
         .eq('connection_id', (conn as any).id)
         .eq('direction', 'inbound')
+    }
+
+    // 8. Google Ads — subir conversión offline si pago exitoso
+    if (paymentStatus === 'paid') {
+      uploadGoogleAdsConversion(supabase, organizationId, {
+        orderId: reference,
+        value: amountDecimal,
+        currency: currency || 'COP',
+        category: 'purchase',
+      }).catch(err => console.error('[Wompi Webhook] Google Ads upload error:', err))
+
+      // Meta CAPI — Purchase event server-side
+      sendMetaCAPIEvent(supabase, organizationId, {
+        eventName: 'Purchase',
+        eventId: reference,
+        value: amountDecimal,
+        currency: currency || 'COP',
+      }).catch(err => console.error('[Wompi Webhook] Meta CAPI error:', err))
     }
 
     console.log(

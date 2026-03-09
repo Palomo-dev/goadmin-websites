@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Check, Plus } from 'lucide-react'
+import { trackMetaAddToCart } from '@/components/site/MetaPixelEvents'
 
 interface AddToCartButtonProps {
   productId: number
@@ -48,6 +49,9 @@ export function AddToCartButton({
 
       localStorage.setItem(cartKey, JSON.stringify(existingCart))
       window.dispatchEvent(new CustomEvent('cart-updated'))
+
+      // Meta Pixel: AddToCart
+      trackMetaAddToCart(String(productId), productName, Number(price))
 
       // Feedback visual
       setAdded(true)

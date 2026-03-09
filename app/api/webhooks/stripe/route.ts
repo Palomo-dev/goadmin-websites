@@ -3,6 +3,10 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { isReservationReference, handleReservationPayment } from '@/lib/reservations/payment-handler'
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
+import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
+import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
+import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
+import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 
 export const dynamic = 'force-dynamic'
 
@@ -367,6 +371,43 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // ── Verificar si es pago de pase de parking ──
+    if (isParkingPassReference(reference)) {
+      const result = await handleParkingPassPayment(supabase, reference, paymentStatus, {
+        transactionId: stripeObjectId,
+        amount: amountDecimal,
+        currency,
+        method: paymentMethodType,
+        processorResponse: dataObject,
+        gateway: 'stripe',
+      })
+
+      return NextResponse.json({
+        received: true,
+        source: 'parking_pass',
+        passId: result.passId,
+        payment_status: paymentStatus,
+      })
+    }
+
+    // ── Verificar si es pago de factura (services) ──
+    if (isInvoiceReference(reference)) {
+      const result = await handleInvoicePayment(supabase, reference, paymentStatus, {
+        transactionId: stripeObjectId,
+        amount: amountDecimal,
+        currency,
+        method: paymentMethodType,
+        gateway: 'stripe',
+      })
+
+      return NextResponse.json({
+        received: true,
+        source: 'invoice',
+        invoiceId: result.invoiceId,
+        payment_status: paymentStatus,
+      })
+    }
+
     // ── Flujo normal: buscar web_order ──
     const { data: webOrder, error: orderError } = await (supabase as any)
       .from('web_orders')
@@ -459,6 +500,24 @@ export async function POST(request: NextRequest) {
       .update({ last_received_at: new Date().toISOString() })
       .eq('connection_id', matchedConnection.id)
       .eq('direction', 'inbound')
+
+    // Google Ads — subir conversión offline si pago exitoso
+    if (paymentStatus === 'paid') {
+      uploadGoogleAdsConversion(supabase, organizationId, {
+        orderId: reference,
+        value: amountDecimal || webOrder.total,
+        currency: currency || 'USD',
+        category: 'purchase',
+      }).catch(err => console.error('[Stripe Webhook] Google Ads upload error:', err))
+
+      // Meta CAPI — Purchase event server-side
+      sendMetaCAPIEvent(supabase, organizationId, {
+        eventName: 'Purchase',
+        eventId: reference,
+        value: amountDecimal || webOrder.total,
+        currency: currency || 'USD',
+      }).catch(err => console.error('[Stripe Webhook] Meta CAPI error:', err))
+    }
 
     console.log(
       `[Stripe Webhook] Procesado OK: order=${reference} status=${paymentStatus}`

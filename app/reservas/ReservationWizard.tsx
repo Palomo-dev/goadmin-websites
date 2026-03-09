@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { trackMetaSchedule } from '@/components/site/MetaPixelEvents'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -212,6 +213,9 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
 
       const resId = data.data?.id
       setReservationId(resId)
+
+      // Meta Pixel: Schedule
+      trackMetaSchedule(finalTotal || 0)
 
       // Si hay gateway y monto > 0, redirigir a pago
       if (gateway && finalTotal > 0) {

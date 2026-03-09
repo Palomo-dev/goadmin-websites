@@ -40,22 +40,22 @@ export default async function HistorialPage() {
                 <span className="text-lg">🅿️</span>
                 <div>
                   <p className="font-medium text-sm">
-                    {s.entry_time
-                      ? new Date(s.entry_time).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })
+                    {s.entry_at
+                      ? new Date(s.entry_at).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })
                       : 'Sin fecha'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {s.entry_time && new Date(s.entry_time).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                    {s.exit_time && ` → ${new Date(s.exit_time).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`}
-                    {s.plate_number && ` · ${s.plate_number}`}
+                    {s.entry_at && new Date(s.entry_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                    {s.exit_at && ` → ${new Date(s.exit_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`}
+                    {s.vehicle_plate && ` · ${s.vehicle_plate}`}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                {s.total_amount != null && (
-                  <p className="font-bold text-sm">${Number(s.total_amount).toLocaleString('es-CO')}</p>
+                {s.amount != null && (
+                  <p className="font-bold text-sm">${Number(s.amount).toLocaleString('es-CO')}</p>
                 )}
-                {s.zone_name && <p className="text-xs text-gray-400">{s.zone_name}</p>}
+                {s.duration_min != null && <p className="text-xs text-gray-400">{s.duration_min} min</p>}
               </div>
             </div>
           ))}

@@ -33,7 +33,7 @@ export default async function PasesPage() {
           <h3 className="font-semibold text-lg mb-1">No tienes pases activos</h3>
           <p className="text-gray-500 mb-4">Adquiere un pase mensual para estacionar</p>
           <Link
-            href="/tarifas"
+            href="/pases"
             className="inline-block px-6 py-2 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
             style={{ backgroundColor: primaryColor }}
           >

@@ -388,6 +388,81 @@ async function getMembership(supabase: any, membershipId: string) {
 }
 
 /**
+ * Obtiene un pase de parking por ID para generar pago.
+ * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
+ */
+async function getParkingPass(supabase: any, passId: string) {
+  const { data, error } = await supabase
+    .from('parking_passes')
+    .select('id, organization_id, customer_id, plan_name, price, status')
+    .eq('id', passId)
+    .single()
+
+  if (error || !data) return null
+
+  const shortRef = `PKP-${data.id.substring(0, 8).toUpperCase()}`
+
+  // Buscar email del customer
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('email, first_name, last_name')
+    .eq('id', data.customer_id)
+    .single()
+
+  return {
+    id: data.id,
+    organization_id: data.organization_id,
+    order_number: shortRef,
+    total: Number(data.price || 0),
+    currency: 'COP',
+    status: data.status,
+    payment_status: data.status === 'active' ? 'paid' : 'pending',
+    customer_email: customer?.email || '',
+    customer_name: `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim(),
+    _source: 'parking_pass' as const,
+  }
+}
+
+/**
+ * Obtiene una factura pendiente por ID para generar pago online.
+ * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
+ */
+async function getInvoice(supabase: any, invoiceId: string) {
+  const { data, error } = await supabase
+    .from('invoice_sales')
+    .select('id, organization_id, customer_id, number, total, balance, currency, status')
+    .eq('id', invoiceId)
+    .single()
+
+  if (error || !data) return null
+
+  // Solo facturas con balance pendiente
+  const balance = Number(data.balance || 0)
+  if (balance <= 0) return null
+
+  const shortRef = `INV-${data.number || data.id.substring(0, 8).toUpperCase()}`
+
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('email, first_name, last_name')
+    .eq('id', data.customer_id)
+    .single()
+
+  return {
+    id: data.id,
+    organization_id: data.organization_id,
+    order_number: shortRef,
+    total: balance,
+    currency: data.currency || 'COP',
+    status: data.status,
+    payment_status: ['paid', 'cancelled'].includes(data.status) ? 'paid' : 'pending',
+    customer_email: customer?.email || '',
+    customer_name: `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim(),
+    _source: 'invoice' as const,
+  }
+}
+
+/**
  * POST /api/checkout/init
  *
  * Recibe orderNumber + gateway code → genera URL de checkout de la pasarela.
@@ -405,13 +480,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Obtener la orden, reservación, membresía o ticket según source
+    // 1. Obtener la orden, reservación, membresía, ticket, pase o factura según source
     let order: any = null
     const isReservation = source === 'reservation' && sourceId
     const isMembership = source === 'membership' && sourceId
     const isTripTicket = source === 'trip_ticket' && sourceId
+    const isParkingPass = source === 'parking_pass' && sourceId
+    const isInvoice = source === 'invoice' && sourceId
 
-    if (isTripTicket) {
+    if (isInvoice) {
+      order = await getInvoice(supabase, sourceId)
+    } else if (isParkingPass) {
+      order = await getParkingPass(supabase, sourceId)
+    } else if (isTripTicket) {
       order = await getTripTicket(supabase, sourceId)
     } else if (isMembership) {
       order = await getMembership(supabase, sourceId)
@@ -422,7 +503,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      const label = isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
+      const label = isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
       return NextResponse.json(
         { error: `${label} no encontrado` },
         { status: 404 }
@@ -430,7 +511,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (order.payment_status === 'paid') {
-      const label = isTripTicket ? 'Este boleto' : isMembership ? 'Esta membresía' : isReservation ? 'Esta reservación' : 'Esta orden'
+      const label = isInvoice ? 'Esta factura' : isParkingPass ? 'Este pase' : isTripTicket ? 'Este boleto' : isMembership ? 'Esta membresía' : isReservation ? 'Esta reservación' : 'Esta orden'
       return NextResponse.json(
         { error: `${label} ya fue pagado` },
         { status: 400 }
@@ -498,8 +579,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. Actualizar orden/reservación/membresía/ticket con el gateway seleccionado
-    if (isTripTicket) {
+    // 5. Actualizar orden/reservación/membresía/ticket/pase con el gateway seleccionado
+    if (isParkingPass) {
+      await (supabase as any)
+        .from('parking_passes')
+        .update({
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.id)
+    } else if (isTripTicket) {
       await (supabase as any)
         .from('trip_tickets')
         .update({
@@ -547,7 +635,7 @@ export async function POST(request: NextRequest) {
         .eq('id', order.id)
     }
 
-    const resolvedSource = isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
+    const resolvedSource = isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
 
     return NextResponse.json({
       success: true,
@@ -555,7 +643,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       orderNumber: order.order_number,
       source: resolvedSource,
-      sourceId: isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
+      sourceId: isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)

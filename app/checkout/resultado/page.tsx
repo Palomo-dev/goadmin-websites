@@ -5,6 +5,9 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react'
+import { getGoogleAdsConfig, getMetaPixelId } from '@/lib/supabase/queries'
+import GoogleAdsConversion from '@/components/site/GoogleAdsConversion'
+import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,6 +78,10 @@ export default async function CheckoutResultadoPage({
   if (!ctx) return <NotFoundPage />
 
   const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const [googleAdsConfig, metaPixelId] = await Promise.all([
+    getGoogleAdsConfig(organization.id),
+    getMetaPixelId(organization.id)
+  ])
   const params = await searchParams
   const orderRef = params.ref
 
@@ -122,7 +129,23 @@ export default async function CheckoutResultadoPage({
   const config = STATUS_CONFIG[paymentStatus] || STATUS_CONFIG.pending
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+      {/* Google Ads Conversion — solo si pago exitoso */}
+      {paymentStatus === 'paid' && googleAdsConfig && (
+        <GoogleAdsConversion
+          transactionId={order.order_number}
+          value={Number(order.total)}
+          currency="COP"
+        />
+      )}
+      {/* Meta Pixel Purchase — solo si pago exitoso */}
+      {paymentStatus === 'paid' && metaPixelId && (
+        <MetaPixelPurchase
+          orderNumber={order.order_number}
+          value={Number(order.total)}
+          currency="COP"
+        />
+      )}
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-lg mx-auto text-center">
           {/* Icono de estado */}

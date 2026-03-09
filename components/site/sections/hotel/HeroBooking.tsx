@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Calendar, Users, Search, Star, MapPin } from 'lucide-react'
+import { Calendar, Users, Search, Star, MapPin, Moon, ChevronDown, Minus, Plus } from 'lucide-react'
 
 interface HeroBookingProps {
   organizationName: string
@@ -14,119 +13,284 @@ interface HeroBookingProps {
   location?: string
 }
 
-export function HeroBooking({ 
-  organizationName, 
-  tagline, 
-  primaryColor, 
+export function HeroBooking({
+  organizationName,
+  tagline,
+  primaryColor,
   backgroundImage,
   rating = 4.8,
   location
 }: HeroBookingProps) {
   const [checkin, setCheckin] = useState('')
   const [checkout, setCheckout] = useState('')
-  const [guests, setGuests] = useState('2')
-  
+  const [adults, setAdults] = useState(2)
+  const [children, setChildren] = useState(0)
+  const [guestOpen, setGuestOpen] = useState(false)
+  const [error, setError] = useState('')
+  const guestRef = useRef<HTMLDivElement>(null)
+
+  // Fecha mínima: hoy
+  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+
+  // Fecha mínima de checkout: día siguiente al checkin
+  const minCheckout = useMemo(() => {
+    if (!checkin) return today
+    const d = new Date(checkin + 'T12:00:00')
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  }, [checkin, today])
+
+  // Cálculo automático de noches
+  const nights = useMemo(() => {
+    if (!checkin || !checkout) return 0
+    const diff = Math.round(
+      (new Date(checkout + 'T12:00:00').getTime() - new Date(checkin + 'T12:00:00').getTime()) /
+      (1000 * 60 * 60 * 24)
+    )
+    return diff > 0 ? diff : 0
+  }, [checkin, checkout])
+
+  const handleCheckinChange = useCallback((value: string) => {
+    setCheckin(value)
+    setError('')
+    if (value) {
+      const ci = new Date(value + 'T12:00:00')
+      if (!checkout || new Date(checkout + 'T12:00:00') <= ci) {
+        const next = new Date(ci)
+        next.setDate(next.getDate() + 1)
+        setCheckout(next.toISOString().split('T')[0])
+      }
+    }
+  }, [checkout])
+
+  const totalGuests = adults + children
+
+  // Cerrar dropdown al click fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (guestRef.current && !guestRef.current.contains(e.target as Node)) {
+        setGuestOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSearch = () => {
+    if (!checkin) { setError('Selecciona la fecha de llegada'); return }
+    if (!checkout) { setError('Selecciona la fecha de salida'); return }
+    if (nights <= 0) { setError('La fecha de salida debe ser posterior a la de llegada'); return }
+    setError('')
+    const params = new URLSearchParams({
+      checkin,
+      checkout,
+      adults: String(adults),
+      children: String(children),
+      guests: String(totalGuests),
+    })
+    window.location.href = `/espacios?${params.toString()}`
+  }
+
+  const fmtDate = (d: string) => {
+    if (!d) return ''
+    return new Date(d + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+  }
+
   return (
-    <section 
-      className="relative min-h-[700px] flex items-center"
+    <section
+      className="relative min-h-[700px] flex items-end pb-28 md:items-center md:pb-0"
       style={{
-        background: backgroundImage 
-          ? `linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 100%), url(${backgroundImage}) center/cover`
-          : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 50%, #1a1a2e 100%)`
+        background: backgroundImage
+          ? `linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 100%), url(${backgroundImage}) center/cover no-repeat`
+          : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}cc 50%, #0f172a 100%)`
       }}
     >
-      <div className="container mx-auto px-4 py-20">
-        <div className="max-w-3xl">
-          {/* Badge */}
-          <div className="flex items-center gap-4 mb-6">
-            <span className="inline-flex items-center px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-medium">
+      <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
+        <div className="max-w-4xl">
+          {/* Badges */}
+          <div className="flex items-center gap-3 mb-6">
+            <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-white text-sm font-medium border border-white/20">
               🏨 Hotel
             </span>
-            {rating && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-400/90 text-yellow-900 text-sm font-medium">
-                <Star className="w-4 h-4 fill-current mr-1" />
+            {rating > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-400/90 text-amber-950 text-sm font-semibold shadow-lg">
+                <Star className="w-3.5 h-3.5 fill-current" />
                 {rating}
               </span>
             )}
           </div>
-          
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-4 leading-tight">
+
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-3 leading-tight">
             {organizationName}
           </h1>
-          
+
           {location && (
-            <p className="flex items-center text-white/80 text-lg mb-4">
-              <MapPin className="w-5 h-5 mr-2" />
+            <p className="flex items-center text-white/75 text-base md:text-lg mb-3">
+              <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
               {location}
             </p>
           )}
-          
-          <p className="text-xl text-white/90 mb-10 max-w-xl">
-            {tagline || 'Vive una experiencia única con el confort y la elegancia que mereces. Tu hogar lejos de casa.'}
+
+          <p className="text-lg md:text-xl text-white/85 mb-10 max-w-2xl">
+            {tagline || 'Vive una experiencia única con el confort y la elegancia que mereces.'}
           </p>
-          
-          {/* Booking form */}
-          <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-2xl">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Check-in
+
+          {/* ====== BOOKING WIDGET ====== */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-5 md:p-6 max-w-3xl">
+            {/* Campos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+              {/* Check-in */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Llegada
                 </label>
-                <Input
+                <input
                   type="date"
                   value={checkin}
-                  onChange={(e) => setCheckin(e.target.value)}
-                  className="w-full"
+                  min={today}
+                  onChange={(e) => handleCheckinChange(e.target.value)}
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
+                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
                 />
+                {checkin && <p className="text-xs text-gray-400 mt-1">{fmtDate(checkin)}</p>}
               </div>
-              
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Check-out
+
+              {/* Check-out */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Salida
                 </label>
-                <Input
+                <input
                   type="date"
                   value={checkout}
-                  onChange={(e) => setCheckout(e.target.value)}
-                  className="w-full"
+                  min={minCheckout}
+                  onChange={(e) => { setCheckout(e.target.value); setError('') }}
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
+                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
                 />
+                {checkout && <p className="text-xs text-gray-400 mt-1">{fmtDate(checkout)}</p>}
               </div>
-              
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 inline mr-1" />
+
+              {/* Huéspedes */}
+              <div className="relative" ref={guestRef}>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <Users className="w-3.5 h-3.5" />
                   Huéspedes
                 </label>
-                <select
-                  value={guests}
-                  onChange={(e) => setGuests(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <button
+                  type="button"
+                  onClick={() => setGuestOpen(!guestOpen)}
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm font-medium flex items-center justify-between hover:bg-gray-100 transition-colors"
                 >
-                  {[1,2,3,4,5,6].map(n => (
-                    <option key={n} value={n}>{n} {n === 1 ? 'Huésped' : 'Huéspedes'}</option>
-                  ))}
-                </select>
+                  <span>{adults} Ad.{children > 0 ? ` · ${children} Niñ.` : ''}</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${guestOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown huéspedes */}
+                {guestOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
+                    {/* Adultos */}
+                    <div className="flex items-center justify-between py-2.5">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Adultos</p>
+                        <p className="text-xs text-gray-400">13+ años</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAdults(Math.max(1, adults - 1))}
+                          disabled={adults <= 1}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-semibold">{adults}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdults(Math.min(10, adults + 1))}
+                          disabled={adults >= 10}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-100" />
+
+                    {/* Niños */}
+                    <div className="flex items-center justify-between py-2.5">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Niños</p>
+                        <p className="text-xs text-gray-400">0–12 años</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setChildren(Math.max(0, children - 1))}
+                          disabled={children <= 0}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-semibold">{children}</span>
+                        <button
+                          type="button"
+                          onClick={() => setChildren(Math.min(6, children + 1))}
+                          disabled={children >= 6}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-gray-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setGuestOpen(false)}
+                      className="w-full mt-2 text-center text-sm font-medium py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      style={{ color: primaryColor }}
+                    >
+                      Listo
+                    </button>
+                  </div>
+                )}
               </div>
-              
-              <div className="md:col-span-1 flex items-end">
-                <Button 
-                  className="w-full h-10"
+
+              {/* Botón buscar */}
+              <div className="flex items-end">
+                <Button
+                  className="w-full h-11 font-semibold text-sm shadow-lg hover:opacity-90 transition-opacity"
                   style={{ backgroundColor: primaryColor }}
-                  onClick={() => {
-                    window.location.href = `/espacios?checkin=${checkin}&checkout=${checkout}&guests=${guests}`
-                  }}
+                  onClick={handleSearch}
                 >
                   <Search className="w-4 h-4 mr-2" />
                   Buscar
                 </Button>
               </div>
             </div>
+
+            {/* Info de noches + error */}
+            <div className="mt-3 flex items-center justify-between min-h-[20px]">
+              {nights > 0 && (
+                <p className="flex items-center gap-1.5 text-sm text-gray-500">
+                  <Moon className="w-3.5 h-3.5" />
+                  <span className="font-semibold" style={{ color: primaryColor }}>{nights}</span>
+                  {nights === 1 ? 'noche' : 'noches'}
+                  {' · '}{totalGuests} {totalGuests === 1 ? 'huésped' : 'huéspedes'}
+                </p>
+              )}
+              {error && (
+                <p className="text-sm text-red-500 font-medium">{error}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-      
+
       {/* Bottom gradient */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
     </section>

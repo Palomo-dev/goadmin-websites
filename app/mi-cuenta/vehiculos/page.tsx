@@ -42,10 +42,10 @@ export default async function VehiculosPage() {
                 <span className="text-2xl">🚗</span>
                 <div>
                   <p className="font-semibold text-sm">
-                    {v.plate_number || v.license_plate || 'Sin placa'}
+                    {v.plate || 'Sin placa'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {[v.brand, v.model, v.year, v.color].filter(Boolean).join(' · ') || 'Sin detalles'}
+                    {[v.brand, v.model, v.color].filter(Boolean).join(' · ') || 'Sin detalles'}
                   </p>
                   {v.vehicle_type && <p className="text-xs text-gray-400">{v.vehicle_type}</p>}
                 </div>
