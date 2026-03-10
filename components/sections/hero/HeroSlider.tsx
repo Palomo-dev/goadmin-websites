@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { HeroBookingWidget } from './HeroBookingWidget'
 
 interface HeroSliderProps {
   content: {
@@ -17,10 +18,11 @@ interface HeroSliderProps {
       cta_url?: string
     }>
   }
+  organization?: any
   primaryColor?: string
 }
 
-export function HeroSlider({ content, primaryColor }: HeroSliderProps) {
+export function HeroSlider({ content, organization, primaryColor }: HeroSliderProps) {
   const slides = content.slides || []
   const [current, setCurrent] = useState(0)
 
@@ -41,11 +43,13 @@ export function HeroSlider({ content, primaryColor }: HeroSliderProps) {
         <div>
           {content.title && <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{content.title}</h1>}
           {content.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{content.subtitle}</p>}
-          {content.cta_text && content.cta_url && (
+          {organization?.website_settings?.show_hero_booking ? (
+            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+          ) : content.cta_text && content.cta_url ? (
             <Link href={content.cta_url} className="inline-block px-8 py-3 bg-white rounded-lg font-medium" style={{ color: primaryColor }}>
               {content.cta_text}
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
     )
@@ -65,11 +69,13 @@ export function HeroSlider({ content, primaryColor }: HeroSliderProps) {
         <div className="max-w-4xl mx-auto">
           {slide.title && <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{slide.title}</h1>}
           {slide.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{slide.subtitle}</p>}
-          {slide.cta_text && slide.cta_url && (
+          {organization?.website_settings?.show_hero_booking ? (
+            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+          ) : slide.cta_text && slide.cta_url ? (
             <Link href={slide.cta_url} className="inline-block px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
               {slide.cta_text}
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
       {slides.length > 1 && (

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { HeroBookingWidget } from './HeroBookingWidget'
 
 interface HeroVideoProps {
   content: {
@@ -10,10 +11,11 @@ interface HeroVideoProps {
     image_url?: string
     overlay_opacity?: number
   }
+  organization?: any
   primaryColor?: string
 }
 
-export function HeroVideo({ content, primaryColor }: HeroVideoProps) {
+export function HeroVideo({ content, organization, primaryColor }: HeroVideoProps) {
   const overlayOpacity = content.overlay_opacity ?? 0.6
 
   return (
@@ -42,7 +44,9 @@ export function HeroVideo({ content, primaryColor }: HeroVideoProps) {
         {content.subtitle && (
           <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">{content.subtitle}</p>
         )}
-        {content.cta_text && content.cta_url && (
+        {organization?.website_settings?.show_hero_booking ? (
+          <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+        ) : content.cta_text && content.cta_url ? (
           <Link
             href={content.cta_url}
             className="inline-block px-8 py-4 rounded-lg text-white font-medium text-lg hover:opacity-90 transition-opacity"
@@ -50,7 +54,7 @@ export function HeroVideo({ content, primaryColor }: HeroVideoProps) {
           >
             {content.cta_text}
           </Link>
-        )}
+        ) : null}
       </div>
     </div>
   )
