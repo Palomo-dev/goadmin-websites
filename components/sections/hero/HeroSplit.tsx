@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { HeroBookingWidget } from './HeroBookingWidget'
 
 interface HeroSplitProps {
   content: {
@@ -26,26 +27,30 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
         {content.subtitle && (
           <p className="text-lg md:text-xl text-gray-600 mb-8">{content.subtitle}</p>
         )}
-        <div className="flex flex-wrap gap-4">
-          {content.cta_text && content.cta_url && (
-            <Link
-              href={content.cta_url}
-              className="px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: primaryColor }}
-            >
-              {content.cta_text}
-            </Link>
-          )}
-          {content.cta_secondary_text && content.cta_secondary_url && (
-            <Link
-              href={content.cta_secondary_url}
-              className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-gray-50 transition-colors"
-              style={{ borderColor: primaryColor, color: primaryColor }}
-            >
-              {content.cta_secondary_text}
-            </Link>
-          )}
-        </div>
+        {organization?.website_settings?.show_hero_booking ? (
+          <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {content.cta_text && content.cta_url && (
+              <Link
+                href={content.cta_url}
+                className="px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {content.cta_text}
+              </Link>
+            )}
+            {content.cta_secondary_text && content.cta_secondary_url && (
+              <Link
+                href={content.cta_secondary_url}
+                className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-gray-50 transition-colors"
+                style={{ borderColor: primaryColor, color: primaryColor }}
+              >
+                {content.cta_secondary_text}
+              </Link>
+            )}
+          </div>
+        )}
       </div>
       <div className="order-first md:order-last">
         {imageUrl ? (
