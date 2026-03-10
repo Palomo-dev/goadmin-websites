@@ -19,7 +19,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   const ctaText = content.cta_text || 'Contáctanos'
   const ctaUrl = content.cta_url || '/contacto'
   const imageUrl = content.image_url || organization.website_settings?.hero_image_url
-  const showBooking = organization.website_settings?.show_hero_booking === true
+  const showBooking = (content as any).show_booking_widget ?? organization.website_settings?.show_hero_booking ?? false
 
   return (
     <div className={`relative ${showBooking ? 'min-h-[720px]' : 'min-h-[70vh]'} flex items-center justify-center text-center text-white -mx-4 md:-mx-6 lg:-mx-8 -mt-16 md:-mt-24`}>

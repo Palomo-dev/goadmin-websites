@@ -27,7 +27,7 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
         {content.subtitle && (
           <p className="text-lg md:text-xl text-gray-600 mb-8">{content.subtitle}</p>
         )}
-        {organization?.website_settings?.show_hero_booking ? (
+        {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
         ) : (
           <div className="flex flex-wrap gap-4">

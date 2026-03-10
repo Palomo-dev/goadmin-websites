@@ -13,7 +13,7 @@ interface HeroMinimalProps {
 }
 
 export function HeroMinimal({ content, organization, primaryColor }: HeroMinimalProps) {
-  const showBooking = organization?.website_settings?.show_hero_booking === true
+  const showBooking = (content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false
 
   return (
     <div className="text-center py-4">

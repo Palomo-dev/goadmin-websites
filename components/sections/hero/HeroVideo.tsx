@@ -44,7 +44,7 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
         {content.subtitle && (
           <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">{content.subtitle}</p>
         )}
-        {organization?.website_settings?.show_hero_booking ? (
+        {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
           <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
         ) : content.cta_text && content.cta_url ? (
           <Link
