@@ -94,12 +94,6 @@ export interface Database {
           text_color: string | null
           font_heading: string | null
           font_body: string | null
-          hero_title: string | null
-          hero_subtitle: string | null
-          hero_image_url: string | null
-          hero_video_url: string | null
-          hero_cta_text: string | null
-          hero_cta_url: string | null
           show_products: boolean
           show_services: boolean
           show_gallery: boolean
@@ -160,8 +154,6 @@ export interface Database {
           text_color?: string | null
           font_heading?: string | null
           font_body?: string | null
-          hero_title?: string | null
-          hero_subtitle?: string | null
           is_published?: boolean
           header_style?: 'default' | 'transparent' | 'minimal' | 'centered'
           footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'

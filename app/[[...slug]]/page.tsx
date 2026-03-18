@@ -16,9 +16,6 @@ import {
   getOrganizationTags,
   getProductModifiers,
   getProductVariantRelations,
-  getMembershipPlans,
-  getGymClasses,
-  getClassReservationCounts,
   getParkingRates,
   getParkingPassTypes,
   getParkingAvailability,
@@ -30,7 +27,6 @@ import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
 import { getBusinessTypeConfig } from '@/types/organization'
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
-import { OrganizationSite } from '@/components/site/OrganizationSite'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { SectionRenderer } from '@/components/sections/SectionRenderer'
@@ -200,42 +196,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     )
   }
 
-  // 2. Fallback: si es la home y no hay builder, usar el sistema antiguo
-  if (currentSlug === 'home') {
-    const businessType = getBusinessTypeConfig(organization.type_id)
-    const isGym = businessType.type === 'gym'
-    const isHotel = businessType.type === 'hotel'
-    const [products, categories, spaceTypes, spaces, membershipPlans, gymClasses] = await Promise.all([
-      getOrganizationProducts(organization.id, 20),
-      getOrganizationCategories(organization.id),
-      getOrganizationSpaceTypes(organization.id),
-      isHotel ? getOrganizationSpaces(organization.id) : Promise.resolve([]),
-      isGym ? getMembershipPlans(organization.id) : Promise.resolve([]),
-      isGym ? getGymClasses(organization.id) : Promise.resolve([])
-    ])
-
-    // Obtener conteos de reservas para calcular cupos disponibles
-    const classIds = gymClasses.map((c: any) => c.id)
-    const reservationCounts = isGym && classIds.length > 0
-      ? await getClassReservationCounts(organization.id, classIds)
-      : {}
-    
-    return (
-      <OrganizationSite 
-        organization={organization}
-        businessType={businessType}
-        products={products}
-        categories={categories}
-        spaceTypes={spaceTypes}
-        spaces={spaces}
-        membershipPlans={membershipPlans}
-        gymClasses={gymClasses}
-        reservationCounts={reservationCounts}
-      />
-    )
-  }
-
-  // 3. Fallbacks para slugs conocidos sin página en el builder
+  // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
   const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams)
   if (fallback) return fallback

@@ -10,6 +10,12 @@
  * El sistema crea/actualiza las tablas correspondientes.
  */
 
+export interface NavItem {
+  name: string
+  href: string
+  icon?: string
+}
+
 export interface SectionPreset {
   section_type: string
   section_variant: string
@@ -54,6 +60,9 @@ export interface TemplatePreset {
   header_cta_url?: string
   show_topbar?: boolean
   logo_position?: 'left' | 'center'
+
+  // Navegación fallback (si no hay website_pages)
+  navigation: NavItem[]
 
   // Páginas y secciones
   pages: PagePreset[]
@@ -112,6 +121,80 @@ function galeriaPage(variant: string): PagePreset {
 }
 
 // ============================================================
+// NAVEGACIÓN FALLBACK POR TIPO DE NEGOCIO
+// ============================================================
+
+const defaultNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Productos', href: '/productos' },
+  { name: 'Servicios', href: '/servicios' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const retailNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Productos', href: '/productos' },
+  { name: 'Categorías', href: '/#categorias' },
+  { name: 'Ofertas', href: '/#ofertas' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const restaurantNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Menú', href: '/productos' },
+  { name: 'Reservar', href: '/reservas' },
+  { name: 'Galería', href: '/#galeria' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const hotelNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Productos', href: '/productos' },
+  { name: 'Espacios', href: '/espacios' },
+  { name: 'Servicios', href: '/servicios' },
+  { name: 'Galería', href: '/#galeria' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const gymNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Membresías', href: '/productos' },
+  { name: 'Clases', href: '/servicios' },
+  { name: 'Horarios', href: '/#horarios' },
+  { name: 'Entrenadores', href: '/#entrenadores' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const transportNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Rutas', href: '/productos' },
+  { name: 'Horarios', href: '/#horarios' },
+  { name: 'Tarifas', href: '/#tarifas' },
+  { name: 'Reservar', href: '/reservas' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const parkingNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Tarifas', href: '/productos' },
+  { name: 'Ubicación', href: '/#ubicacion' },
+  { name: 'Servicios', href: '/servicios' },
+  { name: 'Reservar', href: '/reservas' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+const servicesNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Servicios', href: '/servicios' },
+  { name: 'Planes', href: '/productos' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+// ============================================================
 // RETAIL TEMPLATES
 // ============================================================
 
@@ -132,6 +215,7 @@ const retail_modern: TemplatePreset = {
   header_cta_text: 'Ver Tienda',
   header_cta_url: '/productos',
   logo_position: 'left',
+  navigation: retailNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -164,6 +248,7 @@ const retail_modern: TemplatePreset = {
       slug: 'ofertas', title: 'Ofertas', show_in_header: true, show_in_footer: true, header_order: 3, footer_order: 3,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
+        { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'promo_banners', section_variant: 'grid' },
         { section_type: 'featured_products', section_variant: 'carousel' },
         { section_type: 'cta', section_variant: 'banner' },
@@ -189,6 +274,7 @@ const retail_classic: TemplatePreset = {
   header_style: 'centered',
   footer_style: 'default',
   logo_position: 'center',
+  navigation: retailNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -230,6 +316,7 @@ const retail_bold: TemplatePreset = {
   footer_style: 'minimal',
   show_topbar: true,
   logo_position: 'left',
+  navigation: retailNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -271,6 +358,7 @@ const retail_elegant: TemplatePreset = {
   header_style: 'transparent',
   footer_style: 'centered',
   logo_position: 'center',
+  navigation: retailNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -316,6 +404,7 @@ const restaurant_modern: TemplatePreset = {
   footer_style: 'three_columns',
   header_cta_text: 'Reservar Mesa',
   header_cta_url: '/reservas',
+  navigation: restaurantNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -376,6 +465,7 @@ const restaurant_elegant: TemplatePreset = {
   header_cta_text: 'Reservar',
   header_cta_url: '/reservas',
   logo_position: 'center',
+  navigation: restaurantNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -419,6 +509,7 @@ const restaurant_casual: TemplatePreset = {
   show_topbar: true,
   header_cta_text: 'Pedir Ahora',
   header_cta_url: '/domicilios',
+  navigation: restaurantNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -466,6 +557,7 @@ const restaurant_rustic: TemplatePreset = {
   header_style: 'centered',
   footer_style: 'three_columns',
   logo_position: 'center',
+  navigation: restaurantNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -499,33 +591,34 @@ const restaurant_rustic: TemplatePreset = {
 
 const hotel_luxury: TemplatePreset = {
   id: 'hotel_luxury',
-  name: 'Hotel Luxury',
-  description: 'Premium, elegante, dorado, fotografía de alta calidad',
+  name: 'Hotel Lujo',
+  description: 'Elegante, dorado, serif, fotografía editorial',
   business_type: 'hotel',
   is_default: true,
   theme: {
-    primary_color: '#8B6914',
+    primary_color: '#B8860B',
     secondary_color: '#1A1A2E',
     theme_mode: 'light',
   },
   fonts: { heading: 'Playfair Display', body: 'Lato' },
   header_style: 'transparent',
   footer_style: 'three_columns',
-  header_cta_text: 'Reservar Ahora',
+  header_cta_text: 'Reservar',
   header_cta_url: '/reservas',
+  logo_position: 'center',
+  navigation: hotelNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
       sections: [
         { section_type: 'hero', section_variant: 'fullscreen' },
-        { section_type: 'booking_cta', section_variant: 'inline_form' },
+        { section_type: 'text_block', section_variant: 'centered' },
         { section_type: 'room_types', section_variant: 'cards' },
-        { section_type: 'why_choose_us', section_variant: 'icons' },
-        { section_type: 'amenities', section_variant: 'icons' },
-        { section_type: 'gallery', section_variant: 'masonry' },
+        { section_type: 'amenities', section_variant: 'grid' },
+        { section_type: 'gallery', section_variant: 'carousel' },
         { section_type: 'testimonials', section_variant: 'carousel' },
-        { section_type: 'stats', section_variant: 'counters' },
-        { section_type: 'map', section_variant: 'embedded' },
+        { section_type: 'booking_cta', section_variant: 'banner' },
+        { section_type: 'newsletter', section_variant: 'with_image' },
       ],
     },
     {
@@ -533,18 +626,9 @@ const hotel_luxury: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'room_types', section_variant: 'detailed' },
-        { section_type: 'booking_cta', section_variant: 'banner' },
       ],
     },
-    {
-      slug: 'servicios', title: 'Servicios', show_in_header: true, show_in_footer: true, header_order: 2, footer_order: 2,
-      sections: [
-        { section_type: 'hero', section_variant: 'minimal' },
-        { section_type: 'amenities', section_variant: 'grid' },
-        { section_type: 'services_list', section_variant: 'cards' },
-      ],
-    },
-    galeriaPage('masonry'),
+    galeriaPage('carousel'),
     nosotrosPage('split', 'centered'),
     contactoPage('minimal', 'split', 'embedded'),
   ],
@@ -567,6 +651,7 @@ const hotel_boutique: TemplatePreset = {
   logo_position: 'center',
   header_cta_text: 'Reservar',
   header_cta_url: '/reservas',
+  navigation: hotelNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -608,6 +693,7 @@ const hotel_minimal: TemplatePreset = {
   header_style: 'minimal',
   footer_style: 'minimal',
   logo_position: 'left',
+  navigation: hotelNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -648,6 +734,7 @@ const hotel_resort: TemplatePreset = {
   footer_style: 'three_columns',
   header_cta_text: 'Reservar',
   header_cta_url: '/reservas',
+  navigation: hotelNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -695,6 +782,7 @@ const gym_power: TemplatePreset = {
   footer_style: 'default',
   header_cta_text: 'Únete Ahora',
   header_cta_url: '/productos',
+  navigation: gymNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -755,6 +843,7 @@ const gym_wellness: TemplatePreset = {
   footer_style: 'centered',
   header_cta_text: 'Reservar Clase',
   header_cta_url: '/servicios',
+  navigation: gymNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -762,7 +851,7 @@ const gym_wellness: TemplatePreset = {
         { section_type: 'hero', section_variant: 'split' },
         { section_type: 'text_block', section_variant: 'centered' },
         { section_type: 'class_schedule', section_variant: 'grid' },
-        { section_type: 'trainers', section_variant: 'carousel' },
+        { section_type: 'trainers', section_variant: 'grid' },
         { section_type: 'gallery', section_variant: 'masonry' },
         { section_type: 'testimonials', section_variant: 'quotes' },
         { section_type: 'membership_plans', section_variant: 'pricing_table' },
@@ -805,6 +894,7 @@ const gym_urban: TemplatePreset = {
   footer_style: 'minimal',
   header_cta_text: 'Unirme',
   header_cta_url: '/productos',
+  navigation: gymNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -848,6 +938,7 @@ const gym_premium: TemplatePreset = {
   footer_style: 'three_columns',
   header_cta_text: 'Membresía VIP',
   header_cta_url: '/productos',
+  navigation: gymNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -855,7 +946,7 @@ const gym_premium: TemplatePreset = {
         { section_type: 'hero', section_variant: 'video' },
         { section_type: 'text_block', section_variant: 'centered' },
         { section_type: 'membership_plans', section_variant: 'pricing_table' },
-        { section_type: 'trainers', section_variant: 'carousel' },
+        { section_type: 'trainers', section_variant: 'grid' },
         { section_type: 'gallery', section_variant: 'fullscreen' },
         { section_type: 'testimonials', section_variant: 'minimal' },
         { section_type: 'stats', section_variant: 'inline' },
@@ -894,6 +985,7 @@ const transport_corporate: TemplatePreset = {
   header_style: 'default',
   footer_style: 'three_columns',
   show_topbar: true,
+  navigation: transportNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -915,7 +1007,7 @@ const transport_corporate: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'services_list', section_variant: 'cards' },
-        { section_type: 'cta', section_variant: 'centered' },
+        { section_type: 'booking_transport', section_variant: 'banner' },
       ],
     },
     {
@@ -952,6 +1044,7 @@ const transport_dynamic: TemplatePreset = {
   fonts: { heading: 'Poppins', body: 'Inter' },
   header_style: 'default',
   footer_style: 'minimal',
+  navigation: transportNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -970,6 +1063,7 @@ const transport_dynamic: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'routes', section_variant: 'cards' },
+        { section_type: 'booking_transport', section_variant: 'banner' },
       ],
     },
     nosotrosPage('split', 'left'),
@@ -992,6 +1086,7 @@ const transport_classic: TemplatePreset = {
   header_style: 'centered',
   footer_style: 'default',
   logo_position: 'center',
+  navigation: transportNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1010,6 +1105,7 @@ const transport_classic: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'routes', section_variant: 'cards' },
+        { section_type: 'booking_transport', section_variant: 'banner' },
       ],
     },
     nosotrosPage('fullscreen', 'two_columns'),
@@ -1031,6 +1127,7 @@ const transport_eco: TemplatePreset = {
   fonts: { heading: 'Nunito', body: 'Nunito' },
   header_style: 'default',
   footer_style: 'three_columns',
+  navigation: transportNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1049,6 +1146,7 @@ const transport_eco: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'routes', section_variant: 'cards' },
+        { section_type: 'booking_transport', section_variant: 'banner' },
       ],
     },
     nosotrosPage('split', 'centered'),
@@ -1076,6 +1174,7 @@ const parking_modern: TemplatePreset = {
   footer_style: 'default',
   header_cta_text: 'Reservar Espacio',
   header_cta_url: '/reservas',
+  navigation: parkingNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1137,6 +1236,7 @@ const parking_tech: TemplatePreset = {
   footer_style: 'minimal',
   header_cta_text: 'Reservar',
   header_cta_url: '/reservas',
+  navigation: parkingNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1177,6 +1277,7 @@ const parking_urban: TemplatePreset = {
   fonts: { heading: 'Poppins', body: 'Roboto' },
   header_style: 'default',
   footer_style: 'default',
+  navigation: parkingNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1217,6 +1318,7 @@ const parking_premium: TemplatePreset = {
   header_style: 'transparent',
   footer_style: 'centered',
   logo_position: 'center',
+  navigation: parkingNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1248,11 +1350,11 @@ const parking_premium: TemplatePreset = {
 // SAAS TEMPLATES
 // ============================================================
 
-const saas_modern: TemplatePreset = {
-  id: 'saas_modern',
-  name: 'SaaS Moderno',
-  description: 'Clean tech startup, gradientes suaves, ilustraciones',
-  business_type: 'saas',
+const services_modern: TemplatePreset = {
+  id: 'services_modern',
+  name: 'Servicios Moderno',
+  description: 'Clean, profesional, gradientes suaves',
+  business_type: 'services',
   is_default: true,
   theme: {
     primary_color: '#6366F1',
@@ -1264,6 +1366,7 @@ const saas_modern: TemplatePreset = {
   footer_style: 'three_columns',
   header_cta_text: 'Empezar Gratis',
   header_cta_url: '/auth',
+  navigation: servicesNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1312,11 +1415,11 @@ const saas_modern: TemplatePreset = {
   ],
 }
 
-const saas_corporate: TemplatePreset = {
-  id: 'saas_corporate',
-  name: 'SaaS Corporativo',
+const services_corporate: TemplatePreset = {
+  id: 'services_corporate',
+  name: 'Servicios Corporativo',
   description: 'Enterprise, profesional, confiable',
-  business_type: 'saas',
+  business_type: 'services',
   is_default: false,
   theme: {
     primary_color: '#1976D2',
@@ -1327,6 +1430,7 @@ const saas_corporate: TemplatePreset = {
   header_style: 'default',
   footer_style: 'three_columns',
   show_topbar: true,
+  navigation: servicesNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1362,11 +1466,11 @@ const saas_corporate: TemplatePreset = {
   ],
 }
 
-const saas_creative: TemplatePreset = {
-  id: 'saas_creative',
-  name: 'SaaS Creativo',
+const services_creative: TemplatePreset = {
+  id: 'services_creative',
+  name: 'Servicios Creativo',
   description: 'Creativo, playful, gradientes coloridos',
-  business_type: 'saas',
+  business_type: 'services',
   is_default: false,
   theme: {
     primary_color: '#FF6B6B',
@@ -1376,6 +1480,7 @@ const saas_creative: TemplatePreset = {
   fonts: { heading: 'Poppins', body: 'Nunito' },
   header_style: 'default',
   footer_style: 'minimal',
+  navigation: servicesNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1409,11 +1514,11 @@ const saas_creative: TemplatePreset = {
   ],
 }
 
-const saas_minimal: TemplatePreset = {
-  id: 'saas_minimal',
-  name: 'SaaS Minimal',
+const services_minimal: TemplatePreset = {
+  id: 'services_minimal',
+  name: 'Servicios Minimal',
   description: 'Ultra minimalista, mucho espacio, elegante',
-  business_type: 'saas',
+  business_type: 'services',
   is_default: false,
   theme: {
     primary_color: '#000000',
@@ -1423,6 +1528,7 @@ const saas_minimal: TemplatePreset = {
   fonts: { heading: 'Outfit', body: 'Inter' },
   header_style: 'minimal',
   footer_style: 'centered',
+  navigation: servicesNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
@@ -1490,11 +1596,11 @@ export const TEMPLATE_PRESETS: Record<string, TemplatePreset> = {
   parking_tech,
   parking_urban,
   parking_premium,
-  // SaaS
-  saas_modern,
-  saas_corporate,
-  saas_creative,
-  saas_minimal,
+  // Services
+  services_modern,
+  services_corporate,
+  services_creative,
+  services_minimal,
 }
 
 /** Obtener un preset por su ID */
@@ -1518,7 +1624,7 @@ export function getDefaultPresetByTypeId(typeId: number): TemplatePreset | null 
     1: 'restaurant',
     2: 'hotel',
     3: 'retail',
-    4: 'saas',
+    4: 'services',
     5: 'gym',
     6: 'transport',
     7: 'parking',
