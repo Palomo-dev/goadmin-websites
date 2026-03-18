@@ -1,5 +1,0 @@
-export { HeroBanner } from './HeroBanner'
-export { CategoriesGrid } from './CategoriesGrid'
-export { FeaturedProducts } from './FeaturedProducts'
-export { PromoBanners } from './PromoBanners'
-export { Newsletter } from './Newsletter'

@@ -1,7 +1,0 @@
-export { RetailTemplate } from './RetailTemplate'
-export { HotelTemplate } from './HotelTemplate'
-export { RestaurantTemplate } from './RestaurantTemplate'
-export { GymTemplate } from './GymTemplate'
-export { TransportTemplate } from './TransportTemplate'
-export { ParkingTemplate } from './ParkingTemplate'
-export { SaasTemplate } from './SaasTemplate'

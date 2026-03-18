@@ -37,7 +37,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
     : template?.navigation || defaultNavItems
   
   // CTA del header: prioridad website_settings > template
-  const ctaText = settings?.header_cta_text || template?.hero?.ctaText || 'Contáctanos'
+  const ctaText = settings?.header_cta_text || 'Contáctanos'
   const ctaHref = settings?.header_cta_url || template?.navigation?.find((n: NavItem) => 
     n.href.includes('reserva') || n.href.includes('contacto')
   )?.href || '/contacto'
@@ -49,19 +49,19 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
   const cartBehavior: 'drawer' | 'redirect' = settings?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer'
   
   return (
-    <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md sticky top-0 z-50 shadow-sm dark:shadow-gray-800/30">
       <div className="container mx-auto px-4">
         {/* Top bar con información de contacto */}
         {showTopbar && (organization.phone || organization.email) && (
-          <div className="hidden md:flex justify-end items-center py-2 text-sm border-b border-gray-100">
+          <div className="hidden md:flex justify-end items-center py-2 text-sm border-b border-gray-100 dark:border-gray-800">
             {organization.phone && (
-              <a href={`tel:${organization.phone}`} className="flex items-center text-gray-600 hover:text-gray-900 mr-4">
+              <a href={`tel:${organization.phone}`} className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mr-4">
                 <Phone className="h-3 w-3 mr-1" />
                 {organization.phone}
               </a>
             )}
             {organization.email && (
-              <a href={`mailto:${organization.email}`} className="flex items-center text-gray-600 hover:text-gray-900">
+              <a href={`mailto:${organization.email}`} className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 <Mail className="h-3 w-3 mr-1" />
                 {organization.email}
               </a>
@@ -89,7 +89,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 {organization.name.substring(0, 2).toUpperCase()}
               </div>
             )}
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-xl font-bold text-gray-900 dark:text-white">
               {organization.name}
             </span>
           </Link>
@@ -100,7 +100,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
               <a
                 key={item.name}
                 href={item.href}
-                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
               >
                 {item.name}
               </a>
@@ -118,8 +118,8 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             )}
             
             {showHeaderAuth && (
-              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <User className="h-6 w-6 text-gray-700" />
+              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
               </Link>
             )}
             
@@ -136,25 +136,25 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             {mobileMenuOpen ? (
-              <X className="h-6 w-6 text-gray-600" />
+              <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
             ) : (
-              <Menu className="h-6 w-6 text-gray-600" />
+              <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
             )}
           </button>
         </div>
         
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-100">
+          <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-800">
             <nav className="flex flex-col space-y-4">
               {navItems.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
-                  className="text-gray-600 hover:text-gray-900 font-medium"
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.name}
