@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SiteHeader } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
 import MetaPixel from './MetaPixel'
 import GoogleAdsTag from './GoogleAdsTag'
+import GoogleAnalytics from './GoogleAnalytics'
+import CustomScripts from './CustomScripts'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
@@ -34,6 +36,21 @@ export function OrganizationLayout({
   const settings = organization.website_settings as any
   const subdomain = organization.subdomain || ''
   
+  // Theme mode: light | dark | auto
+  const themeMode: string = settings?.theme_mode || 'light'
+  const [isDark, setIsDark] = useState(themeMode === 'dark')
+
+  useEffect(() => {
+    if (themeMode === 'auto') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      setIsDark(mq.matches)
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }
+    setIsDark(themeMode === 'dark')
+  }, [themeMode])
+
   // El carrito está disponible para todos los tipos de organización
   const showCart = true
   
@@ -49,7 +66,7 @@ export function OrganizationLayout({
   
   return (
     <div 
-      className="min-h-screen bg-white flex flex-col"
+      className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-950 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
     >
       {/* Header específico según tipo */}
@@ -92,10 +109,16 @@ export function OrganizationLayout({
       {/* Google Ads Tag (gtag.js) */}
       {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
       
+      {/* Google Analytics GA4 */}
+      {settings?.analytics_id && <GoogleAnalytics measurementId={settings.analytics_id} />}
+      
       {/* CSS Personalizado */}
       {settings?.custom_css && (
         <style dangerouslySetInnerHTML={{ __html: settings.custom_css }} />
       )}
+      
+      {/* Scripts Personalizados */}
+      {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
     </div>
   )
 }
