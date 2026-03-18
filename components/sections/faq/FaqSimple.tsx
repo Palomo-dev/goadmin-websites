@@ -17,7 +17,7 @@ export function FaqSimple({ content, primaryColor = '#3B82F6' }: FaqSimpleProps)
           {items.map((item: any, i: number) => (
             <div key={i}>
               <h3 className="font-semibold text-lg mb-2">{item.question}</h3>
-              <p className="text-gray-600 leading-relaxed">{item.answer}</p>
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.answer}</p>
             </div>
           ))}
         </div>

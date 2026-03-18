@@ -34,26 +34,26 @@ export function MapEmbedded({ content, organization, primaryColor = '#3B82F6' }:
           {content.show_address !== false && address && (
             <div>
               <h3 className="font-semibold mb-1">Dirección</h3>
-              <p className="text-gray-600 text-sm">{address}</p>
-              {organization?.city && <p className="text-gray-600 text-sm">{organization.city}, {organization?.state}</p>}
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{address}</p>
+              {organization?.city && <p className="text-gray-600 dark:text-gray-400 text-sm">{organization.city}, {organization?.state}</p>}
             </div>
           )}
           {content.show_hours !== false && organization?.website_settings?.business_hours && (
             <div>
               <h3 className="font-semibold mb-1">Horario</h3>
-              <p className="text-gray-600 text-sm">{JSON.stringify(organization.website_settings.business_hours)}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{JSON.stringify(organization.website_settings.business_hours)}</p>
             </div>
           )}
           {organization?.phone && (
             <div>
               <h3 className="font-semibold mb-1">Teléfono</h3>
-              <p className="text-gray-600 text-sm">{organization.phone}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{organization.phone}</p>
             </div>
           )}
           {organization?.email && (
             <div>
               <h3 className="font-semibold mb-1">Email</h3>
-              <p className="text-gray-600 text-sm">{organization.email}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">{organization.email}</p>
             </div>
           )}
         </div>

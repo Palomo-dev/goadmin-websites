@@ -14,7 +14,7 @@ export function StatsInline({ content, primaryColor = '#3B82F6' }: StatsInlinePr
         {items.map((item: any, i: number) => (
           <div key={i} className="text-center">
             <p className="text-2xl md:text-3xl font-bold" style={{ color: primaryColor }}>{item.value}</p>
-            <p className="text-gray-500 text-sm mt-1">{item.label}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{item.label}</p>
           </div>
         ))}
       </div>

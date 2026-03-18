@@ -20,12 +20,12 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {routes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {routes.map((route: any, i: number) => (
-            <div key={route.id || i} className="border rounded-xl p-5 hover:shadow-md transition-shadow">
+            <div key={route.id || i} className="border dark:border-gray-700 rounded-xl p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl">🚌</span>
                 <div>
@@ -38,13 +38,13 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
               </div>
               <h3 className="font-bold text-lg mb-1">{route.name}</h3>
               {route.origin_name && route.destination_name && (
-                <p className="text-gray-500 text-sm mb-3">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
                   {route.origin_name} → {route.destination_name}
                 </p>
               )}
               {route.base_fare && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Desde</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Desde</span>
                   <span className="font-bold text-lg" style={{ color: primaryColor }}>
                     ${Number(route.base_fare).toLocaleString()}
                   </span>
@@ -54,7 +54,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🗺️</p>
           <p>Rutas disponibles próximamente</p>
         </div>

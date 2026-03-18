@@ -20,7 +20,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {plans.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -37,7 +37,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
               )}
               <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
               {plan.duration_days && (
-                <p className="text-gray-500 text-sm mb-4">{plan.duration_days} días</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.duration_days} días</p>
               )}
               <div className="mb-4">
                 <span className="text-4xl font-bold" style={{ color: primaryColor }}>
@@ -70,7 +70,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🎫</p>
           <p>Planes de pase próximamente</p>
         </div>

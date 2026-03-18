@@ -17,7 +17,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
     <div>
       <div className="text-center mb-8">
         {title && <h2 className="text-2xl md:text-3xl font-bold">{title}</h2>}
-        {subtitle && <p className="text-gray-600 mt-2">{subtitle}</p>}
+        {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {categories.length > 0 ? (
         <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
@@ -38,13 +38,13 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
               </div>
               <h3 className="font-medium text-sm">{cat.name}</h3>
               {content.show_count && cat.product_count != null && (
-                <span className="text-xs text-gray-500">{cat.product_count} productos</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{cat.product_count} productos</span>
               )}
             </Link>
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🏷️</p>
           <p>No hay categorías disponibles aún</p>
         </div>

@@ -34,7 +34,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🏷️</p>
           <p>No hay categorías disponibles aún</p>
         </div>

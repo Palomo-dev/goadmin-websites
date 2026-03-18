@@ -30,7 +30,7 @@ export function TeamCarousel({ content, primaryColor = '#3B82F6' }: TeamCarousel
           )}
           <h3 className="text-xl font-bold">{member.name}</h3>
           <p className="text-sm font-medium mb-2" style={{ color: primaryColor }}>{member.role}</p>
-          {member.bio && <p className="text-gray-600 max-w-md mx-auto">{member.bio}</p>}
+          {member.bio && <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">{member.bio}</p>}
         </div>
         {members.length > 1 && (
           <div className="flex gap-2 justify-center">

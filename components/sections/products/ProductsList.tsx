@@ -22,7 +22,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data }: Produc
             const image = product.product_images?.find((img: any) => img.is_primary) || product.product_images?.[0]
             const imageUrl = image?.shared_images?.storage_path || image?.storage_path
             return (
-              <a key={product.id} href={`/productos/${product.uuid}`} className="flex items-center gap-4 bg-white rounded-xl border p-4 hover:shadow-md transition-shadow group">
+              <a key={product.id} href={`/productos/${product.uuid}`} className="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 hover:shadow-md transition-shadow group">
                 <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
                   {imageUrl ? (
                     <img src={imageUrl} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
@@ -32,7 +32,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data }: Produc
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold group-hover:underline">{product.name}</h3>
-                  {product.description && <p className="text-gray-500 text-sm line-clamp-1">{product.description}</p>}
+                  {product.description && <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-1">{product.description}</p>}
                 </div>
                 {price && <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${Number(price.price).toLocaleString()}</p>}
               </a>

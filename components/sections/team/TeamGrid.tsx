@@ -36,7 +36,7 @@ export function TeamGrid({ content, primaryColor }: TeamGridProps) {
               )}
             </div>
             <h3 className="font-semibold text-lg">{member.name}</h3>
-            {member.role && <p className="text-gray-500 text-sm">{member.role}</p>}
+            {member.role && <p className="text-gray-500 dark:text-gray-400 text-sm">{member.role}</p>}
           </div>
         ))}
       </div>

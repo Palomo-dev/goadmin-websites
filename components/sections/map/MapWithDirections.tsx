@@ -36,13 +36,13 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
           {fullAddress && (
             <div className="mb-6">
               <h3 className="font-semibold text-lg mb-2">Nuestra Ubicación</h3>
-              <p className="text-gray-600">{fullAddress}</p>
+              <p className="text-gray-600 dark:text-gray-300">{fullAddress}</p>
             </div>
           )}
           {content.directions && (
             <div className="mb-6">
               <h3 className="font-semibold text-lg mb-2">Indicaciones</h3>
-              <div className="text-gray-600 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: content.directions }} />
+              <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: content.directions }} />
             </div>
           )}
           {fullAddress && (

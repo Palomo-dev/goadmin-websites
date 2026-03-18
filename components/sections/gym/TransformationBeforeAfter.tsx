@@ -22,12 +22,12 @@ export function TransformationBeforeAfter({ content, primaryColor }: Transformat
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {items.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {items.map((item, i) => (
-            <div key={i} className="rounded-xl border overflow-hidden">
+            <div key={i} className="rounded-xl border dark:border-gray-700 overflow-hidden">
               <div className="grid grid-cols-2">
                 <div className="relative">
                   {item.before_url ? (
@@ -49,13 +49,13 @@ export function TransformationBeforeAfter({ content, primaryColor }: Transformat
               <div className="p-4">
                 <h3 className="font-bold">{item.name}</h3>
                 {item.duration && <p className="text-sm" style={{ color: primaryColor }}>{item.duration}</p>}
-                {item.description && <p className="text-gray-500 text-sm mt-1">{item.description}</p>}
+                {item.description && <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{item.description}</p>}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">💪</p>
           <p>Transformaciones próximamente</p>
         </div>

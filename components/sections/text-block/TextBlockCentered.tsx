@@ -17,7 +17,7 @@ export function TextBlockCentered({ content, primaryColor }: TextBlockCenteredPr
         <div className="w-16 h-1 mx-auto mb-6 rounded" style={{ backgroundColor: primaryColor }} />
       )}
       {content.body && (
-        <div className="text-gray-600 leading-relaxed prose prose-lg mx-auto" dangerouslySetInnerHTML={{ __html: content.body }} />
+        <div className="text-gray-600 dark:text-gray-300 leading-relaxed prose prose-lg dark:prose-invert mx-auto" dangerouslySetInnerHTML={{ __html: content.body }} />
       )}
     </div>
   )

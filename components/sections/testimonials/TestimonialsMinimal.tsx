@@ -18,8 +18,8 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6' }: Testi
             <div key={i} className="flex gap-4 items-start">
               <div className="w-1 flex-shrink-0 rounded-full self-stretch" style={{ backgroundColor: primaryColor }} />
               <div>
-                <p className="text-gray-700 mb-1">{item.text}</p>
-                <p className="text-sm text-gray-500 font-medium">{item.name}{item.role ? ` · ${item.role}` : ''}</p>
+                <p className="text-gray-700 dark:text-gray-300 mb-1">{item.text}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{item.name}{item.role ? ` · ${item.role}` : ''}</p>
               </div>
             </div>
           ))}

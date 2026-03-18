@@ -29,7 +29,7 @@ export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p>No hay servicios configurados aún</p>
         </div>
       )}

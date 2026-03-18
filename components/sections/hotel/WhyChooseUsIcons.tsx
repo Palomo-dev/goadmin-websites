@@ -27,7 +27,7 @@ export function WhyChooseUsIcons({ content, primaryColor }: WhyChooseUsIconsProp
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         {items.map((item, i) => (
@@ -40,7 +40,7 @@ export function WhyChooseUsIcons({ content, primaryColor }: WhyChooseUsIconsProp
             </div>
             <h3 className="font-semibold mb-1">{item.label}</h3>
             {item.description && (
-              <p className="text-gray-500 text-sm">{item.description}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">{item.description}</p>
             )}
           </div>
         ))}

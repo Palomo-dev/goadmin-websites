@@ -19,7 +19,7 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
   const overlayOpacity = content.overlay_opacity ?? 0.6
 
   return (
-    <div className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-[60vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden">
       {content.video_url ? (
         <video
           autoPlay
@@ -37,9 +37,9 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
         <div className="absolute inset-0 bg-gray-900" />
       )}
       <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }} />
-      <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
+      <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4 sm:px-6">
         {content.title && (
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight mb-4">{content.title}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold leading-tight mb-4">{content.title}</h1>
         )}
         {content.subtitle && (
           <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">{content.subtitle}</p>

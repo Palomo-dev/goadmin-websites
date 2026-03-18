@@ -27,7 +27,7 @@ export function PricingTableColumns({ content, primaryColor }: PricingTableColum
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {plans.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -43,12 +43,12 @@ export function PricingTableColumns({ content, primaryColor }: PricingTableColum
                 </span>
               )}
               <h3 className="text-xl font-bold">{plan.name}</h3>
-              {plan.description && <p className="text-gray-500 text-sm mt-1">{plan.description}</p>}
+              {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{plan.description}</p>}
               <div className="my-6">
                 <span className="text-4xl font-bold" style={{ color: plan.is_popular ? primaryColor : undefined }}>
                   {typeof plan.price === 'number' ? `$${plan.price.toLocaleString()}` : plan.price}
                 </span>
-                <span className="text-gray-500">/{plan.period || 'mes'}</span>
+                <span className="text-gray-500 dark:text-gray-400">/{plan.period || 'mes'}</span>
               </div>
               {plan.features && plan.features.length > 0 && (
                 <ul className="space-y-2 mb-6 flex-1">
@@ -75,7 +75,7 @@ export function PricingTableColumns({ content, primaryColor }: PricingTableColum
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">💰</p>
           <p>Planes y precios próximamente</p>
         </div>

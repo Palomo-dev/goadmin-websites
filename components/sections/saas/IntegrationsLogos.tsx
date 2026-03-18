@@ -21,7 +21,7 @@ export function IntegrationsLogos({ content }: IntegrationsLogosProps) {
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {items.length > 0 ? (
         <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
@@ -38,7 +38,7 @@ export function IntegrationsLogos({ content }: IntegrationsLogosProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-8 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-8 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-3xl mb-2">🔗</p>
           <p>Integraciones próximamente</p>
         </div>

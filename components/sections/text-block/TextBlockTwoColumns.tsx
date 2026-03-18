@@ -14,7 +14,7 @@ export function TextBlockTwoColumns({ content, primaryColor = '#3B82F6' }: TextB
         {title && <h2 className="text-3xl font-bold text-center mb-4">{title}</h2>}
         {show_divider && <div className="w-16 h-1 rounded mx-auto mb-8" style={{ backgroundColor: primaryColor }} />}
         {body && (
-          <div className="columns-1 md:columns-2 gap-12 text-gray-600 leading-relaxed prose max-w-none" dangerouslySetInnerHTML={{ __html: body }} />
+          <div className="columns-1 md:columns-2 gap-12 text-gray-600 dark:text-gray-300 leading-relaxed prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: body }} />
         )}
       </div>
     </section>

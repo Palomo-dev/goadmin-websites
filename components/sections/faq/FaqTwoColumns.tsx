@@ -15,7 +15,7 @@ export function FaqTwoColumns({ content, primaryColor = '#3B82F6' }: FaqTwoColum
   const renderItem = (item: any, i: number) => (
     <div key={i} className="mb-6">
       <h3 className="font-semibold mb-1" style={{ color: primaryColor }}>{item.question}</h3>
-      <p className="text-gray-600 text-sm">{item.answer}</p>
+      <p className="text-gray-600 dark:text-gray-300 text-sm">{item.answer}</p>
     </div>
   )
 

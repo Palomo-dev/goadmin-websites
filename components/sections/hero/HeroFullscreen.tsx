@@ -18,11 +18,11 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   const subtitle = content.subtitle || organization.description || ''
   const ctaText = content.cta_text || 'Contáctanos'
   const ctaUrl = content.cta_url || '/contacto'
-  const imageUrl = content.image_url || organization.website_settings?.hero_image_url
+  const imageUrl = content.image_url || null
   const showBooking = (content as any).show_booking_widget ?? organization.website_settings?.show_hero_booking ?? false
 
   return (
-    <div className={`relative ${showBooking ? 'min-h-[720px]' : 'min-h-[70vh]'} flex items-center justify-center text-center text-white -mx-4 md:-mx-6 lg:-mx-8 -mt-16 md:-mt-24`}>
+    <div className={`relative ${showBooking ? 'min-h-[auto] py-20 md:min-h-[720px] md:py-0' : 'min-h-[50vh] md:min-h-[70vh]'} flex items-center justify-center text-center text-white -mx-4 sm:-mx-6 lg:-mx-8 -mt-16 md:-mt-24`}>
       {imageUrl && (
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -33,8 +33,8 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
         className="absolute inset-0"
         style={{ backgroundColor: primaryColor || '#1A1A2E', opacity: imageUrl ? 0.7 : 1 }}
       />
-      <div className={`relative z-10 ${showBooking ? 'max-w-4xl' : 'max-w-3xl'} mx-auto px-6`}>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+      <div className={`relative z-10 ${showBooking ? 'max-w-4xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6`}>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
           {title}
         </h1>
         {subtitle && (

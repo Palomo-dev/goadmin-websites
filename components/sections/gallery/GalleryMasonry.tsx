@@ -18,7 +18,7 @@ export function GalleryMasonry({ content, organization }: GalleryMasonryProps) {
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {allImages.length > 0 ? (
         <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
@@ -34,7 +34,7 @@ export function GalleryMasonry({ content, organization }: GalleryMasonryProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p>No hay imágenes en la galería aún</p>
         </div>
       )}

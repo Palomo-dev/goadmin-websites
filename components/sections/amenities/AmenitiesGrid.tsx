@@ -35,7 +35,7 @@ export function AmenitiesGrid({ content, primaryColor }: AmenitiesGridProps) {
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((item, i) => (
-          <div key={i} className="flex items-start gap-4 p-4 rounded-lg border bg-white">
+          <div key={i} className="flex items-start gap-4 p-4 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800">
             <div
               className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
               style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}
@@ -45,7 +45,7 @@ export function AmenitiesGrid({ content, primaryColor }: AmenitiesGridProps) {
             <div>
               <h3 className="font-semibold mb-1">{item.label}</h3>
               {item.description && (
-                <p className="text-gray-500 text-sm">{item.description}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{item.description}</p>
               )}
             </div>
           </div>

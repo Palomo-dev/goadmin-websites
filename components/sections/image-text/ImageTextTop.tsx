@@ -18,7 +18,7 @@ export function ImageTextTop({ content, primaryColor = '#3B82F6' }: ImageTextTop
         )}
         <div className="text-center">
           {title && <h2 className="text-3xl font-bold mb-4">{title}</h2>}
-          {body && <div className="text-gray-600 leading-relaxed mb-6 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: body }} />}
+          {body && <div className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: body }} />}
           {cta_text && cta_url && (
             <a href={cta_url} className="inline-block px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
               {cta_text}

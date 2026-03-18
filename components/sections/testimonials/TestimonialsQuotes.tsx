@@ -17,8 +17,8 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6' }: Testim
           {items.map((item: any, i: number) => (
             <blockquote key={i} className="text-center">
               <span className="text-5xl font-serif leading-none" style={{ color: primaryColor }}>"</span>
-              <p className="text-xl md:text-2xl text-gray-700 italic mb-4">{item.text}</p>
-              <footer className="text-sm text-gray-500">
+              <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 italic mb-4">{item.text}</p>
+              <footer className="text-sm text-gray-500 dark:text-gray-400">
                 — <strong>{item.name}</strong>{item.role ? `, ${item.role}` : ''}
               </footer>
             </blockquote>

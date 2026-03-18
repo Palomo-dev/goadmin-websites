@@ -22,7 +22,7 @@ export function TrainersGrid({ content, primaryColor }: TrainersGridProps) {
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {members.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -36,7 +36,7 @@ export function TrainersGrid({ content, primaryColor }: TrainersGridProps) {
                 )}
               </div>
               <h3 className="font-bold text-lg">{member.name}</h3>
-              {member.role && <p className="text-gray-500 text-sm mb-2">{member.role}</p>}
+              {member.role && <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">{member.role}</p>}
               {member.specialties && member.specialties.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1 mt-2">
                   {member.specialties.map((s, j) => (
@@ -50,7 +50,7 @@ export function TrainersGrid({ content, primaryColor }: TrainersGridProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🏋️</p>
           <p>Entrenadores próximamente</p>
         </div>

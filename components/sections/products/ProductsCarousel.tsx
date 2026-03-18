@@ -19,7 +19,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data }: Pr
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           {title && <h2 className="text-3xl font-bold">{title}</h2>}
-          {subtitle && <p className="text-gray-600 mt-2">{subtitle}</p>}
+          {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
         </div>
         <div className="flex gap-6 overflow-x-auto pb-4 snap-x">
           {displayed.map((product: any) => {

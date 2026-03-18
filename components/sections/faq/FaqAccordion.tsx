@@ -24,9 +24,9 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
-      <div className="max-w-3xl mx-auto divide-y">
+      <div className="max-w-3xl mx-auto divide-y dark:divide-gray-700">
         {items.map((item, i) => (
           <div key={i}>
             <button
@@ -42,7 +42,7 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
               </span>
             </button>
             {openIndex === i && (
-              <div className="pb-5 text-gray-600 leading-relaxed">
+              <div className="pb-5 text-gray-600 dark:text-gray-300 leading-relaxed">
                 {item.answer}
               </div>
             )}
@@ -50,7 +50,7 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
         ))}
       </div>
       {items.length === 0 && (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">❓</p>
           <p>Preguntas frecuentes próximamente</p>
         </div>

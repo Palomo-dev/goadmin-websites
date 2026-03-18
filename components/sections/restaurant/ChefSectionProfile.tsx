@@ -27,10 +27,10 @@ export function ChefSectionProfile({ content, primaryColor }: ChefSectionProfile
           </p>
         )}
         <h2 className="text-3xl md:text-4xl font-bold mb-2">{content.name || 'Nuestro Chef'}</h2>
-        {content.role && <p className="text-gray-500 text-lg mb-4">{content.role}</p>}
-        {content.bio && <p className="text-gray-700 leading-relaxed mb-6">{content.bio}</p>}
+        {content.role && <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">{content.role}</p>}
+        {content.bio && <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-6">{content.bio}</p>}
         {content.quote && (
-          <blockquote className="border-l-4 pl-4 italic text-gray-600" style={{ borderColor: primaryColor }}>
+          <blockquote className="border-l-4 pl-4 italic text-gray-600 dark:text-gray-300" style={{ borderColor: primaryColor }}>
             &ldquo;{content.quote}&rdquo;
           </blockquote>
         )}

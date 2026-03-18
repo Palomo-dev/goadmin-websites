@@ -17,7 +17,7 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
           </h2>
         )}
         {content.text && (
-          <p className="text-gray-600 leading-relaxed">{content.text}</p>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{content.text}</p>
         )}
       </div>
       <div className="rounded-xl overflow-hidden bg-gray-100 aspect-[4/3]">

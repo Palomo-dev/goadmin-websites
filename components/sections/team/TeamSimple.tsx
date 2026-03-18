@@ -15,11 +15,11 @@ export function TeamSimple({ content, primaryColor = '#3B82F6' }: TeamSimpleProp
         {title && <h2 className="text-3xl font-bold text-center mb-10">{title}</h2>}
         <div className="space-y-4">
           {members.map((m: any, i: number) => (
-            <div key={i} className="flex items-center gap-4 py-3 border-b last:border-0">
+            <div key={i} className="flex items-center gap-4 py-3 border-b dark:border-gray-700 last:border-0">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: primaryColor }} />
               <div>
                 <p className="font-semibold">{m.name}</p>
-                <p className="text-sm text-gray-500">{m.role}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{m.role}</p>
               </div>
             </div>
           ))}

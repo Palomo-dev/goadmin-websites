@@ -17,7 +17,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
     <div>
       <div className="text-center mb-8">
         {title && <h2 className="text-2xl md:text-3xl font-bold">{title}</h2>}
-        {subtitle && <p className="text-gray-600 mt-2">{subtitle}</p>}
+        {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {products.length > 0 ? (
         <div className="flex gap-6 overflow-x-auto pb-4 snap-x">
@@ -52,7 +52,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">⭐</p>
           <p>No hay productos destacados aún</p>
         </div>

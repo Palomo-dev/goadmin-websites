@@ -25,7 +25,7 @@ export function ProductsGrid({ content, primaryColor, data }: ProductsGridProps)
             <Link
               key={product.id}
               href={`/productos/${product.uuid}`}
-              className="group bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow"
+              className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="aspect-square bg-gray-100 overflow-hidden">
                 {product.image_url ? (
@@ -40,9 +40,9 @@ export function ProductsGrid({ content, primaryColor, data }: ProductsGridProps)
                 )}
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">{product.name}</h3>
                 {product.description && (
-                  <p className="text-gray-500 text-sm mb-2 line-clamp-2">{product.description}</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mb-2 line-clamp-2">{product.description}</p>
                 )}
                 <div className="flex items-center justify-between">
                   {product.price != null && (
@@ -61,7 +61,7 @@ export function ProductsGrid({ content, primaryColor, data }: ProductsGridProps)
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
           <p>No hay productos disponibles aún</p>
         </div>

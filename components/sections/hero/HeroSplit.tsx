@@ -19,13 +19,13 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
   const imageUrl = content.image_url || organization?.logo_url
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center min-h-[60vh]">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-0 md:min-h-[60vh]">
       <div>
         {content.title && (
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4">{content.title}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 dark:text-white">{content.title}</h1>
         )}
         {content.subtitle && (
-          <p className="text-lg md:text-xl text-gray-600 mb-8">{content.subtitle}</p>
+          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">{content.subtitle}</p>
         )}
         {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
@@ -43,7 +43,7 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
             {content.cta_secondary_text && content.cta_secondary_url && (
               <Link
                 href={content.cta_secondary_url}
-                className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-gray-50 transition-colors"
+                className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 style={{ borderColor: primaryColor, color: primaryColor }}
               >
                 {content.cta_secondary_text}

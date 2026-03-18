@@ -16,12 +16,12 @@ export function HeroMinimal({ content, organization, primaryColor }: HeroMinimal
   const showBooking = (content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false
 
   return (
-    <div className="text-center py-4">
-      <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
+    <div className="text-center py-4 px-4 sm:px-0">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
         {content.title || 'Título'}
       </h1>
       {content.subtitle && (
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6">
           {content.subtitle}
         </p>
       )}

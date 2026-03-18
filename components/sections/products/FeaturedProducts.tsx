@@ -22,7 +22,7 @@ export function FeaturedProducts({ content, primaryColor, data }: FeaturedProduc
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-10">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -30,7 +30,7 @@ export function FeaturedProducts({ content, primaryColor, data }: FeaturedProduc
             <Link
               key={product.id}
               href={`/productos/${product.uuid}`}
-              className="group bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow"
+              className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="aspect-square bg-gray-100 overflow-hidden relative">
                 {product.image_url ? (
@@ -50,7 +50,7 @@ export function FeaturedProducts({ content, primaryColor, data }: FeaturedProduc
                 )}
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">{product.name}</h3>
                 <div className="flex items-center gap-2">
                   {product.price != null && (
                     <span className="font-bold text-lg" style={{ color: primaryColor }}>
@@ -68,7 +68,7 @@ export function FeaturedProducts({ content, primaryColor, data }: FeaturedProduc
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">⭐</p>
           <p>No hay productos destacados aún</p>
         </div>

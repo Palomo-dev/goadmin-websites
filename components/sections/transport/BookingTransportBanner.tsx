@@ -19,7 +19,7 @@ export function BookingTransportBanner({ content, primaryColor, organization }: 
   return (
     <div className="text-center">
       <h2 className="text-2xl md:text-3xl font-bold mb-3">{content.title || '¿Listo para viajar?'}</h2>
-      {content.subtitle && <p className="text-gray-600 mb-6">{content.subtitle}</p>}
+      {content.subtitle && <p className="text-gray-600 dark:text-gray-300 mb-6">{content.subtitle}</p>}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
         <Link
           href={content.cta_url || '/viajes'}

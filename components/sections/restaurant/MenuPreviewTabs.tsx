@@ -23,7 +23,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-8">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
 
       {categories.length > 0 ? (
@@ -41,7 +41,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
                     <Link
                       key={product.id}
                       href={`/productos/${product.uuid}`}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       {product.image_url && (
                         <img
@@ -52,9 +52,9 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">{product.name}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h4>
                         {product.description && (
-                          <p className="text-gray-500 text-sm line-clamp-1">{product.description}</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-1">{product.description}</p>
                         )}
                       </div>
                       {product.price != null && (
@@ -70,7 +70,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
           })}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🍽️</p>
           <p>Menú no disponible aún</p>
         </div>

@@ -15,7 +15,7 @@ export function PartnersCards({ content, primaryColor = '#3B82F6' }: PartnersCar
         {title && <h2 className="text-3xl font-bold text-center mb-10">{title}</h2>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item: any, i: number) => (
-            <div key={i} className="bg-white rounded-xl border p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
               {item.logo_url ? (
                 <img src={item.logo_url} alt={item.name} className="w-16 h-16 object-contain flex-shrink-0" />
               ) : (
@@ -25,7 +25,7 @@ export function PartnersCards({ content, primaryColor = '#3B82F6' }: PartnersCar
               )}
               <div>
                 <p className="font-semibold">{item.name}</p>
-                {item.description && <p className="text-sm text-gray-500">{item.description}</p>}
+                {item.description && <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>}
               </div>
             </div>
           ))}

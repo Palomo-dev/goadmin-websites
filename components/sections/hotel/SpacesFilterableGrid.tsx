@@ -157,22 +157,22 @@ export function SpacesFilterableGrid({
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
               <div>
                 <span className="text-gray-400 text-xs uppercase tracking-wider block">Llegada</span>
-                <p className="font-semibold text-gray-900">{fmtDate(urlCheckin)}</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{fmtDate(urlCheckin)}</p>
               </div>
               <span className="text-gray-300 hidden sm:block">→</span>
               <div>
                 <span className="text-gray-400 text-xs uppercase tracking-wider block">Salida</span>
-                <p className="font-semibold text-gray-900">{fmtDate(urlCheckout)}</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{fmtDate(urlCheckout)}</p>
               </div>
               {nights > 0 && (
                 <div>
                   <span className="text-gray-400 text-xs uppercase tracking-wider block">Estancia</span>
-                  <p className="font-semibold text-gray-900">{nights} {nights === 1 ? 'noche' : 'noches'}</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{nights} {nights === 1 ? 'noche' : 'noches'}</p>
                 </div>
               )}
               <div>
                 <span className="text-gray-400 text-xs uppercase tracking-wider block">Huéspedes</span>
-                <p className="font-semibold text-gray-900">
+                <p className="font-semibold text-gray-900 dark:text-white">
                   {urlAdults && `${urlAdults} ad.`}
                   {urlChildren && parseInt(urlChildren) > 0 ? ` · ${urlChildren} niñ.` : ''}
                   {!urlAdults && `${urlGuests}`}
@@ -192,7 +192,7 @@ export function SpacesFilterableGrid({
           {/* Mobile toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="lg:hidden flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="lg:hidden flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filtros
@@ -211,7 +211,7 @@ export function SpacesFilterableGrid({
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
+                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
                   style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
                 >
                   <option value="all">Todos los tipos</option>
@@ -230,7 +230,7 @@ export function SpacesFilterableGrid({
                 <select
                   value={zoneFilter}
                   onChange={(e) => setZoneFilter(e.target.value)}
-                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
+                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
                   style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
                 >
                   <option value="all">Todas las zonas</option>
@@ -249,7 +249,7 @@ export function SpacesFilterableGrid({
                 <select
                   value={minCapacity}
                   onChange={(e) => setMinCapacity(Number(e.target.value))}
-                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
+                  className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
                   style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
                 >
                   <option value={0}>Cualquier capacidad</option>
@@ -267,7 +267,7 @@ export function SpacesFilterableGrid({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
+                className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 transition-shadow cursor-pointer"
                 style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
               >
                 <option value="default">Ordenar por</option>
@@ -284,7 +284,7 @@ export function SpacesFilterableGrid({
             {(activeFilterCount > 0 || sortBy !== 'default') && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
                 Limpiar
@@ -293,7 +293,7 @@ export function SpacesFilterableGrid({
           </div>
 
           {/* Results count */}
-          <div className="ml-auto text-sm text-gray-500">
+          <div className="ml-auto text-sm text-gray-500 dark:text-gray-400">
             {filteredItems.length === items.length
               ? `${items.length} ${items.length === 1 ? 'habitación' : 'habitaciones'}`
               : `${filteredItems.length} de ${items.length}`
@@ -324,8 +324,8 @@ export function SpacesFilterableGrid({
       ) : (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">🔍</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No se encontraron habitaciones</h3>
-          <p className="text-gray-500 mb-4">Intenta ajustar los filtros para ver más opciones.</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No se encontraron habitaciones</h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">Intenta ajustar los filtros para ver más opciones.</p>
           <button onClick={clearFilters} className="px-5 py-2 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: primaryColor }}>
             Ver todas las habitaciones
           </button>
@@ -350,7 +350,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
 
   return (
     <Link href={`/espacios/${item.id}${bookingQs}`}
-      className="grid grid-cols-1 lg:grid-cols-[400px_1fr] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-all duration-300">
+      className="grid grid-cols-1 lg:grid-cols-[400px_1fr] bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group hover:shadow-lg transition-all duration-300">
       <div className="relative aspect-[16/10] lg:aspect-auto bg-gray-100 overflow-hidden">
         {image ? (
           <img src={image} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -372,17 +372,17 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
       </div>
 
       <div className="p-6 flex flex-col justify-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-1">{label}</h3>
-        {description && <p className="text-gray-500 mb-4 line-clamp-2 text-sm">{description}</p>}
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{label}</h3>
+        {description && <p className="text-gray-500 dark:text-gray-400 mb-4 line-clamp-2 text-sm">{description}</p>}
 
         <div className="flex flex-wrap gap-2 mb-4">
           {floorZone && (
-            <span className="inline-flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-600">
+            <span className="inline-flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full text-gray-600 dark:text-gray-300">
               <MapPin className="w-3.5 h-3.5" /> {floorZone}
             </span>
           )}
           {showCapacity && capacity && (
-            <span className="inline-flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-600">
+            <span className="inline-flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full text-gray-600 dark:text-gray-300">
               <Users className="w-3.5 h-3.5" /> {capacity} personas
             </span>
           )}
@@ -399,7 +399,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
           {showPrices && baseRate > 0 ? (
             <div>
               {hasBookingParams && nights > 0 ? (
@@ -438,7 +438,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
 
   return (
     <Link href={`/espacios/${item.id}${bookingQs}`}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
       <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
         {image ? (
           <img src={image} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -459,8 +459,8 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
         )}
       </div>
       <div className="p-5">
-        <h3 className="font-bold text-gray-900 text-lg mb-1">{label}</h3>
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+        <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{label}</h3>
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-3">
           {floorZone && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {floorZone}</span>}
           {showCapacity && capacity && <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {capacity} pers.</span>}
         </div>
@@ -475,7 +475,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
           </div>
         )}
         {showPrices && baseRate > 0 && (
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
             <div>
               {hasBookingParams && nights > 0 ? (
                 <>

@@ -19,7 +19,7 @@ export function DeliveryCtaBanner({ content, primaryColor }: DeliveryCtaBannerPr
           🛵 Domicilios
         </div>
         <h2 className="text-2xl md:text-3xl font-bold mb-2">{content.title || '¿Quieres pedir a domicilio?'}</h2>
-        {content.subtitle && <p className="text-gray-600 mb-4">{content.subtitle}</p>}
+        {content.subtitle && <p className="text-gray-600 dark:text-gray-300 mb-4">{content.subtitle}</p>}
         <Link
           href={content.cta_url || '/domicilios'}
           className="inline-block px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
