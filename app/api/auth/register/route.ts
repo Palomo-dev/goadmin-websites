@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = createPublicClient()
+    const supabase = await createServerSupabaseClient()
     
     // Verificar si ya existe un customer con este email en esta organización
     const { data: existingCustomerData } = await supabase

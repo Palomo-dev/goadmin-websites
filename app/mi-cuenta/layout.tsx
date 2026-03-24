@@ -1,6 +1,9 @@
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { LogoutButton } from '@/components/site/LogoutButton'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 // Navegación lateral según tipo de negocio
@@ -59,6 +62,11 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
+  // Proteger ruta: redirigir a /auth si no hay sesión
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth')
+
   const { organization, primaryColor, template, headerNav, footerNav } = ctx
   const navItems = getAccountNav(organization.type_id ?? 0)
 
@@ -86,10 +94,7 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
                 </Link>
               ))}
               <hr className="my-2 dark:border-gray-700" />
-              <button className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm w-full text-left">
-                <span>🚪</span>
-                <span>Cerrar Sesión</span>
-              </button>
+              <LogoutButton />
             </nav>
           </aside>
 
