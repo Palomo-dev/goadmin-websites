@@ -20,7 +20,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
-              href={`/categorias/${cat.id}`}
+              href={`/categorias/${cat.slug}`}
               className="group flex flex-col items-center gap-2 w-24"
             >
               <div

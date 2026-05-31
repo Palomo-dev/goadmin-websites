@@ -163,10 +163,13 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.spaceTypes = await getOrganizationSpaceTypes(organization.id)
       data.spaces = await getOrganizationSpaces(organization.id)
     }
-    if (sectionTypes.includes('products_grid') || sectionTypes.includes('featured_products')) {
+    const needsProducts = sectionTypes.some(t => 
+      ['products_grid', 'featured_products', 'menu_preview', 'specialties'].includes(t)
+    )
+    if (needsProducts) {
       data.products = await getOrganizationProducts(organization.id, 20)
     }
-    if (sectionTypes.includes('categories_grid')) {
+    if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
       data.categories = await getOrganizationCategories(organization.id)
     }
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {

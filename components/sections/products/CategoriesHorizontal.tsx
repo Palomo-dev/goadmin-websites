@@ -24,7 +24,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
-              href={`/categorias/${cat.id}`}
+              href={`/categorias/${cat.slug}`}
               className="flex-shrink-0 w-40 snap-start group text-center"
             >
               <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-100 mb-3">

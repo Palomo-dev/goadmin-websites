@@ -1,5 +1,23 @@
 import Link from 'next/link'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+function getImageUrl(product: any): string | null {
+  if (!product.product_images || product.product_images.length === 0) return null
+  const primary = product.product_images.find((img: any) => img.is_primary)
+  const image = primary || product.product_images[0]
+  const path = image.storage_path || image.shared_images?.storage_path
+  if (!path) return null
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+}
+
+function getPrice(product: any): number | null {
+  if (product.product_prices && product.product_prices.length > 0) {
+    return Number(product.product_prices[0].price)
+  }
+  return null
+}
+
 interface MenuPreviewTabsProps {
   content: {
     title?: string
@@ -43,25 +61,25 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
                       href={`/productos/${product.uuid}`}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                      {product.image_url && (
+                      {(() => { const imgUrl = getImageUrl(product); return imgUrl ? (
                         <img
-                          src={product.image_url}
+                          src={imgUrl}
                           alt={product.name}
                           className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                           loading="lazy"
                         />
-                      )}
+                      ) : null })()}
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h4>
                         {product.description && (
                           <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-1">{product.description}</p>
                         )}
                       </div>
-                      {product.price != null && (
+                      {(() => { const price = getPrice(product); return price !== null ? (
                         <span className="font-bold whitespace-nowrap" style={{ color: primaryColor }}>
-                          ${Number(product.price).toLocaleString()}
+                          ${price.toLocaleString()}
                         </span>
-                      )}
+                      ) : null })()}
                     </Link>
                   ))}
                 </div>

@@ -79,9 +79,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
       />
       
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-900 z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" style={{ color: primaryColor }} />
             Tu Carrito
@@ -96,7 +96,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -115,7 +115,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={item.id} className="flex gap-4 p-3 bg-gray-50 rounded-xl">
+                <div key={item.id} className="flex gap-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                   <div 
                     className="w-20 h-20 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                     style={{ backgroundColor: `${primaryColor}10` }}
@@ -128,7 +128,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white truncate">{item.name}</h4>
                     <p className="text-sm font-bold" style={{ color: primaryColor }}>
                       ${Number(item.price).toLocaleString()}
                     </p>
@@ -137,14 +137,14 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="w-8 h-8 rounded-full bg-white border flex items-center justify-center hover:bg-gray-100"
+                          className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-600"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="w-8 text-center font-medium">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="w-8 h-8 rounded-full bg-white border flex items-center justify-center hover:bg-gray-100"
+                          className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border dark:border-gray-600 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-600"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -166,8 +166,8 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
         
         {/* Footer */}
         {items.length > 0 && (
-          <div className="border-t p-4 space-y-4">
-            <div className="flex items-center justify-between text-lg font-bold">
+          <div className="border-t dark:border-gray-700 p-4 space-y-4">
+            <div className="flex items-center justify-between text-lg font-bold text-gray-900 dark:text-white">
               <span>Subtotal</span>
               <span style={{ color: primaryColor }}>${subtotal.toLocaleString()}</span>
             </div>
@@ -180,10 +180,16 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 Ir al Checkout
               </Button>
             </Link>
+
+            <Link href="/carrito" onClick={onClose}>
+              <Button variant="outline" className="w-full h-10 dark:border-gray-600 dark:text-white">
+                Ver carrito completo
+              </Button>
+            </Link>
             
             <button
               onClick={onClose}
-              className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
               Continuar Comprando
             </button>

@@ -95,7 +95,7 @@ function getProductImageUrl(product: MenuProduct): string | null {
   const image = primaryImage || product.product_images[0]
   const storagePath = image.storage_path || image.shared_images?.storage_path
   if (!storagePath) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product_images/${storagePath}`
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
 }
 
 function getAvailableStock(product: MenuProduct): number | null {

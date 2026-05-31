@@ -26,7 +26,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
-              href={`/categorias/${cat.id}`}
+              href={`/categorias/${cat.slug}`}
               className="group relative rounded-xl overflow-hidden bg-gray-100 aspect-[4/3] hover:shadow-lg transition-shadow"
             >
               {cat.image_url ? (

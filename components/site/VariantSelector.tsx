@@ -38,7 +38,7 @@ function getVariantImageUrl(variant: VariantProduct): string | null {
   const primary = variant.product_images.find(img => img.is_primary) || variant.product_images[0]
   const path = primary.storage_path || primary.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product_images/${path}`
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
 }
 
 function getAvailableStock(variant: VariantProduct): number | null {

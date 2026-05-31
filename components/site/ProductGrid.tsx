@@ -59,8 +59,8 @@ function getProductImageUrl(product: Product): string | null {
   
   if (!storagePath) return null
   
-  // Construir URL de Supabase Storage
-  return `${SUPABASE_URL}/storage/v1/object/public/product_images/${storagePath}`
+  // Construir URL de Supabase Storage (bucket: product-images)
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
 }
 
 interface Category {

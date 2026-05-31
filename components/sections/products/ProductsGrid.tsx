@@ -1,4 +1,28 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Plus, Check, Layers, Package } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+function getImageUrl(product: any): string | null {
+  if (!product.product_images || product.product_images.length === 0) return null
+  const primary = product.product_images.find((img: any) => img.is_primary)
+  const image = primary || product.product_images[0]
+  const path = image.storage_path || image.shared_images?.storage_path
+  if (!path) return null
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+}
+
+function getPrice(product: any): number | null {
+  if (product.product_prices && product.product_prices.length > 0) {
+    return Number(product.product_prices[0].price)
+  }
+  return null
+}
 
 interface ProductsGridProps {
   content: {
@@ -9,56 +33,133 @@ interface ProductsGridProps {
   }
   primaryColor?: string
   data?: { products?: any[]; categories?: any[] }
+  organization?: { subdomain?: string }
 }
 
-export function ProductsGrid({ content, primaryColor, data }: ProductsGridProps) {
+export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
+  const organizationSubdomain = organization?.subdomain || ''
   const products = data?.products || []
+  const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+
+  const addToCart = (product: any) => {
+    const price = getPrice(product)
+    if (price === null) return
+
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const subdomain = organizationSubdomain || host.split('.')[0]
+    const cartKey = `cart_${subdomain}`
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+
+    const existingIndex = cart.findIndex((item: any) => item.id === product.id)
+    if (existingIndex >= 0) {
+      cart[existingIndex].quantity += 1
+    } else {
+      const imgUrl = getImageUrl(product)
+      cart.push({
+        id: product.id,
+        name: product.name,
+        price,
+        quantity: 1,
+        ...(imgUrl && { imageUrl: imgUrl })
+      })
+    }
+
+    localStorage.setItem(cartKey, JSON.stringify(cart))
+    window.dispatchEvent(new CustomEvent('cart-updated'))
+
+    setAddedToCart(prev => new Set(prev).add(product.id))
+    setTimeout(() => {
+      setAddedToCart(prev => {
+        const next = new Set(prev)
+        next.delete(product.id)
+        return next
+      })
+    }, 1500)
+  }
 
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product: any) => (
-            <Link
-              key={product.id}
-              href={`/productos/${product.uuid}`}
-              className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div className="aspect-square bg-gray-100 overflow-hidden">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 text-5xl">📦</div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">{product.name}</h3>
-                {product.description && (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm mb-2 line-clamp-2">{product.description}</p>
-                )}
-                <div className="flex items-center justify-between">
-                  {product.price != null && (
-                    <span className="font-bold text-lg" style={{ color: primaryColor }}>
-                      ${Number(product.price).toLocaleString()}
-                    </span>
+          {products.map((product: any) => {
+            const price = getPrice(product)
+            const imgUrl = getImageUrl(product)
+            const isAdded = addedToCart.has(product.id)
+            const variantCount = product.variant_count || 0
+
+            return (
+              <div
+                key={product.id}
+                className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all"
+              >
+                <Link href={`/productos/${product.uuid}`}>
+                  <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
+                    {variantCount > 0 && (
+                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <Layers className="h-3 w-3" />
+                        {variantCount}
+                      </span>
+                    )}
+                    {imgUrl ? (
+                      <Image
+                        src={imgUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
+                      </div>
+                    )}
+                  </div>
+                </Link>
+                <div className="p-4">
+                  <Link href={`/productos/${product.uuid}`}>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {product.name}
+                    </h3>
+                  </Link>
+                  {product.description && (
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{product.description}</p>
                   )}
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-sm text-gray-400 line-through">
-                      ${Number(product.compare_at_price).toLocaleString()}
-                    </span>
-                  )}
+                  <div className="flex items-center justify-between">
+                    {price !== null && (
+                      <span className="font-bold text-lg" style={{ color: primaryColor }}>
+                        ${price.toLocaleString()}
+                      </span>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        addToCart(product)
+                      }}
+                      className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                      style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                      disabled={price === null}
+                    >
+                      {isAdded ? (
+                        <>
+                          <Check className="h-4 w-4 mr-1" />
+                          Agregado
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Agregar
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </Link>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">

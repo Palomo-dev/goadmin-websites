@@ -55,7 +55,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick }
     return (
       <Link 
         href="/checkout"
-        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <ShoppingCart className="h-6 w-6 text-gray-700" />
         {badge}

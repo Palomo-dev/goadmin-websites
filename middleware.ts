@@ -1,23 +1,52 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 // Dominios del sistema donde se sirven los sitios de organizaciones
 const SYSTEM_DOMAINS = ['goadmin.io']
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host') || ''
   
-  // Ignorar rutas de assets y API
+  // Ignorar rutas de assets estáticos (pero NO /api, para que auth funcione)
   if (
     url.pathname.startsWith('/_next') ||
-    url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/static') ||
     url.pathname.includes('.') // archivos con extensión
   ) {
     return NextResponse.next()
   }
-  
+
+  // --- Refresco de sesión Supabase Auth ---
+  // Esto mantiene las cookies de sesión JWT válidas entre requests
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // IMPORTANTE: No usar getSession() aquí, getUser() valida contra el servidor
+  await supabase.auth.getUser()
+
+  // --- Lógica de subdominios / dominios personalizados ---
   // Detectar si es un subdominio del sistema
   const isSystemDomain = SYSTEM_DOMAINS.some(d => hostname.endsWith(d))
   const isLocalhost = hostname.includes('localhost')
@@ -49,22 +78,19 @@ export function middleware(request: NextRequest) {
   
   // Si no hay subdominio ni dominio personalizado, mostrar página de error o landing
   if (!subdomain && !isCustomDomain) {
-    // Permitir acceso a la página principal sin subdominio
-    return NextResponse.next()
+    return supabaseResponse
   }
   
-  // Agregar headers con información del tenant
-  const response = NextResponse.next()
-  
+  // Agregar headers con información del tenant al response de Supabase
   if (subdomain) {
-    response.headers.set('x-subdomain', subdomain)
+    supabaseResponse.headers.set('x-subdomain', subdomain)
   }
   
   if (isCustomDomain) {
-    response.headers.set('x-custom-domain', hostname)
+    supabaseResponse.headers.set('x-custom-domain', hostname)
   }
   
-  return response
+  return supabaseResponse
 }
 
 export const config = {

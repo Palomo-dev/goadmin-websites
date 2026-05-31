@@ -258,6 +258,131 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
 }
 
 /**
+ * Obtiene una categoría por slug y organization_id
+ */
+export async function getCategoryBySlug(organizationId: number, slug: string) {
+  const supabase = getSupabaseForPublicRead()
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('slug', slug)
+    .single()
+  
+  if (error || !data) return null
+  return data as any
+}
+
+/**
+ * Obtiene subcategorías de una categoría padre
+ */
+export async function getSubcategories(organizationId: number, parentId: number) {
+  const supabase = getSupabaseForPublicRead()
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('parent_id', parentId)
+    .order('rank', { ascending: true })
+  
+  if (error) return []
+  return data || []
+}
+
+/**
+ * Obtiene productos por categoría con paginación y ordenamiento
+ */
+export async function getProductsByCategoryPaginated(
+  organizationId: number,
+  categoryId: number,
+  options: {
+    page?: number
+    limit?: number
+    sort?: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest'
+    subcategoryId?: number
+  } = {}
+) {
+  const supabase = getSupabaseForPublicRead()
+  const { page = 1, limit = 12, sort = 'name_asc', subcategoryId } = options
+  const offset = (page - 1) * limit
+
+  // Obtener IDs de subcategorías para incluir productos de subcategorías
+  let categoryIds = [categoryId]
+  if (!subcategoryId) {
+    const { data: subs } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('parent_id', categoryId)
+    if (subs && subs.length > 0) {
+      categoryIds = [...categoryIds, ...subs.map((s: any) => s.id)]
+    }
+  } else {
+    categoryIds = [subcategoryId]
+  }
+
+  let query = supabase
+    .from('products')
+    .select(`
+      *,
+      product_prices (*),
+      product_images (
+        id, storage_path, is_primary, display_order,
+        shared_image_id,
+        shared_images ( storage_path )
+      ),
+      stock_levels ( qty_on_hand, qty_reserved )
+    `, { count: 'exact' })
+    .eq('organization_id', organizationId)
+    .in('category_id', categoryIds)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+
+  // Ordenamiento
+  switch (sort) {
+    case 'name_asc':
+      query = query.order('name', { ascending: true })
+      break
+    case 'name_desc':
+      query = query.order('name', { ascending: false })
+      break
+    case 'newest':
+      query = query.order('created_at', { ascending: false })
+      break
+    case 'price_asc':
+    case 'price_desc':
+      query = query.order('name', { ascending: true })
+      break
+  }
+
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) return { products: [], total: 0 }
+  return { products: data || [], total: count || 0 }
+}
+
+/**
+ * Obtiene la categoría padre de una categoría
+ */
+export async function getParentCategory(organizationId: number, parentId: number) {
+  const supabase = getSupabaseForPublicRead()
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, slug')
+    .eq('organization_id', organizationId)
+    .eq('id', parentId)
+    .single()
+  
+  if (error || !data) return null
+  return data as any
+}
+
+/**
  * Obtiene las variantes (productos hijos) de un producto padre
  */
 export async function getProductVariants(parentProductId: number, organizationId: number) {

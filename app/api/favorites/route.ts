@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,14 @@ export const dynamic = 'force-dynamic'
  * Retorna array de product IDs favoritos del cliente.
  */
 export async function GET(request: NextRequest) {
-  const supabase = createAdminClient() || createPublicClient()
+  const supabase = await createServerSupabaseClient()
+
+  // Verificar autenticación
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const customerId = searchParams.get('customerId')
   const organizationId = searchParams.get('organizationId')
@@ -17,11 +24,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ favorites: [] })
   }
 
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from('customers')
     .select('metadata')
     .eq('id', customerId)
     .eq('organization_id', Number(organizationId))
+    .eq('user_id', user.id)
     .single()
 
   const favorites = (data?.metadata?.favorites || []) as number[]
@@ -34,7 +42,13 @@ export async function GET(request: NextRequest) {
  * Toggle un producto como favorito.
  */
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient() || createPublicClient()
+  const supabase = await createServerSupabaseClient()
+
+  // Verificar autenticación
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
 
   try {
     const { customerId, organizationId, productId, action } = await request.json()
@@ -43,12 +57,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    // Obtener metadata actual
-    const { data: customer } = await (supabase as any)
+    // Obtener metadata actual (RLS + user_id verifican propiedad)
+    const { data: customer } = await supabase
       .from('customers')
       .select('metadata')
       .eq('id', customerId)
       .eq('organization_id', Number(organizationId))
+      .eq('user_id', user.id)
       .single()
 
     if (!customer) {
@@ -61,14 +76,13 @@ export async function POST(request: NextRequest) {
     if (action === 'remove') {
       favorites = favorites.filter((id: number) => id !== productId)
     } else {
-      // add (toggle: si ya existe, no duplicar)
       if (!favorites.includes(productId)) {
         favorites.push(productId)
       }
     }
 
     // Actualizar metadata
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from('customers')
       .update({ metadata: { ...metadata, favorites } })
       .eq('id', customerId)
@@ -85,3 +99,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }
+

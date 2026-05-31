@@ -81,7 +81,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const allImageUrls: string[] = sortedImages
     .map((img: any) => {
       const path = img.storage_path || img.shared_images?.storage_path
-      return path ? `${SUPABASE_URL}/storage/v1/object/public/product_images/${path}` : null
+      return path ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}` : null
     })
     .filter(Boolean) as string[]
   const imageUrl = allImageUrls[0] || null

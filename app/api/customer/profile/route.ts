@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-function getSupabase() {
-  return createAdminClient() || createPublicClient()
-}
-
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = await createServerSupabaseClient()
+
+    // Verificar autenticación
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { customer_id, organization_id, first_name, last_name, phone, doc_type, doc_number, address, city } = body
 
@@ -16,9 +20,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
-    const supabase = getSupabase()
+    // Verificar que el customer pertenece al usuario autenticado
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('id', customer_id)
+      .eq('user_id', user.id)
+      .single()
 
-    const { error } = await (supabase as any)
+    if (!customer) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { error } = await supabase
       .from('customers')
       .update({
         first_name: first_name || null,
@@ -43,3 +57,4 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
   }
 }
+
