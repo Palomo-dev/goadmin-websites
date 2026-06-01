@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ favorites: [] })
   }
 
-  const { data } = await supabase
+  const { data } = await (supabase as any)
     .from('customers')
     .select('metadata')
     .eq('id', customerId)
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     .eq('user_id', user.id)
     .single()
 
-  const favorites = (data?.metadata?.favorites || []) as number[]
+  const favorites = ((data as any)?.metadata?.favorites || []) as number[]
   return NextResponse.json({ favorites })
 }
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener metadata actual (RLS + user_id verifican propiedad)
-    const { data: customer } = await supabase
+    const { data: customer } = await (supabase as any)
       .from('customers')
       .select('metadata')
       .eq('id', customerId)
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
     }
 
-    const metadata = customer.metadata || {}
+    const metadata = (customer as any).metadata || {}
     let favorites: number[] = metadata.favorites || []
 
     if (action === 'remove') {
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Actualizar metadata
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('customers')
       .update({ metadata: { ...metadata, favorites } })
       .eq('id', customerId)

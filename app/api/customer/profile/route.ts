@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('customers')
       .update({
         first_name: first_name || null,
