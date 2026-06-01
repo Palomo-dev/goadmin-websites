@@ -1,5 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
-import { createPublicClient } from '@/lib/supabase/server'
+import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Button } from '@/components/ui/button'
@@ -15,9 +15,9 @@ import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 export const dynamic = 'force-dynamic'
 
 async function getProduct(productUuid: string, organizationId: number): Promise<any | null> {
-  const supabase = createPublicClient()
+  const supabase = createAdminClient() || createPublicClient()
   
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('products')
     .select(`
       *,
