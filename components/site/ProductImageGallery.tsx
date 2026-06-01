@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface ProductImageGalleryProps {
   images: string[]
@@ -22,11 +23,14 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
     )
   }
 
+  const prev = () => setSelected((s) => (s === 0 ? images.length - 1 : s - 1))
+  const next = () => setSelected((s) => (s === images.length - 1 ? 0 : s + 1))
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 sticky top-4">
       {/* Imagen principal */}
       <div 
-        className="aspect-square rounded-2xl overflow-hidden relative"
+        className="aspect-square rounded-2xl overflow-hidden relative group"
         style={{ background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)` }}
       >
         <img
@@ -34,6 +38,37 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
           alt={`${productName} - imagen ${selected + 1}`}
           className="w-full h-full object-cover"
         />
+        {/* Flechas de navegación */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+              aria-label="Imagen anterior"
+            >
+              <ChevronLeft className="h-6 w-6 text-gray-700" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+              aria-label="Imagen siguiente"
+            >
+              <ChevronRight className="h-6 w-6 text-gray-700" />
+            </button>
+            {/* Indicador de posición */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelected(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === selected ? 'w-6 bg-white' : 'bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Thumbnails */}

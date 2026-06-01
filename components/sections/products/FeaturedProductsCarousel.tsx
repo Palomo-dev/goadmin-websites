@@ -67,8 +67,13 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                 className="flex-shrink-0 w-64 snap-start group"
               >
                 <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden mb-3 relative">
-                  {outOfStock && (
-                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                  {comparePrice && price !== null && Number(comparePrice) > Number(price) && (
+                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                      -{Math.round((1 - Number(price) / Number(comparePrice)) * 100)}%
+                    </span>
+                  )}
+                  {outOfStock && !(comparePrice && price !== null && Number(comparePrice) > Number(price)) && (
+                    <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
                   )}
                   {imgUrl ? (
                     <Image src={imgUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" sizes="256px" />

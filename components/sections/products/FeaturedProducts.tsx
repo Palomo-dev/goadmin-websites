@@ -108,8 +108,13 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
               >
                 <Link href={`/productos/${product.uuid}`}>
                   <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
-                    {outOfStock && !isParent && (
-                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                    {comparePrice && price !== null && comparePrice > price && (
+                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        -{Math.round((1 - price / comparePrice) * 100)}%
+                      </span>
+                    )}
+                    {outOfStock && !isParent && !(comparePrice && price !== null && comparePrice > price) && (
+                      <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
                     )}
                     {variantCount > 0 && (
                       <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">

@@ -8,6 +8,9 @@ import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
+import { StickyAddToCart } from '@/components/site/StickyAddToCart'
+import { ProductReviews } from '@/components/site/ProductReviews'
+import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { getProductVariants } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
@@ -30,6 +33,28 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
   
   if (error || !data) return null
   return data as any
+}
+
+async function getRelatedProducts(organizationId: number, categoryId: number | null, limit: number = 8): Promise<any[]> {
+  if (!categoryId) return []
+  const supabase = createAdminClient() || createPublicClient()
+  const { data, error } = await (supabase as any)
+    .from('products')
+    .select(`
+      id, uuid, name, is_parent, variant_count,
+      product_prices (*),
+      product_images (
+        id, storage_path, is_primary, display_order,
+        shared_image_id,
+        shared_images ( storage_path )
+      )
+    `)
+    .eq('organization_id', organizationId)
+    .eq('category_id', categoryId)
+    .eq('status', 'active')
+    .limit(limit)
+  if (error || !data) return []
+  return data
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -74,6 +99,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   if (isParent) {
     variants = await getProductVariants(product.id, organization.id)
   }
+
+  // Obtener productos relacionados por categoría
+  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null)
 
   // Construir URLs de imágenes
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -203,7 +231,34 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             </div>
           </div>
         </div>
+
+        {/* Reviews */}
+        <ProductReviews
+          productId={product.id}
+          productName={product.name}
+          primaryColor={primaryColor}
+        />
+
+        {/* Productos relacionados */}
+        <RelatedProducts
+          products={relatedProducts}
+          primaryColor={primaryColor}
+          currentProductId={product.id}
+        />
       </div>
+
+      {/* Sticky Add to Cart (mobile) */}
+      {!isParent && price && (
+        <StickyAddToCart
+          productId={product.id}
+          productName={product.name}
+          price={Number(price.price)}
+          comparePrice={comparePrice}
+          imageUrl={imageUrl}
+          primaryColor={primaryColor}
+          isParent={isParent}
+        />
+      )}
     </OrganizationLayout>
   )
 }

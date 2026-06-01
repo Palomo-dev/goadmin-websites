@@ -200,8 +200,18 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                   >
                     {(() => {
                       const stock = getAvailableStock(product)
+                      const cp = product.product_prices?.[0]?.compare_price
+                      const pr = product.product_prices?.[0]?.price
+                      const hasDiscount = cp && pr && Number(cp) > Number(pr)
+                      if (hasDiscount) {
+                        return (
+                          <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                            -{Math.round((1 - Number(pr) / Number(cp)) * 100)}%
+                          </span>
+                        )
+                      }
                       return stock !== null && stock <= 0 ? (
-                        <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">
                           Agotado
                         </span>
                       ) : null
