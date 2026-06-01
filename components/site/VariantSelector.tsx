@@ -11,7 +11,7 @@ interface VariantProduct {
   name: string
   sku?: string
   variant_data?: Record<string, string>
-  product_prices?: { price: number }[]
+  product_prices?: { price: number; compare_price?: number | null }[]
   product_images?: {
     id: number
     storage_path: string | null
@@ -108,6 +108,7 @@ export function VariantSelector({
   }
 
   const price = selectedVariant?.product_prices?.[0]?.price
+  const variantComparePrice = selectedVariant?.product_prices?.[0]?.compare_price
   const stock = selectedVariant ? getAvailableStock(selectedVariant) : null
   const outOfStock = stock !== null && stock <= 0
   const imageUrl = selectedVariant ? getVariantImageUrl(selectedVariant) : null
@@ -180,11 +181,19 @@ export function VariantSelector({
                       <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
                     )}
                   </div>
-                  {vPrice && (
-                    <span className="font-bold" style={{ color: primaryColor }}>
-                      ${Number(vPrice).toLocaleString()}
-                    </span>
-                  )}
+                  <div className="text-right">
+                    {(() => {
+                      const vCp = variant.product_prices?.[0]?.compare_price
+                      return vCp && Number(vCp) > Number(vPrice) ? (
+                        <span className="text-xs text-gray-400 line-through mr-2">${Number(vCp).toLocaleString()}</span>
+                      ) : null
+                    })()}
+                    {vPrice && (
+                      <span className="font-bold" style={{ color: primaryColor }}>
+                        ${Number(vPrice).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             )
@@ -215,9 +224,14 @@ export function VariantSelector({
             </div>
             <div className="text-right flex-shrink-0">
               {price ? (
-                <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                  ${Number(price).toLocaleString()}
-                </p>
+                <div>
+                  {variantComparePrice && Number(variantComparePrice) > Number(price) && (
+                    <p className="text-sm text-gray-400 line-through">${Number(variantComparePrice).toLocaleString()}</p>
+                  )}
+                  <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                    ${Number(price).toLocaleString()}
+                  </p>
+                </div>
               ) : (
                 <p className="text-sm text-red-500">Sin precio</p>
               )}

@@ -21,6 +21,18 @@ function getPrice(product: any): number | null {
   return null
 }
 
+function getComparePrice(product: any): number | null {
+  const cp = product.product_prices?.[0]?.compare_price
+  return cp ? Number(cp) : null
+}
+
+function getStock(product: any): number | null {
+  if (!product.stock_levels || product.stock_levels.length === 0) return null
+  return product.stock_levels.reduce(
+    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
+  )
+}
+
 interface FeaturedProductsCarouselProps {
   content: Record<string, any>
   primaryColor?: string
@@ -45,6 +57,9 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
           {products.map((product: any) => {
             const imgUrl = getImageUrl(product)
             const price = getPrice(product)
+            const comparePrice = getComparePrice(product)
+            const stock = getStock(product)
+            const outOfStock = stock !== null && stock <= 0
             return (
               <a
                 key={product.id}
@@ -52,6 +67,9 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                 className="flex-shrink-0 w-64 snap-start group"
               >
                 <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden mb-3 relative">
+                  {outOfStock && (
+                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                  )}
                   {imgUrl ? (
                     <Image src={imgUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" sizes="256px" />
                   ) : (
@@ -62,6 +80,9 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                 </div>
                 <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{product.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
+                  {comparePrice && price !== null && comparePrice > price && (
+                    <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                  )}
                   {price !== null && (
                     <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
                   )}

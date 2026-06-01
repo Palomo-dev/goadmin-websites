@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Package } from 'lucide-react'
+import { Plus, Check, Package, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -22,6 +22,18 @@ function getPrice(product: any): number | null {
     return Number(product.product_prices[0].price)
   }
   return null
+}
+
+function getComparePrice(product: any): number | null {
+  const cp = product.product_prices?.[0]?.compare_price
+  return cp ? Number(cp) : null
+}
+
+function getStock(product: any): number | null {
+  if (!product.stock_levels || product.stock_levels.length === 0) return null
+  return product.stock_levels.reduce(
+    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
+  )
 }
 
 interface FeaturedProductsProps {
@@ -56,7 +68,8 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
       cart[existingIndex].quantity += 1
     } else {
       const imgUrl = getImageUrl(product)
-      cart.push({ id: product.id, name: product.name, price, quantity: 1, ...(imgUrl && { imageUrl: imgUrl }) })
+      const cp = getComparePrice(product)
+      cart.push({ id: product.id, name: product.name, price, quantity: 1, ...(imgUrl && { imageUrl: imgUrl }), ...(cp && { comparePrice: cp }) })
     }
 
     localStorage.setItem(cartKey, JSON.stringify(cart))
@@ -80,8 +93,13 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map((product: any) => {
             const price = getPrice(product)
+            const comparePrice = getComparePrice(product)
             const imgUrl = getImageUrl(product)
             const isAdded = addedToCart.has(product.id)
+            const variantCount = product.variant_count || 0
+            const stock = getStock(product)
+            const outOfStock = stock !== null && stock <= 0
+            const isParent = product.is_parent && variantCount > 0
 
             return (
               <div
@@ -90,6 +108,14 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
               >
                 <Link href={`/productos/${product.uuid}`}>
                   <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
+                    {outOfStock && !isParent && (
+                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                    )}
+                    {variantCount > 0 && (
+                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <Layers className="h-3 w-3" />{variantCount}
+                      </span>
+                    )}
                     {imgUrl ? (
                       <Image
                         src={imgUrl}
@@ -112,20 +138,31 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                     </h3>
                   </Link>
                   <div className="flex items-center justify-between mt-2">
-                    {price !== null && (
-                      <span className="font-bold text-lg" style={{ color: primaryColor }}>
-                        ${price.toLocaleString()}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      {comparePrice && price !== null && comparePrice > price && (
+                        <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                      )}
+                      {price !== null && (
+                        <span className="font-bold text-lg" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                      )}
+                    </div>
+                    {outOfStock && !isParent ? (
+                      <span className="text-xs text-red-500 font-medium">Sin stock</span>
+                    ) : isParent ? (
+                      <Link href={`/productos/${product.uuid}`}>
+                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700"><Layers className="h-4 w-4 mr-1" />Elegir</Button>
+                      </Link>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={(e) => { e.preventDefault(); addToCart(product) }}
+                        className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                        style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                        disabled={price === null}
+                      >
+                        {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
+                      </Button>
                     )}
-                    <Button
-                      size="sm"
-                      onClick={(e) => { e.preventDefault(); addToCart(product) }}
-                      className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                      style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                      disabled={price === null}
-                    >
-                      {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
-                    </Button>
                   </div>
                 </div>
               </div>

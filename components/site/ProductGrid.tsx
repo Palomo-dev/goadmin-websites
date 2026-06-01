@@ -33,7 +33,7 @@ interface Product {
   is_parent?: boolean
   has_variants?: boolean
   variant_count?: number
-  product_prices?: { price: number; currency_code?: string }[]
+  product_prices?: { price: number; compare_price?: number | null; currency_code?: string }[]
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
 }
@@ -118,12 +118,14 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
       existingCart[existingIndex].quantity += 1
     } else {
       const imgUrl = getProductImageUrl(product)
+      const cp = product.product_prices?.[0]?.compare_price
       existingCart.push({
         id: product.id,
         name: product.name,
         price: Number(price),
         quantity: 1,
-        ...(imgUrl && { imageUrl: imgUrl })
+        ...(imgUrl && { imageUrl: imgUrl }),
+        ...(cp && { comparePrice: Number(cp) })
       })
     }
     
@@ -236,14 +238,16 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                   )}
                   
                   <div className="flex items-center justify-between">
-                    {price && (
-                      <span 
-                        className="text-lg font-bold"
-                        style={{ color: primaryColor }}
-                      >
-                        ${Number(price.price).toLocaleString()}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {price?.compare_price && Number(price.compare_price) > Number(price.price) && (
+                        <span className="text-sm text-gray-400 line-through">${Number(price.compare_price).toLocaleString()}</span>
+                      )}
+                      {price && (
+                        <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                          ${Number(price.price).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                     
                     {(() => {
                       const stock = getAvailableStock(product)

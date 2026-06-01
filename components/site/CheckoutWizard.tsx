@@ -22,6 +22,7 @@ interface CartItem {
   productId?: number
   name: string
   price: number
+  comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
   notes?: string
@@ -545,9 +546,14 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
                         {item.notes && (
                           <p className="text-xs text-gray-400 italic truncate">📝 {item.notes}</p>
                         )}
-                        <p className="text-sm text-gray-500">
-                          ${item.price.toLocaleString()} c/u
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {item.comparePrice && item.comparePrice > item.price && (
+                            <span className="text-sm text-gray-400 line-through">${item.comparePrice.toLocaleString()}</span>
+                          )}
+                          <p className="text-sm text-gray-500">
+                            ${item.price.toLocaleString()} c/u
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2">

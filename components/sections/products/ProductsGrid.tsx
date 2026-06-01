@@ -24,6 +24,18 @@ function getPrice(product: any): number | null {
   return null
 }
 
+function getComparePrice(product: any): number | null {
+  const cp = product.product_prices?.[0]?.compare_price
+  return cp ? Number(cp) : null
+}
+
+function getStock(product: any): number | null {
+  if (!product.stock_levels || product.stock_levels.length === 0) return null
+  return product.stock_levels.reduce(
+    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
+  )
+}
+
 interface ProductsGridProps {
   content: {
     title?: string
@@ -55,12 +67,14 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       cart[existingIndex].quantity += 1
     } else {
       const imgUrl = getImageUrl(product)
+      const comparePrice = getComparePrice(product)
       cart.push({
         id: product.id,
         name: product.name,
         price,
         quantity: 1,
-        ...(imgUrl && { imageUrl: imgUrl })
+        ...(imgUrl && { imageUrl: imgUrl }),
+        ...(comparePrice && { comparePrice })
       })
     }
 
@@ -86,9 +100,13 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map((product: any) => {
             const price = getPrice(product)
+            const comparePrice = getComparePrice(product)
             const imgUrl = getImageUrl(product)
             const isAdded = addedToCart.has(product.id)
             const variantCount = product.variant_count || 0
+            const stock = getStock(product)
+            const outOfStock = stock !== null && stock <= 0
+            const isParent = product.is_parent && variantCount > 0
 
             return (
               <div
@@ -97,6 +115,9 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
               >
                 <Link href={`/productos/${product.uuid}`}>
                   <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
+                    {outOfStock && !isParent && (
+                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                    )}
                     {variantCount > 0 && (
                       <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
                         <Layers className="h-3 w-3" />
@@ -128,33 +149,48 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                     <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{product.description}</p>
                   )}
                   <div className="flex items-center justify-between">
-                    {price !== null && (
-                      <span className="font-bold text-lg" style={{ color: primaryColor }}>
-                        ${price.toLocaleString()}
-                      </span>
-                    )}
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        addToCart(product)
-                      }}
-                      className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                      style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                      disabled={price === null}
-                    >
-                      {isAdded ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Agregado
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Agregar
-                        </>
+                    <div className="flex items-center gap-2">
+                      {comparePrice && price !== null && comparePrice > price && (
+                        <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
                       )}
-                    </Button>
+                      {price !== null && (
+                        <span className="font-bold text-lg" style={{ color: primaryColor }}>
+                          ${price.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {outOfStock && !isParent ? (
+                      <span className="text-xs text-red-500 font-medium">Sin stock</span>
+                    ) : isParent ? (
+                      <Link href={`/productos/${product.uuid}`}>
+                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                          <Layers className="h-4 w-4 mr-1" /> Elegir
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          addToCart(product)
+                        }}
+                        className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                        style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                        disabled={price === null}
+                      >
+                        {isAdded ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Agregado
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Agregar
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

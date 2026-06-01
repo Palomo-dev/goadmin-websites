@@ -9,6 +9,7 @@ interface CartItem {
   id: number
   name: string
   price: number
+  comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
 }
@@ -129,9 +130,14 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                   
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900 dark:text-white truncate">{item.name}</h4>
-                    <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                      ${Number(item.price).toLocaleString()}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {item.comparePrice && item.comparePrice > item.price && (
+                        <span className="text-xs text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>
+                      )}
+                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                        ${Number(item.price).toLocaleString()}
+                      </p>
+                    </div>
                     
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">

@@ -16,6 +16,7 @@ interface CartItem {
   id: number
   name: string
   price: number
+  comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
 }
@@ -225,9 +226,14 @@ export function CartPageClient({
                   <Link href={`/productos/${item.id}`}>
                     <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-2">{item.name}</h3>
                   </Link>
-                  <p className="text-sm font-medium mt-1" style={{ color: primaryColor }}>
-                    ${Number(item.price).toLocaleString()} c/u
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {item.comparePrice && item.comparePrice > item.price && (
+                      <span className="text-sm text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>
+                    )}
+                    <p className="text-sm font-medium" style={{ color: primaryColor }}>
+                      ${Number(item.price).toLocaleString()} c/u
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-3">

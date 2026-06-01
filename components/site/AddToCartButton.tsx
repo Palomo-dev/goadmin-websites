@@ -9,6 +9,7 @@ interface AddToCartButtonProps {
   productId: number
   productName: string
   price: number
+  comparePrice?: number | null
   imageUrl?: string | null
   primaryColor: string
   variant?: 'full' | 'icon' | 'compact'
@@ -19,6 +20,7 @@ export function AddToCartButton({
   productId, 
   productName, 
   price, 
+  comparePrice,
   imageUrl,
   primaryColor, 
   variant = 'full',
@@ -43,7 +45,8 @@ export function AddToCartButton({
           name: productName,
           price: Number(price),
           quantity: 1,
-          ...(imageUrl && { imageUrl })
+          ...(imageUrl && { imageUrl }),
+          ...(comparePrice && { comparePrice: Number(comparePrice) })
         })
       }
 

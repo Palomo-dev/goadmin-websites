@@ -9,6 +9,7 @@ interface ProductDetailActionsProps {
   product: any
   variants: any[]
   price: number
+  comparePrice?: number | null
   imageUrl: string | null
   primaryColor: string
   isParent: boolean
@@ -18,6 +19,7 @@ export function ProductDetailActions({
   product,
   variants,
   price,
+  comparePrice,
   imageUrl,
   primaryColor,
   isParent
@@ -25,6 +27,7 @@ export function ProductDetailActions({
 
   const handleVariantSelect = (variant: any) => {
     const variantPrice = variant.product_prices?.[0]?.price || 0
+    const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const host = window.location.hostname
     const subdomain = host.split('.')[0]
     const cartKey = `cart_${subdomain}`
@@ -39,6 +42,7 @@ export function ProductDetailActions({
         name: variant.name,
         price: Number(variantPrice),
         quantity: 1,
+        ...(variantComparePrice && { comparePrice: Number(variantComparePrice) })
       })
     }
 

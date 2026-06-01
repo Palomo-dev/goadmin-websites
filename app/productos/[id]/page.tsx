@@ -66,6 +66,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   }
 
   const price = product.product_prices?.[0]
+  const comparePrice = price?.compare_price ? Number(price.compare_price) : null
   const isParent = product.is_parent === true
 
   // Obtener variantes si es producto padre
@@ -122,12 +123,20 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
               
               {price && (
                 <div className="flex items-baseline gap-3">
+                  {comparePrice && comparePrice > Number(price.price) && (
+                    <span className="text-xl text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                  )}
                   <span 
                     className="text-4xl font-bold"
                     style={{ color: primaryColor }}
                   >
                     ${Number(price.price).toLocaleString()}
                   </span>
+                  {comparePrice && comparePrice > Number(price.price) && (
+                    <span className="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      -{Math.round((1 - Number(price.price) / comparePrice) * 100)}%
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -144,6 +153,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
               product={product}
               variants={variants}
               price={Number(price?.price || 0)}
+              comparePrice={comparePrice}
               imageUrl={imageUrl}
               primaryColor={primaryColor}
               isParent={isParent}
