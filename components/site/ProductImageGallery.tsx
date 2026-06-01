@@ -27,10 +27,10 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
   const next = () => setSelected((s) => (s === images.length - 1 ? 0 : s + 1))
 
   return (
-    <div className="space-y-3 sticky top-4">
+    <div className="space-y-3">
       {/* Imagen principal */}
       <div 
-        className="aspect-square rounded-2xl overflow-hidden relative group"
+        className="aspect-square rounded-2xl overflow-hidden relative"
         style={{ background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)` }}
       >
         <img
@@ -43,17 +43,17 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
           <>
             <button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
               aria-label="Imagen anterior"
             >
-              <ChevronLeft className="h-6 w-6 text-gray-700" />
+              <ChevronLeft className="h-6 w-6 text-gray-800" />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
               aria-label="Imagen siguiente"
             >
-              <ChevronRight className="h-6 w-6 text-gray-700" />
+              <ChevronRight className="h-6 w-6 text-gray-800" />
             </button>
             {/* Indicador de posición */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
@@ -61,8 +61,8 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
                 <button
                   key={i}
                   onClick={() => setSelected(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === selected ? 'w-6 bg-white' : 'bg-white/60'
+                  className={`h-2 rounded-full transition-all ${
+                    i === selected ? 'w-6 bg-white shadow' : 'w-2 bg-white/60'
                   }`}
                 />
               ))}

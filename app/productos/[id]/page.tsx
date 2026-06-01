@@ -11,6 +11,8 @@ import { ProductImageGallery } from '@/components/site/ProductImageGallery'
 import { StickyAddToCart } from '@/components/site/StickyAddToCart'
 import { ProductReviews } from '@/components/site/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
+import { ExpandableDescription } from '@/components/site/ExpandableDescription'
+import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
 import { getProductVariants } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
@@ -147,7 +149,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           <div className="space-y-6">
             <div>
               <p className="text-sm text-gray-500 mb-2">SKU: {product.sku || 'N/A'}</p>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              <ReviewSummaryBadge primaryColor={primaryColor} />
               
               {price && (
                 <div className="flex items-baseline gap-3">
@@ -172,7 +175,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             {product.description && (
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Descripción</h3>
-                <p className="text-gray-600 leading-relaxed">{product.description}</p>
+                <ExpandableDescription text={product.description} maxLength={180} />
               </div>
             )}
             
@@ -232,19 +235,21 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           </div>
         </div>
 
-        {/* Reviews */}
-        <ProductReviews
-          productId={product.id}
-          productName={product.name}
-          primaryColor={primaryColor}
-        />
-
         {/* Productos relacionados */}
         <RelatedProducts
           products={relatedProducts}
           primaryColor={primaryColor}
           currentProductId={product.id}
         />
+
+        {/* Reviews */}
+        <div id="product-reviews">
+          <ProductReviews
+            productId={product.id}
+            productName={product.name}
+            primaryColor={primaryColor}
+          />
+        </div>
       </div>
 
       {/* Sticky Add to Cart (mobile) */}
