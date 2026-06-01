@@ -36,6 +36,7 @@ interface Product {
   product_prices?: { price: number; compare_price?: number | null; currency_code?: string }[]
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
+  variant_data?: Record<string, string> | null
 }
 
 function getAvailableStock(product: Product): number | null {
@@ -125,7 +126,8 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
         price: Number(price),
         quantity: 1,
         ...(imgUrl && { imageUrl: imgUrl }),
-        ...(cp && { comparePrice: Number(cp) })
+        ...(cp && { comparePrice: Number(cp) }),
+        ...(product.variant_data && { variantAttributes: product.variant_data })
       })
     }
     

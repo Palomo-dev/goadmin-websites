@@ -177,8 +177,15 @@ export function VariantSelector({
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-medium text-gray-900">{variant.name}</p>
+                    {variant.variant_data && Object.keys(variant.variant_data).length > 0 && (
+                      <p className="text-xs text-gray-600">
+                        {Object.entries(variant.variant_data).map(([k, v]) => (
+                          <span key={k} className="mr-2"><span className="capitalize font-semibold">{k}:</span> {v}</span>
+                        ))}
+                      </p>
+                    )}
                     {variant.sku && (
-                      <p className="text-xs text-gray-500">SKU: {variant.sku}</p>
+                      <p className="text-xs text-gray-400">SKU: {variant.sku}</p>
                     )}
                   </div>
                   <div className="text-right">
@@ -218,8 +225,17 @@ export function VariantSelector({
             )}
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 truncate">{selectedVariant.name}</p>
+              {selectedVariant.variant_data && Object.keys(selectedVariant.variant_data).length > 0 && (
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {Object.entries(selectedVariant.variant_data).map(([k, v]) => (
+                    <span key={k} className="text-xs text-gray-600">
+                      <span className="capitalize font-semibold">{k}:</span> {v}
+                    </span>
+                  ))}
+                </div>
+              )}
               {selectedVariant.sku && (
-                <p className="text-xs text-gray-500">SKU: {selectedVariant.sku}</p>
+                <p className="text-xs text-gray-400 mt-0.5">SKU: {selectedVariant.sku}</p>
               )}
             </div>
             <div className="text-right flex-shrink-0">

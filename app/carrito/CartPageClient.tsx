@@ -19,6 +19,7 @@ interface CartItem {
   comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
+  variantAttributes?: Record<string, string> | null
 }
 
 interface CartSettings {
@@ -226,6 +227,13 @@ export function CartPageClient({
                   <Link href={`/productos/${item.id}`}>
                     <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-2">{item.name}</h3>
                   </Link>
+                  {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {Object.entries(item.variantAttributes).map(([k, v]) => (
+                        <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
+                      ))}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     {item.comparePrice && item.comparePrice > item.price && (
                       <span className="text-sm text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>

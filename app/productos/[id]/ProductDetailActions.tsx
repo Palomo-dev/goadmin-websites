@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/button'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+function getVariantImageUrl(variant: any): string | null {
+  if (!variant.product_images || variant.product_images.length === 0) return null
+  const primary = variant.product_images.find((img: any) => img.is_primary) || variant.product_images[0]
+  const path = primary.storage_path || primary.shared_images?.storage_path
+  if (!path) return null
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+}
+
 interface ProductDetailActionsProps {
   product: any
   variants: any[]
@@ -28,6 +38,7 @@ export function ProductDetailActions({
   const handleVariantSelect = (variant: any) => {
     const variantPrice = variant.product_prices?.[0]?.price || 0
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
+    const variantImgUrl = getVariantImageUrl(variant) || imageUrl
     const host = window.location.hostname
     const subdomain = host.split('.')[0]
     const cartKey = `cart_${subdomain}`
@@ -42,7 +53,9 @@ export function ProductDetailActions({
         name: variant.name,
         price: Number(variantPrice),
         quantity: 1,
-        ...(variantComparePrice && { comparePrice: Number(variantComparePrice) })
+        ...(variantImgUrl && { imageUrl: variantImgUrl }),
+        ...(variantComparePrice && { comparePrice: Number(variantComparePrice) }),
+        ...(variant.variant_data && { variantAttributes: variant.variant_data })
       })
     }
 

@@ -27,6 +27,7 @@ interface CartItem {
   imageUrl?: string | null
   notes?: string
   modifiers?: CartModifier[]
+  variantAttributes?: Record<string, string> | null
 }
 
 interface PaymentGateway {
@@ -538,6 +539,13 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
 
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
+                        {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            {Object.entries(item.variantAttributes).map(([k, v]) => (
+                              <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
+                            ))}
+                          </p>
+                        )}
                         {item.modifiers && item.modifiers.length > 0 && (
                           <p className="text-xs text-gray-400 truncate">
                             {item.modifiers.map(m => m.valueName).join(', ')}
@@ -869,6 +877,11 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
                   <div key={item.id} className="flex justify-between text-sm">
                     <div className="text-gray-600 flex-1 min-w-0">
                       <span className="truncate block">{item.name} x{item.quantity}</span>
+                      {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
+                        <span className="text-xs text-gray-400 block truncate">
+                          {Object.entries(item.variantAttributes).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                        </span>
+                      )}
                       {item.modifiers && item.modifiers.length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
                           {item.modifiers.map(m => m.valueName).join(', ')}

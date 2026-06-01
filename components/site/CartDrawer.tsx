@@ -12,6 +12,7 @@ interface CartItem {
   comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
+  variantAttributes?: Record<string, string> | null
 }
 
 interface CartDrawerProps {
@@ -130,6 +131,13 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                   
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900 dark:text-white truncate">{item.name}</h4>
+                    {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {Object.entries(item.variantAttributes).map(([k, v]) => (
+                          <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
+                        ))}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2">
                       {item.comparePrice && item.comparePrice > item.price && (
                         <span className="text-xs text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>
