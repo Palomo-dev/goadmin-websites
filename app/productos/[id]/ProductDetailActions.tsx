@@ -57,18 +57,28 @@ export function ProductDetailActions({
 }: ProductDetailActionsProps) {
   const router = useRouter()
 
-  const handleVariantSelect = (variant: any) => {
+  const handleVariantSelect = (variant: any, qty: number = 1) => {
     const variantPrice = variant.product_prices?.[0]?.price || 0
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
-    addItemToCart({
-      id: variant.id,
-      name: variant.name,
-      price: Number(variantPrice),
-      ...(variantImgUrl && { imageUrl: variantImgUrl }),
-      ...(variantComparePrice && { comparePrice: Number(variantComparePrice) }),
-      ...(variant.variant_data && { variantAttributes: variant.variant_data })
-    })
+    const cartKey = getCartKey()
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+    const idx = cart.findIndex((c: any) => c.id === variant.id)
+    if (idx >= 0) {
+      cart[idx].quantity += qty
+    } else {
+      cart.push({
+        id: variant.id,
+        name: variant.name,
+        price: Number(variantPrice),
+        quantity: qty,
+        ...(variantImgUrl && { imageUrl: variantImgUrl }),
+        ...(variantComparePrice && { comparePrice: Number(variantComparePrice) }),
+        ...(variant.variant_data && { variantAttributes: variant.variant_data })
+      })
+    }
+    localStorage.setItem(cartKey, JSON.stringify(cart))
+    window.dispatchEvent(new CustomEvent('cart-updated'))
   }
 
   const handleBuyNowVariant = (variant: any) => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check, Package, Loader2, ShoppingCart, X } from 'lucide-react'
+import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
 
 interface VariantProduct {
@@ -26,7 +26,7 @@ interface VariantSelectorProps {
   parentName: string
   variants: VariantProduct[]
   primaryColor: string
-  onSelect: (variant: VariantProduct) => void
+  onSelect: (variant: VariantProduct, quantity?: number) => void
   onBuyNow?: (variant: VariantProduct) => void
   onClose?: () => void
   mode?: 'dialog' | 'inline'
@@ -61,6 +61,7 @@ export function VariantSelector({
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantProduct | null>(null)
   const [added, setAdded] = useState(false)
+  const [quantity, setQuantity] = useState(1)
 
   // Extraer grupos de atributos de variant_data
   const attributeGroups = useMemo(() => {
@@ -104,9 +105,9 @@ export function VariantSelector({
 
   const handleAddToCart = () => {
     if (!selectedVariant) return
-    onSelect(selectedVariant)
+    onSelect(selectedVariant, quantity)
     setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    setTimeout(() => { setAdded(false); setQuantity(1) }, 1500)
   }
 
   const price = selectedVariant?.product_prices?.[0]?.price
@@ -260,6 +261,28 @@ export function VariantSelector({
           </div>
         </div>
       )}
+
+      {/* Selector de cantidad */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-gray-700">Cantidad:</span>
+        <div className="flex items-center border rounded-lg">
+          <button
+            type="button"
+            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
+          <button
+            type="button"
+            onClick={() => setQuantity(q => q + 1)}
+            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Botón agregar */}
       <Button
