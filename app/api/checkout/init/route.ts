@@ -59,15 +59,31 @@ async function getCredentials(
 /**
  * Obtiene la orden de web_orders por order_number
  */
+const COUNTRY_CURRENCY: Record<string, string> = {
+  COL: 'COP', MEX: 'MXN', USA: 'USD', ARG: 'ARS', CHL: 'CLP',
+  PER: 'PEN', ECU: 'USD', BRA: 'BRL', URY: 'UYU', PAN: 'USD',
+  CRI: 'CRC', GTM: 'GTQ', HND: 'HNL', SLV: 'USD', NIC: 'NIO',
+  DOM: 'DOP', BOL: 'BOB', PRY: 'PYG', VEN: 'VES', ESP: 'EUR',
+}
+
 async function getOrder(supabase: any, orderNumber: string) {
   const { data, error } = await supabase
     .from('web_orders')
-    .select('id, organization_id, order_number, total, currency, status, payment_status, customer_email, customer_name')
+    .select('id, organization_id, order_number, total, status, payment_status, customer_email, customer_name')
     .eq('order_number', orderNumber)
     .single()
 
   if (error || !data) return null
-  return data
+
+  // Obtener moneda desde country_code de la organización
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('country_code')
+    .eq('id', data.organization_id)
+    .single()
+
+  const currency = COUNTRY_CURRENCY[org?.country_code || ''] || 'COP'
+  return { ...data, currency }
 }
 
 /**

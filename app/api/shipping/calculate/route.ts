@@ -22,12 +22,13 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
     const sb = supabase as any
 
-    // Buscar tarifas activas para esta organización
+    // Buscar tarifas activas y visibles en web para esta organización
     let query = sb
       .from('shipping_rates')
       .select('*, transport_carriers:carrier_id(id, name)')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
+      .eq('show_on_website', true)
 
     const { data: allRates, error } = await query
 

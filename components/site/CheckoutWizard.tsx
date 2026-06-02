@@ -47,6 +47,7 @@ interface CheckoutSettings {
   shippingFlatRate: number
   freeShippingThreshold: number
   enableShipping: boolean
+  availableDeliveryTypes?: string[]
 }
 
 interface CheckoutWizardProps {
@@ -76,6 +77,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingFlatRate: 10000,
   freeShippingThreshold: 100000,
   enableShipping: true,
+  availableDeliveryTypes: ['pickup', 'delivery_own', 'delivery_third_party'],
 }
 
 export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false }: CheckoutWizardProps) {
@@ -179,7 +181,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     ? Math.round(subtotal * settings.taxRate / 100)
     : 0
   // Shipping solo aplica para delivery (o retail sin isRestaurant)
-  const needsShipping = isRestaurant ? orderType === 'delivery' : true
+  const hasDeliveryOption = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
+  const needsShipping = isRestaurant ? orderType === 'delivery' : hasDeliveryOption
   const flatShipping = settings.enableShipping && needsShipping
     ? (settings.freeShippingThreshold > 0 && subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFlatRate)
     : 0
@@ -606,6 +609,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       value={orderType}
                       onChange={setOrderType}
                       primaryColor={primaryColor}
+                      enableDelivery={!settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')}
+                      enablePickup={!settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')}
                     />
                     <ScheduleSelector
                       isScheduled={isScheduled}

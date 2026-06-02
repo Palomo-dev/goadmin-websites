@@ -105,6 +105,7 @@ export default async function CheckoutPage() {
     shippingFlatRate: Number(ws?.shipping_flat_rate ?? 10000),
     freeShippingThreshold: Number(ws?.free_shipping_threshold ?? 100000),
     enableShipping: ws?.enable_shipping !== false,
+    availableDeliveryTypes: ws?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
   }
 
   return (
