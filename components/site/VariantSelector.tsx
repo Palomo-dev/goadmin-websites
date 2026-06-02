@@ -27,6 +27,7 @@ interface VariantSelectorProps {
   variants: VariantProduct[]
   primaryColor: string
   onSelect: (variant: VariantProduct) => void
+  onBuyNow?: (variant: VariantProduct) => void
   onClose?: () => void
   mode?: 'dialog' | 'inline'
 }
@@ -53,6 +54,7 @@ export function VariantSelector({
   variants,
   primaryColor,
   onSelect,
+  onBuyNow,
   onClose,
   mode = 'dialog'
 }: VariantSelectorProps) {
@@ -281,6 +283,20 @@ export function VariantSelector({
           </>
         )}
       </Button>
+
+      {/* Botón comprar ahora */}
+      {onBuyNow && (
+        <Button
+          size="lg"
+          variant="outline"
+          className="w-full text-lg py-6"
+          style={{ borderColor: primaryColor, color: primaryColor }}
+          disabled={!selectedVariant || !price || outOfStock}
+          onClick={() => selectedVariant && onBuyNow(selectedVariant)}
+        >
+          Comprar ahora
+        </Button>
+      )}
     </div>
   )
 

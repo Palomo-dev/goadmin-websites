@@ -37,27 +37,67 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
   return data as any
 }
 
-async function getRelatedProducts(organizationId: number, categoryId: number | null, limit: number = 8): Promise<any[]> {
-  if (!categoryId) return []
+async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
-  const { data, error } = await (supabase as any)
-    .from('products')
-    .select(`
-      id, uuid, name, is_parent, variant_count,
-      product_prices (*),
-      product_images (
-        id, storage_path, is_primary, display_order,
-        shared_image_id,
-        shared_images ( storage_path )
-      )
-    `)
-    .eq('organization_id', organizationId)
-    .eq('category_id', categoryId)
-    .eq('status', 'active')
-    .eq('is_parent', true)
-    .limit(limit)
-  if (error || !data) return []
-  return data
+  const selectFields = `
+    id, uuid, name, is_parent, variant_count,
+    product_prices (*),
+    product_images (
+      id, storage_path, is_primary, display_order,
+      shared_image_id,
+      shared_images ( storage_path )
+    )
+  `
+  const collected = new Map<number, any>()
+
+  // 1. Por categoría
+  if (categoryId) {
+    const { data } = await (supabase as any)
+      .from('products')
+      .select(selectFields)
+      .eq('organization_id', organizationId)
+      .eq('category_id', categoryId)
+      .eq('status', 'active')
+      .eq('is_parent', true)
+      .neq('id', currentProductId)
+      .limit(limit)
+    if (data) data.forEach((p: any) => collected.set(p.id, p))
+  }
+
+  // 2. Por tag
+  if (tagId && collected.size < limit) {
+    const { data } = await (supabase as any)
+      .from('products')
+      .select(selectFields)
+      .eq('organization_id', organizationId)
+      .eq('tag_id', tagId)
+      .eq('status', 'active')
+      .eq('is_parent', true)
+      .neq('id', currentProductId)
+      .limit(limit)
+    if (data) data.forEach((p: any) => collected.set(p.id, p))
+  }
+
+  // 3. Fallback: productos aleatorios de la misma organización
+  if (collected.size < limit) {
+    const { data } = await (supabase as any)
+      .from('products')
+      .select(selectFields)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .eq('is_parent', true)
+      .neq('id', currentProductId)
+      .limit(limit * 2)
+    if (data) data.forEach((p: any) => collected.set(p.id, p))
+  }
+
+  // Mezclar aleatoriamente y limitar
+  const all = Array.from(collected.values())
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]]
+  }
+  return all.slice(0, limit)
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -103,8 +143,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     variants = await getProductVariants(product.id, organization.id)
   }
 
-  // Obtener productos relacionados por categoría
-  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null)
+  // Obtener productos relacionados por categoría, tag y aleatorio
+  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id)
 
   // Construir URLs de imágenes
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -265,6 +305,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           imageUrl={imageUrl}
           primaryColor={primaryColor}
           isParent={isParent}
+          variants={variants}
         />
       )}
     </OrganizationLayout>
