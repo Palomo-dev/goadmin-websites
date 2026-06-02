@@ -48,6 +48,8 @@ interface CheckoutSettings {
   freeShippingThreshold: number
   enableShipping: boolean
   availableDeliveryTypes?: string[]
+  shippingTitle?: string
+  shippingDescription?: string
 }
 
 interface CheckoutWizardProps {
@@ -78,6 +80,8 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   freeShippingThreshold: 100000,
   enableShipping: true,
   availableDeliveryTypes: ['pickup', 'delivery_own', 'delivery_third_party'],
+  shippingTitle: 'Envío',
+  shippingDescription: '',
 }
 
 export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false }: CheckoutWizardProps) {
@@ -934,9 +938,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     <p className="text-xs text-gray-400 mt-1">{settings.taxName} incluido en el precio</p>
                   )}
                   {needsShipping && settings.enableShipping && (
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-600">{isRestaurant ? 'Domicilio' : 'Envío'}</span>
-                      <span>{shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString()}`}</span>
+                    <div className="mt-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">{settings.shippingTitle || (isRestaurant ? 'Domicilio' : 'Envío')}</span>
+                        <span>{shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString()}`}</span>
+                      </div>
+                      {settings.shippingDescription && (
+                        <p className="text-xs text-gray-400 mt-0.5">{settings.shippingDescription}</p>
+                      )}
                     </div>
                   )}
                   {tipAmount > 0 && (

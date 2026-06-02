@@ -69,13 +69,13 @@ async function getEventsSecret(
   supabase: any,
   organizationId: number
 ): Promise<string | null> {
-  // 1. Buscar la conexión activa de Wompi para esta org
+  // 1. Buscar la conexión de Wompi para esta org (active o connected)
   const { data: connection } = await supabase
     .from('integration_connections')
     .select('id, settings')
     .eq('organization_id', organizationId)
     .eq('connector_id', WOMPI_CONNECTOR_ID)
-    .eq('status', 'active')
+    .in('status', ['active', 'connected'])
     .limit(1)
     .single()
 

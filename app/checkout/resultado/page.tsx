@@ -1,5 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
-import { createPublicClient } from '@/lib/supabase/server'
+import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
@@ -12,16 +12,76 @@ import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 export const dynamic = 'force-dynamic'
 
 async function getOrderByRef(orderNumber: string) {
-  const supabase = createPublicClient()
+  const supabase = createAdminClient() || createPublicClient()
 
   const { data, error } = await (supabase as any)
     .from('web_orders')
-    .select('id, order_number, total, payment_status, status, payment_method, customer_email, created_at')
+    .select('id, order_number, total, payment_status, status, payment_method, customer_email, customer_name, organization_id, created_at')
     .eq('order_number', orderNumber)
     .single()
 
   if (error || !data) return null
+
+  // Fallback: si la orden sigue pendiente y fue pagada con Wompi, verificar directamente con la API
+  if (data.payment_status === 'pending' && (data.payment_method === 'wompi' || data.payment_method === 'card')) {
+    try {
+      const updated = await checkWompiTransactionStatus(supabase, data)
+      if (updated) return updated
+    } catch (err) {
+      console.error('[Resultado] Error checking Wompi status:', err)
+    }
+  }
+
   return data
+}
+
+/**
+ * Verifica el estado de la transacción en Wompi API por referencia y actualiza la orden si fue pagada
+ */
+async function checkWompiTransactionStatus(supabase: any, order: any) {
+  // Obtener public_key de Wompi para esta org
+  const { data: conn } = await supabase
+    .from('integration_connections')
+    .select('id, environment')
+    .eq('organization_id', order.organization_id)
+    .eq('connector_id', '39950173-5f7c-48a9-a242-c6fdf5a07aee')
+    .in('status', ['active', 'connected'])
+    .limit(1)
+    .single()
+
+  if (!conn) return null
+
+  // Buscar transacciones por referencia en Wompi API
+  const baseApi = conn.environment === 'sandbox'
+    ? 'https://sandbox.wompi.co/v1'
+    : 'https://production.wompi.co/v1'
+
+  const res = await fetch(`${baseApi}/transactions?reference=${order.order_number}`, {
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!res.ok) return null
+  const json = await res.json()
+  const tx = json.data?.[0]
+  if (!tx) return null
+
+  const statusMap: Record<string, string> = {
+    APPROVED: 'paid', DECLINED: 'failed', VOIDED: 'refunded', ERROR: 'failed', PENDING: 'pending',
+  }
+  const newStatus = statusMap[tx.status] || 'pending'
+
+  if (newStatus === 'pending') return null // Sin cambio
+
+  // Actualizar la orden
+  await supabase.from('web_orders').update({
+    payment_status: newStatus,
+    payment_reference: String(tx.id),
+    updated_at: new Date().toISOString(),
+    ...(newStatus === 'paid' && { status: 'confirmed', confirmed_at: new Date().toISOString() }),
+    ...(newStatus === 'failed' && { status: 'cancelled', cancelled_at: new Date().toISOString() }),
+  }).eq('id', order.id)
+
+  return { ...order, payment_status: newStatus, status: newStatus === 'paid' ? 'confirmed' : order.status }
 }
 
 export async function generateMetadata(): Promise<Metadata> {

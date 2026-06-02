@@ -112,6 +112,8 @@ export default async function CheckoutPage() {
     freeShippingThreshold: Number(wsRow?.free_shipping_threshold ?? 100000),
     enableShipping: wsRow?.enable_shipping !== false,
     availableDeliveryTypes: wsRow?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
+    shippingTitle: wsRow?.shipping_flat_rate_title || 'Envío',
+    shippingDescription: wsRow?.shipping_flat_rate_description || '',
   }
 
   return (
