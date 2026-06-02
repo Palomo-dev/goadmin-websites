@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
-import { Zap } from 'lucide-react'
+import { Zap, Minus, Plus } from 'lucide-react'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -105,6 +106,28 @@ export function ProductDetailActions({
     router.push('/checkout')
   }
 
+  const [quantity, setQuantity] = useState(1)
+
+  const handleAddWithQuantity = () => {
+    const cartKey = getCartKey()
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+    const idx = cart.findIndex((c: any) => c.id === product.id)
+    if (idx >= 0) {
+      cart[idx].quantity += quantity
+    } else {
+      cart.push({
+        id: product.id,
+        name: product.name,
+        price: Number(price),
+        quantity,
+        ...(imageUrl && { imageUrl }),
+        ...(comparePrice && { comparePrice: Number(comparePrice) })
+      })
+    }
+    localStorage.setItem(cartKey, JSON.stringify(cart))
+    window.dispatchEvent(new CustomEvent('cart-updated'))
+  }
+
   if (isParent && variants.length > 0) {
     return (
       <div className="space-y-3 pt-4">
@@ -122,6 +145,28 @@ export function ProductDetailActions({
 
   return (
     <div className="space-y-3 pt-4">
+      {/* Selector de cantidad */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-gray-700">Cantidad:</span>
+        <div className="flex items-center border rounded-lg">
+          <button
+            type="button"
+            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
+          <button
+            type="button"
+            onClick={() => setQuantity(q => q + 1)}
+            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
       <AddToCartButton
         productId={product.id}
         productName={product.name}
@@ -129,6 +174,7 @@ export function ProductDetailActions({
         imageUrl={imageUrl}
         primaryColor={primaryColor}
         variant="full"
+        quantity={quantity}
       />
 
       <Button

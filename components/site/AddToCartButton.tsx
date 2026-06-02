@@ -14,6 +14,7 @@ interface AddToCartButtonProps {
   primaryColor: string
   variant?: 'full' | 'icon' | 'compact'
   className?: string
+  quantity?: number
 }
 
 export function AddToCartButton({ 
@@ -24,7 +25,8 @@ export function AddToCartButton({
   imageUrl,
   primaryColor, 
   variant = 'full',
-  className = ''
+  className = '',
+  quantity = 1
 }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false)
 
@@ -38,13 +40,13 @@ export function AddToCartButton({
       const existingIndex = existingCart.findIndex((item: any) => item.id === productId)
 
       if (existingIndex >= 0) {
-        existingCart[existingIndex].quantity += 1
+        existingCart[existingIndex].quantity += quantity
       } else {
         existingCart.push({
           id: productId,
           name: productName,
           price: Number(price),
-          quantity: 1,
+          quantity,
           ...(imageUrl && { imageUrl }),
           ...(comparePrice && { comparePrice: Number(comparePrice) })
         })

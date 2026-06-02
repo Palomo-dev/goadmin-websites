@@ -96,16 +96,22 @@ export default async function CheckoutPage() {
     .eq('is_active', true)
     .single()
 
-  // Shipping: desde website_settings (config de UI)
-  const ws = organization.website_settings as any
+  // Shipping + delivery: desde tabla website_settings
+  const supabaseWs = createAdminClient() || createPublicClient()
+  const { data: wsRow } = await (supabaseWs as any)
+    .from('website_settings')
+    .select('available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included')
+    .eq('organization_id', organization.id)
+    .single()
+
   const checkoutSettings = {
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
-    taxIncluded: ws?.tax_included || false,
-    shippingFlatRate: Number(ws?.shipping_flat_rate ?? 10000),
-    freeShippingThreshold: Number(ws?.free_shipping_threshold ?? 100000),
-    enableShipping: ws?.enable_shipping !== false,
-    availableDeliveryTypes: ws?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
+    taxIncluded: wsRow?.tax_included || false,
+    shippingFlatRate: Number(wsRow?.shipping_flat_rate ?? 10000),
+    freeShippingThreshold: Number(wsRow?.free_shipping_threshold ?? 100000),
+    enableShipping: wsRow?.enable_shipping !== false,
+    availableDeliveryTypes: wsRow?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
   }
 
   return (
