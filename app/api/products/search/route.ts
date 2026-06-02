@@ -57,102 +57,112 @@ export async function GET(request: NextRequest) {
   const maxPrice = priceMatch ? parseInt(priceMatch) : null
 
   // 1. Búsqueda por nombre del producto
-  const { data: byName } = await (supabase as any)
-    .from('products')
-    .select(SELECT_FIELDS)
-    .eq('organization_id', orgId)
-    .eq('status', 'active')
-    .eq('is_parent', true)
-    .ilike('name', `%${q}%`)
-    .limit(10)
-  if (byName) byName.forEach((p: any) => collected.set(p.id, p))
-
-  // 2. Búsqueda por categoría
-  if (collected.size < 12) {
-    const { data: cats } = await (supabase as any)
-      .from('categories')
-      .select('id')
-      .eq('organization_id', orgId)
-      .ilike('name', `%${q}%`)
-      .limit(5)
-    if (cats && cats.length > 0) {
-      const catIds = cats.map((c: any) => c.id)
-      const { data: byCat } = await (supabase as any)
-        .from('products')
-        .select(SELECT_FIELDS)
-        .eq('organization_id', orgId)
-        .eq('status', 'active')
-        .eq('is_parent', true)
-        .in('category_id', catIds)
-        .limit(10)
-      if (byCat) byCat.forEach((p: any) => collected.set(p.id, p))
-    }
-  }
-
-  // 3. Búsqueda por etiqueta (product_tags)
-  if (collected.size < 12) {
-    const { data: tags } = await (supabase as any)
-      .from('product_tags')
-      .select('id')
-      .eq('organization_id', orgId)
-      .ilike('name', `%${q}%`)
-      .limit(5)
-    if (tags && tags.length > 0) {
-      const tagIds = tags.map((t: any) => t.id)
-      const { data: byTag } = await (supabase as any)
-        .from('products')
-        .select(SELECT_FIELDS)
-        .eq('organization_id', orgId)
-        .eq('status', 'active')
-        .eq('is_parent', true)
-        .in('tag_id', tagIds)
-        .limit(10)
-      if (byTag) byTag.forEach((p: any) => collected.set(p.id, p))
-    }
-  }
-
-  // 4. Búsqueda por proveedor (suppliers → product_suppliers → products)
-  if (collected.size < 12) {
-    const { data: suppliers } = await (supabase as any)
-      .from('suppliers')
-      .select('id')
-      .eq('organization_id', orgId)
-      .ilike('name', `%${q}%`)
-      .limit(5)
-    if (suppliers && suppliers.length > 0) {
-      const supplierIds = suppliers.map((s: any) => s.id)
-      const { data: productSuppliers } = await (supabase as any)
-        .from('product_suppliers')
-        .select('product_id')
-        .in('supplier_id', supplierIds)
-        .limit(20)
-      if (productSuppliers && productSuppliers.length > 0) {
-        const productIds = productSuppliers.map((ps: any) => ps.product_id)
-        const { data: bySupplier } = await (supabase as any)
-          .from('products')
-          .select(SELECT_FIELDS)
-          .eq('organization_id', orgId)
-          .eq('status', 'active')
-          .eq('is_parent', true)
-          .in('id', productIds)
-          .limit(10)
-        if (bySupplier) bySupplier.forEach((p: any) => collected.set(p.id, p))
-      }
-    }
-  }
-
-  // 5. Búsqueda por descripción o SKU
-  if (collected.size < 12) {
-    const { data: byDesc } = await (supabase as any)
+  try {
+    const { data: byName } = await (supabase as any)
       .from('products')
       .select(SELECT_FIELDS)
       .eq('organization_id', orgId)
       .eq('status', 'active')
       .eq('is_parent', true)
-      .or(`description.ilike.%${q}%,sku.ilike.%${q}%`)
-      .limit(8)
-    if (byDesc) byDesc.forEach((p: any) => collected.set(p.id, p))
-  }
+      .ilike('name', `%${q}%`)
+      .limit(10)
+    if (byName) byName.forEach((p: any) => collected.set(p.id, p))
+  } catch (e) { /* silent */ }
+
+  // 2. Búsqueda por categoría
+  try {
+    if (collected.size < 12) {
+      const { data: cats } = await (supabase as any)
+        .from('categories')
+        .select('id')
+        .eq('organization_id', orgId)
+        .ilike('name', `%${q}%`)
+        .limit(5)
+      if (cats && cats.length > 0) {
+        const catIds = cats.map((c: any) => c.id)
+        const { data: byCat } = await (supabase as any)
+          .from('products')
+          .select(SELECT_FIELDS)
+          .eq('organization_id', orgId)
+          .eq('status', 'active')
+          .eq('is_parent', true)
+          .in('category_id', catIds)
+          .limit(10)
+        if (byCat) byCat.forEach((p: any) => collected.set(p.id, p))
+      }
+    }
+  } catch (e) { /* silent */ }
+
+  // 3. Búsqueda por etiqueta (product_tags)
+  try {
+    if (collected.size < 12) {
+      const { data: tags } = await (supabase as any)
+        .from('product_tags')
+        .select('id')
+        .eq('organization_id', orgId)
+        .ilike('name', `%${q}%`)
+        .limit(5)
+      if (tags && tags.length > 0) {
+        const tagIds = tags.map((t: any) => t.id)
+        const { data: byTag } = await (supabase as any)
+          .from('products')
+          .select(SELECT_FIELDS)
+          .eq('organization_id', orgId)
+          .eq('status', 'active')
+          .eq('is_parent', true)
+          .in('tag_id', tagIds)
+          .limit(10)
+        if (byTag) byTag.forEach((p: any) => collected.set(p.id, p))
+      }
+    }
+  } catch (e) { /* silent */ }
+
+  // 4. Búsqueda por proveedor (suppliers → product_suppliers → products)
+  try {
+    if (collected.size < 12) {
+      const { data: suppliers } = await (supabase as any)
+        .from('suppliers')
+        .select('id')
+        .eq('organization_id', orgId)
+        .ilike('name', `%${q}%`)
+        .limit(5)
+      if (suppliers && suppliers.length > 0) {
+        const supplierIds = suppliers.map((s: any) => s.id)
+        const { data: productSuppliers } = await (supabase as any)
+          .from('product_suppliers')
+          .select('product_id')
+          .in('supplier_id', supplierIds)
+          .limit(20)
+        if (productSuppliers && productSuppliers.length > 0) {
+          const productIds = productSuppliers.map((ps: any) => ps.product_id)
+          const { data: bySupplier } = await (supabase as any)
+            .from('products')
+            .select(SELECT_FIELDS)
+            .eq('organization_id', orgId)
+            .eq('status', 'active')
+            .eq('is_parent', true)
+            .in('id', productIds)
+            .limit(10)
+          if (bySupplier) bySupplier.forEach((p: any) => collected.set(p.id, p))
+        }
+      }
+    }
+  } catch (e) { /* silent */ }
+
+  // 5. Búsqueda por descripción o SKU
+  try {
+    if (collected.size < 12) {
+      const { data: byDesc } = await (supabase as any)
+        .from('products')
+        .select(SELECT_FIELDS)
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .eq('is_parent', true)
+        .or(`description.ilike.%${q}%,sku.ilike.%${q}%`)
+        .limit(8)
+      if (byDesc) byDesc.forEach((p: any) => collected.set(p.id, p))
+    }
+  } catch (e) { /* silent */ }
 
   // 6. Filtrar por precio máximo si se detectó número
   let results = Array.from(collected.values())

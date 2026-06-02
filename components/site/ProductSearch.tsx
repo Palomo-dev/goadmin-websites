@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -253,9 +254,9 @@ export function ProductSearch({ primaryColor }: ProductSearchProps) {
         </div>
       )}
 
-      {/* Mobile: fullscreen */}
-      {isOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col">
+      {/* Mobile: fullscreen via portal (evita stacking context del header) */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div className="md:hidden fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input
@@ -284,7 +285,8 @@ export function ProductSearch({ primaryColor }: ProductSearchProps) {
             </button>
           </div>
           {renderContent()}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
