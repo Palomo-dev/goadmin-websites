@@ -6,10 +6,17 @@ export const dynamic = 'force-dynamic'
 // Connector IDs
 const CONNECTOR_IDS: Record<string, string> = {
   wompi_co: '39950173-5f7c-48a9-a242-c6fdf5a07aee',
+  wompi: '39950173-5f7c-48a9-a242-c6fdf5a07aee',
   mp_checkout: 'b00cfe3f-efa6-4656-93da-f42bf3073ab4',
   payu_co: 'dc652aa4-5146-45cc-9df7-f58c7098ad00',
   stripe_payments: 'a2b84a76-9557-4fee-88ba-8ee517ed8b88',
   paypal_checkout: '944c6b76-e8bf-49f9-90ea-06f906e152e7',
+}
+
+// Mapeo de payment_method_code → gateway code para el switch de pasarela
+const GATEWAY_CODE_MAP: Record<string, string> = {
+  wompi: 'wompi_co',
+  card: 'wompi_co',
 }
 
 /**
@@ -529,7 +536,7 @@ export async function POST(request: NextRequest) {
       .select('id, environment, settings')
       .eq('organization_id', order.organization_id)
       .eq('connector_id', connectorId)
-      .eq('status', 'active')
+      .in('status', ['active', 'connected'])
       .limit(1)
       .single()
 
@@ -547,7 +554,10 @@ export async function POST(request: NextRequest) {
     // 4. Generar URL según pasarela
     let checkoutUrl: string | null = null
 
-    switch (gateway) {
+    // Resolver el gateway code real para el switch
+    const resolvedGateway = GATEWAY_CODE_MAP[gateway] || gateway
+
+    switch (resolvedGateway) {
       case 'wompi_co':
         checkoutUrl = buildWompiCheckoutUrl(creds, order, returnUrl, environment)
         break
