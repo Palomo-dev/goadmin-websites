@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         tax_total: taxTotal,
         delivery_fee: shipping || 0,
         total: calculatedTotal,
-        delivery_type: deliveryType || (shipping > 0 ? 'delivery' : 'pickup'),
+        delivery_type: deliveryType || (shipping > 0 ? 'delivery_own' : 'pickup'),
         delivery_address: deliveryAddress || {
           address: customer.address,
           city: customer.city
@@ -184,111 +184,112 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    // Crear web_order_items con tax_amount por item, modifiers y notes
-    const orderItems = items.map((item: any) => {
-      const itemTotal = item.price * item.quantity
-      const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
-      return {
-        web_order_id: webOrder.id,
-        product_id: item.id,
-        product_name: item.name,
-        product_sku: item.sku || null,
-        quantity: item.quantity,
-        unit_price: item.price,
-        tax_amount: itemTax,
-        total: itemTotal,
-        ...(item.modifiers && { modifiers: item.modifiers }),
-        ...(item.notes && { notes: item.notes }),
-      }
-    })
-    
-    await (supabase as any)
-      .from('web_order_items')
-      .insert(orderItems)
-
-    // Registrar propina en tabla tips (para distribución en el ERP)
-    if (resolvedTip > 0) {
+    // Post-procesamiento: items, stock, cupones, email
+    // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
+    try {
+      // Crear web_order_items con tax_amount por item, modifiers y notes
+      const orderItems = items.map((item: any) => {
+        const itemTotal = item.price * item.quantity
+        const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
+        return {
+          web_order_id: webOrder.id,
+          product_id: item.id,
+          product_name: item.name,
+          product_sku: item.sku || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          tax_amount: itemTax,
+          total: itemTotal,
+          ...(item.modifiers && { modifiers: item.modifiers }),
+          ...(item.notes && { notes: item.notes }),
+        }
+      })
+      
       await (supabase as any)
-        .from('tips')
-        .insert({
-          organization_id: organizationId,
-          branch_id: resolvedBranchId,
-          sale_id: null,
-          payment_id: null,
-          server_id: '00000000-0000-0000-0000-000000000000',
-          amount: resolvedTip,
-          tip_type: 'online',
-          is_distributed: false,
-          notes: `Propina online - Pedido #${orderNumber}`,
-        })
-        .then(() => {})
-        .catch((err: any) => console.error('[Orders] Tip insert error:', err))
-    }
+        .from('web_order_items')
+        .insert(orderItems)
 
-    // Reservar stock (incrementar qty_reserved) para evitar sobreventa
-    if (resolvedBranchId) {
-      for (const item of items) {
-        const { data: sl } = await (supabase as any)
-          .from('stock_levels')
-          .select('qty_reserved')
-          .eq('branch_id', resolvedBranchId)
-          .eq('product_id', item.id)
-          .single()
-        if (sl) {
-          await (supabase as any)
+      // Registrar propina en tabla tips
+      if (resolvedTip > 0) {
+        await (supabase as any)
+          .from('tips')
+          .insert({
+            organization_id: organizationId,
+            branch_id: resolvedBranchId,
+            sale_id: null,
+            payment_id: null,
+            server_id: '00000000-0000-0000-0000-000000000000',
+            amount: resolvedTip,
+            tip_type: 'online',
+            is_distributed: false,
+            notes: `Propina online - Pedido #${orderNumber}`,
+          })
+          .catch((err: any) => console.error('[Orders] Tip insert error:', err))
+      }
+
+      // Reservar stock
+      if (resolvedBranchId) {
+        for (const item of items) {
+          const { data: sl } = await (supabase as any)
             .from('stock_levels')
-            .update({ qty_reserved: Number(sl.qty_reserved || 0) + item.quantity })
+            .select('qty_reserved')
             .eq('branch_id', resolvedBranchId)
             .eq('product_id', item.id)
-            .catch((err: any) => console.error('[Orders] Stock reserve error:', err))
+            .maybeSingle()
+          if (sl) {
+            await (supabase as any)
+              .from('stock_levels')
+              .update({ qty_reserved: Number(sl.qty_reserved || 0) + item.quantity })
+              .eq('branch_id', resolvedBranchId)
+              .eq('product_id', item.id)
+          }
         }
       }
-    }
 
-    // Registrar redención de cupón e incrementar usage_count
-    if (couponId && resolvedCouponDiscount > 0) {
-      await (supabase as any)
-        .from('coupon_redemptions')
-        .insert({
-          coupon_id: couponId,
-          sale_id: webOrder.id,
-          customer_id: customerId,
-          discount_applied: resolvedCouponDiscount,
-        })
-        .then(() => {})
-        .catch((err: any) => console.error('[Orders] Coupon redemption error:', err))
-
-      // Incrementar usage_count
-      const { data: currentCoupon } = await (supabase as any)
-        .from('coupons').select('usage_count').eq('id', couponId).single()
-      if (currentCoupon) {
+      // Registrar redención de cupón
+      if (couponId && resolvedCouponDiscount > 0) {
         await (supabase as any)
-          .from('coupons')
-          .update({ usage_count: (currentCoupon.usage_count || 0) + 1 })
-          .eq('id', couponId)
-          .catch((err: any) => console.error('[Orders] Coupon usage_count error:', err))
-      }
-    }
+          .from('coupon_redemptions')
+          .insert({
+            coupon_id: couponId,
+            sale_id: webOrder.id,
+            customer_id: customerId,
+            discount_applied: resolvedCouponDiscount,
+          })
+          .catch((err: any) => console.error('[Orders] Coupon redemption error:', err))
 
-    // Enviar email de confirmación (async, no bloquea la respuesta)
-    const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
-    sendOrderConfirmationEmail({
-      orderNumber: webOrder.order_number,
-      customerEmail: customer.email,
-      customerName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
-      items: items.map((item: any) => ({
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.price * item.quantity,
-      })),
-      subtotal: calculatedSubtotal,
-      tax: taxTotal,
-      shipping: shipping || 0,
-      total: calculatedTotal,
-      organizationName: '',
-      trackingUrl: `${origin}/pedido/${webOrder.order_number}`,
-    }).catch(err => console.error('[Orders] Email error:', err))
+        const { data: currentCoupon } = await (supabase as any)
+          .from('coupons').select('usage_count').eq('id', couponId).maybeSingle()
+        if (currentCoupon) {
+          await (supabase as any)
+            .from('coupons')
+            .update({ usage_count: (currentCoupon.usage_count || 0) + 1 })
+            .eq('id', couponId)
+        }
+      }
+
+      // Enviar email de confirmación (fire-and-forget)
+      const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
+      sendOrderConfirmationEmail({
+        orderNumber: webOrder.order_number,
+        customerEmail: customer.email,
+        customerName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
+        items: items.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          total: item.price * item.quantity,
+        })),
+        subtotal: calculatedSubtotal,
+        tax: taxTotal,
+        shipping: shipping || 0,
+        total: calculatedTotal,
+        organizationName: '',
+        trackingUrl: `${origin}/pedido/${webOrder.order_number}`,
+      }).catch(err => console.error('[Orders] Email error:', err))
+    } catch (postErr) {
+      console.error('[Orders] Post-processing error (order already created):', postErr)
+    }
     
     return NextResponse.json({
       success: true,
