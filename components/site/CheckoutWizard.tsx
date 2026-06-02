@@ -30,11 +30,14 @@ interface CartItem {
   variantAttributes?: Record<string, string> | null
 }
 
-interface PaymentGateway {
+interface WebsitePaymentMethod {
   code: string
   name: string
-  connectionId: string
-  environment: string
+  description?: string | null
+  icon?: string | null
+  requiresReference: boolean
+  connectionId?: string | null
+  type: 'native' | 'gateway'
 }
 
 interface CheckoutSettings {
@@ -49,17 +52,21 @@ interface CheckoutSettings {
 interface CheckoutWizardProps {
   organizationId: number
   primaryColor: string
-  gateways: PaymentGateway[]
+  paymentMethods: WebsitePaymentMethod[]
   checkoutSettings?: CheckoutSettings
   isRestaurant?: boolean
 }
 
-const GATEWAY_LABELS: Record<string, { label: string; icon: string }> = {
-  wompi_co: { label: 'Wompi (Tarjeta / PSE / Nequi)', icon: '💳' },
-  mp_checkout: { label: 'MercadoPago', icon: '🟦' },
-  payu_co: { label: 'PayU', icon: '💚' },
-  stripe_payments: { label: 'Tarjeta de crédito/débito', icon: '💳' },
-  paypal_checkout: { label: 'PayPal', icon: '🅿️' },
+const METHOD_ICONS: Record<string, string> = {
+  cash: '💵',
+  transfer: '🏦',
+  card: '💳',
+  wompi_co: '💳',
+  mp_checkout: '🟦',
+  payu_co: '💚',
+  stripe_payments: '💳',
+  paypal_checkout: '🅿️',
+  wompi: '💳',
 }
 
 const DEFAULT_SETTINGS: CheckoutSettings = {
@@ -71,7 +78,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   enableShipping: true,
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, gateways, checkoutSettings, isRestaurant = false }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const [step, setStep] = useState(1)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -115,7 +122,7 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
 
   // 'gateway_code' o 'cash' o 'transfer'
   const [paymentMethod, setPaymentMethod] = useState<string>(
-    gateways.length > 0 ? gateways[0].code : 'cash'
+    availableMethods.length > 0 ? availableMethods[0].code : 'cash'
   )
 
   useEffect(() => {
@@ -357,7 +364,8 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
       const createdOrderNumber = orderData.orderNumber
 
       // 2. Si es pago online (pasarela), iniciar checkout con la pasarela
-      const isOnlineGateway = gateways.some(g => g.code === paymentMethod)
+      const selectedMethod = availableMethods.find(m => m.code === paymentMethod)
+      const isOnlineGateway = selectedMethod?.type === 'gateway'
 
       if (isOnlineGateway) {
         const initRes = await fetch('/api/checkout/init', {
@@ -457,25 +465,13 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
 
   // --- WIZARD PRINCIPAL ---
 
-  // Construir opciones de pago
-  const paymentOptions: { id: string; icon: React.ReactNode; label: string }[] = []
-
-  gateways.forEach(g => {
-    const info = GATEWAY_LABELS[g.code]
-    if (info) {
-      paymentOptions.push({
-        id: g.code,
-        icon: <span className="text-xl">{info.icon}</span>,
-        label: info.label
-      })
-    }
-  })
-
-  // Siempre ofrecer opciones offline
-  paymentOptions.push(
-    { id: 'transfer', icon: <Building2 className="h-5 w-5" />, label: 'Transferencia bancaria' },
-    { id: 'cash', icon: <Banknote className="h-5 w-5" />, label: 'Pago contra entrega' }
-  )
+  // Construir opciones de pago desde los métodos habilitados para website
+  const paymentOptions = availableMethods.map(m => ({
+    id: m.code,
+    icon: <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>,
+    label: m.name,
+    description: m.description || null,
+  }))
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -525,67 +521,71 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
               <CardContent>
                 <div className="space-y-4">
                   {cartItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 py-4 border-b last:border-0">
-                      <div
-                        className="w-20 h-20 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
-                        style={{ backgroundColor: `${primaryColor}10` }}
-                      >
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-3xl">📦</span>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                        {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
-                          <p className="text-xs text-gray-500">
-                            {Object.entries(item.variantAttributes).map(([k, v]) => (
-                              <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
-                            ))}
-                          </p>
-                        )}
-                        {item.modifiers && item.modifiers.length > 0 && (
-                          <p className="text-xs text-gray-400 truncate">
-                            {item.modifiers.map(m => m.valueName).join(', ')}
-                          </p>
-                        )}
-                        {item.notes && (
-                          <p className="text-xs text-gray-400 italic truncate">📝 {item.notes}</p>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {item.comparePrice && item.comparePrice > item.price && (
-                            <span className="text-sm text-gray-400 line-through">${item.comparePrice.toLocaleString()}</span>
+                    <div key={item.id} className="py-4 border-b last:border-0">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                          style={{ backgroundColor: `${primaryColor}10` }}
+                        >
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-2xl">📦</span>
                           )}
-                          <p className="text-sm text-gray-500">
-                            ${item.price.toLocaleString()} c/u
-                          </p>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2">{item.name}</h3>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(item.id)}
+                              className="text-red-400 hover:text-red-600 flex-shrink-0 h-7 w-7 p-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {Object.entries(item.variantAttributes).map(([k, v]) => (
+                                <span key={k} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                                  <span className="capitalize font-medium">{k}:</span> {v}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <p className="text-xs text-gray-400 truncate mt-0.5">
+                              {item.modifiers.map(m => m.valueName).join(', ')}
+                            </p>
+                          )}
+                          {item.notes && (
+                            <p className="text-xs text-gray-400 italic truncate mt-0.5">📝 {item.notes}</p>
+                          )}
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-1.5">
+                              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => updateQuantity(item.id, -1)}>
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-7 text-center font-semibold text-sm">{item.quantity}</span>
+                              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => updateQuantity(item.id, 1)}>
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-xs text-gray-400 ml-1">
+                                {item.comparePrice && item.comparePrice > item.price && (
+                                  <span className="line-through mr-1">${item.comparePrice.toLocaleString()}</span>
+                                )}
+                                ${item.price.toLocaleString()} c/u
+                              </span>
+                            </div>
+                            <p className="font-bold text-sm sm:text-base" style={{ color: primaryColor }}>
+                              ${(item.price * item.quantity).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => updateQuantity(item.id, -1)}>
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                        <Button variant="outline" size="sm" onClick={() => updateQuantity(item.id, 1)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <p className="font-bold w-24 text-right" style={{ color: primaryColor }}>
-                        ${(item.price * item.quantity).toLocaleString()}
-                      </p>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
                 </div>
@@ -803,7 +803,7 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
                       key={method.id}
                       type="button"
                       onClick={() => setPaymentMethod(method.id)}
-                      className={`w-full p-4 rounded-lg border-2 flex items-center gap-4 transition-colors ${
+                      className={`w-full p-4 rounded-lg border-2 flex items-center gap-4 transition-colors text-left ${
                         paymentMethod === method.id
                           ? 'border-current'
                           : 'border-gray-200 hover:border-gray-300'
@@ -811,9 +811,14 @@ export function CheckoutWizard({ organizationId, primaryColor, gateways, checkou
                       style={paymentMethod === method.id ? { borderColor: primaryColor, color: primaryColor } : {}}
                     >
                       {method.icon}
-                      <span className="font-medium text-gray-900">{method.label}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 block">{method.label}</span>
+                        {method.description && (
+                          <span className="text-xs text-gray-500 block mt-0.5">{method.description}</span>
+                        )}
+                      </div>
                       {paymentMethod === method.id && (
-                        <Check className="h-5 w-5 ml-auto" style={{ color: primaryColor }} />
+                        <Check className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
                       )}
                     </button>
                   ))}

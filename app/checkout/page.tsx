@@ -9,20 +9,39 @@ import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 
 export const dynamic = 'force-dynamic'
 
-async function getAvailableGateways(organizationId: number) {
+async function getWebsitePaymentMethods(organizationId: number) {
   const supabase = createPublicClient()
 
-  const { data, error } = await (supabase as any)
+  // 1. Métodos de pago nativos (cash, transfer, card, etc.) habilitados para website
+  const { data: orgMethods } = await (supabase as any)
+    .from('organization_payment_methods')
+    .select(`
+      id, payment_method_code, is_active, show_on_website,
+      website_display_order, website_display_name, website_description, website_icon,
+      integration_connection_id,
+      payment_methods (name, requires_reference)
+    `)
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .eq('show_on_website', true)
+    .order('website_display_order', { ascending: true, nullsFirst: false })
+
+  const methods = (orgMethods || []).map((m: any) => ({
+    code: m.payment_method_code,
+    name: m.website_display_name || m.payment_methods?.name || m.payment_method_code,
+    description: m.website_description || null,
+    icon: m.website_icon || null,
+    requiresReference: m.payment_methods?.requires_reference || false,
+    connectionId: m.integration_connection_id || null,
+    type: 'native' as const,
+  }))
+
+  // 2. Pasarelas de pago online (integration_connections activas)
+  const { data: gateways } = await (supabase as any)
     .from('integration_connections')
     .select(`
-      id,
-      environment,
-      status,
-      connector_id,
-      integration_connectors!inner (
-        code,
-        name
-      )
+      id, environment, status,
+      integration_connectors!inner (code, name)
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -30,14 +49,17 @@ async function getAvailableGateways(organizationId: number) {
       'wompi_co', 'mp_checkout', 'payu_co', 'stripe_payments', 'paypal_checkout'
     ])
 
-  if (error || !data) return []
-
-  return data.map((conn: any) => ({
+  const gatewayMethods = (gateways || []).map((conn: any) => ({
     code: conn.integration_connectors.code,
     name: conn.integration_connectors.name,
+    description: null,
+    icon: null,
+    requiresReference: false,
     connectionId: conn.id,
-    environment: conn.environment || 'production'
+    type: 'gateway' as const,
   }))
+
+  return [...methods, ...gatewayMethods]
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,8 +75,8 @@ export default async function CheckoutPage() {
   if (!ctx) return <NotFoundPage />
 
   const { organization, primaryColor, template, headerNav, footerNav } = ctx
-  const [gateways, metaPixelId, googleAdsConfig] = await Promise.all([
-    getAvailableGateways(organization.id),
+  const [paymentMethods, metaPixelId, googleAdsConfig] = await Promise.all([
+    getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id)
   ])
@@ -95,7 +117,7 @@ export default async function CheckoutPage() {
       <CheckoutWizard
         organizationId={organization.id}
         primaryColor={primaryColor}
-        gateways={gateways}
+        paymentMethods={paymentMethods}
         checkoutSettings={checkoutSettings}
         isRestaurant={organization.type_id === 1}
       />
