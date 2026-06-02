@@ -119,21 +119,26 @@ async function getReservation(supabase: any, reservationId: string) {
 /**
  * Genera URL de checkout para Wompi Colombia
  */
-function buildWompiCheckoutUrl(
+async function buildWompiCheckoutUrl(
   creds: Record<string, string>,
   order: any,
   returnUrl: string,
   environment: string
-): string {
+): Promise<string> {
   const publicKey = creds.public_key || ''
+  const integritySecret = creds.integrity_secret || ''
   const amountInCents = Math.round(Number(order.total) * 100)
-  const currency = 'COP'
+  const currency = order.currency || 'COP'
   const reference = order.order_number
 
-  // Wompi checkout URL
-  const baseUrl = environment === 'sandbox'
-    ? 'https://checkout.wompi.co/p/'
-    : 'https://checkout.wompi.co/p/'
+  // Generar firma de integridad: SHA256(reference + amountInCents + currency + integritySecret)
+  const { createHash } = await import('crypto')
+  const signatureString = `${reference}${amountInCents}${currency}${integritySecret}`
+  const signature = createHash('sha256').update(signatureString).digest('hex')
+
+  // Wompi checkout URL — construir manualmente para evitar que URLSearchParams
+  // codifique el ':' en 'signature:integrity' como %3A
+  const baseUrl = 'https://checkout.wompi.co/p/'
 
   const params = new URLSearchParams({
     'public-key': publicKey,
@@ -143,7 +148,8 @@ function buildWompiCheckoutUrl(
     'redirect-url': `${returnUrl}?ref=${reference}`,
   })
 
-  return `${baseUrl}?${params.toString()}`
+  // Agregar signature:integrity con ':' literal (Wompi no acepta %3A)
+  return `${baseUrl}?${params.toString()}&signature:integrity=${signature}`
 }
 
 /**
@@ -575,7 +581,7 @@ export async function POST(request: NextRequest) {
 
     switch (resolvedGateway) {
       case 'wompi_co':
-        checkoutUrl = buildWompiCheckoutUrl(creds, order, returnUrl, environment)
+        checkoutUrl = await buildWompiCheckoutUrl(creds, order, returnUrl, environment)
         break
 
       case 'mp_checkout':
