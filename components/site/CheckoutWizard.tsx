@@ -89,8 +89,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
 
-  // Restaurant-specific states
-  const [orderType, setOrderType] = useState<OrderType>('delivery')
+  // Delivery type state (aplica a restaurant y retail)
+  const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
+  const hasDelivery = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
+  const defaultOrderType: OrderType = hasDelivery ? 'delivery' : 'pickup'
+  const [orderType, setOrderType] = useState<OrderType>(defaultOrderType)
   const [tipAmount, setTipAmount] = useState(0)
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
@@ -180,9 +183,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const tax = settings.taxRate > 0 && !settings.taxIncluded
     ? Math.round(subtotal * settings.taxRate / 100)
     : 0
-  // Shipping solo aplica para delivery (o retail sin isRestaurant)
-  const hasDeliveryOption = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
-  const needsShipping = isRestaurant ? orderType === 'delivery' : hasDeliveryOption
+  // Shipping solo aplica cuando el tipo seleccionado es delivery
+  const needsShipping = orderType === 'delivery' && hasDelivery
   const flatShipping = settings.enableShipping && needsShipping
     ? (settings.freeShippingThreshold > 0 && subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFlatRate)
     : 0
@@ -205,7 +207,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         const res = await fetch('/api/shipping/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, city })
+          body: JSON.stringify({ organizationId, city, subtotal })
         })
         const data = await res.json()
         if (data.rates && data.rates.length > 0) {
@@ -227,7 +229,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       }
     }, 500) // Debounce 500ms
     return () => clearTimeout(timeout)
-  }, [customerData.city, organizationId, needsShipping])
+  }, [customerData.city, organizationId, needsShipping, subtotal])
 
   // Auto-check promotions when cart changes
   useEffect(() => {
@@ -602,16 +604,31 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                 )}
 
-                {/* Restaurant: Tipo de pedido + Programar */}
-                {isRestaurant && (
+                {/* Tipo de pedido: se muestra si hay más de 1 opción */}
+                {(hasPickup && hasDelivery) && (
                   <div className="mt-6 space-y-5 border-t pt-5">
                     <OrderTypeSelector
                       value={orderType}
                       onChange={setOrderType}
                       primaryColor={primaryColor}
-                      enableDelivery={!settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')}
-                      enablePickup={!settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')}
+                      enableDelivery={hasDelivery}
+                      enablePickup={hasPickup}
+                      enableDineIn={false}
                     />
+                    {isRestaurant && (
+                      <ScheduleSelector
+                        isScheduled={isScheduled}
+                        scheduledAt={scheduledAt}
+                        onScheduledChange={setIsScheduled}
+                        onTimeChange={setScheduledAt}
+                        primaryColor={primaryColor}
+                      />
+                    )}
+                  </div>
+                )}
+                {/* Solo restaurant: programar pedido (cuando solo hay 1 tipo de entrega) */}
+                {isRestaurant && !(hasPickup && hasDelivery) && (
+                  <div className="mt-6 space-y-5 border-t pt-5">
                     <ScheduleSelector
                       isScheduled={isScheduled}
                       scheduledAt={scheduledAt}

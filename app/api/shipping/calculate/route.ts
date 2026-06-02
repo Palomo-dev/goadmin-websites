@@ -8,12 +8,12 @@ function getSupabase() {
 /**
  * POST /api/shipping/calculate
  * Calcula el costo de envío dinámico usando shipping_rates.
- * Body: { organizationId, city, weight? }
- * Returns: { rates: [{name, cost, service_level, carrier_name}], cheapest, fastest } o fallback a flat rate
+ * Body: { organizationId, city, weight?, subtotal? }
+ * Returns: { rates: [{name, cost, service_level, carrier_name, free_shipping_threshold}], cheapest, fastest } o fallback a flat rate
  */
 export async function POST(request: NextRequest) {
   try {
-    const { organizationId, city, weight } = await request.json()
+    const { organizationId, city, weight, subtotal } = await request.json()
 
     if (!organizationId) {
       return NextResponse.json({ rates: [], cheapest: null, fastest: null })
@@ -70,11 +70,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ rates: [], cheapest: null, fastest: null })
       }
 
-      const calculated = calculateRates(genericRates, weight)
+      const calculated = calculateRates(genericRates, weight, subtotal)
       return NextResponse.json(calculated)
     }
 
-    const calculated = calculateRates(validRates, weight)
+    const calculated = calculateRates(validRates, weight, subtotal)
     return NextResponse.json(calculated)
   } catch (error) {
     console.error('[Shipping] Calculate error:', error)
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function calculateRates(rates: any[], weight?: number) {
+function calculateRates(rates: any[], weight?: number, subtotal?: number) {
   const SERVICE_LEVEL_ORDER: Record<string, number> = {
     same_day: 1,
     overnight: 2,
@@ -111,13 +111,19 @@ function calculateRates(rates: any[], weight?: number) {
 
     cost = Math.round(cost)
 
+    // Aplicar envío gratis por tarifa si el subtotal supera el threshold
+    const threshold = Number(rate.free_shipping_threshold || 0)
+    const isFreeShipping = threshold > 0 && subtotal && subtotal >= threshold
+
     return {
       id: rate.id,
       name: rate.rate_name,
-      cost,
+      cost: isFreeShipping ? 0 : cost,
+      originalCost: cost,
       service_level: rate.service_level || 'standard',
       carrier_name: rate.transport_carriers?.name || null,
       destination_zone: rate.destination_zone,
+      free_shipping_threshold: threshold,
     }
   })
 
