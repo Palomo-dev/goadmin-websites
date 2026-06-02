@@ -13,15 +13,16 @@ interface SearchResult {
   id: number
   uuid: string
   name: string
-  price?: number
+  price?: number | null
+  comparePrice?: number | null
   imageUrl?: string | null
+  category?: string | null
+  tag?: string | null
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
-
-// Productos populares estáticos (se muestran cuando no hay búsqueda)
+// Sugerencias de búsqueda (se muestran cuando no hay query)
 const popularSearches = [
-  'Tenis', 'Camiseta', 'Zapatillas', 'Accesorios'
+  'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
 export function ProductSearch({ primaryColor }: ProductSearchProps) {
@@ -180,10 +181,31 @@ export function ProductSearch({ primaryColor }: ProductSearchProps) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
-                        {product.price && (
-                          <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                            ${Number(product.price).toLocaleString()}
-                          </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {product.price && (
+                            <span className="text-sm font-bold" style={{ color: primaryColor }}>
+                              ${Number(product.price).toLocaleString()}
+                            </span>
+                          )}
+                          {product.comparePrice && product.price && Number(product.comparePrice) > Number(product.price) && (
+                            <span className="text-xs text-gray-400 line-through">
+                              ${Number(product.comparePrice).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {(product.category || product.tag) && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {product.category && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                                {product.category}
+                              </span>
+                            )}
+                            {product.tag && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                {product.tag}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </Link>
