@@ -40,7 +40,7 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
 async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
   const selectFields = `
-    id, uuid, name, is_parent, variant_count,
+    id, uuid, name, is_parent,
     product_prices (*),
     product_images (
       id, storage_path, is_primary, display_order,

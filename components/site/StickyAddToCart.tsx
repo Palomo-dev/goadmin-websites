@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ShoppingCart, Check, Zap, X, ChevronUp } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface VariantData {
@@ -50,7 +49,6 @@ export function StickyAddToCart({
   isParent = false,
   variants = []
 }: StickyAddToCartProps) {
-  const router = useRouter()
   const [added, setAdded] = useState(false)
   const [visible, setVisible] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -166,41 +164,6 @@ export function StickyAddToCart({
     } catch (e) {}
   }
 
-  const handleBuyNow = () => {
-    try {
-      const cartKey = getCartKey()
-      const activePrice = getActivePrice()
-      const activeCp = getActiveComparePrice()
-      let item: any
-
-      if (isParent && selectedVariant) {
-        const variantImgUrl = getVariantImg(selectedVariant) || imageUrl
-        item = {
-          id: selectedVariant.id,
-          name: selectedVariant.name,
-          price: activePrice,
-          quantity: 1,
-          ...(variantImgUrl && { imageUrl: variantImgUrl }),
-          ...(activeCp && { comparePrice: activeCp }),
-          ...(selectedVariant.variant_data && { variantAttributes: selectedVariant.variant_data })
-        }
-      } else {
-        item = {
-          id: productId,
-          name: productName,
-          price: activePrice,
-          quantity: 1,
-          ...(imageUrl && { imageUrl }),
-          ...(activeCp && { comparePrice: activeCp })
-        }
-      }
-
-      localStorage.setItem(cartKey, JSON.stringify([item]))
-      window.dispatchEvent(new CustomEvent('cart-updated'))
-      router.push('/checkout')
-    } catch (e) {}
-  }
-
   const activePrice = getActivePrice()
   const activeCp = getActiveComparePrice()
   const hasVariants = isParent && variants.length > 0
@@ -282,26 +245,15 @@ export function StickyAddToCart({
             )}
 
             <Button
-              size="sm"
               onClick={handleAddToCart}
-              className={`px-4 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''}`}
+              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''}`}
               style={!added ? { backgroundColor: primaryColor } : {}}
             >
               {added ? (
-                <><Check className="h-4 w-4 mr-1" /> OK</>
+                <><Check className="h-4 w-4 mr-1" /> Agregado</>
               ) : (
-                <><ShoppingCart className="h-4 w-4 mr-1" /> Agregar</>
+                <><ShoppingCart className="h-4 w-4 mr-1" /> Agregar al carrito</>
               )}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBuyNow}
-              className="px-4"
-              style={{ borderColor: primaryColor, color: primaryColor }}
-            >
-              <Zap className="h-4 w-4 mr-1" /> Comprar
             </Button>
           </div>
         </div>

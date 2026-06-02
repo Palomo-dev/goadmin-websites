@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Phone, Mail, User } from 'lucide-react'
+import { Menu, X, Phone, Mail, User, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
 import { CartIndicator } from './CartIndicator'
+import { ProductSearch } from './ProductSearch'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -107,8 +108,10 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             ))}
           </nav>
           
-          {/* Actions: Cart, Login, CTA */}
+          {/* Actions: Search, Cart, Login, CTA */}
           <div className="hidden md:flex items-center space-x-4">
+            <ProductSearch primaryColor={primaryColor} />
+            
             {showHeaderCart && (
               <CartIndicator
                 primaryColor={primaryColor}
@@ -133,17 +136,29 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             </Link>
           </div>
           
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-            ) : (
-              <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+          {/* Mobile Actions: Search + Cart + Menu */}
+          <div className="flex md:hidden items-center gap-1">
+            <ProductSearch primaryColor={primaryColor} />
+            
+            {showHeaderCart && (
+              <CartIndicator
+                primaryColor={primaryColor}
+                cartBehavior={cartBehavior}
+                onClick={onCartClick}
+              />
             )}
-          </button>
+            
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
         
         {/* Mobile Menu */}
