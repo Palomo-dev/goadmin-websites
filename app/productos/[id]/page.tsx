@@ -54,6 +54,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     .eq('organization_id', organizationId)
     .eq('category_id', categoryId)
     .eq('status', 'active')
+    .eq('is_parent', true)
     .limit(limit)
   if (error || !data) return []
   return data
@@ -146,7 +147,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           />
           
           {/* Información del producto */}
-          <div className="space-y-6">
+          <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
             <div>
               <p className="text-sm text-gray-500 mb-2">SKU: {product.sku || 'N/A'}</p>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
@@ -180,15 +181,17 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             )}
             
             {/* Acciones */}
-            <ProductDetailActions
-              product={product}
-              variants={variants}
-              price={Number(price?.price || 0)}
-              comparePrice={comparePrice}
-              imageUrl={imageUrl}
-              primaryColor={primaryColor}
-              isParent={isParent}
-            />
+            <div id="product-actions">
+              <ProductDetailActions
+                product={product}
+                variants={variants}
+                price={Number(price?.price || 0)}
+                comparePrice={comparePrice}
+                imageUrl={imageUrl}
+                primaryColor={primaryColor}
+                isParent={isParent}
+              />
+            </div>
             
             {/* Beneficios */}
             <div className="grid grid-cols-2 gap-4 pt-6 border-t">
@@ -253,7 +256,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
       </div>
 
       {/* Sticky Add to Cart (mobile) */}
-      {!isParent && price && (
+      {price && (
         <StickyAddToCart
           productId={product.id}
           productName={product.name}

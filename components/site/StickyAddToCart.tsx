@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Check } from 'lucide-react'
+import { ShoppingCart, Check, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface StickyAddToCartProps {
@@ -28,15 +28,24 @@ export function StickyAddToCart({
 
   useEffect(() => {
     const handleScroll = () => {
-      // Mostrar sticky bar cuando se scrollea más de 400px
       setVisible(window.scrollY > 400)
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const scrollToActions = () => {
+    const el = document.getElementById('product-actions')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
   const handleAddToCart = () => {
-    if (isParent) return
+    if (isParent) {
+      scrollToActions()
+      return
+    }
     try {
       const host = window.location.hostname
       const subdomain = host.split('.')[0]
@@ -63,8 +72,6 @@ export function StickyAddToCart({
       setTimeout(() => setAdded(false), 2000)
     } catch (e) {}
   }
-
-  if (isParent) return null
 
   return (
     <div
@@ -97,6 +104,8 @@ export function StickyAddToCart({
         >
           {added ? (
             <><Check className="h-5 w-5 mr-2" /> Agregado</>
+          ) : isParent ? (
+            <><ChevronUp className="h-5 w-5 mr-2" /> Seleccionar</>
           ) : (
             <><ShoppingCart className="h-5 w-5 mr-2" /> Agregar</>
           )}
