@@ -176,12 +176,10 @@ export async function POST(request: NextRequest) {
     
     if (orderError) {
       console.error('Error creating web_order:', orderError)
-      return NextResponse.json({
-        success: true,
-        message: 'Pedido recibido',
-        orderId: crypto.randomUUID(),
-        orderNumber: orderNumber
-      })
+      return NextResponse.json(
+        { error: 'Error al crear el pedido', details: orderError.message },
+        { status: 500 }
+      )
     }
     
     // Post-procesamiento: items, stock, cupones, email
