@@ -133,7 +133,11 @@ export interface Database {
           show_header_cart: boolean
           show_header_auth: boolean
           show_topbar: boolean
+          show_powered_by: boolean
           logo_position: 'left' | 'center'
+          logo_height: number | null
+          favicon_height: number | null
+          favicon_url: string | null
           created_at: string
           updated_at: string
         }

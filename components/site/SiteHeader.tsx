@@ -48,6 +48,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
   const showHeaderCart = settings?.show_header_cart !== false && showCart
   const showHeaderAuth = settings?.show_header_auth !== false
   const cartBehavior: 'drawer' | 'redirect' = settings?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer'
+  const logoHeight = settings?.logo_height || 48
   
   return (
     <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md sticky top-0 z-50 shadow-sm dark:shadow-gray-800/30">
@@ -78,21 +79,24 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
               <Image
                 src={organization.logo_url}
                 alt={organization.name}
-                width={48}
-                height={48}
-                className="h-12 w-auto object-contain"
+                width={logoHeight * 3}
+                height={logoHeight}
+                className="w-auto object-contain"
+                style={{ height: `${logoHeight}px` }}
               />
             ) : (
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {organization.name.substring(0, 2).toUpperCase()}
-              </div>
+              <>
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {organization.name.substring(0, 2).toUpperCase()}
+                </div>
+                <span className="text-xl font-bold text-gray-900 dark:text-white">
+                  {organization.name}
+                </span>
+              </>
             )}
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              {organization.name}
-            </span>
           </Link>
           
           {/* Desktop Navigation */}

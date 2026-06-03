@@ -30,6 +30,8 @@ export function SiteFooter({ organization, settings, primaryColor, template, foo
   const socialLinks = (settings?.social_links || {}) as SocialLinks
   const businessHours = (settings?.business_hours || {}) as BusinessHours
   const footerText = settings?.footer_text || `© ${new Date().getFullYear()} ${organization.name}. Todos los derechos reservados.`
+  const showPoweredBy = settings?.show_powered_by !== false
+  const logoHeight = settings?.logo_height || 48
   
   // Prioridad: footerNav (website_pages) > template.navigation > vacío
   const navItems = footerNav && footerNav.length > 0
@@ -57,19 +59,22 @@ export function SiteFooter({ organization, settings, primaryColor, template, foo
                 <Image
                   src={organization.logo_url}
                   alt={organization.name}
-                  width={48}
-                  height={48}
-                  className="h-12 w-auto object-contain brightness-0 invert"
+                  width={logoHeight * 3}
+                  height={logoHeight}
+                  className="w-auto object-contain brightness-0 invert"
+                  style={{ height: `${logoHeight}px` }}
                 />
               ) : (
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  {organization.name.substring(0, 2).toUpperCase()}
-                </div>
+                <>
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {organization.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-xl font-bold">{organization.name}</span>
+                </>
               )}
-              <span className="text-xl font-bold">{organization.name}</span>
             </div>
             
             {organization.description && (
@@ -206,18 +211,20 @@ export function SiteFooter({ organization, settings, primaryColor, template, foo
             <p className="text-gray-400 text-sm">
               {footerText}
             </p>
-            <p className="text-gray-500 text-sm mt-2 md:mt-0">
-              Powered by{' '}
-              <a 
-                href="https://goadmin.io" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors"
-                style={{ color: primaryColor }}
-              >
-                GO Admin
-              </a>
-            </p>
+            {showPoweredBy && (
+              <p className="text-gray-500 text-sm mt-2 md:mt-0">
+                Powered by{' '}
+                <a 
+                  href="https://goadmin.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                  style={{ color: primaryColor }}
+                >
+                  GO Admin
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </div>
