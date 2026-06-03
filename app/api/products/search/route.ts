@@ -9,7 +9,7 @@ const SELECT_FIELDS = `
   product_prices (price, compare_price),
   product_images (storage_path, is_primary, shared_image_id, shared_images (storage_path)),
   categories (name),
-  product_tags (name)
+  product_tags!products_tag_id_fkey (name)
 `
 
 function formatProduct(p: any) {
