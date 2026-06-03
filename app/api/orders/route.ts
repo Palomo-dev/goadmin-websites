@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         tax_total: taxTotal,
         delivery_fee: shipping || 0,
         total: calculatedTotal,
-        delivery_type: deliveryType || (shipping > 0 ? 'delivery_own' : 'pickup'),
+        delivery_type: deliveryType === 'delivery' ? 'delivery_own' : (deliveryType || (shipping > 0 ? 'delivery_own' : 'pickup')),
         delivery_address: deliveryAddress || {
           address: customer.address,
           city: customer.city
