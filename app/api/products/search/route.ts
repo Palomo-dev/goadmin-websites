@@ -58,7 +58,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ products: [] })
   }
   const supabase = createAdminClient() || createPublicClient()
+  if (!supabase) {
+    return NextResponse.json({ products: [], error: 'No supabase client' })
+  }
   const collected = new Map<number, any>()
+  const errors: string[] = []
 
   // Detectar si es búsqueda por precio (ej: "menos de 50000", "hasta 100000", números)
   const priceMatch = q.match(/(\d[\d.,]*)/)?.[1]?.replace(/[.,]/g, '')
@@ -66,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   // 1. Búsqueda por nombre del producto
   try {
-    const { data: byName } = await (supabase as any)
+    const { data: byName, error: err1 } = await (supabase as any)
       .from('products')
       .select(SELECT_FIELDS)
       .eq('organization_id', orgId)
@@ -74,8 +78,9 @@ export async function GET(request: NextRequest) {
       .eq('is_parent', true)
       .ilike('name', `%${q}%`)
       .limit(10)
+    if (err1) errors.push(`name: ${err1.message}`)
     if (byName) byName.forEach((p: any) => collected.set(p.id, p))
-  } catch (e) { /* silent */ }
+  } catch (e: any) { errors.push(`name_catch: ${e.message}`) }
 
   // 2. Búsqueda por categoría
   try {
@@ -200,5 +205,5 @@ export async function GET(request: NextRequest) {
 
   const products = results.slice(0, 12).map(formatProduct)
 
-  return NextResponse.json({ products })
+  return NextResponse.json({ products, debug: { orgId, queryLen: q.length, errors, totalCollected: collected.size } })
 }
