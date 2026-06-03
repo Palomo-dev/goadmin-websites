@@ -238,16 +238,10 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                 
                 <CardContent className="p-2.5 sm:p-4">
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-xs sm:text-base text-gray-900 mb-1 line-clamp-2 transition-colors">
+                    <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
                   </Link>
-                  
-                  {product.description && (
-                    <p className="hidden sm:block text-sm text-gray-500 mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
                   
                   <div className="flex flex-col gap-2 mt-1">
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">

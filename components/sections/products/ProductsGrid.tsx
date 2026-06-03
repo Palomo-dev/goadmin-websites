@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Layers, Package } from 'lucide-react'
+import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -48,10 +48,47 @@ interface ProductsGridProps {
   organization?: { subdomain?: string }
 }
 
+const ITEMS_PER_PAGE = 12
+
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
   const organizationSubdomain = organization?.subdomain || ''
   const products = data?.products || []
+  const categories = data?.categories || []
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
+  const [onlyOffers, setOnlyOffers] = useState(false)
+
+  // Categorías únicas de los productos
+  const availableCategories = useMemo(() => {
+    if (categories.length > 0) return categories
+    const catMap = new Map<number, string>()
+    products.forEach((p: any) => {
+      if (p.category_id && p.categories?.name) catMap.set(p.category_id, p.categories.name)
+    })
+    return Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
+  }, [products, categories])
+
+  // Filtrar y ordenar
+  const filteredProducts = useMemo(() => {
+    let result = [...products]
+    if (selectedCategory) result = result.filter((p: any) => p.category_id === selectedCategory)
+    if (onlyOffers) result = result.filter((p: any) => {
+      const cp = p.product_prices?.[0]?.compare_price
+      const pr = p.product_prices?.[0]?.price
+      return cp && pr && Number(cp) > Number(pr)
+    })
+    if (sortBy === 'price_asc') result.sort((a: any, b: any) => (getPrice(a) ?? 0) - (getPrice(b) ?? 0))
+    else if (sortBy === 'price_desc') result.sort((a: any, b: any) => (getPrice(b) ?? 0) - (getPrice(a) ?? 0))
+    else if (sortBy === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+    return result
+  }, [products, selectedCategory, sortBy, onlyOffers])
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
+  const handleFilterChange = () => { setCurrentPage(1) }
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -94,11 +131,67 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{content.title}</h2>
       )}
-      {products.length > 0 ? (
+
+      {/* Filtros */}
+      {products.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {/* Categorías */}
+          {availableCategories.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              <button
+                onClick={() => { setSelectedCategory(null); handleFilterChange() }}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+                  !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
+                }`}
+                style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
+              >
+                Todos
+              </button>
+              {availableCategories.map((cat: any) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(selectedCategory === cat.id ? null : cat.id); handleFilterChange() }}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+                    selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
+                  }`}
+                  style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Ordenar + Ofertas */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => { setOnlyOffers(!onlyOffers); handleFilterChange() }}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+                onlyOffers ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+              }`}
+              style={onlyOffers ? { backgroundColor: '#EF4444' } : {}}
+            >
+              <SlidersHorizontal className="h-3 w-3" /> Ofertas
+            </button>
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value as any); handleFilterChange() }}
+              className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
+            >
+              <option value="default">Ordenar</option>
+              <option value="price_asc">Precio: menor a mayor</option>
+              <option value="price_desc">Precio: mayor a menor</option>
+              <option value="name">Nombre A-Z</option>
+            </select>
+            <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} productos</span>
+          </div>
+        </div>
+      )}
+
+      {paginatedProducts.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-          {products.map((product: any) => {
+          {paginatedProducts.map((product: any) => {
             const price = getPrice(product)
             const comparePrice = getComparePrice(product)
             const imgUrl = getImageUrl(product)
@@ -146,13 +239,10 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                 </Link>
                 <div className="p-2.5 sm:p-4">
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-xs sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
+                    <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
                   </Link>
-                  {product.description && (
-                    <p className="hidden sm:block text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{product.description}</p>
-                  )}
                   <div className="flex flex-col gap-2 mt-1">
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       {comparePrice && price !== null && comparePrice > price && (
@@ -205,7 +295,50 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
-          <p>No hay productos disponibles aún</p>
+          <p>{selectedCategory || onlyOffers ? 'No hay productos con estos filtros' : 'No hay productos disponibles aún'}</p>
+          {(selectedCategory || onlyOffers) && (
+            <button onClick={() => { setSelectedCategory(null); setOnlyOffers(false); setSortBy('default'); setCurrentPage(1) }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
+          )}
+        </div>
+      )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-8">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: totalPages }).map((_, i) => {
+            const page = i + 1
+            if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-all ${
+                    currentPage === page ? 'text-white' : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                  style={currentPage === page ? { backgroundColor: primaryColor } : {}}
+                >
+                  {page}
+                </button>
+              )
+            }
+            if (page === 2 && currentPage > 3) return <span key="start-dots" className="px-1 text-gray-400">...</span>
+            if (page === totalPages - 1 && currentPage < totalPages - 2) return <span key="end-dots" className="px-1 text-gray-400">...</span>
+            return null
+          })}
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       )}
     </div>

@@ -391,13 +391,10 @@ function ProductCardGrid({
       </Link>
       <CardContent className="p-2.5 sm:p-4">
         <Link href={`/productos/${product.uuid}`}>
-          <h3 className="font-semibold text-xs sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:underline">
+          <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:underline">
             {product.name}
           </h3>
         </Link>
-        {product.description && (
-          <p className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{product.description}</p>
-        )}
         <div className="flex flex-col gap-2 mt-1">
           {price && (
             <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
