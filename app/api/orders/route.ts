@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     if (orderError) {
       console.error('Error creating web_order:', orderError)
       return NextResponse.json(
-        { error: 'Error al crear el pedido', details: orderError.message },
+        { error: `Error al crear el pedido: ${orderError.message || orderError.code || JSON.stringify(orderError)}` },
         { status: 500 }
       )
     }
