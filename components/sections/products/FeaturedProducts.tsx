@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -54,6 +54,21 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
   const products = allProducts.slice(0, maxItems)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [activePage, setActivePage] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+
+  const updatePagination = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const scrollLeft = el.scrollLeft
+    const scrollWidth = el.scrollWidth - el.clientWidth
+    if (scrollWidth <= 0) { setTotalPages(1); setActivePage(0); return }
+    const pages = Math.ceil(products.length / 2)
+    setTotalPages(pages)
+    setActivePage(Math.round((scrollLeft / scrollWidth) * (pages - 1)))
+  }, [products.length])
+
+  useEffect(() => { updatePagination() }, [updatePagination])
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -110,6 +125,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
           </button>
           <div
             ref={scrollRef}
+            onScroll={updatePagination}
             className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
@@ -196,6 +212,24 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
               )
             })}
           </div>
+          {/* Pagination dots */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-1.5 mt-3">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    const el = scrollRef.current
+                    if (!el) return
+                    const scrollWidth = el.scrollWidth - el.clientWidth
+                    el.scrollTo({ left: (i / (totalPages - 1)) * scrollWidth, behavior: 'smooth' })
+                  }}
+                  className={`rounded-full transition-all ${i === activePage ? 'w-6 h-2' : 'w-2 h-2 bg-gray-300 dark:bg-gray-600'}`}
+                  style={i === activePage ? { backgroundColor: primaryColor } : {}}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
