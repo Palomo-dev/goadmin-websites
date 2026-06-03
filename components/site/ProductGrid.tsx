@@ -217,9 +217,9 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                       ) : null
                     })()}
                     {product.has_variants && (product.variant_count ?? 0) > 0 && (
-                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                      <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
                         <Layers className="h-3 w-3" />
-                        {product.variant_count} variantes
+                        {product.variant_count}
                       </span>
                     )}
                     {getProductImageUrl(product) ? (
@@ -236,26 +236,26 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                   </div>
                 </Link>
                 
-                <CardContent className="p-4">
+                <CardContent className="p-2.5 sm:p-4">
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-xs sm:text-base text-gray-900 mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
                   </Link>
                   
                   {product.description && (
-                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                    <p className="hidden sm:block text-sm text-gray-500 mb-3 line-clamp-2">
                       {product.description}
                     </p>
                   )}
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       {price?.compare_price && Number(price.compare_price) > Number(price.price) && (
-                        <span className="text-sm text-gray-400 line-through">${Number(price.compare_price).toLocaleString()}</span>
+                        <span className="text-xs sm:text-sm text-gray-400 line-through">${Number(price.compare_price).toLocaleString()}</span>
                       )}
                       {price && (
-                        <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                        <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
                           ${Number(price.price).toLocaleString()}
                         </span>
                       )}
@@ -274,9 +274,10 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                             e.preventDefault()
                             openVariantSelector(product)
                           }}
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="w-full text-xs sm:text-sm"
+                          style={{ backgroundColor: primaryColor }}
                         >
-                          <Layers className="h-4 w-4 mr-1" />
+                          <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                           Elegir
                         </Button>
                       ) : (
@@ -286,17 +287,17 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                             e.preventDefault()
                             addToCart(product)
                           }}
-                          className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                          className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
                           style={!isAdded ? { backgroundColor: primaryColor } : {}}
                         >
                           {isAdded ? (
                             <>
-                              <Check className="h-4 w-4 mr-1" />
-                              Agregado
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Listo
                             </>
                           ) : (
                             <>
-                              <Plus className="h-4 w-4 mr-1" />
+                              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                               Agregar
                             </>
                           )}

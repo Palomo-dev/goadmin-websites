@@ -144,22 +144,22 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                     )}
                   </div>
                 </Link>
-                <div className="p-4">
+                <div className="p-2.5 sm:p-4">
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
+                    <h3 className="font-semibold text-xs sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
                   </Link>
                   {product.description && (
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{product.description}</p>
+                    <p className="hidden sm:block text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{product.description}</p>
                   )}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       {comparePrice && price !== null && comparePrice > price && (
-                        <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                        <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
                       )}
                       {price !== null && (
-                        <span className="font-bold text-lg" style={{ color: primaryColor }}>
+                        <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>
                           ${price.toLocaleString()}
                         </span>
                       )}
@@ -168,8 +168,8 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                       <span className="text-xs text-red-500 font-medium">Sin stock</span>
                     ) : isParent ? (
                       <Link href={`/productos/${product.uuid}`}>
-                        <Button size="sm" style={{ backgroundColor: primaryColor }}>
-                          <Layers className="h-4 w-4 mr-1" /> Elegir
+                        <Button size="sm" className="w-full text-xs sm:text-sm" style={{ backgroundColor: primaryColor }}>
+                          <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Elegir
                         </Button>
                       </Link>
                     ) : (
@@ -179,18 +179,18 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                           e.preventDefault()
                           addToCart(product)
                         }}
-                        className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                        className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
                         style={!isAdded ? { backgroundColor: primaryColor } : {}}
                         disabled={price === null}
                       >
                         {isAdded ? (
                           <>
-                            <Check className="h-4 w-4 mr-1" />
-                            Agregado
+                            <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                            Listo
                           </>
                         ) : (
                           <>
-                            <Plus className="h-4 w-4 mr-1" />
+                            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             Agregar
                           </>
                         )}
