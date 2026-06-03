@@ -35,6 +35,7 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mobilePortalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Cargar búsquedas recientes del localStorage
@@ -51,9 +52,13 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
   }, [isOpen])
 
   useEffect(() => {
-    // Cerrar al hacer click fuera
+    // Cerrar al hacer click fuera (verificar tanto el container como el portal móvil)
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!mobilePortalRef.current || !mobilePortalRef.current.contains(target))
+      ) {
         setIsOpen(false)
       }
     }
@@ -260,7 +265,7 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
 
       {/* Mobile: fullscreen via portal (evita stacking context del header) */}
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div className="md:hidden fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col">
+        <div ref={mobilePortalRef} className="md:hidden fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input

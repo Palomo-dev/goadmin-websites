@@ -37,11 +37,6 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
     ? headerNav.map(p => ({ name: p.title, href: p.slug === 'home' ? '/' : `/${p.slug}` }))
     : template?.navigation || defaultNavItems
   
-  // CTA del header: prioridad website_settings > template
-  const ctaText = settings?.header_cta_text || 'Contáctanos'
-  const ctaHref = settings?.header_cta_url || template?.navigation?.find((n: NavItem) => 
-    n.href.includes('reserva') || n.href.includes('contacto')
-  )?.href || '/contacto'
   
   // Flags de visibilidad desde website_settings
   const showTopbar = settings?.show_topbar !== false
@@ -112,7 +107,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             ))}
           </nav>
           
-          {/* Actions: Search, Cart, Login, CTA */}
+          {/* Actions: Search, Cart, Login */}
           <div className="hidden md:flex items-center space-x-4">
             <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
             
@@ -129,18 +124,9 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
               </Link>
             )}
-            
-            <Link href={ctaHref}>
-              <Button 
-                style={{ backgroundColor: primaryColor }}
-                className="hover:opacity-90"
-              >
-                {ctaText}
-              </Button>
-            </Link>
           </div>
           
-          {/* Mobile Actions: Search + Cart + Menu */}
+          {/* Mobile Actions: Search + Cart + Login + Menu */}
           <div className="flex md:hidden items-center gap-1">
             <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
             
@@ -150,6 +136,12 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 cartBehavior={cartBehavior}
                 onClick={onCartClick}
               />
+            )}
+
+            {showHeaderAuth && (
+              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              </Link>
             )}
             
             <button
@@ -179,14 +171,16 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                   {item.name}
                 </a>
               ))}
-              <Link href={ctaHref} className="w-full">
-                <Button 
-                  style={{ backgroundColor: primaryColor }}
-                  className="hover:opacity-90 w-full"
+              {showHeaderAuth && (
+                <Link
+                  href="/auth"
+                  className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  {ctaText}
-                </Button>
-              </Link>
+                  <User className="h-5 w-5" />
+                  Iniciar sesión
+                </Link>
+              )}
             </nav>
           </div>
         )}
