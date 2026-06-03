@@ -17,19 +17,21 @@ interface HeroSplitProps {
 
 export function HeroSplit({ content, primaryColor, organization }: HeroSplitProps) {
   const imageUrl = content.image_url || organization?.logo_url
+  const showTitle = (content as any).show_title !== false
+  const showCta = (content as any).show_cta !== false
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-0 md:min-h-[60vh]">
       <div>
-        {content.title && (
+        {showTitle && content.title && (
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 dark:text-white">{content.title}</h1>
         )}
-        {content.subtitle && (
+        {showTitle && content.subtitle && (
           <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">{content.subtitle}</p>
         )}
         {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
-        ) : (
+        ) : showCta ? (
           <div className="flex flex-wrap gap-4">
             {content.cta_text && content.cta_url && (
               <Link
@@ -50,7 +52,7 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
               </Link>
             )}
           </div>
-        )}
+        ) : null}
       </div>
       <div className="order-first md:order-last">
         {imageUrl ? (

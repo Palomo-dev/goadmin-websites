@@ -5,13 +5,20 @@ interface CategoriesGridProps {
     title?: string
     subtitle?: string
     show_count?: boolean
+    max_items?: number
+    shape?: 'square' | 'round'
   }
   primaryColor?: string
   data?: { categories?: any[] }
 }
 
 export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
-  const categories = data?.categories || []
+  const maxItems = content.max_items || 0
+  const shape = content.shape || 'square'
+  const allCategories = data?.categories || []
+  const categories = maxItems > 0 ? allCategories.slice(0, maxItems) : allCategories
+
+  const isRound = shape === 'round'
 
   return (
     <div>
@@ -22,12 +29,14 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {categories.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${Math.min(categories.length, 4)} gap-6`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
               href={`/categorias/${cat.slug}`}
-              className="group relative rounded-xl overflow-hidden bg-gray-100 aspect-[4/3] hover:shadow-lg transition-shadow"
+              className={`group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
+                isRound ? 'rounded-full aspect-square' : 'rounded-xl aspect-[4/3]'
+              }`}
             >
               {cat.image_url ? (
                 <img
@@ -44,9 +53,9 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
                   <span className="text-4xl">🏷️</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                <div>
-                  <h3 className="text-white font-semibold text-lg">{cat.name}</h3>
+              <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center ${isRound ? 'p-2' : 'p-4'}`}>
+                <div className={isRound ? 'text-center' : ''}>
+                  <h3 className={`text-white font-semibold ${isRound ? 'text-sm' : 'text-lg'}`}>{cat.name}</h3>
                   {content.show_count && cat.product_count != null && (
                     <span className="text-white/80 text-sm">{cat.product_count} productos</span>
                   )}

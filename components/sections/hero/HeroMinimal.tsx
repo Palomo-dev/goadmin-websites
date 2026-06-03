@@ -14,13 +14,17 @@ interface HeroMinimalProps {
 
 export function HeroMinimal({ content, organization, primaryColor }: HeroMinimalProps) {
   const showBooking = (content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false
+  const showTitle = (content as any).show_title !== false
+  const showCta = (content as any).show_cta !== false
 
   return (
     <div className="text-center py-4 px-4 sm:px-0">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
-        {content.title || 'Título'}
-      </h1>
-      {content.subtitle && (
+      {showTitle && (
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
+          {content.title || 'Título'}
+        </h1>
+      )}
+      {showTitle && content.subtitle && (
         <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6">
           {content.subtitle}
         </p>
@@ -29,7 +33,7 @@ export function HeroMinimal({ content, organization, primaryColor }: HeroMinimal
         <div className="mt-6 max-w-4xl mx-auto">
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
         </div>
-      ) : content.cta_text && content.cta_url ? (
+      ) : showCta && content.cta_text && content.cta_url ? (
         <Link
           href={content.cta_url}
           className="inline-block mt-4 px-8 py-3 rounded-lg text-white font-semibold transition-transform hover:scale-105"

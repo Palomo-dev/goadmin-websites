@@ -10,7 +10,9 @@ interface CategoriesIconsProps {
 
 export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: CategoriesIconsProps) {
   const title = content.title || 'Categorías'
-  const categories = data?.categories || []
+  const maxItems = content.max_items || 0
+  const allCategories = data?.categories || []
+  const categories = maxItems > 0 ? allCategories.slice(0, maxItems) : allCategories
 
   return (
     <div>
