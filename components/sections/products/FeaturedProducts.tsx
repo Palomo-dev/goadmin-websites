@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Package, Layers } from 'lucide-react'
+import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -53,6 +53,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
   const maxItems = content.max_items || 8
   const products = allProducts.slice(0, maxItems)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -90,89 +91,111 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product: any) => {
-            const price = getPrice(product)
-            const comparePrice = getComparePrice(product)
-            const imgUrl = getImageUrl(product)
-            const isAdded = addedToCart.has(product.id)
-            const variantCount = product.variant_count || 0
-            const stock = getStock(product)
-            const outOfStock = stock !== null && stock <= 0
-            const isParent = product.is_parent && variantCount > 0
+        <div className="relative group/carousel">
+          {/* Flecha izquierda */}
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110"
+            style={{ color: primaryColor }}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          {/* Flecha derecha */}
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110"
+            style={{ color: primaryColor }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {products.map((product: any) => {
+              const price = getPrice(product)
+              const comparePrice = getComparePrice(product)
+              const imgUrl = getImageUrl(product)
+              const isAdded = addedToCart.has(product.id)
+              const variantCount = product.variant_count || 0
+              const stock = getStock(product)
+              const outOfStock = stock !== null && stock <= 0
+              const isParent = product.is_parent && variantCount > 0
 
-            return (
-              <div
-                key={product.id}
-                className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all"
-              >
-                <Link href={`/productos/${product.uuid}`}>
-                  <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
-                    {comparePrice && price !== null && comparePrice > price && (
-                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        -{Math.round((1 - price / comparePrice) * 100)}%
-                      </span>
-                    )}
-                    {outOfStock && !isParent && !(comparePrice && price !== null && comparePrice > price) && (
-                      <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
-                    )}
-                    {variantCount > 0 && (
-                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <Layers className="h-3 w-3" />{variantCount}
-                      </span>
-                    )}
-                    {imgUrl ? (
-                      <Image
-                        src={imgUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
-                      </div>
-                    )}
-                  </div>
-                </Link>
-                <div className="p-4">
+              return (
+                <div
+                  key={product.id}
+                  className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all"
+                >
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {product.name}
-                    </h3>
-                  </Link>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
+                    <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                       {comparePrice && price !== null && comparePrice > price && (
-                        <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                        <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                          -{Math.round((1 - price / comparePrice) * 100)}%
+                        </span>
                       )}
-                      {price !== null && (
-                        <span className="font-bold text-lg" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                      {outOfStock && !isParent && !(comparePrice && price !== null && comparePrice > price) && (
+                        <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
+                      )}
+                      {variantCount > 0 && (
+                        <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
+                          <Layers className="h-3 w-3" />{variantCount}
+                        </span>
+                      )}
+                      {imgUrl ? (
+                        <Image
+                          src={imgUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
+                        </div>
                       )}
                     </div>
-                    {outOfStock && !isParent ? (
-                      <span className="text-xs text-red-500 font-medium">Sin stock</span>
-                    ) : isParent ? (
-                      <Link href={`/productos/${product.uuid}`}>
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700"><Layers className="h-4 w-4 mr-1" />Elegir</Button>
-                      </Link>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={(e) => { e.preventDefault(); addToCart(product) }}
-                        className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                        style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                        disabled={price === null}
-                      >
-                        {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
-                      </Button>
-                    )}
+                  </Link>
+                  <div className="p-3 sm:p-4">
+                    <Link href={`/productos/${product.uuid}`}>
+                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors" style={{ ['--hover-color' as any]: primaryColor }}>
+                        {product.name}
+                      </h3>
+                    </Link>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                        {comparePrice && price !== null && comparePrice > price && (
+                          <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                        )}
+                        {price !== null && (
+                          <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                        )}
+                      </div>
+                      {outOfStock && !isParent ? (
+                        <span className="text-xs text-red-500 font-medium">Sin stock</span>
+                      ) : isParent ? (
+                        <Link href={`/productos/${product.uuid}`}>
+                          <Button size="sm" className="text-xs sm:text-sm" style={{ backgroundColor: primaryColor }}><Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Elegir</Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.preventDefault(); addToCart(product) }}
+                          className={`text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                          disabled={price === null}
+                        >
+                          {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">

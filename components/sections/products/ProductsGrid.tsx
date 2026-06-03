@@ -97,7 +97,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {products.map((product: any) => {
             const price = getPrice(product)
             const comparePrice = getComparePrice(product)
@@ -124,7 +124,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                       <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
                     )}
                     {variantCount > 0 && (
-                      <span className="absolute top-2 right-2 z-10 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                      <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
                         <Layers className="h-3 w-3" />
                         {variantCount}
                       </span>
@@ -146,7 +146,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                 </Link>
                 <div className="p-4">
                   <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
                   </Link>
@@ -168,7 +168,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                       <span className="text-xs text-red-500 font-medium">Sin stock</span>
                     ) : isParent ? (
                       <Link href={`/productos/${product.uuid}`}>
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                        <Button size="sm" style={{ backgroundColor: primaryColor }}>
                           <Layers className="h-4 w-4 mr-1" /> Elegir
                         </Button>
                       </Link>

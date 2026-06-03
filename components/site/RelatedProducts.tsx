@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Package } from 'lucide-react'
+import { Plus, Check, Package, ChevronLeft, ChevronRight, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -24,6 +24,7 @@ interface RelatedProductsProps {
 
 export function RelatedProducts({ products, primaryColor, currentProductId }: RelatedProductsProps) {
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Filtrar el producto actual
   const relatedProducts = products.filter(p => p.id !== currentProductId).slice(0, 8)
@@ -66,7 +67,26 @@ export function RelatedProducts({ products, primaryColor, currentProductId }: Re
   return (
     <div className="mt-16 border-t pt-12">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Productos relacionados</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="relative group/carousel">
+        <button
+          onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110"
+          style={{ color: primaryColor }}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={() => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110"
+          style={{ color: primaryColor }}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
         {relatedProducts.map((product: any) => {
           const price = product.product_prices?.[0]?.price
           const comparePrice = product.product_prices?.[0]?.compare_price
@@ -79,7 +99,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId }: Re
           return (
             <div
               key={product.id}
-              className="group bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all"
+              className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start group bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all"
             >
               <Link href={`/productos/${product.uuid}`}>
                 <div className="aspect-square bg-gray-100 overflow-hidden relative">
@@ -131,8 +151,8 @@ export function RelatedProducts({ products, primaryColor, currentProductId }: Re
                 )}
                 {product.is_parent && (
                   <Link href={`/productos/${product.uuid}`}>
-                    <Button size="sm" className="w-full mt-2 text-xs bg-purple-600 hover:bg-purple-700">
-                      Ver opciones
+                    <Button size="sm" className="w-full mt-2 text-xs" style={{ backgroundColor: primaryColor }}>
+                      <Layers className="h-3 w-3 mr-1" /> Elegir
                     </Button>
                   </Link>
                 )}
@@ -140,6 +160,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId }: Re
             </div>
           )
         })}
+        </div>
       </div>
     </div>
   )
