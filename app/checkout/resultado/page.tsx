@@ -11,7 +11,7 @@ import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 
 export const dynamic = 'force-dynamic'
 
-async function getOrderByRef(orderNumber: string) {
+async function getOrderByRef(orderNumber: string, transactionId?: string) {
   const supabase = createAdminClient() || createPublicClient()
 
   const { data, error } = await (supabase as any)
@@ -23,9 +23,9 @@ async function getOrderByRef(orderNumber: string) {
   if (error || !data) return null
 
   // Fallback: si la orden sigue pendiente y fue pagada con Wompi, verificar directamente con la API
-  if (data.payment_status === 'pending' && (data.payment_method === 'wompi' || data.payment_method === 'card')) {
+  if (data.payment_status === 'pending' && ['wompi', 'wompi_co', 'card'].includes(data.payment_method)) {
     try {
-      const updated = await checkWompiTransactionStatus(supabase, data)
+      const updated = await checkWompiTransactionStatus(supabase, data, transactionId)
       if (updated) return updated
     } catch (err) {
       console.error('[Resultado] Error checking Wompi status:', err)
@@ -38,8 +38,8 @@ async function getOrderByRef(orderNumber: string) {
 /**
  * Verifica el estado de la transacción en Wompi API por referencia y actualiza la orden si fue pagada
  */
-async function checkWompiTransactionStatus(supabase: any, order: any) {
-  // Obtener public_key de Wompi para esta org
+async function checkWompiTransactionStatus(supabase: any, order: any, transactionId?: string) {
+  // Obtener conexión de Wompi para esta org
   const { data: conn } = await supabase
     .from('integration_connections')
     .select('id, environment')
@@ -51,18 +51,36 @@ async function checkWompiTransactionStatus(supabase: any, order: any) {
 
   if (!conn) return null
 
-  // Buscar transacciones por referencia en Wompi API
   const baseApi = conn.environment === 'sandbox'
     ? 'https://sandbox.wompi.co/v1'
     : 'https://production.wompi.co/v1'
 
-  const res = await fetch(`${baseApi}/transactions?reference=${order.order_number}`, {
-    headers: { 'Content-Type': 'application/json' },
-  })
+  let tx: any = null
 
-  if (!res.ok) return null
-  const json = await res.json()
-  const tx = json.data?.[0]
+  // Opción 1: Usar el transactionId directo (más confiable, endpoint público)
+  if (transactionId) {
+    const res = await fetch(`${baseApi}/transactions/${transactionId}`, {
+      headers: { 'Content-Type': 'application/json' },
+      next: { revalidate: 0 },
+    })
+    if (res.ok) {
+      const json = await res.json()
+      tx = json.data
+    }
+  }
+
+  // Opción 2: Buscar por referencia (fallback)
+  if (!tx) {
+    const res = await fetch(`${baseApi}/transactions?reference=${order.order_number}`, {
+      headers: { 'Content-Type': 'application/json' },
+      next: { revalidate: 0 },
+    })
+    if (res.ok) {
+      const json = await res.json()
+      tx = json.data?.[0]
+    }
+  }
+
   if (!tx) return null
 
   const statusMap: Record<string, string> = {
@@ -132,7 +150,7 @@ const STATUS_CONFIG: Record<string, {
 export default async function CheckoutResultadoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string; status?: string }>
+  searchParams: Promise<{ ref?: string; id?: string; status?: string; env?: string }>
 }) {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
@@ -144,6 +162,7 @@ export default async function CheckoutResultadoPage({
   ])
   const params = await searchParams
   const orderRef = params.ref
+  const transactionId = params.id
 
   if (!orderRef) {
     return (
@@ -164,7 +183,7 @@ export default async function CheckoutResultadoPage({
     )
   }
 
-  const order = await getOrderByRef(orderRef)
+  const order = await getOrderByRef(orderRef, transactionId)
 
   if (!order) {
     return (
