@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Plus, Check, Package, Layers } from 'lucide-react'
+import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { VariantSelector } from './VariantSelector'
 
 interface ProductImage {
@@ -78,16 +78,34 @@ interface ProductGridProps {
   organizationId?: number
 }
 
+const ITEMS_PER_PAGE = 12
+
 export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId }: ProductGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [variantParent, setVariantParent] = useState<Product | null>(null)
   const [variantChildren, setVariantChildren] = useState<any[]>([])
   const [loadingVariants, setLoadingVariants] = useState(false)
-  
-  const filteredProducts = selectedCategory 
-    ? products.filter(p => p.category_id === selectedCategory)
-    : products
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
+  const [onlyOffers, setOnlyOffers] = useState(false)
+
+  const filteredProducts = useMemo(() => {
+    let result = selectedCategory ? products.filter(p => p.category_id === selectedCategory) : [...products]
+    if (onlyOffers) result = result.filter(p => {
+      const cp = p.product_prices?.[0]?.compare_price
+      const pr = p.product_prices?.[0]?.price
+      return cp && pr && Number(cp) > Number(pr)
+    })
+    if (sortBy === 'price_asc') result.sort((a, b) => (a.product_prices?.[0]?.price ?? 0) - (b.product_prices?.[0]?.price ?? 0))
+    else if (sortBy === 'price_desc') result.sort((a, b) => (b.product_prices?.[0]?.price ?? 0) - (a.product_prices?.[0]?.price ?? 0))
+    else if (sortBy === 'name') result.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    return result
+  }, [products, selectedCategory, sortBy, onlyOffers])
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const resetPage = () => setCurrentPage(1)
   
   const openVariantSelector = async (product: Product) => {
     if (!organizationId) return
@@ -149,29 +167,26 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
   
   return (
     <div>
-      {/* Filtro por categorías */}
-      {categories.length > 0 && (
-        <div className="mb-8 overflow-x-auto">
-          <div className="flex gap-2 pb-2">
+      {/* Filtros */}
+      <div className="mb-6 space-y-3">
+        {/* Categorías */}
+        {categories.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
             <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedCategory === null 
-                  ? 'text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              onClick={() => { setSelectedCategory(null); resetPage() }}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+                !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
               }`}
-              style={selectedCategory === null ? { backgroundColor: primaryColor } : {}}
+              style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
             >
               Todos
             </button>
             {categories.map((category) => (
               <button
                 key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === category.id 
-                    ? 'text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                onClick={() => { setSelectedCategory(selectedCategory === category.id ? null : category.id); resetPage() }}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+                  selectedCategory === category.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
                 }`}
                 style={selectedCategory === category.id ? { backgroundColor: primaryColor } : {}}
               >
@@ -179,13 +194,36 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
               </button>
             ))}
           </div>
+        )}
+        {/* Ordenar + Ofertas */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => { setOnlyOffers(!onlyOffers); resetPage() }}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+              onlyOffers ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+            style={onlyOffers ? { backgroundColor: '#EF4444' } : {}}
+          >
+            <SlidersHorizontal className="h-3 w-3" /> Ofertas
+          </button>
+          <select
+            value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value as any); resetPage() }}
+            className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
+          >
+            <option value="default">Ordenar</option>
+            <option value="price_asc">Precio: menor a mayor</option>
+            <option value="price_desc">Precio: mayor a menor</option>
+            <option value="name">Nombre A-Z</option>
+          </select>
+          <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} productos</span>
         </div>
-      )}
+      </div>
       
       {/* Grid de productos */}
-      {filteredProducts.length > 0 ? (
+      {paginatedProducts.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-          {filteredProducts.map((product) => {
+          {paginatedProducts.map((product) => {
             const price = product.product_prices?.[0]
             const isAdded = addedToCart.has(product.id)
             
@@ -305,23 +343,59 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
           })}
         </div>
       ) : (
-        <div className="text-center py-20">
+        <div className="text-center py-20 border-2 border-dashed dark:border-gray-700 rounded-xl">
+          <Package className="h-12 w-12 mx-auto text-gray-300 mb-4" />
           <p className="text-gray-500 text-lg">
-            {selectedCategory 
-              ? 'No hay productos en esta categoría.' 
+            {selectedCategory || onlyOffers
+              ? 'No hay productos con estos filtros' 
               : 'No hay productos disponibles en este momento.'}
           </p>
-          {selectedCategory && (
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => setSelectedCategory(null)}
-            >
-              Ver todos los productos
-            </Button>
+          {(selectedCategory || onlyOffers) && (
+            <button onClick={() => { setSelectedCategory(null); setOnlyOffers(false); setSortBy('default'); resetPage() }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
           )}
         </div>
       )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-8">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: totalPages }).map((_, i) => {
+            const page = i + 1
+            if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-all ${
+                    currentPage === page ? 'text-white' : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                  style={currentPage === page ? { backgroundColor: primaryColor } : {}}
+                >
+                  {page}
+                </button>
+              )
+            }
+            if (page === 2 && currentPage > 3) return <span key="start-dots" className="px-1 text-gray-400">...</span>
+            if (page === totalPages - 1 && currentPage < totalPages - 2) return <span key="end-dots" className="px-1 text-gray-400">...</span>
+            return null
+          })}
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Variant Selector Dialog */}
       {variantParent && (
         <VariantSelector
