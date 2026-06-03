@@ -43,12 +43,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ products: [] })
   }
 
+  // Intentar obtener orgId de getOrgContext (headers) o del query param (fallback)
+  const orgIdParam = searchParams.get('organizationId')
+  let orgId: number | null = null
+
   const ctx = await getOrgContext()
-  if (!ctx) {
-    return NextResponse.json({ products: [] })
+  if (ctx) {
+    orgId = ctx.organization.id
+  } else if (orgIdParam) {
+    orgId = parseInt(orgIdParam)
   }
 
-  const orgId = ctx.organization.id
+  if (!orgId) {
+    return NextResponse.json({ products: [] })
+  }
   const supabase = createAdminClient() || createPublicClient()
   const collected = new Map<number, any>()
 

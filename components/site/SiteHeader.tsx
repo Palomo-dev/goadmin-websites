@@ -110,7 +110,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           
           {/* Actions: Search, Cart, Login, CTA */}
           <div className="hidden md:flex items-center space-x-4">
-            <ProductSearch primaryColor={primaryColor} />
+            <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
             
             {showHeaderCart && (
               <CartIndicator
@@ -138,7 +138,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           
           {/* Mobile Actions: Search + Cart + Menu */}
           <div className="flex md:hidden items-center gap-1">
-            <ProductSearch primaryColor={primaryColor} />
+            <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
             
             {showHeaderCart && (
               <CartIndicator

@@ -8,6 +8,7 @@ import Image from 'next/image'
 
 interface ProductSearchProps {
   primaryColor: string
+  organizationId?: number
 }
 
 interface SearchResult {
@@ -26,7 +27,7 @@ const popularSearches = [
   'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
-export function ProductSearch({ primaryColor }: ProductSearchProps) {
+export function ProductSearch({ primaryColor, organizationId }: ProductSearchProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -71,7 +72,10 @@ export function ProductSearch({ primaryColor }: ProductSearchProps) {
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
+        const url = organizationId
+          ? `/api/products/search?q=${encodeURIComponent(query)}&organizationId=${organizationId}`
+          : `/api/products/search?q=${encodeURIComponent(query)}`
+        const res = await fetch(url)
         if (res.ok) {
           const data = await res.json()
           setResults(data.products || [])

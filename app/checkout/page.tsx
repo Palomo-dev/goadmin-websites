@@ -100,7 +100,7 @@ export default async function CheckoutPage() {
   const supabaseWs = createAdminClient() || createPublicClient()
   const { data: wsRow } = await (supabaseWs as any)
     .from('website_settings')
-    .select('available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included')
+    .select('available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description')
     .eq('organization_id', organization.id)
     .single()
 

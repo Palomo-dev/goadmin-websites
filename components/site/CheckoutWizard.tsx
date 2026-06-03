@@ -320,19 +320,21 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         paymentMethod
       }
 
-      // Campos de restaurante
+      // Tipo de entrega (aplica a todos los tipos de org)
+      orderPayload.deliveryType = orderType
+      if (orderType === 'delivery') {
+        orderPayload.deliveryAddress = {
+          address: customerData.address,
+          city: customerData.city
+        }
+      }
+
+      // Campos exclusivos de restaurante
       if (isRestaurant) {
-        orderPayload.deliveryType = orderType
         if (tipAmount > 0) orderPayload.tipAmount = tipAmount
         if (isScheduled && scheduledAt) {
           orderPayload.isScheduled = true
           orderPayload.scheduledAt = scheduledAt
-        }
-        if (orderType === 'delivery') {
-          orderPayload.deliveryAddress = {
-            address: customerData.address,
-            city: customerData.city
-          }
         }
         if (dineInTable) {
           orderPayload.tableName = dineInTable
@@ -890,8 +892,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {/* Tipo de pedido (restaurante) */}
-                {isRestaurant && (
+                {/* Tipo de pedido */}
+                {(hasDelivery || hasPickup) && (
                   <div className="flex items-center gap-2 text-xs font-medium rounded-lg p-2 mb-2"
                     style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
                   >
