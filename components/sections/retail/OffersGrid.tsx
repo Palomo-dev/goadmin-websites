@@ -29,7 +29,7 @@ export function OffersGrid({ content, primaryColor }: OffersGridProps) {
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
       {offers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {offers.map((offer, i) => (
             <div key={i} className="rounded-xl overflow-hidden border dark:border-gray-700 hover:shadow-lg transition-shadow">
               {offer.image_url && (
