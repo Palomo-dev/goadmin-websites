@@ -16,6 +16,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Debug: verificar que las variables de entorno están presentes
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error('Missing env vars:', { url: !!SUPABASE_URL, key: !!SUPABASE_ANON_KEY })
+      return NextResponse.json(
+        { error: 'Configuración incompleta del servidor (faltan variables de entorno)' },
+        { status: 500 }
+      )
+    }
+
     // Usar cliente vanilla de supabase-js para auth (evita problemas con @supabase/ssr)
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { autoRefreshToken: false, persistSession: false }
