@@ -31,6 +31,7 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
     `)
     .eq('uuid', productUuid)
     .eq('organization_id', organizationId)
+    .eq('status', 'active')
     .single()
   
   if (error || !data) return null

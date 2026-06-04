@@ -731,6 +731,7 @@ export async function getProductById(productId: number) {
     .from('products')
     .select(`*, product_prices (*), categories (*)`)
     .eq('id', productId)
+    .eq('status', 'active')
     .single()
   
   if (error) return null
