@@ -8,6 +8,22 @@ interface CategoriesIconsProps {
   data?: { categories?: any[] }
 }
 
+// Columnas responsivas: mínimo 2 para evitar items gigantes
+function getGridClass(count: number): string {
+  if (count <= 2) return 'grid-cols-2'
+  if (count === 3) return 'grid-cols-2 sm:grid-cols-3'
+  if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
+  if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+  return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
+// Ancho máximo del contenedor según cantidad
+function getMaxWidth(count: number): string {
+  if (count <= 2) return 'max-w-md'
+  if (count === 3) return 'max-w-2xl'
+  return ''
+}
+
 export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: CategoriesIconsProps) {
   const title = content.title || 'Categorías'
   const maxItems = content.max_items || 0
@@ -18,15 +34,15 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
     <div>
       {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{title}</h2>}
       {categories.length > 0 ? (
-        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
+        <div className={`grid gap-6 justify-items-center ${getGridClass(categories.length)} ${getMaxWidth(categories.length)} mx-auto`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
               href={`/categorias/${cat.slug}`}
-              className="group flex flex-col items-center gap-2 w-24"
+              className="group flex flex-col items-center gap-2 w-full"
             >
               <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold transition-transform group-hover:scale-110 overflow-hidden"
+                className="w-full aspect-square max-w-[80px] rounded-full flex items-center justify-center text-white text-xl font-bold transition-transform group-hover:scale-110 overflow-hidden"
                 style={{ backgroundColor: primaryColor }}
               >
                 {cat.image_url ? (

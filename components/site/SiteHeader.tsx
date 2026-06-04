@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Phone, Mail, User, Search } from 'lucide-react'
+import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
 import { CartIndicator } from './CartIndicator'
 import { ProductSearch } from './ProductSearch'
+import { createClient } from '@/lib/supabase/client'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -30,7 +31,19 @@ const defaultNavItems: NavItem[] = [
 
 export function SiteHeader({ organization, primaryColor, template, onCartClick, showCart = true, headerNav }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const settings = organization.website_settings as any
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
   
   // Prioridad: headerNav (website_pages) > template.navigation > defaultNavItems
   const navItems: NavItem[] = headerNav && headerNav.length > 0
@@ -120,9 +133,15 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             )}
             
             {showHeaderAuth && (
-              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-              </Link>
+              isLoggedIn ? (
+                <Link href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
+                  <UserCircle className="h-6 w-6" style={{ color: primaryColor }} />
+                </Link>
+              ) : (
+                <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                </Link>
+              )
             )}
           </div>
           
@@ -139,9 +158,15 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             )}
 
             {showHeaderAuth && (
-              <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              </Link>
+              isLoggedIn ? (
+                <Link href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
+                  <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
+                </Link>
+              ) : (
+                <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                </Link>
+              )
             )}
             
             <button
@@ -172,14 +197,39 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 </a>
               ))}
               {showHeaderAuth && (
-                <Link
-                  href="/auth"
-                  className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <User className="h-5 w-5" />
-                  Iniciar sesión
-                </Link>
+                isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/mi-cuenta"
+                      className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
+                      Mi Cuenta
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        const supabase = createClient()
+                        await supabase.auth.signOut()
+                        setMobileMenuOpen(false)
+                        window.location.href = '/'
+                      }}
+                      className="flex items-center gap-2 text-red-500 hover:text-red-700 font-medium"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      Cerrar sesión
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="h-5 w-5" />
+                    Iniciar sesión
+                  </Link>
+                )
               )}
             </nav>
           </div>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface AuthFormProps {
   organizationId: number
@@ -36,18 +37,21 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
     setError('')
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId, email: loginData.email, password: loginData.password })
+      const supabase = createClient()
+      
+      // Login directo desde el browser (establece cookies automáticamente)
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password
       })
-      const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-      } else {
-        setSuccess('¡Bienvenido de vuelta!')
-        setTimeout(() => { window.location.href = '/mi-cuenta' }, 1500)
+
+      if (authError) {
+        setError(authError.message === 'Invalid login credentials' ? 'Credenciales inválidas' : authError.message)
+        return
       }
+
+      setSuccess('¡Bienvenido de vuelta!')
+      setTimeout(() => { window.location.href = '/mi-cuenta' }, 1500)
     } catch {
       setError('Error al iniciar sesión. Intenta de nuevo.')
     } finally {

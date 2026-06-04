@@ -8,6 +8,22 @@ interface CategoriesHorizontalProps {
   data?: { categories?: any[] }
 }
 
+// Columnas responsivas: mínimo 2 para evitar items gigantes
+function getGridClass(count: number): string {
+  if (count <= 2) return 'grid-cols-2'
+  if (count === 3) return 'grid-cols-2 sm:grid-cols-3'
+  if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
+  if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+  return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
+// Ancho máximo del contenedor según cantidad
+function getMaxWidth(count: number): string {
+  if (count <= 2) return 'max-w-xl'
+  if (count === 3) return 'max-w-3xl'
+  return ''
+}
+
 export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }: CategoriesHorizontalProps) {
   const title = content.title || 'Categorías'
   const subtitle = content.subtitle
@@ -22,25 +38,14 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
         {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {categories.length > 0 ? (
-        <div
-          className={
-            categories.length > 6
-              ? 'flex gap-6 overflow-x-auto pb-4 snap-x'
-              : 'grid gap-6 justify-items-center'
-          }
-          style={
-            categories.length <= 6
-              ? { gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }
-              : undefined
-          }
-        >
+        <div className={`grid gap-6 justify-items-center ${getGridClass(categories.length)} ${getMaxWidth(categories.length)} mx-auto`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
               href={`/categorias/${cat.slug}`}
-              className={`group text-center ${categories.length > 6 ? 'flex-shrink-0 w-40 snap-start' : 'w-full max-w-[200px]'}`}
+              className="group text-center w-full"
             >
-              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-100 mb-3">
+              <div className="w-full aspect-square max-w-[180px] mx-auto rounded-full overflow-hidden bg-gray-100 mb-3">
                 {cat.image_url ? (
                   <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" loading="lazy" />
                 ) : (
