@@ -22,12 +22,23 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
         {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {categories.length > 0 ? (
-        <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+        <div
+          className={
+            categories.length > 6
+              ? 'flex gap-6 overflow-x-auto pb-4 snap-x'
+              : 'grid gap-6 justify-items-center'
+          }
+          style={
+            categories.length <= 6
+              ? { gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }
+              : undefined
+          }
+        >
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
               href={`/categorias/${cat.slug}`}
-              className="flex-shrink-0 w-40 snap-start group text-center"
+              className={`group text-center ${categories.length > 6 ? 'flex-shrink-0 w-40 snap-start' : 'w-full max-w-[200px]'}`}
             >
               <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-100 mb-3">
                 {cat.image_url ? (
