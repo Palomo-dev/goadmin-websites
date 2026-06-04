@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerSupabaseClient()
+    const supabase = createAdminClient() || createPublicClient()
 
     const origin = request.headers.get('origin') || ''
 

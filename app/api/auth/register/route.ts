@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = await createServerSupabaseClient()
+    // Usar admin client (service role) o public client como fallback
+    const supabase = createAdminClient() || createPublicClient()
     
     // Verificar si ya existe un customer con este email en esta organización
     const { data: existingCustomerData } = await supabase

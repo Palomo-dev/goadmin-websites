@@ -26,10 +26,14 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
               className="group flex flex-col items-center gap-2 w-24"
             >
               <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold transition-transform group-hover:scale-110"
+                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold transition-transform group-hover:scale-110 overflow-hidden"
                 style={{ backgroundColor: primaryColor }}
               >
-                {cat.icon || cat.name?.charAt(0) || '?'}
+                {cat.image_url ? (
+                  <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  cat.name?.charAt(0) || '?'
+                )}
               </div>
               <span className="text-sm font-medium text-center leading-tight">{cat.name}</span>
             </Link>

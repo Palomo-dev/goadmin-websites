@@ -12,6 +12,16 @@ interface CategoriesGridProps {
   data?: { categories?: any[] }
 }
 
+// Mapeo de columnas responsivas según cantidad de items
+function getGridClass(count: number): string {
+  if (count <= 1) return 'grid-cols-1'
+  if (count === 2) return 'grid-cols-1 sm:grid-cols-2'
+  if (count === 3) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+  if (count === 4) return 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4'
+  if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+  return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
 export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
   const maxItems = content.max_items || 0
   const shape = content.shape || 'square'
@@ -29,7 +39,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {categories.length > 0 ? (
-        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${Math.min(categories.length, 4)} gap-6`}>
+        <div className={`grid ${getGridClass(categories.length)} gap-6`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
