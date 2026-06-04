@@ -38,7 +38,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
         {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {categories.length > 0 ? (
-        <div className={`grid gap-6 justify-items-center ${getGridClass(categories.length)} ${getMaxWidth(categories.length)} mx-auto`}>
+        <div className={`grid gap-6 ${getGridClass(categories.length)}`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}

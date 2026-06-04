@@ -45,7 +45,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
       {categories.length > 0 ? (
-        <div className={`grid ${getGridClass(categories.length)} gap-6 ${getMaxWidth(categories.length)} mx-auto`}>
+        <div className={`grid ${getGridClass(categories.length)} gap-6`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}

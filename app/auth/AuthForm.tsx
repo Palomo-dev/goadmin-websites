@@ -37,17 +37,26 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
     setError('')
 
     try {
-      const supabase = createClient()
-      
-      // Login directo desde el browser (establece cookies automáticamente)
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password
+      // Auth via API route (server-side donde la key funciona)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId, email: loginData.email, password: loginData.password })
       })
+      const data = await res.json()
 
-      if (authError) {
-        setError(authError.message === 'Invalid login credentials' ? 'Credenciales inválidas' : authError.message)
+      if (data.error) {
+        setError(data.error)
         return
+      }
+
+      // Establecer sesión en el browser con los tokens del server
+      if (data.session?.access_token && data.session?.refresh_token) {
+        const supabase = createClient()
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        })
       }
 
       setSuccess('¡Bienvenido de vuelta!')

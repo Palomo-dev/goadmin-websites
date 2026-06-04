@@ -34,7 +34,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
     <div>
       {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{title}</h2>}
       {categories.length > 0 ? (
-        <div className={`grid gap-6 justify-items-center ${getGridClass(categories.length)} ${getMaxWidth(categories.length)} mx-auto`}>
+        <div className={`grid gap-6 ${getGridClass(categories.length)}`}>
           {categories.map((cat: any) => (
             <Link
               key={cat.id}
