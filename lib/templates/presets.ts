@@ -223,7 +223,7 @@ const retail_modern: TemplatePreset = {
         { section_type: 'hero', section_variant: 'slider' },
         { section_type: 'categories_grid', section_variant: 'horizontal' },
         { section_type: 'featured_products', section_variant: 'grid' },
-        { section_type: 'promo_banners', section_variant: 'grid' },
+        { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'products_grid', section_variant: 'grid' },
         { section_type: 'testimonials', section_variant: 'carousel' },
         { section_type: 'newsletter', section_variant: 'simple' },
@@ -249,7 +249,6 @@ const retail_modern: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'offers', section_variant: 'grid' },
-        { section_type: 'promo_banners', section_variant: 'grid' },
         { section_type: 'featured_products', section_variant: 'carousel' },
         { section_type: 'cta', section_variant: 'banner' },
       ],
@@ -282,6 +281,7 @@ const retail_classic: TemplatePreset = {
         { section_type: 'hero', section_variant: 'fullscreen' },
         { section_type: 'categories_grid', section_variant: 'grid' },
         { section_type: 'featured_products', section_variant: 'hero_product' },
+        { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'image_text', section_variant: 'image_right' },
         { section_type: 'products_grid', section_variant: 'list' },
         { section_type: 'testimonials', section_variant: 'quotes' },
@@ -293,6 +293,14 @@ const retail_classic: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'products_grid', section_variant: 'list' },
+      ],
+    },
+    {
+      slug: 'ofertas', title: 'Ofertas', show_in_header: true, show_in_footer: true, header_order: 3, footer_order: 3,
+      sections: [
+        { section_type: 'hero', section_variant: 'minimal' },
+        { section_type: 'offers', section_variant: 'grid' },
+        { section_type: 'cta', section_variant: 'banner' },
       ],
     },
     nosotrosPage('split', 'centered'),
@@ -324,6 +332,7 @@ const retail_bold: TemplatePreset = {
         { section_type: 'hero', section_variant: 'slider' },
         { section_type: 'categories_grid', section_variant: 'icons' },
         { section_type: 'featured_products', section_variant: 'hero_product' },
+        { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'products_grid', section_variant: 'carousel' },
         { section_type: 'cta', section_variant: 'with_image' },
         { section_type: 'testimonials', section_variant: 'grid' },
@@ -336,6 +345,14 @@ const retail_bold: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'products_grid', section_variant: 'grid' },
+      ],
+    },
+    {
+      slug: 'ofertas', title: 'Ofertas', show_in_header: true, show_in_footer: true, header_order: 3, footer_order: 3,
+      sections: [
+        { section_type: 'hero', section_variant: 'minimal' },
+        { section_type: 'offers', section_variant: 'grid' },
+        { section_type: 'cta', section_variant: 'with_image' },
       ],
     },
     nosotrosPage('split', 'left'),
@@ -366,6 +383,7 @@ const retail_elegant: TemplatePreset = {
         { section_type: 'hero', section_variant: 'video' },
         { section_type: 'text_block', section_variant: 'centered' },
         { section_type: 'featured_products', section_variant: 'hero_product' },
+        { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'image_text', section_variant: 'image_left' },
         { section_type: 'products_grid', section_variant: 'grid' },
         { section_type: 'testimonials', section_variant: 'minimal' },
@@ -377,6 +395,14 @@ const retail_elegant: TemplatePreset = {
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
         { section_type: 'products_grid', section_variant: 'grid' },
+      ],
+    },
+    {
+      slug: 'ofertas', title: 'Ofertas', show_in_header: true, show_in_footer: true, header_order: 3, footer_order: 3,
+      sections: [
+        { section_type: 'hero', section_variant: 'minimal' },
+        { section_type: 'offers', section_variant: 'grid' },
+        { section_type: 'cta', section_variant: 'banner' },
       ],
     },
     nosotrosPage('fullscreen', 'centered'),
