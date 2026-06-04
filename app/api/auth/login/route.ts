@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { organizationId, email, password } = body
-    
+
     if (!organizationId || !email || !password) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
       )
     }
-    
-    // Usar public client directamente — la anon key funciona (lo demuestran las queries)
-    const supabase = createPublicClient()
-    
+
+    // Usar cliente vanilla de supabase-js para auth (evita problemas con @supabase/ssr)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
     // Intentar login con Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
