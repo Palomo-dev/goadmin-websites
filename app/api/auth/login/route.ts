@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createPublicClient, createServerSupabaseClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +13,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Usar client sin cookies para autenticación (evita Invalid API key)
-    const authClient = createAdminClient() || createPublicClient()
+    // Usar public client directamente — la anon key funciona (lo demuestran las queries)
+    const supabase = createPublicClient()
     
     // Intentar login con Supabase Auth
-    const { data: authData, error: authError } = await authClient.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password
     })
@@ -33,21 +33,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Establecer sesión en cookies para que el usuario quede logueado
-    if (authData.session) {
-      try {
-        const serverClient = await createServerSupabaseClient()
-        await serverClient.auth.setSession({
-          access_token: authData.session.access_token,
-          refresh_token: authData.session.refresh_token
-        })
-      } catch (e) {
-        console.error('Error setting session cookies:', e)
-      }
-    }
-    
     // Verificar que el usuario es cliente de esta organización
-    const { data: customer } = await authClient
+    const { data: customer } = await supabase
       .from('customers')
       .select('*')
       .eq('organization_id', organizationId)
@@ -65,7 +52,7 @@ export async function POST(request: NextRequest) {
     
     // Actualizar user_id si no está vinculado
     if (!customerData.user_id && authData.user) {
-      await (authClient as any)
+      await (supabase as any)
         .from('customers')
         .update({ 
           user_id: authData.user.id, 
