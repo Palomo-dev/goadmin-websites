@@ -184,6 +184,83 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
 }
 
 /**
+ * Obtiene productos en oferta (compare_price > price), ordenados por ventas
+ */
+export async function getOfferProducts(organizationId: number, limit = 50) {
+  const supabase = getSupabaseForPublicRead()
+
+  // 1. Traer todos los productos activos con precios
+  const { data: products, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      categories ( id, name, slug ),
+      product_prices (*),
+      product_images (
+        id, storage_path, is_primary, display_order, shared_image_id,
+        shared_images ( storage_path )
+      ),
+      stock_levels ( qty_on_hand, qty_reserved )
+    `)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+    .limit(200)
+
+  if (error || !products) return []
+
+  // 2. Filtrar solo los que tienen compare_price > price
+  const offers = products.filter((p: any) => {
+    const pp = p.product_prices?.[0]
+    if (!pp) return false
+    return pp.compare_price && Number(pp.compare_price) > Number(pp.price)
+  })
+
+  if (offers.length === 0) return []
+
+  // 3. Obtener conteo de ventas por producto desde web_order_items
+  const offerIds = offers.map((p: any) => p.id)
+  const { data: salesData } = await supabase
+    .from('web_order_items')
+    .select('product_id, quantity')
+    .in('product_id', offerIds)
+
+  const salesMap: Record<number, number> = {}
+  if (salesData) {
+    salesData.forEach((item: any) => {
+      salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
+    })
+  }
+
+  // 4. Contar variantes para productos padre
+  const parentIds = offers.filter((p: any) => p.is_parent).map((p: any) => p.id)
+  let variantCountMap: Record<number, number> = {}
+  if (parentIds.length > 0) {
+    const { data: children } = await supabase
+      .from('products')
+      .select('parent_product_id')
+      .in('parent_product_id', parentIds)
+      .eq('status', 'active')
+    if (children) {
+      children.forEach((c: any) => {
+        variantCountMap[c.parent_product_id] = (variantCountMap[c.parent_product_id] || 0) + 1
+      })
+    }
+  }
+
+  // 5. Ordenar por ventas (descendente) y limitar
+  return offers
+    .map((p: any) => ({
+      ...p,
+      has_variants: p.is_parent === true,
+      variant_count: variantCountMap[p.id] || 0,
+      sales_count: salesMap[p.id] || 0,
+    }))
+    .sort((a: any, b: any) => b.sales_count - a.sales_count)
+    .slice(0, limit)
+}
+
+/**
  * Obtiene los servicios de una organización (usando productos tipo servicio)
  */
 export async function getOrganizationServices(organizationId: number, limit = 12) {

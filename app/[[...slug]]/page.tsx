@@ -20,7 +20,8 @@ import {
   getParkingPassTypes,
   getParkingAvailability,
   getParkingZones,
-  getOrgServiceCatalog
+  getOrgServiceCatalog,
+  getOfferProducts
 } from '@/lib/supabase/queries'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
@@ -171,6 +172,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
     if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
       data.categories = await getOrganizationCategories(organization.id)
+    }
+    if (sectionTypes.includes('offers')) {
+      data.offerProducts = await getOfferProducts(organization.id, 100)
     }
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {
       const [rates, passTypes, availability, zones] = await Promise.all([
