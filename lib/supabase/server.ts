@@ -27,6 +27,27 @@ export async function createServerSupabaseClient() {
   )
 }
 
+// Cliente para operaciones auth (login/register): no lee cookies stale pero SÍ escribe cookies nuevas
+export async function createAuthClient() {
+  const cookieStore = await cookies()
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return [] },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {}
+        },
+      },
+    }
+  )
+}
+
 // Cliente sin cookies para consultas públicas
 export function createPublicClient() {
   return createServerClient<Database>(

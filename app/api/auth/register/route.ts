@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createAuthClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Auto-login: establecer sesión con cookies para redirigir directo a /mi-cuenta
-    const supabase = await createServerSupabaseClient()
-    const { data: loginData } = await supabase.auth.signInWithPassword({ email, password })
+    const authClient = await createAuthClient()
+    const { data: loginData } = await authClient.auth.signInWithPassword({ email, password })
     
     return NextResponse.json({ 
       success: true, 

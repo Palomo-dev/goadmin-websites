@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createAuthClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Usar createServerSupabaseClient para que signIn persista cookies en la respuesta
-    const supabase = await createServerSupabaseClient()
+    // createAuthClient: no lee cookies stale (evita Invalid API key) pero SÍ escribe cookies nuevas
+    const supabase = await createAuthClient()
 
     // Intentar login con Supabase Auth (las cookies se setean automáticamente)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
