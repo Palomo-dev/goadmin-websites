@@ -27,12 +27,13 @@ export async function createServerSupabaseClient() {
   )
 }
 
-// Cliente para operaciones auth (login/register): no lee cookies stale pero SÍ escribe cookies nuevas
+// Cliente para operaciones auth (login/register): usa service role key + escribe cookies en la respuesta
 export async function createAuthClient() {
   const cookieStore = await cookies()
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    key,
     {
       cookies: {
         getAll() { return [] },

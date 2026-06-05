@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAuthClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createAuthClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // createAuthClient: no lee cookies stale (evita Invalid API key) pero SÍ escribe cookies nuevas
+    // createAuthClient: usa service role key + escribe cookies de sesión en la respuesta
     const supabase = await createAuthClient()
 
     // Intentar login con Supabase Auth (las cookies se setean automáticamente)
@@ -33,11 +33,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Para queries admin usar admin client si disponible
-    const queryClient = createAdminClient() || createPublicClient()
-    
     // Verificar que el usuario es cliente de esta organización
-    const { data: customer } = await queryClient
+    const { data: customer } = await supabase
       .from('customers')
       .select('*')
       .eq('organization_id', organizationId)
@@ -55,7 +52,7 @@ export async function POST(request: NextRequest) {
     
     // Actualizar user_id si no está vinculado
     if (!customerData.user_id && authData.user) {
-      await (queryClient as any)
+      await (supabase as any)
         .from('customers')
         .update({ 
           user_id: authData.user.id, 
