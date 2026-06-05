@@ -22,9 +22,12 @@ export async function middleware(request: NextRequest) {
   // Esto mantiene las cookies de sesión JWT válidas entre requests
   let supabaseResponse = NextResponse.next({ request })
 
+  // Usar service role key si disponible (la anon key falla en runtime de Vercel)
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseKey,
     {
       cookies: {
         getAll() {
