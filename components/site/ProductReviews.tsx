@@ -197,12 +197,14 @@ function generateReviews(productId: number, count: number = 1047) {
     const city = CITIES[Math.floor(rand4 * CITIES.length)]
 
     let comment: string
+    // Usar combinación de valores aleatorios para más variedad en la selección de comentarios
+    const commentIndex = Math.floor((rand + rand2 + rand3 + rand4 + rand5) / 5 * 1000000)
     if (rating >= 4) {
-      comment = POSITIVE_COMMENTS[Math.floor(rand5 * POSITIVE_COMMENTS.length)]
+      comment = POSITIVE_COMMENTS[commentIndex % POSITIVE_COMMENTS.length]
     } else if (rating === 3) {
-      comment = NEUTRAL_COMMENTS[Math.floor(rand5 * NEUTRAL_COMMENTS.length)]
+      comment = NEUTRAL_COMMENTS[commentIndex % NEUTRAL_COMMENTS.length]
     } else {
-      comment = NEGATIVE_COMMENTS[Math.floor(rand5 * NEGATIVE_COMMENTS.length)]
+      comment = NEGATIVE_COMMENTS[commentIndex % NEGATIVE_COMMENTS.length]
     }
 
     // Fecha random en los últimos 18 meses
