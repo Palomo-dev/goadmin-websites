@@ -192,7 +192,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             <div>
               <p className="text-sm text-gray-500 mb-2">SKU: {product.sku || 'N/A'}</p>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-              <ReviewSummaryBadge primaryColor={primaryColor} />
+              <ReviewSummaryBadge primaryColor={primaryColor} productId={product.id} />
               
               {price && (
                 <div className="flex items-baseline gap-3">
