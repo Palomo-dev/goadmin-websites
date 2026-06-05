@@ -191,7 +191,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 className="w-full h-12 font-semibold"
                 style={{ backgroundColor: primaryColor }}
               >
-                Pagar Ahora
+                Comprar Ahora
               </Button>
             </Link>
 

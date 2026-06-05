@@ -330,7 +330,7 @@ export function CartPageClient({
                   className="w-full h-12 font-semibold text-base"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  Pagar Ahora
+                  Comprar Ahora
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
