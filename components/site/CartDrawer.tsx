@@ -24,6 +24,10 @@ interface CartDrawerProps {
 
 export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [checkoutButtonText] = useState(() => {
+    const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
+    return options[Math.floor(Math.random() * options.length)]
+  })
   
   const cartKey = `cart_${organizationSubdomain}`
   
@@ -191,7 +195,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 className="w-full h-12 font-semibold"
                 style={{ backgroundColor: primaryColor }}
               >
-                Comprar Ahora
+                {checkoutButtonText}
               </Button>
             </Link>
 
