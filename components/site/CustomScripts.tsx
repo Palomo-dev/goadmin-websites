@@ -28,18 +28,48 @@ export default function CustomScripts({ scripts }: CustomScriptsProps) {
     const scriptTags = container.querySelectorAll('script')
 
     if (scriptTags.length > 0) {
-      scriptTags.forEach((original) => {
+      // Procesar scripts en orden, esperando carga de scripts externos
+      let scriptIndex = 0
+
+      const loadNextScript = () => {
+        if (scriptIndex >= scriptTags.length) return
+
+        const original = scriptTags[scriptIndex]
         const script = document.createElement('script')
+
         // Copiar atributos (src, async, defer, type, etc.)
         Array.from(original.attributes).forEach((attr) => {
           script.setAttribute(attr.name, attr.value)
         })
+
+        // Si tiene src, esperar a que cargue antes del siguiente script
+        if (script.hasAttribute('src')) {
+          script.onload = () => {
+            scriptIndex++
+            loadNextScript()
+          }
+          script.onerror = () => {
+            console.warn('[CustomScripts] Error cargando script:', script.src)
+            scriptIndex++
+            loadNextScript()
+          }
+        }
+
         // Copiar contenido inline
         if (original.textContent) {
           script.textContent = original.textContent
         }
+
         document.head.appendChild(script)
-      })
+
+        // Si no tiene src, pasar al siguiente inmediatamente
+        if (!script.hasAttribute('src')) {
+          scriptIndex++
+          loadNextScript()
+        }
+      }
+
+      loadNextScript()
     } else {
       // Si no hay tags <script>, tratar todo como JavaScript raw
       try {
