@@ -10,9 +10,6 @@ export const metadata: Metadata = {
     template: '%s | GO Admin'
   },
   description: 'Plataforma de sitios web para negocios',
-  icons: {
-    icon: '/favicon.ico',
-  },
   openGraph: {
     title: 'Sitio Web | GO Admin',
     description: 'Plataforma de sitios web para negocios',

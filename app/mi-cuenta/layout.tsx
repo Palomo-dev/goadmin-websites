@@ -5,6 +5,27 @@ import { LogoutButton } from '@/components/site/LogoutButton'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Metadata } from 'next'
+
+export async function generateMetadata(): Promise<Metadata> {
+  const ctx = await getOrgContext()
+  if (!ctx) {
+    return {
+      title: 'Mi Cuenta',
+    }
+  }
+
+  const { organization } = ctx
+  const settings = organization.website_settings
+
+  return {
+    title: `Mi Cuenta | ${organization.name}`,
+    icons: {
+      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
+      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
+    }
+  }
+}
 
 // Navegación lateral según tipo de negocio
 function getAccountNav(typeId: number) {

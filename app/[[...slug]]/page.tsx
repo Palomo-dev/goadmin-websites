@@ -108,8 +108,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
       description,
     },
     icons: {
-      icon: (settings as any)?.favicon_url || organization.logo_url || '/favicon.ico',
-      apple: (settings as any)?.favicon_url || organization.logo_url || '/apple-touch-icon.png'
+      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
+      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
     },
     robots: {
       index: settings?.is_published !== false,
