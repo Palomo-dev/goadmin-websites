@@ -100,6 +100,11 @@ export function OrganizationLayout({
           onClose={() => setCartOpen(false)}
           primaryColor={primaryColor}
           organizationSubdomain={subdomain}
+          shippingSettings={{
+            shippingFlatRate: settings?.shipping_flat_rate || 0,
+            freeShippingThreshold: settings?.free_shipping_threshold || 0,
+            enableShipping: settings?.enable_shipping ?? true
+          }}
         />
       )}
       

@@ -20,9 +20,14 @@ interface CartDrawerProps {
   onClose: () => void
   primaryColor: string
   organizationSubdomain: string
+  shippingSettings?: {
+    shippingFlatRate: number
+    freeShippingThreshold: number
+    enableShipping: boolean
+  }
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -189,6 +194,28 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               <span>Subtotal</span>
               <span style={{ color: primaryColor }}>${subtotal.toLocaleString()}</span>
             </div>
+
+            {/* Envío */}
+            {shippingSettings?.enableShipping && (
+              <>
+                {shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
+                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <span>¡Te faltan</span>
+                      <span className="font-bold" style={{ color: primaryColor }}>
+                        ${(shippingSettings.freeShippingThreshold - subtotal).toLocaleString()}
+                      </span>
+                      <span>para envío gratis!</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Envío</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">Gratis</span>
+                  </div>
+                )}
+              </>
+            )}
             
             <Link href="/checkout" onClick={onClose}>
               <Button 
