@@ -20,9 +20,10 @@ interface RelatedProductsProps {
   products: any[]
   primaryColor: string
   currentProductId: number
+  organizationSubdomain?: string
 }
 
-export function RelatedProducts({ products, primaryColor, currentProductId }: RelatedProductsProps) {
+export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain }: RelatedProductsProps) {
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
@@ -50,8 +51,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId }: Re
     const price = product.product_prices?.[0]?.price
     if (!price) return
 
-    const host = window.location.hostname
-    const subdomain = host.split('.')[0]
+    const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
     const cartKey = `cart_${subdomain}`
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 

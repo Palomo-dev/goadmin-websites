@@ -17,14 +17,13 @@ function getVariantImageUrl(variant: any): string | null {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
 }
 
-function getCartKey(): string {
-  const host = window.location.hostname
-  const subdomain = host.split('.')[0]
+function getCartKey(orgSubdomain?: string): string {
+  const subdomain = orgSubdomain || window.location.hostname.split('.')[0]
   return `cart_${subdomain}`
 }
 
-function addItemToCart(item: { id: number; name: string; price: number; imageUrl?: string; comparePrice?: number; variantAttributes?: Record<string, string> }) {
-  const cartKey = getCartKey()
+function addItemToCart(item: { id: number; name: string; price: number; imageUrl?: string; comparePrice?: number; variantAttributes?: Record<string, string> }, orgSubdomain?: string) {
+  const cartKey = getCartKey(orgSubdomain)
   const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
   const idx = cart.findIndex((c: any) => c.id === item.id)
   if (idx >= 0) {
@@ -44,6 +43,7 @@ interface ProductDetailActionsProps {
   imageUrl: string | null
   primaryColor: string
   isParent: boolean
+  organizationSubdomain?: string
 }
 
 export function ProductDetailActions({
@@ -53,7 +53,8 @@ export function ProductDetailActions({
   comparePrice,
   imageUrl,
   primaryColor,
-  isParent
+  isParent,
+  organizationSubdomain
 }: ProductDetailActionsProps) {
   const router = useRouter()
 
@@ -61,7 +62,7 @@ export function ProductDetailActions({
     const variantPrice = variant.product_prices?.[0]?.price || 0
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
-    const cartKey = getCartKey()
+    const cartKey = getCartKey(organizationSubdomain)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((c: any) => c.id === variant.id)
     if (idx >= 0) {
@@ -86,7 +87,7 @@ export function ProductDetailActions({
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
     // Limpiar carrito y agregar solo este producto
-    const cartKey = getCartKey()
+    const cartKey = getCartKey(organizationSubdomain)
     const item = {
       id: variant.id,
       name: variant.name,
@@ -102,7 +103,7 @@ export function ProductDetailActions({
   }
 
   const handleBuyNowSimple = () => {
-    const cartKey = getCartKey()
+    const cartKey = getCartKey(organizationSubdomain)
     const item = {
       id: product.id,
       name: product.name,
@@ -119,7 +120,7 @@ export function ProductDetailActions({
   const [quantity, setQuantity] = useState(1)
 
   const handleAddWithQuantity = () => {
-    const cartKey = getCartKey()
+    const cartKey = getCartKey(organizationSubdomain)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((c: any) => c.id === product.id)
     if (idx >= 0) {
@@ -185,6 +186,7 @@ export function ProductDetailActions({
         primaryColor={primaryColor}
         variant="full"
         quantity={quantity}
+        organizationSubdomain={organizationSubdomain}
       />
 
       <Button

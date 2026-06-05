@@ -15,6 +15,7 @@ interface AddToCartButtonProps {
   variant?: 'full' | 'icon' | 'compact'
   className?: string
   quantity?: number
+  organizationSubdomain?: string
 }
 
 export function AddToCartButton({ 
@@ -26,14 +27,14 @@ export function AddToCartButton({
   primaryColor, 
   variant = 'full',
   className = '',
-  quantity = 1
+  quantity = 1,
+  organizationSubdomain
 }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
     try {
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       const cartKey = `cart_${subdomain}`
       const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 

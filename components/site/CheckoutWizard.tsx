@@ -58,6 +58,7 @@ interface CheckoutWizardProps {
   paymentMethods: WebsitePaymentMethod[]
   checkoutSettings?: CheckoutSettings
   isRestaurant?: boolean
+  organizationSubdomain?: string
 }
 
 const METHOD_ICONS: Record<string, string> = {
@@ -84,7 +85,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingDescription: '',
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const [step, setStep] = useState(1)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -136,8 +137,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   useEffect(() => {
     try {
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       const savedCart = localStorage.getItem(`cart_${subdomain}`)
       if (savedCart) {
         setCartItems(JSON.parse(savedCart))
@@ -164,8 +164,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         return item
       }).filter(item => item.quantity > 0)
 
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       localStorage.setItem(`cart_${subdomain}`, JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
@@ -175,8 +174,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const removeItem = (id: number | string) => {
     setCartItems(items => {
       const updated = items.filter(item => item.id !== id)
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       localStorage.setItem(`cart_${subdomain}`, JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
@@ -393,8 +391,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
         if (initRes.ok && initData.checkoutUrl) {
           // Limpiar carrito antes de redirigir
-          const host = window.location.hostname
-          const subdomain = host.split('.')[0]
+          const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
           localStorage.removeItem(`cart_${subdomain}`)
           window.dispatchEvent(new CustomEvent('cart-updated'))
 
@@ -412,8 +409,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       setOrderNumber(createdOrderNumber)
       setOrderComplete(true)
 
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       localStorage.removeItem(`cart_${subdomain}`)
       window.dispatchEvent(new CustomEvent('cart-updated'))
       setCartItems([])

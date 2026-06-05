@@ -17,9 +17,10 @@ interface ReorderButtonProps {
   className?: string
   size?: 'sm' | 'md'
   primaryColor?: string
+  organizationSubdomain?: string
 }
 
-export function ReorderButton({ items, className, size = 'md', primaryColor }: ReorderButtonProps) {
+export function ReorderButton({ items, className, size = 'md', primaryColor, organizationSubdomain }: ReorderButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -28,8 +29,7 @@ export function ReorderButton({ items, className, size = 'md', primaryColor }: R
     setLoading(true)
 
     try {
-      const host = window.location.hostname
-      const subdomain = host.split('.')[0]
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       const cartKey = `cart_${subdomain}`
 
       // Construir items para el carrito

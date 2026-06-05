@@ -134,6 +134,7 @@ export default async function CheckoutPage() {
         paymentMethods={paymentMethods}
         checkoutSettings={checkoutSettings}
         isRestaurant={organization.type_id === 1}
+        organizationSubdomain={organization.subdomain || ''}
       />
     </OrganizationLayout>
   )

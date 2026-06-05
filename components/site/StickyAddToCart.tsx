@@ -21,13 +21,13 @@ interface StickyAddToCartProps {
   primaryColor: string
   isParent?: boolean
   variants?: VariantData[]
+  organizationSubdomain?: string
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
-function getCartKey(): string {
-  const host = window.location.hostname
-  const subdomain = host.split('.')[0]
+function getCartKey(orgSubdomain?: string): string {
+  const subdomain = orgSubdomain || window.location.hostname.split('.')[0]
   return `cart_${subdomain}`
 }
 
@@ -47,7 +47,8 @@ export function StickyAddToCart({
   imageUrl,
   primaryColor,
   isParent = false,
-  variants = []
+  variants = [],
+  organizationSubdomain
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -119,7 +120,7 @@ export function StickyAddToCart({
 
   const handleAddToCart = () => {
     try {
-      const cartKey = getCartKey()
+      const cartKey = getCartKey(organizationSubdomain)
       const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
       const activePrice = getActivePrice()
       const activeCp = getActiveComparePrice()

@@ -9,16 +9,16 @@ interface CartIndicatorProps {
   /** 'drawer' abre el drawer lateral (default), 'redirect' navega a /checkout */
   cartBehavior?: 'drawer' | 'redirect'
   onClick?: () => void
+  organizationSubdomain?: string
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain }: CartIndicatorProps) {
   const [itemCount, setItemCount] = useState(0)
   
   useEffect(() => {
     const updateCount = () => {
       try {
-        const host = window.location.hostname
-        const subdomain = host.split('.')[0]
+        const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
         const cartKey = `cart_${subdomain}`
         const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
         const count = cart.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)

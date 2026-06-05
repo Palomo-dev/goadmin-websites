@@ -129,6 +129,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 primaryColor={primaryColor}
                 cartBehavior={cartBehavior}
                 onClick={onCartClick}
+                organizationSubdomain={organization.subdomain || ''}
               />
             )}
             
@@ -154,6 +155,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 primaryColor={primaryColor}
                 cartBehavior={cartBehavior}
                 onClick={onCartClick}
+                organizationSubdomain={organization.subdomain || ''}
               />
             )}
 

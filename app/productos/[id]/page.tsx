@@ -231,6 +231,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 imageUrl={imageUrl}
                 primaryColor={primaryColor}
                 isParent={isParent}
+                organizationSubdomain={organization.subdomain || ''}
               />
             </div>
             
@@ -284,6 +285,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           products={relatedProducts}
           primaryColor={primaryColor}
           currentProductId={product.id}
+          organizationSubdomain={organization.subdomain || ''}
         />
 
         {/* Reviews */}
@@ -307,6 +309,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           primaryColor={primaryColor}
           isParent={isParent}
           variants={variants}
+          organizationSubdomain={organization.subdomain || ''}
         />
       )}
     </OrganizationLayout>
