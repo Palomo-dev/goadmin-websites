@@ -24,7 +24,7 @@ export function ReviewSummaryBadge({ primaryColor }: ReviewSummaryBadgeProps) {
           <Star key={i} className={`h-4 w-4 ${i <= 5 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
         ))}
       </div>
-      <span className="text-sm text-gray-600">4.6 / 5</span>
+      <span className="text-sm text-gray-600">4.7 / 5</span>
       <span className="text-sm text-gray-400">•</span>
       <span className="text-sm underline" style={{ color: primaryColor }}>
         +1,047 opiniones

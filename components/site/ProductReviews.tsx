@@ -184,12 +184,12 @@ function generateReviews(productId: number, count: number = 1047) {
     const rand4 = seededRandom(seed4)
     const rand5 = seededRandom(seed5)
 
-    // Rating distribution: 60% 5stars, 25% 4stars, 10% 3stars, 5% 2-1stars
+    // Rating distribution: 76% 5stars, 20% 4stars, 3% 3stars, 1% 2-1stars (promedio ~4.7)
     let rating: number
-    if (rand < 0.60) rating = 5
-    else if (rand < 0.85) rating = 4
-    else if (rand < 0.95) rating = 3
-    else if (rand < 0.98) rating = 2
+    if (rand < 0.76) rating = 5
+    else if (rand < 0.96) rating = 4
+    else if (rand < 0.99) rating = 3
+    else if (rand < 0.995) rating = 2
     else rating = 1
 
     const firstName = FIRST_NAMES[Math.floor(rand2 * FIRST_NAMES.length)]
