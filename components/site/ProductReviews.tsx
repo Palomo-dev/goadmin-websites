@@ -67,11 +67,44 @@ const NEUTRAL_COMMENTS = [
   'Decente, esperaba un poco más pero no está mal.',
   'El producto está bien, el empaque podría mejorar.',
   'Buena relación calidad-precio, aunque hay cosas por mejorar.',
+  'Está bien, nada extraordinario pero cumple su función.',
+  'El producto es aceptable, la calidad es regular.',
+  'Para el precio está bien, pero esperaba mejor acabado.',
+  'Cumple lo prometido, aunque no me encantó del todo.',
+  'Es un producto normal, ni bueno ni malo.',
+  'La calidad es decente, pero el envío pudo ser mejor.',
+  'Está bien para uso ocasional, no para uso intensivo.',
+  'El producto cumple, pero hay detalles que mejorar.',
+  'No es lo mejor que he comprado, pero tampoco lo peor.',
+  'Es aceptable, aunque el precio podría ser menor.',
+  'Funciona bien, aunque el diseño podría mejorar.',
+  'La calidad es regular, pero sirve para lo básico.',
+  'Está bien, esperaba más durabilidad.',
+  'Cumple su propósito, sin más ni menos.',
+  'Es un producto estándar, nada especial.'
 ]
 
 const NEGATIVE_COMMENTS = [
   'El producto está bien pero el envío demoró bastante.',
   'Esperaba un poco más de calidad por el precio, pero cumple.',
+  'No cumplió mis expectativas, la calidad es baja.',
+  'El producto llegó dañado, muy decepcionado.',
+  'El material es de mala calidad, no lo recomiendo.',
+  'El envío fue terrible, tardó mucho.',
+  'No vale la pena, mejor comprar otra marca.',
+  'El producto no dura nada, muy frágil.',
+  'La descripción no coincide con lo recibido.',
+  'Pésima experiencia, no volvería a comprar.',
+  'El producto tiene fallas desde el primer uso.',
+  'Mala calidad, se sintió barato al tacto.',
+  'El empaque llegó roto y el producto dañado.',
+  'No es lo que esperaba, muy decepcionado.',
+  'El servicio al cliente fue pésimo.',
+  'El producto no funciona como debería.',
+  'La calidad es inferior a productos similares.',
+  'Llegó tarde y en malas condiciones.',
+  'No lo recomiendo, mejor opción en el mercado.',
+  'El precio no justifica la calidad del producto.'
 ]
 
 function seededRandom(seed: number): number {
@@ -84,12 +117,18 @@ function generateReviews(productId: number, count: number = 1047) {
   const baseDate = new Date('2024-01-15')
 
   for (let i = 0; i < count; i++) {
-    const seed = productId * 10000 + i
-    const rand = seededRandom(seed)
-    const rand2 = seededRandom(seed + 1)
-    const rand3 = seededRandom(seed + 2)
-    const rand4 = seededRandom(seed + 3)
-    const rand5 = seededRandom(seed + 4)
+    // Usar múltiples seeds para más aleatoriedad
+    const seed1 = productId * 10000 + i
+    const seed2 = productId * 5000 + i * 3
+    const seed3 = productId * 2000 + i * 7
+    const seed4 = productId * 1000 + i * 13
+    const seed5 = productId * 500 + i * 17
+
+    const rand = seededRandom(seed1)
+    const rand2 = seededRandom(seed2)
+    const rand3 = seededRandom(seed3)
+    const rand4 = seededRandom(seed4)
+    const rand5 = seededRandom(seed5)
 
     // Rating distribution: 60% 5stars, 25% 4stars, 10% 3stars, 5% 2-1stars
     let rating: number
