@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,19 +13,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Debug: verificar que las variables de entorno están presentes
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Missing env vars:', { url: !!SUPABASE_URL, key: !!SUPABASE_ANON_KEY })
-      return NextResponse.json(
-        { error: 'Configuración incompleta del servidor (faltan variables de entorno)' },
-        { status: 500 }
-      )
-    }
-
-    // Usar cliente vanilla de supabase-js para auth (evita problemas con @supabase/ssr)
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
+    // Usar admin client (service role) para operaciones de auth y escritura en customers
+    const adminClient = createAdminClient()
+    const publicClient = createPublicClient()
+    
+    // Cliente para auth signUp (admin si disponible, público como fallback)
+    const supabase = adminClient || publicClient
 
     // Verificar si ya existe un customer con este email en esta organización
     const { data: existingCustomerData } = await supabase
@@ -68,10 +58,12 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Crear o actualizar customer
+    // Crear o actualizar customer (usar admin para bypass RLS)
+    const writeClient = adminClient || supabase
+    
     if (existingCustomer) {
       // Actualizar customer existente
-      await (supabase as any)
+      await (writeClient as any)
         .from('customers')
         .update({
           first_name: firstName,
@@ -84,7 +76,7 @@ export async function POST(request: NextRequest) {
         .eq('id', existingCustomer.id)
     } else {
       // Crear nuevo customer
-      await (supabase as any)
+      await (writeClient as any)
         .from('customers')
         .insert({
           organization_id: organizationId,

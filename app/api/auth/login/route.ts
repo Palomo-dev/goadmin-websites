@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,19 +13,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Debug: verificar que las variables de entorno están presentes
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Missing env vars:', { url: !!SUPABASE_URL, key: !!SUPABASE_ANON_KEY })
-      return NextResponse.json(
-        { error: 'Configuración incompleta del servidor (faltan variables de entorno)' },
-        { status: 500 }
-      )
-    }
-
-    // Usar cliente vanilla de supabase-js para auth (evita problemas con @supabase/ssr)
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
+    // Usar admin client si disponible, sino público
+    const adminClient = createAdminClient()
+    const supabase = adminClient || createPublicClient()
 
     // Intentar login con Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
