@@ -192,9 +192,14 @@ function generateReviews(productId: number, count: number = 1047) {
     else if (rand < 0.995) rating = 2
     else rating = 1
 
-    const firstName = FIRST_NAMES[Math.floor(rand2 * FIRST_NAMES.length)]
-    const lastName = LAST_NAMES[Math.floor(rand3 * LAST_NAMES.length)]
-    const city = CITIES[Math.floor(rand4 * CITIES.length)]
+    // Usar combinación de valores aleatorios para más variedad en nombres y ciudades
+    const firstNameIndex = Math.floor((rand + rand2 + rand3) / 3 * 1000000) % FIRST_NAMES.length
+    const lastNameIndex = Math.floor((rand2 + rand3 + rand4) / 3 * 1000000) % LAST_NAMES.length
+    const cityIndex = Math.floor((rand3 + rand4 + rand5) / 3 * 1000000) % CITIES.length
+
+    const firstName = FIRST_NAMES[firstNameIndex]
+    const lastName = LAST_NAMES[lastNameIndex]
+    const city = CITIES[cityIndex]
 
     let comment: string
     // Usar combinación de valores aleatorios para más variedad en la selección de comentarios
