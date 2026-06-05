@@ -199,15 +199,23 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             {shippingSettings?.enableShipping && (
               <>
                 {shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
-                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                      <span>¡Te faltan</span>
-                      <span className="font-bold" style={{ color: primaryColor }}>
-                        ${(shippingSettings.freeShippingThreshold - subtotal).toLocaleString()}
-                      </span>
-                      <span>para envío gratis!</span>
+                  <>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                        <span>¡Te faltan</span>
+                        <span className="font-bold" style={{ color: primaryColor }}>
+                          ${(shippingSettings.freeShippingThreshold - subtotal).toLocaleString()}
+                        </span>
+                        <span>para envío gratis!</span>
+                      </div>
                     </div>
-                  </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">Envío</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        ${shippingSettings.shippingFlatRate.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Envío</span>
@@ -216,6 +224,14 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 )}
               </>
             )}
+
+            {/* Total */}
+            <div className="flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
+              <span>Total</span>
+              <span style={{ color: primaryColor }}>
+                ${(subtotal + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)).toLocaleString()}
+              </span>
+            </div>
             
             <Link href="/checkout" onClick={onClose}>
               <Button 
