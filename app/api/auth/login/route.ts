@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +13,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Usar admin client si disponible, sino público
-    const adminClient = createAdminClient()
-    const supabase = adminClient || createPublicClient()
+    // Usar createServerSupabaseClient para que signIn persista cookies en la respuesta
+    const supabase = await createServerSupabaseClient()
 
-    // Intentar login con Supabase Auth
+    // Intentar login con Supabase Auth (las cookies se setean automáticamente)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -34,8 +33,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Para queries admin usar admin client si disponible
+    const queryClient = createAdminClient() || createPublicClient()
+    
     // Verificar que el usuario es cliente de esta organización
-    const { data: customer } = await supabase
+    const { data: customer } = await queryClient
       .from('customers')
       .select('*')
       .eq('organization_id', organizationId)
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
     
     // Actualizar user_id si no está vinculado
     if (!customerData.user_id && authData.user) {
-      await (supabase as any)
+      await (queryClient as any)
         .from('customers')
         .update({ 
           user_id: authData.user.id, 

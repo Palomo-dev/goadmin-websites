@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,15 +13,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Usar admin client (service role) para operaciones de auth y escritura en customers
+    // Cliente para queries (admin si disponible, público como fallback)
     const adminClient = createAdminClient()
-    const publicClient = createPublicClient()
-    
-    // Cliente para auth signUp (admin si disponible, público como fallback)
-    const supabase = adminClient || publicClient
+    const queryClient = adminClient || createPublicClient()
 
     // Verificar si ya existe un customer con este email en esta organización
-    const { data: existingCustomerData } = await supabase
+    const { data: existingCustomerData } = await queryClient
       .from('customers')
       .select('id, is_registered')
       .eq('organization_id', organizationId)
@@ -37,8 +34,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Crear usuario en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Crear usuario en Supabase Auth (usar queryClient para signUp)
+    const { data: authData, error: authError } = await queryClient.auth.signUp({
       email,
       password,
       options: {
@@ -58,12 +55,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Crear o actualizar customer (usar admin para bypass RLS)
-    const writeClient = adminClient || supabase
-    
+    // Crear o actualizar customer
     if (existingCustomer) {
-      // Actualizar customer existente
-      await (writeClient as any)
+      await (queryClient as any)
         .from('customers')
         .update({
           first_name: firstName,
@@ -75,8 +69,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', existingCustomer.id)
     } else {
-      // Crear nuevo customer
-      await (writeClient as any)
+      await (queryClient as any)
         .from('customers')
         .insert({
           organization_id: organizationId,
@@ -89,10 +82,15 @@ export async function POST(request: NextRequest) {
         })
     }
     
+    // Auto-login: establecer sesión con cookies para redirigir directo a /mi-cuenta
+    const supabase = await createServerSupabaseClient()
+    const { data: loginData } = await supabase.auth.signInWithPassword({ email, password })
+    
     return NextResponse.json({ 
       success: true, 
-      message: 'Cuenta creada exitosamente. Revisa tu correo para verificar tu cuenta.',
-      user: authData.user
+      message: '¡Cuenta creada exitosamente!',
+      user: authData.user,
+      session: loginData?.session || null
     })
   } catch (error) {
     console.error('Register API error:', error)

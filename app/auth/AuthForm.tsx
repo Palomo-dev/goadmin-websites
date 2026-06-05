@@ -37,7 +37,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
     setError('')
 
     try {
-      // Auth via API route (server-side donde la key funciona)
+      // Auth via API route (server-side persiste cookies automáticamente)
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
         return
       }
 
-      // Establecer sesión en el browser con los tokens del server
+      // Sincronizar sesión en el browser client (las cookies ya fueron seteadas por el server)
       if (data.session?.access_token && data.session?.refresh_token) {
         const supabase = createClient()
         await supabase.auth.setSession({
@@ -60,7 +60,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
       }
 
       setSuccess('¡Bienvenido de vuelta!')
-      setTimeout(() => { window.location.href = '/mi-cuenta' }, 1500)
+      window.location.href = '/mi-cuenta'
     } catch {
       setError('Error al iniciar sesión. Intenta de nuevo.')
     } finally {
@@ -101,9 +101,17 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
       if (data.error) {
         setError(data.error)
       } else {
+        // Sincronizar sesión en browser client si hay tokens
+        if (data.session?.access_token && data.session?.refresh_token) {
+          const supabase = createClient()
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          })
+        }
         setSuccess(data.message || '¡Cuenta creada exitosamente!')
-        // Auto-login tras registro si la sesión quedó activa
-        setTimeout(() => { window.location.href = '/mi-cuenta' }, 2000)
+        // Redirigir a /mi-cuenta (cookies ya seteadas por el server)
+        window.location.href = '/mi-cuenta'
       }
     } catch {
       setError('Error al crear la cuenta. Intenta de nuevo.')
