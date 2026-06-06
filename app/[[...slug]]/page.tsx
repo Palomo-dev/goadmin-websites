@@ -168,7 +168,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       ['products_grid', 'featured_products', 'menu_preview', 'specialties'].includes(t)
     )
     if (needsProducts) {
-      data.products = await getOrganizationProducts(organization.id, 20)
+      data.products = await getOrganizationProducts(organization.id, 500)
     }
     if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
       data.categories = await getOrganizationCategories(organization.id)
