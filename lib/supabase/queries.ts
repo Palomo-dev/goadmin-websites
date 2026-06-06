@@ -186,7 +186,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
 /**
  * Obtiene productos en oferta (compare_price > price), ordenados por ventas
  */
-export async function getOfferProducts(organizationId: number, limit = 50) {
+export async function getOfferProducts(organizationId: number, limit = 500) {
   const supabase = getSupabaseForPublicRead()
 
   // 1. Traer todos los productos activos con precios
@@ -205,7 +205,7 @@ export async function getOfferProducts(organizationId: number, limit = 50) {
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .is('parent_product_id', null)
-    .limit(200)
+    .limit(500)
 
   if (error || !products) return []
 
