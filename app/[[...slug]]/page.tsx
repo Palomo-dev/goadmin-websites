@@ -294,7 +294,7 @@ async function renderSlugFallback(
       }[businessType.type] || 'Productos'
 
       const [products, categories] = await Promise.all([
-        getOrganizationProducts(organization.id, 50),
+        getOrganizationProducts(organization.id, 500),
         getOrganizationCategories(organization.id)
       ])
 
