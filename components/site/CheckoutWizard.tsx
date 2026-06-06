@@ -73,6 +73,54 @@ const METHOD_ICONS: Record<string, string> = {
   wompi: '💳',
 }
 
+// Rutas de imágenes de logos de pasarelas (pueden subirse a public/)
+const GATEWAY_LOGOS: Record<string, string> = {
+  wompi_co: '/wompi-logo.svg',
+  wompi: '/wompi-logo.svg',
+  mp_checkout: '/mercadopago-logo.svg',
+  payu_co: '/payu-logo.svg',
+  stripe_payments: '/stripe-logo.svg',
+  paypal_checkout: '/paypal-logo.svg',
+}
+
+function PaymentMethodIcon({ code, icon, label }: { code: string; icon?: string | null; label: string }) {
+  const gatewayLogo = GATEWAY_LOGOS[code]
+  const emoji = icon || METHOD_ICONS[code] || '💰'
+
+  // Si hay un icono configurado en DB (URL de imagen)
+  if (icon && (icon.startsWith('http') || icon.startsWith('/'))) {
+    return (
+      <img
+        src={icon}
+        alt={label}
+        className="w-6 h-6 object-contain"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none'
+          e.currentTarget.parentElement!.innerHTML = `<span class="text-xl">${emoji}</span>`
+        }}
+      />
+    )
+  }
+
+  // Si es una pasarela con logo disponible, intentar cargar imagen
+  if (gatewayLogo) {
+    return (
+      <img
+        src={gatewayLogo}
+        alt={label}
+        className="w-6 h-6 object-contain"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none'
+          e.currentTarget.parentElement!.innerHTML = `<span class="text-xl">${emoji}</span>`
+        }}
+      />
+    )
+  }
+
+  // Fallback a emoji
+  return <span className="text-xl">{emoji}</span>
+}
+
 const DEFAULT_SETTINGS: CheckoutSettings = {
   taxRate: 0,
   taxName: 'IVA',
@@ -475,7 +523,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   // Construir opciones de pago desde los métodos habilitados para website
   const paymentOptions = availableMethods.map(m => ({
     id: m.code,
-    icon: <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>,
+    icon: <PaymentMethodIcon code={m.code} icon={m.icon} label={m.name} />,
     label: m.name,
     description: m.description || null,
   }))
