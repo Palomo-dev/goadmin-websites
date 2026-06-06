@@ -174,7 +174,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.categories = await getOrganizationCategories(organization.id)
     }
     if (sectionTypes.includes('offers')) {
-      data.offerProducts = await getOfferProducts(organization.id, 100)
+      data.offerProducts = await getOfferProducts(organization.id, 500)
     }
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {
       const [rates, passTypes, availability, zones] = await Promise.all([
