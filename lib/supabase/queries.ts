@@ -151,6 +151,11 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
       stock_levels (
         qty_on_hand,
         qty_reserved
+      ),
+      category (
+        id,
+        name,
+        slug
       )
     `)
     .eq('organization_id', organizationId)

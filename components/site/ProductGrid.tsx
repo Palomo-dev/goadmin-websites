@@ -90,6 +90,18 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
   const [onlyOffers, setOnlyOffers] = useState(false)
 
+  // Fallback: extraer categorías de los productos si no se pasan directamente
+  const availableCategories = useMemo(() => {
+    if (categories.length > 0) return categories
+    const catMap = new Map<number, { id: number; name: string; slug: string }>()
+    products.forEach((p: any) => {
+      if (p.category_id && p.category?.name) {
+        catMap.set(p.category_id, { id: p.category_id, name: p.category.name, slug: p.category.slug || '' })
+      }
+    })
+    return Array.from(catMap.values())
+  }, [products, categories])
+
   const filteredProducts = useMemo(() => {
     let result = selectedCategory ? products.filter(p => p.category_id === selectedCategory) : [...products]
     if (onlyOffers) result = result.filter(p => {
@@ -170,7 +182,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
       {/* Filtros */}
       <div className="mb-6 space-y-3">
         {/* Categorías */}
-        {categories.length > 0 && (
+        {availableCategories.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
             <button
               onClick={() => { setSelectedCategory(null); resetPage() }}
@@ -181,7 +193,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             >
               Todos
             </button>
-            {categories.map((category) => (
+            {availableCategories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => { setSelectedCategory(selectedCategory === category.id ? null : category.id); resetPage() }}
