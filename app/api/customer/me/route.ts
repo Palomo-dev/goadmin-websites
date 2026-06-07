@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,20 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'organizationId requerido' }, { status: 400 })
     }
 
-    // Obtener usuario autenticado via cookies del servidor
-    const cookieStore = await cookies()
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll() {},
-        },
-      }
-    )
+    // Usar exactamente el mismo cliente que usa la página de perfil (getAuthCustomer)
+    const supabase = await createServerSupabaseClient() as any
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: { user } } = await supabaseAuth.auth.getUser()
     if (!user) {
       return NextResponse.json({ authenticated: false })
     }
@@ -39,18 +27,32 @@ export async function GET(request: NextRequest) {
       phone: meta.phone || '',
       addresses: [],
       customerId: null,
+      address: '',
+      city: '',
     }
 
-    // Buscar customer en la base de datos
-    const supabase = (createAdminClient() || createPublicClient()) as any
-    const { data: customer } = await supabase
+    // Buscar customer por user_id (mismo método que getAuthCustomer en perfil)
+    let customer = null
+    const { data: customerByUserId } = await supabase
       .from('customers')
       .select('id, first_name, last_name, email, phone, address, city')
       .eq('organization_id', Number(organizationId))
-      .eq('email', user.email)
-      .order('is_registered', { ascending: false })
-      .limit(1)
+      .eq('user_id', user.id)
       .single()
+
+    if (customerByUserId) {
+      customer = customerByUserId
+    } else {
+      // Fallback: buscar por email
+      const { data: customerByEmail } = await supabase
+        .from('customers')
+        .select('id, first_name, last_name, email, phone, address, city')
+        .eq('organization_id', Number(organizationId))
+        .eq('email', user.email)
+        .limit(1)
+        .single()
+      customer = customerByEmail
+    }
 
     if (customer) {
       result.customerId = customer.id
