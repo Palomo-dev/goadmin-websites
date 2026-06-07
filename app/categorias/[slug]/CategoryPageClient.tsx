@@ -78,6 +78,7 @@ function getAvailableStock(product: Product): number | null {
 }
 
 const SORT_OPTIONS = [
+  { value: 'best_selling', label: 'Más vendidos' },
   { value: 'name_asc', label: 'Nombre A-Z' },
   { value: 'name_desc', label: 'Nombre Z-A' },
   { value: 'price_asc', label: 'Precio: Menor a Mayor' },
@@ -114,7 +115,7 @@ export function CategoryPageClient({
       ...overrides
     }
     Object.entries(values).forEach(([key, val]) => {
-      if (val && val !== 'name_asc' && val !== '1' && val !== 'grid' && val !== '') {
+      if (val && val !== 'best_selling' && val !== '1' && val !== 'grid' && val !== '') {
         params.set(key, val)
       }
     })

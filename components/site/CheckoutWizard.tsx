@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
+import { createClient } from '@/lib/supabase/client'
 
 interface CartModifier {
   typeId: number
@@ -130,6 +131,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     notes: ''
   })
 
+  // Datos de usuario autenticado
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: number; label: string; address_line: string; city: string; state?: string; is_default?: boolean }>>([])
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [customerId, setCustomerId] = useState<number | null>(null)
+
   // 'gateway_code' o 'cash' o 'transfer'
   const [paymentMethod, setPaymentMethod] = useState<string>(
     availableMethods.length > 0 ? availableMethods[0].code : 'cash'
@@ -154,6 +160,62 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       console.error('Error loading cart:', err)
     }
   }, [])
+
+  // Precargar datos del usuario autenticado
+  useEffect(() => {
+    const loadAuthData = async () => {
+      try {
+        const supabase = createClient() as any
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        setIsAuthenticated(true)
+
+        // Buscar customer asociado al email del usuario autenticado
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id, first_name, last_name, email, phone')
+          .eq('organization_id', organizationId)
+          .eq('email', user.email)
+          .eq('is_registered', true)
+          .single()
+
+        if (customer) {
+          setCustomerId(customer.id)
+          setCustomerData((prev: any) => ({
+            ...prev,
+            firstName: customer.first_name || prev.firstName,
+            lastName: customer.last_name || prev.lastName,
+            email: customer.email || prev.email,
+            phone: customer.phone || prev.phone,
+          }))
+
+          // Cargar direcciones guardadas
+          const { data: addresses } = await supabase
+            .from('customer_addresses')
+            .select('id, label, address_line, city, state, is_default')
+            .eq('customer_id', customer.id)
+            .order('is_default', { ascending: false })
+
+          if (addresses && addresses.length > 0) {
+            setSavedAddresses(addresses)
+            // Auto-seleccionar la dirección principal
+            const defaultAddr = addresses.find((a: any) => a.is_default) || addresses[0]
+            if (defaultAddr) {
+              setCustomerData((prev: any) => ({
+                ...prev,
+                address: defaultAddr.address_line || '',
+                city: defaultAddr.city || '',
+              }))
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading auth data:', err)
+      }
+    }
+    loadAuthData()
+  }, [organizationId])
 
   const updateQuantity = (id: number | string, delta: number) => {
     setCartItems(items => {
@@ -303,6 +365,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       const orderPayload: any = {
         organizationId,
         customer: customerData,
+        ...(customerId && { customerId }),
         items: cartItems.map(item => ({
           id: item.productId || item.id,
           name: item.name,
@@ -710,6 +773,38 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   {/* Dirección: siempre para retail, solo para delivery en restaurante */}
                   {(!isRestaurant || orderType === 'delivery') && (
                     <>
+                      {/* Selector de direcciones guardadas */}
+                      {savedAddresses.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Direcciones guardadas</label>
+                          <div className="space-y-2">
+                            {savedAddresses.map((addr) => (
+                              <button
+                                key={addr.id}
+                                type="button"
+                                onClick={() => setCustomerData(prev => ({ ...prev, address: addr.address_line, city: addr.city || '' }))}
+                                className={`w-full text-left p-3 rounded-lg border transition-colors flex items-start gap-2 ${
+                                  customerData.address === addr.address_line
+                                    ? 'border-2'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                                style={customerData.address === addr.address_line ? { borderColor: primaryColor, backgroundColor: `${primaryColor}08` } : {}}
+                              >
+                                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {addr.label || 'Dirección'}
+                                    {addr.is_default && <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Principal</span>}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{addr.address_line}{addr.city ? `, ${addr.city}` : ''}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">O escribe una dirección diferente abajo</p>
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
                         <Input

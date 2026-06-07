@@ -45,7 +45,7 @@ export default async function CategoriaSlugPage({
 
   // Parámetros de búsqueda
   const page = Math.max(1, parseInt(typeof resolvedSearchParams.page === 'string' ? resolvedSearchParams.page : '1', 10))
-  const sort = (typeof resolvedSearchParams.orden === 'string' ? resolvedSearchParams.orden : 'name_asc') as any
+  const sort = (typeof resolvedSearchParams.orden === 'string' ? resolvedSearchParams.orden : 'best_selling') as any
   const subcategorySlug = typeof resolvedSearchParams.sub === 'string' ? resolvedSearchParams.sub : undefined
   const view = typeof resolvedSearchParams.vista === 'string' ? resolvedSearchParams.vista : 'grid'
 

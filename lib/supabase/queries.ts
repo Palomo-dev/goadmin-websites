@@ -377,12 +377,12 @@ export async function getProductsByCategoryPaginated(
   options: {
     page?: number
     limit?: number
-    sort?: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest'
+    sort?: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest' | 'best_selling'
     subcategoryId?: number
   } = {}
 ) {
   const supabase = getSupabaseForPublicRead()
-  const { page = 1, limit = 12, sort = 'name_asc', subcategoryId } = options
+  const { page = 1, limit = 12, sort = 'best_selling', subcategoryId } = options
   const offset = (page - 1) * limit
 
   // Obtener IDs de subcategorías para incluir productos de subcategorías
@@ -417,7 +417,38 @@ export async function getProductsByCategoryPaginated(
     .eq('status', 'active')
     .is('parent_product_id', null)
 
-  // Ordenamiento
+  // Para best_selling, traer todos y ordenar en memoria con datos de ventas
+  if (sort === 'best_selling') {
+    query = query.order('name', { ascending: true })
+    const { data: allProducts, error: allError, count } = await query
+
+    if (allError || !allProducts) return { products: [], total: 0 }
+
+    // Obtener conteo de ventas
+    const productIds = allProducts.map((p: any) => p.id)
+    const salesMap: Record<number, number> = {}
+    if (productIds.length > 0) {
+      const { data: salesData } = await supabase
+        .from('web_order_items')
+        .select('product_id, quantity')
+        .in('product_id', productIds)
+      if (salesData) {
+        salesData.forEach((item: any) => {
+          salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
+        })
+      }
+    }
+
+    // Ordenar por ventas y paginar en memoria
+    const sorted = allProducts
+      .map((p: any) => ({ ...p, sales_count: salesMap[p.id] || 0 }))
+      .sort((a: any, b: any) => b.sales_count - a.sales_count)
+
+    const paginated = sorted.slice(offset, offset + limit)
+    return { products: paginated, total: count || 0 }
+  }
+
+  // Ordenamiento estándar
   switch (sort) {
     case 'name_asc':
       query = query.order('name', { ascending: true })

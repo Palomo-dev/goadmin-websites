@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 
 interface CategoriesGridProps {
@@ -10,15 +10,13 @@ interface CategoriesGridProps {
     show_count?: boolean
     max_items?: number
     shape?: 'square' | 'round'
-    pagination?: boolean
-    items_per_page?: number
-    mobile_layout?: 'grid' | 'carousel' | 'list'
+    desktop_layout?: 'grid' | 'carousel'
+    mobile_layout?: 'grid' | 'list' | 'carousel'
   }
   primaryColor?: string
   data?: { categories?: any[] }
 }
 
-// Columnas responsivas: mínimo 2 para evitar items gigantes
 function getGridClass(count: number): string {
   if (count <= 2) return 'grid-cols-2'
   if (count === 3) return 'grid-cols-2 sm:grid-cols-3'
@@ -27,27 +25,111 @@ function getGridClass(count: number): string {
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
 }
 
+function CategoryCard({ cat, isRound, showCount, primaryColor }: {
+  cat: any; isRound: boolean; showCount?: boolean; primaryColor?: string
+}) {
+  return (
+    <Link
+      href={`/categorias/${cat.slug}`}
+      className={`group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
+        isRound ? 'rounded-full aspect-square' : 'rounded-xl aspect-[4/3]'
+      }`}
+    >
+      {cat.image_url ? (
+        <img
+          src={cat.image_url}
+          alt={cat.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          loading="lazy"
+        />
+      ) : (
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}
+        >
+          <span className="text-4xl">🏷️</span>
+        </div>
+      )}
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center ${isRound ? 'p-2' : 'p-4'}`}>
+        <div className={isRound ? 'text-center' : ''}>
+          <h3 className={`text-white font-semibold ${isRound ? 'text-sm' : 'text-lg'}`}>{cat.name}</h3>
+          {showCount && cat.product_count != null && (
+            <span className="text-white/80 text-sm">{cat.product_count} productos</span>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function MobileListCard({ cat, isRound, showCount, primaryColor }: {
+  cat: any; isRound: boolean; showCount?: boolean; primaryColor?: string
+}) {
+  return (
+    <Link
+      href={`/categorias/${cat.slug}`}
+      className="group flex items-center gap-4 rounded-xl p-3 bg-gray-50 dark:bg-gray-800/50 hover:shadow-md transition-shadow"
+    >
+      <div className={`w-16 h-16 shrink-0 overflow-hidden ${isRound ? 'rounded-full' : 'rounded-lg'}`}>
+        {cat.image_url ? (
+          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}>
+            <span className="text-2xl">🏷️</span>
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="font-semibold text-gray-800 dark:text-gray-200">{cat.name}</h3>
+        {showCount && cat.product_count != null && (
+          <span className="text-sm text-gray-500">{cat.product_count} productos</span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
   const maxItems = content.max_items || 0
   const shape = content.shape || 'square'
-  const hasPagination = content.pagination === true
-  const itemsPerPage = content.items_per_page || 6
+  const desktopLayout = content.desktop_layout || 'grid'
   const mobileLayout = content.mobile_layout || 'grid'
+  const isRound = shape === 'round'
   const allCategories = data?.categories || []
   const categories = maxItems > 0 ? allCategories.slice(0, maxItems) : allCategories
 
-  const [page, setPage] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
-  const isRound = shape === 'round'
-  const totalPages = hasPagination ? Math.ceil(categories.length / itemsPerPage) : 1
-  const visibleCategories = hasPagination
-    ? categories.slice(page * itemsPerPage, (page + 1) * itemsPerPage)
-    : categories
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
+  }, [])
 
-  const gridCols = hasPagination ? itemsPerPage : (maxItems || categories.length)
-  const isMobileCarousel = mobileLayout === 'carousel'
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || desktopLayout !== 'carousel') return
+    updateScrollButtons()
+    el.addEventListener('scroll', updateScrollButtons, { passive: true })
+    const ro = new ResizeObserver(updateScrollButtons)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', updateScrollButtons); ro.disconnect() }
+  }, [desktopLayout, updateScrollButtons, categories.length])
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current
+    if (!el) return
+    const amount = el.clientWidth * 0.8
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
+  }
+
+  const isDesktopCarousel = desktopLayout === 'carousel'
   const isMobileList = mobileLayout === 'list'
-  const desktopGrid = getGridClass(gridCols)
+  const isMobileCarousel = mobileLayout === 'carousel'
+  const desktopGrid = getGridClass(maxItems || categories.length)
 
   return (
     <div>
@@ -57,98 +139,79 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
-      {visibleCategories.length > 0 ? (
+      {categories.length > 0 ? (
         <>
-          <div
-            className={isMobileList
-              ? 'grid grid-cols-1 sm:grid-cols-2 gap-6'
-              : isMobileCarousel
-                ? 'flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:overflow-visible md:snap-none md:pb-0 md:gap-6'
-                : `grid ${desktopGrid} gap-6`
-            }
-            style={isMobileCarousel ? undefined : (isMobileList ? { gridTemplateColumns: undefined } : undefined)}
-          >
-            {visibleCategories.map((cat: any) => (
-              <Link
-                key={cat.id}
-                href={`/categorias/${cat.slug}`}
-                className={`group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
-                  isMobileCarousel ? 'flex-shrink-0 w-[200px] snap-start md:w-auto ' : ''
-                }${isMobileList ? 'flex items-center gap-4 rounded-xl p-3 md:block md:p-0 ' : ''}${
-                  isRound ? 'rounded-full aspect-square' : isMobileList ? '' : 'rounded-xl aspect-[4/3]'
-                }`}
-              >
-                {isMobileList ? (
-                  <>
-                    <div className={`w-16 h-16 shrink-0 overflow-hidden md:w-full md:h-auto ${isRound ? 'rounded-full md:aspect-square' : 'rounded-lg md:rounded-xl md:aspect-[4/3]'}`}>
-                      {cat.image_url ? (
-                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}>
-                          <span className="text-2xl">🏷️</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="md:hidden">
-                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">{cat.name}</h3>
-                      {content.show_count && cat.product_count != null && (
-                        <span className="text-sm text-gray-500">{cat.product_count} productos</span>
-                      )}
-                    </div>
-                    <div className={`hidden md:flex absolute inset-0 bg-gradient-to-t from-black/60 to-transparent items-end justify-center ${isRound ? 'p-2' : 'p-4'}`}>
-                      <div className={isRound ? 'text-center' : ''}>
-                        <h3 className={`text-white font-semibold ${isRound ? 'text-sm' : 'text-lg'}`}>{cat.name}</h3>
-                        {content.show_count && cat.product_count != null && (
-                          <span className="text-white/80 text-sm">{cat.product_count} productos</span>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {cat.image_url ? (
-                      <img
-                        src={cat.image_url}
-                        alt={cat.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}
-                      >
-                        <span className="text-4xl">🏷️</span>
-                      </div>
-                    )}
-                    <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center ${isRound ? 'p-2' : 'p-4'}`}>
-                      <div className={isRound ? 'text-center' : ''}>
-                        <h3 className={`text-white font-semibold ${isRound ? 'text-sm' : 'text-lg'}`}>{cat.name}</h3>
-                        {content.show_count && cat.product_count != null && (
-                          <span className="text-white/80 text-sm">{cat.product_count} productos</span>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </Link>
-            ))}
-          </div>
-          {hasPagination && totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-6">
-              {Array.from({ length: totalPages }, (_, i) => (
+          {/* === Móvil: Lista === */}
+          {isMobileList && (
+            <div className="grid grid-cols-1 gap-3 md:hidden">
+              {categories.map((cat: any) => (
+                <MobileListCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+              ))}
+            </div>
+          )}
+
+          {/* === Móvil: Carrusel === */}
+          {isMobileCarousel && (
+            <div className="md:hidden overflow-x-auto scrollbar-hide scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex gap-4 px-1 pb-2">
+                {categories.map((cat: any) => (
+                  <div key={cat.id} className="flex-shrink-0 w-[160px]">
+                    <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* === Móvil: Grid === */}
+          {!isMobileList && !isMobileCarousel && (
+            <div className={`grid grid-cols-2 gap-4 md:hidden`}>
+              {categories.map((cat: any) => (
+                <CategoryCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+              ))}
+            </div>
+          )}
+
+          {/* === Escritorio: Carrusel con flechas === */}
+          {isDesktopCarousel && (
+            <div className="hidden md:block relative group/carousel">
+              {canScrollLeft && (
                 <button
-                  key={i}
-                  onClick={() => setPage(i)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                    page === i
-                      ? 'text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                  style={page === i ? { backgroundColor: primaryColor || '#3B82F6' } : undefined}
+                  onClick={() => scroll('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -ml-4 opacity-0 group-hover/carousel:opacity-100"
+                  aria-label="Anterior"
                 >
-                  {i + 1}
+                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
+              )}
+              <div
+                ref={scrollRef}
+                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {categories.map((cat: any) => (
+                  <div key={cat.id} className="flex-shrink-0 w-[220px]">
+                    <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                  </div>
+                ))}
+              </div>
+              {canScrollRight && (
+                <button
+                  onClick={() => scroll('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -mr-4 opacity-0 group-hover/carousel:opacity-100"
+                  aria-label="Siguiente"
+                >
+                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* === Escritorio: Grid === */}
+          {!isDesktopCarousel && (
+            <div className={`hidden md:grid ${desktopGrid} gap-6`}>
+              {categories.map((cat: any) => (
+                <CategoryCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
               ))}
             </div>
           )}

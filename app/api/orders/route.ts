@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      organizationId, branchId, customer, items,
+      organizationId, branchId, customer, customerId: authCustomerId, items,
       subtotal, shipping, total, paymentMethod,
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName,
@@ -96,35 +96,37 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Buscar o crear customer ──
-    let customerId = null
-    const { data: existingCustomer } = await (supabase as any)
-      .from('customers')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('email', customer.email)
-      .single()
-    
-    if (existingCustomer) {
-      customerId = existingCustomer.id
-    } else {
-      const { data: newCustomer } = await (supabase as any)
+    let customerId = authCustomerId || null
+    if (!customerId) {
+      const { data: existingCustomer } = await (supabase as any)
         .from('customers')
-        .insert({
-          organization_id: organizationId,
-          email: customer.email,
-          first_name: customer.firstName,
-          last_name: customer.lastName,
-          full_name: `${customer.firstName} ${customer.lastName || ''}`.trim(),
-          phone: customer.phone,
-          address: customer.address,
-          city: customer.city,
-          is_registered: false
-        })
         .select('id')
+        .eq('organization_id', organizationId)
+        .eq('email', customer.email)
         .single()
       
-      if (newCustomer) {
-        customerId = newCustomer.id
+      if (existingCustomer) {
+        customerId = existingCustomer.id
+      } else {
+        const { data: newCustomer } = await (supabase as any)
+          .from('customers')
+          .insert({
+            organization_id: organizationId,
+            email: customer.email,
+            first_name: customer.firstName,
+            last_name: customer.lastName,
+            full_name: `${customer.firstName} ${customer.lastName || ''}`.trim(),
+            phone: customer.phone,
+            address: customer.address,
+            city: customer.city,
+            is_registered: false
+          })
+          .select('id')
+          .single()
+        
+        if (newCustomer) {
+          customerId = newCustomer.id
+        }
       }
     }
 

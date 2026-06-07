@@ -222,8 +222,8 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
   categories_grid: {
     default: CategoriesGrid,
     grid: CategoriesGrid,
-    horizontal: CategoriesHorizontal,
-    icons: CategoriesIcons,
+    horizontal: CategoriesGrid,
+    icons: CategoriesGrid,
   },
   featured_products: {
     grid: FeaturedProducts,
