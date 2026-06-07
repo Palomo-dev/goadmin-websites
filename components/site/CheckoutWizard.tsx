@@ -171,13 +171,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
         setIsAuthenticated(true)
 
-        // Buscar customer asociado al email del usuario autenticado
+        // Precargar email del auth user siempre
+        setCustomerData((prev: any) => ({
+          ...prev,
+          email: user.email || prev.email,
+        }))
+
+        // Buscar customer asociado al email (sin importar is_registered)
         const { data: customer } = await supabase
           .from('customers')
-          .select('id, first_name, last_name, email, phone')
+          .select('id, first_name, last_name, email, phone, address, city')
           .eq('organization_id', organizationId)
           .eq('email', user.email)
-          .eq('is_registered', true)
+          .order('is_registered', { ascending: false })
+          .limit(1)
           .single()
 
         if (customer) {
@@ -188,6 +195,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             lastName: customer.last_name || prev.lastName,
             email: customer.email || prev.email,
             phone: customer.phone || prev.phone,
+            address: customer.address || prev.address,
+            city: customer.city || prev.city,
           }))
 
           // Cargar direcciones guardadas
@@ -208,6 +217,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 city: defaultAddr.city || '',
               }))
             }
+          }
+        } else {
+          // Si no hay customer, usar metadata del auth user si existe
+          const meta = user.user_metadata || {}
+          if (meta.first_name || meta.last_name || meta.phone) {
+            setCustomerData((prev: any) => ({
+              ...prev,
+              firstName: meta.first_name || prev.firstName,
+              lastName: meta.last_name || prev.lastName,
+              phone: meta.phone || prev.phone,
+            }))
           }
         }
       } catch (err) {
@@ -824,6 +844,39 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           placeholder="Medellín"
                         />
                       </div>
+
+                      {/* Botón guardar dirección para usuarios autenticados */}
+                      {isAuthenticated && customerData.address && customerData.city && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/customer/address', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  organizationId,
+                                  address_line: customerData.address,
+                                  city: customerData.city,
+                                  label: 'Principal',
+                                  is_default: true
+                                })
+                              })
+                              if (res.ok) {
+                                const data = await res.json()
+                                if (data.address) {
+                                  setSavedAddresses(prev => [data.address, ...prev.map((a: any) => ({ ...a, is_default: false }))])
+                                }
+                              }
+                            } catch {}
+                          }}
+                          className="flex items-center gap-1.5 text-sm font-medium hover:underline"
+                          style={{ color: primaryColor }}
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          Guardar como dirección principal
+                        </button>
+                      )}
 
                       {/* Dynamic shipping rate selector */}
                       {dynamicShippingRates.length > 0 && (
