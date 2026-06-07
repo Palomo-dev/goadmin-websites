@@ -171,10 +171,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
         setIsAuthenticated(true)
 
-        // Precargar email del auth user siempre
+        // Precargar datos del auth user (metadata siempre disponible)
+        const meta = user.user_metadata || {}
         setCustomerData((prev: any) => ({
           ...prev,
           email: user.email || prev.email,
+          firstName: meta.first_name || prev.firstName,
+          lastName: meta.last_name || prev.lastName,
+          phone: meta.phone || prev.phone,
         }))
 
         // Buscar customer asociado al email (sin importar is_registered)
@@ -189,6 +193,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
         if (customer) {
           setCustomerId(customer.id)
+          // Sobreescribir con datos del customer si existen (más recientes)
           setCustomerData((prev: any) => ({
             ...prev,
             firstName: customer.first_name || prev.firstName,
@@ -217,17 +222,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 city: defaultAddr.city || '',
               }))
             }
-          }
-        } else {
-          // Si no hay customer, usar metadata del auth user si existe
-          const meta = user.user_metadata || {}
-          if (meta.first_name || meta.last_name || meta.phone) {
-            setCustomerData((prev: any) => ({
-              ...prev,
-              firstName: meta.first_name || prev.firstName,
-              lastName: meta.last_name || prev.lastName,
-              phone: meta.phone || prev.phone,
-            }))
           }
         }
       } catch (err) {
@@ -454,6 +448,21 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       }
 
       const createdOrderNumber = orderData.orderNumber
+
+      // Auto-guardar dirección como principal si el usuario está autenticado y no tiene direcciones
+      if (isAuthenticated && savedAddresses.length === 0 && customerData.address) {
+        fetch('/api/customer/address', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            organizationId,
+            address_line: customerData.address,
+            city: customerData.city,
+            label: 'Principal',
+            is_default: true
+          })
+        }).catch(() => {})
+      }
 
       // 2. Si es pago online (pasarela), iniciar checkout con la pasarela
       const selectedMethod = availableMethods.find(m => m.code === paymentMethod)
