@@ -31,7 +31,7 @@ function CategoryCard({ cat, isRound, showCount, primaryColor }: {
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
+      className={`block group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
         isRound ? 'rounded-full aspect-square' : 'rounded-xl aspect-[4/3]'
       }`}
     >
@@ -178,7 +178,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               {canScrollLeft && (
                 <button
                   onClick={() => scroll('left')}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -ml-4 opacity-0 group-hover/carousel:opacity-100"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -ml-4"
                   aria-label="Anterior"
                 >
                   <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -198,7 +198,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               {canScrollRight && (
                 <button
                   onClick={() => scroll('right')}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -mr-4 opacity-0 group-hover/carousel:opacity-100"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -mr-4"
                   aria-label="Siguiente"
                 >
                   <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
