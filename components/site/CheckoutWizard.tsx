@@ -9,7 +9,6 @@ import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
-import { createClient } from '@/lib/supabase/client'
 
 interface CartModifier {
   typeId: number
@@ -161,67 +160,37 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     }
   }, [])
 
-  // Precargar datos del usuario autenticado
+  // Precargar datos del usuario autenticado via API server-side
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const supabase = createClient() as any
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const res = await fetch(`/api/customer/me?organizationId=${organizationId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (!data.authenticated) return
 
         setIsAuthenticated(true)
+        if (data.customerId) setCustomerId(data.customerId)
 
-        // Precargar datos del auth user (metadata siempre disponible)
-        const meta = user.user_metadata || {}
         setCustomerData((prev: any) => ({
           ...prev,
-          email: user.email || prev.email,
-          firstName: meta.first_name || prev.firstName,
-          lastName: meta.last_name || prev.lastName,
-          phone: meta.phone || prev.phone,
+          firstName: data.firstName || prev.firstName,
+          lastName: data.lastName || prev.lastName,
+          email: data.email || prev.email,
+          phone: data.phone || prev.phone,
+          address: data.address || prev.address,
+          city: data.city || prev.city,
         }))
 
-        // Buscar customer asociado al email (sin importar is_registered)
-        const { data: customer } = await supabase
-          .from('customers')
-          .select('id, first_name, last_name, email, phone, address, city')
-          .eq('organization_id', organizationId)
-          .eq('email', user.email)
-          .order('is_registered', { ascending: false })
-          .limit(1)
-          .single()
-
-        if (customer) {
-          setCustomerId(customer.id)
-          // Sobreescribir con datos del customer si existen (más recientes)
-          setCustomerData((prev: any) => ({
-            ...prev,
-            firstName: customer.first_name || prev.firstName,
-            lastName: customer.last_name || prev.lastName,
-            email: customer.email || prev.email,
-            phone: customer.phone || prev.phone,
-            address: customer.address || prev.address,
-            city: customer.city || prev.city,
-          }))
-
-          // Cargar direcciones guardadas
-          const { data: addresses } = await supabase
-            .from('customer_addresses')
-            .select('id, label, address_line, city, state, is_default')
-            .eq('customer_id', customer.id)
-            .order('is_default', { ascending: false })
-
-          if (addresses && addresses.length > 0) {
-            setSavedAddresses(addresses)
-            // Auto-seleccionar la dirección principal
-            const defaultAddr = addresses.find((a: any) => a.is_default) || addresses[0]
-            if (defaultAddr) {
-              setCustomerData((prev: any) => ({
-                ...prev,
-                address: defaultAddr.address_line || '',
-                city: defaultAddr.city || '',
-              }))
-            }
+        if (data.addresses && data.addresses.length > 0) {
+          setSavedAddresses(data.addresses)
+          const defaultAddr = data.addresses.find((a: any) => a.is_default) || data.addresses[0]
+          if (defaultAddr) {
+            setCustomerData((prev: any) => ({
+              ...prev,
+              address: defaultAddr.address_line || prev.address,
+              city: defaultAddr.city || prev.city,
+            }))
           }
         }
       } catch (err) {
