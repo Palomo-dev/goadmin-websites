@@ -153,9 +153,9 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
           {/* === Móvil: Carrusel === */}
           {isMobileCarousel && (
             <div className="md:hidden overflow-x-auto scrollbar-hide scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <div className="flex gap-4 px-1 pb-2">
+              <div className="flex gap-4 px-1 pb-2 items-start">
                 {categories.map((cat: any) => (
-                  <div key={cat.id} className="flex-shrink-0 w-[160px]">
+                  <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[130px]' : 'w-[160px]'}`}>
                     <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
                   </div>
                 ))}
@@ -186,11 +186,11 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               )}
               <div
                 ref={scrollRef}
-                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth"
+                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth items-start"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {categories.map((cat: any) => (
-                  <div key={cat.id} className="flex-shrink-0 w-[220px]">
+                  <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[180px]' : 'w-[220px]'}`}>
                     <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
                   </div>
                 ))}
