@@ -8,6 +8,7 @@ interface HeroFullscreenProps {
     cta_text?: string
     cta_url?: string
     image_url?: string | null
+    image_url_mobile?: string | null
   }
   organization: any
   primaryColor?: string
@@ -19,6 +20,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   const ctaText = content.cta_text || 'Contáctanos'
   const ctaUrl = content.cta_url || '/contacto'
   const imageUrl = content.image_url || null
+  const imageUrlMobile = (content as any).image_url_mobile || null
   const showBooking = (content as any).show_booking_widget ?? organization.website_settings?.show_hero_booking ?? false
   const showOverlay = (content as any).show_overlay !== false
   const showTitle = (content as any).show_title !== false
@@ -27,10 +29,19 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   return (
     <div className={`relative ${showBooking ? 'min-h-[auto] py-20 md:min-h-[720px] md:py-0' : 'min-h-[50vh] md:min-h-[70vh]'} flex items-center justify-center text-center text-white -mx-4 sm:-mx-6 lg:-mx-8 -mt-16 md:-mt-24`}>
       {imageUrl && (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${imageUrl})` }}
-        />
+        <>
+          {imageUrlMobile ? (
+            <picture className="absolute inset-0 w-full h-full">
+              <source media="(max-width: 767px)" srcSet={imageUrlMobile} />
+              <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+            </picture>
+          ) : (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${imageUrl})` }}
+            />
+          )}
+        </>
       )}
       {showOverlay && (
         <div

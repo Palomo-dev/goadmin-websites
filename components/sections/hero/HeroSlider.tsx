@@ -14,6 +14,7 @@ interface HeroSliderProps {
       title?: string
       subtitle?: string
       image_url?: string
+      image_url_mobile?: string
       cta_text?: string
       cta_url?: string
     }>
@@ -64,7 +65,12 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   return (
     <div className="relative min-h-[50vh] md:min-h-[70vh] overflow-hidden">
       {slide.image_url ? (
-        <img src={slide.image_url} alt="" className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700" />
+        <picture className="absolute inset-0 w-full h-full">
+          {slide.image_url_mobile && (
+            <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
+          )}
+          <img src={slide.image_url} alt="" className="w-full h-full object-cover transition-opacity duration-700" />
+        </picture>
       ) : (
         <div className="absolute inset-0" style={{ backgroundColor: primaryColor }} />
       )}
