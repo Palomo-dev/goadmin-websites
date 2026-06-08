@@ -9,6 +9,7 @@ import MetaPixel from './MetaPixel'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
 import CustomScripts from './CustomScripts'
+import { ChatWidget } from './ChatWidget'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
@@ -135,6 +136,11 @@ export function OrganizationLayout({
       
       {/* Scripts Personalizados */}
       {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
+
+      {/* Chat Widget */}
+      {settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
+        <ChatWidget publicKey={settings.chat_widget_public_key} />
+      )}
     </div>
   )
 }
