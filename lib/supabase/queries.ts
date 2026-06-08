@@ -470,7 +470,26 @@ export async function getProductsByCategoryPaginated(
   const { data, error, count } = await query
 
   if (error) return { products: [], total: 0 }
-  return { products: data || [], total: count || 0 }
+
+  // Adjuntar sales_count para los demás sorts
+  const prods = data || []
+  if (prods.length > 0) {
+    const productIds = prods.map((p: any) => p.id)
+    const salesMap: Record<number, number> = {}
+    const { data: salesData } = await supabase
+      .from('web_order_items')
+      .select('product_id, quantity')
+      .in('product_id', productIds)
+    if (salesData) {
+      salesData.forEach((item: any) => {
+        salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
+      })
+    }
+    const enriched = prods.map((p: any) => ({ ...p, sales_count: salesMap[p.id] || 0 }))
+    return { products: enriched, total: count || 0 }
+  }
+
+  return { products: prods, total: count || 0 }
 }
 
 /**

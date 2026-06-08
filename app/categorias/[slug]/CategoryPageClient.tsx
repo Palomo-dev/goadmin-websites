@@ -33,7 +33,8 @@ interface Product {
   is_parent?: boolean
   has_variants?: boolean
   variant_count?: number
-  product_prices?: { price: number; currency_code?: string }[]
+  sales_count?: number
+  product_prices?: { price: number; compare_price?: number | null; currency_code?: string }[]
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
 }
@@ -373,6 +374,11 @@ function ProductCardGrid({
   const stock = getAvailableStock(product)
   const outOfStock = stock !== null && stock <= 0
   const imgUrl = getProductImageUrl(product)
+  const comparePrice = price?.compare_price ? Number(price.compare_price) : null
+  const currentPrice = price ? Number(price.price) : null
+  const discount = comparePrice && currentPrice && comparePrice > currentPrice
+    ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
+    : null
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all h-full">
@@ -381,7 +387,12 @@ function ProductCardGrid({
           className="aspect-square flex items-center justify-center relative overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
         >
-          {outOfStock && (
+          {discount && (
+            <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              -{discount}%
+            </span>
+          )}
+          {outOfStock && !discount && (
             <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               Agotado
             </span>
@@ -390,6 +401,11 @@ function ProductCardGrid({
             <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
               <Layers className="h-3 w-3" />
               {product.variant_count}
+            </span>
+          )}
+          {(product.sales_count ?? 0) > 0 && (
+            <span className="absolute bottom-2 left-2 z-10 bg-black/60 text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full">
+              ⚡ {product.sales_count} vendidos
             </span>
           )}
           {imgUrl ? (
@@ -413,9 +429,16 @@ function ProductCardGrid({
         </Link>
         <div className="flex flex-col gap-2 mt-1">
           {price && (
-            <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
-              ${Number(price.price).toLocaleString()}
-            </span>
+            <div className="flex items-center gap-2">
+              {comparePrice && comparePrice > (currentPrice ?? 0) && (
+                <span className="text-xs sm:text-sm text-gray-400 line-through">
+                  ${comparePrice.toLocaleString()}
+                </span>
+              )}
+              <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
+                ${Number(price.price).toLocaleString()}
+              </span>
+            </div>
           )}
           {outOfStock ? (
             <span className="text-xs text-red-500 font-medium">Sin stock</span>
@@ -467,6 +490,11 @@ function ProductCardList({
   const stock = getAvailableStock(product)
   const outOfStock = stock !== null && stock <= 0
   const imgUrl = getProductImageUrl(product)
+  const comparePrice = price?.compare_price ? Number(price.compare_price) : null
+  const currentPrice = price ? Number(price.price) : null
+  const discount = comparePrice && currentPrice && comparePrice > currentPrice
+    ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
+    : null
 
   return (
     <div className="flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-md transition-shadow">
@@ -479,7 +507,12 @@ function ProductCardList({
               <Package className="h-8 w-8 opacity-30" style={{ color: primaryColor }} />
             </div>
           )}
-          {outOfStock && (
+          {discount && (
+            <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              -{discount}%
+            </span>
+          )}
+          {outOfStock && !discount && (
             <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               Agotado
             </span>
@@ -494,12 +527,22 @@ function ProductCardList({
           {product.description && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{product.description}</p>
           )}
+          {(product.sales_count ?? 0) > 0 && (
+            <p className="text-xs text-gray-400 mt-1">⚡ {product.sales_count} vendidos</p>
+          )}
         </div>
         <div className="flex items-center justify-between mt-3">
           {price && (
-            <span className="text-lg font-bold" style={{ color: primaryColor }}>
-              ${Number(price.price).toLocaleString()}
-            </span>
+            <div className="flex items-center gap-2">
+              {comparePrice && comparePrice > (currentPrice ?? 0) && (
+                <span className="text-sm text-gray-400 line-through">
+                  ${comparePrice.toLocaleString()}
+                </span>
+              )}
+              <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                ${Number(price.price).toLocaleString()}
+              </span>
+            </div>
           )}
           {outOfStock ? (
             <span className="text-xs text-red-500 font-medium">Sin stock</span>
