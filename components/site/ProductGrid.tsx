@@ -5,7 +5,8 @@ import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
 
 interface ProductImage {
@@ -76,11 +77,13 @@ interface ProductGridProps {
   primaryColor: string
   organizationSubdomain: string
   organizationId?: number
+  showBuyNow?: boolean
 }
 
 const ITEMS_PER_PAGE = 12
 
-export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId }: ProductGridProps) {
+export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true }: ProductGridProps) {
+  const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [variantParent, setVariantParent] = useState<Product | null>(null)
@@ -121,6 +124,11 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
     } finally {
       setLoadingVariants(false)
     }
+  }
+
+  const buyNow = (product: Product) => {
+    addToCart(product)
+    router.push('/checkout')
   }
 
   const addToCart = (product: Product) => {
@@ -313,27 +321,44 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                           Elegir
                         </Button>
                       ) : (
-                        <Button 
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            addToCart(product)
-                          }}
-                          className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                        >
-                          {isAdded ? (
-                            <>
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              Listo
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              Agregar
-                            </>
+                        <div className="flex flex-col gap-1.5">
+                          <Button 
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              addToCart(product)
+                            }}
+                            className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                            style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                          >
+                            {isAdded ? (
+                              <>
+                                <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                Listo
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                Agregar
+                              </>
+                            )}
+                          </Button>
+                          {showBuyNow && (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                buyNow(product)
+                              }}
+                              className="w-full text-xs sm:text-sm"
+                              style={{ borderColor: primaryColor, color: primaryColor }}
+                            >
+                              <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Comprar ahora
+                            </Button>
                           )}
-                        </Button>
+                        </div>
                       )
                     })()}
                   </div>

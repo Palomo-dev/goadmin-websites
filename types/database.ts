@@ -134,6 +134,7 @@ export interface Database {
           show_header_auth: boolean
           show_topbar: boolean
           show_powered_by: boolean
+          show_buy_now_button: boolean
           logo_position: 'left' | 'center'
           logo_height: number | null
           favicon_height: number | null

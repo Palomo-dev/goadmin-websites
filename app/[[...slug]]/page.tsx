@@ -313,6 +313,7 @@ async function renderSlugFallback(
               primaryColor={primaryColor}
               organizationSubdomain={organization.subdomain || ''}
               organizationId={organization.id}
+              showBuyNow={organization.website_settings?.show_buy_now_button !== false}
             />
           </div>
         </Layout>

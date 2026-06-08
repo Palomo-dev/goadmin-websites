@@ -375,6 +375,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
         organization={organization}
         primaryColor={primaryColor}
         data={data}
+        sectionVariant={section.section_variant}
       />
     </SectionWrapper>
   )

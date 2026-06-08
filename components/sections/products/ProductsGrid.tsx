@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
+import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, ShoppingBag } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -45,13 +46,15 @@ interface ProductsGridProps {
   }
   primaryColor?: string
   data?: { products?: any[]; categories?: any[] }
-  organization?: { subdomain?: string }
+  organization?: { subdomain?: string; website_settings?: any }
 }
 
 const ITEMS_PER_PAGE = 12
 
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
+  const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
+  const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const products = data?.products || []
   const categories = data?.categories || []
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
@@ -117,15 +120,11 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
     localStorage.setItem(cartKey, JSON.stringify(cart))
     window.dispatchEvent(new CustomEvent('cart-updated'))
+  }
 
-    setAddedToCart(prev => new Set(prev).add(product.id))
-    setTimeout(() => {
-      setAddedToCart(prev => {
-        const next = new Set(prev)
-        next.delete(product.id)
-        return next
-      })
-    }, 1500)
+  const buyNow = (product: any) => {
+    addToCart(product)
+    router.push('/checkout')
   }
 
   return (
@@ -263,28 +262,46 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                         </Button>
                       </Link>
                     ) : (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          addToCart(product)
-                        }}
-                        className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                        style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                        disabled={price === null}
-                      >
-                        {isAdded ? (
-                          <>
-                            <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                            Listo
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                            Agregar
-                          </>
+                      <div className="flex flex-col gap-1.5">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            addToCart(product)
+                          }}
+                          className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                          disabled={price === null}
+                        >
+                          {isAdded ? (
+                            <>
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Listo
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Agregar
+                            </>
+                          )}
+                        </Button>
+                        {showBuyNow && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              buyNow(product)
+                            }}
+                            className="w-full text-xs sm:text-sm"
+                            style={{ borderColor: primaryColor, color: primaryColor }}
+                            disabled={price === null}
+                          >
+                            <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                            Comprar ahora
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     )}
                   </div>
                 </div>

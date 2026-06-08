@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Check, Package, Layers, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { Plus, Check, Package, Layers, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -59,6 +59,7 @@ interface CategoryPageClientProps {
   currentView: 'grid' | 'list'
   organizationSubdomain: string
   organizationId: number
+  showBuyNow?: boolean
 }
 
 function getProductImageUrl(product: Product): string | null {
@@ -98,7 +99,8 @@ export function CategoryPageClient({
   currentSubcategory,
   currentView,
   organizationSubdomain,
-  organizationId
+  organizationId,
+  showBuyNow = true
 }: CategoryPageClientProps) {
   const router = useRouter()
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
@@ -169,6 +171,11 @@ export function CategoryPageClient({
       })
     }, 1500)
     window.dispatchEvent(new CustomEvent('cart-updated'))
+  }
+
+  const buyNow = (product: Product) => {
+    addToCart(product)
+    router.push('/checkout')
   }
 
   return (
@@ -264,7 +271,9 @@ export function CategoryPageClient({
                   primaryColor={primaryColor}
                   isAdded={addedToCart.has(product.id)}
                   onAddToCart={() => addToCart(product)}
+                  onBuyNow={() => buyNow(product)}
                   organizationId={organizationId}
+                  showBuyNow={showBuyNow}
                 />
               ))}
             </div>
@@ -277,6 +286,8 @@ export function CategoryPageClient({
                   primaryColor={primaryColor}
                   isAdded={addedToCart.has(product.id)}
                   onAddToCart={() => addToCart(product)}
+                  onBuyNow={() => buyNow(product)}
+                  showBuyNow={showBuyNow}
                 />
               ))}
             </div>
@@ -346,13 +357,17 @@ function ProductCardGrid({
   primaryColor,
   isAdded,
   onAddToCart,
-  organizationId
+  onBuyNow,
+  organizationId,
+  showBuyNow
 }: {
   product: Product
   primaryColor: string
   isAdded: boolean
   onAddToCart: () => void
+  onBuyNow: () => void
   organizationId: number
+  showBuyNow?: boolean
 }) {
   const price = product.product_prices?.[0]
   const stock = getAvailableStock(product)
@@ -405,14 +420,27 @@ function ProductCardGrid({
           {outOfStock ? (
             <span className="text-xs text-red-500 font-medium">Sin stock</span>
           ) : (
-            <Button
-              size="sm"
-              onClick={(e) => { e.preventDefault(); onAddToCart() }}
-              className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-              style={!isAdded ? { backgroundColor: primaryColor } : {}}
-            >
-              {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
-            </Button>
+            <div className="flex flex-col gap-1.5">
+              <Button
+                size="sm"
+                onClick={(e) => { e.preventDefault(); onAddToCart() }}
+                className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                style={!isAdded ? { backgroundColor: primaryColor } : {}}
+              >
+                {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
+              </Button>
+              {showBuyNow && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.preventDefault(); onBuyNow() }}
+                  className="w-full text-xs sm:text-sm"
+                  style={{ borderColor: primaryColor, color: primaryColor }}
+                >
+                  <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Comprar ahora
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </CardContent>
@@ -424,12 +452,16 @@ function ProductCardList({
   product,
   primaryColor,
   isAdded,
-  onAddToCart
+  onAddToCart,
+  onBuyNow,
+  showBuyNow
 }: {
   product: Product
   primaryColor: string
   isAdded: boolean
   onAddToCart: () => void
+  onBuyNow: () => void
+  showBuyNow?: boolean
 }) {
   const price = product.product_prices?.[0]
   const stock = getAvailableStock(product)
@@ -472,14 +504,26 @@ function ProductCardList({
           {outOfStock ? (
             <span className="text-xs text-red-500 font-medium">Sin stock</span>
           ) : (
-            <Button
-              size="sm"
-              onClick={onAddToCart}
-              className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-              style={!isAdded ? { backgroundColor: primaryColor } : {}}
-            >
-              {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={onAddToCart}
+                className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                style={!isAdded ? { backgroundColor: primaryColor } : {}}
+              >
+                {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
+              </Button>
+              {showBuyNow && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onBuyNow}
+                  style={{ borderColor: primaryColor, color: primaryColor }}
+                >
+                  <ShoppingBag className="h-4 w-4 mr-1" /> Comprar
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>

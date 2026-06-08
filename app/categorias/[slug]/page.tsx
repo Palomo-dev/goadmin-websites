@@ -144,6 +144,7 @@ export default async function CategoriaSlugPage({
           currentView={view as 'grid' | 'list'}
           organizationSubdomain={organization.subdomain || ''}
           organizationId={organization.id}
+          showBuyNow={organization.website_settings?.show_buy_now_button !== false}
         />
       </div>
     </OrganizationLayout>
