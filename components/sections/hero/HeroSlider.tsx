@@ -28,6 +28,9 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const showOverlay = (content as any).show_overlay !== false
   const showTitle = (content as any).show_title !== false
   const showCta = (content as any).show_cta !== false
+  const fullWidth = (content as any).full_width !== false
+  const borderRadius = Number((content as any).border_radius) || 0
+  const shadowIntensity = Number((content as any).shadow_intensity) || 0
   const slides = content.slides || []
   const [current, setCurrent] = useState(0)
 
@@ -57,14 +60,21 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           ) : null}
         </div>
       </div>
+      </div>
     )
   }
 
   const slide = slides[current]
   const hasTextContent = (showTitle && (slide.title || slide.subtitle)) || (showCta && slide.cta_text && slide.cta_url) || showBooking
+  const containerClass = fullWidth ? '' : 'max-w-7xl mx-auto px-4 sm:px-6'
+  const sliderStyle = {
+    borderRadius: borderRadius > 0 ? `${borderRadius}px` : undefined,
+    boxShadow: shadowIntensity > 0 ? `0 ${Math.ceil(shadowIntensity/3)}px ${shadowIntensity}px rgba(0,0,0,${Math.min(shadowIntensity/100+0.1,0.6)})` : undefined,
+  }
 
   return (
-    <div className="relative w-full overflow-hidden">
+    <div className={`relative w-full ${containerClass}`}>
+      <div className="relative overflow-hidden" style={sliderStyle}>
       {slide.image_url ? (
         <>
           {/* Modo imagen completa: si no hay texto, mostrar la imagen completa sin recorte */}
@@ -132,6 +142,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }
