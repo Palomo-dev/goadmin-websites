@@ -118,6 +118,9 @@ import { ParkingPassPlansCards } from './parking/ParkingPassPlansCards'
 import { ParkingFeaturesIcons } from './parking/ParkingFeaturesIcons'
 import { ParkingAvailabilitySummary } from './parking/ParkingAvailabilitySummary'
 
+// Secciones countdown
+import { CountdownSection } from './countdown/CountdownSection'
+
 // Secciones saas
 import { PricingTableColumns } from './saas/PricingTableColumns'
 import { FeaturesGridAlternating } from './saas/FeaturesGridAlternating'
@@ -329,6 +332,12 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
   },
   demo_cta: {
     form: DemoCtaForm,
+  },
+  // Countdown
+  countdown: {
+    banner: CountdownSection,
+    inline: CountdownSection,
+    compact: CountdownSection,
   },
 }
 

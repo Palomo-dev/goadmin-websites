@@ -16,6 +16,7 @@ import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
 import { getProductVariants } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
+import { CountdownBanner } from '@/components/site/CountdownBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -214,6 +215,15 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
               )}
             </div>
             
+            {/* Countdown */}
+            {(organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
+              <CountdownBanner
+                config={organization.website_settings as any}
+                primaryColor={primaryColor}
+                variant="inline"
+              />
+            )}
+
             {product.description && (
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Descripción</h3>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { SiteHeader } from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
+import { CountdownBanner } from './CountdownBanner'
 import MetaPixel from './MetaPixel'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
@@ -79,6 +80,15 @@ export function OrganizationLayout({
         headerNav={headerNav}
       />
       
+      {/* Countdown Banner (debajo del header) */}
+      {settings?.countdown_enabled && settings?.countdown_show_in_header && (
+        <CountdownBanner
+          config={settings}
+          primaryColor={primaryColor}
+          variant="banner"
+        />
+      )}
+
       {/* Contenido de la página */}
       <main className="flex-grow">
         {children}
@@ -105,6 +115,7 @@ export function OrganizationLayout({
             freeShippingThreshold: settings?.free_shipping_threshold || 0,
             enableShipping: settings?.enable_shipping ?? true
           }}
+          countdownConfig={settings?.countdown_enabled ? settings : undefined}
         />
       )}
       

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
+import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 
 interface CartItem {
   id: number
@@ -25,9 +26,10 @@ interface CartDrawerProps {
     freeShippingThreshold: number
     enableShipping: boolean
   }
+  countdownConfig?: CountdownConfig
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, countdownConfig }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -223,6 +225,11 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                   </div>
                 )}
               </>
+            )}
+
+            {/* Countdown */}
+            {countdownConfig?.countdown_enabled && countdownConfig?.countdown_show_in_cart && (
+              <CountdownBanner config={countdownConfig} primaryColor={primaryColor} variant="inline" />
             )}
 
             {/* Total */}
