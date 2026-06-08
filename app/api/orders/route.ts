@@ -130,6 +130,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Auto-guardar dirección como principal si no tiene ninguna ──
+    if (customerId && customer.address) {
+      const { data: existingAddresses } = await (supabase as any)
+        .from('customer_addresses')
+        .select('id')
+        .eq('customer_id', customerId)
+        .limit(1)
+
+      if (!existingAddresses || existingAddresses.length === 0) {
+        await (supabase as any)
+          .from('customer_addresses')
+          .insert({
+            customer_id: customerId,
+            label: 'Principal',
+            address_line: customer.address,
+            city: customer.city || null,
+            is_default: true,
+          })
+        // Actualizar dirección en el customer también
+        await (supabase as any)
+          .from('customers')
+          .update({ address: customer.address, city: customer.city || null })
+          .eq('id', customerId)
+      }
+    }
+
     // Calcular tax_total basado en impuesto de la org
     const calculatedSubtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
     const taxTotal = taxRate > 0 ? Math.round(calculatedSubtotal * taxRate / 100) : 0

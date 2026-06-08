@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
-
-function getSupabase() {
-  return createAdminClient() || createPublicClient()
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,33 +12,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
-    // Obtener el usuario autenticado
-    const cookieStore = await cookies()
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll() {},
-        },
-      }
-    )
-    const { data: { user } } = await supabaseAuth.auth.getUser()
+    // Usar el mismo cliente que funciona en perfil
+    const supabase = await createServerSupabaseClient() as any
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
-    const supabase = getSupabase() as any
-
-    // Buscar customer por email
-    const { data: customer } = await supabase
+    // Buscar customer por user_id primero, luego por email
+    let customer = null
+    const { data: customerByUserId } = await supabase
       .from('customers')
       .select('id')
       .eq('organization_id', organizationId)
-      .eq('email', user.email)
-      .limit(1)
+      .eq('user_id', user.id)
       .single()
+
+    if (customerByUserId) {
+      customer = customerByUserId
+    } else {
+      const { data: customerByEmail } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('email', user.email)
+        .limit(1)
+        .single()
+      customer = customerByEmail
+    }
 
     if (!customer) {
       // Crear customer si no existe
