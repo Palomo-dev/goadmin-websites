@@ -60,7 +60,6 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           ) : null}
         </div>
       </div>
-      </div>
     )
   }
 
