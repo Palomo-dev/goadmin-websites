@@ -17,6 +17,7 @@ interface TimelineEvent {
 }
 
 interface TrackingData {
+  orgTypeId: number
   order: {
     id: string
     orderNumber: string
@@ -71,10 +72,15 @@ interface OrderTrackerProps {
   primaryColor: string
 }
 
-const DELIVERY_TYPE_LABELS: Record<string, string> = {
+const DELIVERY_TYPE_LABELS_RESTAURANT: Record<string, string> = {
   delivery: '🛵 Domicilio',
   pickup: '🏪 Recoger en local',
   dine_in: '🍽️ Comer en el restaurante',
+}
+
+const DELIVERY_TYPE_LABELS_RETAIL: Record<string, string> = {
+  delivery: '🚚 Envío a domicilio',
+  pickup: '🏪 Recoger en tienda',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -147,8 +153,10 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
     )
   }
 
-  const { order, shipment, deliveryAttempts, timeline } = data
+  const { order, shipment, deliveryAttempts, timeline, orgTypeId } = data
   const isFinal = ['delivered', 'completed', 'cancelled'].includes(order.status)
+  const isRetail = orgTypeId === 3
+  const deliveryLabels = isRetail ? DELIVERY_TYPE_LABELS_RETAIL : DELIVERY_TYPE_LABELS_RESTAURANT
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -165,7 +173,7 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
         <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
           style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
         >
-          {DELIVERY_TYPE_LABELS[order.deliveryType] || order.deliveryType}
+          {deliveryLabels[order.deliveryType] || order.deliveryType}
           {order.isScheduled && order.scheduledAt && (
             <span className="text-gray-500">
               · {new Date(order.scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
@@ -179,9 +187,9 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
         <div className="text-4xl mb-3">
           {order.status === 'cancelled' ? '❌' :
            order.status === 'delivered' || order.status === 'completed' ? '🎉' :
-           order.status === 'preparing' ? '👨‍🍳' :
-           order.status === 'ready' ? '🔔' :
-           order.status === 'shipped' ? '🛵' :
+           order.status === 'preparing' ? (isRetail ? '📦' : '👨‍🍳') :
+           order.status === 'ready' ? (isRetail ? '�' : '�🔔') :
+           order.status === 'shipped' ? '�' :
            order.status === 'confirmed' ? '✅' : '⏳'}
         </div>
         <h2 className="text-xl font-bold" style={{ color: primaryColor }}>
@@ -198,8 +206,8 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
         )}
       </div>
 
-      {/* Barra de tiempo estimado (solo en preparación) */}
-      {['confirmed', 'preparing'].includes(order.status) && order.organizationId && (
+      {/* Barra de tiempo estimado (solo restaurante en preparación) */}
+      {!isRetail && ['confirmed', 'preparing'].includes(order.status) && order.organizationId && (
         <EstimatedTime
           organizationId={order.organizationId}
           branchId={order.branchId || undefined}

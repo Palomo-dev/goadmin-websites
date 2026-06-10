@@ -44,6 +44,15 @@ export async function GET(
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
     }
 
+    // Obtener tipo de organización
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('type_id')
+      .eq('id', order.organization_id)
+      .single()
+
+    const orgTypeId = orgData?.type_id || 3 // default retail
+
     // Buscar shipment asociado (source_type='web_order')
     const { data: shipment } = await supabase
       .from('shipments')
@@ -78,7 +87,7 @@ export async function GET(
     }
 
     // Construir timeline de eventos
-    const timeline = buildTimeline(order, shipment, deliveryAttempts)
+    const timeline = buildTimeline(order, shipment, deliveryAttempts, orgTypeId)
 
     return NextResponse.json({
       order: {
@@ -128,6 +137,7 @@ export async function GET(
         photoUrls: a.photo_urls,
       })),
       timeline,
+      orgTypeId,
     })
   } catch (err) {
     console.error('Error in tracking API:', err)
@@ -144,8 +154,9 @@ interface TimelineEvent {
   icon: string
 }
 
-function buildTimeline(order: any, shipment: any, attempts: any[]): TimelineEvent[] {
+function buildTimeline(order: any, shipment: any, attempts: any[], orgTypeId: number): TimelineEvent[] {
   const events: TimelineEvent[] = []
+  const isRetail = orgTypeId === 3
 
   // 1. Pedido recibido
   events.push({
@@ -161,57 +172,92 @@ function buildTimeline(order: any, shipment: any, attempts: any[]): TimelineEven
   events.push({
     key: 'confirmed',
     label: 'Confirmado',
-    description: order.confirmed_at ? 'El restaurante confirmó tu pedido' : undefined,
+    description: order.confirmed_at
+      ? (isRetail ? 'Tu pedido fue confirmado' : 'El restaurante confirmó tu pedido')
+      : undefined,
     timestamp: order.confirmed_at,
     status: order.confirmed_at ? 'completed' : (order.status === 'pending' ? 'current' : 'pending'),
     icon: '✅',
   })
 
-  // 3. Preparando
+  // 3. Preparando / Empacando
   const isPreparing = ['preparing', 'ready', 'shipped', 'delivered', 'completed'].includes(order.status)
   events.push({
     key: 'preparing',
-    label: 'Preparando',
+    label: isRetail ? 'Empacando' : 'Preparando',
     description: order.estimated_ready_at
       ? `Estimado: ${new Date(order.estimated_ready_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`
       : undefined,
     timestamp: isPreparing ? (order.confirmed_at || order.created_at) : null,
     status: isPreparing ? 'completed' : (order.status === 'confirmed' ? 'current' : 'pending'),
-    icon: '👨‍🍳',
+    icon: isRetail ? '�' : '�👨‍🍳',
   })
 
-  // 4. Listo
-  events.push({
-    key: 'ready',
-    label: 'Listo',
-    description: order.ready_at ? 'Tu pedido está listo' : undefined,
-    timestamp: order.ready_at,
-    status: order.ready_at ? 'completed' : (order.status === 'preparing' ? 'current' : 'pending'),
-    icon: '🔔',
-  })
-
-  // 5. Delivery: En camino
-  if (order.delivery_type === 'delivery') {
-    const dispatchedAt = shipment?.dispatched_at
-    const isOnWay = dispatchedAt || ['shipped'].includes(order.status)
+  // 4. Enviado / Listo
+  if (isRetail) {
+    // Para retail: Enviado (shipped)
+    const isShipped = ['shipped', 'delivered', 'completed'].includes(order.status)
     events.push({
-      key: 'on_the_way',
+      key: 'shipped',
+      label: 'Enviado',
+      description: shipment?.tracking_number
+        ? `Guía: ${shipment.tracking_number}`
+        : (isShipped ? 'Tu pedido fue despachado' : undefined),
+      timestamp: shipment?.dispatched_at || (isShipped ? order.ready_at : null),
+      status: isShipped ? 'completed' : (order.status === 'preparing' ? 'current' : 'pending'),
+      icon: '🚚',
+    })
+  } else {
+    // Para restaurante: Listo
+    events.push({
+      key: 'ready',
+      label: 'Listo',
+      description: order.ready_at ? 'Tu pedido está listo' : undefined,
+      timestamp: order.ready_at,
+      status: order.ready_at ? 'completed' : (order.status === 'preparing' ? 'current' : 'pending'),
+      icon: '🔔',
+    })
+
+    // Delivery: En camino (solo restaurante)
+    if (order.delivery_type === 'delivery') {
+      const dispatchedAt = shipment?.dispatched_at
+      events.push({
+        key: 'on_the_way',
+        label: 'En camino',
+        description: shipment?.transport_carriers?.name
+          ? `Repartidor: ${shipment.transport_carriers.name}`
+          : undefined,
+        timestamp: dispatchedAt,
+        status: dispatchedAt ? 'completed' : (order.status === 'ready' ? 'current' : 'pending'),
+        icon: '🛵',
+      })
+    }
+  }
+
+  // 5. En camino (retail con delivery)
+  if (isRetail && order.delivery_type === 'delivery') {
+    const isInTransit = order.status === 'shipped' && shipment?.dispatched_at
+    const isDelivered = ['delivered', 'completed'].includes(order.status)
+    events.push({
+      key: 'in_transit',
       label: 'En camino',
       description: shipment?.transport_carriers?.name
-        ? `Repartidor: ${shipment.transport_carriers.name}`
+        ? `Transportadora: ${shipment.transport_carriers.name}`
         : undefined,
-      timestamp: dispatchedAt,
-      status: dispatchedAt ? 'completed' : (order.status === 'ready' ? 'current' : 'pending'),
+      timestamp: shipment?.dispatched_at,
+      status: isDelivered ? 'completed' : (isInTransit ? 'current' : 'pending'),
       icon: '🛵',
     })
   }
 
-  // 6. Entregado / Recogido / Servido
-  const finalLabel = order.delivery_type === 'delivery'
+  // 6. Entregado
+  const finalLabel = isRetail
     ? 'Entregado'
-    : order.delivery_type === 'dine_in'
-      ? 'Servido'
-      : 'Recogido'
+    : (order.delivery_type === 'delivery'
+      ? 'Entregado'
+      : order.delivery_type === 'dine_in'
+        ? 'Servido'
+        : 'Recogido')
 
   events.push({
     key: 'delivered',
@@ -223,7 +269,7 @@ function buildTimeline(order: any, shipment: any, attempts: any[]): TimelineEven
     icon: '🎉',
   })
 
-  // Cancelado (si aplica, reemplaza el último)
+  // Cancelado (si aplica)
   if (order.status === 'cancelled') {
     events.push({
       key: 'cancelled',
