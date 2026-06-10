@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { createPublicClient } from '@/lib/supabase/server'
+import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Ingresa al menos 3 caracteres' }, { status: 400 })
     }
 
-    const supabase = createPublicClient() as any
+    const supabase = (createAdminClient() || createPublicClient()) as any
 
     let query = supabase
       .from('web_orders')
