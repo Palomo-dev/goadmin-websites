@@ -255,7 +255,7 @@ const retail_modern: TemplatePreset = {
       ],
     },
     {
-      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: true, show_in_footer: true, header_order: 4, footer_order: 4,
       sections: [],
     },
     nosotrosPage('split', 'two_columns', [{ section_type: 'partners', section_variant: 'logos' }]),
@@ -309,7 +309,7 @@ const retail_classic: TemplatePreset = {
       ],
     },
     {
-      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: true, show_in_footer: true, header_order: 4, footer_order: 4,
       sections: [],
     },
     nosotrosPage('split', 'centered'),
@@ -365,7 +365,7 @@ const retail_bold: TemplatePreset = {
       ],
     },
     {
-      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: true, show_in_footer: true, header_order: 4, footer_order: 4,
       sections: [],
     },
     nosotrosPage('split', 'left'),
@@ -419,7 +419,7 @@ const retail_elegant: TemplatePreset = {
       ],
     },
     {
-      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: true, show_in_footer: true, header_order: 4, footer_order: 4,
       sections: [],
     },
     nosotrosPage('fullscreen', 'centered'),

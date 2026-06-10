@@ -65,7 +65,7 @@ export function OrderLookupClient({ primaryColor }: { primaryColor: string }) {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Error al buscar')
+        setError(data.detail || data.error || 'Error al buscar')
         setOrders([])
         return
       }

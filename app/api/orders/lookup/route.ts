@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
     const { data: orders, error } = await query
 
     if (error) {
-      return NextResponse.json({ error: 'Error al buscar pedidos' }, { status: 500 })
+      console.error('Lookup error:', error)
+      return NextResponse.json({ error: 'Error al buscar pedidos', detail: error.message }, { status: 500 })
     }
 
     // Sanitizar datos sensibles - solo mostrar info relevante
@@ -85,7 +86,8 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({ orders: sanitized })
-  } catch {
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  } catch (err: any) {
+    console.error('Lookup catch:', err)
+    return NextResponse.json({ error: 'Error interno', detail: err?.message }, { status: 500 })
   }
 }
