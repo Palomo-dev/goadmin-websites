@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         payment_status, payment_method,
         created_at,
         web_order_items (
-          id, product_name, quantity, unit_price, subtotal
+          id, product_name, quantity, unit_price, total
         )
       `)
       .eq('organization_id', org.id)
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         product_name: item.product_name,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        subtotal: item.subtotal,
+        total: item.total,
       })),
     }))
 

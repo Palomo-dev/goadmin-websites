@@ -137,6 +137,7 @@ const retailNav: NavItem[] = [
   { name: 'Productos', href: '/productos' },
   { name: 'Categorías', href: '/#categorias' },
   { name: 'Ofertas', href: '/#ofertas' },
+  { name: 'Consultar Pedido', href: '/consultar-pedido' },
   { name: 'Nosotros', href: '/nosotros' },
   { name: 'Contacto', href: '/contacto' },
 ]
@@ -253,6 +254,10 @@ const retail_modern: TemplatePreset = {
         { section_type: 'cta', section_variant: 'banner' },
       ],
     },
+    {
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      sections: [],
+    },
     nosotrosPage('split', 'two_columns', [{ section_type: 'partners', section_variant: 'logos' }]),
     contactoPage('minimal', 'split', 'full_width'),
   ],
@@ -302,6 +307,10 @@ const retail_classic: TemplatePreset = {
         { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'cta', section_variant: 'banner' },
       ],
+    },
+    {
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      sections: [],
     },
     nosotrosPage('split', 'centered'),
     contactoPage('minimal', 'default', 'embedded'),
@@ -355,6 +364,10 @@ const retail_bold: TemplatePreset = {
         { section_type: 'cta', section_variant: 'with_image' },
       ],
     },
+    {
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      sections: [],
+    },
     nosotrosPage('split', 'left'),
     contactoPage('minimal', 'with_map', 'default'),
   ],
@@ -404,6 +417,10 @@ const retail_elegant: TemplatePreset = {
         { section_type: 'offers', section_variant: 'grid' },
         { section_type: 'cta', section_variant: 'banner' },
       ],
+    },
+    {
+      slug: 'consultar-pedido', title: 'Consultar Pedido', show_in_header: false, show_in_footer: true, header_order: 4, footer_order: 4,
+      sections: [],
     },
     nosotrosPage('fullscreen', 'centered'),
     contactoPage('minimal', 'split', 'embedded'),

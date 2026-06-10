@@ -19,7 +19,7 @@ interface OrderResult {
   payment_status: string
   payment_method: string
   created_at: string
-  items: { product_name: string; quantity: number; unit_price: number; subtotal: number }[]
+  items: { product_name: string; quantity: number; unit_price: number; total: number }[]
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -241,7 +241,7 @@ export function OrderLookupClient({ primaryColor }: { primaryColor: string }) {
                                 {item.quantity}x {item.product_name}
                               </span>
                               <span className="text-gray-900 dark:text-white font-medium">
-                                ${Number(item.subtotal).toLocaleString('es-CO')}
+                                ${Number(item.total).toLocaleString('es-CO')}
                               </span>
                             </div>
                           ))}
