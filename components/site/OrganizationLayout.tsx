@@ -22,6 +22,7 @@ interface OrganizationLayoutProps {
   footerNav?: WebsitePage[]
   metaPixelId?: string | null
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
+  taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
 }
 
 export function OrganizationLayout({
@@ -32,7 +33,8 @@ export function OrganizationLayout({
   headerNav,
   footerNav,
   metaPixelId,
-  googleAdsConfig
+  googleAdsConfig,
+  taxSettings
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
@@ -116,6 +118,7 @@ export function OrganizationLayout({
             freeShippingThreshold: settings?.free_shipping_threshold || 0,
             enableShipping: settings?.enable_shipping ?? true
           }}
+          taxSettings={taxSettings}
           countdownConfig={settings?.countdown_enabled ? settings : undefined}
         />
       )}

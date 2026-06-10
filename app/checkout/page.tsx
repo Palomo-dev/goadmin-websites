@@ -125,6 +125,7 @@ export default async function CheckoutPage() {
       footerNav={footerNav}
       metaPixelId={metaPixelId}
       googleAdsConfig={googleAdsConfig}
+      taxSettings={defaultTax ? { name: defaultTax.name, rate: Number(defaultTax.rate), taxIncluded: defaultTax.tax_included === true } : null}
     >
       {/* Meta Pixel InitiateCheckout */}
       {metaPixelId && <MetaPixelInitiateCheckout />}

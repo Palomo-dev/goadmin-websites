@@ -21,7 +21,8 @@ import {
   getParkingAvailability,
   getParkingZones,
   getOrgServiceCatalog,
-  getOfferProducts
+  getOfferProducts,
+  getDefaultTax
 } from '@/lib/supabase/queries'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
@@ -145,11 +146,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
   // Fetch navegación dinámica + Meta Pixel + Google Ads
-  const [headerNav, footerNav, metaPixelId, googleAdsConfig] = await Promise.all([
+  const [headerNav, footerNav, metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
     getWebsiteHeaderNav(organization.id),
     getWebsiteFooterNav(organization.id),
     getMetaPixelId(organization.id),
-    getGoogleAdsConfig(organization.id)
+    getGoogleAdsConfig(organization.id),
+    getDefaultTax(organization.id)
   ])
 
   // 1. Intentar cargar página del Page Builder
@@ -189,7 +191,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
         {page.website_page_sections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -205,12 +207,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
   // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
-  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams)
+  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings)
   if (fallback) return fallback
 
   // 4. Página no encontrada
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
@@ -237,10 +239,11 @@ async function renderSlugFallback(
   footerNav: any[],
   metaPixelId?: string | null,
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null,
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Record<string, string | string[] | undefined>,
+  taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
 ): Promise<React.ReactElement | null> {
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
       {children}
     </OrganizationLayout>
   )

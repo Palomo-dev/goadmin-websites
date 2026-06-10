@@ -26,10 +26,15 @@ interface CartDrawerProps {
     freeShippingThreshold: number
     enableShipping: boolean
   }
+  taxSettings?: {
+    name: string
+    rate: number
+    taxIncluded: boolean
+  } | null
   countdownConfig?: CountdownConfig
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, countdownConfig }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -80,6 +85,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   }
   
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const tax = taxSettings && taxSettings.rate > 0 && !taxSettings.taxIncluded
+    ? Math.round(subtotal * taxSettings.rate / 100)
+    : 0
   
   if (!isOpen) return null
   
@@ -192,10 +200,19 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
         {/* Footer */}
         {items.length > 0 && (
           <div className="border-t dark:border-gray-700 p-4 space-y-4">
-            <div className="flex items-center justify-between text-lg font-bold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between text-sm text-gray-900 dark:text-white">
               <span>Subtotal</span>
-              <span style={{ color: primaryColor }}>${subtotal.toLocaleString()}</span>
+              <span>${subtotal.toLocaleString()}</span>
             </div>
+            {tax > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">{taxSettings!.name} ({taxSettings!.rate}%)</span>
+                <span>${tax.toLocaleString()}</span>
+              </div>
+            )}
+            {taxSettings?.taxIncluded && taxSettings.rate > 0 && (
+              <p className="text-xs text-gray-400">{taxSettings.name} incluido en el precio</p>
+            )}
 
             {/* Envío */}
             {shippingSettings?.enableShipping && (
@@ -236,7 +253,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             <div className="flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
               <span>Total</span>
               <span style={{ color: primaryColor }}>
-                ${(subtotal + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)).toLocaleString()}
+                ${(subtotal + tax + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)).toLocaleString()}
               </span>
             </div>
             

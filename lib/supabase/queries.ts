@@ -1726,3 +1726,20 @@ export async function getWebsitePages(organizationId: number): Promise<WebsitePa
   if (error || !data) return []
   return data as WebsitePage[]
 }
+
+/**
+ * Obtiene el impuesto predeterminado de la organización (is_default=true, is_active=true)
+ */
+export async function getDefaultTax(organizationId: number): Promise<{ name: string; rate: number; taxIncluded: boolean } | null> {
+  const supabase = getSupabaseForPublicRead()
+  if (!supabase) return null
+  const { data } = await (supabase as any)
+    .from('organization_taxes')
+    .select('name, rate, tax_included')
+    .eq('organization_id', organizationId)
+    .eq('is_default', true)
+    .eq('is_active', true)
+    .single()
+  if (!data) return null
+  return { name: data.name, rate: Number(data.rate), taxIncluded: data.tax_included === true }
+}
