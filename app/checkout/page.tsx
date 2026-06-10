@@ -87,14 +87,30 @@ export default async function CheckoutPage() {
   ])
 
   // Impuesto: desde organization_taxes (fuente real)
-  const supabaseTax = createPublicClient()
-  const { data: defaultTax } = await (supabaseTax as any)
+  const supabaseTax = (createAdminClient() || createPublicClient()) as any
+  let defaultTax = null
+  // Primero buscar impuesto predeterminado
+  const { data: defaultTaxRow } = await supabaseTax
     .from('organization_taxes')
-    .select('name, rate')
+    .select('name, rate, tax_included')
     .eq('organization_id', organization.id)
     .eq('is_default', true)
     .eq('is_active', true)
     .single()
+  defaultTax = defaultTaxRow
+  // Fallback: si no hay predeterminado, buscar el impuesto activo con mayor tasa (tipo IVA)
+  if (!defaultTax) {
+    const { data: fallbackTax } = await supabaseTax
+      .from('organization_taxes')
+      .select('name, rate, tax_included')
+      .eq('organization_id', organization.id)
+      .eq('is_active', true)
+      .gt('rate', 0)
+      .order('rate', { ascending: false })
+      .limit(1)
+      .single()
+    defaultTax = fallbackTax
+  }
 
   // Shipping + delivery: desde tabla website_settings
   const supabaseWs = createAdminClient() || createPublicClient()
@@ -107,7 +123,7 @@ export default async function CheckoutPage() {
   const checkoutSettings = {
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
-    taxIncluded: wsRow?.tax_included || false,
+    taxIncluded: defaultTax?.tax_included ?? wsRow?.tax_included ?? false,
     shippingFlatRate: Number(wsRow?.shipping_flat_rate ?? 10000),
     freeShippingThreshold: Number(wsRow?.free_shipping_threshold ?? 100000),
     enableShipping: wsRow?.enable_shipping !== false,
