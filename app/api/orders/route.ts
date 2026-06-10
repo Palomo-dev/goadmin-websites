@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
     // ── B2: Obtener impuesto default de la org ──
     let taxRate = 0
     let taxName = 'IVA'
-    // Primero buscar impuesto predeterminado
     const { data: defaultTax } = await (supabase as any)
       .from('organization_taxes')
       .select('name, rate')
@@ -94,21 +93,6 @@ export async function POST(request: NextRequest) {
     if (defaultTax) {
       taxRate = Number(defaultTax.rate)
       taxName = defaultTax.name
-    } else {
-      // Fallback: impuesto activo con mayor tasa
-      const { data: fallbackTax } = await (supabase as any)
-        .from('organization_taxes')
-        .select('name, rate')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .gt('rate', 0)
-        .order('rate', { ascending: false })
-        .limit(1)
-        .single()
-      if (fallbackTax) {
-        taxRate = Number(fallbackTax.rate)
-        taxName = fallbackTax.name
-      }
     }
 
     // ── Buscar o crear customer ──

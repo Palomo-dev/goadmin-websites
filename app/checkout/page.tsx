@@ -86,31 +86,15 @@ export default async function CheckoutPage() {
     getGoogleAdsConfig(organization.id)
   ])
 
-  // Impuesto: desde organization_taxes (fuente real)
+  // Impuesto: solo si hay uno marcado como predeterminado
   const supabaseTax = (createAdminClient() || createPublicClient()) as any
-  let defaultTax = null
-  // Primero buscar impuesto predeterminado
-  const { data: defaultTaxRow } = await supabaseTax
+  const { data: defaultTax } = await supabaseTax
     .from('organization_taxes')
     .select('name, rate, tax_included')
     .eq('organization_id', organization.id)
     .eq('is_default', true)
     .eq('is_active', true)
     .single()
-  defaultTax = defaultTaxRow
-  // Fallback: si no hay predeterminado, buscar el impuesto activo con mayor tasa (tipo IVA)
-  if (!defaultTax) {
-    const { data: fallbackTax } = await supabaseTax
-      .from('organization_taxes')
-      .select('name, rate, tax_included')
-      .eq('organization_id', organization.id)
-      .eq('is_active', true)
-      .gt('rate', 0)
-      .order('rate', { ascending: false })
-      .limit(1)
-      .single()
-    defaultTax = fallbackTax
-  }
 
   // Shipping + delivery: desde tabla website_settings
   const supabaseWs = createAdminClient() || createPublicClient()
