@@ -85,14 +85,16 @@ export async function POST(request: NextRequest) {
     let taxName = 'IVA'
     const { data: defaultTax } = await (supabase as any)
       .from('organization_taxes')
-      .select('name, rate')
+      .select('name, rate, tax_included')
       .eq('organization_id', organizationId)
       .eq('is_default', true)
       .eq('is_active', true)
       .single()
+    let taxIncluded = false
     if (defaultTax) {
       taxRate = Number(defaultTax.rate)
       taxName = defaultTax.name
+      taxIncluded = defaultTax.tax_included === true
     }
 
     // ── Buscar o crear customer ──
@@ -163,7 +165,9 @@ export async function POST(request: NextRequest) {
     const resolvedCouponDiscount = Number(couponDiscount) || 0
     const resolvedPromoDiscount = Number(promoDiscount) || 0
     const totalDiscountAmount = resolvedCouponDiscount + resolvedPromoDiscount
-    const calculatedTotal = calculatedSubtotal + taxTotal + (shipping || 0) + resolvedTip - totalDiscountAmount
+    // Si el impuesto está incluido en el precio, no sumarlo al total
+    const taxForTotal = taxIncluded ? 0 : taxTotal
+    const calculatedTotal = calculatedSubtotal + taxForTotal + (shipping || 0) + resolvedTip - totalDiscountAmount
 
     // Generar order_number (será la referencia para Wompi)
     const orderNumber = generateOrderNumber(organizationId)
