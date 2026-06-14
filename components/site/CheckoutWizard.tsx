@@ -1301,7 +1301,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       </div>
 
       {/* Sticky bottom bar - solo en one-page */}
-      {isOnePage && items.length > 0 && (
+      {isOnePage && cartItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3">
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
@@ -1328,7 +1328,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       )}
 
       {/* Spacer para el sticky bar */}
-      {isOnePage && items.length > 0 && <div className="h-20" />}
+      {isOnePage && cartItems.length > 0 && <div className="h-20" />}
     </div>
   )
 }
