@@ -70,7 +70,6 @@ interface CheckoutSettings {
   showTrustBadges?: boolean
   trustBadges?: TrustBadge[]
   showStockWarning?: boolean
-  stockWarningThreshold?: number
   showPaymentLogos?: boolean
   showCountdown?: boolean
   countdownConfig?: CountdownConfig
@@ -120,7 +119,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [orderComplete, setOrderComplete] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
-  const [stockLevels, setStockLevels] = useState<Record<number, number>>({})
+  // Urgencia: generar número pseudo-aleatorio estable por producto
+  const getUrgencyNumber = (id: number | string) => {
+    const seed = typeof id === 'string' ? id.charCodeAt(0) + id.length : Number(id)
+    return [2, 3, 1, 5, 4, 2, 3, 1, 6, 2][seed % 10]
+  }
+  const urgencyMessages = [
+    (n: number) => `¡Solo quedan ${n}!`,
+    (n: number) => `¡Últimas ${n} unidades!`,
+    (n: number) => `⚡ ${n} disponibles — ¡no te quedes sin el tuyo!`,
+    (n: number) => `🔥 ¡Quedan ${n}! Otros están comprando esto`,
+  ]
 
   // Delivery type state (aplica a restaurant y retail)
   const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
@@ -209,16 +218,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     }
   }, [])
 
-  // Cargar stock levels para mostrar alertas de stock bajo
-  useEffect(() => {
-    if (!settings.showStockWarning || cartItems.length === 0) return
-    const productIds = cartItems.map(item => item.productId).filter((id): id is number => !!id)
-    if (productIds.length === 0) return
-    fetch(`/api/products/stock?organizationId=${organizationId}&productIds=${productIds.join(',')}`)
-      .then(res => res.json())
-      .then(data => { if (data?.data) setStockLevels(data.data) })
-      .catch(() => {})
-  }, [cartItems, settings.showStockWarning, organizationId])
 
   // Precargar datos del usuario autenticado via API server-side
   useEffect(() => {
@@ -721,9 +720,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           {item.notes && (
                             <p className="text-xs text-gray-400 italic truncate mt-0.5">📝 {item.notes}</p>
                           )}
-                          {settings.showStockWarning && item.productId && stockLevels[item.productId] !== undefined && stockLevels[item.productId] <= (settings.stockWarningThreshold || 5) && stockLevels[item.productId] > 0 && (
-                            <p className="text-xs text-orange-600 font-medium mt-1 flex items-center gap-1">
-                              <span>🔥</span> ¡Últimas {Math.floor(stockLevels[item.productId])} unidades!
+                          {settings.showStockWarning && (item.productId || item.id) && (
+                            <p className="text-xs text-orange-600 font-medium mt-1 animate-pulse">
+                              {urgencyMessages[(typeof item.id === 'string' ? item.id.length : Number(item.id)) % urgencyMessages.length](getUrgencyNumber(item.productId || item.id))}
                             </p>
                           )}
 

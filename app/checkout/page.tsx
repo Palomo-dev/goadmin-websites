@@ -119,7 +119,6 @@ export default async function CheckoutPage() {
     showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
     trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
     showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
-    stockWarningThreshold: Number(wsRow?.checkout_stock_warning_threshold ?? 5),
     showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
     showCountdown: wsRow?.checkout_show_countdown ?? false,
     countdownConfig: {
