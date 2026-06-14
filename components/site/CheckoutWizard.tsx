@@ -616,16 +616,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="mb-8">
-        <Link
-          href="/productos"
-          className="inline-flex items-center text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Seguir comprando
-        </Link>
-      </div>
-
       <p className="text-xs text-gray-300 uppercase tracking-widest mb-6">Checkout</p>
 
       {/* Countdown Banner en checkout */}
@@ -861,7 +851,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
                       placeholder="tu@email.com"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Aquí recibirás la confirmación de tu pedido</p>
                   </div>
 
                   <div>
@@ -873,7 +862,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value })}
                       placeholder="+57 300 123 4567"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Para contactarte sobre tu pedido o envío</p>
                   </div>
 
                   {/* Dirección: siempre para retail, solo para delivery en restaurante */}
