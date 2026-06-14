@@ -121,14 +121,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [paymentError, setPaymentError] = useState<string | null>(null)
   // Urgencia: generar número pseudo-aleatorio estable por producto
   const getUrgencyNumber = (id: number | string) => {
-    const seed = typeof id === 'string' ? id.charCodeAt(0) + id.length : Number(id)
-    return [2, 3, 1, 5, 4, 2, 3, 1, 6, 2][seed % 10]
+    const seed = typeof id === 'string' ? id.charCodeAt(0) * 7 + id.length : Number(id) * 13
+    return (seed % 20) + 1
   }
   const urgencyMessages = [
     (n: number) => `¡Solo quedan ${n}!`,
-    (n: number) => `¡Últimas ${n} unidades!`,
-    (n: number) => `⚡ ${n} disponibles — ¡no te quedes sin el tuyo!`,
-    (n: number) => `🔥 ¡Quedan ${n}! Otros están comprando esto`,
+    (n: number) => `¡Últimas ${n} unidades disponibles!`,
+    (n: number) => `⚡ Quedan ${n} — ¡no te quedes sin el tuyo!`,
+    (n: number) => `🔥 ¡Solo ${n}! Otros lo están comprando ahora`,
+    (n: number) => `⏰ ¡Apúrate! Solo quedan ${n} en stock`,
+    (n: number) => `🚀 ${n} disponibles — se agotan rápido`,
+    (n: number) => `❗ Casi agotado: quedan ${n}`,
+    (n: number) => `💨 ¡Últimas ${n}! Alta demanda`,
+    (n: number) => `🛒 ${n} personas lo tienen en su carrito`,
+    (n: number) => `📦 Stock limitado: ${n} restantes`,
   ]
 
   // Delivery type state (aplica a restaurant y retail)
