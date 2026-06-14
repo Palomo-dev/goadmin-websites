@@ -130,6 +130,27 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     notes: ''
   })
 
+  // Persistir customerData en localStorage
+  const customerStorageKey = `checkout_customer_${organizationSubdomain}`
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(customerStorageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        setCustomerData(prev => ({ ...prev, ...parsed }))
+      }
+    } catch {}
+  }, [customerStorageKey])
+
+  useEffect(() => {
+    if (customerData.firstName || customerData.email || customerData.phone) {
+      try {
+        const { notes, ...toSave } = customerData
+        localStorage.setItem(customerStorageKey, JSON.stringify(toSave))
+      } catch {}
+    }
+  }, [customerData, customerStorageKey])
+
   // Datos de usuario autenticado
   const [savedAddresses, setSavedAddresses] = useState<Array<{ id: number; label: string; address_line: string; city: string; state?: string; is_default?: boolean }>>([])
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -1100,7 +1121,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   <div className="border-t pt-3">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Código de cupón"
+                        placeholder="Código de cupón (opcional)"
                         value={couponCode}
                         onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null) }}
                         onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
