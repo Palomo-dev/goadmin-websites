@@ -611,15 +611,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="mb-8">
-        <Link
-          href="/productos"
-          className="inline-flex items-center text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Seguir comprando
-        </Link>
-      </div>
+      {!isOnePage && (
+        <div className="mb-8">
+          <Link
+            href="/productos"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Seguir comprando
+          </Link>
+        </div>
+      )}
 
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
 
@@ -1297,6 +1299,36 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           </Card>
         </div>
       </div>
+
+      {/* Sticky bottom bar - solo en one-page */}
+      {isOnePage && items.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3">
+          <div className="container mx-auto flex items-center justify-between gap-4">
+            <div className="text-sm text-gray-600">
+              Total: <span className="text-lg font-bold text-gray-900">${total.toLocaleString()}</span>
+            </div>
+            <Button
+              type="button"
+              className="px-8 h-11 font-semibold"
+              style={{ backgroundColor: primaryColor }}
+              onClick={() => handleSubmit()}
+              disabled={submitting || !canSubmitOnePage}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                `Pagar $${total.toLocaleString()}`
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Spacer para el sticky bar */}
+      {isOnePage && items.length > 0 && <div className="h-20" />}
     </div>
   )
 }
