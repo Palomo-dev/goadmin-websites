@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
+import { CountdownBanner } from '@/components/site/CountdownBanner'
 
 interface CartModifier {
   typeId: number
@@ -40,7 +41,23 @@ interface WebsitePaymentMethod {
   type: 'native' | 'gateway'
 }
 
+interface TrustBadge {
+  icon: string
+  text: string
+}
+
+interface CountdownConfig {
+  countdown_enabled?: boolean
+  countdown_mode?: 'custom' | 'daily_reset'
+  countdown_end_date?: string
+  countdown_timezone?: string
+  countdown_reset_hour?: number
+  countdown_title?: string
+  countdown_show_in_cart?: boolean
+}
+
 interface CheckoutSettings {
+  checkoutMode?: 'steps' | 'one_page'
   taxRate: number
   taxName: string
   taxIncluded: boolean
@@ -50,6 +67,13 @@ interface CheckoutSettings {
   availableDeliveryTypes?: string[]
   shippingTitle?: string
   shippingDescription?: string
+  showTrustBadges?: boolean
+  trustBadges?: TrustBadge[]
+  showStockWarning?: boolean
+  stockWarningThreshold?: number
+  showPaymentLogos?: boolean
+  showCountdown?: boolean
+  countdownConfig?: CountdownConfig
 }
 
 interface CheckoutWizardProps {
@@ -74,6 +98,7 @@ const METHOD_ICONS: Record<string, string> = {
 }
 
 const DEFAULT_SETTINGS: CheckoutSettings = {
+  checkoutMode: 'steps',
   taxRate: 0,
   taxName: 'IVA',
   taxIncluded: false,
@@ -87,12 +112,15 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
 
 export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
+  const isOnePage = settings.checkoutMode === 'one_page'
   const [step, setStep] = useState(1)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ cart: true, customer: true, payment: true })
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [orderComplete, setOrderComplete] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [stockLevels, setStockLevels] = useState<Record<number, number>>({})
 
   // Delivery type state (aplica a restaurant y retail)
   const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
@@ -180,6 +208,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       console.error('Error loading cart:', err)
     }
   }, [])
+
+  // Cargar stock levels para mostrar alertas de stock bajo
+  useEffect(() => {
+    if (!settings.showStockWarning || cartItems.length === 0) return
+    const productIds = cartItems.map(item => item.productId).filter((id): id is number => !!id)
+    if (productIds.length === 0) return
+    fetch(`/api/products/stock?organizationId=${organizationId}&productIds=${productIds.join(',')}`)
+      .then(res => res.json())
+      .then(data => { if (data?.data) setStockLevels(data.data) })
+      .catch(() => {})
+  }, [cartItems, settings.showStockWarning, organizationId])
 
   // Precargar datos del usuario autenticado via API server-side
   useEffect(() => {
@@ -562,6 +601,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     description: m.description || null,
   }))
 
+  const toggleSection = (key: string) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  // Validación para one-page: permitir submit solo si tiene datos requeridos
+  const canSubmitOnePage = customerData.firstName && customerData.email && customerData.phone &&
+    (isRestaurant && orderType !== 'delivery' ? true : !!customerData.address)
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="mb-8">
@@ -576,37 +623,57 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center mb-8">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                step >= s ? 'text-white' : 'bg-gray-200 text-gray-500'
-              }`}
-              style={step >= s ? { backgroundColor: primaryColor } : {}}
-            >
-              {step > s ? <Check className="h-5 w-5" /> : s}
-            </div>
-            {s < 3 && (
+      {/* Countdown Banner en checkout */}
+      {settings.showCountdown && settings.countdownConfig && (
+        <div className="mb-6">
+          <CountdownBanner
+            config={{ ...settings.countdownConfig, countdown_enabled: true }}
+            primaryColor={primaryColor}
+            variant="inline"
+          />
+        </div>
+      )}
+
+      {/* Progress Steps - solo en modo steps */}
+      {!isOnePage && (
+        <div className="flex items-center justify-center mb-8">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex items-center">
               <div
-                className={`w-20 h-1 mx-2 ${step > s ? '' : 'bg-gray-200'}`}
-                style={step > s ? { backgroundColor: primaryColor } : {}}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  step >= s ? 'text-white' : 'bg-gray-200 text-gray-500'
+                }`}
+                style={step >= s ? { backgroundColor: primaryColor } : {}}
+              >
+                {step > s ? <Check className="h-5 w-5" /> : s}
+              </div>
+              {s < 3 && (
+                <div
+                  className={`w-20 h-1 mx-2 ${step > s ? '' : 'bg-gray-200'}`}
+                  style={step > s ? { backgroundColor: primaryColor } : {}}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2">
           {/* STEP 1: Carrito */}
-          {step === 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tu Carrito</CardTitle>
+          {(isOnePage || step === 1) && (
+            <Card className={isOnePage ? 'mb-6' : ''}>
+              <CardHeader className={isOnePage ? 'cursor-pointer select-none' : ''} onClick={isOnePage ? () => toggleSection('cart') : undefined}>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {isOnePage && <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white" style={{ backgroundColor: primaryColor }}>1</span>}
+                    Tu Carrito
+                  </span>
+                  {isOnePage && <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${openSections.cart ? 'rotate-180' : ''}`} />}
+                </CardTitle>
               </CardHeader>
+              {(!isOnePage || openSections.cart) && (
               <CardContent>
                 <div className="space-y-4">
                   {cartItems.map((item) => (
@@ -651,6 +718,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           )}
                           {item.notes && (
                             <p className="text-xs text-gray-400 italic truncate mt-0.5">📝 {item.notes}</p>
+                          )}
+                          {settings.showStockWarning && item.productId && stockLevels[item.productId] !== undefined && stockLevels[item.productId] <= (settings.stockWarningThreshold || 5) && stockLevels[item.productId] > 0 && (
+                            <p className="text-xs text-orange-600 font-medium mt-1 flex items-center gap-1">
+                              <span>🔥</span> ¡Últimas {Math.floor(stockLevels[item.productId])} unidades!
+                            </p>
                           )}
 
                           <div className="flex items-center justify-between mt-2">
@@ -723,27 +795,35 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                 )}
 
-                <Button
-                  className="w-full mt-6"
-                  style={{ backgroundColor: primaryColor }}
-                  onClick={() => setStep(2)}
-                >
-                  Continuar
-                </Button>
+                {!isOnePage && (
+                  <Button
+                    className="w-full mt-6"
+                    style={{ backgroundColor: primaryColor }}
+                    onClick={() => setStep(2)}
+                  >
+                    Continuar
+                  </Button>
+                )}
               </CardContent>
+              )}
             </Card>
           )}
 
           {/* STEP 2: Datos del cliente */}
-          {step === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {isRestaurant
-                    ? (orderType === 'delivery' ? 'Datos de Entrega' : 'Tus Datos')
-                    : 'Datos de Envío'}
+          {(isOnePage || step === 2) && (
+            <Card className={isOnePage ? 'mb-6' : ''}>
+              <CardHeader className={isOnePage ? 'cursor-pointer select-none' : ''} onClick={isOnePage ? () => toggleSection('customer') : undefined}>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {isOnePage && <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white" style={{ backgroundColor: primaryColor }}>2</span>}
+                    {isRestaurant
+                      ? (orderType === 'delivery' ? 'Datos de Entrega' : 'Tus Datos')
+                      : 'Datos de Envío'}
+                  </span>
+                  {isOnePage && <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${openSections.customer ? 'rotate-180' : ''}`} />}
                 </CardTitle>
               </CardHeader>
+              {(!isOnePage || openSections.customer) && (
               <CardContent>
                 <form className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -939,34 +1019,44 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-4">
-                    <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                      Atrás
-                    </Button>
-                    <Button
-                      type="button"
-                      className="flex-1"
-                      style={{ backgroundColor: primaryColor }}
-                      onClick={() => setStep(3)}
-                      disabled={
-                        !customerData.firstName || !customerData.email || !customerData.phone ||
-                        (!isRestaurant || orderType === 'delivery' ? !customerData.address : false)
-                      }
-                    >
-                      Continuar
-                    </Button>
-                  </div>
+                  {!isOnePage && (
+                    <div className="flex gap-3 pt-4">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                        Atrás
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        style={{ backgroundColor: primaryColor }}
+                        onClick={() => setStep(3)}
+                        disabled={
+                          !customerData.firstName || !customerData.email || !customerData.phone ||
+                          (!isRestaurant || orderType === 'delivery' ? !customerData.address : false)
+                        }
+                      >
+                        Continuar
+                      </Button>
+                    </div>
+                  )}
                 </form>
               </CardContent>
+              )}
             </Card>
           )}
 
           {/* STEP 3: Método de pago */}
-          {step === 3 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Método de Pago</CardTitle>
+          {(isOnePage || step === 3) && (
+            <Card className={isOnePage ? 'mb-6' : ''}>
+              <CardHeader className={isOnePage ? 'cursor-pointer select-none' : ''} onClick={isOnePage ? () => toggleSection('payment') : undefined}>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {isOnePage && <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white" style={{ backgroundColor: primaryColor }}>3</span>}
+                    Método de Pago
+                  </span>
+                  {isOnePage && <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${openSections.payment ? 'rotate-180' : ''}`} />}
+                </CardTitle>
               </CardHeader>
+              {(!isOnePage || openSections.payment) && (
               <CardContent>
                 <div className="space-y-3">
                   {paymentOptions.map((method) => (
@@ -1001,16 +1091,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-6">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
-                    Atrás
-                  </Button>
+                {isOnePage ? (
                   <Button
                     type="button"
-                    className="flex-1"
+                    className="w-full mt-6"
                     style={{ backgroundColor: primaryColor }}
                     onClick={() => handleSubmit()}
-                    disabled={submitting}
+                    disabled={submitting || !canSubmitOnePage}
                   >
                     {submitting ? (
                       <>
@@ -1021,8 +1108,31 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       `Pagar $${total.toLocaleString()}`
                     )}
                   </Button>
-                </div>
+                ) : (
+                  <div className="flex gap-3 pt-6">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
+                      Atrás
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-1"
+                      style={{ backgroundColor: primaryColor }}
+                      onClick={() => handleSubmit()}
+                      disabled={submitting}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Procesando...
+                        </>
+                      ) : (
+                        `Pagar $${total.toLocaleString()}`
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
+              )}
             </Card>
           )}
         </div>
@@ -1155,6 +1265,32 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   <p className="text-xs text-green-600 text-center mt-2">
                     ¡Envío gratis por compras mayores a ${settings.freeShippingThreshold.toLocaleString()}!
                   </p>
+                )}
+
+                {/* Trust Badges */}
+                {settings.showTrustBadges && settings.trustBadges && settings.trustBadges.length > 0 && (
+                  <div className="border-t pt-3 mt-3 space-y-2">
+                    {settings.trustBadges.map((badge, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="text-sm">{badge.icon}</span>
+                        <span>{badge.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Payment Logos */}
+                {settings.showPaymentLogos && (
+                  <div className="border-t pt-3 mt-3">
+                    <p className="text-xs text-gray-400 mb-2">Métodos de pago aceptados</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-blue-700">VISA</span>
+                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-red-600">Mastercard</span>
+                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-blue-500">PSE</span>
+                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-green-600">Nequi</span>
+                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-gray-600">💵 Efectivo</span>
+                    </div>
+                  </div>
                 )}
               </div>
             </CardContent>

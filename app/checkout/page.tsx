@@ -1,11 +1,12 @@
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CheckoutWizard } from '@/components/site/CheckoutWizard'
 import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig } from '@/lib/supabase/queries'
+import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
+import MetaPixel from '@/components/site/MetaPixel'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,7 +80,7 @@ export default async function CheckoutPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor } = ctx
   const [paymentMethods, metaPixelId, googleAdsConfig] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
@@ -100,11 +101,12 @@ export default async function CheckoutPage() {
   const supabaseWs = createAdminClient() || createPublicClient()
   const { data: wsRow } = await (supabaseWs as any)
     .from('website_settings')
-    .select('available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description')
+    .select('checkout_mode, available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description, checkout_show_trust_badges, checkout_trust_badges, checkout_show_stock_warning, checkout_stock_warning_threshold, checkout_show_payment_logos, checkout_show_countdown, countdown_enabled, countdown_mode, countdown_end_date, countdown_timezone, countdown_reset_hour, countdown_title, countdown_show_in_cart')
     .eq('organization_id', organization.id)
     .single()
 
   const checkoutSettings = {
+    checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
     taxIncluded: defaultTax?.tax_included ?? wsRow?.tax_included ?? false,
@@ -114,29 +116,67 @@ export default async function CheckoutPage() {
     availableDeliveryTypes: wsRow?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
     shippingTitle: wsRow?.shipping_flat_rate_title || 'Envío',
     shippingDescription: wsRow?.shipping_flat_rate_description || '',
+    showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
+    trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
+    showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
+    stockWarningThreshold: Number(wsRow?.checkout_stock_warning_threshold ?? 5),
+    showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
+    showCountdown: wsRow?.checkout_show_countdown ?? false,
+    countdownConfig: {
+      countdown_enabled: wsRow?.countdown_enabled ?? false,
+      countdown_mode: wsRow?.countdown_mode || 'daily_reset',
+      countdown_end_date: wsRow?.countdown_end_date || '',
+      countdown_timezone: wsRow?.countdown_timezone || 'America/Bogota',
+      countdown_reset_hour: wsRow?.countdown_reset_hour ?? 0,
+      countdown_title: wsRow?.countdown_title || '',
+      countdown_show_in_cart: wsRow?.countdown_show_in_cart ?? false,
+    },
   }
 
+  const logoUrl = organization.logo_url
+  const orgName = organization.name
+
   return (
-    <OrganizationLayout
-      organization={organization}
-      template={template}
-      primaryColor={primaryColor}
-      headerNav={headerNav}
-      footerNav={footerNav}
-      metaPixelId={metaPixelId}
-      googleAdsConfig={googleAdsConfig}
-      taxSettings={defaultTax ? { name: defaultTax.name, rate: Number(defaultTax.rate), taxIncluded: defaultTax.tax_included === true } : null}
-    >
-      {/* Meta Pixel InitiateCheckout */}
-      {metaPixelId && <MetaPixelInitiateCheckout />}
-      <CheckoutWizard
-        organizationId={organization.id}
-        primaryColor={primaryColor}
-        paymentMethods={paymentMethods}
-        checkoutSettings={checkoutSettings}
-        isRestaurant={organization.type_id === 1}
-        organizationSubdomain={organization.subdomain || ''}
-      />
-    </OrganizationLayout>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Mini header: logo + volver */}
+      <header className="bg-white border-b py-3 px-4">
+        <div className="container mx-auto flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Seguir comprando
+          </a>
+          <div className="flex items-center gap-2">
+            {logoUrl && <img src={logoUrl} alt={orgName} className="h-8 w-auto" />}
+            {!logoUrl && <span className="font-semibold text-gray-900">{orgName}</span>}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Pago seguro
+          </div>
+        </div>
+      </header>
+
+      {/* Contenido */}
+      <main className="flex-grow">
+        {metaPixelId && <MetaPixelInitiateCheckout />}
+        <CheckoutWizard
+          organizationId={organization.id}
+          primaryColor={primaryColor}
+          paymentMethods={paymentMethods}
+          checkoutSettings={checkoutSettings}
+          isRestaurant={organization.type_id === 1}
+          organizationSubdomain={organization.subdomain || ''}
+        />
+      </main>
+
+      {/* Mini footer */}
+      <footer className="bg-white border-t py-4 text-center text-xs text-gray-400">
+        <p>&copy; {new Date().getFullYear()} {orgName}. Todos los derechos reservados.</p>
+      </footer>
+
+      {/* Tracking scripts */}
+      {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
+      {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
+    </div>
   )
 }
