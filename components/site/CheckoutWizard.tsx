@@ -616,19 +616,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   return (
     <div className="container mx-auto px-4 py-12">
-      {!isOnePage && (
-        <div className="mb-8">
-          <Link
-            href="/productos"
-            className="inline-flex items-center text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Seguir comprando
-          </Link>
-        </div>
-      )}
+      <div className="mb-8">
+        <Link
+          href="/productos"
+          className="inline-flex items-center text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Seguir comprando
+        </Link>
+      </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+      <p className="text-xs text-gray-300 uppercase tracking-widest mb-6">Checkout</p>
 
       {/* Countdown Banner en checkout */}
       {settings.showCountdown && settings.countdownConfig && (
@@ -835,7 +833,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 <form className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-400">*</span></label>
                       <Input
                         required
                         value={customerData.firstName}
@@ -844,7 +842,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Apellido <span className="text-red-400">*</span></label>
                       <Input
                         required
                         value={customerData.lastName}
@@ -855,7 +853,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-400">*</span></label>
                     <Input
                       type="email"
                       required
@@ -863,10 +861,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
                       placeholder="tu@email.com"
                     />
+                    <p className="text-xs text-gray-400 mt-1">Aquí recibirás la confirmación de tu pedido</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono <span className="text-red-400">*</span></label>
                     <Input
                       type="tel"
                       required
@@ -874,6 +873,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value })}
                       placeholder="+57 300 123 4567"
                     />
+                    <p className="text-xs text-gray-400 mt-1">Para contactarte sobre tu pedido o envío</p>
                   </div>
 
                   {/* Dirección: siempre para retail, solo para delivery en restaurante */}
@@ -912,7 +912,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       )}
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Dirección <span className="text-red-400">*</span></label>
                         <Input
                           required
                           value={customerData.address}
@@ -922,13 +922,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad <span className="text-red-400">*</span></label>
                         <Input
                           required
+                          list="cities-list"
                           value={customerData.city}
                           onChange={(e) => setCustomerData({ ...customerData, city: e.target.value })}
-                          placeholder="Medellín"
+                          placeholder="Escribe tu ciudad..."
+                          autoComplete="off"
                         />
+                        <datalist id="cities-list">
+                          {['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Cúcuta','Bucaramanga','Pereira','Santa Marta','Ibagué','Pasto','Manizales','Neiva','Villavicencio','Armenia','Valledupar','Montería','Sincelejo','Popayán','Tunja','Riohacha','Florencia','Quibdó','Yopal','Mocoa','Leticia','San Andrés','Arauca','Mitú','Puerto Carreño','Inírida','Envigado','Bello','Itagüí','Sabaneta','Rionegro','Soacha','Chía','Zipaquirá','Fusagasugá','Girardot','Tuluá','Palmira','Buenaventura','Barrancabermeja','Sogamoso','Duitama','Girón','Piedecuesta','Soledad','Malambo','Dosquebradas','Apartadó','Turbo','Lorica','Magangué','Aguachica','Ocaña','Pamplona','Tumaco','Ipiales','Cartago','Buga','Jamundí'].filter(c => !customerData.city || c.toLowerCase().includes(customerData.city.toLowerCase())).map(city => (
+                            <option key={city} value={city} />
+                          ))}
+                        </datalist>
                       </div>
 
                       {/* Botón guardar dirección para usuarios autenticados */}
@@ -1006,7 +1013,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notas <span className="text-gray-400 font-normal">(opcional)</span></label>
                     <Input
                       value={customerData.notes}
                       onChange={(e) => setCustomerData({ ...customerData, notes: e.target.value })}
