@@ -32,13 +32,18 @@ interface CartDrawerProps {
     taxIncluded: boolean
   } | null
   countdownConfig?: CountdownConfig
+  cartButtonConfig?: {
+    mode: 'dynamic' | 'fixed'
+    texts: string[]
+  }
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig, cartButtonConfig }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
-    const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
-    return options[Math.floor(Math.random() * options.length)]
+    const texts = cartButtonConfig?.texts?.length ? cartButtonConfig.texts : ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
+    if (cartButtonConfig?.mode === 'fixed') return texts[0]
+    return texts[Math.floor(Math.random() * texts.length)]
   })
   
   const cartKey = `cart_${organizationSubdomain}`

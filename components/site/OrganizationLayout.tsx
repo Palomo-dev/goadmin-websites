@@ -120,6 +120,10 @@ export function OrganizationLayout({
           }}
           taxSettings={taxSettings}
           countdownConfig={settings?.countdown_enabled ? settings : undefined}
+          cartButtonConfig={{
+            mode: settings?.cart_button_mode || 'dynamic',
+            texts: settings?.cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
+          }}
         />
       )}
       
