@@ -211,6 +211,35 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       if (savedCart) {
         setCartItems(JSON.parse(savedCart))
       }
+
+      // Fallback: leer carrito y datos del cliente desde query params (enviados por chat widget)
+      const urlParams = new URLSearchParams(window.location.search)
+      const cartParam = urlParams.get('cart')
+      const customerParam = urlParams.get('customer')
+      if (cartParam) {
+        try {
+          const cartFromUrl = JSON.parse(cartParam)
+          if (Array.isArray(cartFromUrl) && cartFromUrl.length > 0) {
+            setCartItems(cartFromUrl)
+            localStorage.setItem(`cart_${subdomain}`, JSON.stringify(cartFromUrl))
+          }
+        } catch {}
+      }
+      if (customerParam) {
+        try {
+          const customerFromUrl = JSON.parse(customerParam)
+          if (customerFromUrl && typeof customerFromUrl === 'object') {
+            setCustomerData(prev => ({ ...prev, ...customerFromUrl }))
+            localStorage.setItem(`checkout_customer_${subdomain}`, JSON.stringify(customerFromUrl))
+          }
+        } catch {}
+      }
+      // Limpiar query params de la URL sin recargar
+      if (cartParam || customerParam) {
+        const cleanUrl = window.location.pathname
+        window.history.replaceState({}, '', cleanUrl)
+      }
+
       // QR dine-in: leer mesa de localStorage
       if (isRestaurant) {
         const table = localStorage.getItem(`dine_in_table_${subdomain}`)
