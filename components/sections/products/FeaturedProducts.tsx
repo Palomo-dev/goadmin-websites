@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -45,10 +46,12 @@ interface FeaturedProductsProps {
   }
   primaryColor?: string
   data?: { products?: any[] }
-  organization?: { subdomain?: string }
+  organization?: { subdomain?: string; website_settings?: { show_buy_now_button?: boolean } }
 }
 
 export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsProps) {
+  const router = useRouter()
+  const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = data?.products || []
   const maxItems = content.max_items || 8
   const products = allProducts.slice(0, maxItems)
@@ -95,6 +98,11 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
     setTimeout(() => {
       setAddedToCart(prev => { const n = new Set(prev); n.delete(product.id); return n })
     }, 1500)
+  }
+
+  const buyNow = (product: any) => {
+    addToCart(product)
+    router.push('/checkout')
   }
 
   return (
@@ -196,15 +204,29 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                           <Button size="sm" className="w-full text-xs sm:text-sm" style={{ backgroundColor: primaryColor }}><Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Elegir</Button>
                         </Link>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={(e) => { e.preventDefault(); addToCart(product) }}
-                          className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                          disabled={price === null}
-                        >
-                          {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); addToCart(product) }}
+                            className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                            style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                            disabled={price === null}
+                          >
+                            {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
+                          </Button>
+                          {showBuyNow && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => { e.preventDefault(); buyNow(product) }}
+                              className="w-full text-xs sm:text-sm"
+                              style={{ borderColor: primaryColor, color: primaryColor }}
+                              disabled={price === null}
+                            >
+                              <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Comprar ahora
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
