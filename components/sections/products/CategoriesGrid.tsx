@@ -14,6 +14,7 @@ interface CategoriesGridProps {
     desktop_columns?: number
     desktop_rows?: number
     mobile_layout?: 'grid' | 'list' | 'carousel'
+    selected_category_ids?: number[]
   }
   primaryColor?: string
   data?: { categories?: any[] }
@@ -100,7 +101,13 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const mobileLayout = content.mobile_layout || 'grid'
   const isRound = shape === 'round'
   const allCategories = data?.categories || []
-  const categories = maxItems > 0 ? allCategories.slice(0, maxItems) : allCategories
+  const selectedIds = content.selected_category_ids || []
+  const filteredCategories = selectedIds.length > 0
+    ? selectedIds
+        .map((id: number) => allCategories.find((c: any) => c.id === id))
+        .filter(Boolean)
+    : allCategories
+  const categories = maxItems > 0 ? filteredCategories.slice(0, maxItems) : filteredCategories
 
   // Carousel refs (desktop y mobile)
   const scrollRef = useRef<HTMLDivElement>(null)
