@@ -16,12 +16,10 @@ interface HeroMinimalProps {
 }
 
 function getTitleFromPath(path: string, contentTitle?: string): string {
-  // Si hay un título personalizado que no es genérico, usarlo
-  if (contentTitle && contentTitle !== 'Productos' && contentTitle !== 'Título') {
-    return contentTitle
-  }
+  // Si hay un título configurado, usarlo directamente
+  if (contentTitle) return contentTitle
 
-  // Extraer el slug de la ruta
+  // Fallback basado en la ruta solo si no hay título configurado
   const slug = path.split('/')[1] || 'home'
 
   const titles: Record<string, string> = {
@@ -44,14 +42,14 @@ function getTitleFromPath(path: string, contentTitle?: string): string {
     'viajes': 'Viajes Disponibles',
   }
 
-  return titles[slug] || contentTitle || 'Bienvenido'
+  return titles[slug] || 'Bienvenido'
 }
 
 function getSubtitleFromPath(path: string, contentSubtitle?: string): string {
-  if (contentSubtitle && contentSubtitle !== 'Explora nuestro catálogo completo') {
-    return contentSubtitle
-  }
+  // Si hay un subtítulo configurado, usarlo directamente
+  if (contentSubtitle) return contentSubtitle
 
+  // Fallback basado en la ruta solo si no hay subtítulo configurado
   const slug = path.split('/')[1] || 'home'
 
   const subtitles: Record<string, string> = {
@@ -72,7 +70,7 @@ function getSubtitleFromPath(path: string, contentSubtitle?: string): string {
     'viajes': 'Encuentra tu próximo destino',
   }
 
-  return subtitles[slug] || contentSubtitle || ''
+  return subtitles[slug] || ''
 }
 
 export function HeroMinimal({ content, organization, primaryColor }: HeroMinimalProps) {
