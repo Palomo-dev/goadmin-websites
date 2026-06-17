@@ -1,6 +1,7 @@
 interface TestimonialItem {
   name: string
-  text: string
+  text?: string
+  content?: string
   rating?: number
   image_url?: string | null
 }
@@ -31,7 +32,7 @@ export function TestimonialsCarousel({ content, primaryColor }: TestimonialsCaro
                 ))}
               </div>
             )}
-            <p className="text-gray-600 dark:text-gray-300 mb-4 italic">&ldquo;{item.text}&rdquo;</p>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 italic">&ldquo;{item.text || item.content}&rdquo;</p>
             <div className="flex items-center gap-3">
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"

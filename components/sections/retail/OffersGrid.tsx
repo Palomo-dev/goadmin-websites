@@ -29,6 +29,7 @@ interface OffersGridProps {
   content: {
     title?: string
     subtitle?: string
+    selected_category_ids?: number[]
     offers?: Array<{
       title: string
       description?: string
@@ -58,17 +59,26 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
     products.forEach((p: any) => {
       if (p.category_id && p.categories?.name) catMap.set(p.category_id, p.categories.name)
     })
-    return Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
-  }, [products])
+    const allCats = Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
+    const selectedIds = content.selected_category_ids || []
+    if (selectedIds.length === 0) return allCats
+    return selectedIds
+      .map((id: number) => allCats.find((c) => c.id === id))
+      .filter(Boolean) as { id: number; name: string }[]
+  }, [products, content.selected_category_ids])
 
   const filteredProducts = useMemo(() => {
-    let result = selectedCategory ? products.filter((p: any) => p.category_id === selectedCategory) : [...products]
+    const selectedIds = content.selected_category_ids || []
+    const baseProducts = selectedIds.length > 0
+      ? products.filter((p: any) => selectedIds.includes(p.category_id))
+      : products
+    let result = selectedCategory ? baseProducts.filter((p: any) => p.category_id === selectedCategory) : [...baseProducts]
     if (sortBy === 'sales') result.sort((a: any, b: any) => (b.sales_count || 0) - (a.sales_count || 0))
     else if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
     else if (sortBy === 'price_asc') result.sort((a: any, b: any) => Number(a.product_prices?.[0]?.price || 0) - Number(b.product_prices?.[0]?.price || 0))
     else if (sortBy === 'price_desc') result.sort((a: any, b: any) => Number(b.product_prices?.[0]?.price || 0) - Number(a.product_prices?.[0]?.price || 0))
     return result
-  }, [products, selectedCategory, sortBy])
+  }, [products, selectedCategory, sortBy, content.selected_category_ids])
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)

@@ -369,7 +369,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
   const content = (section.content || {}) as Record<string, any>
 
   return (
-    <SectionWrapper settings={settings} primaryColor={primaryColor}>
+    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor}>
       <Component
         content={content}
         organization={organization}

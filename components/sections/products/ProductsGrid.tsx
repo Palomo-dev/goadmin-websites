@@ -43,6 +43,7 @@ interface ProductsGridProps {
     show_filters?: boolean
     show_search?: boolean
     show_categories?: boolean
+    selected_category_ids?: number[]
   }
   primaryColor?: string
   data?: { products?: any[]; categories?: any[] }
@@ -65,17 +66,28 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
   // Categorías únicas de los productos
   const availableCategories = useMemo(() => {
-    if (categories.length > 0) return categories
-    const catMap = new Map<number, string>()
-    products.forEach((p: any) => {
-      if (p.category_id && p.categories?.name) catMap.set(p.category_id, p.categories.name)
-    })
-    return Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
-  }, [products, categories])
+    const allCats = categories.length > 0
+      ? categories
+      : (() => {
+          const catMap = new Map<number, string>()
+          products.forEach((p: any) => {
+            if (p.category_id && p.categories?.name) catMap.set(p.category_id, p.categories.name)
+          })
+          return Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
+        })()
+    const selectedIds = content.selected_category_ids || []
+    if (selectedIds.length === 0) return allCats
+    return selectedIds
+      .map((id: number) => allCats.find((c: any) => c.id === id))
+      .filter(Boolean)
+  }, [products, categories, content.selected_category_ids])
 
   // Filtrar y ordenar
   const filteredProducts = useMemo(() => {
-    let result = [...products]
+    const selectedIds = content.selected_category_ids || []
+    let result = selectedIds.length > 0
+      ? products.filter((p: any) => selectedIds.includes(p.category_id))
+      : [...products]
     if (selectedCategory) result = result.filter((p: any) => p.category_id === selectedCategory)
     if (onlyOffers) result = result.filter((p: any) => {
       const cp = p.product_prices?.[0]?.compare_price
@@ -86,7 +98,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
     else if (sortBy === 'price_desc') result.sort((a: any, b: any) => (getPrice(b) ?? 0) - (getPrice(a) ?? 0))
     else if (sortBy === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
     return result
-  }, [products, selectedCategory, sortBy, onlyOffers])
+  }, [products, selectedCategory, sortBy, onlyOffers, content.selected_category_ids])
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)

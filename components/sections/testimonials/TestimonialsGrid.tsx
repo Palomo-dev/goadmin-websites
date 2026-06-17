@@ -21,7 +21,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6' }: Testimon
                   <span key={s} className="text-yellow-400">★</span>
                 ))}
               </div>
-              <p className="text-gray-600 dark:text-gray-300 flex-1 mb-4 italic">"{item.text}"</p>
+              <p className="text-gray-600 dark:text-gray-300 flex-1 mb-4 italic">"{item.text || item.content}"</p>
               <div className="flex items-center gap-3 pt-4 border-t dark:border-gray-700">
                 {item.avatar_url ? (
                   <img src={item.avatar_url} alt={item.name} className="w-10 h-10 rounded-full object-cover" />
