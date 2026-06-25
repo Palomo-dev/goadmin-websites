@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Star, ThumbsUp, Filter, ChevronDown, Send, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { seededRandom as sharedSeededRandom, getSessionSeed, getReviewStats } from '@/lib/review-utils'
 
 // Nombres colombianos para generar reviews fake
 const FIRST_NAMES = [
@@ -367,16 +368,14 @@ function seededRandom(seed: number): number {
 }
 
 function generateReviews(productId: number, count: number, targetAvg: number, sessionSeed: number) {
-  const reviews = []
-  const baseDate = new Date('2024-01-15')
-
   // Interpolación de distribución de ratings según targetAvg (4.4 a 4.9)
   const t = Math.max(0, Math.min(1, (targetAvg - 4.4) / 0.5))
   const pct5 = 0.60 + t * 0.32
   const pct4 = 0.30 - t * 0.24
   const pct3 = 0.07 - t * 0.055
   const pct2 = 0.02 - t * 0.017
-  // pct1 = resto
+  const reviews = []
+  const baseDate = new Date('2024-01-15')
 
   for (let i = 0; i < count; i++) {
     // Usar múltiples seeds con sessionSeed para variar en cada visita
@@ -460,19 +459,12 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
   const [submitted, setSubmitted] = useState(false)
   const ITEMS_PER_PAGE = 10
 
-  // Generar count base y targetAvg aleatorios por visita (sessionSeed cambia en cada mount)
-  const sessionSeed = useState(() => Math.floor(Math.random() * 100000))[0]
+  // Usar el mismo sessionSeed que ReviewSummaryBadge para sincronizar ratings
+  const sessionSeed = useMemo(() => getSessionSeed(productId), [productId])
   const { allReviews, displayCount, displayAvg } = useMemo(() => {
-    // Base count aleatorio por producto: 800-1600
-    const baseCount = 800 + Math.floor(seededRandom(productId + sessionSeed) * 800)
-    // Variación 80%-110% del base
-    const variation = 0.8 + seededRandom(sessionSeed * 3 + productId) * 0.3
-    const finalCount = Math.floor(baseCount * variation)
-    // Target avg entre 4.4 y 4.9
-    const targetAvg = 4.4 + seededRandom(sessionSeed * 5 + productId * 7) * 0.5
-    const reviews = generateReviews(productId, finalCount, targetAvg, sessionSeed)
-    const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0
-    return { allReviews: reviews, displayCount: finalCount, displayAvg: avg }
+    const stats = getReviewStats(productId, sessionSeed)
+    const reviews = generateReviews(productId, stats.totalReviews, stats.targetAvg, sessionSeed)
+    return { allReviews: reviews, displayCount: stats.totalReviews, displayAvg: stats.avgRating }
   }, [productId, sessionSeed])
 
   // Stats
