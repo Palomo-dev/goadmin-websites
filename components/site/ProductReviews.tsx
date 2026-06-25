@@ -12,7 +12,13 @@ const FIRST_NAMES = [
   'Sergio', 'Adriana', 'Miguel', 'Sandra', 'Javier', 'Lorena', 'Óscar', 'Tatiana', 'Ricardo', 'Isabel',
   'Gustavo', 'Lina', 'Mauricio', 'Claudia', 'César', 'Viviana', 'Rafael', 'Jennifer', 'Iván', 'Yuliana',
   'Hernán', 'Milena', 'Fabián', 'Gloria', 'Wilmer', 'Esperanza', 'Jhon', 'Leidy', 'Brayan', 'Karol',
-  'Estiven', 'Yesenia', 'Harold', 'Mariana', 'Robinson', 'Catalina', 'Yeison', 'Manuela', 'Edwin', 'Luisa'
+  'Estiven', 'Yesenia', 'Harold', 'Mariana', 'Robinson', 'Catalina', 'Yeison', 'Manuela', 'Edwin', 'Luisa',
+  'Andrea', 'Stefanía', 'Nelson', 'Claudia', 'Mario', 'Patricia', 'Gabriel', 'Lucía', 'Álvaro', 'Rosa',
+  'Édgar', 'Margarita', 'Augusto', 'Pilar', 'Héctor', 'Carmenza', 'Alfonso', 'Beatriz', 'Ramiro', 'Nancy',
+  'Orlando', 'Miriam', 'Francisco', 'Socorro', 'Jairo', 'Amparo', 'Rubén', 'Gladys', 'Armando', 'Consuelo',
+  'Eduardo', 'Doris', 'Alirio', 'Martha', 'Wilson', 'Eliana', 'Dairo', 'Adriana', 'Hugo', 'Tatiana',
+  'Néstor', 'Angélica', 'Gerardo', 'Liliana', 'René', 'Ximena', 'Omar', 'Daniela', 'Fredy', 'Carolina',
+  'Jesús', 'Mayerly', 'Alberto', 'Shirley', 'Roberto', 'Kelly', 'Enrique', 'Luz', 'Víctor', 'Nubia'
 ]
 
 const LAST_NAMES = [
@@ -20,12 +26,23 @@ const LAST_NAMES = [
   'Romero', 'Ruiz', 'Torres', 'Ramírez', 'Flores', 'Restrepo', 'Ospina', 'Vargas', 'Castaño', 'Giraldo',
   'Ríos', 'Mejía', 'Cardona', 'Sánchez', 'Pérez', 'Gómez', 'Jiménez', 'Castro', 'Ortiz', 'Valencia',
   'Zapata', 'Quintero', 'Duque', 'Parra', 'Henao', 'Marín', 'Bedoya', 'Arango', 'Cárdenas', 'Salazar',
-  'Gutiérrez', 'Montoya', 'Vélez', 'Londoño', 'Ochoa', 'Rojas', 'Medina', 'Suárez', 'Herrera', 'Pineda'
+  'Gutiérrez', 'Montoya', 'Vélez', 'Londoño', 'Ochoa', 'Rojas', 'Medina', 'Suárez', 'Herrera', 'Pineda',
+  'Acosta', 'Aguilar', 'Arenas', 'Blanco', 'Caballero', 'Calderón', 'Camargo', 'Cano', 'Carvajal', 'Contreras',
+  'Cortés', 'Cruz', 'Escobar', 'Espinoza', 'Figueroa', 'Fonseca', 'Fuentes', 'Gallego', 'Gil', 'Guerrero',
+  'Guzmán', 'Hoyos', 'Ibarra', 'Jaramillo', 'Lara', 'León', 'Lozano', 'Maldonado', 'Mendoza', 'Miranda',
+  'Molina', 'Morales', 'Navarro', 'Nieto', 'Obando', 'Páez', 'Patiño', 'Pava', 'Peláez', 'Pérez',
+  'Pulido', 'Ramos', 'Reyes', 'Rivera', 'Rodríguez', 'Salas', 'Sandoval', 'Silva', 'Solís', 'Soto',
+  'Tabares', 'Téllez', 'Triana', 'Uribe', 'Velásquez', 'Villa', 'Yate', 'Zambrano', 'Zuluaga', 'Bautista'
 ]
 
 const CITIES = [
   'Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga', 'Pereira', 'Manizales',
-  'Santa Marta', 'Ibagué', 'Villavicencio', 'Neiva', 'Armenia', 'Pasto', 'Montería', 'Cúcuta'
+  'Santa Marta', 'Ibagué', 'Villavicencio', 'Neiva', 'Armenia', 'Pasto', 'Montería', 'Cúcuta',
+  'Valledupar', 'Sincelejo', 'Popayán', 'Tunja', 'Riohacha', 'Florencia', 'Quibdó', 'Yopal',
+  'Mocoa', 'Leticia', 'San Andrés', 'Arauca', 'Envigado', 'Bello', 'Itagüí', 'Sabaneta',
+  'Rionegro', 'Soacha', 'Chía', 'Zipaquirá', 'Fusagasugá', 'Girardot', 'Tuluá', 'Palmira',
+  'Buenaventura', 'Barrancabermeja', 'Sogamoso', 'Duitama', 'Girón', 'Piedecuesta', 'Soledad',
+  'Malambo', 'Dosquebradas', 'Apartadó', 'Turbo', 'Lorica', 'Magangué', 'Aguachica', 'Ocaña'
 ]
 
 const POSITIVE_COMMENTS = [
@@ -95,6 +112,189 @@ const POSITIVE_COMMENTS = [
   'Muy buen producto, envío rápido y seguro.',
   'Lo recomiendo al 100%, excelente calidad.',
   'Perfecto, justo lo que necesitaba.',
+  'Súper recomendado, mis amigos también lo compraron.',
+  'Excelente producto, llegó rapidísimo a mi casa.',
+  'Muy buena calidad, super contenta con mi compra.',
+  'No me arrepiento, vale cada peso que pagué.',
+  'Llegó antes de lo esperado, excelente servicio.',
+  'El producto es incluso mejor de lo que se ve en la foto.',
+  'Compré dos y ambos perfectos, muy buena calidad.',
+  'Mi familia quedó encantada, todos quieren uno.',
+  'Es exactamente lo que estaba buscando, gracias.',
+  'La calidad es impresionante, se nota que es original.',
+  'Muy buen empaque, llegó en perfectas condiciones.',
+  'Lo recomiendo a todos, excelente relación calidad-precio.',
+  'Súper feliz con mi compra, definitivamente volveré.',
+  'El mejor producto que he comprado online, sin duda.',
+  'Funciona perfecto, lo uso a diario y sin problemas.',
+  'Me llegó rapidísimo y en perfecto estado, gracias.',
+  'Es de muy buena calidad, se siente duradero.',
+  'Compré para regalar y fue un éxito total.',
+  'Ya es la tercera vez que compro aquí, siempre excelente.',
+  'El producto superó todas mis expectativas, increíble.',
+  'Muy contento, la verdad me sorprendió lo bueno que es.',
+  'Llegó en tiempo récord, excelente atención.',
+  'Lo uso todos los días y sigue como nuevo, muy duradero.',
+  'Es justo como lo describen, sin engaños. Recomendado.',
+  'La mejor relación calidad-precio que he encontrado.',
+  'Súper práctico y de excelente calidad, lo amo.',
+  'Me encantó el diseño y la calidad es top.',
+  'Excelente, ya lo recomendé a todos mis conocidos.',
+  'Muy buena experiencia, el producto es tal cual se describe.',
+  'Quedé sorprendida con la calidad, super recomendado.',
+  'Llegó rápido, bien empacado y funciona perfecto.',
+  'Sin duda la mejor compra del año para mí.',
+  'El producto es hermoso y de muy buena calidad.',
+  'Muy satisfecha, llegó antes de lo prometido.',
+  'Es la segunda vez que lo compro y sigue siendo excelente.',
+  'Lo recomiendo totalmente, no se arrepentirán.',
+  'Calidad excelente, se nota el cuidado en cada detalle.',
+  'Mi mejor compra online hasta ahora, todo perfecto.',
+  'Increíble producto, funciona mejor de lo que esperaba.',
+  'Muy bien terminado, los materiales son de primera.',
+  'Llegó a tiempo y en perfectas condiciones, excelente.',
+  'Lo compré con dudas y me llevé una grata sorpresa.',
+  'Es justo lo que necesitaba, no puedo estar más feliz.',
+  'Superó mis expectativas, la calidad es impresionante.',
+  'Muy buena compra, ya quiero pedir otro color.',
+  'El servicio fue excelente y el producto increíble.',
+  'Lo amo, es perfecto para lo que lo necesitaba.',
+  'Muy contento, cumplió con todo lo prometido y más.',
+  'Es de excelente calidad, lo noto muy duradero.',
+  'Recomendadísimo, mis amigos ya lo quieren comprar también.',
+  'Llegó rapidísimo y funciona perfecto, 10/10.',
+  'La mejor inversión que he hecho, lo uso a diario.',
+  'Excelente producto, no tengo ninguna queja.',
+  'Muy feliz, es justo lo que se ve en las fotos.',
+  'Se nota que es de calidad, los materiales son excelentes.',
+  'Todo llegó perfecto, muy buena atención al cliente.',
+  'Es mejor de lo que esperaba, súper recomendado.',
+  'Compré para mi mamá y le fascinó, excelente regalo.',
+  'Muy buen producto, ya es mi tienda de confianza.',
+  'Increíble, la calidad supera al precio. Lo recomiendo.',
+  'Llegó en perfecto estado y antes de lo estimado. Top.',
+  'Es una maravilla, no sé cómo no lo compré antes.',
+  'Súper contento, funciona mejor que otros más caros.',
+  'La verdad me sorprendió, excelente relación calidad-precio.',
+  'Muy buena compra, sin duda volveré a pedir aquí.',
+  'Es perfecto, llegó rápido y en excelente estado.',
+  'Lo recomiendo al 1000%, superó mis expectativas.',
+  'Muy bien empacado, producto de excelente calidad.',
+  'Es la mejor compra que he hecho este año.',
+  'Increíble producto, vale cada centavo. Recomendado.',
+  'Llegó rapidísimo, todo en perfectas condiciones. Excelente.',
+  'Muy satisfecho con la calidad y el servicio. 5 estrellas.',
+  'Es justo lo que prometen, no me decepcionó nada.',
+  'Súper recomendado, ya lo compré dos veces y siempre bien.',
+  'Excelente, mi familia también quiere uno igual ahora.',
+  'Muy contenta, el producto es hermoso y funcional.',
+  'Lo uso constantemente y sigue perfecto. Muy duradero.',
+  'La calidad es excelente, se siente premium al tacto.',
+  'Todo perfecto, desde la compra hasta la entrega. Top.',
+  'Me fascinó, es mejor de lo que muestra la foto.',
+  'Súper práctico, llegó rápido y funciona de maravilla.',
+  'Excelente producto, lo recomiendo con los ojos cerrados.',
+  'Muy buena calidad, no pensé que fuera tan bueno por el precio.',
+  'Es justo lo que buscaba, llegó en tiempo récord. Gracias.',
+  'Increíble, la calidad me dejó sin palabras. Recomendado.',
+  'Todo llegó perfecto, muy contenta con mi compra.',
+  'Súper bien empacado, el producto es de primera calidad.',
+  'Lo recomiendo totalmente, es mejor que otros que probé.',
+  'Muy feliz, funciona perfecto y se ve hermoso. 10/10.',
+  'Excelente, ya es mi segunda compra y siempre todo bien.',
+  'La mejor compra online, sin duda volveré. Recomendado.',
+  'Súper contento, el producto es tal cual se describe. Top.',
+  'Muy buena inversión, la calidad es superior. Lo amo.',
+  'Llegó antes de lo esperado y en perfectas condiciones. Genial.',
+  'Es increíble, superó mis expectativas. 100% recomendado.',
+  'Muy satisfecho, el acabado es impecable. Vale la pena.',
+  'Súper recomendado, mis compañeros de trabajo también lo quieren.',
+  'Excelente producto, llegó rápido y funciona perfecto. Top.',
+  'Lo amo, es justo lo que necesitaba. Muy buena calidad.',
+  'Muy contenta, el servicio fue excelente. Volveré a comprar.',
+  'Es de lo mejor que he comprado, sin duda lo recomiendo.',
+  'Súper bien, la calidad es impresionante. 5 estrellas merecidas.',
+  'Increíble, llegó rapidísimo y funciona mejor de lo esperado.',
+  'Muy feliz con mi compra, es perfecto. Gracias por todo.',
+  'Excelente, todo tal cual se describe. Muy recomendado.',
+  'Lo recomiendo al 100%, es una compra que no te arrepentirás.',
+  'Súper contento, el producto es de altísima calidad. Top top.',
+  'Muy buena experiencia, el envío fue rapidísimo. Excelente.',
+  'Es mejor que los de marcas más caras. Súper recomendado.',
+  'Llegó en perfecto estado, muy bien empacado. 10/10.',
+  'Increíble calidad por ese precio, lo recomiendo totalmente.',
+  'Muy satisfecha, es justo lo que quería. Gracias.',
+  'Súper feliz, el producto es excelente y llegó rapidísimo.',
+  'Todo perfecto, no tengo ninguna queja. 5 estrellas.',
+  'Es una compra que vale cada peso. Muy recomendado.',
+  'Lo uso a diario y funciona perfecto. Súper duradero.',
+  'Muy contento, la calidad es muy superior a lo esperado.',
+  'Súper bien, ya lo recomendé a toda mi familia. Excelente.',
+  'Increíble, es mejor que el anterior que tenía. Lo amo.',
+  'Llegó rápido y en perfectas condiciones. Muy contento.',
+  'Muy buena compra, el producto es de primera. Recomendado.',
+  'Es justo lo que prometen, sin engaños. Muy bueno.',
+  'Súper recomendado, la calidad es excelente. 10/10.',
+  'Lo compré con dudas y me encantó. Sin arrepentimientos.',
+  'Muy feliz, funciona mejor de lo que esperaba. Top.',
+  'Excelente producto, el envío fue rapidísimo. Lo recomiendo.',
+  'Súper contenta, es hermoso y de muy buena calidad. Lo amo.',
+  'Todo llegó perfecto, muy buena atención. 5 estrellas.',
+  'Es la mejor compra que he hecho. Súper recomendado.',
+  'Muy bien, superó mis expectativas. Vale cada centavo.',
+  'Increíble, la calidad es top. Ya quiero comprar otro.',
+  'Súper feliz con mi compra, llegó antes de lo esperado. Top.',
+  'Lo recomiendo, es excelente y llegó en perfecto estado.',
+  'Muy contento, el producto es duradero y funciona genial.',
+  'Es mejor de lo que se ve en la foto. Súper recomendado.',
+  'Todo perfecto, desde el pedido hasta la entrega. 10/10.',
+  'Súper bien, la relación calidad-precio es increíble. Lo amo.',
+  'Muy satisfecha, es justo lo que necesitaba. Excelente.',
+  'Increíble producto, lo uso todos los días. Muy duradero.',
+  'Lo recomiendo al 100%, llegó rápido y funciona perfecto.',
+  'Súper contenta, la calidad supera al precio. 5 estrellas.',
+  'Muy buena experiencia, todo tal cual se describe. Top.',
+  'Es de excelente calidad, se nota que es original. Lo recomiendo.',
+  'Llegó en tiempo récord, muy bien empacado. Súper recomendado.',
+  'Todo bien, el producto es increíble. Muy feliz con mi compra.',
+  'Súper bueno, ya es mi segunda compra aquí. Siempre excelente.',
+  'Muy contento, es mejor que otros más caros. Lo recomiendo.',
+  'Es perfecto, justo lo que buscaba. 10/10 sin duda.',
+  'Súper recomendado, mis amigos ya lo compraron también. Top.',
+  'Muy feliz, el servicio fue excelente y el producto top. Lo amo.',
+  'Increíble, superó todas mis expectativas. 100% recomendado.',
+  'Lo uso constantemente y sigue como nuevo. Súper duradero.',
+  'Súper bien, llegó rapidísimo y en perfectas condiciones. Excelente.',
+  'Muy satisfecho, la calidad es impresionante. Vale la pena.',
+  'Es la mejor inversión del año. Súper recomendado. 5 estrellas.',
+  'Todo perfecto, no podría estar más feliz. Lo recomiendo totalmente.',
+  'Súper contenta, es hermoso y funcional. Muy buena calidad. Lo amo.',
+  'Muy bueno, cumplió con todo y más. Llegó antes de lo esperado. Top.',
+  'Es excelente, se nota el cuidado en cada detalle. 10/10.',
+  'Súper feliz, el producto es tal cual se ve. Muy recomendado.',
+  'Muy bien, la calidad es superior a otros que probé. Lo recomiendo.',
+  'Increíble, funciona mejor de lo que esperaba. Súper contento.',
+  'Lo recomiendo con los ojos cerrados, es excelente. 5 estrellas.',
+  'Súper bien, llegó rápido y funciona de maravilla. Muy feliz.',
+  'Muy contenta, es justo lo que quería. Excelente producto. Lo amo.',
+  'Todo llegó en perfecto estado, muy bien empacado. Súper recomendado.',
+  'Es mejor que marcas más reconocidas. Muy buena compra. 10/10.',
+  'Súper recomendado, la calidad es top. Ya quiero otro. Lo amo.',
+  'Muy satisfecha, el servicio fue excelente. Todo perfecto. 5 estrellas.',
+  'Increíble, es la mejor compra que he hecho. Súper contento. Top.',
+  'Lo uso a diario y sigue perfecto. Muy duradero. Lo recomiendo.',
+  'Súper bien, superó mis expectativas. Vale cada centavo. 10/10.',
+  'Muy feliz, llegó rapidísimo y en perfectas condiciones. Excelente.',
+  'Es justo lo que prometen, sin engaños. Súper recomendado. Lo amo.',
+  'Todo perfecto, la calidad es impresionante. 5 estrellas merecidas.',
+  'Súper contento, es mejor de lo que esperaba. Muy buena compra. Top.',
+  'Muy bien, el producto es de primera calidad. Lo recomiendo totalmente.',
+  'Increíble, la relación calidad-precio es excelente. 10/10. Lo amo.',
+  'Lo recomiendo al 1000%, es perfecto. Muy feliz con mi compra. Top.',
+  'Súper bien, llegó antes de lo esperado. Funciona genial. Excelente.',
+  'Muy satisfecha, es hermoso y duradero. 5 estrellas. Lo recomiendo.',
+  'Todo excelente, desde la compra hasta la entrega. Súper recomendado.',
+  'Es la mejor compra online que he hecho. Muy contento. 10/10. Lo amo.'
 ]
 
 const NEUTRAL_COMMENTS = [
@@ -166,17 +366,25 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x)
 }
 
-function generateReviews(productId: number, count: number = 1047) {
+function generateReviews(productId: number, count: number, targetAvg: number, sessionSeed: number) {
   const reviews = []
   const baseDate = new Date('2024-01-15')
 
+  // Interpolación de distribución de ratings según targetAvg (4.4 a 4.9)
+  const t = Math.max(0, Math.min(1, (targetAvg - 4.4) / 0.5))
+  const pct5 = 0.60 + t * 0.32
+  const pct4 = 0.30 - t * 0.24
+  const pct3 = 0.07 - t * 0.055
+  const pct2 = 0.02 - t * 0.017
+  // pct1 = resto
+
   for (let i = 0; i < count; i++) {
-    // Usar múltiples seeds para más aleatoriedad
-    const seed1 = productId * 10000 + i
-    const seed2 = productId * 5000 + i * 3
-    const seed3 = productId * 2000 + i * 7
-    const seed4 = productId * 1000 + i * 13
-    const seed5 = productId * 500 + i * 17
+    // Usar múltiples seeds con sessionSeed para variar en cada visita
+    const seed1 = productId * 10000 + i + sessionSeed * 7
+    const seed2 = productId * 5000 + i * 3 + sessionSeed * 13
+    const seed3 = productId * 2000 + i * 7 + sessionSeed * 17
+    const seed4 = productId * 1000 + i * 13 + sessionSeed * 23
+    const seed5 = productId * 500 + i * 17 + sessionSeed * 29
 
     const rand = seededRandom(seed1)
     const rand2 = seededRandom(seed2)
@@ -184,12 +392,13 @@ function generateReviews(productId: number, count: number = 1047) {
     const rand4 = seededRandom(seed4)
     const rand5 = seededRandom(seed5)
 
-    // Rating distribution: 76% 5stars, 20% 4stars, 3% 3stars, 1% 2-1stars (promedio ~4.7)
+    // Rating distribution dinámica según targetAvg
     let rating: number
-    if (rand < 0.76) rating = 5
-    else if (rand < 0.96) rating = 4
-    else if (rand < 0.99) rating = 3
-    else if (rand < 0.995) rating = 2
+    const roll = rand
+    if (roll < pct5) rating = 5
+    else if (roll < pct5 + pct4) rating = 4
+    else if (roll < pct5 + pct4 + pct3) rating = 3
+    else if (roll < pct5 + pct4 + pct3 + pct2) rating = 2
     else rating = 1
 
     // Usar combinación de valores aleatorios para más variedad en nombres y ciudades
@@ -251,11 +460,24 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
   const [submitted, setSubmitted] = useState(false)
   const ITEMS_PER_PAGE = 10
 
-  const allReviews = useMemo(() => generateReviews(productId), [productId])
+  // Generar count base y targetAvg aleatorios por visita (sessionSeed cambia en cada mount)
+  const sessionSeed = useState(() => Math.floor(Math.random() * 100000))[0]
+  const { allReviews, displayCount, displayAvg } = useMemo(() => {
+    // Base count aleatorio por producto: 800-1600
+    const baseCount = 800 + Math.floor(seededRandom(productId + sessionSeed) * 800)
+    // Variación 80%-110% del base
+    const variation = 0.8 + seededRandom(sessionSeed * 3 + productId) * 0.3
+    const finalCount = Math.floor(baseCount * variation)
+    // Target avg entre 4.4 y 4.9
+    const targetAvg = 4.4 + seededRandom(sessionSeed * 5 + productId * 7) * 0.5
+    const reviews = generateReviews(productId, finalCount, targetAvg, sessionSeed)
+    const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0
+    return { allReviews: reviews, displayCount: finalCount, displayAvg: avg }
+  }, [productId, sessionSeed])
 
   // Stats
-  const totalReviews = allReviews.length
-  const avgRating = (allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
+  const totalReviews = displayCount
+  const avgRating = displayAvg.toFixed(1)
   const ratingCounts = [5, 4, 3, 2, 1].map(r => ({
     rating: r,
     count: allReviews.filter(rev => rev.rating === r).length,
