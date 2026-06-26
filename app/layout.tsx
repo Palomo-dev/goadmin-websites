@@ -13,9 +13,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const identifier = customDomain || subdomain
 
   let faviconIcon: string | undefined
+  let orgName: string | undefined
   if (identifier) {
     const organization = await getOrganizationByHost(identifier)
     if (organization) {
+      orgName = organization.name || undefined
       const settings = organization.website_settings as any
       const faviconUrl = settings?.favicon_url || organization.logo_url
       if (faviconUrl) {
@@ -24,10 +26,12 @@ export async function generateMetadata(): Promise<Metadata> {
     }
   }
 
+  const defaultTitle = orgName || 'Sitio Web'
+
   return {
     title: {
-      default: 'Sitio Web | Powered by GO Admin',
-      template: '%s | GO Admin'
+      default: defaultTitle,
+      template: '%s'
     },
     description: 'Plataforma de sitios web para negocios',
     icons: faviconIcon ? {
@@ -35,14 +39,14 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: faviconIcon,
     } : undefined,
     openGraph: {
-      title: 'Sitio Web | GO Admin',
+      title: defaultTitle,
       description: 'Plataforma de sitios web para negocios',
       type: 'website',
       locale: 'es_ES',
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Sitio Web | GO Admin',
+      title: defaultTitle,
       description: 'Plataforma de sitios web para negocios',
     },
   }
