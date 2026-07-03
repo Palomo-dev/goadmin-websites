@@ -60,6 +60,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
   const logoHeight = settings?.logo_height || 48
   
   return (
+    <>
     <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md sticky top-0 z-50 shadow-sm dark:shadow-gray-800/30">
       <div className="container mx-auto px-4">
         {/* Top bar con información de contacto */}
@@ -173,6 +174,7 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
         </div>
         
       </div>
+    </header>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
@@ -274,6 +276,6 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
