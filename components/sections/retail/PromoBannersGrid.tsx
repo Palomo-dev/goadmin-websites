@@ -21,7 +21,7 @@ export function PromoBannersGrid({ content, primaryColor }: PromoBannersGridProp
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {banners.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -38,7 +38,7 @@ export function PromoBannersGrid({ content, primaryColor }: PromoBannersGridProp
                 <h3 className="text-2xl font-bold mb-2">{banner.title}</h3>
                 {banner.subtitle && <p className="mb-4 opacity-90">{banner.subtitle}</p>}
                 {banner.cta_text && banner.cta_url && (
-                  <Link href={banner.cta_url} className="inline-block px-5 py-2 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                  <Link href={banner.cta_url} className="inline-block px-5 py-2 bg-white dark:bg-gray-100 text-gray-900 rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-200 transition-colors">
                     {banner.cta_text}
                   </Link>
                 )}

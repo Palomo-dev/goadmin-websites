@@ -17,10 +17,10 @@ export function PartnersLogos({ content }: PartnersLogosProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
-        <p className="text-gray-600 text-center mb-8">{content.subtitle}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
       {items.length > 0 ? (
         <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
@@ -37,7 +37,7 @@ export function PartnersLogos({ content }: PartnersLogosProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-8 border-2 border-dashed rounded-lg">
+        <div className="text-center text-gray-400 py-8 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-3xl mb-2">🤝</p>
           <p>Aliados próximamente</p>
         </div>

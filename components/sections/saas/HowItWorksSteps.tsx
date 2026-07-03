@@ -17,7 +17,7 @@ export function HowItWorksSteps({ content, primaryColor }: HowItWorksStepsProps)
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-12">{content.subtitle}</p>
@@ -35,7 +35,7 @@ export function HowItWorksSteps({ content, primaryColor }: HowItWorksStepsProps)
               {i < steps.length - 1 && (
                 <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-gray-200 dark:bg-gray-700" />
               )}
-              <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+              <h3 className="font-bold text-lg mb-2 text-gray-900 dark:text-white">{step.title}</h3>
               {step.description && (
                 <p className="text-gray-500 dark:text-gray-400 text-sm">{step.description}</p>
               )}

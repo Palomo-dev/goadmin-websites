@@ -13,7 +13,7 @@ export function ParkingAvailabilitySummary({ content, primaryColor, data }: Park
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
@@ -27,9 +27,9 @@ export function ParkingAvailabilitySummary({ content, primaryColor, data }: Park
             const barColor = pct > 50 ? '#22C55E' : pct > 20 ? '#F59E0B' : '#EF4444'
 
             return (
-              <div key={zone.id || i} className="border dark:border-gray-700 rounded-xl p-5">
+              <div key={zone.id || i} className="border dark:border-gray-700 dark:bg-gray-800/50 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold">{zone.name}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{zone.name}</h3>
                   {zone.is_vip && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: primaryColor }}>VIP</span>
                   )}

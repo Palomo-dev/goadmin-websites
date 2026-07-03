@@ -72,7 +72,7 @@ export function OrganizationLayout({
   return (
     <CurrencyProvider>
     <div 
-      className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-950 text-white' : 'bg-white text-gray-900'}`}
+      className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
     >
       {/* Header específico según tipo */}

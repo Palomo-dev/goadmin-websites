@@ -18,12 +18,12 @@ export function TeamGrid({ content, primaryColor }: TeamGridProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {members.map((member, i) => (
           <div key={i} className="text-center">
-            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-4 bg-gray-100">
+            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-4 bg-gray-100 dark:bg-gray-700">
               {member.image_url ? (
                 <img src={member.image_url} alt={member.name} className="w-full h-full object-cover" />
               ) : (
@@ -35,7 +35,7 @@ export function TeamGrid({ content, primaryColor }: TeamGridProps) {
                 </div>
               )}
             </div>
-            <h3 className="font-semibold text-lg">{member.name}</h3>
+            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{member.name}</h3>
             {member.role && <p className="text-gray-500 dark:text-gray-400 text-sm">{member.role}</p>}
           </div>
         ))}

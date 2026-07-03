@@ -69,11 +69,18 @@ export function SectionWrapper({ settings, content, primaryColor, children }: Se
   const mb = mbMap[marginBottom] || ''
 
   const style: React.CSSProperties = {}
-  if (settings.bg_color) style.backgroundColor = settings.bg_color
-  if (settings.text_color) style.color = settings.text_color
+  if (settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
+  if (settings.text_color) (style as any)['--section-text'] = settings.text_color
+
+  const bgClass = settings.bg_color
+    ? 'bg-[var(--section-bg)] dark:bg-gray-900/40'
+    : ''
+  const textClass = settings.text_color
+    ? 'text-[var(--section-text)] dark:text-gray-100'
+    : ''
 
   return (
-    <section className={`w-full ${pt} ${pb} ${mt} ${mb}`} style={style}>
+    <section className={`w-full ${pt} ${pb} ${mt} ${mb} ${bgClass} ${textClass}`} style={style}>
       <div className={`container mx-auto ${px}`}>
         {children}
       </div>

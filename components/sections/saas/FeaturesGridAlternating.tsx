@@ -18,7 +18,7 @@ export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridA
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-12">{content.subtitle}</p>
@@ -32,7 +32,7 @@ export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridA
                   {item.icon}
                 </span>
               )}
-              <h3 className="text-xl font-bold mb-2">{item.label}</h3>
+              <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{item.label}</h3>
               {item.description && (
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
               )}

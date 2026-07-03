@@ -15,7 +15,7 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">{title}</h2>}
+      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{title}</h2>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="rounded-xl overflow-hidden min-h-[400px]">
           {fullAddress ? (
@@ -27,7 +27,7 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
               referrerPolicy="no-referrer-when-downgrade"
             />
           ) : (
-            <div className="w-full h-full min-h-[400px] bg-gray-100 flex items-center justify-center text-gray-400">
+            <div className="w-full h-full min-h-[400px] bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500">
               No hay dirección configurada
             </div>
           )}
@@ -35,13 +35,13 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
         <div className="flex flex-col justify-center">
           {fullAddress && (
             <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-2">Nuestra Ubicación</h3>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Nuestra Ubicación</h3>
               <p className="text-gray-600 dark:text-gray-300">{fullAddress}</p>
             </div>
           )}
           {content.directions && (
             <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-2">Indicaciones</h3>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Indicaciones</h3>
               <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: content.directions }} />
             </div>
           )}

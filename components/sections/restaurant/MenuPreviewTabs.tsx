@@ -38,7 +38,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
@@ -51,7 +51,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
             if (catProducts.length === 0) return null
             return (
               <div key={cat.id}>
-                <h3 className="text-xl font-semibold mb-4 border-b pb-2" style={{ borderColor: primaryColor }}>
+                <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-gray-900 dark:text-white dark:border-gray-600" style={{ borderColor: primaryColor }}>
                   {cat.name}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

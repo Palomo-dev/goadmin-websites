@@ -12,7 +12,7 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div>
         {content.title && (
-          <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: primaryColor }}>
+          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white" style={{ color: primaryColor }}>
             {content.title}
           </h2>
         )}
@@ -20,7 +20,7 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
           <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{content.text}</p>
         )}
       </div>
-      <div className="rounded-xl overflow-hidden bg-gray-100 aspect-[4/3]">
+      <div className="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-[4/3]">
         {content.image_url ? (
           <img src={content.image_url} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
         ) : (

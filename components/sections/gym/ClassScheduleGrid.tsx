@@ -15,7 +15,7 @@ export function ClassScheduleGrid({ content, primaryColor, data }: ClassSchedule
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
@@ -24,9 +24,9 @@ export function ClassScheduleGrid({ content, primaryColor, data }: ClassSchedule
         <div className="overflow-x-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {classes.map((cls: any, i: number) => (
-              <div key={cls.id || i} className="border dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
+              <div key={cls.id || i} className="border dark:border-gray-700 dark:bg-gray-800/50 rounded-xl p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-lg">{cls.title || cls.name}</h3>
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">{cls.title || cls.name}</h3>
                   {cls.difficulty_level && (
                     <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                       {cls.difficulty_level}

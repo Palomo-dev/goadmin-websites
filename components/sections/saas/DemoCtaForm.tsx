@@ -12,7 +12,7 @@ export function DemoCtaForm({ content, primaryColor }: DemoCtaFormProps) {
   return (
     <div className="text-center">
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 mb-8">{content.subtitle}</p>
@@ -20,11 +20,11 @@ export function DemoCtaForm({ content, primaryColor }: DemoCtaFormProps) {
       {content.show_form !== false ? (
         <form className="max-w-lg mx-auto space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" placeholder="Nombre" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
-            <input type="email" placeholder="Email corporativo" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
+            <input type="text" placeholder="Nombre" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
+            <input type="email" placeholder="Email corporativo" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
           </div>
-          <input type="text" placeholder="Empresa" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
-          <select className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none text-gray-500">
+          <input type="text" placeholder="Empresa" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
+          <select className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:bg-gray-800 focus:ring-2 focus:outline-none text-gray-500 dark:text-gray-400">
             <option value="">¿Cuántos empleados?</option>
             <option value="1-10">1-10</option>
             <option value="11-50">11-50</option>

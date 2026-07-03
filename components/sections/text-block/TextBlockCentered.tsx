@@ -11,7 +11,7 @@ export function TextBlockCentered({ content, primaryColor }: TextBlockCenteredPr
   return (
     <div className="max-w-3xl mx-auto text-center">
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-4">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.show_divider && (
         <div className="w-16 h-1 mx-auto mb-6 rounded" style={{ backgroundColor: primaryColor }} />

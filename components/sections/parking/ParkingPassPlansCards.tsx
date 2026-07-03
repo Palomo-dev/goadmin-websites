@@ -17,7 +17,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -27,15 +27,15 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
           {plans.map((plan: any, i: number) => (
             <div
               key={plan.id || i}
-              className={`rounded-2xl border-2 p-6 text-center transition-shadow hover:shadow-lg ${i === 1 ? 'scale-105 shadow-lg' : ''}`}
-              style={{ borderColor: i === 1 ? primaryColor : '#E5E7EB' }}
+              className={`rounded-2xl border-2 p-6 text-center transition-shadow hover:shadow-lg dark:bg-gray-800/50 dark:border-gray-600 ${i === 1 ? 'scale-105 shadow-lg' : ''}`}
+              style={{ borderColor: i === 1 ? primaryColor : undefined }}
             >
               {i === 1 && (
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-bold text-white mb-3" style={{ backgroundColor: primaryColor }}>
                   RECOMENDADO
                 </span>
               )}
-              <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
+              <h3 className="text-xl font-bold mb-1 text-gray-900 dark:text-white">{plan.name}</h3>
               {plan.duration_days && (
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.duration_days} días</p>
               )}
@@ -44,7 +44,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
                   ${plan.price != null ? Number(plan.price).toLocaleString() : '---'}
                 </span>
               </div>
-              <div className="space-y-2 text-sm text-left mb-6">
+              <div className="space-y-2 text-sm text-left mb-6 text-gray-700 dark:text-gray-300">
                 {plan.includes_car_wash && (
                   <p className="flex items-center gap-2"><span style={{ color: primaryColor }}>✓</span> Lavado incluido</p>
                 )}

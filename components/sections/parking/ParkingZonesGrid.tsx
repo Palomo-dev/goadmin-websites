@@ -13,7 +13,7 @@ export function ParkingZonesGrid({ content, primaryColor, data }: ParkingZonesGr
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -21,9 +21,9 @@ export function ParkingZonesGrid({ content, primaryColor, data }: ParkingZonesGr
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {zones.map((zone: any, i: number) => (
-            <div key={zone.id || i} className="rounded-xl border-2 p-6 hover:shadow-md transition-shadow" style={{ borderColor: zone.is_vip ? primaryColor : '#E5E7EB' }}>
+            <div key={zone.id || i} className="rounded-xl border-2 p-6 hover:shadow-md transition-shadow dark:bg-gray-800/50 dark:border-gray-600" style={{ borderColor: zone.is_vip ? primaryColor : undefined }}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-xl">{zone.name}</h3>
+                <h3 className="font-bold text-xl text-gray-900 dark:text-white">{zone.name}</h3>
                 {zone.is_vip && (
                   <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{ backgroundColor: primaryColor }}>VIP</span>
                 )}
@@ -31,7 +31,7 @@ export function ParkingZonesGrid({ content, primaryColor, data }: ParkingZonesGr
               {zone.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{zone.description}</p>}
               <div className="flex flex-wrap gap-2 mb-4">
                 {zone.is_covered && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">🏠 Cubierto</span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">🏠 Cubierto</span>
                 )}
                 {zone.capacity && (
                   <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">🅿️ {zone.capacity} espacios</span>

@@ -13,7 +13,7 @@ export function MapDefault({ content, organization }: MapDefaultProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl font-bold text-center mb-6">{content.title}</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {address ? (
         <div className="rounded-xl overflow-hidden border dark:border-gray-700" style={{ height: '400px' }}>

@@ -74,7 +74,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
                     cat.name?.charAt(0) || '?'
                   )}
                 </div>
-                <span className="text-sm font-medium text-center leading-tight">{cat.name}</span>
+                <span className="text-sm font-medium text-center leading-tight text-gray-900 dark:text-white">{cat.name}</span>
               </Link>
             ))}
           </div>

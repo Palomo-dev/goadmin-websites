@@ -36,7 +36,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
                   )}
                 </div>
               </div>
-              <h3 className="font-bold text-lg mb-1">{route.name}</h3>
+              <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white">{route.name}</h3>
               {route.origin_name && route.destination_name && (
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
                   {route.origin_name} → {route.destination_name}

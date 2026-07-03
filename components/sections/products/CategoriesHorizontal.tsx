@@ -43,7 +43,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
   return (
     <div>
       <div className="text-center mb-8">
-        {title && <h2 className="text-2xl md:text-3xl font-bold">{title}</h2>}
+        {title && <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{title}</h2>}
         {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {visibleCategories.length > 0 ? (
@@ -64,7 +64,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
                   isMobileCarousel ? 'flex-shrink-0 w-[160px] snap-start md:w-auto' : ''
                 }${isMobileList ? 'flex items-center gap-4 text-left md:block md:text-center' : ''}`}
               >
-                <div className={`${isMobileList ? 'w-14 h-14 shrink-0 md:w-full md:h-auto md:aspect-square md:max-w-[180px] md:mx-auto' : 'w-full aspect-square max-w-[180px] mx-auto'} rounded-full overflow-hidden bg-gray-100 mb-0 md:mb-3`}>
+                <div className={`${isMobileList ? 'w-14 h-14 shrink-0 md:w-full md:h-auto md:aspect-square md:max-w-[180px] md:mx-auto' : 'w-full aspect-square max-w-[180px] mx-auto'} rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 mb-0 md:mb-3`}>
                   {cat.image_url ? (
                     <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" loading="lazy" />
                   ) : (

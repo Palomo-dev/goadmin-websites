@@ -12,7 +12,7 @@ export function NewsletterSimple({ content, primaryColor }: NewsletterSimpleProp
   return (
     <div className="max-w-xl mx-auto text-center">
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 mb-6">{content.subtitle}</p>
@@ -21,7 +21,7 @@ export function NewsletterSimple({ content, primaryColor }: NewsletterSimpleProp
         <input
           type="email"
           placeholder="Tu email"
-          className="flex-1 px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none"
+          className="flex-1 px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none"
         />
         <button
           type="button"

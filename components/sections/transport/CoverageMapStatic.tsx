@@ -15,7 +15,7 @@ export function CoverageMapStatic({ content, primaryColor, data, organization }:
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
@@ -34,7 +34,7 @@ export function CoverageMapStatic({ content, primaryColor, data, organization }:
           </div>
         </div>
         <div>
-          <h3 className="font-bold text-lg mb-4">Paradas / Terminales</h3>
+          <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Paradas / Terminales</h3>
           {stops.length > 0 ? (
             <div className="space-y-3 max-h-[360px] overflow-y-auto">
               {stops.map((stop: any, i: number) => (
@@ -43,7 +43,7 @@ export function CoverageMapStatic({ content, primaryColor, data, organization }:
                     {i + 1}
                   </span>
                   <div>
-                    <p className="font-medium">{stop.name}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{stop.name}</p>
                     {stop.city && <p className="text-gray-500 dark:text-gray-400 text-sm">{stop.city}</p>}
                   </div>
                 </div>

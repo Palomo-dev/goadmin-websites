@@ -23,7 +23,7 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
   return (
     <section className="py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div className="flex gap-8 items-center justify-center overflow-hidden">
           {items.slice(offset, offset + 5).map((item: any, i: number) => (
             <div key={i} className="flex-shrink-0">

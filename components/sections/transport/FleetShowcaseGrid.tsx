@@ -13,7 +13,7 @@ export function FleetShowcaseGrid({ content, primaryColor, data }: FleetShowcase
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -25,10 +25,10 @@ export function FleetShowcaseGrid({ content, primaryColor, data }: FleetShowcase
               {v.image_url ? (
                 <img src={v.image_url} alt={`${v.brand} ${v.model}`} className="w-full h-48 object-cover" loading="lazy" />
               ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-5xl">🚌</div>
+                <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-5xl">🚌</div>
               )}
               <div className="p-4">
-                <h3 className="font-bold text-lg">{v.brand} {v.model}</h3>
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">{v.brand} {v.model}</h3>
                 {v.year && <p className="text-gray-500 dark:text-gray-400 text-sm">Año {v.year}</p>}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {v.passenger_capacity && (

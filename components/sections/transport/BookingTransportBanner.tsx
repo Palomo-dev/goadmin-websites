@@ -33,7 +33,7 @@ export function BookingTransportBanner({ content, primaryColor, organization }: 
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-green-50 transition-colors"
+            className="px-8 py-3 rounded-lg font-medium border-2 hover:bg-green-50 dark:hover:bg-gray-800 transition-colors"
             style={{ borderColor: '#25D366', color: '#25D366' }}
           >
             💬 WhatsApp

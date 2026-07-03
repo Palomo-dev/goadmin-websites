@@ -22,7 +22,7 @@ export function FaqTwoColumns({ content, primaryColor = '#3B82F6' }: FaqTwoColum
   return (
     <section className="py-16 px-4">
       <div className="max-w-5xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-12">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
           <div>{left.map(renderItem)}</div>
           <div>{right.map(renderItem)}</div>

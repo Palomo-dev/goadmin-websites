@@ -21,7 +21,7 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -33,7 +33,7 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               className="w-full flex items-center justify-between py-5 text-left"
             >
-              <span className="font-medium text-lg pr-4">{item.question}</span>
+              <span className="font-medium text-lg pr-4 text-gray-900 dark:text-white">{item.question}</span>
               <span
                 className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm transition-transform"
                 style={{ backgroundColor: primaryColor, transform: openIndex === i ? 'rotate(45deg)' : 'none' }}
