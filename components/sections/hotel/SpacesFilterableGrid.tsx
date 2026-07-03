@@ -159,7 +159,7 @@ export function SpacesFilterableGrid({
                 <span className="text-gray-400 text-xs uppercase tracking-wider block">Llegada</span>
                 <p className="font-semibold text-gray-900 dark:text-white">{fmtDate(urlCheckin)}</p>
               </div>
-              <span className="text-gray-300 hidden sm:block">→</span>
+              <span className="text-gray-300 dark:text-gray-600 hidden sm:block">→</span>
               <div>
                 <span className="text-gray-400 text-xs uppercase tracking-wider block">Salida</span>
                 <p className="font-semibold text-gray-900 dark:text-white">{fmtDate(urlCheckout)}</p>
@@ -365,7 +365,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
           </span>
         )}
         {capacity && (
-          <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-700 backdrop-blur-sm">
+          <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium bg-white/90 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 backdrop-blur-sm">
             👤 {capacity} máx
           </span>
         )}
@@ -395,7 +395,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
                 {svc.name}
               </span>
             ))}
-            {services.length > 5 && <span className="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-500">+{services.length - 5}</span>}
+            {services.length > 5 && <span className="px-2.5 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">+{services.length - 5}</span>}
           </div>
         )}
 
@@ -412,7 +412,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
                 </>
               ) : (
                 <p className="font-bold text-2xl" style={{ color: primaryColor }}>
-                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ noche</span>
+                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
                 </p>
               )}
             </div>
@@ -453,7 +453,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
           </span>
         )}
         {capacity && (
-          <span className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-700 backdrop-blur-sm">
+          <span className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium bg-white/90 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 backdrop-blur-sm">
             👤 {capacity} máx
           </span>
         )}
@@ -471,7 +471,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
                 {svc.name}
               </span>
             ))}
-            {services.length > 3 && <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500">+{services.length - 3}</span>}
+            {services.length > 3 && <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">+{services.length - 3}</span>}
           </div>
         )}
         {showPrices && baseRate > 0 && (
@@ -484,7 +484,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
                 </>
               ) : (
                 <p className="font-bold text-lg" style={{ color: primaryColor }}>
-                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ noche</span>
+                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
                 </p>
               )}
             </div>

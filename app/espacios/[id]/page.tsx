@@ -57,7 +57,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">🏠</p>
-            <h1 className="text-xl font-bold text-gray-800 mb-2">Espacio no encontrado</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Espacio no encontrado</h1>
             <Link href="/espacios" className="text-sm hover:underline" style={{ color: primaryColor }}>Ver todos los espacios</Link>
           </div>
         </div>
@@ -71,7 +71,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
-          <Link href="/espacios" className="inline-flex items-center text-gray-600 hover:text-gray-900">
+          <Link href="/espacios" className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver a espacios
           </Link>
@@ -104,7 +104,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
           {/* Columna derecha: Calendario + Formulario de reserva */}
           <div>
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Disponibilidad y precios</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Disponibilidad y precios</h3>
               <AvailabilityCalendar
                 organizationId={organization.id}
                 spaceId={space.id}

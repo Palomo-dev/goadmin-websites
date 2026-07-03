@@ -31,7 +31,7 @@ export function AmenitiesIcons({ content, primaryColor }: AmenitiesIconsProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 text-center">
         {items.map((item, i) => (
@@ -42,7 +42,7 @@ export function AmenitiesIcons({ content, primaryColor }: AmenitiesIconsProps) {
             >
               {ICON_MAP[item.icon] || '⭐'}
             </div>
-            <span className="font-medium text-sm">{item.label}</span>
+            <span className="font-medium text-sm text-gray-900 dark:text-white">{item.label}</span>
           </div>
         ))}
       </div>

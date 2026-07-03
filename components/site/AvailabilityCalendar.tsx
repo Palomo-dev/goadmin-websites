@@ -114,12 +114,12 @@ export function AvailabilityCalendar({ organizationId, spaceId, spaceTypeId, pri
   const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 shadow-sm p-4">
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" size="sm" onClick={handlePrevMonth}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h3 className="font-semibold text-gray-900 capitalize">{monthName}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{monthName}</h3>
         <Button variant="ghost" size="sm" onClick={handleNextMonth}>
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -134,7 +134,7 @@ export function AvailabilityCalendar({ organizationId, spaceId, spaceTypeId, pri
           {/* Encabezado días de la semana */}
           <div className="grid grid-cols-7 gap-1 mb-1">
             {WEEKDAYS.map(w => (
-              <div key={w} className="text-center text-xs font-medium text-gray-400 py-1">{w}</div>
+              <div key={w} className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 py-1">{w}</div>
             ))}
           </div>
 
@@ -160,29 +160,29 @@ export function AvailabilityCalendar({ organizationId, spaceId, spaceTypeId, pri
               const checkoutDay = isCheckout(dateStr)
 
               let bgClass = ''
-              let textClass = 'text-gray-400'
-              let priceColor = 'text-gray-300'
+              let textClass = 'text-gray-400 dark:text-gray-500'
+              let priceColor = 'text-gray-300 dark:text-gray-600'
               let cursor = 'cursor-default'
 
               if (past) {
-                bgClass = 'bg-gray-50'
-                textClass = 'text-gray-300'
+                bgClass = 'bg-gray-50 dark:bg-gray-900/50'
+                textClass = 'text-gray-300 dark:text-gray-600'
               } else if (blocked) {
-                bgClass = 'bg-red-50'
-                textClass = 'text-red-300 line-through'
-                priceColor = 'text-red-200'
+                bgClass = 'bg-red-50 dark:bg-red-900/20'
+                textClass = 'text-red-300 dark:text-red-600 line-through'
+                priceColor = 'text-red-200 dark:text-red-500'
               } else if (checkinDay || checkoutDay) {
                 bgClass = ''
                 textClass = 'text-white'
                 priceColor = 'text-white/80'
               } else if (inRange) {
                 bgClass = ''
-                textClass = 'text-gray-900'
-                priceColor = 'text-gray-500'
+                textClass = 'text-gray-900 dark:text-white'
+                priceColor = 'text-gray-500 dark:text-gray-400'
               } else if (available) {
-                bgClass = 'hover:bg-gray-50'
-                textClass = 'text-gray-900'
-                priceColor = hasSpecialRate ? 'text-orange-500' : 'text-gray-500'
+                bgClass = 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                textClass = 'text-gray-900 dark:text-white'
+                priceColor = hasSpecialRate ? 'text-orange-500' : 'text-gray-500 dark:text-gray-400'
                 cursor = 'cursor-pointer'
               }
 
@@ -211,22 +211,22 @@ export function AvailabilityCalendar({ organizationId, spaceId, spaceTypeId, pri
           </div>
 
           {/* Leyenda */}
-          <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400 justify-center">
+          <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400 dark:text-gray-500 justify-center">
             <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-gray-100 border" /> Pasado
+              <span className="w-2.5 h-2.5 rounded-sm bg-gray-100 dark:bg-gray-700 border dark:border-gray-600" /> Pasado
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `${primaryColor}30` }} /> Disponible
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" /> Bloqueado
+              <span className="w-2.5 h-2.5 rounded-sm bg-red-100 dark:bg-red-900/40 border border-red-200 dark:border-red-800" /> Bloqueado
             </span>
             <span className="flex items-center gap-1 text-orange-500 font-medium">* Tarifa especial</span>
           </div>
 
           {/* Selección */}
           {selectedCheckin && (
-            <div className="mt-3 text-center text-xs text-gray-500">
+            <div className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
               {selectedCheckout ? (
                 <span>
                   <strong style={{ color: primaryColor }}>{selectedCheckin}</strong> → <strong style={{ color: primaryColor }}>{selectedCheckout}</strong>

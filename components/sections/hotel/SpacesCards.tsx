@@ -15,7 +15,7 @@ export function SpacesCards({ content, primaryColor, data }: SpacesCardsProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>

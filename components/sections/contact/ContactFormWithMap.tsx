@@ -14,16 +14,16 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
   return (
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-3">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
         {subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{subtitle}</p>}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <form className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="Nombre" className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
-              <input type="email" placeholder="Email" className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
+              <input type="text" placeholder="Nombre" className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
+              <input type="email" placeholder="Email" className="px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
             </div>
-            <input type="tel" placeholder="Teléfono" className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none" />
-            <textarea rows={4} placeholder="Mensaje" className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent focus:ring-2 focus:outline-none resize-none" />
+            <input type="tel" placeholder="Teléfono" className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
+            <textarea rows={4} placeholder="Mensaje" className="w-full px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none resize-none" />
             <button type="button" className="px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
               Enviar mensaje
             </button>

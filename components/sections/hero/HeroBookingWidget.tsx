@@ -87,7 +87,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
           {/* Check-in */}
           <div>
             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-              <Calendar className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5 dark:text-gray-400" />
               Llegada
             </label>
             <input
@@ -95,7 +95,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
               value={checkin}
               min={today}
               onChange={(e) => handleCheckinChange(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark] text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
               style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
             />
             {checkin && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{fmtDate(checkin)}</p>}
@@ -104,7 +104,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
           {/* Check-out */}
           <div>
             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-              <Calendar className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5 dark:text-gray-400" />
               Salida
             </label>
             <input
@@ -112,7 +112,7 @@ export function HeroBookingWidget({ primaryColor }: HeroBookingWidgetProps) {
               value={checkout}
               min={minCheckout}
               onChange={(e) => { setCheckout(e.target.value); setError('') }}
-              className="w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark] text-sm font-medium focus:outline-none focus:ring-2 focus:border-transparent transition-shadow"
               style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
             />
             {checkout && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{fmtDate(checkout)}</p>}

@@ -12,7 +12,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6' }: Testim
   return (
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-12">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
         <div className="space-y-10">
           {items.map((item: any, i: number) => (
             <blockquote key={i} className="text-center">

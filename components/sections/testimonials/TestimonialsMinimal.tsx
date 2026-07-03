@@ -12,7 +12,7 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6' }: Testi
   return (
     <section className="py-16 px-4">
       <div className="max-w-3xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div className="space-y-6">
           {items.map((item: any, i: number) => (
             <div key={i} className="flex gap-4 items-start">

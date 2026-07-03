@@ -224,18 +224,18 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
   if (submitted) {
     return (
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="p-8 text-center">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${primaryColor}20` }}>
             <Check className="h-8 w-8" style={{ color: primaryColor }} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Reserva Recibida!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Reserva Recibida!</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Tu reservación para {spaceTypeName} del {formData.checkin} al {formData.checkout} ha sido registrada.
             {gateways.length === 0 && ' Te contactaremos para confirmar el pago.'}
           </p>
           {reservationId && (
-            <p className="text-sm text-gray-500 mb-6">ID: {reservationId.substring(0, 8).toUpperCase()}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">ID: {reservationId.substring(0, 8).toUpperCase()}</p>
           )}
           <div className="flex gap-3 justify-center">
             <Link href="/"><Button variant="outline">Ir al inicio</Button></Link>
@@ -258,10 +258,10 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
   const stepWidth = gateways.length > 0 ? `${(step / 3) * 100}%` : `${(step / 2) * 100}%`
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
-        <CardTitle>Reservar {spaceTypeName}</CardTitle>
-        <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+        <CardTitle className="text-gray-900 dark:text-white">Reservar {spaceTypeName}</CardTitle>
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-2">
           <span className={step >= 1 ? 'font-semibold' : ''} style={step >= 1 ? { color: primaryColor } : {}}>Fechas</span>
           <span>→</span>
           <span className={step >= 2 ? 'font-semibold' : ''} style={step >= 2 ? { color: primaryColor } : {}}>Datos</span>
@@ -272,7 +272,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
             </>
           )}
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
           <div className="h-2 rounded-full transition-all" style={{ backgroundColor: primaryColor, width: stepWidth }} />
         </div>
       </CardHeader>
@@ -282,33 +282,33 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Calendar className="h-4 w-4 mr-2" />Check-in
                 </label>
-                <Input type="date" required min={new Date().toISOString().split('T')[0]} value={formData.checkin} onChange={(e) => setFormData({ ...formData, checkin: e.target.value })} />
+                <Input type="date" required min={new Date().toISOString().split('T')[0]} value={formData.checkin} onChange={(e) => setFormData({ ...formData, checkin: e.target.value })} className="dark:[color-scheme:dark]" />
               </div>
               <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Calendar className="h-4 w-4 mr-2" />Check-out
                 </label>
-                <Input type="date" required min={formData.checkin || new Date().toISOString().split('T')[0]} value={formData.checkout} onChange={(e) => setFormData({ ...formData, checkout: e.target.value })} />
+                <Input type="date" required min={formData.checkin || new Date().toISOString().split('T')[0]} value={formData.checkout} onChange={(e) => setFormData({ ...formData, checkout: e.target.value })} className="dark:[color-scheme:dark]" />
               </div>
             </div>
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+              <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Users className="h-4 w-4 mr-2" />Huéspedes
               </label>
               <div className="flex items-center gap-4">
                 <Button type="button" variant="outline" size="sm" onClick={() => setFormData({ ...formData, guests: Math.max(1, formData.guests - 1) })}>-</Button>
                 <span className="text-xl font-semibold w-12 text-center">{formData.guests}</span>
                 <Button type="button" variant="outline" size="sm" onClick={() => setFormData({ ...formData, guests: Math.min(capacity, formData.guests + 1) })}>+</Button>
-                <span className="text-sm text-gray-500">máx. {capacity}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">máx. {capacity}</span>
               </div>
             </div>
 
             {/* Estado de carga */}
             {loadingCheck && (
-              <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Verificando disponibilidad y precios...
               </div>
@@ -316,7 +316,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
             {/* Error */}
             {error && (
-              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+              <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -324,7 +324,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
             {/* Sin disponibilidad */}
             {availability && !availability.available && (
-              <div className="flex items-start gap-2 text-sm text-orange-700 bg-orange-50 p-3 rounded-lg">
+              <div className="flex items-start gap-2 text-sm text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">Sin disponibilidad</p>
@@ -336,17 +336,17 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
             {/* Disponible + Pricing */}
             {availability?.available && pricing && (
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-green-600 font-medium">✓ {availability.spacesAvailable} disponible(s)</span>
-                  <span className="text-gray-500">{pricing.nights} noche(s)</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">✓ {availability.spacesAvailable} disponible(s)</span>
+                  <span className="text-gray-500 dark:text-gray-400">{pricing.nights} noche(s)</span>
                 </div>
 
                 {/* Desglose por noche si hay variación */}
                 {hasVariableRates && (
-                  <div className="border-t pt-2 space-y-1">
+                  <div className="border-t dark:border-gray-700 pt-2 space-y-1">
                     {pricing.priceBreakdown.map((n) => (
-                      <div key={n.date} className="flex justify-between text-xs text-gray-500">
+                      <div key={n.date} className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span>{n.date}</span>
                         <span>${n.price.toLocaleString()}{n.source === 'rate' ? ' *' : ''}</span>
                       </div>
@@ -354,13 +354,13 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
                   <span>Subtotal ({pricing.nights} noches)</span>
                   <span>${pricing.subtotal.toLocaleString()}</span>
                 </div>
 
                 {pricing.serviceCharges.map((sc, i) => (
-                  <div key={i} className="flex justify-between text-sm text-gray-500">
+                  <div key={i} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                     <span>{sc.name}</span>
                     <span>${sc.amount.toLocaleString()}</span>
                   </div>
@@ -368,11 +368,11 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
                 {/* Extras opcionales */}
                 {pricing.optionalExtras && pricing.optionalExtras.length > 0 && (
-                  <div className="border-t pt-2 space-y-2">
-                    <p className="text-xs font-medium text-gray-600">Extras opcionales:</p>
+                  <div className="border-t dark:border-gray-700 pt-2 space-y-2">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Extras opcionales:</p>
                     {pricing.optionalExtras.map((extra) => (
                       <label key={extra.id} className="flex items-center justify-between cursor-pointer group">
-                        <span className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                           <input
                             type="checkbox"
                             checked={selectedExtras.includes(extra.id)}
@@ -388,7 +388,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                           />
                           {extra.name}
                         </span>
-                        <span className="text-sm text-gray-500">+${extra.amount.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">+${extra.amount.toLocaleString()}</span>
                       </label>
                     ))}
                   </div>
@@ -397,7 +397,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                 {/* Extras seleccionados desglose */}
                 {pricing.selectedExtrasCharges && pricing.selectedExtrasCharges.length > 0 && (
                   pricing.selectedExtrasCharges.map((sc) => (
-                    <div key={sc.id} className="flex justify-between text-sm text-gray-500">
+                    <div key={sc.id} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                       <span>✓ {sc.name}</span>
                       <span>${sc.amount.toLocaleString()}</span>
                     </div>
@@ -405,19 +405,19 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                 )}
 
                 {pricing.taxAmount > 0 && (
-                  <div className="flex justify-between text-sm text-gray-500">
+                  <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                     <span>{pricing.taxName} ({pricing.taxRate}%)</span>
                     <span>${pricing.taxAmount.toLocaleString()}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
-                  <span>Total</span>
+                <div className="flex justify-between font-bold text-lg border-t dark:border-gray-700 pt-2">
+                  <span className="text-gray-900 dark:text-white">Total</span>
                   <span style={{ color: primaryColor }}>${pricing.total.toLocaleString()}</span>
                 </div>
 
                 {hasVariableRates && (
-                  <p className="text-xs text-gray-400">* Tarifa por temporada</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">* Tarifa por temporada</p>
                 )}
               </div>
             )}
@@ -431,27 +431,27 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
         {/* ── PASO 2: Datos del Huésped ── */}
         {step === 2 && (
           <div className="space-y-5">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 space-y-1">
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                 <p>📅 {formData.checkin} → {formData.checkout} ({pricing?.nights} noches)</p>
                 <p>👥 {formData.guests} huésped(es)</p>
                 <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${pricing?.total.toLocaleString()}</p>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre completo *</label>
               <Input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Tu nombre completo" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico *</label>
               <Input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="tu@email.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono *</label>
               <Input type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+57 300 123 4567" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionales</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas adicionales</label>
               <Input value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Solicitudes especiales..." />
             </div>
             <div className="flex gap-3">
@@ -476,8 +476,8 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
         {/* ── PASO 3: Selección de Pasarela + Pago ── */}
         {step === 3 && gateways.length > 0 && (
           <div className="space-y-5">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 space-y-1">
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                 <p>📅 {formData.checkin} → {formData.checkout}</p>
                 <p>👤 {formData.name} • {formData.email}</p>
                 <p className="font-bold text-lg" style={{ color: primaryColor }}>Total a pagar: ${pricing?.total.toLocaleString()}</p>
@@ -485,28 +485,28 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
             </div>
 
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
+              <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 <CreditCard className="h-4 w-4 mr-2" />Método de pago
               </label>
               <div className="space-y-2">
                 {gateways.map((gw) => (
                   <label key={gw.code} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                    formData.gateway === gw.code ? 'border-current' : 'border-gray-200 hover:border-gray-300'
+                    formData.gateway === gw.code ? 'border-current' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   }`} style={formData.gateway === gw.code ? { borderColor: primaryColor } : {}}>
                     <input type="radio" name="gateway" value={gw.code} checked={formData.gateway === gw.code}
                       onChange={(e) => setFormData({ ...formData, gateway: e.target.value })} className="sr-only" />
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.gateway === gw.code ? '' : 'border-gray-300'}`}
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.gateway === gw.code ? '' : 'border-gray-300 dark:border-gray-600'}`}
                       style={formData.gateway === gw.code ? { borderColor: primaryColor } : {}}>
                       {formData.gateway === gw.code && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />}
                     </div>
-                    <span className="text-sm font-medium">{gw.name}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{gw.name}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+              <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>

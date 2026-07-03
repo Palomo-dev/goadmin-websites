@@ -13,7 +13,7 @@ export function CtaBanner({ content, primaryColor }: CtaBannerProps) {
   return (
     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
       {content.title && (
-        <h2 className="text-xl md:text-2xl font-bold">{content.title}</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.cta_text && (
         <Link

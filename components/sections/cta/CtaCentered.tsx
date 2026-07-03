@@ -14,7 +14,7 @@ export function CtaCentered({ content, primaryColor }: CtaCenteredProps) {
   return (
     <div className="text-center max-w-2xl mx-auto">
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-4">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-lg opacity-90 mb-8">{content.subtitle}</p>

@@ -37,13 +37,13 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
   }
   
   return (
-    <section id="contacto" className="py-20 bg-gray-50">
+    <section id="contacto" className="py-20 bg-gray-50 dark:bg-gray-900/50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Contáctanos
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Estamos aquí para ayudarte. Envíanos un mensaje y te responderemos a la brevedad.
           </p>
         </div>
@@ -51,7 +51,7 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
           {/* Información de contacto */}
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
               Información de Contacto
             </h3>
             
@@ -65,8 +65,8 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <MapPin className="h-5 w-5" style={{ color: primaryColor }} />
                   </div>
                   <div className="ml-4">
-                    <h4 className="font-medium text-gray-900">Dirección</h4>
-                    <p className="text-gray-600">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Dirección</h4>
+                    <p className="text-gray-600 dark:text-gray-300">
                       {organization.address}
                       {organization.city && <>, {organization.city}</>}
                       {organization.state && <>, {organization.state}</>}
@@ -84,10 +84,10 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <Phone className="h-5 w-5" style={{ color: primaryColor }} />
                   </div>
                   <div className="ml-4">
-                    <h4 className="font-medium text-gray-900">Teléfono</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white">Teléfono</h4>
                     <a 
                       href={`tel:${organization.phone}`}
-                      className="text-gray-600 hover:underline"
+                      className="text-gray-600 dark:text-gray-300 hover:underline"
                     >
                       {organization.phone}
                     </a>
@@ -104,10 +104,10 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <Mail className="h-5 w-5" style={{ color: primaryColor }} />
                   </div>
                   <div className="ml-4">
-                    <h4 className="font-medium text-gray-900">Email</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white">Email</h4>
                     <a 
                       href={`mailto:${organization.email}`}
-                      className="text-gray-600 hover:underline"
+                      className="text-gray-600 dark:text-gray-300 hover:underline"
                     >
                       {organization.email}
                     </a>
@@ -119,15 +119,15 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
             {/* Mapa placeholder */}
             {settings?.show_map !== false && organization.address && (
               <div className="mt-8">
-                <div className="aspect-video bg-gray-200 rounded-xl flex items-center justify-center">
-                  <span className="text-gray-400">📍 Mapa</span>
+                <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                  <span className="text-gray-400 dark:text-gray-500">📍 Mapa</span>
                 </div>
               </div>
             )}
           </div>
           
           {/* Formulario de contacto */}
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-6">
               {submitted ? (
                 <div className="text-center py-8">
@@ -137,10 +137,10 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                   >
                     <span className="text-3xl">✓</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                     ¡Mensaje Enviado!
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-gray-300">
                     Gracias por contactarnos. Te responderemos pronto.
                   </p>
                   <Button
@@ -154,7 +154,7 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Nombre
                     </label>
                     <Input
@@ -166,7 +166,7 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Email
                     </label>
                     <Input
@@ -179,7 +179,7 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Teléfono (opcional)
                     </label>
                     <Input
@@ -191,7 +191,7 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Mensaje
                     </label>
                     <Textarea

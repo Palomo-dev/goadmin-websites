@@ -14,7 +14,7 @@ export function ServicesListCards({ content, primaryColor, data }: ServicesListC
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -23,10 +23,10 @@ export function ServicesListCards({ content, primaryColor, data }: ServicesListC
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service: any, i: number) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-lg mb-2" style={{ color: primaryColor }}>{service.name}</h3>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white" style={{ color: primaryColor }}>{service.name}</h3>
               {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{service.description}</p>}
               {service.price && (
-                <p className="font-bold text-lg">${service.price.toLocaleString()}</p>
+                <p className="font-bold text-lg text-gray-900 dark:text-white">${service.price.toLocaleString()}</p>
               )}
             </div>
           ))}

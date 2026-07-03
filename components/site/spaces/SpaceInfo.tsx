@@ -25,11 +25,11 @@ export function SpaceInfo({ label, floorZone, description, spaceType, primaryCol
             {st.name}
           </span>
         )}
-        <h1 className="text-3xl font-bold text-gray-900">{label}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{label}</h1>
       </div>
 
       {/* Meta: zona, capacidad, área */}
-      <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-6">
+      <div className="flex flex-wrap items-center gap-4 text-gray-600 dark:text-gray-300 mb-6">
         {floorZone && (
           <div className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4" />
@@ -53,18 +53,18 @@ export function SpaceInfo({ label, floorZone, description, spaceType, primaryCol
       {/* Descripción */}
       {description && (
         <div className="mb-6">
-          <h3 className="font-semibold text-gray-900 mb-2">Descripción</h3>
-          <p className="text-gray-600 leading-relaxed">{description}</p>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Descripción</h3>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{description}</p>
         </div>
       )}
 
       {/* Precio */}
       {st?.base_rate && (
         <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: `${primaryColor}08` }}>
-          <span className="text-sm text-gray-500">Precio desde</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Precio desde</span>
           <p className="text-3xl font-bold" style={{ color: primaryColor }}>
             ${Number(st.base_rate).toLocaleString()}
-            <span className="text-base font-normal text-gray-500"> / noche</span>
+            <span className="text-base font-normal text-gray-500 dark:text-gray-400"> / noche</span>
           </p>
         </div>
       )}

@@ -14,7 +14,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{title}</h2>}
+      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
       {subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{subtitle}</p>}
       {services.length > 0 ? (
         <div className="max-w-3xl mx-auto space-y-4">
@@ -22,7 +22,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
             <div key={i} className="flex items-start gap-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
               <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }} />
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-lg">{service.name}</h3>
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{service.name}</h3>
                 {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
               </div>
               {service.price && (

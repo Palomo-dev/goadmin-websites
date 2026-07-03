@@ -43,17 +43,17 @@ export function ProductImageGallery({ images, productName, primaryColor }: Produ
           <>
             <button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 active:scale-95 transition-all"
               aria-label="Imagen anterior"
             >
-              <ChevronLeft className="h-6 w-6 text-gray-800" />
+              <ChevronLeft className="h-6 w-6 text-gray-800 dark:text-white" />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 active:scale-95 transition-all"
               aria-label="Imagen siguiente"
             >
-              <ChevronRight className="h-6 w-6 text-gray-800" />
+              <ChevronRight className="h-6 w-6 text-gray-800 dark:text-white" />
             </button>
             {/* Indicador de posición */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
