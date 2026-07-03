@@ -122,7 +122,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
 
   return (
     <div className="max-w-md mx-auto">
-      <Card className="dark:border-gray-700 dark:shadow-xl">
+      <Card className="dark:bg-gray-900 dark:border-gray-700">
         <CardHeader className="text-center">
           {logoUrl ? (
             <img src={logoUrl} alt={organizationName} className="h-16 w-auto mx-auto mb-4" />
