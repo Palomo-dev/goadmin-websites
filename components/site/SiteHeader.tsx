@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe } from 'lucide-react'
+import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
@@ -283,25 +283,58 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
 
 function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
+  const [open, setOpen] = useState(false)
 
   if (loading || availableCurrencies.length <= 1) return null
 
+  const current = availableCurrencies.find(c => c.code === currency)
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {availableCurrencies.map(c => (
-        <button
-          key={c.code}
-          onClick={() => setCurrency(c.code)}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-            c.code === currency
-              ? 'text-white border-transparent'
-              : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-          style={c.code === currency && primaryColor ? { backgroundColor: primaryColor } : undefined}
-        >
-          {c.code}
-        </button>
-      ))}
-    </div>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-gray-400" />
+          {current ? `${current.code} — ${current.country}` : currency}
+        </span>
+        <ChevronDown className="h-4 w-4 text-gray-400" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white dark:bg-gray-900 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar moneda</h3>
+              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {availableCurrencies.map(c => (
+                <button
+                  key={c.code}
+                  onClick={() => { setCurrency(c.code); setOpen(false) }}
+                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    c.code === currency
+                      ? 'font-semibold'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  style={c.code === currency && primaryColor ? { color: primaryColor, backgroundColor: `${primaryColor}10` } : undefined}
+                >
+                  <span>{c.code}</span>
+                  <span className="text-xs text-gray-400">{c.country}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
