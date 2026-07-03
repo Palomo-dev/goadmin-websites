@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search } from 'lucide-react'
+import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
@@ -149,11 +149,9 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
             )}
           </div>
           
-          {/* Mobile Actions: Search + Cart + Login + Menu */}
+          {/* Mobile Actions: Search + Cart + Menu */}
           <div className="flex md:hidden items-center gap-1">
             <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
-
-            <CurrencySelector primaryColor={primaryColor} />
             
             {showHeaderCart && (
               <CartIndicator
@@ -163,85 +161,119 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
                 organizationSubdomain={organization.subdomain || ''}
               />
             )}
-
-            {showHeaderAuth && (
-              isLoggedIn ? (
-                <Link href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
-                  <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
-                </Link>
-              ) : (
-                <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                </Link>
-              )
-            )}
             
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen(true)}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Abrir menú"
             >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-              ) : (
-                <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-              )}
+              <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
         </div>
         
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-800">
-            <nav className="flex flex-col space-y-4">
+      </div>
+
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Drawer panel */}
+          <div className="absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+              <span className="font-bold text-gray-900 dark:text-white">Menú</span>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Cerrar menú"
+              >
+                <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+
+            {/* Navigation links */}
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
               {navItems.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                  className="block px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.name}
                 </a>
               ))}
-              {showHeaderAuth && (
-                isLoggedIn ? (
-                  <>
-                    <Link
-                      href="/mi-cuenta"
-                      className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
-                      Mi Cuenta
-                    </Link>
-                    <button
-                      onClick={async () => {
-                        const supabase = createClient()
-                        await supabase.auth.signOut()
-                        setMobileMenuOpen(false)
-                        window.location.href = '/'
-                      }}
-                      className="flex items-center gap-2 text-red-500 hover:text-red-700 font-medium"
-                    >
-                      <LogOut className="h-5 w-5" />
-                      Cerrar sesión
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    href="/auth"
-                    className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <User className="h-5 w-5" />
-                    Iniciar sesión
-                  </Link>
-                )
+
+              {isLoggedIn && showHeaderAuth && (
+                <Link
+                  href="/mi-cuenta"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
+                  Mi Cuenta
+                </Link>
               )}
             </nav>
+
+            {/* Currency selector */}
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
+                <Globe className="h-4 w-4" />
+                <span>Moneda</span>
+              </div>
+              <CurrencySelector primaryColor={primaryColor} />
+            </div>
+
+            {/* Auth buttons */}
+            {showHeaderAuth && (
+              <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                {isLoggedIn ? (
+                  <button
+                    onClick={async () => {
+                      const supabase = createClient()
+                      await supabase.auth.signOut()
+                      setMobileMenuOpen(false)
+                      window.location.href = '/'
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Cerrar sesión
+                  </button>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth"
+                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: primaryColor }}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Iniciar sesión
+                    </Link>
+                    <Link
+                      href="/auth?tab=register"
+                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
+                      style={{ 
+                        borderColor: primaryColor, 
+                        color: primaryColor 
+                      }}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Registrarse
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </header>
   )
 }
