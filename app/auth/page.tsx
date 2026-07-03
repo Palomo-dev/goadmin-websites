@@ -31,7 +31,7 @@ export default async function AuthPage() {
     >
       <main className="container mx-auto px-4 py-12">
         <div className="mb-8">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900">
+          <Link href="/" className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver al inicio
           </Link>

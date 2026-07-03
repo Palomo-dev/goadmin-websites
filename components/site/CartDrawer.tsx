@@ -109,7 +109,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-900 z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          <h2 className="text-lg font-bold flex items-center gap-2">
+          <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
             <ShoppingBag className="w-5 h-5" style={{ color: primaryColor }} />
             Tu Carrito
             {items.length > 0 && (
@@ -125,7 +125,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
         </div>
         
@@ -133,9 +133,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
             <div className="text-center py-12">
-              <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 mb-4">Tu carrito está vacío</p>
-              <Button onClick={onClose} variant="outline">
+              <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400 mb-4">Tu carrito está vacío</p>
+              <Button onClick={onClose} variant="outline" className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800">
                 Continuar Comprando
               </Button>
             </div>
@@ -189,7 +189,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                       
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
