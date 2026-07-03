@@ -9,6 +9,7 @@ import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import { type NavItem, type TemplateConfig } from '@/lib/templates'
 import { CartIndicator } from './CartIndicator'
 import { ProductSearch } from './ProductSearch'
+import { CurrencySelector } from './CurrencySelector'
 import { createClient } from '@/lib/supabase/client'
 
 interface SiteHeaderProps {
@@ -123,6 +124,8 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           {/* Actions: Search, Cart, Login */}
           <div className="hidden md:flex items-center space-x-4">
             <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
+
+            <CurrencySelector primaryColor={primaryColor} />
             
             {showHeaderCart && (
               <CartIndicator
@@ -149,6 +152,8 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
           {/* Mobile Actions: Search + Cart + Login + Menu */}
           <div className="flex md:hidden items-center gap-1">
             <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
+
+            <CurrencySelector primaryColor={primaryColor} />
             
             {showHeaderCart && (
               <CartIndicator

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
+import { Price } from './CurrencyProvider'
 
 interface CartItem {
   id: number
@@ -164,11 +165,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                     )}
                     <div className="flex items-center gap-2">
                       {item.comparePrice && item.comparePrice > item.price && (
-                        <span className="text-xs text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>
+                        <Price value={Number(item.comparePrice)} className="text-xs text-gray-400 line-through" />
                       )}
-                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                        ${Number(item.price).toLocaleString()}
-                      </p>
+                      <Price value={Number(item.price)} className="text-sm font-bold" style={{ color: primaryColor }} />
                     </div>
                     
                     <div className="flex items-center justify-between mt-2">
@@ -207,12 +206,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           <div className="border-t dark:border-gray-700 p-4 space-y-4">
             <div className="flex items-center justify-between text-sm text-gray-900 dark:text-white">
               <span>Subtotal</span>
-              <span>${subtotal.toLocaleString()}</span>
+              <Price value={subtotal} />
             </div>
             {tax > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">{taxSettings!.name} ({taxSettings!.rate}%)</span>
-                <span>${tax.toLocaleString()}</span>
+                <Price value={tax} />
               </div>
             )}
             {taxSettings?.taxIncluded && taxSettings.rate > 0 && (
@@ -227,17 +226,13 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                         <span>¡Te faltan</span>
-                        <span className="font-bold" style={{ color: primaryColor }}>
-                          ${(shippingSettings.freeShippingThreshold - subtotal).toLocaleString()}
-                        </span>
+                        <Price value={shippingSettings.freeShippingThreshold - subtotal} className="font-bold" style={{ color: primaryColor }} />
                         <span>para envío gratis!</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Envío</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        ${shippingSettings.shippingFlatRate.toLocaleString()}
-                      </span>
+                      <Price value={shippingSettings.shippingFlatRate} className="font-medium text-gray-900 dark:text-white" />
                     </div>
                   </>
                 ) : (
@@ -257,9 +252,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             {/* Total */}
             <div className="flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
               <span>Total</span>
-              <span style={{ color: primaryColor }}>
-                ${(subtotal + tax + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)).toLocaleString()}
-              </span>
+              <Price value={subtotal + tax + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)} style={{ color: primaryColor }} />
             </div>
             
             <Link href="/checkout" onClick={onClose}>

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Price } from '@/components/site/CurrencyProvider'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -257,12 +258,10 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                   <div className="flex flex-col gap-2 mt-1">
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       {comparePrice && price !== null && comparePrice > price && (
-                        <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                        <Price value={comparePrice} className="text-xs sm:text-sm text-gray-400 line-through" />
                       )}
                       {price !== null && (
-                        <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>
-                          ${price.toLocaleString()}
-                        </span>
+                        <Price value={price} className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }} />
                       )}
                     </div>
                     {outOfStock && !isParent ? (

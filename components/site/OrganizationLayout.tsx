@@ -10,6 +10,7 @@ import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
 import CustomScripts from './CustomScripts'
 import { ChatWidget } from './ChatWidget'
+import { CurrencyProvider } from './CurrencyProvider'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
@@ -69,6 +70,7 @@ export function OrganizationLayout({
   } as React.CSSProperties
   
   return (
+    <CurrencyProvider>
     <div 
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-950 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
@@ -149,5 +151,6 @@ export function OrganizationLayout({
         <ChatWidget publicKey={settings.chat_widget_public_key} />
       )}
     </div>
+    </CurrencyProvider>
   )
 }

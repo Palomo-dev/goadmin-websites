@@ -17,6 +17,7 @@ import { getProductVariants } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { Price } from '@/components/site/CurrencyProvider'
 
 export const dynamic = 'force-dynamic'
 
@@ -198,14 +199,13 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
               {price && (
                 <div className="flex items-baseline gap-3">
                   {comparePrice && comparePrice > Number(price.price) && (
-                    <span className="text-xl text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                    <Price value={comparePrice} className="text-xl text-gray-400 line-through" />
                   )}
-                  <span 
+                  <Price 
+                    value={Number(price.price)}
                     className="text-4xl font-bold"
                     style={{ color: primaryColor }}
-                  >
-                    ${Number(price.price).toLocaleString()}
-                  </span>
+                  />
                   {comparePrice && comparePrice > Number(price.price) && (
                     <span className="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
                       -{Math.round((1 - Number(price.price) / comparePrice) * 100)}%
