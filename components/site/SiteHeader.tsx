@@ -10,6 +10,7 @@ import { type NavItem, type TemplateConfig } from '@/lib/templates'
 import { CartIndicator } from './CartIndicator'
 import { ProductSearch } from './ProductSearch'
 import { CurrencySelector } from './CurrencySelector'
+import { useCurrency } from './CurrencyProvider'
 import { createClient } from '@/lib/supabase/client'
 
 interface SiteHeaderProps {
@@ -223,13 +224,13 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
               )}
             </nav>
 
-            {/* Currency selector */}
+            {/* Currency selector - lista horizontal de chips para movil */}
             <div className="p-4 border-t border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
                 <Globe className="h-4 w-4" />
                 <span>Moneda</span>
               </div>
-              <CurrencySelector primaryColor={primaryColor} />
+              <MobileCurrencyChips primaryColor={primaryColor} />
             </div>
 
             {/* Auth buttons */}
@@ -277,5 +278,30 @@ export function SiteHeader({ organization, primaryColor, template, onCartClick, 
         </div>
       )}
     </>
+  )
+}
+
+function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
+  const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
+
+  if (loading || availableCurrencies.length <= 1) return null
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {availableCurrencies.map(c => (
+        <button
+          key={c.code}
+          onClick={() => setCurrency(c.code)}
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+            c.code === currency
+              ? 'text-white border-transparent'
+              : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}
+          style={c.code === currency && primaryColor ? { backgroundColor: primaryColor } : undefined}
+        >
+          {c.code}
+        </button>
+      ))}
+    </div>
   )
 }
