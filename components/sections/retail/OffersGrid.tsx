@@ -120,13 +120,13 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
       {manualOffers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           {manualOffers.map((offer, i) => (
-            <div key={i} className="rounded-xl overflow-hidden border dark:border-gray-700 hover:shadow-lg transition-shadow">
+            <div key={i} className="rounded-xl overflow-hidden border dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
               {offer.image_url && <img src={offer.image_url} alt={offer.title} className="w-full h-48 object-cover" loading="lazy" />}
               <div className="p-5">
                 {offer.discount && (
                   <span className="inline-block px-3 py-1 rounded-full text-sm font-bold text-white mb-3" style={{ backgroundColor: primaryColor }}>{offer.discount}</span>
                 )}
-                <h3 className="font-bold text-lg mb-1">{offer.title}</h3>
+                <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white">{offer.title}</h3>
                 {offer.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{offer.description}</p>}
                 {offer.cta_text && offer.cta_url && (
                   <Link href={offer.cta_url} className="text-sm font-medium hover:underline" style={{ color: primaryColor }}>{offer.cta_text} →</Link>

@@ -12,7 +12,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6' }: Testimon
   return (
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-12">{title}</h2>}
+        {title && <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item: any, i: number) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 flex flex-col">
@@ -31,7 +31,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6' }: Testimon
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold text-sm">{item.name}</p>
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white">{item.name}</p>
                   {item.role && <p className="text-xs text-gray-500 dark:text-gray-400">{item.role}</p>}
                 </div>
               </div>

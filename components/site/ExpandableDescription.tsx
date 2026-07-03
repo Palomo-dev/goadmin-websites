@@ -13,7 +13,7 @@ export function ExpandableDescription({ text, maxLength = 200 }: ExpandableDescr
 
   return (
     <div>
-      <p className="text-gray-600 leading-relaxed">
+      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
         {shouldTruncate && !expanded ? `${text.slice(0, maxLength)}...` : text}
       </p>
       {shouldTruncate && (

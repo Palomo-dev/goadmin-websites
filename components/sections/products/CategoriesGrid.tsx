@@ -34,7 +34,7 @@ function CategoryCard({ cat, isRound, showCount, primaryColor }: {
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`block group relative overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow ${
+      className={`block group relative overflow-hidden bg-gray-100 dark:bg-gray-800 hover:shadow-lg transition-shadow ${
         isRound ? 'rounded-full aspect-square' : 'rounded-xl aspect-[4/3]'
       }`}
     >
@@ -85,7 +85,7 @@ function MobileListCard({ cat, isRound, showCount, primaryColor }: {
       <div>
         <h3 className="font-semibold text-gray-800 dark:text-gray-200">{cat.name}</h3>
         {showCount && cat.product_count != null && (
-          <span className="text-sm text-gray-500">{cat.product_count} productos</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{cat.product_count} productos</span>
         )}
       </div>
     </Link>
@@ -190,7 +190,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
