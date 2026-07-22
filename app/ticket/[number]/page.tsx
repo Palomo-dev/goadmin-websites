@@ -48,13 +48,13 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   if (!ctx) return <NotFoundPage />
 
   const { number } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const ticket = await getTicketByNumber(number)
 
   if (!ticket) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">🎫</p>
@@ -75,7 +75,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const alighting = ticket.alightingStop
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-6">
           <Link href="/viajes" className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm">

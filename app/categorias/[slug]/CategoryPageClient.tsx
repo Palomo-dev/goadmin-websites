@@ -33,6 +33,7 @@ interface Product {
   is_parent?: boolean
   has_variants?: boolean
   variant_count?: number
+  track_stock?: boolean
   sales_count?: number
   product_prices?: { price: number; compare_price?: number | null; currency_code?: string }[]
   product_images?: ProductImage[]
@@ -73,6 +74,7 @@ function getProductImageUrl(product: Product): string | null {
 }
 
 function getAvailableStock(product: Product): number | null {
+  if (product.track_stock === false) return null
   if (!product.stock_levels || product.stock_levels.length === 0) return null
   return product.stock_levels.reduce(
     (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0

@@ -39,14 +39,14 @@ export default async function ReservasPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const [spaceTypes, gateways] = await Promise.all([
     getOrganizationSpaceTypes(organization.id),
     getAvailableGateways(organization.id)
   ])
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="mb-6">
           <Link href="/espacios" className="inline-flex items-center text-gray-600 hover:text-gray-900">

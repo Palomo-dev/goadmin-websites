@@ -10,6 +10,7 @@ interface VariantProduct {
   uuid: string
   name: string
   sku?: string
+  track_stock?: boolean
   variant_data?: Record<string, string>
   product_prices?: { price: number; compare_price?: number | null }[]
   product_images?: {
@@ -43,6 +44,7 @@ function getVariantImageUrl(variant: VariantProduct): string | null {
 }
 
 function getAvailableStock(variant: VariantProduct): number | null {
+  if (variant.track_stock === false) return null
   if (!variant.stock_levels || variant.stock_levels.length === 0) return null
   return variant.stock_levels.reduce(
     (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0

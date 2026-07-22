@@ -5,6 +5,7 @@ import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { getWebsiteHeaderNav, getWebsiteFooterNav, getMetaPixelId } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { checkFrozenStatus } from '@/lib/get-org-context'
 import { OrderTracker } from './OrderTracker'
 
 export const dynamic = 'force-dynamic'
@@ -33,6 +34,8 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
   const templateId = org.website_settings?.template_id || 'modern'
   const template = getTemplate(templateId) || getTemplateByBusinessType(org.type_id)
 
+  const frozenReason = await checkFrozenStatus(org.id, org.status)
+
   const [headerNav, footerNav, metaPixelId] = await Promise.all([
     getWebsiteHeaderNav(org.id),
     getWebsiteFooterNav(org.id),
@@ -47,6 +50,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
       headerNav={headerNav}
       footerNav={footerNav}
       metaPixelId={metaPixelId}
+      frozenReason={frozenReason}
     >
       <OrderTracker orderIdentifier={id} primaryColor={primaryColor} />
     </OrganizationLayout>

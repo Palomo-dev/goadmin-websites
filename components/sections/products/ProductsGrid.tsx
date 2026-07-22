@@ -32,6 +32,7 @@ function getComparePrice(product: any): number | null {
 }
 
 function getStock(product: any): number | null {
+  if (product.track_stock === false) return null
   if (!product.stock_levels || product.stock_levels.length === 0) return null
   return product.stock_levels.reduce(
     (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0

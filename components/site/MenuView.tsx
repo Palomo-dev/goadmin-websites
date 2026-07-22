@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { 
   Search, Plus, Minus, Check, ShoppingBag, X, SlidersHorizontal, ChevronRight 
 } from 'lucide-react'
+import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from './ProductModifierSelector'
 
 // ── Types ──
 
@@ -31,6 +32,7 @@ interface MenuProduct {
   name: string
   description?: string
   category_id?: number
+  track_stock?: boolean
   product_prices?: { price: number; currency_code?: string }[]
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
@@ -77,6 +79,7 @@ interface MenuViewProps {
   tags: Tag[]
   modifierTypes: ModifierType[]
   variantRelations: VariantRelation[]
+  modifierGroupsMap?: Map<number, ModifierGroup[]>
   primaryColor: string
   organizationSubdomain: string
   organizationName: string
@@ -99,6 +102,7 @@ function getProductImageUrl(product: MenuProduct): string | null {
 }
 
 function getAvailableStock(product: MenuProduct): number | null {
+  if (product.track_stock === false) return null
   if (!product.stock_levels || product.stock_levels.length === 0) return null
   return product.stock_levels.reduce(
     (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
@@ -108,7 +112,7 @@ function getAvailableStock(product: MenuProduct): number | null {
 // ── Component ──
 
 export function MenuView({
-  products, categories, tags, modifierTypes, variantRelations,
+  products, categories, tags, modifierTypes, variantRelations, modifierGroupsMap,
   primaryColor, organizationSubdomain, organizationName,
   customerId, organizationId, initialFavorites = []
 }: MenuViewProps) {
@@ -137,6 +141,8 @@ export function MenuView({
   const [itemQuantity, setItemQuantity] = useState(1)
   const [itemNotes, setItemNotes] = useState('')
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
+  const [selectedNewModifiers, setSelectedNewModifiers] = useState<SelectedModifier[]>([])
+  const modifierSelectorRef = useRef<ProductModifierSelectorRef>(null)
 
   // Filtrar productos
   const filteredProducts = useMemo(() => {
@@ -218,6 +224,7 @@ export function MenuView({
     setItemQuantity(1)
     setItemNotes('')
     setSelectedModifiers([])
+    setSelectedNewModifiers([])
   }
 
   const toggleModifier = (type: ModifierType, value: { id: number; value: string }) => {
@@ -235,14 +242,18 @@ export function MenuView({
     })
   }
 
-  const addToCart = (product: MenuProduct, quantity: number, notes: string, modifiers: CartModifier[]) => {
-    const price = product.product_prices?.[0]?.price || 0
+  const addToCart = (product: MenuProduct, quantity: number, notes: string, modifiers: CartModifier[], newModifiers: SelectedModifier[]) => {
+    const basePrice = product.product_prices?.[0]?.price || 0
+    const extraTotal = newModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
+    const effectivePrice = Number(basePrice) + extraTotal
     const cartKey = `cart_${organizationSubdomain}`
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const imgUrl = getProductImageUrl(product)
 
-    // Crear key única incluyendo modificadores
-    const modKey = modifiers.map(m => `${m.valueId}`).sort().join('-')
+    // Crear key única incluyendo modificadores de ambos sistemas
+    const oldModKey = modifiers.map(m => `${m.valueId}`).sort().join('-')
+    const newModKey = newModifiers.map(m => m.modifierId).sort().join('-')
+    const modKey = [oldModKey, newModKey].filter(Boolean).join('_')
     const cartItemId = modKey ? `${product.id}_${modKey}` : product.id
 
     const existingIndex = existingCart.findIndex((item: any) => item.id === cartItemId)
@@ -255,11 +266,12 @@ export function MenuView({
         id: cartItemId,
         productId: product.id,
         name: product.name,
-        price: Number(price),
+        price: effectivePrice,
         quantity,
         ...(imgUrl && { imageUrl: imgUrl }),
         ...(notes && { notes }),
-        ...(modifiers.length > 0 && { modifiers })
+        ...(modifiers.length > 0 && { modifiers }),
+        ...(newModifiers.length > 0 && { newModifiers })
       })
     }
 
@@ -278,11 +290,12 @@ export function MenuView({
 
   const quickAdd = (product: MenuProduct) => {
     const mods = getProductModifiers(product.id)
-    if (mods.length > 0) {
+    const newMods = modifierGroupsMap?.get(product.id) || []
+    if (mods.length > 0 || newMods.length > 0) {
       openProductDetail(product)
       return
     }
-    addToCart(product, 1, '', [])
+    addToCart(product, 1, '', [], [])
   }
 
   const toggleFavorite = async (e: React.MouseEvent, productId: number) => {
@@ -621,7 +634,22 @@ export function MenuView({
                 </p>
               )}
 
-              {/* Modificadores */}
+              {/* Modificadores nuevos (sistema ERP) */}
+              {(() => {
+                const newGroups = modifierGroupsMap?.get(selectedProduct.id) || []
+                return newGroups.length > 0 ? (
+                  <div className="mb-4">
+                    <ProductModifierSelector
+                      ref={modifierSelectorRef}
+                      groups={newGroups}
+                      primaryColor={primaryColor}
+                      onChange={setSelectedNewModifiers}
+                    />
+                  </div>
+                ) : null
+              })()}
+
+              {/* Modificadores viejos (variant_types legacy) */}
               {(() => {
                 const mods = getProductModifiers(selectedProduct.id)
                 return mods.length > 0 ? (
@@ -690,10 +718,17 @@ export function MenuView({
                 <Button
                   className="flex-1 text-white"
                   style={{ backgroundColor: primaryColor }}
-                  onClick={() => addToCart(selectedProduct, itemQuantity, itemNotes, selectedModifiers)}
+                  onClick={() => {
+                    if (modifierSelectorRef.current && !modifierSelectorRef.current.validate()) return
+                    const extraTotal = selectedNewModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
+                    const basePrice = selectedProduct.product_prices?.[0]?.price || 0
+                    addToCart(selectedProduct, itemQuantity, itemNotes, selectedModifiers, selectedNewModifiers)
+                  }}
                 >
                   Agregar ${(
-                    (selectedProduct.product_prices?.[0]?.price || 0) * itemQuantity
+                    ((selectedProduct.product_prices?.[0]?.price || 0) +
+                      selectedNewModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
+                    ) * itemQuantity
                   ).toLocaleString()}
                 </Button>
               </div>

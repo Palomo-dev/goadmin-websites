@@ -16,6 +16,8 @@ interface AddToCartButtonProps {
   className?: string
   quantity?: number
   organizationSubdomain?: string
+  disabled?: boolean
+  onClick?: () => void
 }
 
 export function AddToCartButton({ 
@@ -28,11 +30,15 @@ export function AddToCartButton({
   variant = 'full',
   className = '',
   quantity = 1,
-  organizationSubdomain
+  organizationSubdomain,
+  disabled = false,
+  onClick
 }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
+    if (disabled) return
+    if (onClick) { onClick(); return }
     try {
       const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
       const cartKey = `cart_${subdomain}`
@@ -74,11 +80,17 @@ export function AddToCartButton({
         className={`w-full text-lg py-6 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${className}`}
         style={!added ? { backgroundColor: primaryColor } : {}}
         onClick={handleAddToCart}
+        disabled={disabled}
       >
         {added ? (
           <>
             <Check className="h-5 w-5 mr-2" />
             ¡Agregado al carrito!
+          </>
+        ) : disabled ? (
+          <>
+            <ShoppingCart className="h-5 w-5 mr-2" />
+            Sin stock
           </>
         ) : (
           <>
@@ -97,6 +109,7 @@ export function AddToCartButton({
         className={`transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${className}`}
         style={!added ? { backgroundColor: primaryColor } : {}}
         onClick={handleAddToCart}
+        disabled={disabled}
       >
         {added ? (
           <>
@@ -120,6 +133,7 @@ export function AddToCartButton({
       className={`transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${className}`}
       style={!added ? { backgroundColor: primaryColor } : {}}
       onClick={handleAddToCart}
+      disabled={disabled}
     >
       {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
     </Button>

@@ -21,7 +21,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const result = await getServiceById(id, organization.id)
   if (!result) return <NotFoundPage />
@@ -43,6 +43,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       template={template}
       headerNav={headerNav}
       footerNav={footerNav}
+      frozenReason={frozenReason}
     >
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Breadcrumb */}

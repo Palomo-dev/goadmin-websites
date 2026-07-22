@@ -17,7 +17,7 @@ export default async function AgendarPage({ searchParams }: { searchParams: Prom
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const sp = await searchParams
   const preselectedServiceId = sp.servicio || ''
 
@@ -35,6 +35,7 @@ export default async function AgendarPage({ searchParams }: { searchParams: Prom
       template={template}
       headerNav={headerNav}
       footerNav={footerNav}
+      frozenReason={frozenReason}
     >
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="text-center mb-10">

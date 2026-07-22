@@ -20,7 +20,7 @@ export default async function CarritoPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const [metaPixelId, googleAdsConfig] = await Promise.all([
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id)
@@ -59,6 +59,7 @@ export default async function CarritoPage() {
       footerNav={footerNav}
       metaPixelId={metaPixelId}
       googleAdsConfig={googleAdsConfig}
+      frozenReason={frozenReason}
     >
       <CartPageClient
         primaryColor={primaryColor}

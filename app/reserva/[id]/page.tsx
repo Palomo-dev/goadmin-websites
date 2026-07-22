@@ -88,13 +88,13 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const reservation = await getReservation(id)
 
   if (!reservation) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="container mx-auto px-4 py-20 text-center">
           <Bed className="h-16 w-16 mx-auto text-gray-300 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Reserva no encontrada</h1>
@@ -135,7 +135,7 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
   )
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-6">
           <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm">

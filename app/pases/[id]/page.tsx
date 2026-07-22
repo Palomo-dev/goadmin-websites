@@ -56,7 +56,7 @@ export default async function PaseCheckoutPage({ params }: { params: Promise<{ i
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [passType, gateways] = await Promise.all([
     getPassType(id, organization.id),
@@ -65,7 +65,7 @@ export default async function PaseCheckoutPage({ params }: { params: Promise<{ i
 
   if (!passType) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-5xl mb-4">🅿️</p>
@@ -81,7 +81,7 @@ export default async function PaseCheckoutPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <Link href="/pases" className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm">

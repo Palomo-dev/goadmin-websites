@@ -25,6 +25,14 @@ function getDiscount(product: any): number {
   return Math.round((1 - Number(pp.price) / Number(pp.compare_price)) * 100)
 }
 
+function getStock(product: any): number | null {
+  if (product.track_stock === false) return null
+  if (!product.stock_levels || product.stock_levels.length === 0) return null
+  return product.stock_levels.reduce(
+    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
+  )
+}
+
 interface OffersGridProps {
   content: {
     title?: string
@@ -186,6 +194,8 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                 const isAdded = addedToCart.has(product.id)
                 const variantCount = product.variant_count || 0
                 const isParent = product.is_parent && variantCount > 0
+                const stock = getStock(product)
+                const outOfStock = stock !== null && stock <= 0
 
                 return (
                   <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all">
@@ -232,6 +242,8 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                               <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Elegir
                             </Button>
                           </Link>
+                        ) : outOfStock ? (
+                          <span className="text-xs text-red-500 font-medium text-center py-2">Sin stock</span>
                         ) : (
                           <div className="flex flex-col gap-1.5">
                             <Button

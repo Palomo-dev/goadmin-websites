@@ -41,14 +41,14 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const params = await searchParams
   const trackingNumber = params.q || ''
 
   const shipment = trackingNumber ? await getShipmentByTracking(trackingNumber) : null
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <h1 className="text-3xl font-bold text-center mb-2">Rastrear Envío</h1>
         <p className="text-gray-500 text-center mb-8">Ingresa tu número de guía para ver el estado de tu envío</p>

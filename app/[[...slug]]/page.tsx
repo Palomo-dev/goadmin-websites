@@ -16,6 +16,7 @@ import {
   getOrganizationTags,
   getProductModifiers,
   getProductVariantRelations,
+  getProductModifierGroupsByOrg,
   getParkingRates,
   getParkingPassTypes,
   getParkingAvailability,
@@ -33,6 +34,7 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { SectionRenderer } from '@/components/sections/SectionRenderer'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
+import { checkFrozenStatus, type FrozenReason } from '@/lib/get-org-context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -139,6 +141,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     return <NotFoundPage subdomain={identifier} />
   }
 
+  const frozenReason = await checkFrozenStatus(organization.id, organization.status)
+
   const { slug } = await params
   const currentSlug = slug?.[0] || 'home'
   const primaryColor = organization.website_settings?.primary_color || organization.primary_color || '#8B6914'
@@ -191,7 +195,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
         {page.website_page_sections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -207,12 +211,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
   // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
-  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings)
+  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
   if (fallback) return fallback
 
   // 4. Página no encontrada
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
@@ -240,10 +244,11 @@ async function renderSlugFallback(
   metaPixelId?: string | null,
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null,
   searchParams?: Record<string, string | string[] | undefined>,
-  taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
+  taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null,
+  frozenReason?: FrozenReason
 ): Promise<React.ReactElement | null> {
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       {children}
     </OrganizationLayout>
   )
@@ -252,12 +257,13 @@ async function renderSlugFallback(
 
   switch (slug) {
     case 'menu': {
-      const [menuProducts, menuCategories, menuTags, menuModifiers, menuVariantRelations] = await Promise.all([
+      const [menuProducts, menuCategories, menuTags, menuModifiers, menuVariantRelations, menuModifierGroups] = await Promise.all([
         getMenuProducts(organization.id, 200),
         getOrganizationCategories(organization.id),
         getOrganizationTags(organization.id),
         getProductModifiers(organization.id),
-        getProductVariantRelations(organization.id)
+        getProductVariantRelations(organization.id),
+        getProductModifierGroupsByOrg(organization.id)
       ])
 
       // Favoritos: obtener customer autenticado (si existe)
@@ -279,6 +285,7 @@ async function renderSlugFallback(
             tags={menuTags}
             modifierTypes={menuModifiers}
             variantRelations={menuVariantRelations}
+            modifierGroupsMap={menuModifierGroups}
             primaryColor={primaryColor}
             organizationSubdomain={organization.subdomain || ''}
             organizationName={organization.name}

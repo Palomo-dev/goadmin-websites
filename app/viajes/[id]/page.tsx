@@ -41,7 +41,7 @@ export default async function ViajeDetailPage({ params, searchParams }: { params
 
   const { id } = await params
   const sp = await searchParams
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [trip, gateways] = await Promise.all([
     getTripById(id, organization.id),
@@ -50,7 +50,7 @@ export default async function ViajeDetailPage({ params, searchParams }: { params
 
   if (!trip) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">🚌</p>
@@ -63,7 +63,7 @@ export default async function ViajeDetailPage({ params, searchParams }: { params
   }
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <Link href="/viajes" className="inline-flex items-center text-gray-600 hover:text-gray-900">

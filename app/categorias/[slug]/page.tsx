@@ -34,7 +34,7 @@ export default async function CategoriaSlugPage({
 
   const { slug } = await params
   const resolvedSearchParams = await searchParams
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [category, metaPixelId, googleAdsConfig] = await Promise.all([
     getCategoryBySlug(organization.id, slug),
@@ -76,7 +76,7 @@ export default async function CategoriaSlugPage({
   const totalPages = Math.ceil(total / 12)
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">

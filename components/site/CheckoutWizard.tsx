@@ -18,6 +18,14 @@ interface CartModifier {
   valueName: string
 }
 
+interface NewCartModifier {
+  groupId: number
+  groupName: string
+  modifierId: number
+  name: string
+  extraPrice: number
+}
+
 interface CartItem {
   id: number | string
   productId?: number
@@ -28,6 +36,7 @@ interface CartItem {
   imageUrl?: string | null
   notes?: string
   modifiers?: CartModifier[]
+  newModifiers?: NewCartModifier[]
   variantAttributes?: Record<string, string> | null
 }
 
@@ -450,6 +459,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           quantity: item.quantity,
           sku: (item as any).sku || null,
           ...(item.modifiers && item.modifiers.length > 0 && { modifiers: item.modifiers }),
+          ...(item.newModifiers && item.newModifiers.length > 0 && { newModifiers: item.newModifiers }),
           ...(item.notes && { notes: item.notes })
         })),
         subtotal,
@@ -738,6 +748,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           {item.modifiers && item.modifiers.length > 0 && (
                             <p className="text-xs text-gray-400 truncate mt-0.5">
                               {item.modifiers.map(m => m.valueName).join(', ')}
+                            </p>
+                          )}
+                          {item.newModifiers && item.newModifiers.length > 0 && (
+                            <p className="text-xs text-gray-400 truncate mt-0.5">
+                              {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
                             </p>
                           )}
                           {item.notes && (
@@ -1202,6 +1217,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       {item.modifiers && item.modifiers.length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
                           {item.modifiers.map(m => m.valueName).join(', ')}
+                        </span>
+                      )}
+                      {item.newModifiers && item.newModifiers.length > 0 && (
+                        <span className="text-xs text-gray-400 block truncate">
+                          {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
                         </span>
                       )}
                     </div>

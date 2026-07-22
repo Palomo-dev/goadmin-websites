@@ -20,7 +20,7 @@ export default async function ViajesPage({ searchParams }: { searchParams: Promi
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const params = await searchParams
   const origin = params.origin || ''
   const destination = params.destination || ''
@@ -35,7 +35,7 @@ export default async function ViajesPage({ searchParams }: { searchParams: Promi
   ])
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-center mb-8">Buscar Viajes</h1>
         <TripSearchClient

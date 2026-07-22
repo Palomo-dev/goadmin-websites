@@ -11,6 +11,8 @@ import GoogleAnalytics from './GoogleAnalytics'
 import CustomScripts from './CustomScripts'
 import { ChatWidget } from './ChatWidget'
 import { CurrencyProvider } from './CurrencyProvider'
+import { FrozenAccountNotice } from './FrozenAccountNotice'
+import type { FrozenReason } from '@/lib/get-org-context'
 import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 
@@ -24,6 +26,7 @@ interface OrganizationLayoutProps {
   metaPixelId?: string | null
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
   taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
+  frozenReason?: FrozenReason
 }
 
 export function OrganizationLayout({
@@ -35,7 +38,8 @@ export function OrganizationLayout({
   footerNav,
   metaPixelId,
   googleAdsConfig,
-  taxSettings
+  taxSettings,
+  frozenReason
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
@@ -96,7 +100,17 @@ export function OrganizationLayout({
 
       {/* Contenido de la página */}
       <main className="flex-grow">
-        {children}
+        {frozenReason ? (
+          <FrozenAccountNotice
+            reason={frozenReason}
+            primaryColor={primaryColor}
+            organizationName={organization.name}
+            organizationEmail={organization.email}
+            organizationPhone={organization.phone}
+          />
+        ) : (
+          children
+        )}
       </main>
       
       {/* Footer */}

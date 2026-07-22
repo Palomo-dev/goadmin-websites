@@ -155,7 +155,7 @@ export default async function CheckoutResultadoPage({
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const [googleAdsConfig, metaPixelId] = await Promise.all([
     getGoogleAdsConfig(organization.id),
     getMetaPixelId(organization.id)
@@ -166,7 +166,7 @@ export default async function CheckoutResultadoPage({
 
   if (!orderRef) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="container mx-auto px-4 py-20 text-center">
           <AlertTriangle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Sin referencia de orden</h1>
@@ -187,7 +187,7 @@ export default async function CheckoutResultadoPage({
 
   if (!order) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="container mx-auto px-4 py-20 text-center">
           <AlertTriangle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Orden no encontrada</h1>
@@ -208,7 +208,7 @@ export default async function CheckoutResultadoPage({
   const config = STATUS_CONFIG[paymentStatus] || STATUS_CONFIG.pending
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason}>
       {/* Google Ads Conversion — solo si pago exitoso */}
       {paymentStatus === 'paid' && googleAdsConfig && (
         <GoogleAdsConversion

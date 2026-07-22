@@ -21,7 +21,6 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
       website_settings (*)
     `)
     .ilike('subdomain', subdomainLower)
-    .or('status.eq.active,status.is.null')
     .limit(1)
   
   if (orgDirect && orgDirect.length > 0) {
@@ -53,7 +52,6 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
       website_settings (*)
     `)
     .eq('id', orgId)
-    .or('status.eq.active,status.is.null')
     .limit(1)
   
   if (error || !data || data.length === 0) return null
@@ -88,7 +86,6 @@ export async function getOrganizationByCustomDomain(domain: string): Promise<Org
       website_settings (*)
     `)
     .eq('id', orgId)
-    .or('status.eq.active,status.is.null')
     .limit(1)
   
   if (error || !data || data.length === 0) return null
@@ -1234,6 +1231,93 @@ export async function getProductVariantRelations(organizationId: number) {
 
   if (error) return []
   return data || []
+}
+
+// ==========================================
+// Product Modifier Groups (nuevo sistema ERP)
+// ==========================================
+
+/**
+ * Obtiene los grupos de modificadores de un producto específico
+ * con sus opciones (modificadores) activas
+ */
+export async function getProductModifierGroups(productId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('product_modifier_groups')
+    .select(`
+      id,
+      name,
+      selection_mode,
+      min_selections,
+      max_selections,
+      required,
+      display_order,
+      product_modifiers (
+        id,
+        name,
+        extra_price,
+        is_active,
+        display_order
+      )
+    `)
+    .eq('product_id', productId)
+    .order('display_order')
+
+  if (error || !data) return []
+
+  return (data as any[]).map((group) => ({
+    ...group,
+    product_modifiers: (group.product_modifiers || [])
+      .filter((m: any) => m.is_active)
+      .sort((a: any, b: any) => a.display_order - b.display_order),
+  }))
+}
+
+/**
+ * Obtiene todos los grupos de modificadores de una organización
+ * con sus opciones activas, agrupados por product_id
+ */
+export async function getProductModifierGroupsByOrg(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('product_modifier_groups')
+    .select(`
+      id,
+      product_id,
+      name,
+      selection_mode,
+      min_selections,
+      max_selections,
+      required,
+      display_order,
+      product_modifiers (
+        id,
+        name,
+        extra_price,
+        is_active,
+        display_order
+      )
+    `)
+    .eq('organization_id', organizationId)
+    .order('display_order')
+
+  if (error || !data) return new Map<number, any[]>()
+
+  const map = new Map<number, any[]>()
+  for (const group of data as any[]) {
+    const list = map.get(group.product_id) || []
+    list.push({
+      ...group,
+      product_modifiers: (group.product_modifiers || [])
+        .filter((m: any) => m.is_active)
+        .sort((a: any, b: any) => a.display_order - b.display_order),
+    })
+    map.set(group.product_id, list)
+  }
+  return map
 }
 
 // ==========================================

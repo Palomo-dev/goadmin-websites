@@ -20,7 +20,7 @@ export default async function PasesPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [passTypes, rates, zones, availability] = await Promise.all([
     getParkingPassTypes(organization.id),
@@ -36,6 +36,7 @@ export default async function PasesPage() {
       primaryColor={primaryColor}
       headerNav={headerNav}
       footerNav={footerNav}
+      frozenReason={frozenReason}
     >
       <PasesClient
         organizationName={organization.name}

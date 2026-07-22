@@ -44,7 +44,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [space, gateways] = await Promise.all([
     getSpaceById(id, organization.id),
@@ -53,7 +53,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
 
   if (!space) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">🏠</p>
@@ -68,7 +68,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
   const st = space.space_types as any
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
           <Link href="/espacios" className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">

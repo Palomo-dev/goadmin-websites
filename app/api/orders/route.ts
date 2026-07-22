@@ -51,14 +51,23 @@ export async function POST(request: NextRequest) {
       resolvedBranchId = branch?.id
     }
 
-    // ── B1: Validación de stock ──
-    if (resolvedBranchId) {
-      const productIds = items.map((item: any) => item.id)
+    // ── B1: Validación de stock (solo productos con track_stock=true) ──
+    const productIds = items.map((item: any) => item.id)
+    const { data: productsData } = await (supabase as any)
+      .from('products')
+      .select('id, track_stock')
+      .in('id', productIds)
+    const trackStockMap = new Map<number, boolean>(
+      (productsData || []).map((p: any) => [p.id, p.track_stock !== false] as [number, boolean])
+    )
+    const trackableProductIds = productIds.filter((id: number) => trackStockMap.get(id) !== false)
+
+    if (resolvedBranchId && trackableProductIds.length > 0) {
       const { data: stockData } = await (supabase as any)
         .from('stock_levels')
         .select('product_id, qty_on_hand, qty_reserved')
         .eq('branch_id', resolvedBranchId)
-        .in('product_id', productIds)
+        .in('product_id', trackableProductIds)
 
       if (stockData && stockData.length > 0) {
         const stockMap = new Map<number, number>(
@@ -66,6 +75,7 @@ export async function POST(request: NextRequest) {
         )
         const outOfStock: string[] = []
         for (const item of items) {
+          if (!trackStockMap.get(item.id)) continue
           const available = stockMap.get(item.id) ?? null
           if (available !== null && available < item.quantity) {
             outOfStock.push(`${item.name} (disponible: ${Math.max(0, Math.floor(available))}, solicitado: ${item.quantity})`)
@@ -219,18 +229,26 @@ export async function POST(request: NextRequest) {
     try {
       // Crear web_order_items con tax_amount por item, modifiers y notes
       const orderItems = items.map((item: any) => {
-        const itemTotal = item.price * item.quantity
+        const newModsExtraTotal = (item.newModifiers || []).reduce(
+          (sum: number, m: any) => sum + (Number(m.extraPrice) || 0), 0
+        )
+        const effectiveUnitPrice = Number(item.price) + newModsExtraTotal
+        const itemTotal = effectiveUnitPrice * item.quantity
         const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
+        const allModifiers = [
+          ...(item.modifiers || []),
+          ...(item.newModifiers || []),
+        ]
         return {
           web_order_id: webOrder.id,
           product_id: item.id,
           product_name: item.name,
           product_sku: item.sku || null,
           quantity: item.quantity,
-          unit_price: item.price,
+          unit_price: effectiveUnitPrice,
           tax_amount: itemTax,
           total: itemTotal,
-          ...(item.modifiers && { modifiers: item.modifiers }),
+          ...(allModifiers.length > 0 && { modifiers: allModifiers }),
           ...(item.notes && { notes: item.notes }),
         }
       })
@@ -257,9 +275,10 @@ export async function POST(request: NextRequest) {
           .catch((err: any) => console.error('[Orders] Tip insert error:', err))
       }
 
-      // Reservar stock
+      // Reservar stock (solo productos con track_stock=true)
       if (resolvedBranchId) {
         for (const item of items) {
+          if (!trackStockMap.get(item.id)) continue
           const { data: sl } = await (supabase as any)
             .from('stock_levels')
             .select('qty_reserved')

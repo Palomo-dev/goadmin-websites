@@ -88,7 +88,7 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth')
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
   const navItems = getAccountNav(organization.type_id ?? 0)
 
   return (
@@ -98,6 +98,7 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
       primaryColor={primaryColor}
       headerNav={headerNav}
       footerNav={footerNav}
+      frozenReason={frozenReason}
     >
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">

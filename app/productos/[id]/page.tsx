@@ -13,7 +13,7 @@ import { ProductReviews } from '@/components/site/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
-import { getProductVariants } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups } from '@/lib/supabase/queries'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
@@ -119,12 +119,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const product = await getProduct(id, organization.id)
   if (!product) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">📦</p>
@@ -146,6 +146,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     variants = await getProductVariants(product.id, organization.id)
   }
 
+  // Obtener grupos de modificadores del producto (nuevo sistema ERP)
+  const modifierGroups = await getProductModifierGroups(product.id)
+
   // Obtener productos relacionados por categoría, tag y aleatorio
   const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id)
 
@@ -162,7 +165,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const imageUrl = allImageUrls[0] || null
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
       {/* Meta Pixel ViewContent */}
       <MetaPixelViewContent
         contentId={product.sku || String(product.id)}
@@ -242,6 +245,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 primaryColor={primaryColor}
                 isParent={isParent}
                 organizationSubdomain={organization.subdomain || ''}
+                modifierGroups={modifierGroups}
+                trackStock={product.track_stock}
+                stockLevels={product.stock_levels}
               />
             </div>
             
@@ -320,6 +326,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           isParent={isParent}
           variants={variants}
           organizationSubdomain={organization.subdomain || ''}
+          trackStock={product.track_stock}
+          stockLevels={product.stock_levels}
         />
       )}
     </OrganizationLayout>

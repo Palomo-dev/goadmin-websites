@@ -22,6 +22,8 @@ interface StickyAddToCartProps {
   isParent?: boolean
   variants?: VariantData[]
   organizationSubdomain?: string
+  trackStock?: boolean
+  stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -48,13 +50,20 @@ export function StickyAddToCart({
   primaryColor,
   isParent = false,
   variants = [],
-  organizationSubdomain
+  organizationSubdomain,
+  trackStock,
+  stockLevels
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
   const [visible, setVisible] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
+
+  const stock = (trackStock === false) ? null : (stockLevels && stockLevels.length > 0)
+    ? stockLevels.reduce((sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0)
+    : null
+  const outOfStock = stock !== null && stock <= 0
 
   // Extraer grupos de atributos
   const attributeGroups = useMemo(() => {
@@ -119,6 +128,7 @@ export function StickyAddToCart({
   }
 
   const handleAddToCart = () => {
+    if (outOfStock) return
     try {
       const cartKey = getCartKey(organizationSubdomain)
       const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
@@ -247,11 +257,14 @@ export function StickyAddToCart({
 
             <Button
               onClick={handleAddToCart}
-              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''}`}
-              style={!added ? { backgroundColor: primaryColor } : {}}
+              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock ? 'opacity-50' : ''}`}
+              style={!added && !outOfStock ? { backgroundColor: primaryColor } : {}}
+              disabled={outOfStock}
             >
               {added ? (
                 <><Check className="h-4 w-4 mr-1" /> Agregado</>
+              ) : outOfStock ? (
+                <><ShoppingCart className="h-4 w-4 mr-1" /> Sin stock</>
               ) : (
                 <><ShoppingCart className="h-4 w-4 mr-1" /> Agregar al carrito</>
               )}

@@ -19,7 +19,7 @@ export default async function AuthPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   return (
     <OrganizationLayout
@@ -28,6 +28,7 @@ export default async function AuthPage() {
       primaryColor={primaryColor}
       headerNav={headerNav}
       footerNav={footerNav}
+      frozenReason={frozenReason}
     >
       <main className="container mx-auto px-4 py-12">
         <div className="mb-8">
