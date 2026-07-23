@@ -79,18 +79,20 @@ export function OrganizationLayout({
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
     >
-      {/* Header específico según tipo */}
-      <SiteHeader 
-        organization={organization}
-        primaryColor={primaryColor}
-        template={template}
-        showCart={showCart}
-        onCartClick={() => setCartOpen(true)}
-        headerNav={headerNav}
-      />
+      {/* Header específico según tipo (oculto si la cuenta está congelada) */}
+      {!frozenReason && (
+        <SiteHeader 
+          organization={organization}
+          primaryColor={primaryColor}
+          template={template}
+          showCart={showCart}
+          onCartClick={() => setCartOpen(true)}
+          headerNav={headerNav}
+        />
+      )}
       
-      {/* Countdown Banner (debajo del header) */}
-      {settings?.countdown_enabled && settings?.countdown_show_in_header && (
+      {/* Countdown Banner (debajo del header, oculto si está congelada) */}
+      {!frozenReason && settings?.countdown_enabled && settings?.countdown_show_in_header && (
         <CountdownBanner
           config={settings}
           primaryColor={primaryColor}
@@ -113,17 +115,19 @@ export function OrganizationLayout({
         )}
       </main>
       
-      {/* Footer */}
-      <SiteFooter 
-        organization={organization}
-        settings={settings}
-        primaryColor={primaryColor}
-        template={template}
-        footerNav={footerNav}
-      />
+      {/* Footer (oculto si la cuenta está congelada) */}
+      {!frozenReason && (
+        <SiteFooter 
+          organization={organization}
+          settings={settings}
+          primaryColor={primaryColor}
+          template={template}
+          footerNav={footerNav}
+        />
+      )}
       
-      {/* Cart Drawer disponible para todos */}
-      {showCart && (
+      {/* Cart Drawer (oculto si la cuenta está congelada) */}
+      {!frozenReason && showCart && (
         <CartDrawer 
           isOpen={cartOpen}
           onClose={() => setCartOpen(false)}
@@ -160,8 +164,8 @@ export function OrganizationLayout({
       {/* Scripts Personalizados */}
       {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
 
-      {/* Chat Widget */}
-      {settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
+      {/* Chat Widget (oculto si la cuenta está congelada) */}
+      {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
         <ChatWidget publicKey={settings.chat_widget_public_key} />
       )}
     </div>
