@@ -13,7 +13,8 @@ import { ProductReviews } from '@/components/site/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds } from '@/lib/supabase/queries'
+import { filterStockByBranches } from '@/lib/stock'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
@@ -29,7 +30,8 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
     .select(`
       *,
       product_prices (*),
-      product_images (*)
+      product_images (*),
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
     .eq('uuid', productUuid)
     .eq('organization_id', organizationId)
@@ -37,7 +39,9 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
     .single()
   
   if (error || !data) return null
-  return data as any
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+  const [filtered] = filterStockByBranches([data as any], webBranchIds)
+  return filtered
 }
 
 async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
