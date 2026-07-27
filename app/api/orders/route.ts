@@ -40,27 +40,36 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
 
     // ── Obtener branch_id (necesario para stock) ──
+    // Prioridad: sucursal marcada como fuente de inventario web > principal > primera.
     let resolvedBranchId = branchId
     if (!resolvedBranchId) {
-      const { data: branch } = await (supabase as any)
+      const { data: branches } = await (supabase as any)
         .from('branches')
-        .select('id')
+        .select('id, is_main, is_web_stock_source')
         .eq('organization_id', organizationId)
-        .limit(1)
-        .single()
-      resolvedBranchId = branch?.id
+        .order('id', { ascending: true })
+
+      const list = branches || []
+      resolvedBranchId =
+        list.find((b: any) => b.is_web_stock_source)?.id ??
+        list.find((b: any) => b.is_main)?.id ??
+        list[0]?.id
     }
 
+    // El id del carrito puede ser compuesto (`123_4-5`) cuando hay modificadores;
+    // el id real del producto viene en `productId`.
+    const realProductId = (item: any): number => Number(item.productId ?? item.id)
+
     // ── B1: Validación de stock (solo productos con track_stock=true) ──
-    const productIds = items.map((item: any) => item.id)
+    const productIds: number[] = Array.from(new Set<number>(items.map(realProductId)))
     const { data: productsData } = await (supabase as any)
       .from('products')
       .select('id, track_stock')
       .in('id', productIds)
     const trackStockMap = new Map<number, boolean>(
-      (productsData || []).map((p: any) => [p.id, p.track_stock !== false] as [number, boolean])
+      (productsData || []).map((p: any) => [p.id, p.track_stock === true] as [number, boolean])
     )
-    const trackableProductIds = productIds.filter((id: number) => trackStockMap.get(id) !== false)
+    const trackableProductIds = productIds.filter((id: number) => trackStockMap.get(id) === true)
 
     if (resolvedBranchId && trackableProductIds.length > 0) {
       const { data: stockData } = await (supabase as any)
@@ -69,24 +78,36 @@ export async function POST(request: NextRequest) {
         .eq('branch_id', resolvedBranchId)
         .in('product_id', trackableProductIds)
 
-      if (stockData && stockData.length > 0) {
-        const stockMap = new Map<number, number>(
-          stockData.map((s: any) => [s.product_id, Number(s.qty_on_hand) - Number(s.qty_reserved)] as [number, number])
+      // Acumular por producto: un producto puede tener varias filas (lotes)
+      const stockMap = new Map<number, number>()
+      for (const s of stockData || []) {
+        const available = Number(s.qty_on_hand) - Number(s.qty_reserved)
+        stockMap.set(s.product_id, (stockMap.get(s.product_id) || 0) + available)
+      }
+
+      // Acumular cantidad solicitada por producto real (varias líneas del carrito
+      // pueden apuntar al mismo producto con distintos modificadores)
+      const requestedMap = new Map<number, number>()
+      for (const item of items) {
+        const pid = realProductId(item)
+        if (trackStockMap.get(pid) !== true) continue
+        requestedMap.set(pid, (requestedMap.get(pid) || 0) + Number(item.quantity))
+      }
+
+      const outOfStock: string[] = []
+      for (const [pid, requested] of requestedMap) {
+        // Producto que rastrea inventario sin fila de stock = 0 disponible
+        const available = stockMap.get(pid) ?? 0
+        if (available < requested) {
+          const item = items.find((i: any) => realProductId(i) === pid)
+          outOfStock.push(`${item?.name ?? `Producto ${pid}`} (disponible: ${Math.max(0, Math.floor(available))}, solicitado: ${requested})`)
+        }
+      }
+      if (outOfStock.length > 0) {
+        return NextResponse.json(
+          { error: 'Stock insuficiente', details: outOfStock },
+          { status: 409 }
         )
-        const outOfStock: string[] = []
-        for (const item of items) {
-          if (!trackStockMap.get(item.id)) continue
-          const available = stockMap.get(item.id) ?? null
-          if (available !== null && available < item.quantity) {
-            outOfStock.push(`${item.name} (disponible: ${Math.max(0, Math.floor(available))}, solicitado: ${item.quantity})`)
-          }
-        }
-        if (outOfStock.length > 0) {
-          return NextResponse.json(
-            { error: 'Stock insuficiente', details: outOfStock },
-            { status: 409 }
-          )
-        }
       }
     }
 
@@ -241,7 +262,7 @@ export async function POST(request: NextRequest) {
         ]
         return {
           web_order_id: webOrder.id,
-          product_id: item.id,
+          product_id: realProductId(item),
           product_name: item.name,
           product_sku: item.sku || null,
           quantity: item.quantity,
@@ -278,19 +299,20 @@ export async function POST(request: NextRequest) {
       // Reservar stock (solo productos con track_stock=true)
       if (resolvedBranchId) {
         for (const item of items) {
-          if (!trackStockMap.get(item.id)) continue
+          const pid = realProductId(item)
+          if (trackStockMap.get(pid) !== true) continue
           const { data: sl } = await (supabase as any)
             .from('stock_levels')
             .select('qty_reserved')
             .eq('branch_id', resolvedBranchId)
-            .eq('product_id', item.id)
+            .eq('product_id', pid)
             .maybeSingle()
           if (sl) {
             await (supabase as any)
               .from('stock_levels')
               .update({ qty_reserved: Number(sl.qty_reserved || 0) + item.quantity })
               .eq('branch_id', resolvedBranchId)
-              .eq('product_id', item.id)
+              .eq('product_id', pid)
           }
         }
       }

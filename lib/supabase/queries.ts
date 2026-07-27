@@ -1,5 +1,6 @@
 import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections } from '@/types/database'
+import { filterStockByBranches } from '@/lib/stock'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -125,6 +126,25 @@ export async function getOrganizationByHost(identifier: string): Promise<Organiz
 }
 
 /**
+ * Obtiene los ids de las sucursales cuyo inventario surte la tienda web.
+ *
+ * Devuelve `null` si la organización no tiene ninguna sucursal marcada, para que
+ * el sitio siga usando el inventario de todas las sucursales (comportamiento previo).
+ */
+export async function getWebStockBranchIds(organizationId: number): Promise<number[] | null> {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('is_web_stock_source', true)
+
+  if (error || !data || data.length === 0) return null
+  return data.map((b: any) => b.id as number)
+}
+
+/**
  * Obtiene los productos de una organización para mostrar en el sitio
  */
 export async function getOrganizationProducts(organizationId: number, limit = 12) {
@@ -146,6 +166,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
         )
       ),
       stock_levels (
+        branch_id,
         qty_on_hand,
         qty_reserved
       )
@@ -173,11 +194,16 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     }
   }
 
-  return (data || []).map((p: any) => ({
-    ...p,
-    has_variants: p.is_parent === true,
-    variant_count: variantCountMap[p.id] || 0,
-  }))
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+
+  return filterStockByBranches(
+    (data || []).map((p: any) => ({
+      ...p,
+      has_variants: p.is_parent === true,
+      variant_count: variantCountMap[p.id] || 0,
+    })),
+    webBranchIds
+  )
 }
 
 /**
@@ -197,7 +223,7 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -245,14 +271,18 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
     }
   }
 
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+
   // 5. Ordenar por ventas (descendente) y limitar
-  return offers
-    .map((p: any) => ({
+  return filterStockByBranches(
+    offers.map((p: any) => ({
       ...p,
       has_variants: p.is_parent === true,
       variant_count: variantCountMap[p.id] || 0,
       sales_count: salesMap[p.id] || 0,
-    }))
+    })),
+    webBranchIds
+  )
     .sort((a: any, b: any) => b.sales_count - a.sales_count)
     .slice(0, limit)
 }
@@ -407,7 +437,7 @@ export async function getProductsByCategoryPaginated(
         shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `, { count: 'exact' })
     .eq('organization_id', organizationId)
     .in('category_id', categoryIds)
@@ -442,7 +472,7 @@ export async function getProductsByCategoryPaginated(
       .sort((a: any, b: any) => b.sales_count - a.sales_count)
 
     const paginated = sorted.slice(offset, offset + limit)
-    return { products: paginated, total: count || 0 }
+    return { products: filterStockByBranches(paginated, await getWebStockBranchIds(organizationId)), total: count || 0 }
   }
 
   // Ordenamiento estándar
@@ -468,8 +498,10 @@ export async function getProductsByCategoryPaginated(
 
   if (error) return { products: [], total: 0 }
 
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+
   // Adjuntar sales_count para los demás sorts
-  const prods = data || []
+  const prods = filterStockByBranches(data || [], webBranchIds)
   if (prods.length > 0) {
     const productIds = prods.map((p: any) => p.id)
     const salesMap: Record<number, number> = {}
@@ -522,7 +554,7 @@ export async function getProductVariants(parentProductId: number, organizationId
         shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
     .eq('parent_product_id', parentProductId)
     .eq('organization_id', organizationId)
@@ -530,7 +562,8 @@ export async function getProductVariants(parentProductId: number, organizationId
     .order('name')
 
   if (error) return []
-  return data || []
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(data || [], webBranchIds)
 }
 
 /**
@@ -1125,7 +1158,7 @@ export async function getMenuProducts(organizationId: number, limit = 100) {
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( qty_on_hand, qty_reserved ),
+      stock_levels ( branch_id, qty_on_hand, qty_reserved ),
       product_tag_relations ( tag_id )
     `)
     .eq('organization_id', organizationId)
@@ -1134,7 +1167,8 @@ export async function getMenuProducts(organizationId: number, limit = 100) {
     .limit(limit)
 
   if (error) return []
-  return data || []
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(data || [], webBranchIds)
 }
 
 /**
@@ -1153,14 +1187,15 @@ export async function getProductsByIds(productIds: number[], organizationId: num
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .in('id', productIds)
 
   if (error) return []
-  return data || []
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(data || [], webBranchIds)
 }
 
 /**
