@@ -47,13 +47,14 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
 async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
   const selectFields = `
-    id, uuid, name, is_parent,
+    id, uuid, name, is_parent, track_stock,
     product_prices (*),
     product_images (
       id, storage_path, is_primary, display_order,
       shared_image_id,
       shared_images ( storage_path )
-    )
+    ),
+    stock_levels ( branch_id, qty_on_hand, qty_reserved )
   `
   const collected = new Map<number, any>()
 
@@ -98,8 +99,9 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     if (data) data.forEach((p: any) => collected.set(p.id, p))
   }
 
-  // Mezclar aleatoriamente y limitar
-  const all = Array.from(collected.values())
+  // Filtrar stock por sucursales web
+  const webBranchIds = await getWebStockBranchIds(organizationId)
+  const all = filterStockByBranches(Array.from(collected.values()), webBranchIds)
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [all[i], all[j]] = [all[j], all[i]]

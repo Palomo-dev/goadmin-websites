@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Plus, Check, Package, ChevronLeft, ChevronRight, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { isOutOfStock } from '@/lib/stock'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -108,6 +109,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
           const comparePrice = product.product_prices?.[0]?.compare_price
           const imgUrl = getImageUrl(product)
           const isAdded = addedToCart.has(product.id)
+          const outOfStock = isOutOfStock(product)
           const discount = comparePrice && price && Number(comparePrice) > Number(price)
             ? Math.round((1 - Number(price) / Number(comparePrice)) * 100)
             : null
@@ -159,10 +161,11 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
                   <Button
                     size="sm"
                     onClick={() => addToCart(product)}
-                    className={`w-full mt-2 text-xs transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                    style={!isAdded ? { backgroundColor: primaryColor } : {}}
+                    disabled={outOfStock}
+                    className={`w-full mt-2 text-xs transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock ? 'opacity-50' : ''}`}
+                    style={!isAdded && !outOfStock ? { backgroundColor: primaryColor } : {}}
                   >
-                    {isAdded ? <><Check className="h-3 w-3 mr-1" />Agregado</> : <><Plus className="h-3 w-3 mr-1" />Agregar</>}
+                    {isAdded ? <><Check className="h-3 w-3 mr-1" />Agregado</> : outOfStock ? <><Package className="h-3 w-3 mr-1" />Sin stock</> : <><Plus className="h-3 w-3 mr-1" />Agregar</>}
                   </Button>
                 )}
                 {product.is_parent && (
@@ -171,6 +174,9 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
                       <Layers className="h-3 w-3 mr-1" /> Elegir
                     </Button>
                   </Link>
+                )}
+                {outOfStock && !product.is_parent && (
+                  <span className="inline-block mt-1 text-xs font-medium text-red-500">Agotado</span>
                 )}
               </div>
             </div>
