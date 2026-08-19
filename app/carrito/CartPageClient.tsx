@@ -12,13 +12,29 @@ import {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
+interface CartModifier {
+  modifierId: number
+  valueName: string
+  extraPrice?: number
+}
+
+interface NewCartModifier {
+  modifierId: number
+  name: string
+  extraPrice: number
+}
+
 interface CartItem {
-  id: number
+  id: number | string
+  productId?: number
   name: string
   price: number
   comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
+  notes?: string
+  modifiers?: CartModifier[]
+  newModifiers?: NewCartModifier[]
   variantAttributes?: Record<string, string> | null
 }
 
@@ -90,7 +106,7 @@ export function CartPageClient({
     window.dispatchEvent(new CustomEvent('cart-updated'))
   }
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (id: number | string, delta: number) => {
     saveCart(
       items.map(item =>
         item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
@@ -98,7 +114,7 @@ export function CartPageClient({
     )
   }
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: number | string) => {
     saveCart(items.filter(item => item.id !== id))
   }
 
@@ -213,7 +229,7 @@ export function CartPageClient({
               className="flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-sm transition-shadow"
             >
               {/* Imagen */}
-              <Link href={`/productos/${item.id}`} className="shrink-0">
+              <Link href={`/productos/${item.productId || item.id}`} className="shrink-0">
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -228,7 +244,7 @@ export function CartPageClient({
               {/* Info */}
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <Link href={`/productos/${item.id}`}>
+                  <Link href={`/productos/${item.productId || item.id}`}>
                     <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-2">{item.name}</h3>
                   </Link>
                   {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
@@ -237,6 +253,19 @@ export function CartPageClient({
                         <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
                       ))}
                     </p>
+                  )}
+                  {item.modifiers && item.modifiers.length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {item.modifiers.map(m => m.valueName).join(', ')}
+                    </p>
+                  )}
+                  {item.newModifiers && item.newModifiers.length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                    </p>
+                  )}
+                  {item.notes && (
+                    <p className="text-xs text-gray-400 italic mt-0.5">📝 {item.notes}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
                     {item.comparePrice && item.comparePrice > item.price && (

@@ -7,13 +7,29 @@ import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { Price } from './CurrencyProvider'
 
+interface CartModifier {
+  modifierId: number
+  valueName: string
+  extraPrice?: number
+}
+
+interface NewCartModifier {
+  modifierId: number
+  name: string
+  extraPrice: number
+}
+
 interface CartItem {
-  id: number
+  id: number | string
+  productId?: number
   name: string
   price: number
   comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
+  notes?: string
+  modifiers?: CartModifier[]
+  newModifiers?: NewCartModifier[]
   variantAttributes?: Record<string, string> | null
 }
 
@@ -70,7 +86,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
     }
   }, [cartKey])
   
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (id: number | string, delta: number) => {
     const updatedItems = items.map(item => {
       if (item.id === id) {
         const newQty = Math.max(1, item.quantity + delta)
@@ -83,7 +99,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
     window.dispatchEvent(new CustomEvent('cart-updated'))
   }
   
-  const removeItem = (id: number) => {
+  const removeItem = (id: number | string) => {
     const updatedItems = items.filter(item => item.id !== id)
     setItems(updatedItems)
     localStorage.setItem(cartKey, JSON.stringify(updatedItems))
@@ -162,6 +178,19 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                           <span key={k} className="mr-2"><span className="capitalize font-medium">{k}:</span> {v}</span>
                         ))}
                       </p>
+                    )}
+                    {item.modifiers && item.modifiers.length > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {item.modifiers.map(m => m.valueName).join(', ')}
+                      </p>
+                    )}
+                    {item.newModifiers && item.newModifiers.length > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                      </p>
+                    )}
+                    {item.notes && (
+                      <p className="text-xs text-gray-400 italic truncate">📝 {item.notes}</p>
                     )}
                     <div className="flex items-center gap-2">
                       {item.comparePrice && item.comparePrice > item.price && (
