@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Check, Package, Layers, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
+import { getAvailableStock } from '@/lib/stock'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -71,14 +72,6 @@ function getProductImageUrl(product: Product): string | null {
   const storagePath = image.storage_path || image.shared_images?.storage_path
   if (!storagePath) return null
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
-}
-
-function getAvailableStock(product: Product): number | null {
-  if (product.track_stock === false) return null
-  if (!product.stock_levels || product.stock_levels.length === 0) return null
-  return product.stock_levels.reduce(
-    (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 const SORT_OPTIONS = [

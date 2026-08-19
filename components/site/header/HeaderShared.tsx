@@ -1,0 +1,610 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Search, ShoppingBag, User, UserCircle, Phone, Mail, ChevronDown, Menu as MenuIcon, LogOut, Globe, X } from 'lucide-react';
+import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
+import { ProductSearch } from '../ProductSearch';
+import { SearchBarInput } from '../SearchBarInput';
+import { CartIndicator } from '../CartIndicator';
+import { CurrencySelector } from '../CurrencySelector';
+import { useCurrency } from '../CurrencyProvider';
+import { createClient } from '@/lib/supabase/client';
+import NavDropdown from './NavDropdown';
+
+// ============================================================
+// SHARED TYPES
+// ============================================================
+
+export interface HeaderVariantProps {
+  organization: OrganizationWithDetails;
+  primaryColor: string;
+  navTree: WebsitePageWithChildren[];
+  settings: OrganizationWithDetails['website_settings'];
+  showCart?: boolean;
+  onCartClick?: () => void;
+  menuCategories?: MenuCategory[];
+}
+
+export interface MenuCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  image_url: string | null;
+  children: MenuCategory[];
+}
+
+export interface NavItem {
+  name: string;
+  href: string;
+  children?: NavItem[];
+  icon?: string | null;
+  badge?: string | null;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
+  return {
+    name: page.title,
+    href: page.slug === 'home' ? '/' : `/${page.slug}`,
+    children: page.children.length > 0 ? page.children.map(pageToNavItem) : undefined,
+    icon: page.menu_icon,
+    badge: page.menu_badge,
+  };
+}
+
+export function buildNavItems(navTree: WebsitePageWithChildren[]): NavItem[] {
+  return navTree.map(pageToNavItem);
+}
+
+// ============================================================
+// SHARED COMPONENTS
+// ============================================================
+
+// Helper: genera el style inline para la opacidad del header
+// Soporta dark mode via la clase CSS `dark:` aplicada al elemento padre
+// Si header_bg_color está configurado, usa ese color (con opacidad);
+// si no, usa blanco (light) / gray-900 (dark) con opacidad.
+export function headerBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+  const opacity = settings?.header_opacity ?? 95;
+  const bgColor = settings?.header_bg_color ?? null;
+  if (bgColor) {
+    // Color personalizado: aplica opacidad sobre el color configurado
+    const normalized = bgColor.replace('#', '');
+    if (normalized.length === 6) {
+      const r = parseInt(normalized.slice(0, 2), 16);
+      const g = parseInt(normalized.slice(2, 4), 16);
+      const b = parseInt(normalized.slice(4, 6), 16);
+      return {
+        backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity / 100})`,
+        ['--header-bg-dark' as string]: `rgba(${r}, ${g}, ${b}, ${opacity / 100})`,
+      };
+    }
+  }
+  return {
+    backgroundColor: `rgba(255, 255, 255, ${opacity / 100})`,
+    ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`,
+  };
+}
+
+// Helper: style del topbar (usa topbar_bg_color o hereda del header)
+export function topbarBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+  const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
+  if (bgColor) {
+    return { backgroundColor: bgColor };
+  }
+  // Sin color configurado: herencia del header (opacidad sobre blanco)
+  const opacity = settings?.header_opacity ?? 95;
+  return {
+    backgroundColor: `rgba(255, 255, 255, ${opacity / 100})`,
+  };
+}
+
+// Helper: style de la barra de menú inferior (nav row)
+export function navBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+  const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
+  if (bgColor) {
+    return { backgroundColor: bgColor };
+  }
+  return {};
+}
+
+// Helper: color de texto automático según luminancia del fondo
+export function headerTextColor(settings: HeaderVariantProps['settings']): string {
+  const bgColor = settings?.header_bg_color ?? null;
+  if (!bgColor) return ''; // vacío = hereda de Tailwind (gray-700/300)
+  const normalized = bgColor.replace('#', '');
+  if (normalized.length !== 6) return '';
+  const r = parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = parseInt(normalized.slice(4, 6), 16) / 255;
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return lum > 0.5 ? '#111827' : '#ffffff';
+}
+
+// Helper: color de texto del topbar
+export function topbarTextColor(settings: HeaderVariantProps['settings']): string {
+  const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
+  if (!bgColor) return '';
+  const normalized = bgColor.replace('#', '');
+  if (normalized.length !== 6) return '';
+  const r = parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = parseInt(normalized.slice(4, 6), 16) / 255;
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return lum > 0.5 ? '#111827' : '#ffffff';
+}
+
+// Helper: color de texto de la barra de menú
+export function navTextColor(settings: HeaderVariantProps['settings']): string {
+  const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
+  if (!bgColor) return '';
+  const normalized = bgColor.replace('#', '');
+  if (normalized.length !== 6) return '';
+  const r = parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = parseInt(normalized.slice(4, 6), 16) / 255;
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return lum > 0.5 ? '#111827' : '#ffffff';
+}
+
+// Helper: color de acento efectivo (accent_color o primaryColor como fallback)
+export function accentColor(settings: HeaderVariantProps['settings'], primaryColor: string): string {
+  return settings?.accent_color || primaryColor;
+}
+
+export function HeaderLogo({
+  organization,
+  primaryColor,
+  height = 48,
+}: {
+  organization: OrganizationWithDetails;
+  primaryColor: string;
+  height?: number;
+}) {
+  if (organization.logo_url) {
+    return (
+      <Link href="/" className="flex-shrink-0 flex items-center space-x-3">
+        <Image
+          src={organization.logo_url}
+          alt={organization.name}
+          width={height * 3}
+          height={height}
+          className="w-auto object-contain"
+          style={{ height: `${height}px` }}
+          priority
+        />
+      </Link>
+    );
+  }
+
+  const logoSize = Math.max(40, Math.min(56, height * 0.8));
+
+  return (
+    <Link href="/" className="flex-shrink-0 flex items-center space-x-3">
+      <div
+        className="rounded-xl flex items-center justify-center text-white font-bold text-lg"
+        style={{ backgroundColor: primaryColor, width: logoSize, height: logoSize }}
+      >
+        {organization.name.substring(0, 2).toUpperCase()}
+      </div>
+      <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
+        {organization.name}
+      </span>
+    </Link>
+  );
+}
+
+export function HeaderActions({
+  settings,
+  showCart,
+  onCartClick,
+  searchStyle,
+  organizationId,
+  primaryColor,
+  showSearchIcon = true,
+  organizationSubdomain,
+  isMobile = false,
+}: {
+  settings: HeaderVariantProps['settings'];
+  showCart?: boolean;
+  onCartClick?: () => void;
+  searchStyle?: string;
+  organizationId: number;
+  primaryColor: string;
+  showSearchIcon?: boolean;
+  organizationSubdomain?: string;
+  isMobile?: boolean;
+}) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Defaults: true (igual que el header original)
+  const showHeaderCart = settings?.show_header_cart !== false && showCart;
+  const showHeaderAuth = settings?.show_header_auth !== false;
+  const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
+
+  return (
+    <div className="flex items-center space-x-4 flex-shrink-0">
+      {showSearchIcon && searchStyle === 'icon' && (
+        <ProductSearch primaryColor={primaryColor} organizationId={organizationId} />
+      )}
+
+      {/* CurrencySelector: solo en desktop — en móvil está en el drawer */}
+      {!isMobile && <CurrencySelector primaryColor={primaryColor} />}
+
+      {showHeaderCart && (
+        <CartIndicator
+          primaryColor={primaryColor}
+          cartBehavior={cartBehavior}
+          onClick={onCartClick}
+          organizationSubdomain={organizationSubdomain || ''}
+        />
+      )}
+
+      {/* Auth: solo en desktop — en móvil está en el drawer */}
+      {!isMobile && showHeaderAuth && (
+        isLoggedIn ? (
+          <Link href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
+            <UserCircle className="h-6 w-6" style={{ color: primaryColor }} />
+          </Link>
+        ) : (
+          <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          </Link>
+        )
+      )}
+    </div>
+  );
+}
+
+export function HeaderCTA({
+  text,
+  href,
+  primaryColor,
+}: {
+  text: string;
+  href?: string;
+  primaryColor: string;
+}) {
+  if (!text) return null;
+  const linkHref = href || '#';
+  return (
+    <Link
+      href={linkHref}
+      className="hidden md:inline-flex items-center px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
+      style={{ backgroundColor: primaryColor }}
+    >
+      {text}
+    </Link>
+  );
+}
+
+export function HeaderTopbar({
+  organization,
+  settings,
+}: {
+  organization: OrganizationWithDetails;
+  settings?: HeaderVariantProps['settings'];
+}) {
+  const phone = organization.phone || '';
+  const email = organization.email || '';
+  const showEmail = settings?.topbar_show_email !== false;
+  const showPhone = settings?.topbar_show_phone !== false;
+  const announcement = settings?.topbar_announcement ?? '';
+
+  // Color del topbar: configurado o default (gray-900)
+  const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
+  const bgStyle: React.CSSProperties = bgColor
+    ? { backgroundColor: bgColor }
+    : {};
+  const textColor = bgColor ? topbarTextColor(settings) : '';
+  const textClass = bgColor ? '' : 'text-white';
+
+  return (
+    <div
+      className={`hidden md:block text-xs py-1.5 px-4 ${bgColor ? '' : 'bg-gray-900 dark:bg-black'} ${textClass}`}
+      style={bgStyle}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-hidden">
+        {/* Izquierda: contacto */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+          {showPhone && phone && (
+            <span className="flex items-center gap-1" style={textColor ? { color: textColor } : undefined}>
+              <Phone className="h-3 w-3" />
+              {phone}
+            </span>
+          )}
+          {showEmail && email && (
+            <span className="hidden lg:flex items-center gap-1" style={textColor ? { color: textColor } : undefined}>
+              <Mail className="h-3 w-3" />
+              {email}
+            </span>
+          )}
+        </div>
+
+        {/* Centro: mensaje promocional (marquee) */}
+        {announcement && (
+          <div className="flex-1 overflow-hidden mx-4">
+            <div
+              className="whitespace-nowrap animate-marquee"
+              style={textColor ? { color: textColor } : undefined}
+            >
+              {announcement}
+            </div>
+          </div>
+        )}
+
+        {/* Derecha: nombre org */}
+        <span className="hidden lg:block opacity-80 flex-shrink-0" style={textColor ? { color: textColor } : undefined}>
+          {organization.name}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function NavLink({
+  item,
+  primaryColor,
+  hasDropdown = false,
+}: {
+  item: NavItem;
+  primaryColor: string;
+  hasDropdown?: boolean;
+}) {
+  const showDropdown = hasDropdown && item.children && item.children.length > 0;
+
+  if (!showDropdown) {
+    return (
+      <Link
+        href={item.href}
+        className="relative text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors whitespace-nowrap flex items-center gap-1"
+        style={{ '--hover-color': primaryColor } as React.CSSProperties}
+      >
+        {item.icon && <span className="text-base">{item.icon}</span>}
+        <span>{item.name}</span>
+        {item.badge && (
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-semibold"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {item.badge}
+          </span>
+        )}
+        {hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
+      </Link>
+    );
+  }
+
+  // Item con children → renderizar con NavDropdown al hover
+  return <NavDropdown item={item} primaryColor={primaryColor} />;
+}
+
+export function NavList({
+  items,
+  primaryColor,
+  className = '',
+}: {
+  items: NavItem[];
+  primaryColor: string;
+  className?: string;
+}) {
+  return (
+    <nav className={`flex items-center gap-5 ${className}`}>
+      {items.map((item, i) => (
+        <NavLink
+          key={i}
+          item={item}
+          primaryColor={primaryColor}
+          hasDropdown={!!item.children}
+        />
+      ))}
+    </nav>
+  );
+}
+
+export function SearchBarInline({
+  primaryColor,
+  organizationId,
+  className = '',
+  size = 'md',
+}: {
+  primaryColor: string;
+  organizationId: number;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  return (
+    <div className={className}>
+      <SearchBarInput
+        primaryColor={primaryColor}
+        organizationId={organizationId}
+        size={size}
+        className="w-full"
+      />
+    </div>
+  );
+}
+
+export function MobileMenuButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`md:hidden p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white ${className}`}
+      aria-label="Abrir menú"
+    >
+      <MenuIcon className="h-6 w-6" />
+    </button>
+  );
+}
+
+// ============================================================
+// MOBILE SHARED COMPONENTS
+// ============================================================
+
+// Selector de moneda móvil con chips (restaurado del header original)
+export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
+  const { currency, availableCurrencies, setCurrency, loading } = useCurrency();
+  const [open, setOpen] = useState(false);
+
+  if (loading || availableCurrencies.length <= 1) return null;
+
+  const current = availableCurrencies.find((c) => c.code === currency);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-gray-400" />
+          {current ? `${current.code} — ${current.country}` : currency}
+        </span>
+        <ChevronDown className="h-4 w-4 text-gray-400" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white dark:bg-gray-900 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar moneda</h3>
+              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {availableCurrencies.map((c) => (
+                <button
+                  key={c.code}
+                  onClick={() => {
+                    setCurrency(c.code);
+                    setOpen(false);
+                  }}
+                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    c.code === currency
+                      ? 'font-semibold'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  style={c.code === currency && primaryColor ? { color: primaryColor, backgroundColor: `${primaryColor}10` } : undefined}
+                >
+                  <span>{c.code}</span>
+                  <span className="text-xs text-gray-400">{c.country}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Sección de auth para drawers móviles (login/registro/logout)
+export function MobileAuthSection({
+  isLoggedIn,
+  primaryColor,
+  onNavigate,
+}: {
+  isLoggedIn: boolean;
+  primaryColor: string;
+  onNavigate: () => void;
+}) {
+  if (!isLoggedIn) {
+    return (
+      <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+        <Link
+          href="/auth"
+          className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: primaryColor }}
+          onClick={onNavigate}
+        >
+          Iniciar sesión
+        </Link>
+        <Link
+          href="/auth?tab=register"
+          className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
+          style={{ borderColor: primaryColor, color: primaryColor }}
+          onClick={onNavigate}
+        >
+          Registrarse
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+      <Link
+        href="/mi-cuenta"
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+        onClick={onNavigate}
+      >
+        <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
+        Mi Cuenta
+      </Link>
+      <button
+        onClick={async () => {
+          const supabase = createClient();
+          await supabase.auth.signOut();
+          onNavigate();
+          window.location.href = '/';
+        }}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+      >
+        <LogOut className="h-4 w-4" />
+        Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
+// Hook para auth state en componentes móviles
+export function useAuthState() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[Auth] getSession:', !!session, session?.user?.email);
+      setIsLoggedIn(!!session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[Auth] onAuthStateChange:', _event, !!session);
+      setIsLoggedIn(!!session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return isLoggedIn;
+}

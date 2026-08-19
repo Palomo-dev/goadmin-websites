@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, Flame, TrendingUp, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { isOutOfStock } from '@/lib/stock'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 const ITEMS_PER_PAGE = 12
@@ -23,14 +24,6 @@ function getDiscount(product: any): number {
   const pp = product.product_prices?.[0]
   if (!pp?.compare_price || !pp?.price) return 0
   return Math.round((1 - Number(pp.price) / Number(pp.compare_price)) * 100)
-}
-
-function getStock(product: any): number | null {
-  if (product.track_stock === false) return null
-  if (!product.stock_levels || product.stock_levels.length === 0) return null
-  return product.stock_levels.reduce(
-    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 interface OffersGridProps {
@@ -194,8 +187,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                 const isAdded = addedToCart.has(product.id)
                 const variantCount = product.variant_count || 0
                 const isParent = product.is_parent && variantCount > 0
-                const stock = getStock(product)
-                const outOfStock = stock !== null && stock <= 0
+                const outOfStock = isOutOfStock(product)
 
                 return (
                   <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all">

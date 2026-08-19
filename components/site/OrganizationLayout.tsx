@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { SiteHeader } from './SiteHeader'
+import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
@@ -13,8 +13,9 @@ import { ChatWidget } from './ChatWidget'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
 import type { FrozenReason } from '@/lib/get-org-context'
-import type { OrganizationWithDetails, WebsitePage } from '@/types/database'
+import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
+import type { MenuCategory } from './header/HeaderShared'
 
 interface OrganizationLayoutProps {
   organization: OrganizationWithDetails
@@ -22,7 +23,10 @@ interface OrganizationLayoutProps {
   primaryColor: string
   children: React.ReactNode
   headerNav?: WebsitePage[]
+  headerNavTree?: WebsitePageWithChildren[]
+  menuCategories?: MenuCategory[]
   footerNav?: WebsitePage[]
+  footerNavTree?: WebsitePageWithChildren[]
   metaPixelId?: string | null
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
   taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
@@ -35,7 +39,10 @@ export function OrganizationLayout({
   primaryColor,
   children,
   headerNav,
+  headerNavTree,
+  menuCategories,
   footerNav,
+  footerNavTree,
   metaPixelId,
   googleAdsConfig,
   taxSettings,
@@ -81,13 +88,15 @@ export function OrganizationLayout({
     >
       {/* Header específico según tipo (oculto si la cuenta está congelada) */}
       {!frozenReason && (
-        <SiteHeader 
+        <SiteHeader
           organization={organization}
           primaryColor={primaryColor}
           template={template}
           showCart={showCart}
           onCartClick={() => setCartOpen(true)}
           headerNav={headerNav}
+          headerNavTree={headerNavTree}
+          menuCategories={menuCategories}
         />
       )}
       
@@ -117,12 +126,14 @@ export function OrganizationLayout({
       
       {/* Footer (oculto si la cuenta está congelada) */}
       {!frozenReason && (
-        <SiteFooter 
+        <SiteFooter
           organization={organization}
           settings={settings}
           primaryColor={primaryColor}
           template={template}
           footerNav={footerNav}
+          footerNavTree={footerNavTree}
+          menuCategories={menuCategories}
         />
       )}
       

@@ -9,7 +9,10 @@ import {
   getOrganizationServices,
   getWebsitePageBySlug,
   getWebsiteHeaderNav,
+  getWebsiteHeaderNavTree,
   getWebsiteFooterNav,
+  getWebsiteFooterNavTree,
+  getMenuCategories,
   getMetaPixelId,
   getGoogleAdsConfig,
   getMenuProducts,
@@ -150,9 +153,13 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
   // Fetch navegación dinámica + Meta Pixel + Google Ads
-  const [headerNav, footerNav, metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
+  const showCategoriesInHeader = organization.website_settings?.show_categories_in_header ?? false
+  const [headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
     getWebsiteHeaderNav(organization.id),
+    getWebsiteHeaderNavTree(organization.id),
     getWebsiteFooterNav(organization.id),
+    getWebsiteFooterNavTree(organization.id),
+    showCategoriesInHeader ? getMenuCategories(organization.id) : Promise.resolve([]),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
     getDefaultTax(organization.id)
@@ -195,7 +202,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
         {page.website_page_sections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -211,12 +218,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
   // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
-  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, footerNav, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
+  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
   if (fallback) return fallback
 
   // 4. Página no encontrada
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
@@ -240,7 +247,10 @@ async function renderSlugFallback(
   primaryColor: string,
   template: any,
   headerNav: any[],
+  headerNavTree: any[],
+  menuCategories: any[],
   footerNav: any[],
+  footerNavTree: any[],
   metaPixelId?: string | null,
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null,
   searchParams?: Record<string, string | string[] | undefined>,
@@ -248,7 +258,7 @@ async function renderSlugFallback(
   frozenReason?: FrozenReason
 ): Promise<React.ReactElement | null> {
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       {children}
     </OrganizationLayout>
   )

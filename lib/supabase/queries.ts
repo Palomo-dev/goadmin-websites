@@ -1,5 +1,5 @@
 import { createAdminClient, createPublicClient } from './server'
-import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections } from '@/types/database'
+import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
 
 function getSupabaseForPublicRead() {
@@ -901,13 +901,14 @@ export async function getWebsitePageBySlug(
 
 /**
  * Obtiene las páginas para el header (navegación principal)
+ * Incluye campos de mega-menú: parent_page_id, linked_category_id, menu_icon, menu_badge
  */
 export async function getWebsiteHeaderNav(organizationId: number): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
     .from('website_pages')
-    .select('id, slug, title, header_order')
+    .select('id, slug, title, header_order, parent_page_id, linked_category_id, menu_icon, menu_badge')
     .eq('organization_id', organizationId)
     .eq('is_published', true)
     .eq('show_in_header', true)
@@ -918,14 +919,23 @@ export async function getWebsiteHeaderNav(organizationId: number): Promise<Websi
 }
 
 /**
+ * Obtiene el árbol jerárquico de páginas del header (anidadas por parent_page_id)
+ */
+export async function getWebsiteHeaderNavTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
+  const flat = await getWebsiteHeaderNav(organizationId)
+  return buildMenuTree(flat)
+}
+
+/**
  * Obtiene las páginas para el footer
+ * Incluye campos de mega-menú para jerarquía del footer
  */
 export async function getWebsiteFooterNav(organizationId: number): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
     .from('website_pages')
-    .select('id, slug, title, footer_order')
+    .select('id, slug, title, footer_order, parent_page_id, linked_category_id, menu_icon, menu_badge')
     .eq('organization_id', organizationId)
     .eq('is_published', true)
     .eq('show_in_footer', true)
@@ -933,6 +943,108 @@ export async function getWebsiteFooterNav(organizationId: number): Promise<Websi
 
   if (error || !data) return []
   return data as WebsitePage[]
+}
+
+/**
+ * Obtiene el árbol jerárquico de páginas del footer (anidadas por parent_page_id)
+ */
+export async function getWebsiteFooterNavTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
+  const flat = await getWebsiteFooterNav(organizationId)
+  return buildMenuTree(flat)
+}
+
+/**
+ * Construye un árbol jerárquico desde una lista plana de páginas.
+ * Anida por parent_page_id, ordena por header_order/footer_order.
+ */
+function buildMenuTree(flat: WebsitePage[]): WebsitePageWithChildren[] {
+  const map = new Map<string, WebsitePageWithChildren>()
+  const roots: WebsitePageWithChildren[] = []
+
+  flat.forEach(page => {
+    map.set(page.id, { ...page, children: [], level: 0 })
+  })
+
+  flat.forEach(page => {
+    const node = map.get(page.id)!
+    if (page.parent_page_id === null) {
+      roots.push(node)
+    } else {
+      const parent = map.get(page.parent_page_id)
+      if (parent) {
+        parent.children.push(node)
+        node.level = parent.level + 1
+      } else {
+        // Padre no encontrado (puede no estar publicado o no estar en header) → raíz
+        roots.push(node)
+      }
+    }
+  })
+
+  const sortChildren = (pages: WebsitePageWithChildren[]): WebsitePageWithChildren[] => {
+    return pages
+      .sort((a, b) => a.header_order - b.header_order)
+      .map(p => ({ ...p, children: sortChildren(p.children) }))
+  }
+
+  return sortChildren(roots)
+}
+
+/**
+ * Obtiene las categorías activas para mostrar en el mega-menú del header.
+ * Solo se llama si settings.show_categories_in_header = true.
+ * Retorna categorías raíz (parent_id = null) con sus subcategorías.
+ */
+export interface MenuCategory {
+  id: number
+  uuid: string | null
+  name: string
+  slug: string
+  icon: string | null
+  color: string | null
+  image_url: string | null
+  parent_id: number | null
+  is_active: boolean
+  display_order: number | null
+  rank: number | null
+  children: MenuCategory[]
+}
+
+export async function getMenuCategories(organizationId: number): Promise<MenuCategory[]> {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, uuid, name, slug, icon, color, image_url, parent_id, is_active, display_order, rank')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('rank', { ascending: true })
+
+  if (error || !data) return []
+
+  // Construir árbol de categorías
+  const catMap = new Map<number, MenuCategory>()
+  const roots: MenuCategory[] = []
+
+  data.forEach((cat: Omit<MenuCategory, 'children'>) => {
+    catMap.set(cat.id, { ...cat, children: [] })
+  })
+
+  data.forEach((cat: Omit<MenuCategory, 'children'>) => {
+    const node = catMap.get(cat.id)!
+    if (cat.parent_id === null) {
+      roots.push(node)
+    } else {
+      const parent = catMap.get(cat.parent_id)
+      if (parent) {
+        parent.children.push(node)
+      } else {
+        roots.push(node)
+      }
+    }
+  })
+
+  return roots
 }
 
 /**

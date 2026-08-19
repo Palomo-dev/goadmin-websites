@@ -9,6 +9,7 @@ import {
   Search, Plus, Minus, Check, ShoppingBag, X, SlidersHorizontal, ChevronRight 
 } from 'lucide-react'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from './ProductModifierSelector'
+import { getAvailableStock } from '@/lib/stock'
 
 // ── Types ──
 
@@ -99,14 +100,6 @@ function getProductImageUrl(product: MenuProduct): string | null {
   const storagePath = image.storage_path || image.shared_images?.storage_path
   if (!storagePath) return null
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
-}
-
-function getAvailableStock(product: MenuProduct): number | null {
-  if (product.track_stock === false) return null
-  if (!product.stock_levels || product.stock_levels.length === 0) return null
-  return product.stock_levels.reduce(
-    (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 // ── Component ──

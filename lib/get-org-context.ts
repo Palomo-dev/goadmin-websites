@@ -2,7 +2,10 @@ import { headers } from 'next/headers'
 import {
   getOrganizationByHost,
   getWebsiteHeaderNav,
-  getWebsiteFooterNav
+  getWebsiteHeaderNavTree,
+  getWebsiteFooterNav,
+  getWebsiteFooterNavTree,
+  getMenuCategories
 } from '@/lib/supabase/queries'
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
@@ -24,15 +27,24 @@ export async function getOrgContext() {
   const templateId = organization.website_settings?.template_id || 'modern'
   const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
-  const [headerNav, footerNav] = await Promise.all([
+  // Cargar navegación plana (compat) + árbol jerárquico (mega-menú)
+  const [headerNav, headerNavTree, footerNav, footerNavTree] = await Promise.all([
     getWebsiteHeaderNav(organization.id),
-    getWebsiteFooterNav(organization.id)
+    getWebsiteHeaderNavTree(organization.id),
+    getWebsiteFooterNav(organization.id),
+    getWebsiteFooterNavTree(organization.id)
   ])
+
+  // Cargar categorías para el mega-menú solo si la configuración lo activa
+  const showCategoriesInHeader = organization.website_settings?.show_categories_in_header ?? false
+  const menuCategories = showCategoriesInHeader
+    ? await getMenuCategories(organization.id)
+    : []
 
   // Verificar estado de congelación de la organización
   const frozenReason = await checkFrozenStatus(organization.id, organization.status)
 
-  return { organization, primaryColor, template, headerNav, footerNav, frozenReason }
+  return { organization, primaryColor, template, headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, frozenReason }
 }
 
 export async function checkFrozenStatus(orgId: number, orgStatus: string | null): Promise<FrozenReason> {

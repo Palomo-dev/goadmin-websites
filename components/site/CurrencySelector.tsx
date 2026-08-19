@@ -17,7 +17,9 @@ export function CurrencySelector({ primaryColor }: { primaryColor?: string }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  if (loading || availableCurrencies.length <= 1) return null
+  // Mostrar siempre si hay monedas disponibles, incluso si solo hay 1
+  if (loading) return null
+  if (availableCurrencies.length === 0) return null
 
   return (
     <div ref={ref} className="relative">

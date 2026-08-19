@@ -51,6 +51,19 @@ export async function applyTemplateToOrganization(
       header_cta_url: preset.header_cta_url || null,
       show_topbar: preset.show_topbar || false,
       logo_position: (preset.logo_position || 'left') as 'left' | 'center',
+      // Header configurable (Fase 9) - solo si existen en el preset
+      ...(preset.menu_position ? { menu_position: preset.menu_position } : {}),
+      ...(preset.search_style ? { search_style: preset.search_style } : {}),
+      ...(preset.show_header_cart !== undefined ? { show_header_cart: preset.show_header_cart } : {}),
+      ...(preset.show_header_auth !== undefined ? { show_header_auth: preset.show_header_auth } : {}),
+      ...(preset.show_categories_in_header !== undefined ? { show_categories_in_header: preset.show_categories_in_header } : {}),
+      ...(preset.categories_menu_style ? { categories_menu_style: preset.categories_menu_style } : {}),
+      ...(preset.mega_menu_columns !== undefined ? { mega_menu_columns: preset.mega_menu_columns } : {}),
+      ...(preset.mobile_menu_style ? { mobile_menu_style: preset.mobile_menu_style } : {}),
+      ...(preset.mobile_search_style ? { mobile_search_style: preset.mobile_search_style } : {}),
+      ...(preset.mobile_show_topbar !== undefined ? { mobile_show_topbar: preset.mobile_show_topbar } : {}),
+      ...(preset.mobile_sticky_header !== undefined ? { mobile_sticky_header: preset.mobile_sticky_header } : {}),
+      ...(preset.mobile_breakpoint !== undefined ? { mobile_breakpoint: preset.mobile_breakpoint } : {}),
       updated_at: new Date().toISOString(),
     }
     const { error: settingsError } = await (supabase as any)

@@ -1,0 +1,80 @@
+'use client';
+
+import {
+  HeaderLogo,
+  HeaderActions,
+  HeaderCTA,
+  HeaderTopbar,
+  NavList,
+  SearchBarInline,
+  buildNavItems,
+  type HeaderVariantProps,
+  headerBgStyle,
+} from '../header/HeaderShared';
+
+export default function HeaderSplit({
+  organization,
+  primaryColor,
+  navTree,
+  settings,
+  showCart,
+  onCartClick,
+}: HeaderVariantProps) {
+  const navItems = buildNavItems(navTree);
+  const organizationId = organization.id;
+  const showSearchBar = settings?.search_style === 'bar';
+  const ctaText = settings?.header_cta_text ?? '';
+
+  const midpoint = Math.ceil(navItems.length / 2);
+  const leftNav = navItems.slice(0, midpoint);
+  const rightNav = navItems.slice(midpoint);
+
+  return (
+    <header className="sticky top-0 z-40 w-full">
+      {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
+      <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+            {/* Logo */}
+            <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
+
+            {/* Nav izquierda */}
+            {leftNav.length > 0 && (
+              <NavList items={leftNav} primaryColor={primaryColor} className="flex-shrink-0" />
+            )}
+
+            {/* Search bar central */}
+            {showSearchBar && (
+              <SearchBarInline
+                primaryColor={primaryColor}
+                organizationId={organizationId}
+                className="flex-1 max-w-xl mx-auto"
+                size="lg"
+              />
+            )}
+
+            {/* Nav derecha */}
+            {rightNav.length > 0 && (
+              <NavList items={rightNav} primaryColor={primaryColor} className="flex-shrink-0" />
+            )}
+
+            {/* Acciones + CTA */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <HeaderActions
+                settings={settings}
+                showCart={showCart}
+                onCartClick={onCartClick}
+                searchStyle={settings?.search_style}
+                organizationId={organizationId}
+                primaryColor={primaryColor}
+              />
+              {ctaText && (
+                <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

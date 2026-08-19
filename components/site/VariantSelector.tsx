@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
+import { getAvailableStock } from '@/lib/stock'
 
 interface VariantProduct {
   id: number
@@ -41,14 +42,6 @@ function getVariantImageUrl(variant: VariantProduct): string | null {
   const path = primary.storage_path || primary.shared_images?.storage_path
   if (!path) return null
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
-}
-
-function getAvailableStock(variant: VariantProduct): number | null {
-  if (variant.track_stock === false) return null
-  if (!variant.stock_levels || variant.stock_levels.length === 0) return null
-  return variant.stock_levels.reduce(
-    (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 export function VariantSelector({

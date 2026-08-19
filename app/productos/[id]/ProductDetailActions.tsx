@@ -7,6 +7,7 @@ import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { Zap, Minus, Plus } from 'lucide-react'
+import { isOutOfStock } from '@/lib/stock'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -50,12 +51,6 @@ interface ProductDetailActionsProps {
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
 }
 
-function getAvailableStock(trackStock: boolean | undefined, stockLevels: { qty_on_hand: number; qty_reserved: number }[] | undefined): number | null {
-  if (trackStock === false) return null
-  if (!stockLevels || stockLevels.length === 0) return null
-  return stockLevels.reduce((sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0)
-}
-
 export function ProductDetailActions({
   product,
   variants,
@@ -77,8 +72,7 @@ export function ProductDetailActions({
   const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = price + modifiersExtraTotal
 
-  const stock = getAvailableStock(trackStock, stockLevels)
-  const outOfStock = stock !== null && stock <= 0
+  const outOfStock = isOutOfStock({ track_stock: trackStock, stock_levels: stockLevels })
 
   const handleVariantSelect = (variant: any, qty: number = 1) => {
     const variantPrice = variant.product_prices?.[0]?.price || 0

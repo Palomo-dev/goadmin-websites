@@ -29,11 +29,25 @@ export async function GET(request: NextRequest) {
     const subdomain = headersList.get('x-subdomain')
     const customDomain = headersList.get('x-custom-domain')
     const identifier = customDomain || subdomain
-    if (!identifier) {
+    // En desarrollo local (sin headers de subdomain), usar el primer org disponible
+    const isDev = !identifier && process.env.NODE_ENV === 'development'
+    if (!identifier && !isDev) {
       return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
     }
 
-    const organization = await getOrganizationByHost(identifier)
+    let organization
+    if (identifier) {
+      organization = await getOrganizationByHost(identifier)
+    } else if (isDev) {
+      // En dev sin subdomain, usar la primera organización disponible
+      const supabase = createAdminClient() || createPublicClient()
+      const { data: firstOrg } = await (supabase as any)
+        .from('organizations')
+        .select('id, name, subdomain')
+        .limit(1)
+        .single()
+      organization = firstOrg
+    }
     if (!organization) {
       return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { isOutOfStock } from '@/lib/stock'
 
 interface VariantData {
   id: number
@@ -60,10 +61,7 @@ export function StickyAddToCart({
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
 
-  const stock = (trackStock === false) ? null : (stockLevels && stockLevels.length > 0)
-    ? stockLevels.reduce((sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0)
-    : null
-  const outOfStock = stock !== null && stock <= 0
+  const outOfStock = isOutOfStock({ track_stock: trackStock, stock_levels: stockLevels })
 
   // Extraer grupos de atributos
   const attributeGroups = useMemo(() => {

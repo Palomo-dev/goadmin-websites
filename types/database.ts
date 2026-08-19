@@ -126,7 +126,7 @@ export interface Database {
           footer_links: Json
           is_published: boolean
           published_at: string | null
-          header_style: 'default' | 'transparent' | 'minimal' | 'centered'
+          header_style: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
           footer_style: 'default' | 'minimal' | 'centered' | 'three_columns'
           header_cta_text: string | null
           header_cta_url: string | null
@@ -135,7 +135,25 @@ export interface Database {
           show_topbar: boolean
           show_powered_by: boolean
           show_buy_now_button: boolean
-          logo_position: 'left' | 'center'
+          logo_position: 'left' | 'center' | 'right'
+          // Header configurable + mega-menú (Fase 0 migración header_configurable_mega_menu)
+          menu_position: string
+          search_style: string
+          show_categories_in_header: boolean
+          categories_menu_style: string
+          mega_menu_columns: number
+          mobile_menu_style: string
+          mobile_search_style: string
+          mobile_show_topbar: boolean
+          mobile_sticky_header: boolean
+          mobile_breakpoint: number
+          header_opacity: number | null
+          header_bg_color: string | null
+          topbar_bg_color: string | null
+          nav_bg_color: string | null
+          topbar_show_email: boolean
+          topbar_show_phone: boolean
+          topbar_announcement: string | null
           logo_height: number | null
           favicon_height: number | null
           favicon_url: string | null
@@ -146,8 +164,12 @@ export interface Database {
           organization_id: number
           template_id?: string
           theme_mode?: 'light' | 'dark' | 'auto'
-          header_style?: 'default' | 'transparent' | 'minimal' | 'centered'
+          header_style?: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
           footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
+          header_bg_color?: string | null
+          topbar_bg_color?: string | null
+          nav_bg_color?: string | null
+          header_opacity?: number | null
         }
         Update: {
           template_id?: string
@@ -160,14 +182,18 @@ export interface Database {
           font_heading?: string | null
           font_body?: string | null
           is_published?: boolean
-          header_style?: 'default' | 'transparent' | 'minimal' | 'centered'
+          header_style?: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
           footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
           header_cta_text?: string | null
           header_cta_url?: string | null
           show_header_cart?: boolean
           show_header_auth?: boolean
           show_topbar?: boolean
-          logo_position?: 'left' | 'center'
+          logo_position?: 'left' | 'center' | 'right'
+          header_bg_color?: string | null
+          topbar_bg_color?: string | null
+          nav_bg_color?: string | null
+          header_opacity?: number | null
           updated_at?: string
         }
       }
@@ -187,6 +213,11 @@ export interface Database {
           meta_title: string | null
           meta_description: string | null
           og_image_url: string | null
+          // Jerarquía y mega-menú (Fase 0 migración header_configurable_mega_menu)
+          parent_page_id: string | null
+          linked_category_id: number | null
+          menu_icon: string | null
+          menu_badge: string | null
           created_at: string
           updated_at: string
         }
@@ -204,6 +235,10 @@ export interface Database {
           meta_title?: string | null
           meta_description?: string | null
           og_image_url?: string | null
+          parent_page_id?: string | null
+          linked_category_id?: number | null
+          menu_icon?: string | null
+          menu_badge?: string | null
         }
         Update: {
           slug?: string
@@ -217,6 +252,10 @@ export interface Database {
           meta_title?: string | null
           meta_description?: string | null
           og_image_url?: string | null
+          parent_page_id?: string | null
+          linked_category_id?: number | null
+          menu_icon?: string | null
+          menu_badge?: string | null
         }
       }
       website_page_sections: {
@@ -326,6 +365,12 @@ export type WebsiteSettings = Database['public']['Tables']['website_settings']['
 export type WebsitePage = Database['public']['Tables']['website_pages']['Row']
 export type WebsitePageInsert = Database['public']['Tables']['website_pages']['Insert']
 export type WebsitePageSection = Database['public']['Tables']['website_page_sections']['Row']
+
+// Página con hijos anidados (árbol de menú header/footer)
+export interface WebsitePageWithChildren extends WebsitePage {
+  children: WebsitePageWithChildren[]
+  level: number
+}
 export type WebsitePageSectionInsert = Database['public']['Tables']['website_page_sections']['Insert']
 export type Product = Database['public']['Tables']['products']['Row']
 export type Service = Database['public']['Tables']['services']['Row']

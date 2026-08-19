@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Package } from 'lucide-react'
+import { isOutOfStock } from '@/lib/stock'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -24,14 +25,6 @@ function getPrice(product: any): number | null {
 function getComparePrice(product: any): number | null {
   const cp = product.product_prices?.[0]?.compare_price
   return cp ? Number(cp) : null
-}
-
-function getStock(product: any): number | null {
-  if (product.track_stock === false) return null
-  if (!product.stock_levels || product.stock_levels.length === 0) return null
-  return product.stock_levels.reduce(
-    (sum: number, sl: any) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 interface FeaturedProductsCarouselProps {
@@ -59,8 +52,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
             const imgUrl = getImageUrl(product)
             const price = getPrice(product)
             const comparePrice = getComparePrice(product)
-            const stock = getStock(product)
-            const outOfStock = stock !== null && stock <= 0
+            const outOfStock = isOutOfStock(product)
             return (
               <a
                 key={product.id}

@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
+import { getAvailableStock } from '@/lib/stock'
 
 interface ProductImage {
   id: number
@@ -39,14 +40,6 @@ interface Product {
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
   variant_data?: Record<string, string> | null
-}
-
-function getAvailableStock(product: Product): number | null {
-  if (product.track_stock === false) return null
-  if (!product.stock_levels || product.stock_levels.length === 0) return null
-  return product.stock_levels.reduce(
-    (sum, sl) => sum + (Number(sl.qty_on_hand) - Number(sl.qty_reserved)), 0
-  )
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
