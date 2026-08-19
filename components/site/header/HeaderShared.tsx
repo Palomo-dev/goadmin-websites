@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ShoppingBag, User, UserCircle, Phone, Mail, ChevronDown, Menu as MenuIcon, LogOut, Globe, X } from 'lucide-react';
+import { Search, ShoppingBag, User, UserCircle, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, X } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
 import { SearchBarInput } from '../SearchBarInput';
@@ -71,7 +71,7 @@ export function buildNavItems(navTree: WebsitePageWithChildren[]): NavItem[] {
 // Soporta dark mode via la clase CSS `dark:` aplicada al elemento padre
 // Si header_bg_color está configurado, usa ese color (con opacidad);
 // si no, usa blanco (light) / gray-900 (dark) con opacidad.
-export function headerBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+export function headerBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const opacity = settings?.header_opacity ?? 95;
   const bgColor = settings?.header_bg_color ?? null;
   if (bgColor) {
@@ -94,7 +94,7 @@ export function headerBgStyle(settings: HeaderVariantProps['settings']): React.C
 }
 
 // Helper: style del topbar (usa topbar_bg_color o hereda del header)
-export function topbarBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+export function topbarBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
   if (bgColor) {
     return { backgroundColor: bgColor };
@@ -107,7 +107,7 @@ export function topbarBgStyle(settings: HeaderVariantProps['settings']): React.C
 }
 
 // Helper: style de la barra de menú inferior (nav row)
-export function navBgStyle(settings: HeaderVariantProps['settings']): React.CSSProperties {
+export function navBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
   if (bgColor) {
     return { backgroundColor: bgColor };
@@ -116,7 +116,7 @@ export function navBgStyle(settings: HeaderVariantProps['settings']): React.CSSP
 }
 
 // Helper: color de texto automático según luminancia del fondo
-export function headerTextColor(settings: HeaderVariantProps['settings']): string {
+export function headerTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
   const bgColor = settings?.header_bg_color ?? null;
   if (!bgColor) return ''; // vacío = hereda de Tailwind (gray-700/300)
   const normalized = bgColor.replace('#', '');
@@ -130,7 +130,7 @@ export function headerTextColor(settings: HeaderVariantProps['settings']): strin
 }
 
 // Helper: color de texto del topbar
-export function topbarTextColor(settings: HeaderVariantProps['settings']): string {
+export function topbarTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
   const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
   if (!bgColor) return '';
   const normalized = bgColor.replace('#', '');
@@ -144,7 +144,7 @@ export function topbarTextColor(settings: HeaderVariantProps['settings']): strin
 }
 
 // Helper: color de texto de la barra de menú
-export function navTextColor(settings: HeaderVariantProps['settings']): string {
+export function navTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
   const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
   if (!bgColor) return '';
   const normalized = bgColor.replace('#', '');
@@ -158,7 +158,7 @@ export function navTextColor(settings: HeaderVariantProps['settings']): string {
 }
 
 // Helper: color de acento efectivo (accent_color o primaryColor como fallback)
-export function accentColor(settings: HeaderVariantProps['settings'], primaryColor: string): string {
+export function accentColor(settings: HeaderVariantProps['settings'] | undefined, primaryColor: string): string {
   return settings?.accent_color || primaryColor;
 }
 
@@ -310,7 +310,33 @@ export function HeaderTopbar({
   const email = organization.email || '';
   const showEmail = settings?.topbar_show_email !== false;
   const showPhone = settings?.topbar_show_phone !== false;
-  const announcement = settings?.topbar_announcement ?? '';
+  const announcementRaw = settings?.topbar_announcement ?? '';
+  const contactPosition = settings?.topbar_contact_position ?? 'left';
+
+  // Parsear mensajes: soporta JSON array (nuevo) o string simple (compatibilidad)
+  let announcements: string[] = [];
+  if (announcementRaw) {
+    try {
+      const parsed = JSON.parse(announcementRaw);
+      if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
+        announcements = parsed.filter((s) => s.trim() !== '');
+      } else {
+        announcements = [announcementRaw];
+      }
+    } catch {
+      announcements = [announcementRaw];
+    }
+  }
+
+  // Carrusel de mensajes: auto-rotate cada 6s, con flechas
+  const [currentIdx, setCurrentIdx] = useState(0);
+  useEffect(() => {
+    if (announcements.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % announcements.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [announcements.length]);
 
   // Color del topbar: configurado o default (gray-900)
   const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
@@ -319,6 +345,56 @@ export function HeaderTopbar({
     : {};
   const textColor = bgColor ? topbarTextColor(settings) : '';
   const textClass = bgColor ? '' : 'text-white';
+  const textStyle = textColor ? { color: textColor } : undefined;
+
+  // Componente de contacto (email + teléfono)
+  const contactBlock = (
+    <div className="flex items-center gap-4 flex-shrink-0">
+      {showPhone && phone && (
+        <span className="flex items-center gap-1" style={textStyle}>
+          <Phone className="h-3 w-3" />
+          {phone}
+        </span>
+      )}
+      {showEmail && email && (
+        <span className="hidden lg:flex items-center gap-1" style={textStyle}>
+          <Mail className="h-3 w-3" />
+          {email}
+        </span>
+      )}
+    </div>
+  );
+
+  // Componente de mensajes promocionales (carrusel con flechas)
+  const announcementsBlock = announcements.length > 0 && (
+    <div className="flex-1 flex items-center justify-center gap-2 mx-4 overflow-hidden">
+      {announcements.length > 1 && (
+        <button
+          onClick={() => setCurrentIdx((prev) => (prev - 1 + announcements.length) % announcements.length)}
+          className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+          style={textStyle}
+          aria-label="Mensaje anterior"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </button>
+      )}
+
+      <div className="flex-1 text-center truncate" style={textStyle}>
+        {announcements[currentIdx]}
+      </div>
+
+      {announcements.length > 1 && (
+        <button
+          onClick={() => setCurrentIdx((prev) => (prev + 1) % announcements.length)}
+          className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+          style={textStyle}
+          aria-label="Mensaje siguiente"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -326,38 +402,11 @@ export function HeaderTopbar({
       style={bgStyle}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-hidden">
-        {/* Izquierda: contacto */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-          {showPhone && phone && (
-            <span className="flex items-center gap-1" style={textColor ? { color: textColor } : undefined}>
-              <Phone className="h-3 w-3" />
-              {phone}
-            </span>
-          )}
-          {showEmail && email && (
-            <span className="hidden lg:flex items-center gap-1" style={textColor ? { color: textColor } : undefined}>
-              <Mail className="h-3 w-3" />
-              {email}
-            </span>
-          )}
-        </div>
+        {/* Izquierda */}
+        {contactPosition === 'left' ? contactBlock : announcementsBlock}
 
-        {/* Centro: mensaje promocional (marquee) */}
-        {announcement && (
-          <div className="flex-1 overflow-hidden mx-4">
-            <div
-              className="whitespace-nowrap animate-marquee"
-              style={textColor ? { color: textColor } : undefined}
-            >
-              {announcement}
-            </div>
-          </div>
-        )}
-
-        {/* Derecha: nombre org */}
-        <span className="hidden lg:block opacity-80 flex-shrink-0" style={textColor ? { color: textColor } : undefined}>
-          {organization.name}
-        </span>
+        {/* Derecha */}
+        {contactPosition === 'left' ? announcementsBlock : contactBlock}
       </div>
     </div>
   );

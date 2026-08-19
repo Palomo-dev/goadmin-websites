@@ -154,6 +154,7 @@ export interface Database {
           topbar_show_email: boolean
           topbar_show_phone: boolean
           topbar_announcement: string | null
+          topbar_contact_position: string
           logo_height: number | null
           favicon_height: number | null
           favicon_url: string | null

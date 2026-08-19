@@ -10,6 +10,9 @@ import {
   MobileMenuButton,
   type HeaderVariantProps,
   headerBgStyle,
+  navBgStyle,
+  navTextColor,
+  accentColor,
 } from '../header/HeaderShared';
 
 /**

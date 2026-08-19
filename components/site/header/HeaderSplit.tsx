@@ -10,6 +10,9 @@ import {
   buildNavItems,
   type HeaderVariantProps,
   headerBgStyle,
+  navBgStyle,
+  navTextColor,
+  accentColor,
 } from '../header/HeaderShared';
 
 export default function HeaderSplit({
@@ -40,7 +43,7 @@ export default function HeaderSplit({
 
             {/* Nav izquierda */}
             {leftNav.length > 0 && (
-              <NavList items={leftNav} primaryColor={primaryColor} className="flex-shrink-0" />
+              <NavList items={leftNav} primaryColor={accentColor(settings, primaryColor)} className="flex-shrink-0" />
             )}
 
             {/* Search bar central */}
@@ -55,7 +58,7 @@ export default function HeaderSplit({
 
             {/* Nav derecha */}
             {rightNav.length > 0 && (
-              <NavList items={rightNav} primaryColor={primaryColor} className="flex-shrink-0" />
+              <NavList items={rightNav} primaryColor={accentColor(settings, primaryColor)} className="flex-shrink-0" />
             )}
 
             {/* Acciones + CTA */}

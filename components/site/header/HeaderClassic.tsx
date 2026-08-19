@@ -10,6 +10,9 @@ import {
   buildNavItems,
   type HeaderVariantProps,
   headerBgStyle,
+  navBgStyle,
+  navTextColor,
+  accentColor,
 } from '../header/HeaderShared';
 
 export default function HeaderClassic({
@@ -27,7 +30,7 @@ export default function HeaderClassic({
   const ctaText = settings?.header_cta_text ?? '';
 
   const renderNav = navItems.length > 0 ? (
-    <NavList items={navItems} primaryColor={primaryColor} className="flex-1 justify-center" />
+    <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
   ) : null;
 
   const renderSearchBar = showSearchBar ? (
@@ -70,9 +73,9 @@ export default function HeaderClassic({
   } else if (logoPosition === 'center') {
     middle = (
       <>
-        <NavList items={navItems.slice(0, Math.ceil(navItems.length / 2))} primaryColor={primaryColor} className="flex-1 justify-end" />
+        <NavList items={navItems.slice(0, Math.ceil(navItems.length / 2))} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-end" />
         {renderLogo}
-        <NavList items={navItems.slice(Math.ceil(navItems.length / 2))} primaryColor={primaryColor} className="flex-1 justify-start" />
+        <NavList items={navItems.slice(Math.ceil(navItems.length / 2))} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-start" />
         {renderSearchBar}
         {renderActions}
       </>
