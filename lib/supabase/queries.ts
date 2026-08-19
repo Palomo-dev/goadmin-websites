@@ -6,6 +6,59 @@ function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
 }
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+/**
+ * Para categorías sin image_url, obtiene la imagen del primer producto
+ * activo de esa categoría y la usa como fallback.
+ */
+async function enrichCategoriesWithFallbackImage(
+  supabase: any,
+  categories: any[]
+): Promise<any[]> {
+  const withoutImage = categories.filter(c => !c.image_url)
+  if (withoutImage.length === 0) return categories
+
+  const categoryIds = withoutImage.map(c => c.id)
+
+  // Buscar productos activos en esas categorías, con sus imágenes
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      id, category_id,
+      product_images (
+        id, storage_path, is_primary, display_order,
+        shared_image_id,
+        shared_images ( storage_path )
+      )
+    `)
+    .in('category_id', categoryIds)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+    .order('name', { ascending: true })
+
+  // Construir mapa: category_id → primera imagen disponible
+  const fallbackMap: Record<number, string> = {}
+  for (const product of (products || [])) {
+    if (fallbackMap[product.category_id]) continue
+
+    const images = product.product_images || []
+    const primary = images.find((img: any) => img.is_primary) || images[0]
+    if (!primary) continue
+
+    const path = primary.storage_path || primary.shared_images?.storage_path
+    if (!path) continue
+
+    fallbackMap[product.category_id] = `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  }
+
+  return categories.map(c =>
+    !c.image_url && fallbackMap[c.id]
+      ? { ...c, image_url: fallbackMap[c.id] }
+      : c
+  )
+}
+
 /**
  * Obtiene una organización por su subdominio (busca en organization_domains)
  */
@@ -332,15 +385,15 @@ export async function getOrganizationBranches(organizationId: number) {
  */
 export async function getOrganizationCategories(organizationId: number) {
   const supabase = getSupabaseForPublicRead()
-  
+
   const { data, error } = await supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
     .order('rank', { ascending: true })
-  
+
   if (error) return []
-  return data || []
+  return enrichCategoriesWithFallbackImage(supabase, data || [])
 }
 
 /**
@@ -366,16 +419,17 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
  */
 export async function getCategoryBySlug(organizationId: number, slug: string) {
   const supabase = getSupabaseForPublicRead()
-  
+
   const { data, error } = await supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('slug', slug)
     .single()
-  
+
   if (error || !data) return null
-  return data as any
+  const [enriched] = await enrichCategoriesWithFallbackImage(supabase, [data])
+  return enriched as any
 }
 
 /**
@@ -383,16 +437,16 @@ export async function getCategoryBySlug(organizationId: number, slug: string) {
  */
 export async function getSubcategories(organizationId: number, parentId: number) {
   const supabase = getSupabaseForPublicRead()
-  
+
   const { data, error } = await supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('parent_id', parentId)
     .order('rank', { ascending: true })
-  
+
   if (error) return []
-  return data || []
+  return enrichCategoriesWithFallbackImage(supabase, data || [])
 }
 
 /**

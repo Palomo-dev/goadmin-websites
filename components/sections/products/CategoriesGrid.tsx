@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 
 interface CategoriesGridProps {
   content: {
@@ -15,9 +16,33 @@ interface CategoriesGridProps {
     desktop_rows?: number
     mobile_layout?: 'grid' | 'list' | 'carousel'
     selected_category_ids?: number[]
+    enable_search?: boolean
+    enable_pagination?: boolean
+    page_size?: number
   }
   primaryColor?: string
   data?: { categories?: any[] }
+}
+
+const PAGE_SIZE_OPTIONS = [24, 48, 100]
+
+function generatePageNumbers(current: number, total: number): (number | string)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+
+  const pages: (number | string)[] = []
+  pages.push(1)
+
+  if (current > 3) pages.push('...')
+
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+
+  for (let i = start; i <= end; i++) pages.push(i)
+
+  if (current < total - 2) pages.push('...')
+
+  pages.push(total)
+  return pages
 }
 
 function getGridClass(count: number): string {
@@ -102,12 +127,50 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const isRound = shape === 'round'
   const allCategories = data?.categories || []
   const selectedIds = content.selected_category_ids || []
-  const filteredCategories = selectedIds.length > 0
-    ? selectedIds
-        .map((id: number) => allCategories.find((c: any) => c.id === id))
-        .filter(Boolean)
-    : allCategories
-  const categories = maxItems > 0 ? filteredCategories.slice(0, maxItems) : filteredCategories
+  const enableSearch = content.enable_search ?? true
+  const enablePagination = content.enable_pagination ?? true
+  const initialPageSize = content.page_size || 24
+
+  // --- Estado de búsqueda y paginación ---
+  const [searchQuery, setSearchQuery] = useState('')
+  const [pageSize, setPageSize] = useState(initialPageSize)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Filtrar por IDs seleccionados
+  const filteredByIds = useMemo(() => {
+    const filtered = selectedIds.length > 0
+      ? selectedIds
+          .map((id: number) => allCategories.find((c: any) => c.id === id))
+          .filter(Boolean)
+      : allCategories
+    return maxItems > 0 ? filtered.slice(0, maxItems) : filtered
+  }, [allCategories, selectedIds, maxItems])
+
+  // Filtrar por búsqueda
+  const searchedCategories = useMemo(() => {
+    if (!searchQuery.trim()) return filteredByIds
+    const query = searchQuery.toLowerCase().trim()
+    return filteredByIds.filter((cat: any) =>
+      cat.name?.toLowerCase().includes(query) ||
+      cat.slug?.toLowerCase().includes(query)
+    )
+  }, [filteredByIds, searchQuery])
+
+  // ¿Mostrar controles? Solo en grid/list (no carrusel)
+  const showControls = enableSearch && (desktopLayout === 'grid' || desktopLayout === 'list')
+  const showPagination = enablePagination && (desktopLayout === 'grid' || desktopLayout === 'list')
+
+  // Paginar
+  const totalItems = searchedCategories.length
+  const totalPages = Math.ceil(totalItems / pageSize)
+  const paginatedCategories = showPagination
+    ? searchedCategories.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : searchedCategories
+
+  // Reset página cuando cambia búsqueda o pageSize
+  useEffect(() => { setCurrentPage(1) }, [searchQuery, pageSize])
+
+  const categories = paginatedCategories
 
   // Carousel refs (desktop y mobile)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -195,6 +258,44 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
+
+      {/* === Toolbar: Buscador + Selector de página === */}
+      {showControls && filteredByIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b dark:border-gray-700">
+          {/* Buscador */}
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar categoría..."
+              className="w-full pl-10 pr-4 py-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2"
+              style={{ ['--tw-ring-color' as any]: primaryColor }}
+            />
+          </div>
+
+          {/* Resultados + Selector de página */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
+              {totalItems} {totalItems === 1 ? 'categoría' : 'categorías'}
+            </span>
+            {showPagination && totalItems > PAGE_SIZE_OPTIONS[0] && (
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2"
+                style={{ ['--tw-ring-color' as any]: primaryColor }}
+              >
+                {PAGE_SIZE_OPTIONS.map(size => (
+                  <option key={size} value={size}>{size} por página</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
+
       {categories.length > 0 ? (
         <>
           {/* === Móvil: Lista === */}
@@ -329,11 +430,67 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               ))}
             </div>
           )}
+
+          {/* === Paginación === */}
+          {showPagination && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-10">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage <= 1}
+                className="p-2 rounded-lg border dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              {generatePageNumbers(currentPage, totalPages).map((pageNum, idx) => (
+                pageNum === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                ) : (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(Number(pageNum))}
+                    className={`min-w-[40px] h-10 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? 'text-white'
+                        : 'border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                    style={currentPage === pageNum ? { backgroundColor: primaryColor } : {}}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              ))}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage >= totalPages}
+                className="p-2 rounded-lg border dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
-          <p className="text-4xl mb-3">🏷️</p>
-          <p>No hay categorías disponibles aún</p>
+          {searchQuery ? (
+            <>
+              <Package className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+              <p>No se encontraron categorías para "{searchQuery}"</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-3 text-sm font-medium hover:underline"
+                style={{ color: primaryColor }}
+              >
+                Limpiar búsqueda
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-4xl mb-3">🏷️</p>
+              <p>No hay categorías disponibles aún</p>
+            </>
+          )}
         </div>
       )}
     </div>
