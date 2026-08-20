@@ -85,6 +85,7 @@ export function OrganizationLayout({
     <div 
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
+      suppressHydrationWarning
     >
       {/* Header específico según tipo (oculto si la cuenta está congelada) */}
       {!frozenReason && (
