@@ -36,6 +36,7 @@ interface SiteHeaderProps {
   // Nuevas props Fase 5/6
   headerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
+  megaMenuItems?: NavItem[]
 }
 
 // Navegación por defecto si no hay template
@@ -345,6 +346,7 @@ export default function SiteHeader({
   headerNav,
   headerNavTree,
   menuCategories,
+  megaMenuItems,
 }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const settings = organization.website_settings
@@ -374,6 +376,7 @@ export default function SiteHeader({
     showCart,
     onCartClick,
     menuCategories,
+    megaMenuItems,
   }
 
   // Si hay headerNavTree o menuCategories, usar el sistema de variantes nuevo

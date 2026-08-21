@@ -39,6 +39,7 @@ export default function HeaderMega({
   showCart,
   onCartClick,
   menuCategories,
+  megaMenuItems,
 }: HeaderVariantProps) {
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
@@ -49,11 +50,10 @@ export default function HeaderMega({
   // Construir nav items desde el árbol de páginas
   const navItems: NavItem[] = buildNavItems(navTree);
 
-  // Agregar item "Categorías" si hay categorías y la configuración lo habilita
+  // Agregar item "Categorías" si hay categorías o megaMenuItems y la configuración lo habilita
   const showCategories =
-    !!menuCategories &&
-    menuCategories.length > 0 &&
-    settings?.show_categories_in_header === true;
+    (!!menuCategories && menuCategories.length > 0 && settings?.show_categories_in_header === true) ||
+    (!!megaMenuItems && megaMenuItems.length > 0);
 
   const megaColumns = settings?.mega_menu_columns ?? 4;
 
@@ -142,7 +142,8 @@ export default function HeaderMega({
 
                   {megaOpen && (
                     <MegaMenuDropdown
-                      categories={menuCategories!}
+                      categories={menuCategories}
+                      items={megaMenuItems}
                       columns={megaColumns}
                       primaryColor={primaryColor}
                     />

@@ -13,6 +13,8 @@ import {
   getWebsiteFooterNav,
   getWebsiteFooterNavTree,
   getMenuCategories,
+  getMenuById,
+  getWebsiteMenusByLocation,
   getMetaPixelId,
   getGoogleAdsConfig,
   getMenuProducts,
@@ -28,6 +30,7 @@ import {
   getOfferProducts,
   getDefaultTax
 } from '@/lib/supabase/queries'
+import type { MegaMenuItem } from '@/lib/get-org-context'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
@@ -165,6 +168,27 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     getDefaultTax(organization.id)
   ])
 
+  // Cargar menús nombrados (sistema nuevo) con fallback al sistema de páginas
+  const headerMenuId = organization.website_settings?.header_menu_id ?? null
+  const headerMegaMenuId = organization.website_settings?.header_mega_menu_id ?? null
+  const [namedHeaderMenu, namedMegaMenu] = await Promise.all([
+    headerMenuId ? getMenuById(headerMenuId) : Promise.resolve(null),
+    headerMegaMenuId ? getMenuById(headerMegaMenuId) : Promise.resolve(null),
+  ])
+
+  // Si hay menú nombrado de header, usarlo como headerNavTree (backward compat: fallback a headerNavTree)
+  const effectiveHeaderNavTree = namedHeaderMenu && namedHeaderMenu.items.length > 0
+    ? namedHeaderMenu.items.map(item => menuItemToPageWithChildren(item))
+    : headerNavTree
+
+  // Si hay menú mega nombrado, usarlo como megaMenuItems (backward compat: null = usar menuCategories)
+  const megaMenuItems: MegaMenuItem[] | null = namedMegaMenu && namedMegaMenu.items.length > 0
+    ? namedMegaMenu.items.map(item => menuItemToNavItem(item))
+    : null
+
+  // Cargar menús nombrados de footer (sistema nuevo)
+  const footerMenus = await getWebsiteMenusByLocation(organization.id, 'footer')
+
   // 1. Intentar cargar página del Page Builder
   const page = await getWebsitePageBySlug(organization.id, currentSlug)
 
@@ -202,7 +226,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={effectiveHeaderNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
         {page.website_page_sections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -218,12 +242,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
   // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
-  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
+  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, effectiveHeaderNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
   if (fallback) return fallback
 
   // 4. Página no encontrada
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={effectiveHeaderNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
@@ -249,6 +273,8 @@ async function renderSlugFallback(
   headerNav: any[],
   headerNavTree: any[],
   menuCategories: any[],
+  megaMenuItems: MegaMenuItem[] | null,
+  footerMenus: any[],
   footerNav: any[],
   footerNavTree: any[],
   metaPixelId?: string | null,
@@ -258,7 +284,7 @@ async function renderSlugFallback(
   frozenReason?: FrozenReason
 ): Promise<React.ReactElement | null> {
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} footerNav={footerNav} footerNavTree={footerNavTree} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus && footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
       {children}
     </OrganizationLayout>
   )
@@ -743,4 +769,78 @@ async function renderSlugFallback(
     default:
       return null
   }
+}
+
+// ============================================================
+// HELPERS — Conversión de WebsiteMenuItem a formatos del header
+// ============================================================
+
+import type { WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
+
+function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
+  let name = item.custom_label || ''
+  let href = item.custom_url || '#'
+
+  if (item.item_type === 'page' || item.item_type === 'policy') {
+    if (item.page) {
+      name = item.page.title
+      href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
+    }
+  } else if (item.item_type === 'category') {
+    if (item.category) {
+      name = item.category.name
+      href = `/categorias/${item.category.slug}`
+    }
+  } else if (item.item_type === 'custom_link') {
+    name = item.custom_label || ''
+    href = item.custom_url || '#'
+  }
+
+  return {
+    name,
+    href,
+    children: item.children.length > 0 ? item.children.map(menuItemToNavItem) : undefined,
+    icon: item.icon ?? undefined,
+    badge: item.badge ?? undefined,
+  }
+}
+
+function menuItemToPageWithChildren(item: WebsiteMenuItemWithChildren): WebsitePageWithChildren {
+  let title = item.custom_label || ''
+  let slug = item.custom_url || ''
+
+  if (item.item_type === 'page' || item.item_type === 'policy') {
+    if (item.page) {
+      title = item.page.title
+      slug = item.page.slug
+    }
+  } else if (item.item_type === 'category') {
+    if (item.category) {
+      title = item.category.name
+      slug = `categorias/${item.category.slug}`
+    }
+  } else if (item.item_type === 'custom_link') {
+    title = item.custom_label || ''
+    slug = item.custom_url || ''
+  }
+
+  return {
+    id: item.id,
+    organization_id: item.organization_id,
+    slug,
+    title,
+    is_published: true,
+    show_in_header: true,
+    show_in_footer: false,
+    header_order: item.display_order,
+    footer_order: 0,
+    parent_page_id: item.parent_item_id,
+    linked_category_id: item.category_id,
+    menu_icon: item.icon,
+    menu_badge: item.badge,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    children: item.children.map(menuItemToPageWithChildren),
+    level: 0,
+  } as WebsitePageWithChildren
 }

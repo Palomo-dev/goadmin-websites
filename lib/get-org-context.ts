@@ -5,10 +5,25 @@ import {
   getWebsiteHeaderNavTree,
   getWebsiteFooterNav,
   getWebsiteFooterNavTree,
-  getMenuCategories
+  getMenuCategories,
+  getMenuById,
+  getWebsiteMenusByLocation
 } from '@/lib/supabase/queries'
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
+
+/**
+ * Tipo para items de mega menú (compatible con NavItem de HeaderShared).
+ * HeaderShared.NavItem tiene: name, href, children?, icon?, badge?
+ */
+export interface MegaMenuItem {
+  name: string
+  href: string
+  children?: MegaMenuItem[]
+  icon?: string
+  badge?: string
+}
 
 export type FrozenReason = 'trial_expired' | 'suspended' | 'deleted' | 'payment_failed' | 'canceled' | null
 
@@ -41,10 +56,33 @@ export async function getOrgContext() {
     ? await getMenuCategories(organization.id)
     : []
 
+  // Cargar menús nombrados (sistema nuevo) con fallback al sistema de páginas
+  const headerMenuId = organization.website_settings?.header_menu_id ?? null
+  const headerMegaMenuId = organization.website_settings?.header_mega_menu_id ?? null
+
+  // Cargar menú de header nombrado (si existe) + menú mega nombrado (si existe)
+  const [namedHeaderMenu, namedMegaMenu, footerMenus] = await Promise.all([
+    headerMenuId ? getMenuById(headerMenuId) : Promise.resolve(null),
+    headerMegaMenuId ? getMenuById(headerMegaMenuId) : Promise.resolve(null),
+    getWebsiteMenusByLocation(organization.id, 'footer'),
+  ])
+
+  // Si hay menú nombrado de header, usarlo como headerNavTree (convertido a WebsitePageWithChildren[])
+  // Si no, fallback a headerNavTree del sistema de páginas (backward compat)
+  const effectiveHeaderNavTree = namedHeaderMenu && namedHeaderMenu.items.length > 0
+    ? namedHeaderMenu.items.map(item => menuItemToPageWithChildren(item))
+    : headerNavTree
+
+  // Si hay menú mega nombrado, usarlo como megaMenuItems (NavItem[])
+  // Si no, fallback a menuCategories (backward compat)
+  const megaMenuItems = namedMegaMenu && namedMegaMenu.items.length > 0
+    ? namedMegaMenu.items.map(item => menuItemToNavItem(item))
+    : null
+
   // Verificar estado de congelación de la organización
   const frozenReason = await checkFrozenStatus(organization.id, organization.status)
 
-  return { organization, primaryColor, template, headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, frozenReason }
+  return { organization, primaryColor, template, headerNav, headerNavTree: effectiveHeaderNavTree, footerNav, footerNavTree, menuCategories, megaMenuItems, websiteMenus: footerMenus, frozenReason }
 }
 
 export async function checkFrozenStatus(orgId: number, orgStatus: string | null): Promise<FrozenReason> {
@@ -80,4 +118,85 @@ export async function checkFrozenStatus(orgId: number, orgStatus: string | null)
 
   // Si está activa o en trial válido, no está congelada
   return null
+}
+
+// ============================================================
+// HELPERS — Conversión de WebsiteMenuItem a formatos del header
+// ============================================================
+
+/**
+ * Convierte un WebsiteMenuItemWithChildren a NavItem (formato del header).
+ * Soporta todos los item_type: page, category, policy, custom_link.
+ */
+function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
+  let name = item.custom_label || ''
+  let href = item.custom_url || '#'
+
+  if (item.item_type === 'page' || item.item_type === 'policy') {
+    if (item.page) {
+      name = item.page.title
+      href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
+    }
+  } else if (item.item_type === 'category') {
+    if (item.category) {
+      name = item.category.name
+      href = `/categorias/${item.category.slug}`
+    }
+  } else if (item.item_type === 'custom_link') {
+    name = item.custom_label || ''
+    href = item.custom_url || '#'
+  }
+
+  return {
+    name,
+    href,
+    children: item.children.length > 0 ? item.children.map(menuItemToNavItem) : undefined,
+    icon: item.icon ?? undefined,
+    badge: item.badge ?? undefined,
+  }
+}
+
+/**
+ * Convierte un WebsiteMenuItemWithChildren a WebsitePageWithChildren (formato del header legacy).
+ * Esto permite que el menú nombrado funcione con las variantes de header existentes
+ * que esperan WebsitePageWithChildren[] como navTree.
+ */
+function menuItemToPageWithChildren(item: WebsiteMenuItemWithChildren): WebsitePageWithChildren {
+  let title = item.custom_label || ''
+  let slug = item.custom_url || ''
+
+  if (item.item_type === 'page' || item.item_type === 'policy') {
+    if (item.page) {
+      title = item.page.title
+      slug = item.page.slug
+    }
+  } else if (item.item_type === 'category') {
+    if (item.category) {
+      title = item.category.name
+      slug = `categorias/${item.category.slug}`
+    }
+  } else if (item.item_type === 'custom_link') {
+    title = item.custom_label || ''
+    slug = item.custom_url || ''
+  }
+
+  return {
+    id: item.id,
+    organization_id: item.organization_id,
+    slug,
+    title,
+    is_published: true,
+    show_in_header: true,
+    show_in_footer: false,
+    header_order: item.display_order,
+    footer_order: 0,
+    parent_page_id: item.parent_item_id,
+    linked_category_id: item.category_id,
+    menu_icon: item.icon,
+    menu_badge: item.badge,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    children: item.children.map(menuItemToPageWithChildren),
+    level: 0,
+  } as WebsitePageWithChildren
 }

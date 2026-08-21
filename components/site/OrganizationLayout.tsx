@@ -13,8 +13,8 @@ import { ChatWidget } from './ChatWidget'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
 import type { FrozenReason } from '@/lib/get-org-context'
-import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren } from '@/types/database'
-import type { TemplateConfig } from '@/lib/templates'
+import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren, WebsiteMenuWithItems } from '@/types/database'
+import type { TemplateConfig, NavItem } from '@/lib/templates'
 import type { MenuCategory } from './header/HeaderShared'
 
 interface OrganizationLayoutProps {
@@ -25,8 +25,10 @@ interface OrganizationLayoutProps {
   headerNav?: WebsitePage[]
   headerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
+  megaMenuItems?: NavItem[]
   footerNav?: WebsitePage[]
   footerNavTree?: WebsitePageWithChildren[]
+  menus?: WebsiteMenuWithItems[]
   metaPixelId?: string | null
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
   taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
@@ -41,8 +43,10 @@ export function OrganizationLayout({
   headerNav,
   headerNavTree,
   menuCategories,
+  megaMenuItems,
   footerNav,
   footerNavTree,
+  menus,
   metaPixelId,
   googleAdsConfig,
   taxSettings,
@@ -98,6 +102,7 @@ export function OrganizationLayout({
           headerNav={headerNav}
           headerNavTree={headerNavTree}
           menuCategories={menuCategories}
+          megaMenuItems={megaMenuItems}
         />
       )}
       
@@ -135,6 +140,7 @@ export function OrganizationLayout({
           footerNav={footerNav}
           footerNavTree={footerNavTree}
           menuCategories={menuCategories}
+          menus={menus}
         />
       )}
       

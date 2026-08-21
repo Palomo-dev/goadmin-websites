@@ -25,6 +25,7 @@ export interface HeaderVariantProps {
   showCart?: boolean;
   onCartClick?: () => void;
   menuCategories?: MenuCategory[];
+  megaMenuItems?: NavItem[];
 }
 
 export interface MenuCategory {
@@ -302,9 +303,11 @@ export function HeaderCTA({
 export function HeaderTopbar({
   organization,
   settings,
+  forceVisible = false,
 }: {
   organization: OrganizationWithDetails;
   settings?: HeaderVariantProps['settings'];
+  forceVisible?: boolean;
 }) {
   const phone = organization.phone || '';
   const email = organization.email || '';
@@ -348,6 +351,7 @@ export function HeaderTopbar({
   const textStyle = textColor ? { color: textColor } : undefined;
 
   // Componente de contacto (email + teléfono)
+  // En móvil (forceVisible) el email se muestra; en desktop solo en lg+
   const contactBlock = (
     <div className="flex items-center gap-4 flex-shrink-0">
       {showPhone && phone && (
@@ -357,7 +361,7 @@ export function HeaderTopbar({
         </span>
       )}
       {showEmail && email && (
-        <span className="hidden lg:flex items-center gap-1" style={textStyle}>
+        <span className={`${forceVisible ? 'flex' : 'hidden lg:flex'} items-center gap-1`} style={textStyle}>
           <Mail className="h-3 w-3" />
           {email}
         </span>
@@ -396,12 +400,52 @@ export function HeaderTopbar({
     </div>
   );
 
+  // En móvil: layout vertical por falta de espacio horizontal.
+  // contactPosition controla la alineación del bloque de contacto.
+  if (forceVisible) {
+    const contactAlign = contactPosition === 'right' ? 'justify-end' : 'justify-start';
+    return (
+      <div
+        className={`block text-xs py-1.5 px-4 ${bgColor ? '' : 'bg-gray-900 dark:bg-black'} ${textClass}`}
+        style={bgStyle}
+      >
+        <div className="flex flex-col gap-1">
+          {/* Anuncios arriba si contacto va a la derecha; contacto arriba si va a la izquierda */}
+          {contactPosition === 'right' && announcements.length > 0 && (
+            <div className="text-center truncate" style={textStyle}>
+              {announcements[currentIdx]}
+            </div>
+          )}
+
+          {/* Contacto alineado según contactPosition */}
+          {contactBlock && (
+            <div className={`flex ${contactAlign}`}>
+              {contactBlock}
+            </div>
+          )}
+
+          {/* Anuncios abajo si contacto va a la izquierda */}
+          {contactPosition === 'left' && announcements.length > 0 && (
+            <div className="text-center truncate" style={textStyle}>
+              {announcements[currentIdx]}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: layout horizontal original
+  // Si no hay anuncios, usar justify-end cuando contacto va a la derecha
+  const hasAnnouncements = announcements.length > 0;
+  const desktopJustify = !hasAnnouncements && contactPosition === 'right' ? 'justify-end' : 'justify-between';
+
   return (
     <div
       className={`hidden md:block text-xs py-1.5 px-4 ${bgColor ? '' : 'bg-gray-900 dark:bg-black'} ${textClass}`}
       style={bgStyle}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-hidden">
+      <div className={`max-w-7xl mx-auto flex items-center ${desktopJustify} gap-4 overflow-hidden`}>
         {/* Izquierda */}
         {contactPosition === 'left' ? contactBlock : announcementsBlock}
 

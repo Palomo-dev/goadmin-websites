@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
-import type { MenuCategory } from './HeaderShared';
+import type { MenuCategory, NavItem } from './HeaderShared';
 
 interface MegaMenuDropdownProps {
-  categories: MenuCategory[];
+  categories?: MenuCategory[];
+  items?: NavItem[];
   columns: number;
   primaryColor: string;
 }
@@ -16,9 +17,89 @@ interface MegaMenuDropdownProps {
  * en el header mega. Cada columna representa una categoría raíz con sus
  * sub-categorías listadas verticalmente debajo.
  */
-export function MegaMenuDropdown({ categories, columns, primaryColor }: MegaMenuDropdownProps) {
+export function MegaMenuDropdown({ categories, items, columns, primaryColor }: MegaMenuDropdownProps) {
   const colCount = Math.min(Math.max(columns || 4, 2), 6);
 
+  // Si hay items nombrados (sistema nuevo), renderizarlos
+  if (items && items.length > 0) {
+    return (
+      <div
+        className="absolute left-0 right-0 top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg shadow-2xl p-6 max-h-[70vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
+        role="menu"
+        aria-label="Menú"
+      >
+        <div
+          className="grid gap-6"
+          style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+        >
+          {items.map((item, i) => {
+            const visibleChildren = (item.children || []).slice(0, 6);
+            const hasMore = (item.children || []).length > 6;
+
+            return (
+              <div key={i} className="flex flex-col">
+                {/* Header de columna */}
+                <Link
+                  href={item.href}
+                  className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800 group"
+                >
+                  {item.icon && (
+                    <span
+                      className="flex items-center justify-center w-8 h-8 rounded-md text-base flex-shrink-0"
+                      style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                    >
+                      {item.icon}
+                    </span>
+                  )}
+                  <span
+                    className="text-sm font-semibold transition-colors"
+                    style={{ color: primaryColor }}
+                  >
+                    {item.name}
+                  </span>
+                  {item.badge && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-semibold"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Sub-items */}
+                <ul className="flex flex-col gap-1.5 flex-1">
+                  {visibleChildren.map((child, j) => (
+                    <li key={j}>
+                      <Link
+                        href={child.href}
+                        className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors py-0.5"
+                      >
+                        {child.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Ver todo */}
+                {hasMore && (
+                  <Link
+                    href={item.href}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    Ver todo
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback: renderizar categorías (backward compat)
   if (!categories || categories.length === 0) return null;
 
   return (

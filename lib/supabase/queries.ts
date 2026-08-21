@@ -1,5 +1,5 @@
 import { createAdminClient, createPublicClient } from './server'
-import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren } from '@/types/database'
+import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
 
 function getSupabaseForPublicRead() {
@@ -2027,4 +2027,200 @@ export async function getDefaultTax(organizationId: number): Promise<{ name: str
     .single()
   if (!data) return null
   return { name: data.name, rate: Number(data.rate), taxIncluded: data.tax_included === true }
+}
+
+// ============================================================
+// QUERIES — MENÚS NOMBRADOS (website_menus + website_menu_items)
+// ============================================================
+
+/**
+ * Construye árbol jerárquico desde una lista plana de WebsiteMenuItem.
+ * Soporta parent_item_id para anidación.
+ */
+function buildMenuItemTree(
+  flat: WebsiteMenuItem[],
+  pages?: Map<string, { id: string; slug: string; title: string }>,
+  categories?: Map<number, { id: number; name: string; slug: string }>
+): WebsiteMenuItemWithChildren[] {
+  const map = new Map<string, WebsiteMenuItemWithChildren>()
+  const roots: WebsiteMenuItemWithChildren[] = []
+
+  flat.forEach(item => {
+    map.set(item.id, {
+      ...item,
+      children: [],
+      page: pages?.get(item.page_id ?? '') ?? null,
+      category: categories?.get(item.category_id ?? -1) ?? null,
+    })
+  })
+
+  flat.forEach(item => {
+    const node = map.get(item.id)!
+    if (item.parent_item_id === null) {
+      roots.push(node)
+    } else {
+      const parent = map.get(item.parent_item_id)
+      if (parent) {
+        parent.children.push(node)
+      } else {
+        roots.push(node)
+      }
+    }
+  })
+
+  const sortChildren = (items: WebsiteMenuItemWithChildren[]): WebsiteMenuItemWithChildren[] => {
+    return items
+      .sort((a, b) => a.display_order - b.display_order)
+      .map(i => ({ ...i, children: sortChildren(i.children) }))
+  }
+
+  return sortChildren(roots)
+}
+
+/**
+ * Obtiene todos los menús de una organización con sus items en árbol jerárquico.
+ * Incluye datos relacionados (páginas y categorías) para cada item.
+ */
+export async function getWebsiteMenus(organizationId: number): Promise<WebsiteMenuWithItems[]> {
+  const supabase = getSupabaseForPublicRead()
+  if (!supabase) return []
+
+  const { data: menus, error: menusError } = await (supabase as any)
+    .from('website_menus')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('header_order', { ascending: true })
+
+  if (menusError || !menus || menus.length === 0) return []
+
+  const { data: items, error: itemsError } = await (supabase as any)
+    .from('website_menu_items')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  if (itemsError || !items) {
+    return (menus as WebsiteMenu[]).map(m => ({ ...m, items: [] }))
+  }
+
+  // Cargar páginas relacionadas (para items de tipo 'page' y 'policy')
+  const pageIds = (items as WebsiteMenuItem[])
+    .filter(i => i.page_id)
+    .map(i => i.page_id!) as string[]
+  let pagesMap = new Map<string, { id: string; slug: string; title: string }>()
+  if (pageIds.length > 0) {
+    const { data: pages } = await (supabase as any)
+      .from('website_pages')
+      .select('id, slug, title')
+      .in('id', pageIds)
+    if (pages) {
+      pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
+    }
+  }
+
+  // Cargar categorías relacionadas (para items de tipo 'category')
+  const categoryIds = (items as WebsiteMenuItem[])
+    .filter(i => i.category_id)
+    .map(i => i.category_id!) as number[]
+  let categoriesMap = new Map<number, { id: number; name: string; slug: string }>()
+  if (categoryIds.length > 0) {
+    const { data: cats } = await (supabase as any)
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', categoryIds)
+    if (cats) {
+      categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
+    }
+  }
+
+  // Agrupar items por menu_id y construir árbol
+  const itemsByMenu = new Map<string, WebsiteMenuItem[]>()
+  ;(items as WebsiteMenuItem[]).forEach(item => {
+    const existing = itemsByMenu.get(item.menu_id) || []
+    existing.push(item)
+    itemsByMenu.set(item.menu_id, existing)
+  })
+
+  return (menus as WebsiteMenu[]).map(menu => ({
+    ...menu,
+    items: buildMenuItemTree(itemsByMenu.get(menu.id) || [], pagesMap, categoriesMap),
+  }))
+}
+
+/**
+ * Obtiene menús filtrados por ubicación (header, footer, both).
+ * Los menús con location='both' se incluyen en ambos filtros.
+ */
+export async function getWebsiteMenusByLocation(
+  organizationId: number,
+  location: 'header' | 'footer'
+): Promise<WebsiteMenuWithItems[]> {
+  const allMenus = await getWebsiteMenus(organizationId)
+  return allMenus.filter(m => m.location === location || m.location === 'both')
+}
+
+/**
+ * Obtiene un menú específico por ID con sus items en árbol jerárquico.
+ * Útil para cargar el menú asignado a header_menu_id o header_mega_menu_id.
+ */
+export async function getMenuById(menuId: string): Promise<WebsiteMenuWithItems | null> {
+  const supabase = getSupabaseForPublicRead()
+  if (!supabase) return null
+
+  const { data: menu, error: menuError } = await (supabase as any)
+    .from('website_menus')
+    .select('*')
+    .eq('id', menuId)
+    .eq('is_active', true)
+    .single()
+
+  if (menuError || !menu) return null
+
+  const { data: items, error: itemsError } = await (supabase as any)
+    .from('website_menu_items')
+    .select('*')
+    .eq('menu_id', menuId)
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  if (itemsError || !items) {
+    return { ...(menu as WebsiteMenu), items: [] }
+  }
+
+  // Cargar páginas relacionadas
+  const pageIds = (items as WebsiteMenuItem[])
+    .filter(i => i.page_id)
+    .map(i => i.page_id!) as string[]
+  let pagesMap = new Map<string, { id: string; slug: string; title: string }>()
+  if (pageIds.length > 0) {
+    const { data: pages } = await (supabase as any)
+      .from('website_pages')
+      .select('id, slug, title')
+      .in('id', pageIds)
+    if (pages) {
+      pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
+    }
+  }
+
+  // Cargar categorías relacionadas
+  const categoryIds = (items as WebsiteMenuItem[])
+    .filter(i => i.category_id)
+    .map(i => i.category_id!) as number[]
+  let categoriesMap = new Map<number, { id: number; name: string; slug: string }>()
+  if (categoryIds.length > 0) {
+    const { data: cats } = await (supabase as any)
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', categoryIds)
+    if (cats) {
+      categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
+    }
+  }
+
+  return {
+    ...(menu as WebsiteMenu),
+    items: buildMenuItemTree(items as WebsiteMenuItem[], pagesMap, categoriesMap),
+  }
 }

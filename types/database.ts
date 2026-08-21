@@ -127,7 +127,7 @@ export interface Database {
           is_published: boolean
           published_at: string | null
           header_style: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
-          footer_style: 'default' | 'minimal' | 'centered' | 'three_columns'
+          footer_style: 'default' | 'minimal' | 'centered' | 'three_columns' | 'split'
           header_cta_text: string | null
           header_cta_url: string | null
           show_header_cart: boolean
@@ -158,6 +158,24 @@ export interface Database {
           logo_height: number | null
           favicon_height: number | null
           favicon_url: string | null
+          // Menús nombrados de header (Fase 0 footer configurable)
+          header_menu_id: string | null
+          header_mega_menu_id: string | null
+          // Configuración de footer (Fase 0 footer configurable)
+          mobile_footer_style: string
+          mobile_footer_show_social: boolean
+          mobile_footer_show_hours: boolean
+          footer_show_categories: boolean
+          footer_columns: number
+          footer_background: string
+          footer_custom_bg_color: string | null
+          footer_show_contact: boolean
+          footer_show_hours: boolean
+          footer_show_social: boolean
+          footer_show_newsletter: boolean
+          footer_newsletter_title: string | null
+          footer_newsletter_placeholder: string | null
+          footer_newsletter_button_text: string | null
           created_at: string
           updated_at: string
         }
@@ -166,7 +184,7 @@ export interface Database {
           template_id?: string
           theme_mode?: 'light' | 'dark' | 'auto'
           header_style?: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
-          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
+          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns' | 'split'
           header_bg_color?: string | null
           topbar_bg_color?: string | null
           nav_bg_color?: string | null
@@ -184,7 +202,7 @@ export interface Database {
           font_body?: string | null
           is_published?: boolean
           header_style?: 'default' | 'transparent' | 'minimal' | 'centered' | 'split' | 'mega'
-          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns'
+          footer_style?: 'default' | 'minimal' | 'centered' | 'three_columns' | 'split'
           header_cta_text?: string | null
           header_cta_url?: string | null
           show_header_cart?: boolean
@@ -351,6 +369,85 @@ export interface Database {
           created_at: string | null
         }
       }
+      website_menus: {
+        Row: {
+          id: string
+          organization_id: number
+          name: string
+          slug: string
+          location: string
+          footer_column: number | null
+          footer_order: number
+          header_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: number
+          name: string
+          slug: string
+          location?: string
+          footer_column?: number | null
+          footer_order?: number
+          header_order?: number
+          is_active?: boolean
+        }
+        Update: {
+          name?: string
+          slug?: string
+          location?: string
+          footer_column?: number | null
+          footer_order?: number
+          header_order?: number
+          is_active?: boolean
+        }
+      }
+      website_menu_items: {
+        Row: {
+          id: string
+          menu_id: string
+          organization_id: number
+          item_type: string
+          page_id: string | null
+          category_id: number | null
+          custom_label: string | null
+          custom_url: string | null
+          parent_item_id: string | null
+          icon: string | null
+          badge: string | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          menu_id: string
+          organization_id: number
+          item_type?: string
+          page_id?: string | null
+          category_id?: number | null
+          custom_label?: string | null
+          custom_url?: string | null
+          parent_item_id?: string | null
+          icon?: string | null
+          badge?: string | null
+          display_order?: number
+          is_active?: boolean
+        }
+        Update: {
+          item_type?: string
+          page_id?: string | null
+          category_id?: number | null
+          custom_label?: string | null
+          custom_url?: string | null
+          parent_item_id?: string | null
+          icon?: string | null
+          badge?: string | null
+          display_order?: number
+          is_active?: boolean
+        }
+      }
     }
     Views: {}
     Functions: {}
@@ -373,6 +470,8 @@ export interface WebsitePageWithChildren extends WebsitePage {
   level: number
 }
 export type WebsitePageSectionInsert = Database['public']['Tables']['website_page_sections']['Insert']
+export type WebsiteMenu = Database['public']['Tables']['website_menus']['Row']
+export type WebsiteMenuItem = Database['public']['Tables']['website_menu_items']['Row']
 export type Product = Database['public']['Tables']['products']['Row']
 export type Service = Database['public']['Tables']['services']['Row']
 export type Space = Database['public']['Tables']['spaces']['Row']
@@ -393,3 +492,16 @@ export interface WebsitePageWithSections extends WebsitePage {
 
 // Tipos de negocio
 export type BusinessType = 'restaurant' | 'hotel' | 'retail' | 'saas' | 'gym' | 'transport' | 'parking'
+
+// Item de menú con hijos (árbol jerárquico de website_menu_items)
+export interface WebsiteMenuItemWithChildren extends WebsiteMenuItem {
+  children: WebsiteMenuItemWithChildren[]
+  // Datos relacionados (cargados vía join o query adicional)
+  page?: { id: string; slug: string; title: string } | null
+  category?: { id: number; name: string; slug: string } | null
+}
+
+// Menú con sus items en árbol jerárquico
+export interface WebsiteMenuWithItems extends WebsiteMenu {
+  items: WebsiteMenuItemWithChildren[]
+}
