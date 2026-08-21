@@ -13,7 +13,7 @@ import { ProductReviews } from '@/components/site/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices } from '@/lib/supabase/queries'
 import { filterStockByBranches } from '@/lib/stock'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
@@ -40,7 +40,7 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
   
   if (error || !data) return null
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  const [filtered] = filterStockByBranches([data as any], webBranchIds)
+  const [filtered] = filterStockByBranches(normalizeProductPrices([data as any]), webBranchIds)
   return filtered
 }
 
@@ -101,7 +101,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
 
   // Filtrar stock por sucursales web
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  const all = filterStockByBranches(Array.from(collected.values()), webBranchIds)
+  const all = filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), webBranchIds)
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [all[i], all[j]] = [all[j], all[i]]

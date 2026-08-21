@@ -16,7 +16,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzus
  *
  * Solución: reordenar para que el registro con effective_to IS NULL y mayor id quede primero.
  */
-function normalizeProductPrices<T extends { product_prices?: any[] }>(products: T[]): T[] {
+export function normalizeProductPrices<T extends { product_prices?: any[] }>(products: T[]): T[] {
   return products.map((p) => {
     if (!p.product_prices || !Array.isArray(p.product_prices) || p.product_prices.length <= 1) {
       return p
