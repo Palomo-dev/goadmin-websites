@@ -63,7 +63,7 @@ export function SpaceInfo({ label, floorZone, description, spaceType, primaryCol
         <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: `${primaryColor}08` }}>
           <span className="text-sm text-gray-500 dark:text-gray-400">Precio desde</span>
           <p className="text-3xl font-bold" style={{ color: primaryColor }}>
-            ${Number(st.base_rate).toLocaleString()}
+            ${Number(st.base_rate).toLocaleString('es-CO')}
             <span className="text-base font-normal text-gray-500 dark:text-gray-400"> / noche</span>
           </p>
         </div>

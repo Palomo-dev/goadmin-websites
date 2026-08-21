@@ -66,7 +66,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
             <h3 className="font-bold text-xl mb-2 text-gray-900 dark:text-white">{hero.name}</h3>
             {hero.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{hero.description}</p>}
             {heroPrice !== null && (
-              <span className="font-bold text-2xl" style={{ color: primaryColor }}>${heroPrice.toLocaleString()}</span>
+              <span className="font-bold text-2xl" style={{ color: primaryColor }}>${heroPrice.toLocaleString('es-CO')}</span>
             )}
           </div>
         </a>
@@ -89,7 +89,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
                 <div className="p-3">
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-1">{product.name}</h3>
                   {price !== null && (
-                    <span className="font-bold text-sm" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                    <span className="font-bold text-sm" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                   )}
                 </div>
               </a>

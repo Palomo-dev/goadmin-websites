@@ -192,7 +192,7 @@ export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, Pr
                     </div>
                     {Number(opt.extra_price) > 0 && (
                       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        +${Number(opt.extra_price).toLocaleString()}
+                        +${Number(opt.extra_price).toLocaleString('es-CO')}
                       </span>
                     )}
                   </button>
@@ -212,7 +212,7 @@ export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, Pr
 
       {extraTotal > 0 && (
         <div className="text-sm font-medium text-gray-600 dark:text-gray-400 pt-1 border-t dark:border-gray-700">
-          Extras: <span style={{ color: primaryColor }}>+${extraTotal.toLocaleString()}</span>
+          Extras: <span style={{ color: primaryColor }}>+${extraTotal.toLocaleString('es-CO')}</span>
         </div>
       )}
 

@@ -46,7 +46,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Desde</span>
                   <span className="font-bold text-lg" style={{ color: primaryColor }}>
-                    ${Number(route.base_fare).toLocaleString()}
+                    ${Number(route.base_fare).toLocaleString('es-CO')}
                   </span>
                 </div>
               )}

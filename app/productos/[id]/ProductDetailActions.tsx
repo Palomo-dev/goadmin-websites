@@ -227,10 +227,10 @@ export function ProductDetailActions({
       {modifiersExtraTotal > 0 && (
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-bold" style={{ color: primaryColor }}>
-            ${effectivePrice.toLocaleString()}
+            ${effectivePrice.toLocaleString('es-CO')}
           </span>
-          <span className="text-sm text-gray-400 line-through">${price.toLocaleString()}</span>
-          <span className="text-xs text-gray-500">+${modifiersExtraTotal.toLocaleString()} en extras</span>
+          <span className="text-sm text-gray-400 line-through">${price.toLocaleString('es-CO')}</span>
+          <span className="text-xs text-gray-500">+${modifiersExtraTotal.toLocaleString('es-CO')} en extras</span>
         </div>
       )}
 

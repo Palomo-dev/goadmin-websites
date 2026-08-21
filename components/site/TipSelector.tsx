@@ -86,7 +86,7 @@ export function TipSelector({ subtotal, value, onChange, primaryColor }: TipSele
       )}
       {value > 0 && (
         <p className="text-xs text-gray-500">
-          Propina: <span className="font-medium" style={{ color: primaryColor }}>${value.toLocaleString()}</span>
+          Propina: <span className="font-medium" style={{ color: primaryColor }}>${value.toLocaleString('es-CO')}</span>
         </p>
       )}
     </div>

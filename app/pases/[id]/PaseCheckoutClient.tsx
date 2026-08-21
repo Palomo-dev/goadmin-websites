@@ -330,7 +330,7 @@ export function PaseCheckoutClient({
                 className="w-full py-3.5 rounded-lg text-white font-medium text-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: primaryColor }}
               >
-                {loading ? 'Procesando...' : `Pagar $${price.toLocaleString()}`}
+                {loading ? 'Procesando...' : `Pagar $${price.toLocaleString('es-CO')}`}
               </button>
             </>
           )}
@@ -392,7 +392,7 @@ export function PaseCheckoutClient({
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-gray-900">Total</span>
                   <span className="text-2xl font-bold" style={{ color: primaryColor }}>
-                    ${price.toLocaleString()}
+                    ${price.toLocaleString('es-CO')}
                   </span>
                 </div>
               </div>

@@ -427,11 +427,11 @@ function ProductCardGrid({
             <div className="flex items-center gap-2">
               {comparePrice && comparePrice > (currentPrice ?? 0) && (
                 <span className="text-xs sm:text-sm text-gray-400 line-through">
-                  ${comparePrice.toLocaleString()}
+                  ${comparePrice.toLocaleString('es-CO')}
                 </span>
               )}
               <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
-                ${Number(price.price).toLocaleString()}
+                ${Number(price.price).toLocaleString('es-CO')}
               </span>
             </div>
           )}
@@ -531,11 +531,11 @@ function ProductCardList({
             <div className="flex items-center gap-2">
               {comparePrice && comparePrice > (currentPrice ?? 0) && (
                 <span className="text-sm text-gray-400 line-through">
-                  ${comparePrice.toLocaleString()}
+                  ${comparePrice.toLocaleString('es-CO')}
                 </span>
               )}
               <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                ${Number(price.price).toLocaleString()}
+                ${Number(price.price).toLocaleString('es-CO')}
               </span>
             </div>
           )}

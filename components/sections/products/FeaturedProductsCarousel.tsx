@@ -79,10 +79,10 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                 <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{product.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   {comparePrice && price !== null && comparePrice > price && (
-                    <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                    <span className="text-sm text-gray-400 line-through">${comparePrice.toLocaleString('es-CO')}</span>
                   )}
                   {price !== null && (
-                    <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                    <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                   )}
                 </div>
               </a>

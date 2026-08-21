@@ -59,7 +59,7 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
                 </div>
                 <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-white">{product.name}</h3>
                 {price !== null && (
-                  <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                  <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                 )}
               </Link>
             )

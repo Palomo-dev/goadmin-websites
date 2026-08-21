@@ -26,7 +26,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
                 {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
               </div>
               {service.price && (
-                <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${service.price.toLocaleString()}</p>
+                <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${service.price.toLocaleString('es-CO')}</p>
               )}
             </div>
           ))}

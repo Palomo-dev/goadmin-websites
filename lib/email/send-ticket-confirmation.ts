@@ -91,7 +91,7 @@ export async function sendTicketConfirmationEmail(data: TicketEmailData): Promis
             ` : ''}
             <tr>
               <td style="padding:4px 0;color:#666;">💰 Tarifa:</td>
-              <td style="padding:4px 0;color:#333;font-weight:600;">$${data.fare.toLocaleString()} ${data.currency}</td>
+              <td style="padding:4px 0;color:#333;font-weight:600;">$${data.fare.toLocaleString('es-CO')} ${data.currency}</td>
             </tr>
           </table>
         </div>

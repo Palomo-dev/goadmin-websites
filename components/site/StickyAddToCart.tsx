@@ -231,10 +231,10 @@ export function StickyAddToCart({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 {activeCp && activeCp > activePrice && (
-                  <span className="text-xs text-gray-400 line-through">${activeCp.toLocaleString()}</span>
+                  <span className="text-xs text-gray-400 line-through">${activeCp.toLocaleString('es-CO')}</span>
                 )}
                 <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                  ${activePrice.toLocaleString()}
+                  ${activePrice.toLocaleString('es-CO')}
                 </span>
               </div>
               {hasVariants && selectedVariant?.variant_data && (

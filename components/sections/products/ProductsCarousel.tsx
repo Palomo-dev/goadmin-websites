@@ -36,7 +36,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data }: Pr
                   )}
                 </div>
                 <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2">{product.name}</h3>
-                {price && <p className="font-bold mt-1" style={{ color: primaryColor }}>${Number(price.price).toLocaleString()}</p>}
+                {price && <p className="font-bold mt-1" style={{ color: primaryColor }}>${Number(price.price).toLocaleString('es-CO')}</p>}
               </a>
             )
           })}

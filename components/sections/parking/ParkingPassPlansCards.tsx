@@ -41,7 +41,7 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
               )}
               <div className="mb-4">
                 <span className="text-4xl font-bold" style={{ color: primaryColor }}>
-                  ${plan.price != null ? Number(plan.price).toLocaleString() : '---'}
+                  ${plan.price != null ? Number(plan.price).toLocaleString('es-CO') : '---'}
                 </span>
               </div>
               <div className="space-y-2 text-sm text-left mb-6 text-gray-700 dark:text-gray-300">

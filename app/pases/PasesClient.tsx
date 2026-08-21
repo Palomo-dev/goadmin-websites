@@ -128,7 +128,7 @@ function PassPlansSection({ passTypes, primaryColor }: { passTypes: any[]; prima
 
                   <div className="mb-6">
                     <span className="text-4xl font-bold" style={{ color: primaryColor }}>
-                      ${plan.price != null ? Number(plan.price).toLocaleString() : '---'}
+                      ${plan.price != null ? Number(plan.price).toLocaleString('es-CO') : '---'}
                     </span>
                   </div>
 
@@ -203,7 +203,7 @@ function RatesSection({ rates, primaryColor }: { rates: any[]; primaryColor: str
               <h3 className="font-bold text-lg mb-1 capitalize">{rate.rate_name || rate.vehicle_type}</h3>
               <div className="mb-3">
                 <span className="text-3xl font-bold" style={{ color: primaryColor }}>
-                  ${rate.price != null ? Number(rate.price).toLocaleString() : '---'}
+                  ${rate.price != null ? Number(rate.price).toLocaleString('es-CO') : '---'}
                 </span>
                 <span className="text-gray-500 text-sm">/{rate.unit || 'hora'}</span>
               </div>

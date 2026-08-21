@@ -32,7 +32,7 @@ export async function sendReservationConfirmationEmail(data: ReservationEmailDat
   const itemsHtml = data.folioItems.map(item => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:14px;color:#333;">${item.description}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-size:14px;color:#333;">$${Number(item.amount).toLocaleString()}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-size:14px;color:#333;">$${Number(item.amount).toLocaleString('es-CO')}</td>
     </tr>
   `).join('')
 
@@ -93,7 +93,7 @@ export async function sendReservationConfirmationEmail(data: ReservationEmailDat
         <div style="border-top:2px solid #eee;padding-top:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:#1a1a1a;">
             <span>Total</span>
-            <span>$${data.total.toLocaleString()}</span>
+            <span>$${data.total.toLocaleString('es-CO')}</span>
           </div>
         </div>
         

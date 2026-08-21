@@ -518,7 +518,7 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Opiniones de clientes</h2>
           <p className="text-gray-500 mt-1">
-            Más de <span className="font-semibold text-gray-700">{totalReviews.toLocaleString()}</span> opiniones verificadas
+            Más de <span className="font-semibold text-gray-700">{totalReviews.toLocaleString('es-CO')}</span> opiniones verificadas
           </p>
         </div>
         <Button
@@ -537,7 +537,7 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
         <div className="flex flex-col items-center justify-center text-center">
           <span className="text-5xl font-bold text-gray-900">{avgRating}</span>
           <div className="mt-2">{renderStars(Math.round(Number(avgRating)), 'h-5 w-5')}</div>
-          <p className="text-sm text-gray-500 mt-1">Basado en {totalReviews.toLocaleString()} opiniones</p>
+          <p className="text-sm text-gray-500 mt-1">Basado en {totalReviews.toLocaleString('es-CO')} opiniones</p>
         </div>
 
         {/* Rating bars */}
@@ -557,7 +557,7 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
                   style={{ width: `${percentage}%`, backgroundColor: primaryColor }}
                 />
               </div>
-              <span className="text-sm text-gray-500 w-16 text-left">{count.toLocaleString()}</span>
+              <span className="text-sm text-gray-500 w-16 text-left">{count.toLocaleString('es-CO')}</span>
             </button>
           ))}
         </div>
@@ -631,7 +631,7 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
           }`}
           style={filterRating === null ? { backgroundColor: primaryColor } : {}}
         >
-          Todas ({totalReviews.toLocaleString()})
+          Todas ({totalReviews.toLocaleString('es-CO')})
         </button>
         {[5, 4, 3, 2, 1].map(r => (
           <button
@@ -659,7 +659,7 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
 
       {/* Results count */}
       <p className="text-sm text-gray-500 mb-4">
-        Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, filtered.length)} de {filtered.length.toLocaleString()} opiniones
+        Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(page * ITEMS_PER_PAGE, filtered.length)} de {filtered.length.toLocaleString('es-CO')} opiniones
       </p>
 
       {/* Reviews list */}

@@ -20,7 +20,7 @@ export function StatsCounters({ content, primaryColor }: StatsCountersProps) {
       {items.map((item, i) => (
         <div key={i}>
           <div className="text-3xl md:text-4xl font-bold mb-2 text-gray-900 dark:text-white" style={{ color: primaryColor }}>
-            {item.prefix}{item.value.toLocaleString()}{item.suffix}
+            {item.prefix}{item.value.toLocaleString('es-CO')}{item.suffix}
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">{item.label}</div>
         </div>

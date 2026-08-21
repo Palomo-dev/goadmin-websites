@@ -39,7 +39,7 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
               {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.description}</p>}
               <div className="mb-6">
                 <span className="text-4xl font-bold" style={{ color: primaryColor }}>
-                  ${plan.price != null ? Number(plan.price).toLocaleString() : '---'}
+                  ${plan.price != null ? Number(plan.price).toLocaleString('es-CO') : '---'}
                 </span>
                 <span className="text-gray-500 dark:text-gray-400">/mes</span>
               </div>

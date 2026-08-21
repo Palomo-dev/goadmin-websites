@@ -28,7 +28,7 @@ export function ParkingPricingCards({ content, primaryColor, data }: ParkingPric
               <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white">{rate.rate_name || rate.vehicle_type}</h3>
               <div className="mb-4">
                 <span className="text-3xl font-bold" style={{ color: primaryColor }}>
-                  ${rate.price != null ? Number(rate.price).toLocaleString() : '---'}
+                  ${rate.price != null ? Number(rate.price).toLocaleString('es-CO') : '---'}
                 </span>
                 <span className="text-gray-500 dark:text-gray-400">/{rate.unit || 'hora'}</span>
               </div>

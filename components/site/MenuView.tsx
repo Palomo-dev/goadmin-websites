@@ -513,7 +513,7 @@ export function MenuView({
                             <div className="flex items-center justify-between mt-2">
                               {price && (
                                 <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                                  ${Number(price.price).toLocaleString()}
+                                  ${Number(price.price).toLocaleString('es-CO')}
                                 </span>
                               )}
                               {outOfStock ? (
@@ -623,7 +623,7 @@ export function MenuView({
               )}
               {selectedProduct.product_prices?.[0] && (
                 <p className="text-2xl font-bold mb-4" style={{ color: primaryColor }}>
-                  ${Number(selectedProduct.product_prices[0].price).toLocaleString()}
+                  ${Number(selectedProduct.product_prices[0].price).toLocaleString('es-CO')}
                 </p>
               )}
 
@@ -722,7 +722,7 @@ export function MenuView({
                     ((selectedProduct.product_prices?.[0]?.price || 0) +
                       selectedNewModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
                     ) * itemQuantity
-                  ).toLocaleString()}
+                  ).toLocaleString('es-CO')}
                 </Button>
               </div>
             </div>

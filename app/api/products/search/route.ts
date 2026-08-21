@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { getCurrentPrice } from '@/lib/get-current-price'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
 const SELECT_FIELDS = `
   id, uuid, name, category_id, tag_id,
-  product_prices (price, compare_price),
+  product_prices (id, price, compare_price, effective_from, effective_to),
   product_images (storage_path, is_primary, shared_image_id, shared_images (storage_path)),
   categories (name),
   product_tags!products_tag_id_fkey (name)
 `
 
 function formatProduct(p: any) {
-  const price = p.product_prices?.[0]?.price
-  const comparePrice = p.product_prices?.[0]?.compare_price
+  const currentPrice = getCurrentPrice(p)
+  const price = currentPrice?.price
+  const comparePrice = currentPrice?.compare_price
   let imageUrl: string | null = null
   if (p.product_images && p.product_images.length > 0) {
     const primary = p.product_images.find((img: any) => img.is_primary) || p.product_images[0]
@@ -180,7 +182,8 @@ export async function GET(request: NextRequest) {
   if (maxPrice && maxPrice > 100) {
     // Si hay texto numérico significativo, filtrar productos dentro de ese rango
     results = results.filter(p => {
-      const price = p.product_prices?.[0]?.price
+      const currentPrice = getCurrentPrice(p)
+      const price = currentPrice?.price
       return price && Number(price) <= maxPrice
     })
     // Si no encontró nada con nombre+precio, buscar solo por precio
@@ -194,7 +197,8 @@ export async function GET(request: NextRequest) {
         .limit(15)
       if (byPrice) {
         results = byPrice.filter((p: any) => {
-          const price = p.product_prices?.[0]?.price
+          const currentPrice = getCurrentPrice(p)
+          const price = currentPrice?.price
           return price && Number(price) <= maxPrice
         })
       }

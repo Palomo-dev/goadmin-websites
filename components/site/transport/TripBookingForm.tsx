@@ -149,8 +149,8 @@ export function TripBookingForm({
           <span className="font-medium">{selectedSeats.map(s => s.label).join(', ')}</span>
         </div>
         <div className="flex justify-between border-t border-blue-100 pt-1 mt-1">
-          <span className="text-gray-600">Total ({selectedSeats.length} × ${fare.toLocaleString()})</span>
-          <span className="font-bold text-lg" style={{ color: primaryColor }}>${totalFare.toLocaleString()} {currency}</span>
+          <span className="text-gray-600">Total ({selectedSeats.length} × ${fare.toLocaleString('es-CO')})</span>
+          <span className="font-bold text-lg" style={{ color: primaryColor }}>${totalFare.toLocaleString('es-CO')} {currency}</span>
         </div>
       </div>
 
@@ -237,7 +237,7 @@ export function TripBookingForm({
         ) : (
           <>
             <CreditCard className="h-4 w-4" />
-            Pagar ${totalFare.toLocaleString()} {currency}
+            Pagar ${totalFare.toLocaleString('es-CO')} {currency}
           </>
         )}
       </button>

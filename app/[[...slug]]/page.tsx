@@ -514,15 +514,15 @@ async function renderSlugFallback(
                               <>
                                 <span className="text-xs text-gray-400">{bkNights} {bkNights === 1 ? 'noche' : 'noches'}</span>
                                 <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                                  ${(nightlyRate * bkNights).toLocaleString()}
+                                  ${(nightlyRate * bkNights).toLocaleString('es-CO')}
                                 </p>
-                                <span className="text-xs text-gray-400">${nightlyRate.toLocaleString()} /noche</span>
+                                <span className="text-xs text-gray-400">${nightlyRate.toLocaleString('es-CO')} /noche</span>
                               </>
                             ) : (
                               <>
                                 <span className="text-xs text-gray-400">Desde</span>
                                 <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                                  ${nightlyRate.toLocaleString()}
+                                  ${nightlyRate.toLocaleString('es-CO')}
                                   <span className="text-xs font-normal text-gray-400"> /noche</span>
                                 </p>
                               </>
@@ -604,7 +604,7 @@ async function renderSlugFallback(
                                 <p key={ch.id} className="text-sm">
                                   <span className="text-gray-500 dark:text-gray-400">{ch.name}: </span>
                                   <span className="font-bold" style={{ color: primaryColor }}>
-                                    {ch.charge_type === 'percentage' ? `${ch.charge_value}%` : `$${Number(ch.charge_value || 0).toLocaleString()}`}
+                                    {ch.charge_type === 'percentage' ? `${ch.charge_value}%` : `$${Number(ch.charge_value || 0).toLocaleString('es-CO')}`}
                                   </span>
                                 </p>
                               ))}
@@ -658,7 +658,7 @@ async function renderSlugFallback(
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{service.name}</h3>
                         {service.description && <p className="text-gray-500 dark:text-gray-400 mb-4 line-clamp-3">{service.description}</p>}
                         {price && (
-                          <p className="text-lg font-bold" style={{ color: primaryColor }}>${Number(price.price).toLocaleString()}</p>
+                          <p className="text-lg font-bold" style={{ color: primaryColor }}>${Number(price.price).toLocaleString('es-CO')}</p>
                         )}
                       </div>
                     </div>

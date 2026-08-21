@@ -26,7 +26,7 @@ export function ServicesListCards({ content, primaryColor, data }: ServicesListC
               <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white" style={{ color: primaryColor }}>{service.name}</h3>
               {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{service.description}</p>}
               {service.price && (
-                <p className="font-bold text-lg text-gray-900 dark:text-white">${service.price.toLocaleString()}</p>
+                <p className="font-bold text-lg text-gray-900 dark:text-white">${service.price.toLocaleString('es-CO')}</p>
               )}
             </div>
           ))}

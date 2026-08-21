@@ -112,7 +112,7 @@ export function ReservationConfirmation({
                   className="text-xl font-bold"
                   style={{ color: primaryColor }}
                 >
-                  ${total.toLocaleString()}
+                  ${total.toLocaleString('es-CO')}
                 </span>
               </div>
             </div>

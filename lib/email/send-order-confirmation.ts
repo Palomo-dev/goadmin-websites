@@ -30,8 +30,8 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.name}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.unitPrice.toLocaleString()}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.total.toLocaleString()}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.unitPrice.toLocaleString('es-CO')}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.total.toLocaleString('es-CO')}</td>
     </tr>
   `).join('')
 
@@ -67,23 +67,23 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         <div style="border-top:2px solid #eee;padding-top:12px;margin-top:12px;">
           <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
             <span>Subtotal</span>
-            <span>$${data.subtotal.toLocaleString()}</span>
+            <span>$${data.subtotal.toLocaleString('es-CO')}</span>
           </div>
           ${data.tax > 0 ? `
           <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
             <span>Impuestos</span>
-            <span>$${data.tax.toLocaleString()}</span>
+            <span>$${data.tax.toLocaleString('es-CO')}</span>
           </div>
           ` : ''}
           ${data.shipping > 0 ? `
           <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
             <span>Envío</span>
-            <span>$${data.shipping.toLocaleString()}</span>
+            <span>$${data.shipping.toLocaleString('es-CO')}</span>
           </div>
           ` : ''}
           <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:#1a1a1a;margin-top:8px;padding-top:8px;border-top:1px solid #eee;">
             <span>Total</span>
-            <span>$${data.total.toLocaleString()}</span>
+            <span>$${data.total.toLocaleString('es-CO')}</span>
           </div>
         </div>
         

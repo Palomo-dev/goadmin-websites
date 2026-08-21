@@ -222,10 +222,10 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                       <div className="flex flex-col gap-2 mt-1">
                         <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                           {comparePrice && price && comparePrice > price && (
-                            <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString()}</span>
+                            <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString('es-CO')}</span>
                           )}
                           {price && (
-                            <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>${price.toLocaleString()}</span>
+                            <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                           )}
                         </div>
                         {isParent ? (

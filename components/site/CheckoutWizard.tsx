@@ -752,7 +752,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           )}
                           {item.newModifiers && item.newModifiers.length > 0 && (
                             <p className="text-xs text-gray-400 truncate mt-0.5">
-                              {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                              {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
                             </p>
                           )}
                           {item.notes && (
@@ -775,13 +775,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                               </Button>
                               <span className="text-xs text-gray-400 ml-1">
                                 {item.comparePrice && item.comparePrice > item.price && (
-                                  <span className="line-through mr-1">${item.comparePrice.toLocaleString()}</span>
+                                  <span className="line-through mr-1">${item.comparePrice.toLocaleString('es-CO')}</span>
                                 )}
-                                ${item.price.toLocaleString()} c/u
+                                ${item.price.toLocaleString('es-CO')} c/u
                               </span>
                             </div>
                             <p className="font-bold text-sm sm:text-base" style={{ color: primaryColor }}>
-                              ${(item.price * item.quantity).toLocaleString()}
+                              ${(item.price * item.quantity).toLocaleString('es-CO')}
                             </p>
                           </div>
                         </div>
@@ -1035,7 +1035,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                                     </p>
                                   </div>
                                 </div>
-                                <span className="font-semibold text-sm">${rate.cost.toLocaleString()}</span>
+                                <span className="font-semibold text-sm">${rate.cost.toLocaleString('es-CO')}</span>
                               </label>
                             ))}
                           </div>
@@ -1151,7 +1151,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         Procesando...
                       </>
                     ) : (
-                      `Pagar $${total.toLocaleString()}`
+                      `Pagar $${total.toLocaleString('es-CO')}`
                     )}
                   </Button>
                 ) : (
@@ -1172,7 +1172,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           Procesando...
                         </>
                       ) : (
-                        `Pagar $${total.toLocaleString()}`
+                        `Pagar $${total.toLocaleString('es-CO')}`
                       )}
                     </Button>
                   </div>
@@ -1221,23 +1221,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       )}
                       {item.newModifiers && item.newModifiers.length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
-                          {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                          {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
                         </span>
                       )}
                     </div>
-                    <span className="font-medium ml-2 flex-shrink-0">${(item.price * item.quantity).toLocaleString()}</span>
+                    <span className="font-medium ml-2 flex-shrink-0">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
                   </div>
                 ))}
 
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span>${subtotal.toLocaleString()}</span>
+                    <span>${subtotal.toLocaleString('es-CO')}</span>
                   </div>
                   {tax > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-gray-600">{settings.taxName} ({settings.taxRate}%)</span>
-                      <span>${tax.toLocaleString()}</span>
+                      <span>${tax.toLocaleString('es-CO')}</span>
                     </div>
                   )}
                   {settings.taxIncluded && settings.taxRate > 0 && (
@@ -1247,7 +1247,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     <div className="mt-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">{settings.shippingTitle || (isRestaurant ? 'Domicilio' : 'Envío')}</span>
-                        <span>{shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString()}`}</span>
+                        <span>{shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString('es-CO')}`}</span>
                       </div>
                       {settings.shippingDescription && (
                         <p className="text-xs text-gray-400 mt-0.5">{settings.shippingDescription}</p>
@@ -1257,7 +1257,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   {tipAmount > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-gray-600">Propina</span>
-                      <span>${tipAmount.toLocaleString()}</span>
+                      <span>${tipAmount.toLocaleString('es-CO')}</span>
                     </div>
                   )}
                   {couponDiscount > 0 && appliedCoupon && (
@@ -1266,13 +1266,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         🎟️ {appliedCoupon.code}
                         <button onClick={removeCoupon} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
                       </span>
-                      <span>-${couponDiscount.toLocaleString()}</span>
+                      <span>-${couponDiscount.toLocaleString('es-CO')}</span>
                     </div>
                   )}
                   {appliedPromotions.map((promo) => (
                     <div key={promo.id} className="flex justify-between text-sm mt-1 text-green-600">
                       <span className="truncate flex-1 mr-2">🏷️ {promo.name}</span>
-                      <span className="flex-shrink-0">-${promo.discount.toLocaleString()}</span>
+                      <span className="flex-shrink-0">-${promo.discount.toLocaleString('es-CO')}</span>
                     </div>
                   ))}
                 </div>
@@ -1308,13 +1308,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 <div className="border-t pt-3">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>${total.toLocaleString()}</span>
+                    <span style={{ color: primaryColor }}>${total.toLocaleString('es-CO')}</span>
                   </div>
                 </div>
 
                 {needsShipping && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
                   <p className="text-xs text-green-600 text-center mt-2">
-                    ¡Envío gratis por compras mayores a ${settings.freeShippingThreshold.toLocaleString()}!
+                    ¡Envío gratis por compras mayores a ${settings.freeShippingThreshold.toLocaleString('es-CO')}!
                   </p>
                 )}
 
@@ -1354,7 +1354,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3">
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
-              Total: <span className="text-lg font-bold text-gray-900">${total.toLocaleString()}</span>
+              Total: <span className="text-lg font-bold text-gray-900">${total.toLocaleString('es-CO')}</span>
             </div>
             <Button
               type="button"
@@ -1369,7 +1369,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   Procesando...
                 </>
               ) : (
-                `Pagar $${total.toLocaleString()}`
+                `Pagar $${total.toLocaleString('es-CO')}`
               )}
             </Button>
           </div>

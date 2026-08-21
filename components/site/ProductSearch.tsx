@@ -146,12 +146,12 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
                 <div className="flex items-center gap-2 mt-0.5">
                   {product.price && (
                     <span className="text-sm font-bold" style={{ color: primaryColor }}>
-                      ${Number(product.price).toLocaleString()}
+                      ${Number(product.price).toLocaleString('es-CO')}
                     </span>
                   )}
                   {product.comparePrice && product.price && Number(product.comparePrice) > Number(product.price) && (
                     <span className="text-xs text-gray-400 line-through">
-                      ${Number(product.comparePrice).toLocaleString()}
+                      ${Number(product.comparePrice).toLocaleString('es-CO')}
                     </span>
                   )}
                 </div>

@@ -190,12 +190,12 @@ export function VariantSelector({
                     {(() => {
                       const vCp = variant.product_prices?.[0]?.compare_price
                       return vCp && Number(vCp) > Number(vPrice) ? (
-                        <span className="text-xs text-gray-400 line-through mr-2">${Number(vCp).toLocaleString()}</span>
+                        <span className="text-xs text-gray-400 line-through mr-2">${Number(vCp).toLocaleString('es-CO')}</span>
                       ) : null
                     })()}
                     {vPrice && (
                       <span className="font-bold" style={{ color: primaryColor }}>
-                        ${Number(vPrice).toLocaleString()}
+                        ${Number(vPrice).toLocaleString('es-CO')}
                       </span>
                     )}
                   </div>
@@ -240,10 +240,10 @@ export function VariantSelector({
               {price ? (
                 <div>
                   {variantComparePrice && Number(variantComparePrice) > Number(price) && (
-                    <p className="text-sm text-gray-400 line-through">${Number(variantComparePrice).toLocaleString()}</p>
+                    <p className="text-sm text-gray-400 line-through">${Number(variantComparePrice).toLocaleString('es-CO')}</p>
                   )}
                   <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                    ${Number(price).toLocaleString()}
+                    ${Number(price).toLocaleString('es-CO')}
                   </p>
                 </div>
               ) : (

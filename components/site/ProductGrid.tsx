@@ -287,11 +287,11 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                   <div className="flex flex-col gap-2 mt-1">
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       {price?.compare_price && Number(price.compare_price) > Number(price.price) && (
-                        <span className="text-xs sm:text-sm text-gray-400 line-through">${Number(price.compare_price).toLocaleString()}</span>
+                        <span className="text-xs sm:text-sm text-gray-400 line-through">${Number(price.compare_price).toLocaleString('es-CO')}</span>
                       )}
                       {price && (
                         <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
-                          ${Number(price.price).toLocaleString()}
+                          ${Number(price.price).toLocaleString('es-CO')}
                         </span>
                       )}
                     </div>

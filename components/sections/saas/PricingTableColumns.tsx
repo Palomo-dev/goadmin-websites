@@ -46,7 +46,7 @@ export function PricingTableColumns({ content, primaryColor }: PricingTableColum
               {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{plan.description}</p>}
               <div className="my-6">
                 <span className="text-4xl font-bold text-gray-900 dark:text-white" style={{ color: plan.is_popular ? primaryColor : undefined }}>
-                  {typeof plan.price === 'number' ? `$${plan.price.toLocaleString()}` : plan.price}
+                  {typeof plan.price === 'number' ? `$${plan.price.toLocaleString('es-CO')}` : plan.price}
                 </span>
                 <span className="text-gray-500 dark:text-gray-400">/{plan.period || 'mes'}</span>
               </div>

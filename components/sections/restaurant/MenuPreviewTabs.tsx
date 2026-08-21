@@ -77,7 +77,7 @@ export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabs
                       </div>
                       {(() => { const price = getPrice(product); return price !== null ? (
                         <span className="font-bold whitespace-nowrap" style={{ color: primaryColor }}>
-                          ${price.toLocaleString()}
+                          ${price.toLocaleString('es-CO')}
                         </span>
                       ) : null })()}
                     </Link>

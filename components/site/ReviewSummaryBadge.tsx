@@ -36,7 +36,7 @@ export function ReviewSummaryBadge({ primaryColor, productId }: ReviewSummaryBad
       <span className="text-sm text-gray-600">{avgRating} / 5</span>
       <span className="text-sm text-gray-400">•</span>
       <span className="text-sm underline" style={{ color: primaryColor }}>
-        +{totalReviews.toLocaleString()} opiniones
+        +{totalReviews.toLocaleString('es-CO')} opiniones
       </span>
     </button>
   )

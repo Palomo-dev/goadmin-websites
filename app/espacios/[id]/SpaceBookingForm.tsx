@@ -348,7 +348,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                     {pricing.priceBreakdown.map((n) => (
                       <div key={n.date} className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span>{n.date}</span>
-                        <span>${n.price.toLocaleString()}{n.source === 'rate' ? ' *' : ''}</span>
+                        <span>${n.price.toLocaleString('es-CO')}{n.source === 'rate' ? ' *' : ''}</span>
                       </div>
                     ))}
                   </div>
@@ -356,13 +356,13 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
 
                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
                   <span>Subtotal ({pricing.nights} noches)</span>
-                  <span>${pricing.subtotal.toLocaleString()}</span>
+                  <span>${pricing.subtotal.toLocaleString('es-CO')}</span>
                 </div>
 
                 {pricing.serviceCharges.map((sc, i) => (
                   <div key={i} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                     <span>{sc.name}</span>
-                    <span>${sc.amount.toLocaleString()}</span>
+                    <span>${sc.amount.toLocaleString('es-CO')}</span>
                   </div>
                 ))}
 
@@ -388,7 +388,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                           />
                           {extra.name}
                         </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">+${extra.amount.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">+${extra.amount.toLocaleString('es-CO')}</span>
                       </label>
                     ))}
                   </div>
@@ -399,7 +399,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                   pricing.selectedExtrasCharges.map((sc) => (
                     <div key={sc.id} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                       <span>✓ {sc.name}</span>
-                      <span>${sc.amount.toLocaleString()}</span>
+                      <span>${sc.amount.toLocaleString('es-CO')}</span>
                     </div>
                   ))
                 )}
@@ -407,13 +407,13 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
                 {pricing.taxAmount > 0 && (
                   <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                     <span>{pricing.taxName} ({pricing.taxRate}%)</span>
-                    <span>${pricing.taxAmount.toLocaleString()}</span>
+                    <span>${pricing.taxAmount.toLocaleString('es-CO')}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between font-bold text-lg border-t dark:border-gray-700 pt-2">
                   <span className="text-gray-900 dark:text-white">Total</span>
-                  <span style={{ color: primaryColor }}>${pricing.total.toLocaleString()}</span>
+                  <span style={{ color: primaryColor }}>${pricing.total.toLocaleString('es-CO')}</span>
                 </div>
 
                 {hasVariableRates && (
@@ -435,7 +435,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
               <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                 <p>📅 {formData.checkin} → {formData.checkout} ({pricing?.nights} noches)</p>
                 <p>👥 {formData.guests} huésped(es)</p>
-                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${pricing?.total.toLocaleString()}</p>
+                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${pricing?.total.toLocaleString('es-CO')}</p>
               </div>
             </div>
             <div>
@@ -480,7 +480,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
               <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                 <p>📅 {formData.checkin} → {formData.checkout}</p>
                 <p>👤 {formData.name} • {formData.email}</p>
-                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total a pagar: ${pricing?.total.toLocaleString()}</p>
+                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total a pagar: ${pricing?.total.toLocaleString('es-CO')}</p>
               </div>
             </div>
 

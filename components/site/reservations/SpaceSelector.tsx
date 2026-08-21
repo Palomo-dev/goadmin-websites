@@ -107,7 +107,7 @@ export function SpaceSelector({
                     className="text-xl font-bold"
                     style={{ color: primaryColor }}
                   >
-                    ${Number(spaceType.base_rate).toLocaleString()}
+                    ${Number(spaceType.base_rate).toLocaleString('es-CO')}
                     <span className="text-sm font-normal text-gray-500">/noche</span>
                   </span>
                 </div>

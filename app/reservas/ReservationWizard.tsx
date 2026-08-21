@@ -381,7 +381,7 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right mr-3">
-                          <p className="font-bold text-lg" style={{ color: primaryColor }}>${st.base_rate.toLocaleString()}</p>
+                          <p className="font-bold text-lg" style={{ color: primaryColor }}>${st.base_rate.toLocaleString('es-CO')}</p>
                           <p className="text-xs text-gray-400">/ noche</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -497,7 +497,7 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
                       {pricing.priceBreakdown.map((n) => (
                         <div key={n.date} className="flex justify-between text-xs text-gray-500">
                           <span>{n.date}</span>
-                          <span>${n.price.toLocaleString()}{n.source === 'rate' ? ' *' : ''}</span>
+                          <span>${n.price.toLocaleString('es-CO')}{n.source === 'rate' ? ' *' : ''}</span>
                         </div>
                       ))}
                     </div>
@@ -505,25 +505,25 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
 
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Subtotal ({pricing.nights} noches)</span>
-                    <span>${pricing.subtotal.toLocaleString()}</span>
+                    <span>${pricing.subtotal.toLocaleString('es-CO')}</span>
                   </div>
 
                   {pricing.serviceCharges.map((sc, i) => (
                     <div key={i} className="flex justify-between text-sm text-gray-500">
-                      <span>{sc.name}</span><span>${sc.amount.toLocaleString()}</span>
+                      <span>{sc.name}</span><span>${sc.amount.toLocaleString('es-CO')}</span>
                     </div>
                   ))}
 
                   {pricing.taxAmount > 0 && (
                     <div className="flex justify-between text-sm text-gray-500">
                       <span>{pricing.taxName} ({pricing.taxRate}%)</span>
-                      <span>${pricing.taxAmount.toLocaleString()}</span>
+                      <span>${pricing.taxAmount.toLocaleString('es-CO')}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>${pricing.total.toLocaleString()}</span>
+                    <span style={{ color: primaryColor }}>${pricing.total.toLocaleString('es-CO')}</span>
                   </div>
 
                   {hasVariableRates && <p className="text-xs text-gray-400">* Tarifa por temporada</p>}
@@ -542,33 +542,33 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
                     <div key={room.spaceTypeId} className="border-t pt-2">
                       <div className="flex justify-between text-sm text-gray-700">
                         <span className="font-medium">{room.quantity}x {room.name}</span>
-                        <span>${room.subtotal.toLocaleString()}</span>
+                        <span>${room.subtotal.toLocaleString('es-CO')}</span>
                       </div>
-                      <p className="text-xs text-gray-400">${room.baseRate.toLocaleString()}/noche × {multiPricing.nights} noches × {room.quantity}</p>
+                      <p className="text-xs text-gray-400">${room.baseRate.toLocaleString('es-CO')}/noche × {multiPricing.nights} noches × {room.quantity}</p>
                     </div>
                   ))}
 
                   <div className="flex justify-between text-sm text-gray-600 border-t pt-2">
                     <span>Subtotal</span>
-                    <span>${multiPricing.totalSubtotal.toLocaleString()}</span>
+                    <span>${multiPricing.totalSubtotal.toLocaleString('es-CO')}</span>
                   </div>
 
                   {multiPricing.serviceCharges.map((sc, i) => (
                     <div key={i} className="flex justify-between text-sm text-gray-500">
-                      <span>{sc.name}</span><span>${sc.amount.toLocaleString()}</span>
+                      <span>{sc.name}</span><span>${sc.amount.toLocaleString('es-CO')}</span>
                     </div>
                   ))}
 
                   {multiPricing.taxAmount > 0 && (
                     <div className="flex justify-between text-sm text-gray-500">
                       <span>{multiPricing.taxName} ({multiPricing.taxRate}%)</span>
-                      <span>${multiPricing.taxAmount.toLocaleString()}</span>
+                      <span>${multiPricing.taxAmount.toLocaleString('es-CO')}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>${multiPricing.grandTotal.toLocaleString()}</span>
+                    <span style={{ color: primaryColor }}>${multiPricing.grandTotal.toLocaleString('es-CO')}</span>
                   </div>
                 </div>
               )}
@@ -589,7 +589,7 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
               <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 space-y-1">
                 <p>🏨 {getRoomSummary()}</p>
                 <p>📅 {checkin} → {checkout} ({displayNights} noches)</p>
-                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${displayTotal.toLocaleString()}</p>
+                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${displayTotal.toLocaleString('es-CO')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
@@ -625,7 +625,7 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
                 <p>🏨 {getRoomSummary()}</p>
                 <p>📅 {checkin} → {checkout} ({displayNights} noches) • 👥 {guests}</p>
                 <p>👤 {guestData.name} • {guestData.email}</p>
-                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${displayTotal.toLocaleString()}</p>
+                <p className="font-bold text-lg" style={{ color: primaryColor }}>Total: ${displayTotal.toLocaleString('es-CO')}</p>
               </div>
 
               {gateways.length > 0 && (

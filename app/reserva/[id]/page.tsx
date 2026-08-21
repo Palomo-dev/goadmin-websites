@@ -209,19 +209,19 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
                       {item.description}
                       {item.quantity > 1 && ` x${item.quantity}`}
                     </span>
-                    <span>${Number(item.amount).toLocaleString()}</span>
+                    <span>${Number(item.amount).toLocaleString('es-CO')}</span>
                   </div>
                 ))}
               </div>
               <div className="border-t mt-4 pt-4 space-y-1">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span style={{ color: primaryColor }}>${Number(folio.total || reservation.total_estimated).toLocaleString()}</span>
+                  <span style={{ color: primaryColor }}>${Number(folio.total || reservation.total_estimated).toLocaleString('es-CO')}</span>
                 </div>
                 {folio.balance > 0 && (
                   <div className="flex justify-between text-sm text-orange-600">
                     <span>Saldo pendiente</span>
-                    <span>${Number(folio.balance).toLocaleString()}</span>
+                    <span>${Number(folio.balance).toLocaleString('es-CO')}</span>
                   </div>
                 )}
               </div>
@@ -247,7 +247,7 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${Number(p.amount).toLocaleString()} {p.currency}</p>
+                      <p className="font-semibold">${Number(p.amount).toLocaleString('es-CO')} {p.currency}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         (PAYMENT_STATUS[p.status] || PAYMENT_STATUS.pending).color
                       }`}>

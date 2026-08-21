@@ -163,7 +163,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
               <div>
                 <div className="text-xs text-gray-500">Total pagado</div>
                 <div className="text-sm font-bold" style={{ color: primaryColor }}>
-                  ${Number(ticket.total || ticket.fare || 0).toLocaleString()} {ticket.currency || 'COP'}
+                  ${Number(ticket.total || ticket.fare || 0).toLocaleString('es-CO')} {ticket.currency || 'COP'}
                 </div>
               </div>
             </div>

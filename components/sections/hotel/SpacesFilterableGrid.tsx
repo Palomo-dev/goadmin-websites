@@ -406,13 +406,13 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
                 <>
                   <span className="text-xs text-gray-400">{nights} {nights === 1 ? 'noche' : 'noches'}</span>
                   <p className="font-bold text-2xl" style={{ color: primaryColor }}>
-                    ${(baseRate * nights).toLocaleString()}
+                    ${(baseRate * nights).toLocaleString('es-CO')}
                   </p>
-                  <span className="text-xs text-gray-400">${baseRate.toLocaleString()} /noche</span>
+                  <span className="text-xs text-gray-400">${baseRate.toLocaleString('es-CO')} /noche</span>
                 </>
               ) : (
                 <p className="font-bold text-2xl" style={{ color: primaryColor }}>
-                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
+                  ${baseRate.toLocaleString('es-CO')} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
                 </p>
               )}
             </div>
@@ -479,12 +479,12 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
             <div>
               {hasBookingParams && nights > 0 ? (
                 <>
-                  <p className="font-bold text-xl" style={{ color: primaryColor }}>${(baseRate * nights).toLocaleString()}</p>
-                  <span className="text-xs text-gray-400">{nights} {nights === 1 ? 'noche' : 'noches'} · ${baseRate.toLocaleString()}/n</span>
+                  <p className="font-bold text-xl" style={{ color: primaryColor }}>${(baseRate * nights).toLocaleString('es-CO')}</p>
+                  <span className="text-xs text-gray-400">{nights} {nights === 1 ? 'noche' : 'noches'} · ${baseRate.toLocaleString('es-CO')}/n</span>
                 </>
               ) : (
                 <p className="font-bold text-lg" style={{ color: primaryColor }}>
-                  ${baseRate.toLocaleString()} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
+                  ${baseRate.toLocaleString('es-CO')} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/ noche</span>
                 </p>
               )}
             </div>

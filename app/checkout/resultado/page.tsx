@@ -247,7 +247,7 @@ export default async function CheckoutResultadoPage({
               <div className="flex justify-between">
                 <span className="text-gray-500">Total</span>
                 <span className="font-bold" style={{ color: primaryColor }}>
-                  ${Number(order.total).toLocaleString()}
+                  ${Number(order.total).toLocaleString('es-CO')}
                 </span>
               </div>
               <div className="flex justify-between">

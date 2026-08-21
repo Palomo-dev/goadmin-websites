@@ -285,7 +285,7 @@ export async function getCustomerRecentActivity(customerId: string, organization
   const activity: any[] = []
 
   for (const o of (ordersRes.data || [])) {
-    activity.push({ type: 'order', id: o.id, title: `Pedido ${o.order_number}`, status: o.status, detail: `$${Number(o.total || 0).toLocaleString()}`, date: o.created_at })
+    activity.push({ type: 'order', id: o.id, title: `Pedido ${o.order_number}`, status: o.status, detail: `$${Number(o.total || 0).toLocaleString('es-CO')}`, date: o.created_at })
   }
   for (const r of (reservationsRes.data || [])) {
     activity.push({ type: 'reservation', id: r.id, title: 'Reserva', status: r.status, detail: `${r.checkin || ''} → ${r.checkout || ''}`, date: r.created_at })

@@ -186,7 +186,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                     )}
                     {item.newModifiers && item.newModifiers.length > 0 && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                        {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
                       </p>
                     )}
                     {item.notes && (

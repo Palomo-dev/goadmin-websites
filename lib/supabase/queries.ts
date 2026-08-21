@@ -9,6 +9,31 @@ function getSupabaseForPublicRead() {
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
 /**
+ * Normaliza el array product_prices de un producto para que [0] sea el precio vigente.
+ *
+ * Problema: Supabase devuelve product_prices ordenado por id ASC (el más antiguo primero).
+ * Cuando se actualiza el precio, se crea un nuevo registro, pero [0] sigue apuntando al viejo.
+ *
+ * Solución: reordenar para que el registro con effective_to IS NULL y mayor id quede primero.
+ */
+function normalizeProductPrices<T extends { product_prices?: any[] }>(products: T[]): T[] {
+  return products.map((p) => {
+    if (!p.product_prices || !Array.isArray(p.product_prices) || p.product_prices.length <= 1) {
+      return p
+    }
+    const sorted = [...p.product_prices].sort((a, b) => {
+      // Primero los que tienen effective_to IS NULL (vigentes)
+      const aActive = a.effective_to === null || a.effective_to === undefined ? 1 : 0
+      const bActive = b.effective_to === null || b.effective_to === undefined ? 1 : 0
+      if (aActive !== bActive) return bActive - aActive
+      // Entre los vigentes, el de mayor id primero (más reciente)
+      return b.id - a.id
+    })
+    return { ...p, product_prices: sorted }
+  })
+}
+
+/**
  * Para categorías sin image_url, obtiene la imagen del primer producto
  * activo de esa categoría y la usa como fallback.
  */
@@ -250,11 +275,11 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
   const webBranchIds = await getWebStockBranchIds(organizationId)
 
   return filterStockByBranches(
-    (data || []).map((p: any) => ({
+    normalizeProductPrices((data || []).map((p: any) => ({
       ...p,
       has_variants: p.is_parent === true,
       variant_count: variantCountMap[p.id] || 0,
-    })),
+    }))),
     webBranchIds
   )
 }
@@ -285,8 +310,11 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
 
   if (error || !products) return []
 
+  // Normalizar precios para que [0] sea el vigente
+  const normalized = normalizeProductPrices(products)
+
   // 2. Filtrar solo los que tienen compare_price > price
-  const offers = products.filter((p: any) => {
+  const offers = normalized.filter((p: any) => {
     const pp = p.product_prices?.[0]
     if (!pp) return false
     return pp.compare_price && Number(pp.compare_price) > Number(pp.price)
@@ -357,9 +385,9 @@ export async function getOrganizationServices(organizationId: number, limit = 12
     .eq('unit_code', 'SV  ')
     .eq('status', 'active')
     .limit(limit)
-  
+
   if (error) return []
-  return data || []
+  return normalizeProductPrices(data || [])
 }
 
 // getOrganizationSpaces movida más abajo con soporte de imágenes y servicios
@@ -411,7 +439,7 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
     .is('parent_product_id', null)
   
   if (error) return []
-  return data || []
+  return normalizeProductPrices(data || [])
 }
 
 /**
@@ -526,7 +554,7 @@ export async function getProductsByCategoryPaginated(
       .sort((a: any, b: any) => b.sales_count - a.sales_count)
 
     const paginated = sorted.slice(offset, offset + limit)
-    return { products: filterStockByBranches(paginated, await getWebStockBranchIds(organizationId)), total: count || 0 }
+    return { products: filterStockByBranches(normalizeProductPrices(paginated), await getWebStockBranchIds(organizationId)), total: count || 0 }
   }
 
   // Ordenamiento estándar
@@ -569,10 +597,10 @@ export async function getProductsByCategoryPaginated(
       })
     }
     const enriched = prods.map((p: any) => ({ ...p, sales_count: salesMap[p.id] || 0 }))
-    return { products: enriched, total: count || 0 }
+    return { products: normalizeProductPrices(enriched), total: count || 0 }
   }
 
-  return { products: prods, total: count || 0 }
+  return { products: normalizeProductPrices(prods), total: count || 0 }
 }
 
 /**
@@ -617,7 +645,7 @@ export async function getProductVariants(parentProductId: number, organizationId
 
   if (error) return []
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(data || [], webBranchIds)
+  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
 }
 
 /**
@@ -869,12 +897,8 @@ export async function getProductById(productId: number) {
     .single()
   
   if (error) return null
-  return data
+  return normalizeProductPrices([data])[0]
 }
-
-/**
- * Obtiene o crea un customer por email
- */
 export async function getOrCreateCustomer(organizationId: number, email: string, data: {
   firstName?: string
   lastName?: string
@@ -1334,7 +1358,7 @@ export async function getMenuProducts(organizationId: number, limit = 100) {
 
   if (error) return []
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(data || [], webBranchIds)
+  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
 }
 
 /**
@@ -1361,7 +1385,7 @@ export async function getProductsByIds(productIds: number[], organizationId: num
 
   if (error) return []
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(data || [], webBranchIds)
+  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
 }
 
 /**

@@ -96,11 +96,11 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                       <td className="px-6 py-4 text-right font-semibold" style={{ color: primaryColor }}>
                         {ch.charge_type === 'percentage'
                           ? `${ch.charge_value}%`
-                          : `$${Number(ch.charge_value || 0).toLocaleString()}`
+                          : `$${Number(ch.charge_value || 0).toLocaleString('es-CO')}`
                         }
                       </td>
                       <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400">
-                        {ch.min_amount ? `$${Number(ch.min_amount).toLocaleString()}` : '—'}
+                        {ch.min_amount ? `$${Number(ch.min_amount).toLocaleString('es-CO')}` : '—'}
                       </td>
                     </tr>
                   ))}

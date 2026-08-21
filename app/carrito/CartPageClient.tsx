@@ -203,7 +203,7 @@ export function CartPageClient({
           {remainingForFreeShipping > 0 ? (
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
               <Truck className="h-4 w-4 inline mr-1" />
-              ¡Te faltan <strong style={{ color: primaryColor }}>${remainingForFreeShipping.toLocaleString()}</strong> para envío gratis!
+              ¡Te faltan <strong style={{ color: primaryColor }}>${remainingForFreeShipping.toLocaleString('es-CO')}</strong> para envío gratis!
             </p>
           ) : (
             <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">
@@ -261,7 +261,7 @@ export function CartPageClient({
                   )}
                   {item.newModifiers && item.newModifiers.length > 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString()})` : ''}`).join(', ')}
+                      {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
                     </p>
                   )}
                   {item.notes && (
@@ -269,10 +269,10 @@ export function CartPageClient({
                   )}
                   <div className="flex items-center gap-2 mt-1">
                     {item.comparePrice && item.comparePrice > item.price && (
-                      <span className="text-sm text-gray-400 line-through">${Number(item.comparePrice).toLocaleString()}</span>
+                      <span className="text-sm text-gray-400 line-through">${Number(item.comparePrice).toLocaleString('es-CO')}</span>
                     )}
                     <p className="text-sm font-medium" style={{ color: primaryColor }}>
-                      ${Number(item.price).toLocaleString()} c/u
+                      ${Number(item.price).toLocaleString('es-CO')} c/u
                     </p>
                   </div>
                 </div>
@@ -298,7 +298,7 @@ export function CartPageClient({
                   {/* Subtotal + eliminar */}
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-gray-900 dark:text-white">
-                      ${(item.price * item.quantity).toLocaleString()}
+                      ${(item.price * item.quantity).toLocaleString('es-CO')}
                     </span>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -331,12 +331,12 @@ export function CartPageClient({
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
                   <span>Subtotal ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</span>
-                  <span className="font-medium">${subtotal.toLocaleString()}</span>
+                  <span className="font-medium">${subtotal.toLocaleString('es-CO')}</span>
                 </div>
                 {tax > 0 && (
                   <div className="flex justify-between text-gray-600 dark:text-gray-300">
                     <span>{cartSettings.taxName} ({cartSettings.taxRate}%)</span>
-                    <span>${tax.toLocaleString()}</span>
+                    <span>${tax.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 {cartSettings.taxIncluded && cartSettings.taxRate > 0 && (
@@ -346,14 +346,14 @@ export function CartPageClient({
                   <div className="flex justify-between text-gray-600 dark:text-gray-300">
                     <span>Envío estimado</span>
                     <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
-                      {shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString()}`}
+                      {shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString('es-CO')}`}
                     </span>
                   </div>
                 )}
                 <div className="border-t dark:border-gray-600 pt-3">
                   <div className="flex justify-between font-bold text-lg text-gray-900 dark:text-white">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>${total.toLocaleString()}</span>
+                    <span style={{ color: primaryColor }}>${total.toLocaleString('es-CO')}</span>
                   </div>
                 </div>
               </div>
@@ -438,7 +438,7 @@ function SuggestedCard({
         <div className="flex items-center justify-between mt-2">
           {price && (
             <span className="text-sm font-bold" style={{ color: primaryColor }}>
-              ${Number(price).toLocaleString()}
+              ${Number(price).toLocaleString('es-CO')}
             </span>
           )}
           <Button

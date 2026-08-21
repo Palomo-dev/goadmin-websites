@@ -123,14 +123,14 @@ export function ReservationSummary({
             
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">
-                ${Number(spaceType.base_rate).toLocaleString()} x {nights} noches
+                ${Number(spaceType.base_rate).toLocaleString('es-CO')} x {nights} noches
               </span>
-              <span className="text-gray-900">${subtotal.toLocaleString()}</span>
+              <span className="text-gray-900">${subtotal.toLocaleString('es-CO')}</span>
             </div>
             
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">IVA (19%)</span>
-              <span className="text-gray-900">${taxes.toLocaleString()}</span>
+              <span className="text-gray-900">${taxes.toLocaleString('es-CO')}</span>
             </div>
             
             <div className="flex justify-between pt-3 border-t mt-3">
@@ -139,7 +139,7 @@ export function ReservationSummary({
                 className="text-xl font-bold"
                 style={{ color: primaryColor }}
               >
-                ${total.toLocaleString()}
+                ${total.toLocaleString('es-CO')}
               </span>
             </div>
           </div>

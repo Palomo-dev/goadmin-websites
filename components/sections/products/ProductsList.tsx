@@ -34,7 +34,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data }: Produc
                   <h3 className="font-semibold text-gray-900 dark:text-white group-hover:underline">{product.name}</h3>
                   {product.description && <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-1">{product.description}</p>}
                 </div>
-                {price && <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${Number(price.price).toLocaleString()}</p>}
+                {price && <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${Number(price.price).toLocaleString('es-CO')}</p>}
               </a>
             )
           })}

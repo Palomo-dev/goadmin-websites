@@ -98,7 +98,7 @@ export default async function TicketsPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-bold" style={{ color: ctx.primaryColor }}>
-                      ${Number(ticket.total || ticket.fare || 0).toLocaleString()}
+                      ${Number(ticket.total || ticket.fare || 0).toLocaleString('es-CO')}
                     </div>
                     <div className="text-xs text-gray-400">{ticket.currency || 'COP'}</div>
                   </div>

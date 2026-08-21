@@ -149,11 +149,11 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
                 </Link>
                 <div className="flex items-center gap-2 mt-2">
                   {comparePrice && Number(comparePrice) > Number(price) && (
-                    <span className="text-xs text-gray-400 line-through">${Number(comparePrice).toLocaleString()}</span>
+                    <span className="text-xs text-gray-400 line-through">${Number(comparePrice).toLocaleString('es-CO')}</span>
                   )}
                   {price && (
                     <span className="font-bold text-sm" style={{ color: primaryColor }}>
-                      ${Number(price).toLocaleString()}
+                      ${Number(price).toLocaleString('es-CO')}
                     </span>
                   )}
                 </div>

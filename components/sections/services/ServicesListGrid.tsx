@@ -24,7 +24,7 @@ export function ServicesListGrid({ content, primaryColor = '#3B82F6', data }: Se
               <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">{service.name}</h3>
               {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">{service.description}</p>}
               {service.price && (
-                <p className="font-bold text-lg" style={{ color: primaryColor }}>${service.price.toLocaleString()}</p>
+                <p className="font-bold text-lg" style={{ color: primaryColor }}>${service.price.toLocaleString('es-CO')}</p>
               )}
             </div>
           ))}

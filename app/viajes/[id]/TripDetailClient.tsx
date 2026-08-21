@@ -108,7 +108,7 @@ export function TripDetailClient({
           <div className="text-right">
             <div className="text-sm text-gray-500">Desde</div>
             <div className="text-3xl font-bold" style={{ color: primaryColor }}>
-              ${Number(trip.base_fare).toLocaleString()}
+              ${Number(trip.base_fare).toLocaleString('es-CO')}
             </div>
             <div className="text-xs text-gray-500">{trip.currency || 'COP'} / pasajero</div>
           </div>
