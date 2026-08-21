@@ -2070,6 +2070,8 @@ function buildMenuItemTree(
   const roots: WebsiteMenuItemWithChildren[] = []
 
   flat.forEach(item => {
+    // Si es item de tipo página y la página no existe o no está publicada, se omite
+    if (item.item_type === 'page' && item.page_id && !pages?.get(item.page_id)) return
     map.set(item.id, {
       ...item,
       children: [],
@@ -2079,7 +2081,8 @@ function buildMenuItemTree(
   })
 
   flat.forEach(item => {
-    const node = map.get(item.id)!
+    const node = map.get(item.id)
+    if (!node) return
     if (item.parent_item_id === null) {
       roots.push(node)
     } else {
@@ -2139,6 +2142,7 @@ export async function getWebsiteMenus(organizationId: number): Promise<WebsiteMe
       .from('website_pages')
       .select('id, slug, title')
       .in('id', pageIds)
+      .eq('is_published', true)
     if (pages) {
       pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
     }
@@ -2223,6 +2227,7 @@ export async function getMenuById(menuId: string): Promise<WebsiteMenuWithItems 
       .from('website_pages')
       .select('id, slug, title')
       .in('id', pageIds)
+      .eq('is_published', true)
     if (pages) {
       pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
     }
