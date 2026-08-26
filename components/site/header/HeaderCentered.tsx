@@ -66,7 +66,7 @@ export default function HeaderCentered({
       </div>
 
       {/* Fila inferior: nav centrado | search bar */}
-      <div className="backdrop-blur-md border-t border-gray-100 dark:border-gray-800 dark:bg-[var(--header-bg-dark)]" style={navBgStyle(settings)}>
+      <div className="backdrop-blur-md border-t border-gray-100 dark:border-gray-800 dark:bg-[var(--header-bg-dark)] bg-white/95 dark:bg-gray-900/95" style={navBgStyle(settings)}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
             {navItems.length > 0 && (

@@ -379,61 +379,32 @@ export default function SiteHeader({
     megaMenuItems,
   }
 
-  // Si hay headerNavTree o menuCategories, usar el sistema de variantes nuevo
-  const useNewVariants = (headerNavTree && headerNavTree.length > 0) || headerStyle !== 'default' || (menuCategories && menuCategories.length > 0)
-
-  if (useNewVariants) {
-    if (isMobile) {
-      // Renderizar variante móvil según mobile_menu_style
-      switch (mobileMenuStyle) {
-        case 'bottom_sheet':
-          return <MobileBottomSheet {...variantProps} />
-        case 'fullscreen':
-          return <MobileFullscreen {...variantProps} />
-        case 'tabs':
-          return <MobileTabs {...variantProps} />
-        default:
-          return <MobileDrawer {...variantProps} />
-      }
-    }
-
-    // Renderizar variante desktop según header_style
-    switch (headerStyle) {
-      case 'centered':
-        return <HeaderCentered {...variantProps} />
-      case 'split':
-        return <HeaderSplit {...variantProps} />
-      case 'minimal':
-        return <HeaderMinimal {...variantProps} />
-      case 'mega':
-        return <HeaderMega {...variantProps} />
+  // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)
+  if (isMobile) {
+    // Renderizar variante móvil según mobile_menu_style
+    switch (mobileMenuStyle) {
+      case 'bottom_sheet':
+        return <MobileBottomSheet {...variantProps} />
+      case 'fullscreen':
+        return <MobileFullscreen {...variantProps} />
+      case 'tabs':
+        return <MobileTabs {...variantProps} />
       default:
-        return <HeaderClassic {...variantProps} />
+        return <MobileDrawer {...variantProps} />
     }
   }
 
-  // Fallback: header legacy (comportamiento anterior, sin variantes)
-  return (
-    <>
-      <LegacyDesktopHeader
-        organization={organization}
-        primaryColor={primaryColor}
-        template={template}
-        settings={settings}
-        navItems={navItems}
-        showCart={showCart}
-        onCartClick={onCartClick}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
-      <LegacyMobileMenu
-        organization={organization}
-        primaryColor={primaryColor}
-        navItems={navItems}
-        showCart={showCart}
-        onCartClick={onCartClick}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
-    </>
-  )
+  // Renderizar variante desktop según header_style
+  switch (headerStyle) {
+    case 'centered':
+      return <HeaderCentered {...variantProps} />
+    case 'split':
+      return <HeaderSplit {...variantProps} />
+    case 'minimal':
+      return <HeaderMinimal {...variantProps} />
+    case 'mega':
+      return <HeaderMega {...variantProps} />
+    default:
+      return <HeaderClassic {...variantProps} />
+  }
 }
