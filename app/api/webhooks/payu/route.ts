@@ -7,6 +7,7 @@ import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/
 import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
+import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 
 export const dynamic = 'force-dynamic'
 
@@ -442,6 +443,11 @@ export async function POST(request: NextRequest) {
         value: amountDecimal,
         currency: currency || 'COP',
       }).catch(err => console.error('[PayU Webhook] Meta CAPI error:', err))
+
+      // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío
+      notifyErpAutoConfirm(webOrder.id).catch(err =>
+        console.error('[PayU Webhook] ERP auto-confirm error:', err)
+      )
     }
 
     console.log(

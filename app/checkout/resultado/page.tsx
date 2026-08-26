@@ -8,6 +8,7 @@ import { CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react'
 import { getGoogleAdsConfig, getMetaPixelId } from '@/lib/supabase/queries'
 import GoogleAdsConversion from '@/components/site/GoogleAdsConversion'
 import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
+import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +99,13 @@ async function checkWompiTransactionStatus(supabase: any, order: any, transactio
     ...(newStatus === 'paid' && { status: 'confirmed', confirmed_at: new Date().toISOString() }),
     ...(newStatus === 'failed' && { status: 'cancelled', cancelled_at: new Date().toISOString() }),
   }).eq('id', order.id)
+
+  // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío
+  if (newStatus === 'paid') {
+    notifyErpAutoConfirm(order.id).catch(err =>
+      console.error('[Resultado] ERP auto-confirm error:', err)
+    )
+  }
 
   return { ...order, payment_status: newStatus, status: newStatus === 'paid' ? 'confirmed' : order.status }
 }

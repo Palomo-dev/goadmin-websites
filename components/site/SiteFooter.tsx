@@ -150,10 +150,10 @@ function FooterSection({
 
   // accordion (default): details en móvil, título fijo en desktop — children renderizados una sola vez
   return (
-    <details className="group border-b border-gray-800 md:border-0" open>
+    <details className="group border-b border-white/20 md:border-0" open>
       <summary className="flex items-center justify-between cursor-pointer py-4 text-lg font-semibold text-white list-none md:cursor-default md:py-0 md:mb-6">
         <span>{title}</span>
-        <ChevronDown className="h-5 w-5 text-gray-400 group-open:rotate-180 transition-transform md:hidden" />
+        <ChevronDown className="h-5 w-5 text-current opacity-50 group-open:rotate-180 transition-transform md:hidden" />
       </summary>
       <div className="pb-4 md:pb-0">{children}</div>
     </details>
@@ -168,7 +168,7 @@ function FooterLinkItem({ item }: { item: FooterNavItem }) {
     <li>
       <Link
         href={item.href}
-        className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1.5"
+        className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm flex items-center gap-1.5"
       >
         {item.icon && <span className="text-base">{item.icon}</span>}
         <span>{item.name}</span>
@@ -183,12 +183,12 @@ function FooterLinkItem({ item }: { item: FooterNavItem }) {
       </Link>
       {/* Sub-links indentados */}
       {hasChildren && (
-        <ul className="ml-3 mt-2 space-y-2 border-l border-gray-800 pl-3">
+        <ul className="ml-3 mt-2 space-y-2 border-l border-white/20 pl-3">
           {item.children!.map((child, j) => (
             <li key={j}>
               <Link
                 href={child.href}
-                className="text-gray-500 hover:text-white transition-colors text-xs"
+                className="text-current opacity-50 hover:opacity-100 transition-opacity text-xs"
               >
                 {child.name}
               </Link>
@@ -324,7 +324,7 @@ export function SiteFooter({
                 <Link
                   key={i}
                   href={item.href}
-                  className="text-gray-400 hover:text-white transition-colors text-sm"
+                  className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm"
                 >
                   {item.name}
                 </Link>
@@ -343,7 +343,7 @@ export function SiteFooter({
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-8 h-8 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors"
+                      className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                     >
                       <Icon className="h-4 w-4" />
                     </a>
@@ -354,16 +354,16 @@ export function SiteFooter({
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-gray-800 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
-            <p className="text-gray-400 text-sm">{footerText}</p>
+          <div className="border-t border-white/20 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+            <p className="text-current opacity-50 text-sm">{footerText}</p>
             {showPoweredBy && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-current opacity-50 text-sm">
                 Powered by{' '}
                 <a
                   href="https://goadmin.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="hover:opacity-100 transition-opacity"
                   style={{ color: primaryColor }}
                 >
                   GO Admin
@@ -406,7 +406,7 @@ export function SiteFooter({
               )}
             </div>
             {organization.description && (
-              <p className="text-gray-400 max-w-2xl mx-auto">{organization.description}</p>
+              <p className="text-current opacity-50 max-w-2xl mx-auto">{organization.description}</p>
             )}
           </div>
 
@@ -416,7 +416,7 @@ export function SiteFooter({
               <Link
                 key={i}
                 href={item.href}
-                className="text-gray-400 hover:text-white transition-colors text-sm"
+                className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm"
               >
                 {item.name}
               </Link>
@@ -425,7 +425,7 @@ export function SiteFooter({
               <Link
                 key={`cat-${i}`}
                 href={item.href}
-                className="text-gray-400 hover:text-white transition-colors text-sm"
+                className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm"
               >
                 {item.name}
               </Link>
@@ -444,7 +444,7 @@ export function SiteFooter({
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors"
+                    className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                   >
                     <Icon className="h-5 w-5" />
                   </a>
@@ -454,16 +454,16 @@ export function SiteFooter({
           )}
 
           {/* Bottom bar */}
-          <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
-            <p className="text-gray-400 text-sm">{footerText}</p>
+          <div className="border-t border-white/20 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+            <p className="text-current opacity-50 text-sm">{footerText}</p>
             {showPoweredBy && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-current opacity-50 text-sm">
                 Powered by{' '}
                 <a
                   href="https://goadmin.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="hover:opacity-100 transition-opacity"
                   style={{ color: primaryColor }}
                 >
                   GO Admin
@@ -505,7 +505,7 @@ export function SiteFooter({
                   )}
                 </div>
                 {organization.description && (
-                  <p className="text-gray-400 mb-4 text-sm">{organization.description}</p>
+                  <p className="text-current opacity-50 mb-4 text-sm">{organization.description}</p>
                 )}
                 {showSocialInFooter && (
                   <div className="flex space-x-3">
@@ -518,7 +518,7 @@ export function SiteFooter({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-8 h-8 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors"
+                          className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                         >
                           <Icon className="h-4 w-4" />
                         </a>
@@ -538,7 +538,7 @@ export function SiteFooter({
                       <FooterLinkItem key={i} item={item} />
                     ))
                   ) : (
-                    <li className="text-gray-500 text-sm">Sin enlaces</li>
+                    <li className="text-current opacity-50 text-sm">Sin enlaces</li>
                   )}
                 </ul>
               </FooterSection>
@@ -551,8 +551,8 @@ export function SiteFooter({
                 <ul className="space-y-3">
                   {organization.address && (
                     <li className="flex items-start">
-                      <MapPin className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-400 text-sm">
+                      <MapPin className="h-5 w-5 text-current opacity-50 mr-3 mt-0.5 flex-shrink-0" />
+                      <span className="text-current opacity-50 text-sm">
                         {organization.address}
                         {organization.city && <>, {organization.city}</>}
                       </span>
@@ -560,16 +560,16 @@ export function SiteFooter({
                   )}
                   {organization.phone && (
                     <li className="flex items-center">
-                      <Phone className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                      <a href={`tel:${organization.phone}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Phone className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                      <a href={`tel:${organization.phone}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         {organization.phone}
                       </a>
                     </li>
                   )}
                   {organization.email && (
                     <li className="flex items-center">
-                      <Mail className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                      <a href={`mailto:${organization.email}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Mail className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                      <a href={`mailto:${organization.email}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         {organization.email}
                       </a>
                     </li>
@@ -582,16 +582,16 @@ export function SiteFooter({
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
-            <p className="text-gray-400 text-sm">{footerText}</p>
+          <div className="border-t border-white/20 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+            <p className="text-current opacity-50 text-sm">{footerText}</p>
             {showPoweredBy && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-current opacity-50 text-sm">
                 Powered by{' '}
                 <a
                   href="https://goadmin.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="hover:opacity-100 transition-opacity"
                   style={{ color: primaryColor }}
                 >
                   GO Admin
@@ -637,7 +637,7 @@ export function SiteFooter({
                 </div>
 
                 {organization.description && (
-                  <p className="text-gray-400 mb-6 text-sm max-w-md">{organization.description}</p>
+                  <p className="text-current opacity-50 mb-6 text-sm max-w-md">{organization.description}</p>
                 )}
 
                 {showSocialInFooter && (
@@ -651,7 +651,7 @@ export function SiteFooter({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors"
+                          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                         >
                           <Icon className="h-5 w-5" />
                         </a>
@@ -664,8 +664,8 @@ export function SiteFooter({
                   <ul className="space-y-3">
                     {organization.address && (
                       <li className="flex items-start">
-                        <MapPin className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-400 text-sm">
+                        <MapPin className="h-5 w-5 text-current opacity-50 mr-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-current opacity-50 text-sm">
                           {organization.address}
                           {organization.city && <>, {organization.city}</>}
                         </span>
@@ -673,16 +673,16 @@ export function SiteFooter({
                     )}
                     {organization.phone && (
                       <li className="flex items-center">
-                        <Phone className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <a href={`tel:${organization.phone}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                        <Phone className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                        <a href={`tel:${organization.phone}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                           {organization.phone}
                         </a>
                       </li>
                     )}
                     {organization.email && (
                       <li className="flex items-center">
-                        <Mail className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <a href={`mailto:${organization.email}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                        <Mail className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                        <a href={`mailto:${organization.email}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                           {organization.email}
                         </a>
                       </li>
@@ -703,17 +703,17 @@ export function SiteFooter({
                         <FooterLinkItem key={i} item={item} />
                       ))
                     ) : (
-                      <li className="text-gray-500 text-sm">Sin enlaces</li>
+                      <li className="text-current opacity-50 text-sm">Sin enlaces</li>
                     )}
                   </ul>
 
                   {categoryItems.length > 0 && (
-                    <div className="mt-6 pt-4 border-t border-gray-800">
-                      <h4 className="text-sm font-semibold text-gray-300 mb-3">Categorías</h4>
+                    <div className="mt-6 pt-4 border-t border-white/20">
+                      <h4 className="text-sm font-semibold text-current opacity-70 mb-3">Categorías</h4>
                       <ul className="space-y-2">
                         {categoryItems.slice(0, 6).map((cat, i) => (
                           <li key={i}>
-                            <Link href={cat.href} className="text-gray-500 hover:text-white transition-colors text-xs flex items-center gap-1.5">
+                            <Link href={cat.href} className="text-current opacity-50 hover:opacity-100 transition-opacity text-xs flex items-center gap-1.5">
                               {cat.icon && <span>{cat.icon}</span>}
                               <span>{cat.name}</span>
                             </Link>
@@ -735,8 +735,8 @@ export function SiteFooter({
                         const hours = businessHours[dayKey]
                         return (
                           <li key={day} className="flex justify-between text-sm">
-                            <span className="text-gray-400">{day}</span>
-                            <span className="text-gray-300">
+                            <span className="text-current opacity-50">{day}</span>
+                            <span className="text-current opacity-70">
                               {hours?.closed ? 'Cerrado' : hours ? `${hours.open} - ${hours.close}` : '-'}
                             </span>
                           </li>
@@ -753,7 +753,7 @@ export function SiteFooter({
                       <input
                         type="email"
                         placeholder={footerNewsletterPlaceholder}
-                        className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-current text-sm placeholder-current opacity-60 focus:outline-none focus:border-white/40"
                       />
                       <button
                         type="submit"
@@ -770,16 +770,16 @@ export function SiteFooter({
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
-            <p className="text-gray-400 text-sm">{footerText}</p>
+          <div className="border-t border-white/20 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+            <p className="text-current opacity-50 text-sm">{footerText}</p>
             {showPoweredBy && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-current opacity-50 text-sm">
                 Powered by{' '}
                 <a
                   href="https://goadmin.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="hover:opacity-100 transition-opacity"
                   style={{ color: primaryColor }}
                 >
                   GO Admin
@@ -824,7 +824,7 @@ export function SiteFooter({
               </div>
 
               {organization.description && (
-                <p className="text-gray-400 mb-6 text-sm">{organization.description}</p>
+                <p className="text-current opacity-50 mb-6 text-sm">{organization.description}</p>
               )}
 
               {/* Redes sociales */}
@@ -839,7 +839,7 @@ export function SiteFooter({
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors"
+                        className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                       >
                         <Icon className="h-5 w-5" />
                       </a>
@@ -857,8 +857,8 @@ export function SiteFooter({
               <ul className="space-y-4">
                 {organization.address && (
                   <li className="flex items-start">
-                    <MapPin className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-400 text-sm">
+                    <MapPin className="h-5 w-5 text-current opacity-50 mr-3 mt-0.5 flex-shrink-0" />
+                    <span className="text-current opacity-50 text-sm">
                       {organization.address}
                       {organization.city && <>, {organization.city}</>}
                       {organization.state && <>, {organization.state}</>}
@@ -867,16 +867,16 @@ export function SiteFooter({
                 )}
                 {organization.phone && (
                   <li className="flex items-center">
-                    <Phone className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                    <a href={`tel:${organization.phone}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                    <Phone className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                    <a href={`tel:${organization.phone}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                       {organization.phone}
                     </a>
                   </li>
                 )}
                 {organization.email && (
                   <li className="flex items-center">
-                    <Mail className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                    <a href={`mailto:${organization.email}`} className="text-gray-400 hover:text-white transition-colors text-sm">
+                    <Mail className="h-5 w-5 text-current opacity-50 mr-3 flex-shrink-0" />
+                    <a href={`mailto:${organization.email}`} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                       {organization.email}
                     </a>
                   </li>
@@ -896,8 +896,8 @@ export function SiteFooter({
                     const hours = businessHours[dayKey]
                     return (
                       <li key={day} className="flex justify-between text-sm">
-                        <span className="text-gray-400">{day}</span>
-                        <span className="text-gray-300">
+                        <span className="text-current opacity-50">{day}</span>
+                        <span className="text-current opacity-70">
                           {hours?.closed ? 'Cerrado' : hours ? `${hours.open} - ${hours.close}` : '-'}
                         </span>
                       </li>
@@ -919,22 +919,22 @@ export function SiteFooter({
                 ) : (
                   <>
                     <li>
-                      <Link href="/productos" className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Link href="/productos" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Productos
                       </Link>
                     </li>
                     <li>
-                      <Link href="/servicios" className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Link href="/servicios" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Servicios
                       </Link>
                     </li>
                     <li>
-                      <Link href="/nosotros" className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Link href="/nosotros" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Nosotros
                       </Link>
                     </li>
                     <li>
-                      <Link href="/contacto" className="text-gray-400 hover:text-white transition-colors text-sm">
+                      <Link href="/contacto" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Contacto
                       </Link>
                     </li>
@@ -944,14 +944,14 @@ export function SiteFooter({
 
               {/* Categorías como sub-sección */}
               {categoryItems.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-gray-800">
-                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Categorías</h4>
+                <div className="mt-6 pt-4 border-t border-white/20">
+                  <h4 className="text-sm font-semibold text-current opacity-70 mb-3">Categorías</h4>
                   <ul className="space-y-2">
                     {categoryItems.slice(0, 6).map((cat, i) => (
                       <li key={i}>
                         <Link
                           href={cat.href}
-                          className="text-gray-500 hover:text-white transition-colors text-xs flex items-center gap-1.5"
+                          className="text-current opacity-50 hover:opacity-100 transition-opacity text-xs flex items-center gap-1.5"
                         >
                           {cat.icon && <span>{cat.icon}</span>}
                           <span>{cat.name}</span>
@@ -964,13 +964,13 @@ export function SiteFooter({
 
               {/* Newsletter */}
               {footerShowNewsletter && (
-                <div className="mt-6 pt-4 border-t border-gray-800">
-                  <h4 className="text-sm font-semibold text-gray-300 mb-3">{footerNewsletterTitle}</h4>
+                <div className="mt-6 pt-4 border-t border-white/20">
+                  <h4 className="text-sm font-semibold text-current opacity-70 mb-3">{footerNewsletterTitle}</h4>
                   <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
                     <input
                       type="email"
                       placeholder={footerNewsletterPlaceholder}
-                      className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                      className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-current text-sm placeholder-current opacity-60 focus:outline-none focus:border-white/40"
                     />
                     <button
                       type="submit"
@@ -1003,18 +1003,18 @@ export function SiteFooter({
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-gray-800">
+      <div className="border-t border-white/20">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">{footerText}</p>
+            <p className="text-current opacity-50 text-sm">{footerText}</p>
             {showPoweredBy && (
-              <p className="text-gray-500 text-sm mt-2 md:mt-0">
+              <p className="text-current opacity-50 text-sm mt-2 md:mt-0">
                 Powered by{' '}
                 <a
                   href="https://goadmin.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="hover:opacity-100 transition-opacity"
                   style={{ color: primaryColor }}
                 >
                   GO Admin

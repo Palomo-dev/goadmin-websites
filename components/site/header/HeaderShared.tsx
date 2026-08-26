@@ -69,14 +69,14 @@ export function buildNavItems(navTree: WebsitePageWithChildren[]): NavItem[] {
 // ============================================================
 
 // Helper: genera el style inline para la opacidad del header
-// Soporta dark mode via la clase CSS `dark:` aplicada al elemento padre
-// Si header_bg_color está configurado, usa ese color (con opacidad);
-// si no, usa blanco (light) / gray-900 (dark) con opacidad.
+// Soporta dark mode via variables CSS aplicadas con clases Tailwind.
+// Si header_bg_color está configurado, usa ese color (con opacidad) en ambos modos;
+// si no, usa blanco (light) / gray-900 (dark) con opacidad via CSS vars.
 export function headerBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const opacity = settings?.header_opacity ?? 95;
   const bgColor = settings?.header_bg_color ?? null;
   if (bgColor) {
-    // Color personalizado: aplica opacidad sobre el color configurado
+    // Color personalizado: aplica opacidad sobre el color configurado en ambos modos
     const normalized = bgColor.replace('#', '');
     if (normalized.length === 6) {
       const r = parseInt(normalized.slice(0, 2), 16);
@@ -84,12 +84,12 @@ export function headerBgStyle(settings: HeaderVariantProps['settings'] | undefin
       const b = parseInt(normalized.slice(4, 6), 16);
       return {
         backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity / 100})`,
-        ['--header-bg-dark' as string]: `rgba(${r}, ${g}, ${b}, ${opacity / 100})`,
       };
     }
   }
+  // Sin color personalizado: usar variables CSS para que Tailwind dark: funcione
   return {
-    backgroundColor: `rgba(255, 255, 255, ${opacity / 100})`,
+    ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
     ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`,
   };
 }
@@ -100,10 +100,11 @@ export function topbarBgStyle(settings: HeaderVariantProps['settings'] | undefin
   if (bgColor) {
     return { backgroundColor: bgColor };
   }
-  // Sin color configurado: herencia del header (opacidad sobre blanco)
+  // Sin color configurado: herencia del header via variables CSS
   const opacity = settings?.header_opacity ?? 95;
   return {
-    backgroundColor: `rgba(255, 255, 255, ${opacity / 100})`,
+    ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
+    ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`,
   };
 }
 
@@ -113,7 +114,12 @@ export function navBgStyle(settings: HeaderVariantProps['settings'] | undefined)
   if (bgColor) {
     return { backgroundColor: bgColor };
   }
-  return {};
+  // Sin color personalizado: variables CSS para dark/light
+  const opacity = settings?.header_opacity ?? 95;
+  return {
+    ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
+    ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`
+  };
 }
 
 // Helper: color de texto automático según luminancia del fondo
