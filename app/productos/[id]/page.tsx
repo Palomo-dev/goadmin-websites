@@ -9,16 +9,17 @@ import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'l
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
 import { StickyAddToCart } from '@/components/site/StickyAddToCart'
-import { ProductReviews } from '@/components/site/ProductReviews'
+import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
-import { ReviewSummaryBadge } from '@/components/site/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices } from '@/lib/supabase/queries'
+import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType } from '@/lib/supabase/queries'
 import { filterStockByBranches } from '@/lib/stock'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { Price } from '@/components/site/CurrencyProvider'
+import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
 
 export const dynamic = 'force-dynamic'
 
@@ -158,6 +159,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   // Obtener productos relacionados por categoría, tag y aleatorio
   const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id)
 
+  // F9.2 — Buscar plantilla de detalle de producto editable
+  const productDetailTemplate = await getWebsitePageByType(organization.id, 'product_detail')
+
   // Construir URLs de imágenes
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
   const sortedImages = (product.product_images || [])
@@ -170,14 +174,92 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     .filter(Boolean) as string[]
   const imageUrl = allImageUrls[0] || null
 
+  // --- JSON-LD: Product + Offer (+ AggregateRating solo si hay datos reales, F10.6) ---
+  const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? {}
+  const reviewsSource = reviewsConfig.reviews_source || 'generated'
+  const ratingSource = reviewsConfig.rating_source || 'same_as_reviews'
+  const realCount = product.reviews_count || 0
+  const realAvg = product.rating_avg ? Number(product.rating_avg) : 0
+  const hasRealData = realCount > 0 && realAvg > 0
+  // F10.6: AggregateRating solo cuando rating_source resuelve a datos reales
+  const emitAggregateRating =
+    (ratingSource === 'real_only' && hasRealData) ||
+    (ratingSource === 'same_as_reviews' && reviewsSource !== 'generated' && hasRealData)
+
+  const productJsonLd: Record<string, any> = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description || undefined,
+    sku: product.sku || undefined,
+    image: imageUrl || undefined,
+  }
+  if (price) {
+    productJsonLd.offers = {
+      '@type': 'Offer',
+      price: Number(price.price),
+      priceCurrency: (organization.website_settings as any)?.currency || 'COP',
+      availability: product.track_stock ? 'https://schema.org/InStock' : 'https://schema.org/InStock',
+    }
+  }
+  if (emitAggregateRating) {
+    productJsonLd.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: realAvg.toFixed(1),
+      reviewCount: realCount,
+    }
+  }
+
+  // F9.5 — BreadcrumbList JSON-LD
+  const baseUrl = organization.custom_domain
+    ? `https://${organization.custom_domain}`
+    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org/',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: baseUrl },
+      { '@type': 'ListItem', position: 2, name: 'Productos', item: `${baseUrl}/productos` },
+      { '@type': 'ListItem', position: 3, name: product.name, item: `${baseUrl}/productos/${id}` },
+    ],
+  }
+
+  const hasTemplateSections = productDetailTemplate && productDetailTemplate.website_page_sections.length > 0
+
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      {/* JSON-LD Product */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      {/* F9.5 — JSON-LD BreadcrumbList */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Meta Pixel ViewContent */}
       <MetaPixelViewContent
         contentId={product.sku || String(product.id)}
         contentName={product.name}
         value={price?.price ? Number(price.price) : undefined}
       />
+      {hasTemplateSections ? (
+        <ProductDetailRenderer
+          organization={organization}
+          primaryColor={primaryColor}
+          templatePage={productDetailTemplate}
+          product={product}
+          variants={variants}
+          modifierGroups={modifierGroups}
+          relatedProducts={relatedProducts}
+          imageUrls={allImageUrls}
+          imageUrl={imageUrl}
+          price={price}
+          comparePrice={comparePrice}
+          isParent={isParent}
+        />
+      ) : (
       <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
         <div className="mb-8">
@@ -203,7 +285,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">SKU: {product.sku || 'N/A'}</p>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{product.name}</h1>
-              <ReviewSummaryBadge primaryColor={primaryColor} productId={product.id} />
+              <ReviewSummaryBadge
+                primaryColor={primaryColor}
+                productId={product.id}
+                reviewsConfig={(organization.website_settings as any)?.product_reviews ?? null}
+                productStats={{ rating_avg: product.rating_avg, reviews_count: product.reviews_count }}
+              />
               
               {price && (
                 <div className="flex items-baseline gap-3">
@@ -316,9 +403,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             productId={product.id}
             productName={product.name}
             primaryColor={primaryColor}
+            reviewsConfig={(organization.website_settings as any)?.product_reviews ?? null}
+            productStats={{ rating_avg: product.rating_avg, reviews_count: product.reviews_count }}
           />
         </div>
       </div>
+      )}
 
       {/* Sticky Add to Cart (mobile) */}
       {price && (

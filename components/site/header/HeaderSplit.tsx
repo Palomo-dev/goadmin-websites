@@ -72,7 +72,7 @@ export default function HeaderSplit({
                 primaryColor={primaryColor}
               />
               {ctaText && (
-                <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} />
+                <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />
               )}
             </div>
           </div>

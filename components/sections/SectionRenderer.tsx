@@ -121,6 +121,22 @@ import { ParkingAvailabilitySummary } from './parking/ParkingAvailabilitySummary
 // Secciones countdown
 import { CountdownSection } from './countdown/CountdownSection'
 
+// Secciones detalle de producto (F9.2)
+import { ProductGallery } from './product-detail/ProductGallery'
+import { ProductInfo } from './product-detail/ProductInfo'
+import { ProductActions } from './product-detail/ProductActions'
+import { ProductBenefits } from './product-detail/ProductBenefits'
+import { ProductDescription } from './product-detail/ProductDescription'
+import { RelatedProductsSection } from './product-detail/RelatedProductsSection'
+import { ProductReviewsSection } from './product-detail/ProductReviewsSection'
+
+// F9.4 — Secciones de detalle de categoría
+import { CategoryHeader } from './category-detail/CategoryHeader'
+import { CategoryFilters } from './category-detail/CategoryFilters'
+import { CategoryProducts } from './category-detail/CategoryProducts'
+import { CategorySubcategories } from './category-detail/CategorySubcategories'
+import { CategorySeoText } from './category-detail/CategorySeoText'
+
 // Secciones saas
 import { PricingTableColumns } from './saas/PricingTableColumns'
 import { FeaturesGridAlternating } from './saas/FeaturesGridAlternating'
@@ -129,7 +145,9 @@ import { HowItWorksSteps } from './saas/HowItWorksSteps'
 import { DemoCtaForm } from './saas/DemoCtaForm'
 
 // Mapa de sección: section_type → section_variant → Component
-const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
+// Exportado para que el manifiesto (app/api/_sections/manifest/route.ts) pueda
+// derivar los tipos y variantes disponibles sin duplicar el registro (F0.6).
+export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
   hero: {
     fullscreen: HeroFullscreen,
     minimal: HeroMinimal,
@@ -237,6 +255,7 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
   booking_cta: {
     inline_form: BookingCtaBanner,
     banner: BookingCtaBanner,
+    simple: BookingCtaBanner,
   },
   why_choose_us: {
     icons: WhyChooseUsIcons,
@@ -261,6 +280,10 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
   // Retail
   promo_banners: {
     grid: PromoBannersGrid,
+    // F7 declaró carousel/stack en el catálogo; fallback a grid hasta
+    // tener componentes dedicados (no rompe render, usa el grid existente).
+    carousel: PromoBannersGrid,
+    stack: PromoBannersGrid,
   },
   brands: {
     logos: BrandsLogos,
@@ -339,6 +362,44 @@ const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>>> = {
     inline: CountdownSection,
     compact: CountdownSection,
   },
+  // Detalle de producto (F9.2)
+  product_gallery: {
+    default: ProductGallery,
+  },
+  product_info: {
+    default: ProductInfo,
+  },
+  product_actions: {
+    default: ProductActions,
+  },
+  product_benefits: {
+    default: ProductBenefits,
+  },
+  product_description: {
+    default: ProductDescription,
+  },
+  related_products: {
+    default: RelatedProductsSection,
+  },
+  product_reviews: {
+    default: ProductReviewsSection,
+  },
+  // F9.4 — Detalle de categoría
+  category_header: {
+    default: CategoryHeader,
+  },
+  category_filters: {
+    default: CategoryFilters,
+  },
+  category_products: {
+    default: CategoryProducts,
+  },
+  category_subcategories: {
+    default: CategorySubcategories,
+  },
+  category_seo_text: {
+    default: CategorySeoText,
+  },
 }
 
 interface SectionRendererProps {
@@ -369,7 +430,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
   const content = (section.content || {}) as Record<string, any>
 
   return (
-    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor}>
+    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionId={section.id}>
       <Component
         content={content}
         organization={organization}

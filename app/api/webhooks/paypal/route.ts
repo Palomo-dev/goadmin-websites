@@ -8,6 +8,8 @@ import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
+import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
+import { notifyErpRefund } from '@/lib/erp-refund'
 
 export const dynamic = 'force-dynamic'
 
@@ -593,6 +595,22 @@ export async function POST(request: NextRequest) {
       // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío
       notifyErpAutoConfirm(webOrder.id).catch(err =>
         console.error('[PayPal Webhook] ERP auto-confirm error:', err)
+      )
+    }
+
+    // Liberar stock reservado si el pago falló
+    if (paymentStatus === 'failed') {
+      notifyErpReleaseStock(webOrder.id).catch(err =>
+        console.error('[PayPal Webhook] ERP release-stock error:', err)
+      )
+    }
+
+    // Procesar reembolso (nota crédito + devolución de stock + asiento reversión)
+    if (paymentStatus === 'refunded') {
+      notifyErpRefund(webOrder.id, {
+        reason: `Reembolso procesado por PayPal: ${eventType}`,
+      }).catch(err =>
+        console.error('[PayPal Webhook] ERP refund error:', err)
       )
     }
 

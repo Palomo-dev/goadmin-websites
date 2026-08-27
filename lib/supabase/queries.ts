@@ -443,8 +443,72 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
 }
 
 /**
- * Obtiene una categoría por slug y organization_id
+ * Obtiene productos con imagen para varias categorías a la vez.
+ * Devuelve un mapa `categoryId -> products[]` (F7.2 preview de banners).
+ * Incluye `product_images` para resolver la miniatura en el preview.
  */
+export async function getProductsByCategoryIds(
+  organizationId: number,
+  categoryIds: number[],
+  limitPerCategory = 12,
+): Promise<Record<number, any[]>> {
+  if (categoryIds.length === 0) return {}
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_prices (*),
+      product_images (
+        id,
+        storage_path,
+        is_primary,
+        shared_images ( storage_path )
+      )
+    `)
+    .eq('organization_id', organizationId)
+    .in('category_id', categoryIds)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+
+  if (error || !data) return {}
+
+  const map: Record<number, any[]> = {}
+  data.forEach((p: any) => {
+    if (!map[p.category_id]) map[p.category_id] = []
+    if (map[p.category_id].length < limitPerCategory) {
+      map[p.category_id].push(p)
+    }
+  })
+  return map
+}
+
+/**
+ * Obtiene páginas del sitio por ids (F7.1 enlace tipado a página).
+ * Devuelve un mapa `pageId -> { slug, title }` para resolver `/{slug}`.
+ */
+export async function getWebsitePagesByIds(
+  organizationId: number,
+  pageIds: string[],
+): Promise<Record<string, { slug: string; title: string }>> {
+  if (pageIds.length === 0) return {}
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('website_pages')
+    .select('id, slug, title')
+    .eq('organization_id', organizationId)
+    .in('id', pageIds)
+    .eq('is_published', true)
+
+  if (error || !data) return {}
+  const map: Record<string, { slug: string; title: string }> = {}
+  data.forEach((p: any) => {
+    map[p.id] = { slug: p.slug, title: p.title }
+  })
+  return map
+}
 export async function getCategoryBySlug(organizationId: number, slug: string) {
   const supabase = getSupabaseForPublicRead()
 
@@ -978,7 +1042,45 @@ export async function getWebsitePageBySlug(
 }
 
 /**
- * Obtiene las páginas para el header (navegación principal)
+ * Obtiene una página por page_type con sus secciones visibles ordenadas.
+ * Usado por las plantillas de detalle (product_detail, category_detail, etc.)
+ * que usan slugs internos con prefijo __ y no se buscan por slug.
+ */
+export async function getWebsitePageByType(
+  organizationId: number,
+  pageType: string
+): Promise<WebsitePageWithSections | null> {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('website_pages')
+    .select(`
+      *,
+      website_page_sections (
+        id,
+        section_type,
+        section_variant,
+        content,
+        settings,
+        sort_order,
+        is_visible
+      )
+    `)
+    .eq('organization_id', organizationId)
+    .eq('page_type', pageType)
+    .eq('is_published', true)
+    .single()
+
+  if (error || !data) return null
+
+  const page = data as WebsitePageWithSections
+  page.website_page_sections = (page.website_page_sections || [])
+    .filter((s) => s.is_visible)
+    .sort((a, b) => a.sort_order - b.sort_order)
+
+  return page
+}
+/**
  * Incluye campos de mega-menú: parent_page_id, linked_category_id, menu_icon, menu_badge
  */
 export async function getWebsiteHeaderNav(organizationId: number): Promise<WebsitePage[]> {
@@ -2252,4 +2354,59 @@ export async function getMenuById(menuId: string): Promise<WebsiteMenuWithItems 
     ...(menu as WebsiteMenu),
     items: buildMenuItemTree(items as WebsiteMenuItem[], pagesMap, categoriesMap),
   }
+}
+
+// ─── Testimonios (FASE 6) ────────────────────────────────────────────────────
+
+export interface TestimonialRow {
+  id: string
+  organization_id: number
+  customer_id: string | null
+  author_name: string
+  author_role: string | null
+  author_company: string | null
+  author_avatar: string | null
+  content: string
+  rating: number
+  is_featured: boolean
+  is_active: boolean
+  source: string
+  source_url: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Obtiene los testimonios activos de una organización desde la tabla `testimonials`.
+ *
+ * Opciones:
+ * - `featuredOnly`: filtra `is_featured = true` (data_source = 'featured').
+ * - `limit`: cantidad máxima a devolver (default 50).
+ *
+ * El ordenamiento/aleatorizado se hace en el componente para respetar
+ * `randomize_order` y `sort_order` configurados en el editor.
+ */
+export async function getOrganizationTestimonials(
+  organizationId: number,
+  options: { featuredOnly?: boolean; limit?: number } = {}
+): Promise<TestimonialRow[]> {
+  const supabase = getSupabaseForPublicRead()
+  const { featuredOnly = false, limit = 50 } = options
+
+  let query = supabase
+    .from('testimonials')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+
+  if (featuredOnly) {
+    query = query.eq('is_featured', true)
+  }
+
+  query = query.order('sort_order', { ascending: true }).limit(limit)
+
+  const { data, error } = await query
+  if (error || !data) return []
+  return data as TestimonialRow[]
 }

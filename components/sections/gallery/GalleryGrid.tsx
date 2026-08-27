@@ -1,5 +1,8 @@
 'use client'
 
+/** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
+export const CONTENT_KEYS = ['title', 'images'] as const
+
 interface GalleryGridProps {
   content: Record<string, any>
   primaryColor?: string
@@ -7,7 +10,8 @@ interface GalleryGridProps {
 
 export function GalleryGrid({ content, primaryColor = '#3B82F6' }: GalleryGridProps) {
   const title = content.title
-  const images = content.images || []
+  // F2.2: fallback content.items para secciones guardadas antes de la migración
+  const images = content.images ?? content.items ?? []
 
   return (
     <section className="py-16 px-4">

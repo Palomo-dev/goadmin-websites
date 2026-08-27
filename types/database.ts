@@ -176,6 +176,26 @@ export interface Database {
           footer_newsletter_title: string | null
           footer_newsletter_placeholder: string | null
           footer_newsletter_button_text: string | null
+          // F10: moderación de reseñas (auto-aprobar)
+          reviews_auto_approve: boolean | null
+          // Fase 12: Header Minimal drawer + iconos + CTA personalizable
+          minimal_menu_style: string
+          cart_icon: string | null
+          search_icon: string | null
+          auth_icon: string | null
+          currency_icon: string | null
+          actions_order: Json
+          cta_padding_x: number
+          cta_padding_y: number
+          cta_border_radius: number
+          cta_full_width: boolean
+          cta_border_width: number
+          cta_border_color: string | null
+          cta_shadow: string
+          cta_bg_color: string | null
+          cta_text_color: string | null
+          cta_margin_top: number
+          cta_margin_bottom: number
           created_at: string
           updated_at: string
         }
@@ -189,6 +209,7 @@ export interface Database {
           topbar_bg_color?: string | null
           nav_bg_color?: string | null
           header_opacity?: number | null
+          reviews_auto_approve?: boolean | null
         }
         Update: {
           template_id?: string
@@ -213,6 +234,7 @@ export interface Database {
           topbar_bg_color?: string | null
           nav_bg_color?: string | null
           header_opacity?: number | null
+          reviews_auto_approve?: boolean | null
           updated_at?: string
         }
       }
@@ -223,7 +245,7 @@ export interface Database {
           slug: string
           title: string
           description: string | null
-          page_type: 'builtin' | 'custom'
+          page_type: 'builtin' | 'custom' | 'product_detail' | 'category_detail' | 'cart' | 'checkout' | 'order_confirmation' | 'space_detail' | 'account'
           show_in_header: boolean
           show_in_footer: boolean
           header_order: number
@@ -237,15 +259,21 @@ export interface Database {
           linked_category_id: number | null
           menu_icon: string | null
           menu_badge: string | null
+          // F9.3 — Ajustes de layout a nivel de página (columns, gallery_width, sticky_column)
+          page_settings: Record<string, any> | null
           created_at: string
           updated_at: string
+          // FASE 12 — borradores y versionado
+          draft_content?: { sections: any[] } | null
+          has_unpublished_changes?: boolean
+          published_at?: string | null
         }
         Insert: {
           organization_id: number
           slug: string
           title: string
           description?: string | null
-          page_type?: 'builtin' | 'custom'
+          page_type?: 'builtin' | 'custom' | 'product_detail' | 'category_detail' | 'cart' | 'checkout' | 'order_confirmation' | 'space_detail' | 'account'
           show_in_header?: boolean
           show_in_footer?: boolean
           header_order?: number
@@ -258,6 +286,10 @@ export interface Database {
           linked_category_id?: number | null
           menu_icon?: string | null
           menu_badge?: string | null
+          page_settings?: Record<string, any> | null
+          draft_content?: { sections: any[] } | null
+          has_unpublished_changes?: boolean
+          published_at?: string | null
         }
         Update: {
           slug?: string
@@ -275,6 +307,54 @@ export interface Database {
           linked_category_id?: number | null
           menu_icon?: string | null
           menu_badge?: string | null
+          draft_content?: { sections: any[] } | null
+          has_unpublished_changes?: boolean
+          published_at?: string | null
+        }
+      }
+      website_page_versions: {
+        Row: {
+          id: string
+          page_id: string
+          organization_id: number
+          content_snapshot: any
+          created_by: string | null
+          created_at: string
+          note: string | null
+        }
+        Insert: {
+          page_id: string
+          organization_id: number
+          content_snapshot: any
+          created_by?: string | null
+          note?: string | null
+        }
+        Update: {
+          note?: string | null
+        }
+      }
+      website_section_presets: {
+        Row: {
+          id: string
+          organization_id: number
+          name: string
+          section_type: string
+          section_variant: string
+          content: any
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          organization_id: number
+          name: string
+          section_type: string
+          section_variant: string
+          content?: any
+          created_by?: string | null
+        }
+        Update: {
+          name?: string
+          content?: any
         }
       }
       website_page_sections: {
@@ -448,6 +528,74 @@ export interface Database {
           is_active?: boolean
         }
       }
+      // F10.4 — Reseñas reales de productos
+      product_reviews: {
+        Row: {
+          id: string
+          organization_id: number
+          product_id: number
+          customer_id: string | null
+          order_id: string | null
+          author_name: string
+          author_city: string | null
+          rating: number
+          title: string | null
+          content: string | null
+          images: string[] | null
+          is_verified_purchase: boolean
+          status: string
+          rejection_reason: string | null
+          reply_text: string | null
+          reply_at: string | null
+          reply_by: string | null
+          helpful_count: number
+          reported_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: number
+          product_id: number
+          customer_id?: string | null
+          order_id?: string | null
+          author_name: string
+          author_city?: string | null
+          rating: number
+          title?: string | null
+          content?: string | null
+          images?: string[] | null
+          is_verified_purchase?: boolean
+          status?: string
+          rejection_reason?: string | null
+          reply_text?: string | null
+          reply_at?: string | null
+          reply_by?: string | null
+          helpful_count?: number
+          reported_count?: number
+        }
+        Update: {
+          id?: string
+          organization_id?: number
+          product_id?: number
+          customer_id?: string | null
+          order_id?: string | null
+          author_name?: string
+          author_city?: string | null
+          rating?: number
+          title?: string | null
+          content?: string | null
+          images?: string[] | null
+          is_verified_purchase?: boolean
+          status?: string
+          rejection_reason?: string | null
+          reply_text?: string | null
+          reply_at?: string | null
+          reply_by?: string | null
+          helpful_count?: number
+          reported_count?: number
+        }
+      }
     }
     Views: {}
     Functions: {}
@@ -463,6 +611,8 @@ export type WebsiteSettings = Database['public']['Tables']['website_settings']['
 export type WebsitePage = Database['public']['Tables']['website_pages']['Row']
 export type WebsitePageInsert = Database['public']['Tables']['website_pages']['Insert']
 export type WebsitePageSection = Database['public']['Tables']['website_page_sections']['Row']
+export type ProductReview = Database['public']['Tables']['product_reviews']['Row']
+export type ProductReviewInsert = Database['public']['Tables']['product_reviews']['Insert']
 
 // Página con hijos anidados (árbol de menú header/footer)
 export interface WebsitePageWithChildren extends WebsitePage {

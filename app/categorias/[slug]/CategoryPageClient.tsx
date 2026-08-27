@@ -3,11 +3,8 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Plus, Check, Package, Layers, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
-import { getAvailableStock } from '@/lib/stock'
+import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { ProductCard } from '@/components/sections/products/ProductCard'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -261,29 +258,32 @@ export function CategoryPageClient({
           {view === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {products.map((product) => (
-                <ProductCardGrid
+                <ProductCard
                   key={product.id}
                   product={product}
                   primaryColor={primaryColor}
+                  variant="grid"
                   isAdded={addedToCart.has(product.id)}
                   onAddToCart={() => addToCart(product)}
                   onBuyNow={() => buyNow(product)}
-                  organizationId={organizationId}
                   showBuyNow={showBuyNow}
+                  organizationSubdomain={organizationSubdomain}
                 />
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {products.map((product) => (
-                <ProductCardList
+                <ProductCard
                   key={product.id}
                   product={product}
                   primaryColor={primaryColor}
+                  variant="list"
                   isAdded={addedToCart.has(product.id)}
                   onAddToCart={() => addToCart(product)}
                   onBuyNow={() => buyNow(product)}
                   showBuyNow={showBuyNow}
+                  organizationSubdomain={organizationSubdomain}
                 />
               ))}
             </div>
@@ -342,229 +342,6 @@ export function CategoryPageClient({
           </Link>
         </div>
       )}
-    </div>
-  )
-}
-
-// --- Componentes de tarjeta ---
-
-function ProductCardGrid({
-  product,
-  primaryColor,
-  isAdded,
-  onAddToCart,
-  onBuyNow,
-  organizationId,
-  showBuyNow
-}: {
-  product: Product
-  primaryColor: string
-  isAdded: boolean
-  onAddToCart: () => void
-  onBuyNow: () => void
-  organizationId: number
-  showBuyNow?: boolean
-}) {
-  const price = product.product_prices?.[0]
-  const stock = getAvailableStock(product)
-  const outOfStock = stock !== null && stock <= 0
-  const imgUrl = getProductImageUrl(product)
-  const comparePrice = price?.compare_price ? Number(price.compare_price) : null
-  const currentPrice = price ? Number(price.price) : null
-  const discount = comparePrice && currentPrice && comparePrice > currentPrice
-    ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
-    : null
-
-  return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all h-full">
-      <Link href={`/productos/${product.uuid}`}>
-        <div
-          className="aspect-square flex items-center justify-center relative overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
-        >
-          {discount && (
-            <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-              -{discount}%
-            </span>
-          )}
-          {outOfStock && !discount && (
-            <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-              Agotado
-            </span>
-          )}
-          {product.has_variants && (product.variant_count ?? 0) > 0 && (
-            <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
-              <Layers className="h-3 w-3" />
-              {product.variant_count}
-            </span>
-          )}
-          {(product.sales_count ?? 0) > 0 && (
-            <span className="absolute bottom-2 left-2 z-10 bg-black/60 text-white text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full">
-              ⚡ {product.sales_count} vendidos
-            </span>
-          )}
-          {imgUrl ? (
-            <Image
-              src={imgUrl}
-              alt={product.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            />
-          ) : (
-            <Package className="h-16 w-16 opacity-30" style={{ color: primaryColor }} />
-          )}
-        </div>
-      </Link>
-      <CardContent className="p-2.5 sm:p-4">
-        <Link href={`/productos/${product.uuid}`}>
-          <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 line-clamp-2 group-hover:underline">
-            {product.name}
-          </h3>
-        </Link>
-        <div className="flex flex-col gap-2 mt-1">
-          {price && (
-            <div className="flex items-center gap-2">
-              {comparePrice && comparePrice > (currentPrice ?? 0) && (
-                <span className="text-xs sm:text-sm text-gray-400 line-through">
-                  ${comparePrice.toLocaleString('es-CO')}
-                </span>
-              )}
-              <span className="text-sm sm:text-lg font-bold" style={{ color: primaryColor }}>
-                ${Number(price.price).toLocaleString('es-CO')}
-              </span>
-            </div>
-          )}
-          {outOfStock ? (
-            <span className="text-xs text-red-500 font-medium">Sin stock</span>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              <Button
-                size="sm"
-                onClick={(e) => { e.preventDefault(); onAddToCart() }}
-                className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                style={!isAdded ? { backgroundColor: primaryColor } : {}}
-              >
-                {isAdded ? <><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Listo</> : <><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Agregar</>}
-              </Button>
-              {showBuyNow && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => { e.preventDefault(); onBuyNow() }}
-                  className="w-full text-xs sm:text-sm"
-                  style={{ borderColor: primaryColor, color: primaryColor }}
-                >
-                  <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Comprar ahora
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ProductCardList({
-  product,
-  primaryColor,
-  isAdded,
-  onAddToCart,
-  onBuyNow,
-  showBuyNow
-}: {
-  product: Product
-  primaryColor: string
-  isAdded: boolean
-  onAddToCart: () => void
-  onBuyNow: () => void
-  showBuyNow?: boolean
-}) {
-  const price = product.product_prices?.[0]
-  const stock = getAvailableStock(product)
-  const outOfStock = stock !== null && stock <= 0
-  const imgUrl = getProductImageUrl(product)
-  const comparePrice = price?.compare_price ? Number(price.compare_price) : null
-  const currentPrice = price ? Number(price.price) : null
-  const discount = comparePrice && currentPrice && comparePrice > currentPrice
-    ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
-    : null
-
-  return (
-    <div className="flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-md transition-shadow">
-      <Link href={`/productos/${product.uuid}`} className="shrink-0">
-        <div className="w-28 h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative">
-          {imgUrl ? (
-            <Image src={imgUrl} alt={product.name} fill className="object-cover" sizes="112px" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="h-8 w-8 opacity-30" style={{ color: primaryColor }} />
-            </div>
-          )}
-          {discount && (
-            <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              -{discount}%
-            </span>
-          )}
-          {outOfStock && !discount && (
-            <span className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              Agotado
-            </span>
-          )}
-        </div>
-      </Link>
-      <div className="flex-1 min-w-0 flex flex-col justify-between">
-        <div>
-          <Link href={`/productos/${product.uuid}`}>
-            <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-1">{product.name}</h3>
-          </Link>
-          {product.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{product.description}</p>
-          )}
-          {(product.sales_count ?? 0) > 0 && (
-            <p className="text-xs text-gray-400 mt-1">⚡ {product.sales_count} vendidos</p>
-          )}
-        </div>
-        <div className="flex items-center justify-between mt-3">
-          {price && (
-            <div className="flex items-center gap-2">
-              {comparePrice && comparePrice > (currentPrice ?? 0) && (
-                <span className="text-sm text-gray-400 line-through">
-                  ${comparePrice.toLocaleString('es-CO')}
-                </span>
-              )}
-              <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                ${Number(price.price).toLocaleString('es-CO')}
-              </span>
-            </div>
-          )}
-          {outOfStock ? (
-            <span className="text-xs text-red-500 font-medium">Sin stock</span>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={onAddToCart}
-                className={`transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                style={!isAdded ? { backgroundColor: primaryColor } : {}}
-              >
-                {isAdded ? <><Check className="h-4 w-4 mr-1" />Agregado</> : <><Plus className="h-4 w-4 mr-1" />Agregar</>}
-              </Button>
-              {showBuyNow && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={onBuyNow}
-                  style={{ borderColor: primaryColor, color: primaryColor }}
-                >
-                  <ShoppingBag className="h-4 w-4 mr-1" /> Comprar
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }

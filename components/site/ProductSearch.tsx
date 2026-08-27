@@ -236,7 +236,7 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
 
       {/* Desktop: dropdown */}
       {isOpen && (
-        <div className="hidden md:block absolute right-0 top-full mt-2 z-[60]">
+        <div className="hidden md:block absolute right-0 top-full mt-2 z-[100]">
           <div className="bg-white dark:bg-gray-900 w-96 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col">
             <div className="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
               <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />

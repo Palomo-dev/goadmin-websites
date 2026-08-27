@@ -3,14 +3,19 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
+import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 
 interface CategoriesGridProps {
   content: {
     title?: string
     subtitle?: string
     show_count?: boolean
+    show_description?: boolean
+    show_icon?: boolean
+    show_image?: boolean
+    show_color?: boolean
     max_items?: number
-    shape?: 'square' | 'round'
+    shape?: 'square' | 'rounded' | 'circle' | 'card' | 'round'
     desktop_layout?: 'grid' | 'carousel' | 'list'
     desktop_columns?: number
     desktop_rows?: number
@@ -19,6 +24,19 @@ interface CategoriesGridProps {
     enable_search?: boolean
     enable_pagination?: boolean
     page_size?: number
+    // CARD_FIELDS (inyectados desde el catálogo del ERP)
+    card_radius?: number
+    card_shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
+    card_border_width?: number
+    card_border_color?: string
+    card_bg?: string
+    card_padding?: number
+    card_hover?: 'none' | 'zoom' | 'lift' | 'glow'
+    image_fit?: 'cover' | 'contain' | 'fill'
+    text_align?: 'left' | 'center' | 'right'
+    text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
+    title_size?: 'sm' | 'md' | 'lg'
+    badge?: string
   }
   primaryColor?: string
   data?: { categories?: any[] }
@@ -53,41 +71,33 @@ function getGridClass(count: number): string {
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
 }
 
-function CategoryCard({ cat, isRound, showCount, primaryColor }: {
-  cat: any; isRound: boolean; showCount?: boolean; primaryColor?: string
-}) {
-  return (
-    <Link
-      href={`/categorias/${cat.slug}`}
-      className={`block group relative overflow-hidden bg-gray-100 dark:bg-gray-800 hover:shadow-lg transition-shadow ${
-        isRound ? 'rounded-full aspect-square' : 'rounded-xl aspect-[4/3]'
-      }`}
-    >
-      {cat.image_url ? (
-        <img
-          src={cat.image_url}
-          alt={cat.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-          loading="lazy"
-        />
-      ) : (
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}
-        >
-          <span className="text-4xl">🏷️</span>
-        </div>
-      )}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center ${isRound ? 'p-2' : 'p-4'}`}>
-        <div className={isRound ? 'text-center' : ''}>
-          <h3 className={`text-white font-semibold ${isRound ? 'text-sm' : 'text-lg'}`}>{cat.name}</h3>
-          {showCount && cat.product_count != null && (
-            <span className="text-white/80 text-sm">{cat.product_count} productos</span>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
+/**
+ * Construye el objeto de estilo de card desde `content`.
+ * Solo incluye las keys presentes para que los defaults de `CategoryCard`
+ * reproduzcan el aspecto original cuando no hay configuración.
+ */
+function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardStyle {
+  const style: CategoryCardStyle = {
+    shape: content.shape,
+    show_count: content.show_count,
+    show_description: content.show_description,
+    show_icon: content.show_icon,
+    show_image: content.show_image,
+    show_color: content.show_color,
+  }
+  if (content.card_radius != null) style.card_radius = content.card_radius
+  if (content.card_shadow) style.card_shadow = content.card_shadow
+  if (content.card_border_width != null) style.card_border_width = content.card_border_width
+  if (content.card_border_color) style.card_border_color = content.card_border_color
+  if (content.card_bg) style.card_bg = content.card_bg
+  if (content.card_padding != null) style.card_padding = content.card_padding
+  if (content.card_hover) style.card_hover = content.card_hover
+  if (content.image_fit) style.image_fit = content.image_fit
+  if (content.text_align) style.text_align = content.text_align
+  if (content.text_position) style.text_position = content.text_position
+  if (content.title_size) style.title_size = content.title_size
+  if (content.badge) style.badge = content.badge
+  return style
 }
 
 function MobileListCard({ cat, isRound, showCount, primaryColor }: {
@@ -124,12 +134,13 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const desktopColumns = content.desktop_columns || 0
   const desktopRows = content.desktop_rows || 0
   const mobileLayout = content.mobile_layout || 'grid'
-  const isRound = shape === 'round'
+  const isRound = shape === 'round' || shape === 'circle'
   const allCategories = data?.categories || []
   const selectedIds = content.selected_category_ids || []
   const enableSearch = content.enable_search ?? false
   const enablePagination = content.enable_pagination ?? false
   const initialPageSize = content.page_size || PAGE_SIZE_OPTIONS[0]
+  const cardStyle = useMemo(() => buildCardStyle(content), [content])
 
   // --- Estado de búsqueda y paginación (solo si están habilitados) ---
   const [searchQuery, setSearchQuery] = useState('')
@@ -326,7 +337,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
                 <div className="flex gap-4 px-1 pb-2 items-start">
                   {categories.map((cat: any) => (
                     <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[130px]' : 'w-[160px]'}`}>
-                      <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                      <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
                     </div>
                   ))}
                 </div>
@@ -365,7 +376,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
           {!isMobileList && !isMobileCarousel && (
             <div className={`grid grid-cols-2 gap-4 md:hidden`}>
               {categories.map((cat: any) => (
-                <CategoryCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                <CategoryCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
               ))}
             </div>
           )}
@@ -389,7 +400,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               >
                 {categories.map((cat: any) => (
                   <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[180px]' : 'w-[220px]'}`}>
-                    <CategoryCard cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                    <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
                   </div>
                 ))}
               </div>
@@ -424,7 +435,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
                 ? categories.slice(0, desktopColumns * desktopRows)
                 : categories
               ).map((cat: any) => (
-                <CategoryCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                <CategoryCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
               ))}
             </div>
           )}

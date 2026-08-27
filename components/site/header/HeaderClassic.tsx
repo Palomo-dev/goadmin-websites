@@ -52,7 +52,7 @@ export default function HeaderClassic({
         organizationId={organizationId}
         primaryColor={primaryColor}
       />
-      {ctaText && <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} />}
+      {ctaText && <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />}
     </div>
   );
 

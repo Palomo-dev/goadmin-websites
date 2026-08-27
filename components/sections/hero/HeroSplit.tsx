@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { HeroBookingWidget } from './HeroBookingWidget'
+import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 
 interface HeroSplitProps {
   content: {
@@ -10,19 +11,40 @@ interface HeroSplitProps {
     cta_secondary_text?: string
     cta_secondary_url?: string
     image_url?: string
+    // F3.5 — campos nuevos
+    content_position?: string
+    buttons?: HeroButtonItem[]
   }
   primaryColor?: string
   organization?: any
+}
+
+/** Alineación vertical del contenido según content_position. */
+function verticalAlignClass(pos: string): string {
+  switch (pos) {
+    case 'top-left':
+    case 'top-center':
+    case 'top-right':
+      return 'self-start'
+    case 'bottom-left':
+    case 'bottom-center':
+    case 'bottom-right':
+      return 'self-end'
+    default:
+      return 'self-center'
+  }
 }
 
 export function HeroSplit({ content, primaryColor, organization }: HeroSplitProps) {
   const imageUrl = content.image_url || organization?.logo_url
   const showTitle = (content as any).show_title !== false
   const showCta = (content as any).show_cta !== false
+  const contentPosition = content.content_position || 'middle-center'
+  const alignClass = verticalAlignClass(contentPosition)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-0 md:min-h-[60vh]">
-      <div>
+      <div className={alignClass}>
         {showTitle && content.title && (
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 dark:text-white">{content.title}</h1>
         )}
@@ -31,6 +53,14 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
         )}
         {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
+        ) : content.buttons && content.buttons.length > 0 ? (
+          // F3.5 — repeater de botones
+          <HeroButtons
+            buttons={content.buttons}
+            primaryColor={primaryColor || '#3B82F6'}
+            showCta={showCta}
+            className="flex-wrap"
+          />
         ) : showCta ? (
           <div className="flex flex-wrap gap-4">
             {content.cta_text && content.cta_url && (

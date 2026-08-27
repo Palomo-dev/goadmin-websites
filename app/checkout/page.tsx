@@ -50,7 +50,7 @@ async function getWebsitePaymentMethods(organizationId: number) {
     .eq('organization_id', organizationId)
     .in('status', ['active', 'connected'])
     .in('integration_connectors.code', [
-      'wompi_co', 'mp_checkout', 'payu_co', 'stripe_payments', 'paypal_checkout'
+      'wompi_co', 'mp_checkout', 'payu_co', 'stripe_payments', 'paypal_checkout', 'bold_link'
     ])
 
   const gatewayMethods = (gateways || [])

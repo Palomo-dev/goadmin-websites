@@ -364,7 +364,9 @@ export default function SiteHeader({
   // Determinar variante de header
   const headerStyle = settings?.header_style || 'default'
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
-  const mobileBreakpoint = settings?.mobile_breakpoint || 768
+  // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
+  // así que se usa el menú móvil hasta llegar a lg.
+  const mobileBreakpoint = settings?.mobile_breakpoint || 1024
   const isMobile = useMobileHeader(mobileBreakpoint)
 
   // Props comunes para todas las variantes

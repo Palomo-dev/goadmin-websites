@@ -22,7 +22,7 @@ export function ClassScheduleGrid({ content, primaryColor, data }: ClassSchedule
       )}
       {classes.length > 0 ? (
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
             {classes.map((cls: any, i: number) => (
               <div key={cls.id || i} className="border dark:border-gray-700 dark:bg-gray-800/50 rounded-xl p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-2">

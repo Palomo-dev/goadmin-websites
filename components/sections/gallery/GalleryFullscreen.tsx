@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 
+/** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
+export const CONTENT_KEYS = ['title', 'images'] as const
+
 interface GalleryFullscreenProps {
   content: Record<string, any>
   primaryColor?: string
@@ -9,7 +12,8 @@ interface GalleryFullscreenProps {
 
 export function GalleryFullscreen({ content, primaryColor = '#3B82F6' }: GalleryFullscreenProps) {
   const title = content.title
-  const images = content.images || []
+  // F2.2: fallback content.items para secciones guardadas antes de la migración
+  const images = content.images ?? content.items ?? []
   const [selected, setSelected] = useState(0)
 
   if (images.length === 0) return null

@@ -2,11 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, Flame, TrendingUp, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { isOutOfStock } from '@/lib/stock'
+import { ProductCard } from '@/components/sections/products/ProductCard'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 const ITEMS_PER_PAGE = 12
@@ -179,91 +177,20 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
           {paginatedProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {paginatedProducts.map((product: any) => {
-                const pp = product.product_prices?.[0]
-                const price = pp ? Number(pp.price) : null
-                const comparePrice = pp?.compare_price ? Number(pp.compare_price) : null
-                const discount = getDiscount(product)
-                const imgUrl = getImageUrl(product)
                 const isAdded = addedToCart.has(product.id)
-                const variantCount = product.variant_count || 0
-                const isParent = product.is_parent && variantCount > 0
-                const outOfStock = isOutOfStock(product)
-
                 return (
-                  <div key={product.id} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all">
-                    <Link href={`/productos/${product.uuid}`}>
-                      <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
-                        <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                          -{discount}%
-                        </span>
-                        {product.sales_count > 0 && (
-                          <span className="absolute bottom-2 left-2 z-10 bg-black/70 text-white text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> {product.sales_count} vendidos
-                          </span>
-                        )}
-                        {variantCount > 0 && (
-                          <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
-                            <Layers className="h-3 w-3" /> {variantCount}
-                          </span>
-                        )}
-                        {imgUrl ? (
-                          <Image src={imgUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                    <div className="p-2.5 sm:p-4">
-                      <Link href={`/productos/${product.uuid}`}>
-                        <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 line-clamp-2">{product.name}</h3>
-                      </Link>
-                      <div className="flex flex-col gap-2 mt-1">
-                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                          {comparePrice && price && comparePrice > price && (
-                            <span className="text-xs sm:text-sm text-gray-400 line-through">${comparePrice.toLocaleString('es-CO')}</span>
-                          )}
-                          {price && (
-                            <span className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
-                          )}
-                        </div>
-                        {isParent ? (
-                          <Link href={`/productos/${product.uuid}`}>
-                            <Button size="sm" className="w-full text-xs sm:text-sm" style={{ backgroundColor: primaryColor }}>
-                              <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Elegir
-                            </Button>
-                          </Link>
-                        ) : outOfStock ? (
-                          <span className="text-xs text-red-500 font-medium text-center py-2">Sin stock</span>
-                        ) : (
-                          <div className="flex flex-col gap-1.5">
-                            <Button
-                              size="sm"
-                              onClick={(e) => { e.preventDefault(); addToCart(product) }}
-                              className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                              style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                              disabled={price === null}
-                            >
-                              {isAdded ? (<><Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Listo</>) : (<><Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Agregar</>)}
-                            </Button>
-                            {showBuyNow && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => { e.preventDefault(); buyNow(product) }}
-                                className="w-full text-xs sm:text-sm"
-                                style={{ borderColor: primaryColor, color: primaryColor }}
-                                disabled={price === null}
-                              >
-                                <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Comprar ahora
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    primaryColor={primaryColor}
+                    variant="grid"
+                    cardStyle={content}
+                    showBuyNow={showBuyNow}
+                    onAddToCart={addToCart}
+                    onBuyNow={buyNow}
+                    isAdded={isAdded}
+                    organizationSubdomain={organization?.subdomain}
+                  />
                 )
               })}
             </div>

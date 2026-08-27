@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 
 interface CategoriesHorizontalProps {
   content: Record<string, any>
@@ -16,6 +16,37 @@ function getGridClass(count: number): string {
   if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
   if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
+/**
+ * Construye el estilo de card desde `content`.
+ * Por defecto reproduce el aspecto original de Horizontal: imagen circular
+ * centrada (max 180px) con texto debajo.
+ */
+function buildCardStyle(content: Record<string, any>): CategoryCardStyle {
+  const style: CategoryCardStyle = {
+    shape: content.shape || 'circle',
+    text_position: content.text_position || 'below',
+    text_align: content.text_align || 'center',
+    title_size: content.title_size || 'sm',
+    media_max_width: content.media_max_width || '180px',
+    show_count: content.show_count,
+    show_description: content.show_description,
+    show_icon: content.show_icon,
+    show_image: content.show_image ?? true,
+    show_color: content.show_color,
+    media_source: content.media_source,
+  }
+  if (content.card_radius != null) style.card_radius = content.card_radius
+  if (content.card_shadow) style.card_shadow = content.card_shadow
+  if (content.card_border_width != null) style.card_border_width = content.card_border_width
+  if (content.card_border_color) style.card_border_color = content.card_border_color
+  if (content.card_bg) style.card_bg = content.card_bg
+  if (content.card_padding != null) style.card_padding = content.card_padding
+  if (content.card_hover) style.card_hover = content.card_hover
+  if (content.image_fit) style.image_fit = content.image_fit
+  if (content.badge) style.badge = content.badge
+  return style
 }
 
 export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }: CategoriesHorizontalProps) {
@@ -39,6 +70,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
   const isMobileCarousel = mobileLayout === 'carousel'
   const isMobileList = mobileLayout === 'list'
   const desktopGrid = getGridClass(gridCols)
+  const cardStyle = buildCardStyle(content)
 
   return (
     <div>
@@ -57,29 +89,12 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
             }
           >
             {visibleCategories.map((cat: any) => (
-              <Link
+              <div
                 key={cat.id}
-                href={`/categorias/${cat.slug}`}
-                className={`group text-center w-full ${
-                  isMobileCarousel ? 'flex-shrink-0 w-[160px] snap-start md:w-auto' : ''
-                }${isMobileList ? 'flex items-center gap-4 text-left md:block md:text-center' : ''}`}
+                className={isMobileCarousel ? 'flex-shrink-0 w-[160px] snap-start md:w-auto' : ''}
               >
-                <div className={`${isMobileList ? 'w-14 h-14 shrink-0 md:w-full md:h-auto md:aspect-square md:max-w-[180px] md:mx-auto' : 'w-full aspect-square max-w-[180px] mx-auto'} rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 mb-0 md:mb-3`}>
-                  {cat.image_url ? (
-                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: `${primaryColor}15` }}>
-                      <span className="text-3xl">🏷️</span>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-medium text-sm">{cat.name}</h3>
-                  {content.show_count && cat.product_count != null && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{cat.product_count} productos</span>
-                  )}
-                </div>
-              </Link>
+                <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+              </div>
             ))}
           </div>
           {hasPagination && totalPages > 1 && (

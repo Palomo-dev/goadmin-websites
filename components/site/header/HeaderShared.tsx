@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ShoppingBag, User, UserCircle, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, X } from 'lucide-react';
+import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
 import { SearchBarInput } from '../SearchBarInput';
@@ -49,6 +49,31 @@ export interface NavItem {
 // ============================================================
 // HELPERS
 // ============================================================
+
+// Fase 12B: Helper para mapear nombres de iconos a componentes Lucide
+const ICON_MAP: Record<string, any> = {
+  'shopping-bag': ShoppingBag,
+  'shopping-cart': ShoppingCart,
+  'package': Package,
+  'gift': Gift,
+  'search': Search,
+  'search-lg': SearchLarge,
+  'scan-search': ScanSearch,
+  'user': User,
+  'user-circle': UserCircle,
+  'user-round': UserRound,
+  'circle-user': CircleUser,
+  'globe': Globe,
+  'coins': Coins,
+  'wallet': Wallet,
+  'banknote': Banknote,
+  'dollar-sign': DollarSign,
+};
+
+export function getLucideIcon(name: string | null | undefined, fallback: any): any {
+  if (!name) return fallback;
+  return ICON_MAP[name] ?? fallback;
+}
 
 export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
   return {
@@ -250,36 +275,54 @@ export function HeaderActions({
   const showHeaderAuth = settings?.show_header_auth !== false;
   const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
 
+  // Fase 12B: Iconos personalizables
+  const CartIconComp = getLucideIcon(settings?.cart_icon as string, ShoppingBag);
+  const AuthIconComp = getLucideIcon(settings?.auth_icon as string, User);
+  const AuthLoggedInIconComp = getLucideIcon(settings?.auth_icon as string, UserCircle);
+
+  // Fase 12B: Orden de acciones configurable
+  const actionsOrder: string[] = (() => {
+    const raw = settings?.actions_order;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { /* fallthrough */ }
+    }
+    if (Array.isArray(raw)) return raw as string[];
+    return ['search', 'currency', 'cart', 'auth'];
+  })();
+
+  // Construir elementos de acción según el orden
+  const actionElements: Record<string, React.ReactNode | null> = {
+    search: showSearchIcon && searchStyle === 'icon' ? (
+      <ProductSearch key="search" primaryColor={primaryColor} organizationId={organizationId} />
+    ) : null,
+    currency: !isMobile ? (
+      <CurrencySelector key="currency" primaryColor={primaryColor} />
+    ) : null,
+    cart: showHeaderCart ? (
+      <CartIndicator
+        key="cart"
+        primaryColor={primaryColor}
+        cartBehavior={cartBehavior}
+        onClick={onCartClick}
+        organizationSubdomain={organizationSubdomain || ''}
+      />
+    ) : null,
+    auth: !isMobile && showHeaderAuth ? (
+      isLoggedIn ? (
+        <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
+          <AuthLoggedInIconComp className="h-6 w-6" style={{ color: primaryColor }} />
+        </Link>
+      ) : (
+        <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <AuthIconComp className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+        </Link>
+      )
+    ) : null,
+  };
+
   return (
     <div className="flex items-center space-x-4 flex-shrink-0">
-      {showSearchIcon && searchStyle === 'icon' && (
-        <ProductSearch primaryColor={primaryColor} organizationId={organizationId} />
-      )}
-
-      {/* CurrencySelector: solo en desktop — en móvil está en el drawer */}
-      {!isMobile && <CurrencySelector primaryColor={primaryColor} />}
-
-      {showHeaderCart && (
-        <CartIndicator
-          primaryColor={primaryColor}
-          cartBehavior={cartBehavior}
-          onClick={onCartClick}
-          organizationSubdomain={organizationSubdomain || ''}
-        />
-      )}
-
-      {/* Auth: solo en desktop — en móvil está en el drawer */}
-      {!isMobile && showHeaderAuth && (
-        isLoggedIn ? (
-          <Link href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
-            <UserCircle className="h-6 w-6" style={{ color: primaryColor }} />
-          </Link>
-        ) : (
-          <Link href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-          </Link>
-        )
-      )}
+      {actionsOrder.map((action) => actionElements[action]).filter(Boolean)}
     </div>
   );
 }
@@ -288,18 +331,57 @@ export function HeaderCTA({
   text,
   href,
   primaryColor,
+  settings,
 }: {
   text: string;
   href?: string;
   primaryColor: string;
+  settings?: HeaderVariantProps['settings'];
 }) {
   if (!text) return null;
   const linkHref = href || '#';
+
+  // Fase 12C: Estilos personalizados del CTA desde settings
+  const paddingX = settings?.cta_padding_x ?? 16;
+  const paddingY = settings?.cta_padding_y ?? 8;
+  const borderRadius = settings?.cta_border_radius ?? 8;
+  const borderWidth = settings?.cta_border_width ?? 0;
+  const borderColor = settings?.cta_border_color ?? 'transparent';
+  const fullWidth = settings?.cta_full_width ?? false;
+  const shadow = settings?.cta_shadow ?? 'none';
+  const bgColor = settings?.cta_bg_color ?? primaryColor;
+  const textColor = settings?.cta_text_color ?? '#ffffff';
+  const marginTop = settings?.cta_margin_top ?? 0;
+  const marginBottom = settings?.cta_margin_bottom ?? 0;
+
+  const shadowMap: Record<string, string> = {
+    none: 'none',
+    sm: '0 1px 2px rgba(0,0,0,0.1)',
+    md: '0 4px 6px rgba(0,0,0,0.15)',
+    lg: '0 10px 15px rgba(0,0,0,0.2)',
+  };
+
+  const className = fullWidth
+    ? 'flex items-center justify-center text-sm font-semibold transition-opacity hover:opacity-90'
+    : 'hidden md:inline-flex items-center text-sm font-semibold transition-opacity hover:opacity-90';
+
   return (
     <Link
       href={linkHref}
-      className="hidden md:inline-flex items-center px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90"
-      style={{ backgroundColor: primaryColor }}
+      className={className}
+      style={{
+        backgroundColor: bgColor,
+        color: textColor,
+        padding: `${paddingY}px ${paddingX}px`,
+        borderRadius: `${borderRadius}px`,
+        borderWidth: `${borderWidth}px`,
+        borderColor,
+        borderStyle: 'solid',
+        boxShadow: shadowMap[shadow] ?? 'none',
+        marginTop: `${marginTop}px`,
+        marginBottom: `${marginBottom}px`,
+        ...(fullWidth ? { width: '100%' } : {}),
+      }}
     >
       {text}
     </Link>

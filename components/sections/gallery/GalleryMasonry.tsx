@@ -1,14 +1,20 @@
+/** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
+export const CONTENT_KEYS = ['title', 'subtitle', 'images'] as const
+
 interface GalleryMasonryProps {
   content: {
     title?: string
     subtitle?: string
     images?: { url: string; alt?: string }[]
+    // F2.2: fallback legacy key (pre-migración)
+    items?: { url: string; alt?: string }[]
   }
   organization: any
 }
 
 export function GalleryMasonry({ content, organization }: GalleryMasonryProps) {
-  const images = content.images || []
+  // F2.2: fallback content.items para secciones guardadas antes de la migración
+  const images = content.images ?? content.items ?? []
   const galleryImages = organization.website_settings?.gallery_images || []
   const allImages = images.length > 0 ? images : galleryImages
 

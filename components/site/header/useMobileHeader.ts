@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Hook que determina si el header debe renderizar su variante móvil.
- * Usa el breakpoint configurable desde settings (default 768).
+ * Usa el breakpoint configurable desde settings. SiteHeader pasa 1024 como default.
  */
 export function useMobileHeader(breakpoint: number = 768): boolean {
   const [isMobile, setIsMobile] = useState(false);

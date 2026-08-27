@@ -167,7 +167,7 @@ export function SearchBarInput({
 
       {/* Dropdown de resultados */}
       {focused && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-[70]">
+        <div className="absolute left-0 right-0 top-full mt-2 z-[100]">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden">
             {loading && (
               <div className="flex items-center justify-center py-8">

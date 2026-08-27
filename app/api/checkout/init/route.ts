@@ -11,6 +11,7 @@ const CONNECTOR_IDS: Record<string, string> = {
   payu_co: 'dc652aa4-5146-45cc-9df7-f58c7098ad00',
   stripe_payments: 'a2b84a76-9557-4fee-88ba-8ee517ed8b88',
   paypal_checkout: '944c6b76-e8bf-49f9-90ea-06f906e152e7',
+  bold_link: '6d732ae3-e9ff-41be-9d75-aa29ba86d927',
 }
 
 // Mapeo de payment_method_code → gateway code para el switch de pasarela
@@ -69,7 +70,7 @@ const COUNTRY_CURRENCY: Record<string, string> = {
 async function getOrder(supabase: any, orderNumber: string) {
   const { data, error } = await supabase
     .from('web_orders')
-    .select('id, organization_id, order_number, total, status, payment_status, customer_email, customer_name')
+    .select('id, organization_id, order_number, total, status, payment_status, customer_email, customer_name, customer_phone, delivery_address, delivery_type')
     .eq('order_number', orderNumber)
     .single()
 
@@ -83,7 +84,20 @@ async function getOrder(supabase: any, orderNumber: string) {
     .single()
 
   const currency = COUNTRY_CURRENCY[org?.country_code || ''] || 'COP'
-  return { ...data, currency }
+
+  // Normalizar datos del cliente para pasarelas
+  const deliveryAddress = typeof data.delivery_address === 'object' ? data.delivery_address : null
+  const customerPhone = data.customer_phone || deliveryAddress?.phone || ''
+  const customerCity = deliveryAddress?.city || ''
+  const customerAddressLine = deliveryAddress?.address || ''
+
+  return {
+    ...data,
+    currency,
+    customer_phone: customerPhone,
+    customer_city: customerCity,
+    customer_address: customerAddressLine,
+  }
 }
 
 /**
@@ -148,6 +162,19 @@ async function buildWompiCheckoutUrl(
     'redirect-url': `${returnUrl}?ref=${reference}`,
   })
 
+  // Pre-llenar datos del cliente (Wompi usa parámetros customer-data:*)
+  const fullName = (order.customer_name || '').trim()
+  const email = (order.customer_email || '').trim()
+  const phone = (order.customer_phone || '').trim()
+  const city = (order.customer_city || '').trim()
+  const street = (order.customer_address || '').trim()
+
+  if (email) params.append('customer-data:email', email)
+  if (fullName) params.append('customer-data:full-name', fullName)
+  if (phone) params.append('customer-data:phone-number', phone)
+  if (city) params.append('customer-data:city', city)
+  if (street) params.append('customer-data:street', street)
+
   // Agregar signature:integrity con ':' literal (Wompi no acepta %3A)
   return `${baseUrl}?${params.toString()}&signature:integrity=${signature}`
 }
@@ -162,7 +189,27 @@ async function buildMercadoPagoCheckout(
 ): Promise<string | null> {
   const accessToken = creds.access_token || ''
 
-  const preference = {
+  // Construir payer con datos del cliente para pre-llenar el checkout
+  const fullName = (order.customer_name || '').trim()
+  const nameParts = fullName.split(' ')
+  const firstName = nameParts[0] || ''
+  const lastName = nameParts.slice(1).join(' ') || ''
+  const email = (order.customer_email || '').trim()
+  const phone = (order.customer_phone || '').trim()
+  // Teléfono CO: 10 dígitos, área 57 + número sin leading 0
+  const phoneArea = phone.length >= 10 ? '57' : ''
+  const phoneNumber = phone.replace(/\D/g, '')
+
+  const payer: any = {}
+  if (email) payer.email = email
+  if (firstName) payer.name = firstName
+  if (lastName) payer.surname = lastName
+  if (phoneNumber) {
+    payer.phone = { number: phoneNumber }
+    if (phoneArea) payer.phone.area_code = phoneArea
+  }
+
+  const preference: any = {
     items: [{
       title: `Pedido ${order.order_number}`,
       quantity: 1,
@@ -177,6 +224,11 @@ async function buildMercadoPagoCheckout(
     },
     auto_return: 'approved',
     notification_url: undefined, // Se configura en el dashboard de MP
+  }
+
+  // Solo agregar payer si hay al menos un dato
+  if (Object.keys(payer).length > 0) {
+    preference.payer = payer
   }
 
   try {
@@ -219,6 +271,15 @@ async function buildStripeCheckout(
     params.append('cancel_url', `${returnUrl}?ref=${order.order_number}&status=cancelled`)
     params.append('metadata[order_number]', order.order_number)
     params.append('customer_email', order.customer_email || '')
+
+    // Pre-llenar datos del cliente en metadata (Stripe usa customer_email para email)
+    const fullName = (order.customer_name || '').trim()
+    const phone = (order.customer_phone || '').trim()
+    if (fullName) params.append('metadata[customer_name]', fullName)
+    if (phone) {
+      params.append('metadata[customer_phone]', phone)
+      params.append('phone', phone)
+    }
 
     const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -276,6 +337,15 @@ function buildPayUCheckoutUrl(
     confirmationUrl: `${new URL(returnUrl).origin}/api/webhooks/payu`,
   })
 
+  // Pre-llenar datos del comprador en PayU WebCheckout
+  const fullName = (order.customer_name || '').trim()
+  const phone = (order.customer_phone || '').trim()
+  if (fullName) params.append('buyerFullName', fullName)
+  if (phone) params.append('telephone', phone)
+  if (order.customer_address) params.append('shippingAddress', order.customer_address)
+  if (order.customer_city) params.append('shippingCity', order.customer_city)
+  if (order.customer_city) params.append('buyerCity', order.customer_city)
+
   return `${baseUrl}?${params.toString()}`
 }
 
@@ -315,7 +385,32 @@ async function buildPayPalCheckout(
     // Por ahora pasamos el total como está — la org debe configurar USD
     const totalStr = Number(order.total).toFixed(2)
 
-    const orderPayload = {
+    // Pre-llenar datos del pagador
+    const fullName = (order.customer_name || '').trim()
+    const nameParts = fullName.split(' ')
+    const givenName = nameParts[0] || ''
+    const surname = nameParts.slice(1).join(' ') || ''
+    const email = (order.customer_email || '').trim()
+    const phone = (order.customer_phone || '').replace(/\D/g, '')
+
+    const payer: any = {}
+    if (email) payer.email_address = email
+    if (givenName || surname) {
+      payer.name = {}
+      if (givenName) payer.name.given_name = givenName
+      if (surname) payer.name.surname = surname
+    }
+    if (phone) {
+      payer.phone = { phone_number: { national_number: phone } }
+    }
+    if (order.customer_address || order.customer_city) {
+      payer.address = {}
+      if (order.customer_address) payer.address.address_line_1 = order.customer_address
+      if (order.customer_city) payer.address.admin_area_2 = order.customer_city
+      payer.address.country_code = 'CO'
+    }
+
+    const orderPayload: any = {
       intent: 'CAPTURE',
       purchase_units: [{
         reference_id: order.order_number,
@@ -334,6 +429,11 @@ async function buildPayPalCheckout(
       },
     }
 
+    // Solo agregar payer si hay al menos un dato
+    if (Object.keys(payer).length > 0) {
+      orderPayload.payer = payer
+    }
+
     const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
@@ -350,6 +450,69 @@ async function buildPayPalCheckout(
     console.error('[Checkout Init] PayPal error:', error)
     return null
   }
+}
+
+/**
+ * Crea los parámetros para el Botón de Pagos de Bold (checkout hosted).
+ * Genera la firma de integridad server-side y devuelve una URL a /checkout/bold
+ * con todos los parámetros necesarios, incluyendo datos del cliente pre-llenados.
+ */
+async function buildBoldCheckout(
+  creds: Record<string, string>,
+  order: any,
+  returnUrl: string
+): Promise<string | null> {
+  const identityKey = creds.identity_key || ''
+  const secretKey = creds.secret_key || ''
+
+  const amount = Math.round(Number(order.total))
+  const reference = order.order_number
+  const currency = order.currency || 'COP'
+  const description = `Pedido ${reference}`
+
+  // Generar firma de integridad: SHA256(reference + amount + currency + secretKey)
+  const { createHash } = await import('crypto')
+  const signatureString = `${reference}${amount}${currency}${secretKey}`
+  const integritySignature = createHash('sha256').update(signatureString).digest('hex')
+
+  // Datos del cliente para pre-llenar el formulario de Bold
+  const fullName = (order.customer_name || '').trim()
+  const email = (order.customer_email || '').trim()
+  const phone = (order.customer_phone || '').replace(/\D/g, '')
+
+  const customerData: Record<string, string> = {}
+  if (email) customerData.email = email
+  if (fullName) customerData.fullName = fullName
+  if (phone) {
+    customerData.phone = phone
+    customerData.dialCode = '+57'
+  }
+
+  // Datos de facturación/dirección
+  const billingAddress: Record<string, string> = {}
+  if (order.customer_address) billingAddress.address = order.customer_address
+  if (order.customer_city) billingAddress.city = order.customer_city
+  billingAddress.country = 'CO'
+
+  // Construir URL a nuestra página intermedia /checkout/bold
+  const params = new URLSearchParams({
+    apiKey: identityKey,
+    orderId: reference,
+    amount: String(amount),
+    currency,
+    description,
+    integritySignature,
+    redirectionUrl: `${returnUrl}?ref=${reference}`,
+  })
+
+  if (Object.keys(customerData).length > 0) {
+    params.append('customerData', JSON.stringify(customerData))
+  }
+  if (Object.keys(billingAddress).length > 0) {
+    params.append('billingAddress', JSON.stringify(billingAddress))
+  }
+
+  return `/checkout/bold?${params.toString()}`
 }
 
 /**
@@ -598,6 +761,10 @@ export async function POST(request: NextRequest) {
 
       case 'paypal_checkout':
         checkoutUrl = await buildPayPalCheckout(creds, order, returnUrl, environment)
+        break
+
+      case 'bold_link':
+        checkoutUrl = await buildBoldCheckout(creds, order, returnUrl)
         break
 
       default:

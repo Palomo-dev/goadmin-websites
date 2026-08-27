@@ -1,12 +1,10 @@
 import { notFound } from 'next/navigation'
-import { getCategoryBySlug, getSubcategories, getProductsByCategoryPaginated, getParentCategory, getMetaPixelId, getGoogleAdsConfig } from '@/lib/supabase/queries'
+import { getCategoryBySlug, getSubcategories, getProductsByCategoryPaginated, getParentCategory, getMetaPixelId, getGoogleAdsConfig, getWebsitePageByType } from '@/lib/supabase/queries'
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
-import { CategoryPageClient } from './CategoryPageClient'
+import { CategoryDetailRenderer } from '@/components/sections/category-detail/CategoryDetailRenderer'
 import { Metadata } from 'next'
-import Link from 'next/link'
-import { ChevronRight, Home } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,78 +73,50 @@ export default async function CategoriaSlugPage({
 
   const totalPages = Math.ceil(total / 12)
 
+  // F9.4 — Buscar plantilla de detalle de categoría editable
+  const categoryDetailTemplate = await getWebsitePageByType(organization.id, 'category_detail')
+
+  // F9.5 — JSON-LD ItemList para categoría
+  const baseUrl = organization.custom_domain
+    ? `https://${organization.custom_domain}`
+    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  const itemListJsonLd: Record<string, any> = {
+    '@context': 'https://schema.org/',
+    '@type': 'ItemList',
+    name: category.name,
+    description: category.description || undefined,
+    numberOfItems: total,
+    itemListElement: products.slice(0, 12).map((p: any, i: number) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: p.name,
+      url: `${baseUrl}/productos/${p.uuid}`,
+    })),
+  }
+
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason}>
-      <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">
-          <Link href="/" className="flex items-center hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-            <Home className="h-4 w-4" />
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <Link href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-            Productos
-          </Link>
-          {parentCategory && (
-            <>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-              <Link href={`/categorias/${parentCategory.slug}`} className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-                {parentCategory.name}
-              </Link>
-            </>
-          )}
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-medium text-gray-900 dark:text-white truncate">{category.name}</span>
-        </nav>
-
-        {/* Header de categoría */}
-        <div className="mb-8">
-          {category.image_url && (
-            <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden mb-6">
-              <img
-                src={category.image_url}
-                alt={category.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-6">
-                <h1 className="text-3xl md:text-4xl font-bold text-white">{category.name}</h1>
-                {category.description && (
-                  <p className="text-white/80 mt-2 max-w-2xl">{category.description}</p>
-                )}
-              </div>
-            </div>
-          )}
-          {!category.image_url && (
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
-              {category.description && (
-                <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-2xl">{category.description}</p>
-              )}
-            </div>
-          )}
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-            {total} {total === 1 ? 'producto' : 'productos'}
-          </p>
-        </div>
-
-        {/* Componente client con filtros, grid y paginación */}
-        <CategoryPageClient
-          products={products}
-          subcategories={subcategories}
-          categorySlug={slug}
-          primaryColor={primaryColor}
-          total={total}
-          totalPages={totalPages}
-          currentPage={page}
-          currentSort={sort}
-          currentSubcategory={subcategorySlug || ''}
-          currentView={view as 'grid' | 'list'}
-          organizationSubdomain={organization.subdomain || ''}
-          organizationId={organization.id}
-          showBuyNow={organization.website_settings?.show_buy_now_button !== false}
-        />
-      </div>
+      {/* F9.5 — JSON-LD ItemList */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
+      <CategoryDetailRenderer
+        organization={organization}
+        primaryColor={primaryColor}
+        templatePage={categoryDetailTemplate}
+        category={category}
+        parentCategory={parentCategory}
+        subcategories={subcategories}
+        products={products}
+        total={total}
+        totalPages={totalPages}
+        currentPage={page}
+        currentSort={sort}
+        currentSubcategory={subcategorySlug || ''}
+        currentView={view}
+        categorySlug={slug}
+      />
     </OrganizationLayout>
   )
 }

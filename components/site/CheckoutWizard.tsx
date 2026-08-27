@@ -103,6 +103,7 @@ const METHOD_ICONS: Record<string, string> = {
   stripe_payments: '💳',
   paypal_checkout: '🅿️',
   wompi: '💳',
+  bold_link: '🟠',
 }
 
 const DEFAULT_SETTINGS: CheckoutSettings = {

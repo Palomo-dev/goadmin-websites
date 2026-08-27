@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { HeroBookingWidget } from './HeroBookingWidget'
+import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 
 interface HeroMinimalProps {
   content: {
@@ -10,6 +10,9 @@ interface HeroMinimalProps {
     subtitle?: string
     cta_text?: string
     cta_url?: string
+    // F3.5 — campos nuevos
+    overlay_opacity?: number
+    buttons?: HeroButtonItem[]
   }
   organization?: any
   primaryColor?: string
@@ -98,15 +101,16 @@ export function HeroMinimal({ content, organization, primaryColor }: HeroMinimal
         <div className="mt-6 max-w-4xl mx-auto">
           <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
         </div>
-      ) : showCta && content.cta_text && content.cta_url ? (
-        <Link
-          href={content.cta_url}
-          className="inline-block mt-4 px-8 py-3 rounded-lg text-white font-semibold transition-transform hover:scale-105"
-          style={{ backgroundColor: primaryColor || '#8B6914' }}
-        >
-          {content.cta_text}
-        </Link>
-      ) : null}
+      ) : (
+        <HeroButtons
+          buttons={content.buttons}
+          ctaText={content.cta_text}
+          ctaUrl={content.cta_url}
+          primaryColor={primaryColor || '#8B6914'}
+          showCta={showCta}
+          className="mt-4 justify-center"
+        />
+      )}
     </div>
   )
 }

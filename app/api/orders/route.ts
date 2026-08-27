@@ -296,23 +296,52 @@ export async function POST(request: NextRequest) {
           .catch((err: any) => console.error('[Orders] Tip insert error:', err))
       }
 
-      // Reservar stock (solo productos con track_stock=true)
+      // Reservar stock atómicamente via RPC (FOR UPDATE evita overselling)
+      // Solo productos con track_stock=true
       if (resolvedBranchId) {
+        // Acumular cantidad por producto (varias líneas del carrito pueden
+        // apuntar al mismo producto con distintos modificadores)
+        const reserveMap = new Map<number, number>()
         for (const item of items) {
           const pid = realProductId(item)
           if (trackStockMap.get(pid) !== true) continue
-          const { data: sl } = await (supabase as any)
-            .from('stock_levels')
-            .select('qty_reserved')
-            .eq('branch_id', resolvedBranchId)
-            .eq('product_id', pid)
-            .maybeSingle()
-          if (sl) {
+          reserveMap.set(pid, (reserveMap.get(pid) || 0) + Number(item.quantity))
+        }
+
+        if (reserveMap.size > 0) {
+          const rpcItems = Array.from(reserveMap.entries()).map(([pid, qty]) => ({
+            product_id: pid,
+            quantity: qty,
+          }))
+
+          const { data: reserveResult, error: reserveError } = await (supabase as any)
+            .rpc('reserve_stock_for_web_order', {
+              p_organization_id: organizationId,
+              p_branch_id: resolvedBranchId,
+              p_order_id: webOrder.id,
+              p_items: rpcItems,
+            })
+
+          if (reserveError || !reserveResult?.ok) {
+            // La reserva atómica falló: cancelar la orden y devolver 409
+            console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
             await (supabase as any)
-              .from('stock_levels')
-              .update({ qty_reserved: Number(sl.qty_reserved || 0) + item.quantity })
-              .eq('branch_id', resolvedBranchId)
-              .eq('product_id', pid)
+              .from('web_orders')
+              .update({
+                status: 'cancelled',
+                cancelled_at: new Date().toISOString(),
+                cancellation_reason: 'Stock insuficiente al reservar',
+              })
+              .eq('id', webOrder.id)
+
+            const shortages = reserveResult?.shortages || []
+            const outOfStock = shortages.map((s: any) =>
+              `Producto ${s.product_id} (disponible: ${Math.max(0, Math.floor(s.available))}, solicitado: ${s.requested})`
+            )
+            return NextResponse.json(
+              { error: 'Stock insuficiente', details: outOfStock },
+              { status: 409 }
+            )
           }
         }
       }

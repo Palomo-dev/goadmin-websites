@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
@@ -55,6 +55,25 @@ export function OrganizationLayout({
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
   const subdomain = organization.subdomain || ''
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // Medir la altura real del header y exponerla como --header-h
+  // para que los heros con overlap_header puedan solaparlo correctamente
+  useEffect(() => {
+    if (frozenReason) return
+    const root = rootRef.current
+    if (!root) return
+    const header = root.querySelector('header')
+    if (!header) return
+    const updateHeaderH = () => {
+      const h = header.getBoundingClientRect().height
+      root.style.setProperty('--header-h', `${h}px`)
+    }
+    updateHeaderH()
+    const observer = new ResizeObserver(updateHeaderH)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [frozenReason])
   
   // Theme mode: light | dark | auto
   const themeMode: string = settings?.theme_mode || 'light'
@@ -86,7 +105,8 @@ export function OrganizationLayout({
   
   return (
     <CurrencyProvider>
-    <div 
+    <div
+      ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
       suppressHydrationWarning
@@ -116,7 +136,7 @@ export function OrganizationLayout({
       )}
 
       {/* Contenido de la página */}
-      <main className="flex-grow">
+      <main className="flex-grow overflow-x-clip">
         {frozenReason ? (
           <FrozenAccountNotice
             reason={frozenReason}

@@ -1,13 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Plus, Check, Layers, Package, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Price } from '@/components/site/CurrencyProvider'
-import { isOutOfStock } from '@/lib/stock'
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { ProductCard } from './ProductCard'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -198,118 +194,20 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       {paginatedProducts.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {paginatedProducts.map((product: any) => {
-            const price = getPrice(product)
-            const comparePrice = getComparePrice(product)
-            const imgUrl = getImageUrl(product)
             const isAdded = addedToCart.has(product.id)
-            const variantCount = product.variant_count || 0
-            const outOfStock = isOutOfStock(product)
-            const isParent = product.is_parent && variantCount > 0
-
             return (
-              <div
+              <ProductCard
                 key={product.id}
-                className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all"
-              >
-                <Link href={`/productos/${product.uuid}`}>
-                  <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
-                    {comparePrice && price !== null && comparePrice > price && (
-                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        -{Math.round((1 - price / comparePrice) * 100)}%
-                      </span>
-                    )}
-                    {outOfStock && !isParent && !comparePrice && (
-                      <span className="absolute top-2 left-2 z-10 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded-full">Agotado</span>
-                    )}
-                    {variantCount > 0 && (
-                      <span className="absolute top-2 right-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1" style={{ backgroundColor: primaryColor }}>
-                        <Layers className="h-3 w-3" />
-                        {variantCount}
-                      </span>
-                    )}
-                    {imgUrl ? (
-                      <Image
-                        src={imgUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
-                      </div>
-                    )}
-                  </div>
-                </Link>
-                <div className="p-2.5 sm:p-4">
-                  <Link href={`/productos/${product.uuid}`}>
-                    <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 line-clamp-2 transition-colors">
-                      {product.name}
-                    </h3>
-                  </Link>
-                  <div className="flex flex-col gap-2 mt-1">
-                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                      {comparePrice && price !== null && comparePrice > price && (
-                        <Price value={comparePrice} className="text-xs sm:text-sm text-gray-400 line-through" />
-                      )}
-                      {price !== null && (
-                        <Price value={price} className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }} />
-                      )}
-                    </div>
-                    {outOfStock && !isParent ? (
-                      <span className="text-xs text-red-500 font-medium">Sin stock</span>
-                    ) : isParent ? (
-                      <Link href={`/productos/${product.uuid}`}>
-                        <Button size="sm" className="w-full text-xs sm:text-sm" style={{ backgroundColor: primaryColor }}>
-                          <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Elegir
-                        </Button>
-                      </Link>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            addToCart(product)
-                          }}
-                          className={`w-full text-xs sm:text-sm transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                          style={!isAdded ? { backgroundColor: primaryColor } : {}}
-                          disabled={price === null}
-                        >
-                          {isAdded ? (
-                            <>
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              Listo
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                              Agregar
-                            </>
-                          )}
-                        </Button>
-                        {showBuyNow && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              buyNow(product)
-                            }}
-                            className="w-full text-xs sm:text-sm"
-                            style={{ borderColor: primaryColor, color: primaryColor }}
-                            disabled={price === null}
-                          >
-                            <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                            Comprar ahora
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                product={product}
+                primaryColor={primaryColor}
+                variant="grid"
+                cardStyle={content}
+                showBuyNow={showBuyNow}
+                onAddToCart={addToCart}
+                onBuyNow={buyNow}
+                isAdded={isAdded}
+                organizationSubdomain={organizationSubdomain}
+              />
             )
           })}
         </div>

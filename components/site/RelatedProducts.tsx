@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Plus, Check, Package, ChevronLeft, ChevronRight, Layers } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { isOutOfStock } from '@/lib/stock'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ProductCard } from '@/components/sections/products/ProductCard'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -105,81 +102,19 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
         {relatedProducts.map((product: any) => {
-          const price = product.product_prices?.[0]?.price
-          const comparePrice = product.product_prices?.[0]?.compare_price
-          const imgUrl = getImageUrl(product)
           const isAdded = addedToCart.has(product.id)
-          const outOfStock = isOutOfStock(product)
-          const discount = comparePrice && price && Number(comparePrice) > Number(price)
-            ? Math.round((1 - Number(price) / Number(comparePrice)) * 100)
-            : null
-
           return (
-            <div
+            <ProductCard
               key={product.id}
-              className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start group bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all"
-            >
-              <Link href={`/productos/${product.uuid}`}>
-                <div className="aspect-square bg-gray-100 overflow-hidden relative">
-                  {discount && (
-                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                      -{discount}%
-                    </span>
-                  )}
-                  {imgUrl ? (
-                    <Image
-                      src={imgUrl}
-                      alt={product.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-12 w-12 text-gray-300" />
-                    </div>
-                  )}
-                </div>
-              </Link>
-              <div className="p-3">
-                <Link href={`/productos/${product.uuid}`}>
-                  <h3 className="font-medium text-sm text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">
-                    {product.name}
-                  </h3>
-                </Link>
-                <div className="flex items-center gap-2 mt-2">
-                  {comparePrice && Number(comparePrice) > Number(price) && (
-                    <span className="text-xs text-gray-400 line-through">${Number(comparePrice).toLocaleString('es-CO')}</span>
-                  )}
-                  {price && (
-                    <span className="font-bold text-sm" style={{ color: primaryColor }}>
-                      ${Number(price).toLocaleString('es-CO')}
-                    </span>
-                  )}
-                </div>
-                {price && !product.is_parent && (
-                  <Button
-                    size="sm"
-                    onClick={() => addToCart(product)}
-                    disabled={outOfStock}
-                    className={`w-full mt-2 text-xs transition-all ${isAdded ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock ? 'opacity-50' : ''}`}
-                    style={!isAdded && !outOfStock ? { backgroundColor: primaryColor } : {}}
-                  >
-                    {isAdded ? <><Check className="h-3 w-3 mr-1" />Agregado</> : outOfStock ? <><Package className="h-3 w-3 mr-1" />Sin stock</> : <><Plus className="h-3 w-3 mr-1" />Agregar</>}
-                  </Button>
-                )}
-                {product.is_parent && (
-                  <Link href={`/productos/${product.uuid}`}>
-                    <Button size="sm" className="w-full mt-2 text-xs" style={{ backgroundColor: primaryColor }}>
-                      <Layers className="h-3 w-3 mr-1" /> Elegir
-                    </Button>
-                  </Link>
-                )}
-                {outOfStock && !product.is_parent && (
-                  <span className="inline-block mt-1 text-xs font-medium text-red-500">Agotado</span>
-                )}
-              </div>
-            </div>
+              product={product}
+              primaryColor={primaryColor}
+              variant="grid"
+              showBuyNow={false}
+              onAddToCart={addToCart}
+              isAdded={isAdded}
+              organizationSubdomain={organizationSubdomain}
+              className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start"
+            />
           )
         })}
         </div>

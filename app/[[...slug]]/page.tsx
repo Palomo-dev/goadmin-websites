@@ -28,7 +28,10 @@ import {
   getParkingZones,
   getOrgServiceCatalog,
   getOfferProducts,
-  getDefaultTax
+  getDefaultTax,
+  getOrganizationTestimonials,
+  getProductsByCategoryIds,
+  getWebsitePagesByIds
 } from '@/lib/supabase/queries'
 import type { MegaMenuItem } from '@/lib/get-org-context'
 import { ProductGrid } from '@/components/site/ProductGrid'
@@ -38,7 +41,8 @@ import { getBusinessTypeConfig } from '@/types/organization'
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
-import { SectionRenderer } from '@/components/sections/SectionRenderer'
+import { PreviewableSections } from '@/components/sections/PreviewableSections'
+import { JsonLd, buildOrganizationJsonLd, buildWebsiteJsonLd, buildBreadcrumbJsonLd } from '@/components/site/JsonLd'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { checkFrozenStatus, type FrozenReason } from '@/lib/get-org-context'
 
@@ -152,6 +156,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const { slug } = await params
   const currentSlug = slug?.[0] || 'home'
   const primaryColor = organization.website_settings?.primary_color || organization.primary_color || '#8B6914'
+  const baseUrl = organization.custom_domain
+    ? `https://${organization.custom_domain}`
+    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
   const templateId = organization.website_settings?.template_id || 'modern'
   const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
@@ -213,6 +220,68 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     if (sectionTypes.includes('offers')) {
       data.offerProducts = await getOfferProducts(organization.id, 500)
     }
+    // F7: Banners promocionales conectados al catálogo.
+    // Resuelve enlaces tipados (categoría/producto/página) y pre-carga el
+    // preview de productos cuando show_category_products=true.
+    if (sectionTypes.includes('promo_banners')) {
+      // Asegurar categorías y productos para resolver href de categoría/producto.
+      if (!data.categories) {
+        data.categories = await getOrganizationCategories(organization.id)
+      }
+      if (!data.products) {
+        data.products = await getOrganizationProducts(organization.id, 500)
+      }
+
+      const bannerSections = page.website_page_sections.filter(
+        (s) => s.section_type === 'promo_banners'
+      )
+      const previewCategoryIds = new Set<number>()
+      const pageIds = new Set<string>()
+      bannerSections.forEach((s) => {
+        const banners = ((s.content as any)?.banners || []) as any[]
+        banners.forEach((b) => {
+          if (b.link_type === 'category' && b.show_category_products && b.link_category_id) {
+            previewCategoryIds.add(b.link_category_id)
+          }
+          if (b.link_type === 'page' && b.link_page_id) {
+            pageIds.add(b.link_page_id)
+          }
+        })
+      })
+
+      if (previewCategoryIds.size > 0) {
+        data.bannerCategoryProducts = await getProductsByCategoryIds(
+          organization.id,
+          Array.from(previewCategoryIds),
+          12,
+        )
+      }
+      if (pageIds.size > 0) {
+        data.bannerPages = await getWebsitePagesByIds(
+          organization.id,
+          Array.from(pageIds),
+        )
+      }
+    }
+    // FASE 6: pre-fetch de testimonios desde la BD cuando alguna sección
+    // testimonials usa data_source 'database' o 'featured' (o no tiene items manuales).
+    if (sectionTypes.includes('testimonials')) {
+      const testimonialSections = page.website_page_sections.filter(
+        (s) => s.section_type === 'testimonials'
+      )
+      const needsDb = testimonialSections.some((s) => {
+        const c = (s.content || {}) as Record<string, any>
+        const ds = c.data_source
+        // 'database' o 'featured' requieren BD; sin items manuales también cae a BD.
+        if (ds === 'database' || ds === 'featured') return true
+        if (ds === 'manual') return false
+        // ds indefinido: si no hay items manuales, usar BD.
+        return !Array.isArray(c.items) || (c.items as any[]).length === 0
+      })
+      if (needsDb) {
+        data.testimonials = await getOrganizationTestimonials(organization.id, { limit: 200 })
+      }
+    }
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {
       const [rates, passTypes, availability, zones] = await Promise.all([
         sectionTypes.includes('parking_pricing') ? getParkingRates(organization.id) : Promise.resolve([]),
@@ -227,15 +296,27 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
     return (
       <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={effectiveHeaderNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
-        {page.website_page_sections.map((section) => (
-          <SectionRenderer
-            key={section.id}
-            section={section}
-            organization={organization}
-            primaryColor={primaryColor}
-            data={data}
-          />
-        ))}
+        <JsonLd data={[
+          buildOrganizationJsonLd({
+            name: organization.name,
+            description: organization.description,
+            logo_url: organization.logo_url,
+            email: organization.email,
+            phone: organization.phone,
+            address: organization.address,
+            city: organization.city,
+            country: organization.country,
+          }, baseUrl),
+          currentSlug === 'home'
+            ? buildWebsiteJsonLd({ name: organization.name }, baseUrl)
+            : buildBreadcrumbJsonLd({ slug: currentSlug, title: page.title, meta_title: page.meta_title, meta_description: page.meta_description }, organization.name, baseUrl),
+        ]} />
+        <PreviewableSections
+          sections={page.website_page_sections}
+          organization={organization}
+          primaryColor={primaryColor}
+          data={data}
+        />
       </OrganizationLayout>
     )
   }

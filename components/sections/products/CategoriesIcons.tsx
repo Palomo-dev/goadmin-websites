@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 
 interface CategoriesIconsProps {
   content: Record<string, any>
@@ -16,6 +16,38 @@ function getGridClass(count: number): string {
   if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
   if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
+/**
+ * Construye el estilo de card desde `content`.
+ * Por defecto reproduce el aspecto original de Icons: círculo pequeño (max
+ * 80px) con la inicial sobre el color primario + texto debajo.
+ */
+function buildCardStyle(content: Record<string, any>): CategoryCardStyle {
+  const style: CategoryCardStyle = {
+    shape: content.shape || 'circle',
+    text_position: content.text_position || 'below',
+    text_align: content.text_align || 'center',
+    title_size: content.title_size || 'sm',
+    media_max_width: content.media_max_width || '80px',
+    media_source: content.media_source || 'auto',
+    fallback_media: content.fallback_media || 'initial',
+    show_count: content.show_count,
+    show_description: content.show_description,
+    show_icon: content.show_icon,
+    show_image: content.show_image ?? true,
+    show_color: content.show_color,
+  }
+  if (content.card_radius != null) style.card_radius = content.card_radius
+  if (content.card_shadow) style.card_shadow = content.card_shadow
+  if (content.card_border_width != null) style.card_border_width = content.card_border_width
+  if (content.card_border_color) style.card_border_color = content.card_border_color
+  if (content.card_bg) style.card_bg = content.card_bg
+  if (content.card_padding != null) style.card_padding = content.card_padding
+  if (content.card_hover) style.card_hover = content.card_hover
+  if (content.image_fit) style.image_fit = content.image_fit
+  if (content.badge) style.badge = content.badge
+  return style
 }
 
 export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: CategoriesIconsProps) {
@@ -38,6 +70,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
   const isMobileCarousel = mobileLayout === 'carousel'
   const isMobileList = mobileLayout === 'list'
   const desktopGrid = getGridClass(gridCols)
+  const cardStyle = buildCardStyle(content)
 
   return (
     <div>
@@ -53,29 +86,17 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
             }
           >
             {visibleCategories.map((cat: any) => (
-              <Link
+              <div
                 key={cat.id}
-                href={`/categorias/${cat.slug}`}
-                className={`group w-full ${
-                  isMobileList
-                    ? 'flex items-center gap-3 md:flex-col md:items-center md:gap-2'
-                    : isMobileCarousel
-                      ? 'flex-shrink-0 w-[100px] snap-start md:w-auto flex flex-col items-center gap-2'
-                      : 'flex flex-col items-center gap-2'
-                }`}
+                className={isMobileList
+                  ? 'flex items-center gap-3 md:flex-col md:items-center md:gap-2'
+                  : isMobileCarousel
+                    ? 'flex-shrink-0 w-[100px] snap-start md:w-auto flex flex-col items-center gap-2'
+                    : 'flex flex-col items-center gap-2'
+                }
               >
-                <div
-                  className={`${isMobileList ? 'w-10 h-10 shrink-0 md:w-full md:h-auto md:aspect-square md:max-w-[80px]' : 'w-full aspect-square max-w-[80px]'} rounded-full flex items-center justify-center text-white text-xl font-bold transition-transform group-hover:scale-110 overflow-hidden`}
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  {cat.image_url ? (
-                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    cat.name?.charAt(0) || '?'
-                  )}
-                </div>
-                <span className="text-sm font-medium text-center leading-tight text-gray-900 dark:text-white">{cat.name}</span>
-              </Link>
+                <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+              </div>
             ))}
           </div>
           {hasPagination && totalPages > 1 && (
