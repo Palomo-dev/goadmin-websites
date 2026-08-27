@@ -19,16 +19,36 @@ interface RelatedProductsProps {
   primaryColor: string
   currentProductId: number
   organizationSubdomain?: string
+  title?: string
+  maxItems?: number
+  cardStyle?: Record<string, any>
+  layoutConfig?: Record<string, any>
 }
 
-export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain }: RelatedProductsProps) {
+export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain, title, maxItems, cardStyle, layoutConfig }: RelatedProductsProps) {
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
 
   // Filtrar el producto actual
-  const relatedProducts = products.filter(p => p.id !== currentProductId).slice(0, 8)
+  const relatedProducts = products.filter(p => p.id !== currentProductId).slice(0, maxItems || 8)
+
+  // Configuración de layout
+  const columns = layoutConfig?.columns || 4
+  const gap = layoutConfig?.gap ?? 16
+  const showArrows = layoutConfig?.show_arrows !== false
+  const showDots = layoutConfig?.show_dots !== false
+
+  // Cálculo de ancho según columnas en desktop
+  const lgWidthMap: Record<number, string> = {
+    2: 'lg:w-[calc(50%-8px)]',
+    3: 'lg:w-[calc(33.333%-11px)]',
+    4: 'lg:w-[calc(25%-12px)]',
+    5: 'lg:w-[calc(20%-13px)]',
+    6: 'lg:w-[calc(16.666%-13px)]',
+  }
+  const lgWidth = lgWidthMap[columns] || 'lg:w-[calc(25%-12px)]'
 
   const updatePagination = useCallback(() => {
     const el = scrollRef.current
@@ -79,27 +99,31 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
 
   return (
     <div className="mt-16 border-t pt-12">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Productos relacionados</h2>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{title || 'Productos relacionados'}</h2>
       <div className="relative group/carousel">
-        <button
-          onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110"
-          style={{ color: primaryColor }}
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button
-          onClick={() => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110"
-          style={{ color: primaryColor }}
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
+        {showArrows && (
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110"
+            style={{ color: primaryColor }}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        {showArrows && (
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110"
+            style={{ color: primaryColor }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
         <div
           ref={scrollRef}
           onScroll={updatePagination}
-          className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+          style={{ gap: `${gap}px`, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
         {relatedProducts.map((product: any) => {
           const isAdded = addedToCart.has(product.id)
@@ -113,13 +137,14 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
               onAddToCart={addToCart}
               isAdded={isAdded}
               organizationSubdomain={organizationSubdomain}
-              className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start"
+              cardStyle={cardStyle}
+              className={`flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] ${lgWidth} snap-start`}
             />
           )
         })}
         </div>
         {/* Pagination dots */}
-        {totalPages > 1 && (
+        {showDots && totalPages > 1 && (
           <div className="flex justify-center gap-1.5 mt-3">
             {Array.from({ length: totalPages }).map((_, i) => (
               <button

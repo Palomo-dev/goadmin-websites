@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ComponentType } from 'react'
 import { ChevronDown, Globe } from 'lucide-react'
 import { useCurrency } from './CurrencyProvider'
 
-export function CurrencySelector({ primaryColor }: { primaryColor?: string }) {
+export function CurrencySelector({ primaryColor, icon: Icon = Globe }: { primaryColor?: string; icon?: ComponentType<{ className?: string }> }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -28,7 +28,7 @@ export function CurrencySelector({ primaryColor }: { primaryColor?: string }) {
         className="flex items-center gap-1 px-2 py-1.5 rounded-md text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Seleccionar moneda"
       >
-        <Globe className="h-4 w-4" />
+        <Icon className="h-4 w-4" />
         <span className="font-medium">{currency}</span>
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>

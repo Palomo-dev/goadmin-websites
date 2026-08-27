@@ -134,12 +134,13 @@ const DEFAULT_BADGES: BadgeConfig[] = [
   },
   {
     type: 'sales_count',
-    label: '⚡ {value} vendidos',
+    label: '{value} vendidos',
     bg_color: 'rgba(0,0,0,0.6)',
     text_color: '#FFFFFF',
     position: 'bottom-left',
     shape: 'pill',
     size: 'sm',
+    icon: 'TrendingUp',
   },
 ]
 
@@ -603,7 +604,9 @@ export function ProductCard({
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{product.description}</p>
             )}
             {(product.sales_count ?? 0) > 0 && (
-              <p className="text-xs text-gray-400 mt-1">⚡ {product.sales_count} vendidos</p>
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> {product.sales_count} vendidos
+              </p>
             )}
           </div>
           <div className="flex items-center justify-between mt-3">

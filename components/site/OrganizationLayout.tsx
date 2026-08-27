@@ -136,7 +136,7 @@ export function OrganizationLayout({
       )}
 
       {/* Contenido de la página */}
-      <main className="flex-grow overflow-x-clip">
+      <main className="flex-grow">
         {frozenReason ? (
           <FrozenAccountNotice
             reason={frozenReason}

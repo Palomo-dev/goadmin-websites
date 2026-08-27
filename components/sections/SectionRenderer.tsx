@@ -129,6 +129,9 @@ import { ProductBenefits } from './product-detail/ProductBenefits'
 import { ProductDescription } from './product-detail/ProductDescription'
 import { RelatedProductsSection } from './product-detail/RelatedProductsSection'
 import { ProductReviewsSection } from './product-detail/ProductReviewsSection'
+import { ProductSpecs } from './product-detail/ProductSpecs'
+import { ProductFAQ } from './product-detail/ProductFAQ'
+import { ProductShipping } from './product-detail/ProductShipping'
 
 // F9.4 — Secciones de detalle de categoría
 import { CategoryHeader } from './category-detail/CategoryHeader'
@@ -383,6 +386,15 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   product_reviews: {
     default: ProductReviewsSection,
+  },
+  product_specs: {
+    default: ProductSpecs,
+  },
+  product_faq: {
+    default: ProductFAQ,
+  },
+  product_shipping: {
+    default: ProductShipping,
   },
   // F9.4 — Detalle de categoría
   category_header: {

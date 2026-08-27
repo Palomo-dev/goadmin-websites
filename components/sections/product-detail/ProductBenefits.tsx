@@ -1,6 +1,7 @@
 'use client'
 
 import { Truck, Shield, Package, Star } from 'lucide-react'
+import { buildCardStyle } from '@/lib/sectionStyle'
 
 export const CONTENT_KEYS = ['items'] as const
 
@@ -21,21 +22,34 @@ const DEFAULT_BENEFITS = [
 interface ProductBenefitsProps {
   content: {
     items?: Array<{ icon?: string; title?: string; description?: string }>
+    columns?: number
+    gap?: number
   }
   primaryColor?: string
 }
 
 export function ProductBenefits({ content }: ProductBenefitsProps) {
   const items = content.items?.length ? content.items : DEFAULT_BENEFITS
+  const columns = content.columns ?? 2
+  const gap = content.gap ?? 16
+
+  const gridColsClass = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+  }[columns] || 'grid-cols-2'
+
+  const { className: cardClassName, style: cardStyle } = buildCardStyle(content)
 
   return (
-    <div className="grid grid-cols-2 gap-4 pt-6 border-t dark:border-gray-700">
+    <div className={`grid ${gridColsClass}`} style={{ gap: `${gap}px` }}>
       {items.map((item, i) => {
         const Icon = ICON_MAP[item.icon || ''] || Star
         const colors = ['green', 'blue', 'purple', 'yellow']
         const color = colors[i % colors.length]
         return (
-          <div key={i} className="flex items-center gap-3">
+          <div key={i} className={`flex items-center gap-3 ${cardClassName}`} style={cardStyle}>
             <div className={`w-10 h-10 rounded-full bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center`}>
               <Icon className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`} />
             </div>

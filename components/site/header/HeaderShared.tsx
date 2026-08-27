@@ -246,6 +246,8 @@ export function HeaderActions({
   showSearchIcon = true,
   organizationSubdomain,
   isMobile = false,
+  hideCurrency = false,
+  hideAuth = false,
 }: {
   settings: HeaderVariantProps['settings'];
   showCart?: boolean;
@@ -256,6 +258,8 @@ export function HeaderActions({
   showSearchIcon?: boolean;
   organizationSubdomain?: string;
   isMobile?: boolean;
+  hideCurrency?: boolean;
+  hideAuth?: boolean;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -279,6 +283,7 @@ export function HeaderActions({
   const CartIconComp = getLucideIcon(settings?.cart_icon as string, ShoppingBag);
   const AuthIconComp = getLucideIcon(settings?.auth_icon as string, User);
   const AuthLoggedInIconComp = getLucideIcon(settings?.auth_icon as string, UserCircle);
+  const CurrencyIconComp = getLucideIcon(settings?.currency_icon as string, Globe);
 
   // Fase 12B: Orden de acciones configurable
   const actionsOrder: string[] = (() => {
@@ -295,8 +300,8 @@ export function HeaderActions({
     search: showSearchIcon && searchStyle === 'icon' ? (
       <ProductSearch key="search" primaryColor={primaryColor} organizationId={organizationId} />
     ) : null,
-    currency: !isMobile ? (
-      <CurrencySelector key="currency" primaryColor={primaryColor} />
+    currency: !isMobile && !hideCurrency ? (
+      <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} />
     ) : null,
     cart: showHeaderCart ? (
       <CartIndicator
@@ -307,7 +312,7 @@ export function HeaderActions({
         organizationSubdomain={organizationSubdomain || ''}
       />
     ) : null,
-    auth: !isMobile && showHeaderAuth ? (
+    auth: !isMobile && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
           <AuthLoggedInIconComp className="h-6 w-6" style={{ color: primaryColor }} />

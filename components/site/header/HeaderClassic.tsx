@@ -51,6 +51,7 @@ export default function HeaderClassic({
         searchStyle={settings?.search_style}
         organizationId={organizationId}
         primaryColor={primaryColor}
+        organizationSubdomain={organization.subdomain || ''}
       />
       {ctaText && <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />}
     </div>

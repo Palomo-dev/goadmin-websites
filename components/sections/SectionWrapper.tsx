@@ -83,10 +83,19 @@ export function SectionWrapper({ settings, content, primaryColor, sectionType, s
     none: '', xs: 'mb-2', sm: 'mb-4', md: 'mb-8', lg: 'mb-12', xl: 'mb-16',
   }
 
-  const pt = overlapHeader ? '' : (ptMap[paddingTop] || ptMap.lg)
+  // Cuando overlap_header es true, el hero sube debajo del header transparente.
+  // El padding-top se maneja via --header-h en el componente del hero (no aquí),
+  // pero respetamos el padding_bottom y margin_bottom del editor.
+  // Si el usuario configura explícitamente padding_top o margin_top, lo respetamos
+  // incluso con overlap (sobreescribe el comportamiento automático).
+  const pt = overlapHeader
+    ? (content?.padding_top && content?.padding_top !== 'lg' ? (ptMap[paddingTop] || '') : '')
+    : (ptMap[paddingTop] || ptMap.lg)
   const pb = pbMap[paddingBottom] || pbMap.lg
   const px = PADDING_X_MAP[paddingX] || PADDING_X_MAP.md
-  const mt = overlapHeader ? '' : (mtMap[marginTop] || '')
+  const mt = overlapHeader
+    ? (content?.margin_top && content?.margin_top !== 'none' ? (mtMap[marginTop] || '') : '')
+    : (mtMap[marginTop] || '')
   const mb = mbMap[marginBottom] || ''
 
   // ---- Contrato de estilo (F2.1) ----

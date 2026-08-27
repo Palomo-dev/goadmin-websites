@@ -39,7 +39,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       window.removeEventListener('cart-updated', updateCount)
       window.removeEventListener('storage', updateCount)
     }
-  }, [])
+  }, [organizationSubdomain])
 
   const badge = itemCount > 0 && (
     <span 
