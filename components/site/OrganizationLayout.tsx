@@ -10,6 +10,7 @@ import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
 import CustomScripts from './CustomScripts'
 import { ChatWidget } from './ChatWidget'
+import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
 import type { FrozenReason } from '@/lib/get-org-context'
@@ -206,6 +207,9 @@ export function OrganizationLayout({
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
         <ChatWidget publicKey={settings.chat_widget_public_key} />
       )}
+
+      {/* Tracking de visitas web (page views) */}
+      <VisitTracker organizationId={organization.id} />
     </div>
     </CurrencyProvider>
   )
