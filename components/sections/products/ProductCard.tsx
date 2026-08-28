@@ -28,7 +28,7 @@
  * botones por defecto (Agregar + Comprar ahora si `showBuyNow`).
  */
 
-import { useState, type CSSProperties, type MouseEvent } from 'react'
+import { useState, useEffect, type CSSProperties, type MouseEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -38,7 +38,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
+import { trackMetaAddToCart } from '@/components/site/MetaPixelEvents'
 import { isOutOfStock } from '@/lib/stock'
+import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
+import { useFavorites } from '@/lib/hooks/useFavorites'
+import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
+import { ProductQuickView } from '@/components/site/ProductQuickView'
+import { ShareDialog } from '@/components/site/ShareDialog'
 import {
   buildCardStyle,
   resolveImageFitClass,
@@ -46,11 +52,21 @@ import {
   resolveTitleLinesClass,
   resolveBadgeClasses,
   resolveBadgeStyle,
+  BADGE_CORNER_CLASS,
   type BadgeConfig,
 } from '@/lib/sectionStyle'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+
+// Esquinas de badge compartidas entre variantes (evita superposición agrupando)
+const BADGE_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
+const CORNER_TO_OVERLAY_POS: Record<string, string> = {
+  'top-left': 'overlay_top_left',
+  'top-right': 'overlay_top_right',
+  'bottom-left': 'overlay_bottom_left',
+  'bottom-right': 'overlay_bottom_right',
+}
 
 // ---------------------------------------------------------------------------
 // Helpers de producto (compartidos, antes duplicados en cada componente)
@@ -145,6 +161,84 @@ const DEFAULT_BADGES: BadgeConfig[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// RatingStars — render de estrellas de valoración (F10)
+// ---------------------------------------------------------------------------
+
+function RatingStars({
+  rating,
+  count,
+  style = 'stars_count',
+  primaryColor,
+}: {
+  rating: number
+  count?: number
+  style?: 'stars' | 'compact' | 'stars_count' | 'stars_rating' | 'rating_count'
+  primaryColor?: string
+}) {
+  if (!rating || rating <= 0) return null
+  const rounded = Math.round(rating * 2) / 2 // redondea a 0.5
+  const fullStars = Math.floor(rounded)
+  const hasHalf = rounded % 1 !== 0
+  const color = primaryColor || '#F59E0B'
+  const ratingStr = rating.toFixed(1)
+  const countStr = count != null && count > 0 ? count.toLocaleString('es-CO') : null
+
+  if (style === 'compact') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <Star className="h-3 w-3" style={{ color, fill: color }} />
+        {ratingStr}{countStr ? ` (${countStr})` : ''}
+      </span>
+    )
+  }
+
+  // rating_count: solo número + cantidad, sin estrellas
+  if (style === 'rating_count') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+        <span className="font-medium" style={{ color }}>{ratingStr}/5</span>
+        {countStr && <span className="text-gray-500 dark:text-gray-400">· {countStr}</span>}
+      </span>
+    )
+  }
+
+  // stars, stars_count, stars_rating: todos renderizan estrellas
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="inline-flex">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const isFull = i < fullStars
+          const isHalf = i === fullStars && hasHalf
+          return (
+            <Star
+              key={i}
+              className="h-3.5 w-3.5"
+              style={{
+                color,
+                fill: isFull ? color : 'transparent',
+                ...(isHalf ? { fill: 'url(#half-star)' } : {}),
+              }}
+            />
+          )
+        })}
+      </span>
+      {style === 'stars_count' && (
+        <>
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-0.5">{ratingStr}/5</span>
+          {countStr && <span className="text-xs text-gray-500 dark:text-gray-400">· {countStr}</span>}
+        </>
+      )}
+      {style === 'stars_rating' && (
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-0.5">{ratingStr}/5</span>
+      )}
+      {style === 'stars' && countStr && (
+        <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">({countStr})</span>
+      )}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
 
@@ -153,14 +247,21 @@ export type ProductCardVariant = 'grid' | 'list' | 'compact' | 'overlay'
 export interface CardButtonConfig {
   action: string
   label?: string
+  /** Texto alternativo cuando el producto tiene variantes (padre) */
+  label_when_parent?: string
+  /** Posición individual del botón en la tarjeta */
+  position?: string
   url?: string
   variant?: string
   size?: string
   icon?: string
   icon_position?: string
+  icon_only?: boolean
   bg_color?: string
+  bg_color_end?: string
   text_color?: string
   radius?: number
+  full_width?: boolean
   full_width_mobile?: boolean
   open_new_tab?: boolean
 }
@@ -174,6 +275,7 @@ export interface ProductCardProps {
   cardButtons?: CardButtonConfig[]
   buttonsPosition?: string
   buttonsLayout?: string
+  buttonsFullWidth?: boolean
   iconOnly?: boolean
   showBuyNow?: boolean
   /** Si llega, se usa para añadir al carrito; si no, ProductCard lo gestiona. */
@@ -193,6 +295,10 @@ export interface ProductCardProps {
   showDescription?: boolean
   /** URL de imagen directa (opcional; sobreescribe getProductImageUrl). */
   imageUrl?: string
+  /** ID del cliente autenticado (para favoritos). */
+  customerId?: string | null
+  /** ID de la organización (para favoritos). */
+  organizationId?: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -258,12 +364,23 @@ function BadgeRenderer({
     case 'free_shipping':
       shouldShow = true
       break
-    case 'rating':
-      shouldShow = false // F10
+    case 'rating': {
+      const ratingAvg = Number(product.rating_avg) || 0
+      const ratingCount = product.reviews_count || 0
+      value = ratingAvg.toFixed(1)
+      shouldShow = ratingAvg > 0 && ratingCount > 0
       break
+    }
     case 'custom':
       shouldShow = true
       break
+    case 'category': {
+      // Muestra el nombre de la categoría del producto
+      const catName = product.categories?.name || product.category_name || ''
+      value = catName
+      shouldShow = catName.length > 0
+      break
+    }
     default:
       shouldShow = false
   }
@@ -275,11 +392,21 @@ function BadgeRenderer({
     .replace('{value}', value !== null ? String(value) : '')
 
   const classes = resolveBadgeClasses(badge)
+  // Fallbacks de color por tipo: garantizan que el badge SIEMPRE tenga
+  // fondo + texto contrastante, incluso si el editor no configuró bg_color.
   const fallbackBg =
     badge.type === 'variants' ? primaryColor :
     badge.type === 'discount' ? '#EF4444' :
     badge.type === 'out_of_stock' ? '#1F2937' :
-    badge.type === 'sales_count' ? 'rgba(0,0,0,0.6)' : ''
+    badge.type === 'sales_count' ? 'rgba(0,0,0,0.6)' :
+    badge.type === 'new' ? '#10B981' :        // verde
+    badge.type === 'bestseller' ? '#F59E0B' :  // ámbar
+    badge.type === 'low_stock' ? '#F97316' :   // naranja
+    badge.type === 'free_shipping' ? '#3B82F6' : // azul
+    badge.type === 'rating' ? '#F59E0B' :      // ámbar
+    badge.type === 'category' ? primaryColor : // color de marca
+    badge.type === 'custom' ? primaryColor :   // color de marca
+    primaryColor                                // fallback genérico
   const fallbackText = '#FFFFFF'
   const style = resolveBadgeStyle(badge, fallbackBg, fallbackText)
 
@@ -310,6 +437,11 @@ function CardButtonRenderer({
   onRemoveFavorite,
   whatsappNumber,
   iconOnly,
+  cardStyle,
+  isFavorite = false,
+  onToggleFavorite,
+  onQuickView,
+  onShare,
 }: {
   button: CardButtonConfig
   product: any
@@ -320,6 +452,11 @@ function CardButtonRenderer({
   onRemoveFavorite?: () => void
   whatsappNumber?: string
   iconOnly?: boolean
+  cardStyle?: Record<string, any>
+  isFavorite?: boolean
+  onToggleFavorite?: (productId: number) => void
+  onQuickView?: () => void
+  onShare?: () => void
 }) {
   const router = useRouter()
   const price = getProductPrice(product)
@@ -328,23 +465,82 @@ function CardButtonRenderer({
   const isParent = product.is_parent && variantCount > 0
 
   const variant = button.variant || 'solid'
-  const size = button.size || 'sm'
+  const size = button.size || 'md'
   const bg = button.bg_color || primaryColor
-  const textColor = button.text_color || '#FFFFFF'
+  const bgEnd = button.bg_color_end || ''
+  const btnIconOnly = button.icon_only === true
+  // El texto por defecto depende de la variante: blanco cuando hay fondo
+  // (solid/gradient), o el color del botón cuando no lo hay (outline/ghost/link)
+  // para que siempre sea visible sobre fondos claros.
+  const hasBackground = variant === 'solid' || variant === 'gradient'
+  const textColor = button.text_color || (hasBackground ? '#FFFFFF' : bg)
+  // Icon-only nunca ocupa ancho completo: es un botón cuadrado fijo
+  const btnFullWidth = btnIconOnly ? false : button.full_width !== false
 
   const baseStyle: CSSProperties = {}
   if (variant === 'solid') { baseStyle.backgroundColor = bg; baseStyle.color = textColor }
-  if (variant === 'outline') { baseStyle.borderColor = bg; baseStyle.color = bg }
+  if (variant === 'outline') {
+    baseStyle.borderColor = bg
+    baseStyle.color = textColor
+    // El outline de shadcn trae bg-background (blanco); lo sobreescribimos a
+    // transparente para que solo se vea el borde + texto del color configurado.
+    baseStyle.background = 'transparent'
+  }
+  if (variant === 'ghost') { baseStyle.color = textColor }
+  if (variant === 'link') { baseStyle.color = textColor; baseStyle.textDecoration = 'underline' }
+  if (variant === 'gradient' && bgEnd) {
+    baseStyle.backgroundImage = `linear-gradient(135deg, ${bg}, ${bgEnd})`
+    baseStyle.color = textColor
+    baseStyle.border = 'none'
+  } else if (variant === 'gradient') {
+    baseStyle.backgroundColor = bg; baseStyle.color = textColor
+  }
+  if (button.radius != null) { baseStyle.borderRadius = `${button.radius}px` }
+
+  // Icon-only: fuerza botón cuadrado sin padding → círculo perfecto con
+  // border-radius alto (ej: 48px en un botón de 40px = círculo).
+  if (btnIconOnly) {
+    const iconPx = size === 'sm' ? 36 : size === 'md' ? 40 : size === 'lg' ? 44 : 48
+    baseStyle.width = `${iconPx}px`
+    baseStyle.height = `${iconPx}px`
+    baseStyle.minWidth = `${iconPx}px`
+    baseStyle.padding = '0'
+    // Si el radio configurado es >= la mitad del tamaño, ya es círculo.
+    // Si no se configuró radio, forzar círculo para icon-only.
+    if (button.radius == null) { baseStyle.borderRadius = '9999px' }
+  }
+
+  // Mapa de iconos Lucide por nombre (para soportar button.icon personalizado)
+  const ICON_MAP: Record<string, any> = {
+    Plus, Check, ShoppingBag, Heart, Eye, Share2, MessageCircle,
+    Layers, Package, Star, TrendingUp, Zap,
+  }
+
+  // Tamaño de iconos según el size configurado en el ERP
+  const iconSizeClass = size === 'xl' || size === 'lg' ? 'h-5 w-5' : size === 'md' ? 'h-4 w-4' : 'h-3 w-3 sm:h-4 sm:w-4'
+  // Tamaño de texto según el size configurado en el ERP
+  const sizeTextClass = size === 'xl' ? 'text-base' : size === 'lg' ? 'text-sm sm:text-base' : size === 'md' ? 'text-sm' : 'text-xs sm:text-sm'
 
   const iconNode = (action: string) => {
+    // Estado "agregado": add_to_cart siempre muestra Check sin importar el
+    // icono personalizado configurado (feedback visual de éxito).
+    if (isAdded && action === 'add_to_cart') {
+      return <Check className={iconSizeClass} />
+    }
+    // Si el botón tiene un icono personalizado configurado, usarlo
+    if (button.icon && ICON_MAP[button.icon]) {
+      const Icon = ICON_MAP[button.icon]
+      return <Icon className={iconSizeClass} />
+    }
+    // Fallback al icono por defecto según la acción
     switch (action) {
-      case 'add_to_cart': return isAdded ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'buy_now': return <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'wishlist': return <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'quick_view': return <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'whatsapp': return <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'share': return <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-      case 'view_detail': return <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+      case 'add_to_cart': return isAdded ? <Check className={iconSizeClass} /> : <Plus className={iconSizeClass} />
+      case 'buy_now': return <ShoppingBag className={iconSizeClass} />
+      case 'wishlist': return <Heart className={`${iconSizeClass} ${isFavorite ? 'fill-current' : ''}`} />
+      case 'quick_view': return <Eye className={iconSizeClass} />
+      case 'whatsapp': return <MessageCircle className={iconSizeClass} />
+      case 'share': return <Share2 className={iconSizeClass} />
+      case 'view_detail': return <Eye className={iconSizeClass} />
       default: return null
     }
   }
@@ -353,7 +549,7 @@ function CardButtonRenderer({
     switch (action) {
       case 'add_to_cart': return isAdded ? 'Listo' : 'Agregar'
       case 'buy_now': return 'Comprar ahora'
-      case 'wishlist': return 'Favorito'
+      case 'wishlist': return isFavorite ? 'Favorito' : 'Favorito'
       case 'quick_view': return 'Vista rápida'
       case 'whatsapp': return 'WhatsApp'
       case 'share': return 'Compartir'
@@ -367,16 +563,37 @@ function CardButtonRenderer({
     e.stopPropagation()
     switch (button.action) {
       case 'add_to_cart':
-        if (!isParent && !outOfStock) onAddToCart?.()
+        if (!isParent && !outOfStock) {
+          // Meta Pixel + Google Analytics: AddToCart
+          trackMetaAddToCart(String(product.id), product.name, price ?? 0)
+          if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+            (window as any).gtag('event', 'add_to_cart', {
+              currency: 'COP',
+              value: price ?? 0,
+              items: [{ id: String(product.id), name: product.name, price: price ?? 0, quantity: 1 }],
+            })
+          }
+          onAddToCart?.()
+        }
         break
       case 'buy_now':
+        // Meta Pixel + Google Analytics: AddToCart + InitiateCheckout
+        trackMetaAddToCart(String(product.id), product.name, price ?? 0)
+        if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+          (window as any).gtag('event', 'add_to_cart', {
+            currency: 'COP',
+            value: price ?? 0,
+            items: [{ id: String(product.id), name: product.name, price: price ?? 0, quantity: 1 }],
+          })
+        }
         onBuyNow?.()
         break
       case 'wishlist':
-        // toggle favorito — se maneja fuera en F10; aquí no-op por defecto
+        if (onToggleFavorite) onToggleFavorite(Number(product.id))
         break
       case 'quick_view':
-        router.push(`/productos/${product.uuid}`)
+        if (onQuickView) onQuickView()
+        else router.push(`/productos/${product.uuid}`)
         break
       case 'view_detail':
         router.push(`/productos/${product.uuid}`)
@@ -388,7 +605,9 @@ function CardButtonRenderer({
         break
       }
       case 'share': {
-        if (typeof navigator !== 'undefined' && navigator.share) {
+        if (onShare) {
+          onShare()
+        } else if (typeof navigator !== 'undefined' && navigator.share) {
           navigator.share({ title: product.name, url: `${window.location.origin}/productos/${product.uuid}` })
         }
         break
@@ -400,12 +619,16 @@ function CardButtonRenderer({
     }
   }
 
-  // Para padres con variantes, el botón add_to_cart se convierte en "Elegir"
-  if (button.action === 'add_to_cart' && isParent) {
+  // Para padres con variantes, los botones add_to_cart y buy_now se convierten
+  // en "Elegir" (link al detalle para elegir variante).
+  if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
+    const chooseLabel = button.label_when_parent || button.label || 'Elegir'
+    const chooseIconName = button.icon || 'Layers'
+    const ChooseIcon = ICON_MAP[chooseIconName] || Layers
     return (
-      <Link href={`/productos/${product.uuid}`} className="w-full">
-        <Button size={size as any} variant={variant as any} className="w-full text-xs sm:text-sm" style={baseStyle}>
-          <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> {iconOnly ? '' : 'Elegir'}
+      <Link href={`/productos/${product.uuid}`} className={btnFullWidth ? 'w-full' : ''}>
+        <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${btnFullWidth ? 'w-full' : ''} ${sizeTextClass}`} style={baseStyle}>
+          <ChooseIcon className={iconSizeClass} />{!btnIconOnly && <span className="ml-1">{chooseLabel}</span>}
         </Button>
       </Link>
     )
@@ -413,18 +636,33 @@ function CardButtonRenderer({
 
   const disabled = (button.action === 'add_to_cart' || button.action === 'buy_now') && (price === null || outOfStock)
 
+  // Estado "agregado": el botón add_to_cart se pone verde con Check + "Listo".
+  // Se construye un estilo limpio para evitar que baseStyle (backgroundImage
+  // de gradient, background:transparent de outline, etc.) interfiera con el
+  // color verde.
+  const isAddedState = isAdded && button.action === 'add_to_cart'
+  const addedStyle: CSSProperties = {
+    backgroundColor: '#22C55E',
+    color: '#FFFFFF',
+    border: 'none',
+    ...(btnIconOnly && { width: baseStyle.width, height: baseStyle.height, minWidth: baseStyle.minWidth, padding: '0', borderRadius: baseStyle.borderRadius }),
+  }
+  const effectiveStyle = isAddedState ? addedStyle : baseStyle
+  // Label efectivo: cuando isAdded, forzar "Listo" sin importar button.label
+  const effectiveLabel = isAddedState ? 'Listo' : (button.label || defaultLabel(button.action))
+
   return (
     <Button
       size={size as any}
-      variant={variant as any}
+      variant={variant === 'gradient' ? 'solid' : variant as any}
       onClick={handleClick}
       disabled={disabled}
-      className={`w-full text-xs sm:text-sm transition-all ${isAdded && button.action === 'add_to_cart' ? 'bg-green-500 hover:bg-green-600' : ''}`}
-      style={isAdded && button.action === 'add_to_cart' ? {} : baseStyle}
+      className={`${btnFullWidth ? 'w-full' : ''} ${sizeTextClass} transition-all ${isAddedState ? 'bg-green-500 hover:bg-green-600' : ''}`}
+      style={effectiveStyle}
     >
       {iconNode(button.action)}
-      {!iconOnly && iconNode(button.action) && <span className="ml-1">{button.label || defaultLabel(button.action)}</span>}
-      {!iconOnly && !iconNode(button.action) && (button.label || defaultLabel(button.action))}
+      {!btnIconOnly && iconNode(button.action) && <span className="ml-1">{effectiveLabel}</span>}
+      {!btnIconOnly && !iconNode(button.action) && effectiveLabel}
     </Button>
   )
 }
@@ -442,6 +680,7 @@ export function ProductCard({
   cardButtons,
   buttonsPosition = 'below',
   buttonsLayout = 'stacked',
+  buttonsFullWidth = true,
   iconOnly = false,
   showBuyNow = true,
   onAddToCart,
@@ -454,10 +693,23 @@ export function ProductCard({
   className = '',
   showDescription,
   imageUrl,
+  customerId,
+  organizationId,
 }: ProductCardProps) {
   const router = useRouter()
   const [internalAdded, setInternalAdded] = useState(false)
+  const [quickViewOpen, setQuickViewOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const added = isAdded || internalAdded
+
+  // Auto-detectar cliente autenticado si no se pasan props explícitos
+  const effectiveOrgId = organizationId ?? product.organization_id ?? null
+  const { customer: autoCustomer } = useAuthCustomer(effectiveOrgId)
+  const effectiveCustomerId = customerId ?? autoCustomer?.id ?? null
+
+  // Favoritos
+  const { isFavorite, toggleFavorite } = useFavorites({ customerId: effectiveCustomerId, organizationId: effectiveOrgId })
+  const fav = isFavorite(Number(product.id))
 
   const price = getProductPrice(product)
   const comparePrice = getProductComparePrice(product)
@@ -501,16 +753,74 @@ export function ProductCard({
   const mergedCardStyle: Record<string, any> = { ...DEFAULT_CARD_STYLE, ...(cardStyle || {}) }
   const showDesc = showDescription ?? mergedCardStyle.show_description === true
 
-  // Badges efectivos
-  const effectiveBadges = badges === undefined ? DEFAULT_BADGES : badges
+  // Rating (estrellas de valoración)
+  const showRating = mergedCardStyle.show_rating === true
+  const reviewsSource = mergedCardStyle.reviews_source || 'generated'
+  const realRatingAvg = Number(product.rating_avg) || 0
+  const realRatingCount = product.reviews_count || 0
+  const hideIfNoReviews = mergedCardStyle.hide_if_no_reviews !== false
 
-  // Botones efectivos
-  const effectiveButtons: CardButtonConfig[] = cardButtons === undefined
+  // Cuando la fuente es 'generated' (default) o no hay rating real,
+  // usar el rating generado automáticamente (seededRandom).
+  // Cuando es 'real' o 'mixed', usar el real si existe.
+  // El seed generado usa Date.now() que difiere entre server y client,
+  // por lo que se calcula solo después del mount para evitar hydration mismatch.
+  const [generatedRating, setGeneratedRating] = useState<{ avg: number; count: number } | null>(null)
+  useEffect(() => {
+    if (reviewsSource === 'generated' || (reviewsSource !== 'real' && realRatingAvg === 0)) {
+      const sessionSeed = getSessionSeed(Number(product.id) || 0)
+      const stats = getReviewStats(Number(product.id) || 0, sessionSeed)
+      setGeneratedRating({ avg: stats.avgRating, count: stats.totalReviews })
+    }
+  }, [product.id, reviewsSource, realRatingAvg])
+
+  let ratingAvg = realRatingAvg
+  let ratingCount = realRatingCount
+  if (reviewsSource === 'generated' || (reviewsSource !== 'real' && realRatingAvg === 0)) {
+    if (generatedRating) {
+      ratingAvg = generatedRating.avg
+      ratingCount = generatedRating.count
+    } else {
+      // En el primer render (server/SSR) no mostrar rating generado aún
+      ratingAvg = 0
+      ratingCount = 0
+    }
+  }
+
+  const ratingStyleType = mergedCardStyle.rating_style || 'stars_count'
+  const ratingPosition = mergedCardStyle.rating_position || 'below_title'
+  const showRatingBlock = showRating && ratingAvg > 0 && (!hideIfNoReviews || ratingCount > 0)
+
+  // Badges efectivos — defaults si no hay badges configurados
+  const effectiveBadges = (!badges || badges.length === 0) ? DEFAULT_BADGES : badges
+
+  // Botones efectivos — si no hay botones configurados (undefined o array vacío),
+  // se usan los defaults: Agregar al carrito + Comprar ahora (si showBuyNow)
+  let effectiveButtons: CardButtonConfig[] = (!cardButtons || cardButtons.length === 0)
     ? [
         { action: 'add_to_cart', variant: 'solid', size: 'sm' },
         ...(showBuyNow ? [{ action: 'buy_now', variant: 'outline', size: 'sm' }] : []),
       ]
     : cardButtons
+
+  // Para productos padre con variantes, add_to_cart y buy_now ambos se convierten
+  // en "Elegir" (link al detalle). Evitar duplicados: si ambos están presentes,
+  // mostrar solo el primero (add_to_cart tiene prioridad por ser sólido).
+  if (isParent) {
+    const hasChoose = effectiveButtons.some(b => b.action === 'add_to_cart' || b.action === 'buy_now')
+    if (hasChoose) {
+      // Filtrar add_to_cart y buy_now, dejar solo el primero que aparezca
+      let foundChoose = false
+      effectiveButtons = effectiveButtons.filter(b => {
+        if (b.action === 'add_to_cart' || b.action === 'buy_now') {
+          if (foundChoose) return false
+          foundChoose = true
+          return true
+        }
+        return true
+      })
+    }
+  }
 
   const { className: cardClassName, style: cardStyleObj } = buildCardStyle(mergedCardStyle)
   const imageFitClass = resolveImageFitClass(mergedCardStyle.image_fit)
@@ -581,9 +891,17 @@ export function ProductCard({
       >
         <Link href={`/productos/${product.uuid}`} className="shrink-0">
           <div className={`w-28 h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative ${imageFitClass}`}>
-            {effectiveBadges.map((b, i) => (
-              <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
-            ))}
+            {BADGE_CORNERS.map((corner) => {
+              const cornerBadges = effectiveBadges.filter((b) => (b.position ?? 'top-left') === corner)
+              if (cornerBadges.length === 0) return null
+              return (
+                <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-0.5`}>
+                  {cornerBadges.map((b, i) => (
+                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
+                  ))}
+                </div>
+              )
+            })}
             {imgUrl ? (
               <Image src={imgUrl} alt={product.name} fill className={imageFitClass} sizes="112px" />
             ) : (
@@ -600,6 +918,11 @@ export function ProductCard({
                 {product.name}
               </h3>
             </Link>
+            {showRatingBlock && ratingPosition === 'below_title' && (
+              <div className="mt-1">
+                <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
+              </div>
+            )}
             {showDesc && product.description && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{product.description}</p>
             )}
@@ -638,6 +961,11 @@ export function ProductCard({
                     onRemoveFavorite={onRemoveFavorite}
                     whatsappNumber={whatsappNumber}
                     iconOnly={iconOnly}
+                    cardStyle={mergedCardStyle}
+                    isFavorite={fav}
+                    onToggleFavorite={toggleFavorite}
+                    onQuickView={() => setQuickViewOpen(true)}
+                    onShare={() => setShareOpen(true)}
                   />
                 ))}
               </div>
@@ -651,6 +979,52 @@ export function ProductCard({
   // --- Variante grid (por defecto) y overlay ---
   const isOverlay = variant === 'overlay'
 
+  // Render de botones reutilizable — permite filtrar por posición individual
+  const buttonsContainerClass = `flex ${buttonsLayout === 'row' ? 'flex-row gap-2' : 'flex-col gap-1.5'} ${buttonsFullWidth ? 'w-full' : ''}`
+  const renderButtons = (extraClass = '', positionFilter?: string) => (
+    <div className={`${buttonsContainerClass} ${extraClass}`}>
+      {effectiveButtons
+        .filter((btn) => !positionFilter || (btn.position || 'below') === positionFilter)
+        .map((btn, i) => (
+          <CardButtonRenderer
+            key={i}
+            button={btn}
+            product={product}
+            primaryColor={primaryColor}
+            isAdded={added}
+            onAddToCart={handleAdd}
+            onBuyNow={handleBuy}
+            onRemoveFavorite={onRemoveFavorite}
+            whatsappNumber={whatsappNumber}
+            iconOnly={iconOnly}
+            cardStyle={mergedCardStyle}
+            isFavorite={fav}
+            onToggleFavorite={toggleFavorite}
+            onQuickView={() => setQuickViewOpen(true)}
+            onShare={() => setShareOpen(true)}
+          />
+        ))}
+    </div>
+  )
+
+  // Agrupar botones por posición individual
+  const buttonsByPosition = (pos: string) => effectiveButtons.filter((btn) => (btn.position || 'below') === pos)
+  const hasButtonsAt = (pos: string) => buttonsByPosition(pos).length > 0
+
+  // Clases para posiciones overlay (sobre la imagen)
+  const overlayPositionClass: Record<string, string> = {
+    overlay_bottom: 'absolute bottom-0 left-0 right-0 p-2 flex justify-center',
+    overlay_top_left: 'absolute top-2 left-2',
+    overlay_top_right: 'absolute top-2 right-2',
+    overlay_bottom_left: 'absolute bottom-2 left-2',
+    overlay_bottom_right: 'absolute bottom-2 right-2',
+    overlay_hover: 'absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 p-2',
+  }
+  // Posiciones overlay que NO son esquinas (se renderizan separadas)
+  const nonCornerOverlayPositions = ['overlay_bottom', 'overlay_hover']
+  const overlayPositions = ['overlay_bottom', 'overlay_top_left', 'overlay_top_right', 'overlay_bottom_left', 'overlay_bottom_right', 'overlay_hover']
+  const hasOverlayButtons = overlayPositions.some((p) => hasButtonsAt(p))
+
   return (
     <div
       className={`group ${cardClassName} ${legacyDarkClasses.join(' ')} ${className}`}
@@ -658,9 +1032,23 @@ export function ProductCard({
     >
       <Link href={`/productos/${product.uuid}`}>
         <div className={`${imageRatioClass} bg-gray-100 dark:bg-gray-700 overflow-hidden relative`}>
-          {effectiveBadges.map((b, i) => (
-            <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
-          ))}
+          {/* Badges agrupados por esquina + botones overlay de esquina (evita superposición) */}
+          {BADGE_CORNERS.map((corner) => {
+            const cornerBadges = effectiveBadges.filter((b) => (b.position ?? 'top-left') === corner)
+            const overlayPos = CORNER_TO_OVERLAY_POS[corner]
+            const hasCornerButtons = !outOfStock && hasButtonsAt(overlayPos)
+            if (cornerBadges.length === 0 && !hasCornerButtons) return null
+            return (
+              <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-1`}>
+                {cornerBadges.map((b, i) => (
+                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
+                ))}
+                {hasCornerButtons && (
+                  renderButtons('rounded-lg p-1', overlayPos)
+                )}
+              </div>
+            )
+          })}
           {imgUrl ? (
             <Image
               src={imgUrl}
@@ -680,6 +1068,14 @@ export function ProductCard({
               {price != null && <span className="font-bold text-white"><Price value={price} /></span>}
             </div>
           )}
+          {/* Botones overlay no-esquina (overlay_bottom, overlay_hover) — sin conflicto con badges */}
+          {!outOfStock && nonCornerOverlayPositions.map((pos) =>
+            hasButtonsAt(pos) ? (
+              <div key={pos} className={overlayPositionClass[pos] || ''}>
+                {renderButtons(pos === 'overlay_hover' ? 'rounded-lg p-1.5' : 'rounded-lg p-1', pos)}
+              </div>
+            ) : null
+          )}
         </div>
       </Link>
       {!isOverlay && (
@@ -689,6 +1085,11 @@ export function ProductCard({
               {product.name}
             </h3>
           </Link>
+          {showRatingBlock && ratingPosition === 'below_title' && (
+            <div className="mb-1">
+              <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
+            </div>
+          )}
           {showDesc && product.description && (
             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1">{product.description}</p>
           )}
@@ -704,26 +1105,51 @@ export function ProductCard({
             {outOfStock && !isParent ? (
               <span className="text-xs text-red-500 font-medium">Sin stock</span>
             ) : (
-              <div className={`flex ${buttonsLayout === 'row' ? 'flex-row gap-2' : 'flex-col gap-1.5'}`}>
-                {effectiveButtons.map((btn, i) => (
-                  <CardButtonRenderer
-                    key={i}
-                    button={btn}
-                    product={product}
-                    primaryColor={primaryColor}
-                    isAdded={added}
-                    onAddToCart={handleAdd}
-                    onBuyNow={handleBuy}
-                    onRemoveFavorite={onRemoveFavorite}
-                    whatsappNumber={whatsappNumber}
-                    iconOnly={iconOnly}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Botones "below" centrados (default) */}
+                {hasButtonsAt('below') && (
+                  <div className="flex justify-center">{renderButtons('', 'below')}</div>
+                )}
+                {/* Botones "below_left" */}
+                {hasButtonsAt('below_left') && (
+                  <div className="flex justify-start">{renderButtons('', 'below_left')}</div>
+                )}
+                {/* Botones "below_right" */}
+                {hasButtonsAt('below_right') && (
+                  <div className="flex justify-end">{renderButtons('', 'below_right')}</div>
+                )}
+                {/* Botones "beside_price" */}
+                {hasButtonsAt('beside_price') && (
+                  <div className="flex items-center justify-between gap-2">{renderButtons('', 'beside_price')}</div>
+                )}
+                {/* Botones "bottom_bar" */}
+                {hasButtonsAt('bottom_bar') && (
+                  <div className="flex">{renderButtons('', 'bottom_bar')}</div>
+                )}
+              </>
             )}
           </div>
         </div>
       )}
+
+      {/* Vista rápida modal */}
+      <ProductQuickView
+        product={product}
+        open={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        primaryColor={primaryColor}
+        onAddToCart={handleAdd}
+        isFavorite={fav}
+        onToggleFavorite={toggleFavorite}
+        onShare={() => { setQuickViewOpen(false); setShareOpen(true) }}
+      />
+
+      {/* Share dialog */}
+      <ShareDialog
+        product={product}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   )
 }

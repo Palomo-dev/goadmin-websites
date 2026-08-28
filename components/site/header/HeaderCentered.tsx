@@ -1,5 +1,6 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -8,6 +9,7 @@ import {
   NavList,
   SearchBarInline,
   buildNavItems,
+  getLucideIcon,
   type HeaderVariantProps,
   headerBgStyle,
   navBgStyle,
@@ -27,6 +29,7 @@ export default function HeaderCentered({
   const organizationId = organization.id;
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
     <header className="sticky top-0 z-40 w-full">
@@ -47,6 +50,7 @@ export default function HeaderCentered({
                   organizationId={organizationId}
                   className="w-64"
                   size="md"
+                  icon={SearchIconComp}
                 />
               )}
               <HeaderActions
@@ -79,6 +83,7 @@ export default function HeaderCentered({
                 organizationId={organizationId}
                 className="w-56"
                 size="sm"
+                icon={SearchIconComp}
               />
             )}
           </div>

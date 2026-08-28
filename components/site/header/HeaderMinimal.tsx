@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, LogOut, UserCircle, Globe, ChevronDown } from 'lucide-react';
+import { Menu as MenuIcon, X, LogOut, UserCircle, Globe, ChevronDown, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -14,6 +14,7 @@ import {
   buildNavItems,
   MobileCurrencyChips,
   useAuthState,
+  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   headerBgStyle,
@@ -55,6 +56,7 @@ export default function HeaderMinimal({
   const searchStyle = settings?.search_style;
   const ctaText = settings?.header_cta_text ?? '';
   const ctaHref = settings?.header_cta_url ?? undefined;
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
   const navItems = buildNavItems(navTree);
   const minimalMenuStyle = settings?.minimal_menu_style ?? 'drawer';
   const isLoggedIn = useAuthState();
@@ -123,6 +125,7 @@ export default function HeaderMinimal({
                 organizationId={organizationId}
                 className="flex-1 max-w-xl mx-auto"
                 size="lg"
+                icon={SearchIconComp}
               />
             )}
 

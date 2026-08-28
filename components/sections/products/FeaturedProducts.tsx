@@ -34,6 +34,28 @@ interface FeaturedProductsProps {
     subtitle?: string
     max_items?: number
     filter?: string
+    // Card style
+    card_radius?: number
+    card_shadow?: string
+    card_border_width?: number
+    card_border_color?: string
+    card_bg?: string
+    card_padding?: number
+    card_hover?: string
+    image_fit?: string
+    image_ratio?: string
+    text_align?: string
+    title_lines?: string
+    show_description?: boolean
+    price_style?: string
+    show_compare_price?: boolean
+    // Botones y badges (PRODUCT_CARD_INTERACTION_FIELDS)
+    badges?: any[]
+    card_buttons?: any[]
+    buttons_position?: string
+    buttons_layout?: string
+    buttons_full_width?: boolean
+    icon_only?: boolean
   }
   primaryColor?: string
   data?: { products?: any[] }
@@ -137,6 +159,12 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                   primaryColor={primaryColor}
                   variant="grid"
                   cardStyle={content}
+                  badges={content.badges}
+                  cardButtons={content.card_buttons}
+                  buttonsPosition={content.buttons_position}
+                  buttonsLayout={content.buttons_layout}
+                  buttonsFullWidth={content.buttons_full_width !== false}
+                  iconOnly={content.icon_only}
                   showBuyNow={showBuyNow}
                   onAddToCart={addToCart}
                   onBuyNow={buyNow}

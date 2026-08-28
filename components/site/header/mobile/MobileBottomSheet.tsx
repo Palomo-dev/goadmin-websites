@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, ChevronDown, Globe } from 'lucide-react';
+import { Menu as MenuIcon, ChevronDown, Globe, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
 import {
   HeaderLogo,
@@ -11,6 +11,7 @@ import {
   SearchBarInline,
   buildNavItems,
   MobileCurrencyChips,
+  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
 } from '../HeaderShared';
@@ -34,6 +35,7 @@ export default function MobileBottomSheet({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full">
@@ -112,6 +114,7 @@ export default function MobileBottomSheet({
                 organizationId={organizationId}
                 className="w-full"
                 size="sm"
+                icon={SearchIconComp}
               />
             </div>
           )}

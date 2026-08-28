@@ -36,7 +36,11 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
   const gap = Number(content.gap ?? 16)
   const cardPadding = Number(content.card_padding ?? 16)
   const showRating = content.show_rating !== false
-  const ratingStyle = content.rating_style || 'stars'
+  // Normalizar: en testimonios no hay "cantidad de reseñas" por item,
+  // así que stars_rating = stars_count y rating_count = compact.
+  const rawRatingStyle = content.rating_style || 'stars'
+  const ratingStyle = rawRatingStyle === 'stars_rating' ? 'stars_count'
+    : rawRatingStyle === 'rating_count' ? 'compact' : rawRatingStyle
   const showSource = content.show_source === true
   const showDate = content.show_date === true
   const quoteMarks = content.quote_marks || 'none'

@@ -23,9 +23,10 @@ interface RelatedProductsProps {
   maxItems?: number
   cardStyle?: Record<string, any>
   layoutConfig?: Record<string, any>
+  layout?: 'carousel' | 'grid'
 }
 
-export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain, title, maxItems, cardStyle, layoutConfig }: RelatedProductsProps) {
+export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain, title, maxItems, cardStyle, layoutConfig, layout = 'carousel' }: RelatedProductsProps) {
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
@@ -100,7 +101,33 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
   return (
     <div className="mt-16 border-t pt-12">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{title || 'Productos relacionados'}</h2>
-      <div className="relative group/carousel">
+
+      {/* Modo grid: grilla responsiva sin scroll */}
+      {layout === 'grid' ? (
+        <div
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+          style={{ gap: `${gap}px` }}
+        >
+          {relatedProducts.map((product: any) => {
+            const isAdded = addedToCart.has(product.id)
+            return (
+              <ProductCard
+                key={product.id}
+                product={product}
+                primaryColor={primaryColor}
+                variant="grid"
+                showBuyNow={false}
+                onAddToCart={addToCart}
+                isAdded={isAdded}
+                organizationSubdomain={organizationSubdomain}
+                cardStyle={cardStyle}
+              />
+            )
+          })}
+        </div>
+      ) : (
+        /* Modo carousel (default) */
+        <div className="relative group/carousel">
         {showArrows && (
           <button
             onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
@@ -161,7 +188,8 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
             ))}
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

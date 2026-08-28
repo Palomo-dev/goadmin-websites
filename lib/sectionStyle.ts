@@ -453,11 +453,13 @@ const BADGE_SIZE_CLASS: Record<string, string> = {
 };
 
 export function resolveBadgeClasses(badge: BadgeConfig): string {
-  const pos = BADGE_POSITION_CLASS[badge.position ?? 'top-left'] ?? BADGE_POSITION_CLASS['top-left'];
   const shape = BADGE_SHAPE_CLASS[badge.shape ?? 'pill'] ?? BADGE_SHAPE_CLASS.pill;
   const size = BADGE_SIZE_CLASS[badge.size ?? 'sm'] ?? BADGE_SIZE_CLASS.sm;
-  return `absolute ${pos} z-10 font-bold ${shape} ${size}`;
+  return `font-bold ${shape} ${size}`;
 }
+
+// Mapa de clases de posición por esquina (usado por contenedores agrupados)
+export const BADGE_CORNER_CLASS: Record<string, string> = BADGE_POSITION_CLASS;
 
 export function resolveBadgeStyle(
   badge: BadgeConfig,

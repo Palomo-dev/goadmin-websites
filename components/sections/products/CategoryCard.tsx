@@ -28,7 +28,7 @@ export interface CategoryCardStyle {
   card_border_color?: string
   card_bg?: string
   card_padding?: number
-  card_hover?: 'none' | 'zoom' | 'lift' | 'glow'
+  card_hover?: 'none' | 'zoom' | 'lift' | 'glow' | 'border'
   image_fit?: 'cover' | 'contain' | 'fill'
   text_align?: 'left' | 'center' | 'right'
   /** Dónde va el texto respecto a la imagen. */
@@ -53,6 +53,12 @@ export interface CategoryCardStyle {
    * sobre el acento — reproduce CategoriesIcons).
    */
   fallback_media?: 'emoji' | 'initial'
+  /** Color del gradiente overlay (hex). Default: #000000. */
+  overlay_color?: string
+  /** Opacidad del gradiente overlay (0-100). Default: 60. */
+  overlay_opacity?: number
+  /** Color del texto cuando va sobre la imagen. Default: #FFFFFF. */
+  overlay_text_color?: string
 }
 
 interface CategoryCardProps {
@@ -86,6 +92,7 @@ const HOVER_EFFECT_CLASS: Record<string, string> = {
   zoom: '', // se aplica a la imagen, no al contenedor
   lift: 'transition-transform hover:-translate-y-1',
   glow: 'transition-shadow hover:shadow-xl',
+  border: 'transition-all hover:border-2 hover:border-current',
 }
 
 const TITLE_SIZE_CLASS: Record<string, string> = {
@@ -158,6 +165,9 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     media_source = 'auto',
     media_max_width,
     fallback_media = 'emoji',
+    overlay_color = '#000000',
+    overlay_opacity = 60,
+    overlay_text_color = '#FFFFFF',
   } = cardStyle
 
   const isRound = shape === 'circle' || shape === 'round'
@@ -179,12 +189,13 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   const wantColor = media_source === 'color' || (media_source === 'auto' && show_color)
 
   const hasImage = wantImage && cat.image_url
-  const hasIcon = wantIcon && cat.icon
+  // Si wantIcon es true, siempre mostramos un icono (DynamicLucideIcon tiene fallback="Tag")
+  const showIconBlock = wantIcon
   const hasColorBlock = wantColor && (cat.color || primaryColor)
   // `initial` explícito, o fallback `initial` en auto cuando no hay medio.
   const hasInitial =
     media_source === 'initial' ||
-    (media_source === 'auto' && fallback_media === 'initial' && !hasImage && !hasIcon && !hasColorBlock)
+    (media_source === 'auto' && fallback_media === 'initial' && !hasImage && !showIconBlock && !hasColorBlock)
 
   const mediaStyle: React.CSSProperties = {
     ...(card_bg ? { backgroundColor: card_bg } : {}),
@@ -202,7 +213,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
           }`}
           loading="lazy"
         />
-      ) : hasIcon ? (
+      ) : showIconBlock ? (
         <div
           className="w-full h-full flex items-center justify-center"
           style={{ backgroundColor: cat.color ? `${cat.color}20` : `${accent}15` }}
@@ -234,21 +245,27 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   )
 
   // --- Bloque de texto ---
+  const onOverlay = text_position !== 'below'
+  const overlayTextColor = onOverlay ? (overlay_text_color || '#FFFFFF') : undefined
   const titleClass = `font-semibold ${TITLE_SIZE_CLASS[title_size]} ${
-    text_position === 'below' ? 'text-gray-900 dark:text-white' : 'text-white'
+    text_position === 'below' ? 'text-gray-900 dark:text-white' : ''
   }`
   const alignClass = TEXT_ALIGN_CLASS[text_align || (isRound ? 'center' : 'left')]
 
   const textBlock = (
     <div className={alignClass}>
-      <h3 className={titleClass}>{cat.name}</h3>
+      <h3 className={titleClass} style={onOverlay ? { color: overlayTextColor } : undefined}>{cat.name}</h3>
       {show_description && cat.description && (
-        <p className={`text-sm ${text_position === 'below' ? 'text-gray-500 dark:text-gray-400' : 'text-white/80'} line-clamp-2`}>
+        <p className={`text-sm line-clamp-2 ${
+          text_position === 'below' ? 'text-gray-500 dark:text-gray-400' : ''
+        }`} style={onOverlay ? { color: overlayTextColor, opacity: 0.85 } : undefined}>
           {cat.description}
         </p>
       )}
       {show_count && cat.product_count != null && (
-        <span className={`text-sm ${text_position === 'below' ? 'text-gray-500 dark:text-gray-400' : 'text-white/80'}`}>
+        <span className={`text-sm ${
+          text_position === 'below' ? 'text-gray-500 dark:text-gray-400' : ''
+        }`} style={onOverlay ? { color: overlayTextColor, opacity: 0.8 } : undefined}>
           {cat.product_count} productos
         </span>
       )}
@@ -295,13 +312,33 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     )
   }
 
-  // overlay / inside / on_hover
+  // overlay / inside / on_hover — gradiente con color y opacidad configurables
+  const overlayOpacity = overlay_opacity != null ? overlay_opacity / 100 : 0.6
+  const overlayHex = overlay_color || '#000000'
+  // Convertir hex a rgba para el gradiente
+  const hexToRgba = (hex: string, alpha: number) => {
+    const h = hex.replace('#', '')
+    const r = parseInt(h.substring(0, 2), 16)
+    const g = parseInt(h.substring(2, 4), 16)
+    const b = parseInt(h.substring(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  const gradientFrom = hexToRgba(overlayHex, overlayOpacity)
+  const gradientTo = hexToRgba(overlayHex, 0)
+
+  const overlayStyle: React.CSSProperties =
+    text_position === 'overlay'
+      ? { background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})` }
+      : text_position === 'on_hover'
+        ? { background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})` }
+        : {}
+
   const overlayBg =
     text_position === 'overlay'
-      ? 'absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end'
+      ? 'absolute inset-0 flex items-end'
       : text_position === 'inside'
         ? 'absolute inset-0 flex items-end'
-        : 'absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end'
+        : 'absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end'
 
   return (
     <Link
@@ -310,7 +347,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
       style={{ ...containerStyle, ...widthStyle }}
     >
       {media}
-      <div className={`${overlayBg} ${alignClass}`} style={{ padding: paddingPx }}>
+      <div className={`${overlayBg} ${alignClass}`} style={{ ...overlayStyle, padding: paddingPx }}>
         {textBlock}
         {badge && (
           <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accent}30`, color: '#fff' }}>

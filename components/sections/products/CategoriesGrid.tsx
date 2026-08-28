@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
+import { DynamicLucideIcon } from './DynamicLucideIcon'
 
 interface CategoriesGridProps {
   content: {
@@ -19,7 +20,9 @@ interface CategoriesGridProps {
     desktop_layout?: 'grid' | 'carousel' | 'list'
     desktop_columns?: number
     desktop_rows?: number
-    mobile_layout?: 'grid' | 'list' | 'carousel'
+    mobile_columns?: number
+    mobile_rows?: number
+    mobile_layout?: 'grid' | 'list' | 'carousel' | 'inherit'
     selected_category_ids?: number[]
     enable_search?: boolean
     enable_pagination?: boolean
@@ -31,7 +34,7 @@ interface CategoriesGridProps {
     card_border_color?: string
     card_bg?: string
     card_padding?: number
-    card_hover?: 'none' | 'zoom' | 'lift' | 'glow'
+    card_hover?: 'none' | 'zoom' | 'lift' | 'glow' | 'border'
     image_fit?: 'cover' | 'contain' | 'fill'
     text_align?: 'left' | 'center' | 'right'
     text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
@@ -127,13 +130,119 @@ function MobileListCard({ cat, isRound, showCount, primaryColor }: {
   )
 }
 
+/**
+ * ListCard — item horizontal para modo lista (desktop y móvil).
+ * Imagen/icono a la izquierda, texto a la derecha.
+ * Respeta cardStyle (radius, border, bg, padding, hover, show_icon, show_image, etc.).
+ */
+function ListCard({ cat, cardStyle, primaryColor }: {
+  cat: any; cardStyle: CategoryCardStyle; primaryColor?: string
+}) {
+  const radius = cardStyle.card_radius != null ? `${cardStyle.card_radius}px` : '12px'
+  const padding = cardStyle.card_padding != null ? `${cardStyle.card_padding}px` : '12px'
+  const borderWidth = cardStyle.card_border_width != null ? `${cardStyle.card_border_width}px` : '0px'
+  const borderColor = cardStyle.card_border_color || 'transparent'
+  const hasExplicitBg = cardStyle.card_bg && cardStyle.card_bg.length > 0
+  const bg = hasExplicitBg ? cardStyle.card_bg : undefined
+  const isRound = cardStyle.shape === 'circle' || cardStyle.shape === 'round'
+  const wantImage = cardStyle.show_image !== false && cat.image_url
+  const wantIcon = cardStyle.show_icon
+  const wantColor = cardStyle.show_color && cat.color
+  const accent = wantColor ? cat.color : (primaryColor || '#6366f1')
+
+  // Sombra base según card_shadow (si no se define, sin sombra)
+  const shadowClass =
+    cardStyle.card_shadow === 'sm' ? 'shadow-sm' :
+    cardStyle.card_shadow === 'md' ? 'shadow-md' :
+    cardStyle.card_shadow === 'lg' ? 'shadow-lg' :
+    cardStyle.card_shadow === 'xl' ? 'shadow-xl' :
+    ''
+
+  const hoverClass =
+    cardStyle.card_hover === 'zoom' ? 'hover:scale-[1.02]' :
+    cardStyle.card_hover === 'lift' ? 'hover:-translate-y-0.5 hover:shadow-md' :
+    cardStyle.card_hover === 'glow' ? 'hover:shadow-lg' :
+    cardStyle.card_hover === 'border' ? 'hover:border-2' :
+    'hover:shadow-sm'
+
+  // Fondo por defecto: gris suave (preserva el aspecto anterior)
+  const bgClass = !hasExplicitBg ? 'bg-gray-50 dark:bg-gray-800/50' : ''
+
+  return (
+    <Link
+      href={`/categorias/${cat.slug}`}
+      className={`group flex items-center gap-3 transition-all ${shadowClass} ${hoverClass} ${bgClass}`}
+      style={{
+        borderRadius: radius,
+        padding,
+        borderWidth,
+        borderColor,
+        background: bg,
+      }}
+    >
+      {/* Media: imagen | icono | color | inicial */}
+      <div
+        className={`w-14 h-14 shrink-0 overflow-hidden flex items-center justify-center ${isRound ? 'rounded-full' : 'rounded-lg'}`}
+        style={wantColor ? { backgroundColor: `${accent}20` } : undefined}
+      >
+        {wantImage ? (
+          <img
+            src={cat.image_url}
+            alt={cat.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            style={{ borderRadius: isRound ? '9999px' : radius }}
+          />
+        ) : wantIcon ? (
+          <DynamicLucideIcon name={cat.icon} fallback="Tag" className="w-6 h-6" style={{ color: accent }} />
+        ) : wantColor ? (
+          <span className="text-lg font-bold" style={{ color: accent }}>
+            {cat.name?.charAt(0)?.toUpperCase() || '?'}
+          </span>
+        ) : (
+          <span className="text-2xl">🏷️</span>
+        )}
+      </div>
+
+      {/* Texto */}
+      <div className="flex-1 min-w-0">
+        <h3 className={`font-semibold text-gray-800 dark:text-gray-200 truncate ${
+          cardStyle.title_size === 'sm' ? 'text-sm' :
+          cardStyle.title_size === 'md' ? 'text-base' :
+          'text-lg'
+        }`}>
+          {cat.name}
+        </h3>
+        {cardStyle.show_count && cat.product_count != null && (
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {cat.product_count} {cat.product_count === 1 ? 'producto' : 'productos'}
+          </span>
+        )}
+        {cardStyle.show_description && cat.description && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1 mt-0.5">{cat.description}</p>
+        )}
+        {cardStyle.badge && (
+          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded mt-0.5" style={{ backgroundColor: `${accent}20`, color: accent }}>
+            {cardStyle.badge}
+          </span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
   const maxItems = content.max_items || 0
   const shape = content.shape || 'square'
   const desktopLayout = content.desktop_layout || 'grid'
   const desktopColumns = content.desktop_columns || 0
   const desktopRows = content.desktop_rows || 0
-  const mobileLayout = content.mobile_layout || 'grid'
+  const mobileColumns = content.mobile_columns || 0
+  const mobileRows = content.mobile_rows || 0
+  // mobile_layout: 'inherit' o ausente → usa el mismo layout que desktop
+  const mobileLayout = (!content.mobile_layout || content.mobile_layout === 'inherit')
+    ? desktopLayout
+    : content.mobile_layout
   const isRound = shape === 'round' || shape === 'circle'
   const allCategories = data?.categories || []
   const selectedIds = content.selected_category_ids || []
@@ -311,7 +420,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
           {isMobileList && (
             <div className="grid grid-cols-1 gap-3 md:hidden">
               {categories.map((cat: any) => (
-                <MobileListCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+                <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
               ))}
             </div>
           )}
@@ -374,8 +483,14 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
           {/* === Móvil: Grid === */}
           {!isMobileList && !isMobileCarousel && (
-            <div className={`grid grid-cols-2 gap-4 md:hidden`}>
-              {categories.map((cat: any) => (
+            <div
+              className={`grid gap-4 md:hidden ${mobileColumns <= 0 ? 'grid-cols-2' : ''}`}
+              style={mobileColumns > 0 ? { gridTemplateColumns: `repeat(${mobileColumns}, minmax(0, 1fr))` } : undefined}
+            >
+              {(mobileRows > 0 && mobileColumns > 0
+                ? categories.slice(0, mobileColumns * mobileRows)
+                : categories
+              ).map((cat: any) => (
                 <CategoryCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
               ))}
             </div>
@@ -418,9 +533,20 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
           {/* === Escritorio: Lista === */}
           {isDesktopList && (
-            <div className="hidden md:grid grid-cols-1 gap-4 max-w-3xl mx-auto">
-              {categories.map((cat: any) => (
-                <MobileListCard key={cat.id} cat={cat} isRound={isRound} showCount={content.show_count} primaryColor={primaryColor} />
+            <div
+              className={`hidden md:grid gap-4 ${desktopColumns <= 0 ? 'grid-cols-1 max-w-3xl mx-auto' : ''}`}
+              style={desktopColumns > 0 ? { gridTemplateColumns: `repeat(${desktopColumns}, minmax(0, 1fr))` } : undefined}
+            >
+              {(desktopRows > 0 && desktopColumns > 0
+                ? categories.slice(0, desktopColumns * desktopRows)
+                : categories
+              ).map((cat: any) => (
+                <ListCard
+                  key={cat.id}
+                  cat={cat}
+                  cardStyle={cardStyle}
+                  primaryColor={primaryColor}
+                />
               ))}
             </div>
           )}
@@ -432,7 +558,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               style={desktopColumns > 0 ? { gridTemplateColumns: `repeat(${desktopColumns}, minmax(0, 1fr))` } : undefined}
             >
               {(desktopRows > 0
-                ? categories.slice(0, desktopColumns * desktopRows)
+                ? categories.slice(0, (desktopColumns > 0 ? desktopColumns : (maxItems || categories.length)) * desktopRows)
                 : categories
               ).map((cat: any) => (
                 <CategoryCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />

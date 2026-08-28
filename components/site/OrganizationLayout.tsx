@@ -34,6 +34,8 @@ interface OrganizationLayoutProps {
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null
   taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null
   frozenReason?: FrozenReason
+  showCurrencyCode?: boolean
+  currencyPosition?: 'left' | 'right'
 }
 
 export function OrganizationLayout({
@@ -51,11 +53,15 @@ export function OrganizationLayout({
   metaPixelId,
   googleAdsConfig,
   taxSettings,
-  frozenReason
+  frozenReason,
+  showCurrencyCode,
+  currencyPosition
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   const settings = organization.website_settings as any
   const subdomain = organization.subdomain || ''
+  const effectiveShowCurrencyCode = showCurrencyCode ?? settings?.show_currency_code ?? false
+  const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
   const rootRef = useRef<HTMLDivElement>(null)
 
   // Medir la altura real del header y exponerla como --header-h
@@ -105,7 +111,7 @@ export function OrganizationLayout({
   } as React.CSSProperties
   
   return (
-    <CurrencyProvider>
+    <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}

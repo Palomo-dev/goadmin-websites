@@ -196,6 +196,8 @@ export interface Database {
           cta_text_color: string | null
           cta_margin_top: number
           cta_margin_bottom: number
+          show_currency_code: boolean | null
+          currency_position: string | null
           created_at: string
           updated_at: string
         }
@@ -236,6 +238,41 @@ export interface Database {
           header_opacity?: number | null
           reviews_auto_approve?: boolean | null
           updated_at?: string
+        }
+      }
+      website_visits: {
+        Row: {
+          id: string
+          organization_id: number
+          session_id: string
+          page_path: string
+          referrer: string | null
+          user_agent: string | null
+          country: string | null
+          ip_hash: string | null
+          device_type: string
+          is_new_visitor: boolean
+          created_at: string
+        }
+        Insert: {
+          organization_id: number
+          session_id: string
+          page_path?: string
+          referrer?: string | null
+          user_agent?: string | null
+          country?: string | null
+          ip_hash?: string | null
+          device_type?: string
+          is_new_visitor?: boolean
+        }
+        Update: {
+          page_path?: string
+          referrer?: string | null
+          user_agent?: string | null
+          country?: string | null
+          ip_hash?: string | null
+          device_type?: string
+          is_new_visitor?: boolean
         }
       }
       website_pages: {

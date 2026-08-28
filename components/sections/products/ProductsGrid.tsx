@@ -31,10 +31,40 @@ function getComparePrice(product: any): number | null {
 interface ProductsGridProps {
   content: {
     title?: string
+    subtitle?: string
     show_filters?: boolean
     show_search?: boolean
     show_categories?: boolean
     selected_category_ids?: number[]
+    max_items?: number
+    sort_order?: string
+    filter?: string
+    // Layout
+    desktop_layout?: 'grid' | 'carousel' | 'list'
+    mobile_layout?: 'grid' | 'list' | 'carousel'
+    desktop_columns?: number
+    // Card style
+    card_radius?: number
+    card_shadow?: string
+    card_border_width?: number
+    card_border_color?: string
+    card_bg?: string
+    card_padding?: number
+    card_hover?: string
+    image_fit?: string
+    image_ratio?: string
+    text_align?: string
+    title_lines?: string
+    show_description?: boolean
+    price_style?: string
+    show_compare_price?: boolean
+    // Botones y badges (PRODUCT_CARD_INTERACTION_FIELDS)
+    badges?: any[]
+    card_buttons?: any[]
+    buttons_position?: string
+    buttons_layout?: string
+    buttons_full_width?: boolean
+    icon_only?: boolean
   }
   primaryColor?: string
   data?: { products?: any[]; categories?: any[] }
@@ -123,6 +153,16 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
     localStorage.setItem(cartKey, JSON.stringify(cart))
     window.dispatchEvent(new CustomEvent('cart-updated'))
+
+    // Feedback visual: marcar como agregado durante 1.5s
+    setAddedToCart(prev => new Set(prev).add(product.id))
+    setTimeout(() => {
+      setAddedToCart(prev => {
+        const next = new Set(prev)
+        next.delete(product.id)
+        return next
+      })
+    }, 1500)
   }
 
   const buyNow = (product: any) => {
@@ -136,11 +176,11 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{content.title}</h2>
       )}
 
-      {/* Filtros */}
-      {products.length > 0 && (
+      {/* Filtros — respeta show_filters del editor (default: true para compatibilidad) */}
+      {products.length > 0 && content.show_filters !== false && (
         <div className="mb-6 space-y-3">
-          {/* Categorías */}
-          {availableCategories.length > 0 && (
+          {/* Categorías — respeta show_categories (default: true) */}
+          {availableCategories.length > 0 && content.show_categories !== false && (
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
               <button
                 onClick={() => { setSelectedCategory(null); handleFilterChange() }}
@@ -202,6 +242,12 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                 primaryColor={primaryColor}
                 variant="grid"
                 cardStyle={content}
+                badges={content.badges}
+                cardButtons={content.card_buttons}
+                buttonsPosition={content.buttons_position}
+                buttonsLayout={content.buttons_layout}
+                buttonsFullWidth={content.buttons_full_width !== false}
+                iconOnly={content.icon_only}
                 showBuyNow={showBuyNow}
                 onAddToCart={addToCart}
                 onBuyNow={buyNow}

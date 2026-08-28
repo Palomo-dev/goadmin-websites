@@ -82,7 +82,11 @@ export async function getOrgContext() {
   // Verificar estado de congelación de la organización
   const frozenReason = await checkFrozenStatus(organization.id, organization.status)
 
-  return { organization, primaryColor, template, headerNav, headerNavTree: effectiveHeaderNavTree, footerNav, footerNavTree, menuCategories, megaMenuItems, websiteMenus: footerMenus, frozenReason }
+  // Settings de moneda (mostrar código + posición)
+  const showCurrencyCode = organization.website_settings?.show_currency_code ?? false
+  const currencyPosition = organization.website_settings?.currency_position ?? 'left'
+
+  return { organization, primaryColor, template, headerNav, headerNavTree: effectiveHeaderNavTree, footerNav, footerNavTree, menuCategories, megaMenuItems, websiteMenus: footerMenus, frozenReason, showCurrencyCode, currencyPosition }
 }
 
 export async function checkFrozenStatus(orgId: number, orgStatus: string | null): Promise<FrozenReason> {

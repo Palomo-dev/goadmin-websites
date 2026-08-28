@@ -49,6 +49,7 @@ interface ProductDetailActionsProps {
   modifierGroups?: ModifierGroup[]
   trackStock?: boolean
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
+  buttonsLayout?: 'stacked' | 'inline' | 'split'
 }
 
 export function ProductDetailActions({
@@ -62,7 +63,8 @@ export function ProductDetailActions({
   organizationSubdomain,
   modifierGroups = [],
   trackStock,
-  stockLevels
+  stockLevels,
+  buttonsLayout = 'stacked',
 }: ProductDetailActionsProps) {
   const router = useRouter()
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
@@ -234,29 +236,33 @@ export function ProductDetailActions({
         </div>
       )}
 
-      <AddToCartButton
-        productId={product.id}
-        productName={product.name}
-        price={effectivePrice}
-        imageUrl={imageUrl}
-        primaryColor={primaryColor}
-        variant="full"
-        quantity={quantity}
-        organizationSubdomain={organizationSubdomain}
-        onClick={handleAddWithQuantity}
-        disabled={outOfStock}
-      />
+      {/* Botones de acción */}
+      <div className={buttonsLayout === 'inline' ? 'flex gap-3' : 'space-y-3'}>
+        <AddToCartButton
+          productId={product.id}
+          productName={product.name}
+          price={effectivePrice}
+          imageUrl={imageUrl}
+          primaryColor={primaryColor}
+          variant="full"
+          quantity={quantity}
+          organizationSubdomain={organizationSubdomain}
+          onClick={handleAddWithQuantity}
+          disabled={outOfStock}
+          className={buttonsLayout === 'inline' ? 'flex-1' : undefined}
+        />
 
-      <Button
-        size="lg"
-        variant="outline"
-        className="w-full"
-        style={{ borderColor: primaryColor, color: primaryColor }}
-        onClick={handleBuyNowSimple}
-        disabled={outOfStock}
-      >
-        {outOfStock ? 'Sin stock' : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
-      </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          className={buttonsLayout === 'inline' ? 'flex-1' : 'w-full'}
+          style={{ borderColor: primaryColor, color: primaryColor }}
+          onClick={handleBuyNowSimple}
+          disabled={outOfStock}
+        >
+          {outOfStock ? 'Sin stock' : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
+        </Button>
+      </div>
     </div>
   )
 }

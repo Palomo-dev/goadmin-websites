@@ -22,7 +22,11 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
   const items = useShuffledTestimonials(resolved, content.randomize_order)
 
   const showRating = content.show_rating !== false
-  const ratingStyle = content.rating_style || 'stars'
+  // Normalizar: en testimonios no hay "cantidad de reseñas" por item,
+  // así que stars_rating = stars_count y rating_count = compact.
+  const rawRatingStyle = content.rating_style || 'stars'
+  const ratingStyle = rawRatingStyle === 'stars_rating' ? 'stars_count'
+    : rawRatingStyle === 'rating_count' ? 'compact' : rawRatingStyle
   const showSource = content.show_source === true
   const showDate = content.show_date === true
   const quoteMarkColor = content.quote_mark_color || primaryColor

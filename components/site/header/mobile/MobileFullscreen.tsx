@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, Globe } from 'lucide-react';
+import { Menu as MenuIcon, X, Globe, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -12,6 +12,7 @@ import {
   MobileCurrencyChips,
   MobileAuthSection,
   useAuthState,
+  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
@@ -39,6 +40,7 @@ export default function MobileFullscreen({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   // Construir item "Categorías" si está habilitado
   const showCategories =
@@ -97,6 +99,7 @@ export default function MobileFullscreen({
                 organizationId={organizationId}
                 className="w-full"
                 size="sm"
+                icon={SearchIconComp}
               />
             </div>
           )}

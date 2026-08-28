@@ -9,6 +9,7 @@ import Image from 'next/image'
 interface ProductSearchProps {
   primaryColor: string
   organizationId?: number
+  icon?: any
 }
 
 interface SearchResult {
@@ -27,7 +28,7 @@ const popularSearches = [
   'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
-export function ProductSearch({ primaryColor, organizationId }: ProductSearchProps) {
+export function ProductSearch({ primaryColor, organizationId, icon: SearchIconComp = Search }: ProductSearchProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -231,7 +232,7 @@ export function ProductSearch({ primaryColor, organizationId }: ProductSearchPro
         className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Buscar productos"
       >
-        <Search className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+        <SearchIconComp className="h-5 w-5 text-gray-700 dark:text-gray-300" />
       </button>
 
       {/* Desktop: dropdown */}

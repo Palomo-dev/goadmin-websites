@@ -1,5 +1,6 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -8,6 +9,7 @@ import {
   NavList,
   SearchBarInline,
   buildNavItems,
+  getLucideIcon,
   type HeaderVariantProps,
   headerBgStyle,
   navBgStyle,
@@ -27,6 +29,7 @@ export default function HeaderSplit({
   const organizationId = organization.id;
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   const midpoint = Math.ceil(navItems.length / 2);
   const leftNav = navItems.slice(0, midpoint);
@@ -53,6 +56,7 @@ export default function HeaderSplit({
                 organizationId={organizationId}
                 className="flex-1 max-w-xl mx-auto"
                 size="lg"
+                icon={SearchIconComp}
               />
             )}
 

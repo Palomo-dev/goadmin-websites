@@ -12,6 +12,8 @@ interface SearchBarInputProps {
   placeholder?: string;
   /** Tamaño del input: 'sm' (móvil), 'md' (desktop normal), 'lg' (marketplace grande) */
   size?: 'sm' | 'md' | 'lg';
+  /** Icono de búsqueda personalizable (Fase 12B) */
+  icon?: any;
 }
 
 interface SearchResult {
@@ -51,6 +53,7 @@ export function SearchBarInput({
   className = '',
   placeholder = 'Buscar productos...',
   size = 'md',
+  icon: SearchIconComp = Search,
 }: SearchBarInputProps) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
@@ -122,7 +125,7 @@ export function SearchBarInput({
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Input visible tipo marketplace */}
       <div className="relative">
-        <Search
+        <SearchIconComp
           className={`absolute left-3 top-1/2 -translate-y-1/2 ${cfg.icon} text-gray-400 pointer-events-none`}
         />
         <input

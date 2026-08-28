@@ -41,8 +41,27 @@ async function enrichCategoriesWithFallbackImage(
   supabase: any,
   categories: any[]
 ): Promise<any[]> {
+  // --- Contar productos activos por categoría (para show_count) ---
+  const allCategoryIds = categories.map(c => c.id)
+  const countMap: Record<number, number> = {}
+  if (allCategoryIds.length > 0) {
+    const { data: countData } = await supabase
+      .from('products')
+      .select('category_id')
+      .in('category_id', allCategoryIds)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+    for (const row of (countData || [])) {
+      countMap[row.category_id] = (countMap[row.category_id] || 0) + 1
+    }
+  }
+
   const withoutImage = categories.filter(c => !c.image_url)
-  if (withoutImage.length === 0) return categories
+
+  // Si todas tienen imagen (o no hay categorías), solo agregar product_count
+  if (withoutImage.length === 0 || allCategoryIds.length === 0) {
+    return categories.map(c => ({ ...c, product_count: countMap[c.id] || 0 }))
+  }
 
   const categoryIds = withoutImage.map(c => c.id)
 
@@ -79,8 +98,8 @@ async function enrichCategoriesWithFallbackImage(
 
   return categories.map(c =>
     !c.image_url && fallbackMap[c.id]
-      ? { ...c, image_url: fallbackMap[c.id] }
-      : c
+      ? { ...c, image_url: fallbackMap[c.id], product_count: countMap[c.id] || 0 }
+      : { ...c, product_count: countMap[c.id] || 0 }
   )
 }
 

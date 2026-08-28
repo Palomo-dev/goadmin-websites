@@ -36,7 +36,7 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 const STORAGE_KEY = 'site_currency'
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+export function CurrencyProvider({ children, showCurrencyCode = false, currencyPosition = 'left' }: { children: React.ReactNode; showCurrencyCode?: boolean; currencyPosition?: 'left' | 'right' }) {
   const [state, setState] = useState({
     baseCurrency: 'COP',
     currency: 'COP',
@@ -86,19 +86,27 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const convert = (v: number) => v * state.conversionRate
     const formatPrice = (v: number) => {
       const converted = convert(v)
+      let formatted: string
       try {
-        return new Intl.NumberFormat(state.locale, {
+        formatted = new Intl.NumberFormat(state.locale, {
           style: 'currency',
           currency: state.currency,
           minimumFractionDigits: state.decimals,
           maximumFractionDigits: state.decimals,
         }).format(converted)
       } catch {
-        return `$${Math.round(converted).toLocaleString('es-CO')}`
+        formatted = `$${Math.round(converted).toLocaleString('es-CO')}`
       }
+      // Si showCurrencyCode está activo, agregar el código de moneda
+      if (showCurrencyCode) {
+        formatted = currencyPosition === 'right'
+          ? `${formatted} ${state.currency}`
+          : `${state.currency} ${formatted}`
+      }
+      return formatted
     }
     return { ...state, setCurrency, convert, formatPrice }
-  }, [state, setCurrency])
+  }, [state, setCurrency, showCurrencyCode, currencyPosition])
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>
 }

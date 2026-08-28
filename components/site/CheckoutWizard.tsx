@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { useCurrency } from './CurrencyProvider'
 
 interface CartModifier {
   typeId: number
@@ -122,6 +123,9 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
 export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
+  const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
+  const showCurrencyNotice = !loading && displayCurrency !== baseCurrency && baseCurrency === 'COP'
+  const [currencyNoticeDismissed, setCurrencyNoticeDismissed] = useState(false)
   const [step, setStep] = useState(1)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ cart: true, customer: true, payment: true })
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -658,6 +662,26 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     <div className="container mx-auto px-4 py-12">
       <p className="text-xs text-gray-300 uppercase tracking-widest mb-6">Checkout</p>
 
+      {/* Aviso de moneda: los precios son referenciales, el pago se cobra en COP */}
+      {showCurrencyNotice && !currencyNoticeDismissed && (
+        <div className="mb-6 rounded-lg border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0 text-yellow-600" />
+            <span>
+              Los precios mostrados en <strong>{displayCurrency}</strong> son solo referenciales.
+              El pago se efectuará en pesos colombianos (<strong>COP</strong>) al momento de procesar la transacción.
+            </span>
+          </span>
+          <button
+            onClick={() => setCurrencyNoticeDismissed(true)}
+            className="flex-shrink-0 text-yellow-600 hover:text-yellow-800 transition-colors"
+            aria-label="Cerrar aviso"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      )}
+
       {/* Countdown Banner en checkout */}
       {settings.showCountdown && settings.countdownConfig && (
         <div className="mb-6">
@@ -753,7 +777,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           )}
                           {item.newModifiers && item.newModifiers.length > 0 && (
                             <p className="text-xs text-gray-400 truncate mt-0.5">
-                              {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
+                              {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+${fmtPrice(m.extraPrice)})` : ''}`).join(', ')}
                             </p>
                           )}
                           {item.notes && (
@@ -776,13 +800,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                               </Button>
                               <span className="text-xs text-gray-400 ml-1">
                                 {item.comparePrice && item.comparePrice > item.price && (
-                                  <span className="line-through mr-1">${item.comparePrice.toLocaleString('es-CO')}</span>
+                                  <span className="line-through mr-1">{fmtPrice(item.comparePrice)}</span>
                                 )}
-                                ${item.price.toLocaleString('es-CO')} c/u
+                                {fmtPrice(item.price)} c/u
                               </span>
                             </div>
                             <p className="font-bold text-sm sm:text-base" style={{ color: primaryColor }}>
-                              ${(item.price * item.quantity).toLocaleString('es-CO')}
+                              {fmtPrice(item.price * item.quantity)}
                             </p>
                           </div>
                         </div>
@@ -1036,7 +1060,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                                     </p>
                                   </div>
                                 </div>
-                                <span className="font-semibold text-sm">${rate.cost.toLocaleString('es-CO')}</span>
+                                <span className="font-semibold text-sm">{fmtPrice(rate.cost)}</span>
                               </label>
                             ))}
                           </div>
@@ -1152,7 +1176,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         Procesando...
                       </>
                     ) : (
-                      `Pagar $${total.toLocaleString('es-CO')}`
+                      `Pagar ${fmtPrice(total)}`
                     )}
                   </Button>
                 ) : (
@@ -1173,7 +1197,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           Procesando...
                         </>
                       ) : (
-                        `Pagar $${total.toLocaleString('es-CO')}`
+                        `Pagar ${fmtPrice(total)}`
                       )}
                     </Button>
                   </div>
@@ -1222,23 +1246,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       )}
                       {item.newModifiers && item.newModifiers.length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
-                          {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+$${m.extraPrice.toLocaleString('es-CO')})` : ''}`).join(', ')}
+                          {item.newModifiers.map(m => `${m.name}${m.extraPrice > 0 ? ` (+${fmtPrice(m.extraPrice)})` : ''}`).join(', ')}
                         </span>
                       )}
                     </div>
-                    <span className="font-medium ml-2 flex-shrink-0">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
+                    <span className="font-medium ml-2 flex-shrink-0">{fmtPrice(item.price * item.quantity)}</span>
                   </div>
                 ))}
 
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span>${subtotal.toLocaleString('es-CO')}</span>
+                    <span>{fmtPrice(subtotal)}</span>
                   </div>
                   {tax > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-gray-600">{settings.taxName} ({settings.taxRate}%)</span>
-                      <span>${tax.toLocaleString('es-CO')}</span>
+                      <span>{fmtPrice(tax)}</span>
                     </div>
                   )}
                   {settings.taxIncluded && settings.taxRate > 0 && (
@@ -1248,7 +1272,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     <div className="mt-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">{settings.shippingTitle || (isRestaurant ? 'Domicilio' : 'Envío')}</span>
-                        <span>{shipping === 0 ? 'Gratis' : `$${shipping.toLocaleString('es-CO')}`}</span>
+                        <span>{shipping === 0 ? 'Gratis' : fmtPrice(shipping)}</span>
                       </div>
                       {settings.shippingDescription && (
                         <p className="text-xs text-gray-400 mt-0.5">{settings.shippingDescription}</p>
@@ -1258,7 +1282,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   {tipAmount > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-gray-600">Propina</span>
-                      <span>${tipAmount.toLocaleString('es-CO')}</span>
+                      <span>{fmtPrice(tipAmount)}</span>
                     </div>
                   )}
                   {couponDiscount > 0 && appliedCoupon && (
@@ -1267,13 +1291,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         🎟️ {appliedCoupon.code}
                         <button onClick={removeCoupon} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
                       </span>
-                      <span>-${couponDiscount.toLocaleString('es-CO')}</span>
+                      <span>-{fmtPrice(couponDiscount)}</span>
                     </div>
                   )}
                   {appliedPromotions.map((promo) => (
                     <div key={promo.id} className="flex justify-between text-sm mt-1 text-green-600">
                       <span className="truncate flex-1 mr-2">🏷️ {promo.name}</span>
-                      <span className="flex-shrink-0">-${promo.discount.toLocaleString('es-CO')}</span>
+                      <span className="flex-shrink-0">-{fmtPrice(promo.discount)}</span>
                     </div>
                   ))}
                 </div>
@@ -1309,13 +1333,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 <div className="border-t pt-3">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span style={{ color: primaryColor }}>${total.toLocaleString('es-CO')}</span>
+                    <span style={{ color: primaryColor }}>{fmtPrice(total)}</span>
                   </div>
                 </div>
 
                 {needsShipping && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
                   <p className="text-xs text-green-600 text-center mt-2">
-                    ¡Envío gratis por compras mayores a ${settings.freeShippingThreshold.toLocaleString('es-CO')}!
+                    ¡Envío gratis por compras mayores a {fmtPrice(settings.freeShippingThreshold)}!
                   </p>
                 )}
 
@@ -1355,7 +1379,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3">
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
-              Total: <span className="text-lg font-bold text-gray-900">${total.toLocaleString('es-CO')}</span>
+              Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
             </div>
             <Button
               type="button"
@@ -1370,7 +1394,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   Procesando...
                 </>
               ) : (
-                `Pagar $${total.toLocaleString('es-CO')}`
+                `Pagar ${fmtPrice(total)}`
               )}
             </Button>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, type LucideIcon } from 'lucide-react'
 
 interface CartIndicatorProps {
   primaryColor: string
@@ -10,9 +10,12 @@ interface CartIndicatorProps {
   cartBehavior?: 'drawer' | 'redirect'
   onClick?: () => void
   organizationSubdomain?: string
+  /** Icono personalizado (del editor). Default: ShoppingCart */
+  icon?: LucideIcon
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp }: CartIndicatorProps) {
+  const Icon = IconProp || ShoppingCart
   const [itemCount, setItemCount] = useState(0)
   
   useEffect(() => {
@@ -57,7 +60,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
         href="/checkout"
         className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <ShoppingCart className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+        <Icon className="h-6 w-6 text-gray-700 dark:text-gray-300" />
         {badge}
       </Link>
     )
@@ -70,7 +73,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       onClick={onClick}
       className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
     >
-      <ShoppingCart className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+      <Icon className="h-6 w-6 text-gray-700 dark:text-gray-300" />
       {badge}
     </button>
   )

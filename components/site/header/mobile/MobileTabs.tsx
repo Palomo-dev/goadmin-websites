@@ -10,6 +10,7 @@ import {
   SearchBarInline,
   buildNavItems,
   MobileCurrencyChips,
+  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
 } from '../HeaderShared';
@@ -35,6 +36,11 @@ export default function MobileTabs({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
+
+  // Fase 12B: Iconos personalizables para la barra inferior
+  const SearchTabIcon = getLucideIcon(settings?.search_icon as string, Search);
+  const CartTabIcon = getLucideIcon(settings?.cart_icon as string, ShoppingBag);
+  const AuthTabIcon = getLucideIcon(settings?.auth_icon as string, User);
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full">
@@ -66,6 +72,7 @@ export default function MobileTabs({
                 organizationId={organizationId}
                 className="w-full"
                 size="sm"
+                icon={SearchTabIcon}
               />
             </div>
           )}
@@ -86,15 +93,15 @@ export default function MobileTabs({
           />
           <TabButton
             onClick={() => setShowSearch(true)}
-            icon={<Search className="h-5 w-5" />}
+            icon={<SearchTabIcon className="h-5 w-5" />}
             label="Buscar"
           />
           <TabButton
             onClick={() => onCartClick?.()}
-            icon={<ShoppingBag className="h-5 w-5" />}
+            icon={<CartTabIcon className="h-5 w-5" />}
             label="Carrito"
           />
-          <TabButton href="/auth" icon={<User className="h-5 w-5" />} label="Cuenta" />
+          <TabButton href="/auth" icon={<AuthTabIcon className="h-5 w-5" />} label="Cuenta" />
         </div>
       </nav>
 
@@ -178,7 +185,7 @@ export default function MobileTabs({
                 action="/search"
                 className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2"
               >
-                <Search className="h-5 w-5 text-gray-400" />
+                <SearchTabIcon className="h-5 w-5 text-gray-400" />
                 <input
                   type="text"
                   name="q"

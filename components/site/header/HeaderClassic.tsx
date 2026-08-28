@@ -1,5 +1,6 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -8,6 +9,7 @@ import {
   NavList,
   SearchBarInline,
   buildNavItems,
+  getLucideIcon,
   type HeaderVariantProps,
   headerBgStyle,
   navBgStyle,
@@ -28,6 +30,7 @@ export default function HeaderClassic({
   const logoPosition = settings?.logo_position ?? 'left';
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   const renderNav = navItems.length > 0 ? (
     <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
@@ -39,6 +42,7 @@ export default function HeaderClassic({
       organizationId={organizationId}
       className="flex-1 max-w-xl mx-4"
       size="lg"
+      icon={SearchIconComp}
     />
   ) : null;
 

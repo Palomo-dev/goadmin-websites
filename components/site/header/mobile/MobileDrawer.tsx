@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, Globe, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { Menu as MenuIcon, X, Globe, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -11,6 +11,7 @@ import {
   buildNavItems,
   MobileCurrencyChips,
   useAuthState,
+  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
@@ -42,6 +43,7 @@ export default function MobileDrawer({
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
   const showSearchBar = searchStyle === 'bar';
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   const showHeaderAuth = settings?.show_header_auth !== false;
 
@@ -102,6 +104,7 @@ export default function MobileDrawer({
                 organizationId={organizationId}
                 className="w-full"
                 size="sm"
+                icon={SearchIconComp}
               />
             </div>
           )}

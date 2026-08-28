@@ -284,6 +284,7 @@ export function HeaderActions({
   const AuthIconComp = getLucideIcon(settings?.auth_icon as string, User);
   const AuthLoggedInIconComp = getLucideIcon(settings?.auth_icon as string, UserCircle);
   const CurrencyIconComp = getLucideIcon(settings?.currency_icon as string, Globe);
+  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   // Fase 12B: Orden de acciones configurable
   const actionsOrder: string[] = (() => {
@@ -298,7 +299,7 @@ export function HeaderActions({
   // Construir elementos de acción según el orden
   const actionElements: Record<string, React.ReactNode | null> = {
     search: showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} organizationId={organizationId} />
+      <ProductSearch key="search" primaryColor={primaryColor} organizationId={organizationId} icon={SearchIconComp} />
     ) : null,
     currency: !isMobile && !hideCurrency ? (
       <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} />
@@ -310,6 +311,7 @@ export function HeaderActions({
         cartBehavior={cartBehavior}
         onClick={onCartClick}
         organizationSubdomain={organizationSubdomain || ''}
+        icon={CartIconComp}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
@@ -614,11 +616,13 @@ export function SearchBarInline({
   organizationId,
   className = '',
   size = 'md',
+  icon,
 }: {
   primaryColor: string;
   organizationId: number;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  icon?: any;
 }) {
   return (
     <div className={className}>
@@ -627,6 +631,7 @@ export function SearchBarInline({
         organizationId={organizationId}
         size={size}
         className="w-full"
+        icon={icon}
       />
     </div>
   );
