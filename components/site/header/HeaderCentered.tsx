@@ -34,7 +34,7 @@ export default function HeaderCentered({
   const overlayOffset = useExternalOverlayOffset();
 
   return (
-    <header className="sticky top-0 z-[9999] w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
+    <header className="sticky top-0 z-40 w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Fila superior: espacio | logo | acciones — z-20 para estar encima de la fila nav */}

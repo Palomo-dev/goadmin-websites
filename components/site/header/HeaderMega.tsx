@@ -66,7 +66,7 @@ export default function HeaderMega({
   const overlayOffset = useExternalOverlayOffset();
 
   return (
-    <header className="sticky top-0 z-[9999] w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
+    <header className="sticky top-0 z-40 w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
       {/* Topbar opcional */}
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
