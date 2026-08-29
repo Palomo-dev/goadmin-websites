@@ -21,7 +21,6 @@ import {
   accentColor,
 } from '../header/HeaderShared';
 import MegaMenuDropdown from './MegaMenuDropdown';
-import { useExternalOverlayOffset } from './useExternalOverlayOffset';
 
 /**
  * HeaderMega
@@ -63,10 +62,9 @@ export default function HeaderMega({
   // El Mega Menu siempre muestra la barra de búsqueda grande en desktop,
   // a menos que search_style === 'hidden'
   const showSearchBar = searchStyle !== 'hidden';
-  const overlayOffset = useExternalOverlayOffset();
 
   return (
-    <header className="sticky top-0 z-40 w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
+    <header className="sticky top-0 z-40 w-full">
       {/* Topbar opcional */}
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 

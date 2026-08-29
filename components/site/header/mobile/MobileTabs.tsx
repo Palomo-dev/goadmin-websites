@@ -43,7 +43,7 @@ export default function MobileTabs({
   const AuthTabIcon = getLucideIcon(settings?.auth_icon as string, User);
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-40 w-full">
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">

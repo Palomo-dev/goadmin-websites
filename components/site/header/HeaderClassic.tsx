@@ -16,7 +16,6 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
-import { useExternalOverlayOffset } from '../header/useExternalOverlayOffset';
 
 export default function HeaderClassic({
   organization,
@@ -32,7 +31,6 @@ export default function HeaderClassic({
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
-  const overlayOffset = useExternalOverlayOffset();
 
   const renderNav = navItems.length > 0 ? (
     <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
@@ -99,7 +97,7 @@ export default function HeaderClassic({
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
+    <header className="sticky top-0 z-40 w-full">
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
         <div className="max-w-7xl mx-auto px-4">

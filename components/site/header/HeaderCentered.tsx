@@ -16,7 +16,6 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
-import { useExternalOverlayOffset } from '../header/useExternalOverlayOffset';
 
 export default function HeaderCentered({
   organization,
@@ -31,10 +30,9 @@ export default function HeaderCentered({
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
-  const overlayOffset = useExternalOverlayOffset();
 
   return (
-    <header className="sticky top-0 z-40 w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
+    <header className="sticky top-0 z-40 w-full">
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Fila superior: espacio | logo | acciones — z-20 para estar encima de la fila nav */}
