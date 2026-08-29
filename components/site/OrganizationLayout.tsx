@@ -70,16 +70,37 @@ export function OrganizationLayout({
     if (frozenReason) return
     const root = rootRef.current
     if (!root) return
-    const header = root.querySelector('header')
-    if (!header) return
+
+    let observer: ResizeObserver | null = null
+    let currentHeader: Element | null = null
+
     const updateHeaderH = () => {
-      const h = header.getBoundingClientRect().height
-      root.style.setProperty('--header-h', `${h}px`)
+      const header = root.querySelector('header')
+      if (header !== currentHeader) {
+        // El header cambió (desktop <-> móvil) — re-observar el nuevo
+        if (observer) observer.disconnect()
+        currentHeader = header
+        if (header) {
+          observer = new ResizeObserver(updateHeaderH)
+          observer.observe(header)
+        }
+      }
+      if (currentHeader) {
+        const h = currentHeader.getBoundingClientRect().height
+        root.style.setProperty('--header-h', `${h}px`)
+      }
     }
+
+    // Observar cambios en el DOM para detectar cuando React reemplaza el header
+    const mutationObserver = new MutationObserver(updateHeaderH)
+    mutationObserver.observe(root, { childList: true, subtree: true })
+
     updateHeaderH()
-    const observer = new ResizeObserver(updateHeaderH)
-    observer.observe(header)
-    return () => observer.disconnect()
+
+    return () => {
+      mutationObserver.disconnect()
+      if (observer) observer.disconnect()
+    }
   }, [frozenReason])
   
   // Theme mode: light | dark | auto

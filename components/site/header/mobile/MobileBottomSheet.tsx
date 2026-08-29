@@ -38,7 +38,7 @@ export default function MobileBottomSheet({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="md:hidden sticky top-0 z-40 w-full">
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
