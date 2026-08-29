@@ -167,20 +167,51 @@ async function buildWompiCheckoutUrl(
   // Por eso construimos los parámetros customer-data:* manualmente.
   const fullName = (order.customer_name || '').trim()
   const email = (order.customer_email || '').trim()
-  const phone = (order.customer_phone || '').replace(/\D/g, '')
+  const rawPhone = (order.customer_phone || '').trim()
   const city = (order.customer_city || '').trim()
   const street = (order.customer_address || '').trim()
+
+  // Wompi requiere phone-number y phone-number-prefix por separado:
+  // phone-number-prefix = "+57" (prefijo internacional con +)
+  // phone-number = "3001234567" (número sin prefijo, sin +)
+  let phoneNumber = ''
+  let phonePrefix = ''
+  if (rawPhone) {
+    const phoneMatch = rawPhone.match(/^(\+\d{1,4})\s?(\d[\d\s]*)$/)
+    if (phoneMatch) {
+      phonePrefix = phoneMatch[1] // ej: "+57"
+      phoneNumber = phoneMatch[2].replace(/\D/g, '') // ej: "3001234567"
+    } else {
+      // Sin prefijo: asumir Colombia (+57) si el número tiene 10 dígitos
+      const digits = rawPhone.replace(/\D/g, '')
+      if (digits.length === 10) {
+        phonePrefix = '+57'
+        phoneNumber = digits
+      } else if (digits.length > 10) {
+        // Probablemente incluye el código de país: los últimos 10 son el número
+        phonePrefix = `+${digits.slice(0, -10)}`
+        phoneNumber = digits.slice(-10)
+      } else {
+        phoneNumber = digits
+      }
+    }
+  }
 
   const customerParams: string[] = []
   if (email) customerParams.push(`customer-data:email=${encodeURIComponent(email)}`)
   if (fullName) customerParams.push(`customer-data:full-name=${encodeURIComponent(fullName)}`)
-  if (phone) customerParams.push(`customer-data:phone-number=${phone}`)
+  if (phoneNumber) {
+    customerParams.push(`customer-data:phone-number=${phoneNumber}`)
+    if (phonePrefix) customerParams.push(`customer-data:phone-number-prefix=${encodeURIComponent(phonePrefix)}`)
+  }
   if (city) customerParams.push(`customer-data:city=${encodeURIComponent(city)}`)
   if (street) customerParams.push(`customer-data:street=${encodeURIComponent(street)}`)
 
   // Agregar signature:integrity y customer-data con ':' literal (Wompi no acepta %3A)
   const customerQuery = customerParams.length > 0 ? '&' + customerParams.join('&') : ''
-  return `${baseUrl}?${params.toString()}${customerQuery}&signature:integrity=${signature}`
+  const finalUrl = `${baseUrl}?${params.toString()}${customerQuery}&signature:integrity=${signature}`
+  console.log('[Wompi Checkout URL] phone raw:', rawPhone, '| prefix:', phonePrefix, '| number:', phoneNumber, '| full URL:', finalUrl)
+  return finalUrl
 }
 
 /**
