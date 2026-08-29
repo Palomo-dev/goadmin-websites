@@ -10,7 +10,7 @@
  */
 
 import { Star } from 'lucide-react'
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { getSessionSeed, getReviewStats } from './providers/generatedReviews'
 import type { ReviewsConfig } from './types'
 import { resolveReviewsConfig } from './types'
@@ -32,27 +32,30 @@ export function ReviewSummaryBadge({
 }: ReviewSummaryBadgeProps) {
   const config = resolveReviewsConfig(reviewsConfig)
 
-  const { avgRating, totalReviews } = useMemo(() => {
-    // Modo generated o sin datos reales → lógica original (cero cambio visual)
-    if (config.reviews_source === 'generated' || !productStats) {
+  // El seed generado usa Date.now() que difiere entre server y client,
+  // por lo que se calcula solo después del mount para evitar hydration mismatch.
+  const [generated, setGenerated] = useState<{ avg: string; count: number } | null>(null)
+  useEffect(() => {
+    if (config.reviews_source === 'generated' || !productStats || config.rating_source === 'generated_only') {
       const sessionSeed = getSessionSeed(productId)
       const stats = getReviewStats(productId, sessionSeed)
-      return { avgRating: stats.avgRating.toFixed(1), totalReviews: stats.totalReviews }
+      setGenerated({ avg: stats.avgRating.toFixed(1), count: stats.totalReviews })
     }
-
-    // Modo real/mixed/auto con agregados disponibles
-    const realCount = productStats.reviews_count || 0
-    const realAvg = productStats.rating_avg ? Number(productStats.rating_avg).toFixed(1) : '0.0'
-
-    // rating_source: generated_only fuerza el cálculo generado
-    if (config.rating_source === 'generated_only') {
-      const sessionSeed = getSessionSeed(productId)
-      const stats = getReviewStats(productId, sessionSeed)
-      return { avgRating: stats.avgRating.toFixed(1), totalReviews: stats.totalReviews }
-    }
-
-    return { avgRating: realAvg, totalReviews: realCount }
   }, [productId, config.reviews_source, config.rating_source, productStats])
+
+  let avgRating: string
+  let totalReviews: number
+
+  if (config.reviews_source === 'generated' || !productStats) {
+    avgRating = generated?.avg ?? '0.0'
+    totalReviews = generated?.count ?? 0
+  } else if (config.rating_source === 'generated_only') {
+    avgRating = generated?.avg ?? '0.0'
+    totalReviews = generated?.count ?? 0
+  } else {
+    avgRating = productStats.rating_avg ? Number(productStats.rating_avg).toFixed(1) : '0.0'
+    totalReviews = productStats.reviews_count || 0
+  }
 
   const handleClick = () => {
     const el = document.getElementById('product-reviews')

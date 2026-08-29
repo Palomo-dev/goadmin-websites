@@ -1,7 +1,7 @@
 'use client'
 
 import { Star } from 'lucide-react'
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { getSessionSeed, getReviewStats } from '@/lib/review-utils'
 
 interface ReviewSummaryBadgeProps {
@@ -10,11 +10,17 @@ interface ReviewSummaryBadgeProps {
 }
 
 export function ReviewSummaryBadge({ primaryColor, productId }: ReviewSummaryBadgeProps) {
-  const { avgRating, totalReviews } = useMemo(() => {
+  // El seed generado usa Date.now() que difiere entre server y client,
+  // por lo que se calcula solo después del mount para evitar hydration mismatch.
+  const [generated, setGenerated] = useState<{ avg: string; count: number } | null>(null)
+  useEffect(() => {
     const sessionSeed = getSessionSeed(productId)
     const stats = getReviewStats(productId, sessionSeed)
-    return { avgRating: stats.avgRating.toFixed(1), totalReviews: stats.totalReviews }
+    setGenerated({ avg: stats.avgRating.toFixed(1), count: stats.totalReviews })
   }, [productId])
+
+  const avgRating = generated?.avg ?? '0.0'
+  const totalReviews = generated?.count ?? 0
 
   const handleClick = () => {
     const el = document.getElementById('product-reviews')

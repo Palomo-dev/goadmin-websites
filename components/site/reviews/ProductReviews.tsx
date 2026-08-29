@@ -42,7 +42,7 @@ export function ProductReviews({
   reviewsConfig,
   productStats,
 }: ProductReviewsProps) {
-  const config = resolveReviewsConfig(reviewsConfig)
+  const config = useMemo(() => resolveReviewsConfig(reviewsConfig), [reviewsConfig])
 
   const [filterRating, setFilterRating] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<'recent' | 'helpful'>('recent')
@@ -52,11 +52,18 @@ export function ProductReviews({
   const ITEMS_PER_PAGE = 10
 
   // --- Provider generated (síncrono, como el original) ---
-  const sessionSeed = useMemo(() => getSessionSeed(productId), [productId])
-  const generatedResult = useMemo(
-    () => getGeneratedReviews(productId, sessionSeed, config),
-    [productId, sessionSeed, config],
-  )
+  // El seed generado usa Date.now() que difiere entre server y client,
+  // por lo que se calcula solo después del mount para evitar hydration mismatch.
+  const [generatedResult, setGeneratedResult] = useState<ReviewsResult>(() => ({
+    reviews: [],
+    totalReviews: 0,
+    avgRating: 0,
+    isReal: false,
+  }))
+  useEffect(() => {
+    const sessionSeed = getSessionSeed(productId)
+    setGeneratedResult(getGeneratedReviews(productId, sessionSeed, config))
+  }, [productId, config.reviews_source, config.rating_source, config.generated_count, config.generated_rating_range, config.generated_names_pool, config.min_visible, config.auto_switch_threshold])
 
   // --- Provider real/mixed/auto ( asíncrono, se carga en efecto) ---
   useEffect(() => {
@@ -79,7 +86,7 @@ export function ProductReviews({
     }
     load()
     return () => { cancelled = true }
-  }, [productId, config, productStats])
+  }, [productId, config.reviews_source, config.min_visible, config.auto_switch_threshold, productStats])
 
   // --- Decidir qué resultado usar ---
   const activeResult: ReviewsResult = useMemo(() => {

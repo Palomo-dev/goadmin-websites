@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Star, ThumbsUp, Filter, ChevronDown, Send, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seededRandom as sharedSeededRandom, getSessionSeed, getReviewStats } from '@/lib/review-utils'
@@ -460,12 +460,19 @@ export function ProductReviews({ productId, productName, primaryColor }: Product
   const ITEMS_PER_PAGE = 10
 
   // Usar el mismo sessionSeed que ReviewSummaryBadge para sincronizar ratings
-  const sessionSeed = useMemo(() => getSessionSeed(productId), [productId])
-  const { allReviews, displayCount, displayAvg } = useMemo(() => {
+  // El seed generado usa Date.now() que difiere entre server y client,
+  // por lo que se calcula solo después del mount para evitar hydration mismatch.
+  const [reviewsData, setReviewsData] = useState<{ allReviews: ReturnType<typeof generateReviews>; displayCount: number; displayAvg: number } | null>(null)
+  useEffect(() => {
+    const sessionSeed = getSessionSeed(productId)
     const stats = getReviewStats(productId, sessionSeed)
     const reviews = generateReviews(productId, stats.totalReviews, stats.targetAvg, sessionSeed)
-    return { allReviews: reviews, displayCount: stats.totalReviews, displayAvg: stats.avgRating }
-  }, [productId, sessionSeed])
+    setReviewsData({ allReviews: reviews, displayCount: stats.totalReviews, displayAvg: stats.avgRating })
+  }, [productId])
+
+  const allReviews = reviewsData?.allReviews ?? []
+  const displayCount = reviewsData?.displayCount ?? 0
+  const displayAvg = reviewsData?.displayAvg ?? 0
 
   // Stats
   const totalReviews = displayCount
