@@ -163,20 +163,24 @@ async function buildWompiCheckoutUrl(
   })
 
   // Pre-llenar datos del cliente (Wompi usa parámetros customer-data:*)
+  // Nota: URLSearchParams codifica ':' como %3A, pero Wompi requiere ':' literal.
+  // Por eso construimos los parámetros customer-data:* manualmente.
   const fullName = (order.customer_name || '').trim()
   const email = (order.customer_email || '').trim()
-  const phone = (order.customer_phone || '').trim()
+  const phone = (order.customer_phone || '').replace(/\D/g, '')
   const city = (order.customer_city || '').trim()
   const street = (order.customer_address || '').trim()
 
-  if (email) params.append('customer-data:email', email)
-  if (fullName) params.append('customer-data:full-name', fullName)
-  if (phone) params.append('customer-data:phone-number', phone)
-  if (city) params.append('customer-data:city', city)
-  if (street) params.append('customer-data:street', street)
+  const customerParams: string[] = []
+  if (email) customerParams.push(`customer-data:email=${encodeURIComponent(email)}`)
+  if (fullName) customerParams.push(`customer-data:full-name=${encodeURIComponent(fullName)}`)
+  if (phone) customerParams.push(`customer-data:phone-number=${phone}`)
+  if (city) customerParams.push(`customer-data:city=${encodeURIComponent(city)}`)
+  if (street) customerParams.push(`customer-data:street=${encodeURIComponent(street)}`)
 
-  // Agregar signature:integrity con ':' literal (Wompi no acepta %3A)
-  return `${baseUrl}?${params.toString()}&signature:integrity=${signature}`
+  // Agregar signature:integrity y customer-data con ':' literal (Wompi no acepta %3A)
+  const customerQuery = customerParams.length > 0 ? '&' + customerParams.join('&') : ''
+  return `${baseUrl}?${params.toString()}${customerQuery}&signature:integrity=${signature}`
 }
 
 /**

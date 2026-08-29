@@ -97,7 +97,7 @@ export default function HeaderClassic({
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-[9999] w-full">
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
         <div className="max-w-7xl mx-auto px-4">

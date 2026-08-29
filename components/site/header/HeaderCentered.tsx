@@ -32,7 +32,7 @@ export default function HeaderCentered({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-[9999] w-full">
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Fila superior: espacio | logo | acciones — z-20 para estar encima de la fila nav */}
