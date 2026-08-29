@@ -29,6 +29,7 @@ import {
   DrawerTitle,
   DrawerClose,
 } from '@/components/ui/drawer';
+import { useExternalOverlayOffset } from '../header/useExternalOverlayOffset';
 
 /**
  * HeaderMinimal
@@ -61,6 +62,7 @@ export default function HeaderMinimal({
   const minimalMenuStyle = settings?.minimal_menu_style ?? 'drawer';
   const isLoggedIn = useAuthState();
   const showHeaderAuth = settings?.show_header_auth !== false;
+  const overlayOffset = useExternalOverlayOffset();
 
   // Construir item "Categorías" si está habilitado
   const showCategories =
@@ -103,7 +105,7 @@ export default function HeaderMinimal({
   };
 
   return (
-    <header className="sticky top-0 z-[9999] w-full">
+    <header className="sticky top-0 z-[9999] w-full" style={overlayOffset ? { top: `${overlayOffset}px` } : undefined}>
       {/* Topbar opcional */}
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
