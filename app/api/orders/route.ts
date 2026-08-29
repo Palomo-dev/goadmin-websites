@@ -177,9 +177,12 @@ export async function POST(request: NextRequest) {
           .insert({
             customer_id: customerId,
             label: 'Principal',
-            address_line: customer.address,
+            address_line1: customer.address,
             city: customer.city || null,
+            country_code: customer.countryCode || null,
+            department: customer.department || null,
             is_default: true,
+            is_active: true,
           })
         // Actualizar dirección en el customer también
         await (supabase as any)
@@ -220,7 +223,10 @@ export async function POST(request: NextRequest) {
         delivery_type: deliveryType === 'delivery' ? 'delivery_own' : (deliveryType || (shipping > 0 ? 'delivery_own' : 'pickup')),
         delivery_address: deliveryAddress || {
           address: customer.address,
-          city: customer.city
+          city: customer.city,
+          ...(customer.countryCode && { country: customer.countryCode }),
+          ...(customer.stateName && { state: customer.stateName, department: customer.department || customer.stateName }),
+          ...(customer.stateCode && { state_code: customer.stateCode }),
         },
         payment_status: 'pending',
         payment_method: paymentMethod,

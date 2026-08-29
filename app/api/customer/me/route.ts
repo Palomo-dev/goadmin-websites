@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       // Cargar direcciones guardadas
       const { data: addresses } = await supabase
         .from('customer_addresses')
-        .select('id, label, address_line, city, state, is_default')
+        .select('id, label, address_line1, city, department, country_code, is_default')
         .eq('customer_id', customer.id)
         .order('is_default', { ascending: false })
 

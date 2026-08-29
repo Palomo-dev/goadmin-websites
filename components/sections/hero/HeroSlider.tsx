@@ -481,7 +481,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
    * Personalización F3: cuando height es 50vh/70vh/100vh/custom, se usa
    * modo full-screen con object-cover y min-height forzado.
    */
-  const renderSlide = (slide: Slide, fullScreen: boolean) => {
+  const renderSlide = (slide: Slide, fullScreen: boolean, isFirst: boolean = false) => {
     const hasText = slideHasText(slide, showTitle, showCta, showBooking)
 
     if (slide.video_url) {
@@ -506,12 +506,12 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       if (fullScreen || hasText) {
         // Modo full-screen o con texto: imagen como fondo con object-cover
         return (
-          <div className={`relative ${fullScreen ? heightClassStr : 'min-h-[50vh] md:min-h-[70vh]'} overflow-hidden`} style={heightStyle}>
+          <div className={`relative ${fullScreen ? heightClassStr : 'min-h-[50vh] md:min-h-[70vh]'} overflow-hidden bg-gray-100 dark:bg-gray-800`} style={heightStyle}>
             <picture className="absolute inset-0 w-full h-full">
               {slide.image_url_mobile && (
                 <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
               )}
-              <img src={slide.image_url} alt={slide.title || ''} className="w-full h-full object-cover" />
+              <img src={slide.image_url} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
             </picture>
             {showOverlay && <div className="absolute inset-0 bg-black/40" />}
             {renderSlideText(slide)}
@@ -523,7 +523,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       // Comportamiento heredado de producción — se adapta a la imagen.
       // image_max_height controla el límite superior (default 85vh).
       return (
-        <picture className="block w-full">
+        <picture className="block w-full bg-gray-100 dark:bg-gray-800">
           {slide.image_url_mobile && (
             <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
           )}
@@ -531,6 +531,8 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
             src={slide.image_url}
             alt={slide.title || ''}
             className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
+            loading={isFirst ? 'eager' : 'lazy'}
+            fetchPriority={isFirst ? 'high' : 'low'}
           />
         </picture>
       )
@@ -566,7 +568,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
             <div className="flex">
               {slides.map((slide, i) => (
                 <div key={i} className="flex-[0_0_100%] min-w-0 relative">
-                  {renderSlide(slide, !isImageFitMode(height))}
+                  {renderSlide(slide, !isImageFitMode(height), i === 0)}
                 </div>
               ))}
             </div>
@@ -599,7 +601,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
                 pointerEvents: i === current ? 'auto' : 'none',
               }}
             >
-              {renderSlide(slide, true)}
+              {renderSlide(slide, true, i === 0)}
             </div>
           ))}
         </div>

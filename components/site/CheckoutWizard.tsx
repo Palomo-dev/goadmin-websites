@@ -10,6 +10,8 @@ import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSe
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import PhoneCountryInput from './PhoneCountryInput'
+import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
 
 interface CartModifier {
@@ -184,7 +186,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     phone: '',
     address: '',
     city: '',
-    notes: ''
+    notes: '',
+    countryCode: '',
+    stateCode: '',
+    stateName: '',
+    department: ''
   })
 
   // Persistir customerData en localStorage
@@ -209,7 +215,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   }, [customerData, customerStorageKey])
 
   // Datos de usuario autenticado
-  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: number; label: string; address_line: string; city: string; state?: string; is_default?: boolean }>>([])
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: number; label: string; address_line1: string; city: string; department?: string; country_code?: string; is_default?: boolean }>>([])
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [customerId, setCustomerId] = useState<number | null>(null)
 
@@ -296,8 +302,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           if (defaultAddr) {
             setCustomerData((prev: any) => ({
               ...prev,
-              address: defaultAddr.address_line || prev.address,
+              address: defaultAddr.address_line1 || prev.address,
               city: defaultAddr.city || prev.city,
+              countryCode: defaultAddr.country_code || prev.countryCode,
+              stateName: defaultAddr.department || prev.stateName,
+              department: defaultAddr.department || prev.department,
             }))
           }
         }
@@ -478,7 +487,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       if (orderType === 'delivery') {
         orderPayload.deliveryAddress = {
           address: customerData.address,
-          city: customerData.city
+          city: customerData.city,
+          country: customerData.countryCode,
+          state: customerData.stateName,
+          state_code: customerData.stateCode,
+          department: customerData.department
         }
       }
 
@@ -536,6 +549,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             organizationId,
             address_line: customerData.address,
             city: customerData.city,
+            country_code: customerData.countryCode,
+            department: customerData.department,
             label: 'Principal',
             is_default: true
           })
@@ -656,6 +671,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   // Validación para one-page: permitir submit solo si tiene datos requeridos
   const canSubmitOnePage = customerData.firstName && customerData.email && customerData.phone &&
+    !!customerData.countryCode &&
     (isRestaurant && orderType !== 'delivery' ? true : !!customerData.address)
 
   return (
@@ -924,12 +940,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono <span className="text-red-400">*</span></label>
-                    <Input
-                      type="tel"
-                      required
+                    <PhoneCountryInput
                       value={customerData.phone}
-                      onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value })}
-                      placeholder="+57 300 123 4567"
+                      onChange={(value) => setCustomerData({ ...customerData, phone: value })}
+                      countryCode={customerData.countryCode}
+                      primaryColor={primaryColor}
                     />
                   </div>
 
@@ -945,13 +960,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                               <button
                                 key={addr.id}
                                 type="button"
-                                onClick={() => setCustomerData(prev => ({ ...prev, address: addr.address_line, city: addr.city || '' }))}
+                                onClick={() => setCustomerData(prev => ({
+                                  ...prev,
+                                  address: addr.address_line1,
+                                  city: addr.city || '',
+                                  countryCode: (addr as any).country_code || prev.countryCode,
+                                  stateName: (addr as any).department || prev.stateName,
+                                  department: (addr as any).department || prev.department,
+                                }))}
                                 className={`w-full text-left p-3 rounded-lg border transition-colors flex items-start gap-2 ${
-                                  customerData.address === addr.address_line
+                                  customerData.address === addr.address_line1
                                     ? 'border-2'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
-                                style={customerData.address === addr.address_line ? { borderColor: primaryColor, backgroundColor: `${primaryColor}08` } : {}}
+                                style={customerData.address === addr.address_line1 ? { borderColor: primaryColor, backgroundColor: `${primaryColor}08` } : {}}
                               >
                                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                                 <div>
@@ -959,7 +981,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                                     {addr.label || 'Dirección'}
                                     {addr.is_default && <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Principal</span>}
                                   </p>
-                                  <p className="text-xs text-gray-500">{addr.address_line}{addr.city ? `, ${addr.city}` : ''}</p>
+                                  <p className="text-xs text-gray-500">{addr.address_line1}{addr.city ? `, ${addr.city}` : ''}</p>
                                 </div>
                               </button>
                             ))}
@@ -979,20 +1001,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad <span className="text-red-400">*</span></label>
-                        <Input
-                          required
-                          list="cities-list"
-                          value={customerData.city}
-                          onChange={(e) => setCustomerData({ ...customerData, city: e.target.value })}
-                          placeholder="Escribe tu ciudad..."
-                          autoComplete="off"
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación <span className="text-red-400">*</span></label>
+                        <LocationCheckoutFields
+                          countryCode={customerData.countryCode}
+                          stateCode={customerData.stateCode}
+                          stateName={customerData.stateName}
+                          city={customerData.city}
+                          onChange={(data) => setCustomerData({
+                            ...customerData,
+                            countryCode: data.countryCode,
+                            stateCode: data.stateCode,
+                            stateName: data.stateName,
+                            city: data.city,
+                            department: data.stateName
+                          })}
+                          primaryColor={primaryColor}
+                          fallbackCities={['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Cúcuta','Bucaramanga','Pereira','Santa Marta','Ibagué','Pasto','Manizales','Neiva','Villavicencio','Armenia','Valledupar','Montería','Sincelejo','Popayán','Tunja','Riohacha','Florencia','Quibdó','Yopal','Mocoa','Leticia','San Andrés','Arauca','Mitú','Puerto Carreño','Inírida','Envigado','Bello','Itagüí','Sabaneta','Rionegro','Soacha','Chía','Zipaquirá','Fusagasugá','Girardot','Tuluá','Palmira','Buenaventura','Barrancabermeja','Sogamoso','Duitama','Girón','Piedecuesta','Soledad','Malambo','Dosquebradas','Apartadó','Turbo','Lorica','Magangué','Aguachica','Ocaña','Pamplona','Tumaco','Ipiales','Cartago','Buga','Jamundí']}
                         />
-                        <datalist id="cities-list">
-                          {['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Cúcuta','Bucaramanga','Pereira','Santa Marta','Ibagué','Pasto','Manizales','Neiva','Villavicencio','Armenia','Valledupar','Montería','Sincelejo','Popayán','Tunja','Riohacha','Florencia','Quibdó','Yopal','Mocoa','Leticia','San Andrés','Arauca','Mitú','Puerto Carreño','Inírida','Envigado','Bello','Itagüí','Sabaneta','Rionegro','Soacha','Chía','Zipaquirá','Fusagasugá','Girardot','Tuluá','Palmira','Buenaventura','Barrancabermeja','Sogamoso','Duitama','Girón','Piedecuesta','Soledad','Malambo','Dosquebradas','Apartadó','Turbo','Lorica','Magangué','Aguachica','Ocaña','Pamplona','Tumaco','Ipiales','Cartago','Buga','Jamundí'].filter(c => !customerData.city || c.toLowerCase().includes(customerData.city.toLowerCase())).map(city => (
-                            <option key={city} value={city} />
-                          ))}
-                        </datalist>
                       </div>
 
                       {/* Botón guardar dirección para usuarios autenticados */}
@@ -1008,6 +1033,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                                   organizationId,
                                   address_line: customerData.address,
                                   city: customerData.city,
+                                  country_code: customerData.countryCode,
+                                  department: customerData.department,
                                   label: 'Principal',
                                   is_default: true
                                 })

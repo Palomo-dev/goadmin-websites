@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { organizationId, address_line, city, state, label, is_default } = body
+    const { organizationId, address_line, city, state, country_code, department, label, is_default } = body
 
     if (!organizationId || !address_line) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -68,12 +68,14 @@ export async function POST(request: NextRequest) {
         .insert({
           customer_id: newCustomer.id,
           label: label || 'Principal',
-          address_line,
+          address_line1: address_line,
           city: city || null,
-          state: state || null,
+          department: department || state || null,
+          country_code: country_code || null,
           is_default: true,
+          is_active: true,
         })
-        .select('id, label, address_line, city, state, is_default')
+        .select('id, label, address_line1, city, department, country_code, is_default')
         .single()
 
       return NextResponse.json({ address })
@@ -93,12 +95,14 @@ export async function POST(request: NextRequest) {
       .insert({
         customer_id: customer.id,
         label: label || 'Dirección',
-        address_line,
+        address_line1: address_line,
         city: city || null,
-        state: state || null,
+        department: department || state || null,
+        country_code: country_code || null,
         is_default: is_default || false,
+        is_active: true,
       })
-      .select('id, label, address_line, city, state, is_default')
+      .select('id, label, address_line1, city, department, country_code, is_default')
       .single()
 
     if (error) {
