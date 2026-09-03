@@ -196,10 +196,10 @@ export async function POST(request: NextRequest) {
 
         await (supabase as any).from('integration_events').insert({
           connection_id: null,
-          source: 'meta',
+          source: 'webhook',
           direction: 'inbound',
           event_type: `meta.${objectType}`,
-          payload: { object: objectType, entries_count: entries.length },
+          payload: { provider: 'meta', object: objectType, entries_count: entries.length },
           status: 'rejected',
           error_message: 'Firma de webhook inválida',
           // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -226,11 +226,12 @@ export async function POST(request: NextRequest) {
         await (supabase as any).from('integration_events').insert({
           connection_id: matchedConnection.id,
           organization_id: organizationId,
-          source: 'meta',
+          source: 'webhook',
           direction: 'inbound',
           event_type: `meta.${objectType}`,
           external_event_id: entry.id ? String(entry.id) : null,
           payload: {
+            provider: 'meta',
             object: objectType,
             entry_id: entry.id,
             entry_time: entry.time,
@@ -246,11 +247,12 @@ export async function POST(request: NextRequest) {
           await (supabase as any).from('integration_events').insert({
             connection_id: matchedConnection.id,
             organization_id: organizationId,
-            source: 'meta',
+            source: 'webhook',
             direction: 'inbound',
             event_type: `meta.${objectType}.${change.field}`,
             external_event_id: entry.id ? String(entry.id) : null,
             payload: {
+              provider: 'meta',
               object: objectType,
               entry_id: entry.id,
               entry_time: entry.time,

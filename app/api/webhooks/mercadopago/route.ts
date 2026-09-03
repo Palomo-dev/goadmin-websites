@@ -10,6 +10,7 @@ import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 export const dynamic = 'force-dynamic'
 
@@ -230,11 +231,11 @@ export async function POST(request: NextRequest) {
       // Registrar evento sin procesar
       await (supabase as any).from('integration_events').insert({
         connection_id: null,
-        source: 'mercadopago',
+        source: 'webhook',
         direction: 'inbound',
         event_type: action || 'payment.updated',
         external_event_id: paymentId,
-        payload: body,
+        payload: { provider: 'mercadopago', ...body },
         status: 'failed',
         error_message: 'No se pudo obtener el pago o verificar la firma',
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -268,11 +269,11 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from('integration_events').insert({
         connection_id: matchedConnection.id,
         organization_id: organizationId,
-        source: 'mercadopago',
+        source: 'webhook',
         direction: 'inbound',
         event_type: action || 'payment.updated',
         external_event_id: String(mpPaymentId),
-        payload: body,
+        payload: { provider: 'mercadopago', ...body },
         status: 'processed',
         processed_at: new Date().toISOString(),
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -287,7 +288,7 @@ export async function POST(request: NextRequest) {
         transactionId: String(mpPaymentId),
         amount: amount || 0,
         currency: currency || 'COP',
-        method: paymentMethodId || paymentTypeId || 'mercadopago',
+        method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         processorResponse: paymentData,
         gateway: 'mercadopago',
       })
@@ -306,7 +307,7 @@ export async function POST(request: NextRequest) {
         transactionId: String(mpPaymentId),
         amount: amount || 0,
         currency: currency || 'COP',
-        method: paymentMethodId || paymentTypeId || 'mercadopago',
+        method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         processorResponse: paymentData,
         gateway: 'mercadopago',
       })
@@ -325,7 +326,7 @@ export async function POST(request: NextRequest) {
         transactionId: String(mpPaymentId),
         amount: amount || 0,
         currency: currency || 'COP',
-        method: paymentMethodId || paymentTypeId || 'mercadopago',
+        method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         processorResponse: paymentData,
         gateway: 'mercadopago',
       })
@@ -344,7 +345,7 @@ export async function POST(request: NextRequest) {
         transactionId: String(mpPaymentId),
         amount: amount || 0,
         currency: currency || 'COP',
-        method: paymentMethodId || paymentTypeId || 'mercadopago',
+        method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         processorResponse: paymentData,
         gateway: 'mercadopago',
       })
@@ -363,7 +364,7 @@ export async function POST(request: NextRequest) {
         transactionId: String(mpPaymentId),
         amount: amount || 0,
         currency: currency || 'COP',
-        method: paymentMethodId || paymentTypeId || 'mercadopago',
+        method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         gateway: 'mercadopago',
       })
 
@@ -421,7 +422,7 @@ export async function POST(request: NextRequest) {
       branch_id: webOrder.branch_id,
       source: 'web_order',
       source_id: String(webOrder.id),
-      method: paymentMethodId || paymentTypeId || 'mercadopago',
+      method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
       amount: amount || webOrder.total,
       currency: currency || 'COP',
       reference: String(mpPaymentId),
@@ -433,11 +434,11 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('integration_events').insert({
       connection_id: matchedConnection.id,
       organization_id: organizationId,
-      source: 'mercadopago',
+      source: 'webhook',
       direction: 'inbound',
       event_type: action || 'payment.updated',
       external_event_id: String(mpPaymentId),
-      payload: { ...body, payment_status: mpStatus, verified },
+      payload: { provider: 'mercadopago', ...body, payment_status: mpStatus, verified },
       status: 'processed',
       processed_at: new Date().toISOString(),
       // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.

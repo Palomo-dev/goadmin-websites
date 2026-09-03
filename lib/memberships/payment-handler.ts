@@ -11,6 +11,7 @@
  */
 
 import { sendMembershipConfirmationEmail } from '@/lib/email/send-membership-confirmation'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 /**
  * Detecta si una referencia de pago corresponde a una membresía.
@@ -117,7 +118,7 @@ export async function handleMembershipPayment(
       branch_id: branch?.id || null,
       source: 'membership',
       source_id: String(membership.id),
-      method: paymentDetails.method,
+      method: mapToPaymentMethodCode(paymentDetails.method, 'wompi'),
       amount: paymentDetails.amount,
       currency: paymentDetails.currency,
       reference: paymentDetails.transactionId,

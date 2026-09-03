@@ -11,6 +11,7 @@ import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
 import crypto from 'crypto'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         amount: amountDecimal,
         currency,
-        method: paymentMethod,
+        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         processorResponse: body,
         gateway: 'bold_link',
       })
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         amount: amountDecimal,
         currency,
-        method: paymentMethod,
+        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         processorResponse: body,
         gateway: 'bold_link',
       })
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         amount: amountDecimal,
         currency,
-        method: paymentMethod,
+        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         processorResponse: body,
         gateway: 'bold_link',
       })
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         amount: amountDecimal,
         currency,
-        method: paymentMethod,
+        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         processorResponse: body,
         gateway: 'bold_link',
       })
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         amount: amountDecimal,
         currency,
-        method: paymentMethod,
+        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         gateway: 'bold_link',
       })
 
@@ -286,11 +287,11 @@ export async function POST(request: NextRequest) {
         await supabase.from('integration_events').insert({
           connection_id: null,
           organization_id: organizationId,
-          source: 'bold',
+          source: 'webhook',
           direction: 'inbound',
           event_type: type,
           external_event_id: transactionId,
-          payload: body,
+          payload: { provider: 'bold', ...body },
           status: 'rejected',
           error_message: 'Firma de webhook inválida',
           // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -337,7 +338,7 @@ export async function POST(request: NextRequest) {
       branch_id: (webOrder as any).branch_id,
       source: 'web_order',
       source_id: String((webOrder as any).id),
-      method: paymentMethod,
+      method: mapToPaymentMethodCode(paymentMethod, 'bold'),
       amount: amountDecimal,
       currency,
       reference: transactionId,
@@ -357,11 +358,11 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('integration_events').insert({
       connection_id: (conn as any)?.id || null,
       organization_id: organizationId,
-      source: 'bold',
+      source: 'webhook',
       direction: 'inbound',
       event_type: type,
       external_event_id: transactionId,
-      payload: body,
+      payload: { provider: 'bold', ...body },
       status: 'processed',
       processed_at: new Date().toISOString(),
       // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.

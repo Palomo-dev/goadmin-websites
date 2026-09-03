@@ -174,10 +174,10 @@ export async function uploadGoogleAdsConversion(
       await supabase.from('integration_events').insert({
         connection_id: connectionId,
         organization_id: organizationId,
-        source: 'google_ads',
+        source: 'webhook',
         direction: 'outbound',
         event_type: 'conversion_upload',
-        payload: { orderId: data.orderId, category: data.category, error: err },
+        payload: { provider: 'google_ads', orderId: data.orderId, category: data.category, error: err },
         status: 'failed',
         error_message: `HTTP ${uploadRes.status}: ${err.slice(0, 500)}`,
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -190,10 +190,10 @@ export async function uploadGoogleAdsConversion(
     await supabase.from('integration_events').insert({
       connection_id: connectionId,
       organization_id: organizationId,
-      source: 'google_ads',
+      source: 'webhook',
       direction: 'outbound',
       event_type: 'conversion_upload',
-      payload: { orderId: data.orderId, category: data.category, value: data.value, currency: data.currency },
+      payload: { provider: 'google_ads', orderId: data.orderId, category: data.category, value: data.value, currency: data.currency },
       status: 'processed',
       processed_at: new Date().toISOString(),
       // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.

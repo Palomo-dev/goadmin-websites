@@ -13,6 +13,7 @@
  */
 
 import { sendReservationConfirmationEmail } from '@/lib/email/send-reservation-confirmation'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 /**
  * Detecta si una referencia de pago corresponde a una reservación.
@@ -125,7 +126,7 @@ export async function handleReservationPayment(
       branch_id: reservation.branch_id,
       source: 'reservation',
       source_id: String(reservation.id),
-      method: paymentDetails.method,
+      method: mapToPaymentMethodCode(paymentDetails.method, 'wompi'),
       amount: paymentDetails.amount,
       currency: paymentDetails.currency,
       reference: paymentDetails.transactionId,

@@ -115,10 +115,10 @@ export async function sendMetaCAPIEvent(
       await supabase.from('integration_events').insert({
         connection_id: connectionId,
         organization_id: organizationId,
-        source: 'meta',
+        source: 'webhook',
         direction: 'outbound',
         event_type: `capi.${data.eventName}`,
-        payload: { eventId: data.eventId, error: responseData.error?.message },
+        payload: { provider: 'meta', eventId: data.eventId, error: responseData.error?.message },
         status: 'failed',
         error_message: responseData.error?.message || `HTTP ${response.status}`,
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -131,10 +131,11 @@ export async function sendMetaCAPIEvent(
     await supabase.from('integration_events').insert({
       connection_id: connectionId,
       organization_id: organizationId,
-      source: 'meta',
+      source: 'webhook',
       direction: 'outbound',
       event_type: `capi.${data.eventName}`,
       payload: {
+        provider: 'meta',
         eventId: data.eventId,
         value: data.value,
         currency: data.currency,

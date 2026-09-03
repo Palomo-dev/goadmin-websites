@@ -10,6 +10,7 @@ import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 export const dynamic = 'force-dynamic'
 
@@ -223,11 +224,11 @@ export async function POST(request: NextRequest) {
       // Registrar evento sin procesar
       await (supabase as any).from('integration_events').insert({
         connection_id: null,
-        source: 'payu',
+        source: 'webhook',
         direction: 'inbound',
         event_type: `payment.${stateLabel.toLowerCase()}`,
         external_event_id: transactionId || referencePol || reference,
-        payload,
+        payload: { provider: 'payu', ...payload },
         status: 'rejected',
         error_message: 'Firma inválida o merchant_id no coincide',
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || referencePol || '',
         amount: amountDecimal,
         currency: currency || 'COP',
-        method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+        method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         processorResponse: payload,
         gateway: 'payu',
       })
@@ -269,7 +270,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || referencePol || '',
         amount: amountDecimal,
         currency: currency || 'COP',
-        method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+        method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         processorResponse: payload,
         gateway: 'payu',
       })
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || referencePol || '',
         amount: amountDecimal,
         currency: currency || 'COP',
-        method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+        method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         processorResponse: payload,
         gateway: 'payu',
       })
@@ -309,7 +310,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || referencePol || '',
         amount: amountDecimal,
         currency: currency || 'COP',
-        method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+        method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         processorResponse: payload,
         gateway: 'payu',
       })
@@ -329,7 +330,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || referencePol || '',
         amount: amountDecimal,
         currency: currency || 'COP',
-        method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+        method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         gateway: 'payu',
       })
 
@@ -355,11 +356,11 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from('integration_events').insert({
         connection_id: matchedConnection.id,
         organization_id: organizationId,
-        source: 'payu',
+        source: 'webhook',
         direction: 'inbound',
         event_type: `payment.${stateLabel.toLowerCase()}`,
         external_event_id: transactionId || referencePol,
-        payload,
+        payload: { provider: 'payu', ...payload },
         status: 'processed',
         error_message: `Orden no encontrada: ${reference}`,
         processed_at: new Date().toISOString(),
@@ -400,7 +401,7 @@ export async function POST(request: NextRequest) {
       branch_id: webOrder.branch_id,
       source: 'web_order',
       source_id: String(webOrder.id),
-      method: paymentMethod?.toLowerCase() || paymentMethodType?.toLowerCase() || 'payu',
+      method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
       amount: amountDecimal,
       currency: currency || 'COP',
       reference: transactionId || referencePol,
@@ -412,11 +413,11 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('integration_events').insert({
       connection_id: matchedConnection.id,
       organization_id: organizationId,
-      source: 'payu',
+      source: 'webhook',
       direction: 'inbound',
       event_type: `payment.${stateLabel.toLowerCase()}`,
       external_event_id: transactionId || referencePol,
-      payload: { ...payload, verified },
+      payload: { provider: 'payu', ...payload, verified },
       status: 'processed',
       processed_at: new Date().toISOString(),
       // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.

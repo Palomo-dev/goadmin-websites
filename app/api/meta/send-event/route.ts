@@ -194,10 +194,11 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from('integration_events').insert({
         connection_id: metaCreds.connectionId,
         organization_id,
-        source: 'meta',
+        source: 'webhook',
         direction: 'outbound',
         event_type: `capi.${capiEvents[0]?.event_name || 'unknown'}`,
         payload: {
+          provider: 'meta',
           events_count: capiEvents.length,
           error: responseData.error?.message || response.statusText,
         },
@@ -216,10 +217,11 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('integration_events').insert({
       connection_id: metaCreds.connectionId,
       organization_id,
-      source: 'meta',
+      source: 'webhook',
       direction: 'outbound',
       event_type: `capi.${capiEvents[0]?.event_name || 'batch'}`,
       payload: {
+        provider: 'meta',
         events_count: capiEvents.length,
         events_received: responseData.events_received,
         fbtrace_id: responseData.fbtrace_id,

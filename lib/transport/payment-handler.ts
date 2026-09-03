@@ -13,6 +13,7 @@
  */
 
 import { sendTicketConfirmationEmail } from '@/lib/email/send-ticket-confirmation'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 /**
  * Detecta si una referencia de pago corresponde a un ticket de transporte.
@@ -116,7 +117,7 @@ export async function handleTicketPayment(
       organization_id: ticket.organization_id,
       source: 'trip_ticket',
       source_id: String(ticket.id),
-      method: paymentDetails.method,
+      method: mapToPaymentMethodCode(paymentDetails.method, 'wompi'),
       amount: paymentDetails.amount,
       currency: paymentDetails.currency,
       reference: paymentDetails.transactionId,

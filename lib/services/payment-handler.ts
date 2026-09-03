@@ -10,6 +10,7 @@
  */
 
 import { sendInvoicePaymentConfirmation } from '@/lib/email/send-invoice-payment-confirmation'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 /**
  * Detecta si una referencia de pago corresponde a una factura.
@@ -84,7 +85,7 @@ export async function handleInvoicePayment(
           customer_id: invoice.customer_id,
           source: 'invoice',
           source_id: invoice.id,
-          method: paymentDetails.method || paymentDetails.gateway,
+          method: mapToPaymentMethodCode(paymentDetails.method || paymentDetails.gateway, paymentDetails.gateway),
           amount: paymentAmount,
           currency: paymentDetails.currency || invoice.currency || 'COP',
           reference: reference,

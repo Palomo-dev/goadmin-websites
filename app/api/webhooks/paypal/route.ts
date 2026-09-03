@@ -10,6 +10,7 @@ import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
+import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 
 export const dynamic = 'force-dynamic'
 
@@ -297,11 +298,11 @@ export async function POST(request: NextRequest) {
       // Registrar evento rechazado
       await (supabase as any).from('integration_events').insert({
         connection_id: null,
-        source: 'paypal',
+        source: 'webhook',
         direction: 'inbound',
         event_type: eventType,
         external_event_id: eventId,
-        payload: { type: eventType, id: eventId },
+        payload: { provider: 'paypal', type: eventType, id: eventId },
         status: 'rejected',
         error_message: 'Firma de webhook inválida (verificación API PayPal)',
         // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
@@ -323,11 +324,12 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from('integration_events').insert({
         connection_id: matchedConnection.id,
         organization_id: organizationId,
-        source: 'paypal',
+        source: 'webhook',
         direction: 'inbound',
         event_type: eventType,
         external_event_id: eventId,
         payload: {
+          provider: 'paypal',
           type: eventType,
           id: eventId,
           resource_type: resourceType,
@@ -351,11 +353,12 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from('integration_events').insert({
         connection_id: matchedConnection.id,
         organization_id: organizationId,
-        source: 'paypal',
+        source: 'webhook',
         direction: 'inbound',
         event_type: eventType,
         external_event_id: eventId,
         payload: {
+          provider: 'paypal',
           type: eventType,
           id: eventId,
           resource_id: resource.id,
@@ -391,7 +394,7 @@ export async function POST(request: NextRequest) {
         transactionId: paypalResourceId,
         amount: amountDecimal,
         currency,
-        method: paymentMethodType,
+        method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         processorResponse: resource,
         gateway: 'paypal',
       })
@@ -410,7 +413,7 @@ export async function POST(request: NextRequest) {
         transactionId: paypalResourceId,
         amount: amountDecimal,
         currency,
-        method: paymentMethodType,
+        method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         processorResponse: resource,
         gateway: 'paypal',
       })
@@ -429,7 +432,7 @@ export async function POST(request: NextRequest) {
         transactionId: paypalResourceId,
         amount: amountDecimal,
         currency,
-        method: paymentMethodType,
+        method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         processorResponse: resource,
         gateway: 'paypal',
       })
@@ -448,7 +451,7 @@ export async function POST(request: NextRequest) {
         transactionId: paypalResourceId,
         amount: amountDecimal,
         currency,
-        method: paymentMethodType,
+        method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         processorResponse: resource,
         gateway: 'paypal',
       })
@@ -467,7 +470,7 @@ export async function POST(request: NextRequest) {
         transactionId: paypalResourceId,
         amount: amountDecimal,
         currency,
-        method: paymentMethodType,
+        method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         gateway: 'paypal',
       })
 
@@ -529,7 +532,7 @@ export async function POST(request: NextRequest) {
       branch_id: webOrder.branch_id,
       source: 'web_order',
       source_id: String(webOrder.id),
-      method: paymentMethodType,
+      method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
       amount: amountDecimal || webOrder.total,
       currency: currency || 'USD',
       reference: paypalResourceId,
@@ -548,11 +551,12 @@ export async function POST(request: NextRequest) {
     await (supabase as any).from('integration_events').insert({
       connection_id: matchedConnection.id,
       organization_id: organizationId,
-      source: 'paypal',
+      source: 'webhook',
       direction: 'inbound',
       event_type: eventType,
       external_event_id: eventId,
       payload: {
+        provider: 'paypal',
         type: eventType,
         id: eventId,
         resource_id: resource.id,
