@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
         payload: body,
         status: 'failed',
         error_message: 'No se pudo obtener el pago o verificar la firma',
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json({ received: true, processed: false })
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
         payload: body,
         status: 'processed',
         processed_at: new Date().toISOString(),
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json({ received: true, processed: true, no_order: true })
@@ -440,7 +440,7 @@ export async function POST(request: NextRequest) {
       payload: { ...body, payment_status: mpStatus, verified },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     })
 
     // 8. Actualizar last_received_at en integration_webhooks

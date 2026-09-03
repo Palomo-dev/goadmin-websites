@@ -37,10 +37,12 @@ export async function PUT(request: NextRequest) {
       .update({
         first_name: first_name || null,
         last_name: last_name || null,
-        full_name: [first_name, last_name].filter(Boolean).join(' ') || null,
+        // full_name, doc_type y doc_number son GENERATED ALWAYS AS (...),
+        // no se pueden actualizar manualmente. Se recalculan automáticamente
+        // a partir de first_name/last_name e identification_type/identification_number.
         phone: phone || null,
-        doc_type: doc_type || null,
-        doc_number: doc_number || null,
+        identification_type: doc_type || null,
+        identification_number: doc_number || null,
         address: address || null,
         city: city || null,
         updated_at: new Date().toISOString(),

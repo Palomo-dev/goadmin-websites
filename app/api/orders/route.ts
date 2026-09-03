@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
             email: customer.email,
             first_name: customer.firstName,
             last_name: customer.lastName,
-            full_name: `${customer.firstName} ${customer.lastName || ''}`.trim(),
+            // full_name es GENERATED ALWAYS AS (CASE ...), no se puede insertar.
             phone: customer.phone,
             address: customer.address,
             city: customer.city,

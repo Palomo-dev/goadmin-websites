@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
           payload: { object: objectType, entries_count: entries.length },
           status: 'rejected',
           error_message: 'Firma de webhook inválida',
-          event_time: new Date().toISOString(),
+          // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
         })
 
         return NextResponse.json(
@@ -238,9 +238,8 @@ export async function POST(request: NextRequest) {
           },
           status: 'processed',
           processed_at: new Date().toISOString(),
-          event_time: entry.time
-            ? new Date(entry.time * 1000).toISOString()
-            : new Date().toISOString(),
+          // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
+          // El timestamp original de Meta se conserva en payload.entry_time.
         })
       } else {
         for (const change of changes) {
@@ -261,9 +260,8 @@ export async function POST(request: NextRequest) {
             },
             status: 'processed',
             processed_at: new Date().toISOString(),
-            event_time: entry.time
-              ? new Date(entry.time * 1000).toISOString()
-              : new Date().toISOString(),
+            // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
+            // El timestamp original de Meta se conserva en payload.entry_time.
           })
         }
       }

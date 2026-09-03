@@ -121,7 +121,7 @@ export async function sendMetaCAPIEvent(
         payload: { eventId: data.eventId, error: responseData.error?.message },
         status: 'failed',
         error_message: responseData.error?.message || `HTTP ${response.status}`,
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       } as any)
 
       return { sent: false, error: `CAPI error: ${response.status}` }
@@ -142,7 +142,7 @@ export async function sendMetaCAPIEvent(
       },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     } as any)
 
     console.log(`[Meta CAPI] ${data.eventName} enviado OK: eventId=${data.eventId} value=${data.value} ${data.currency}`)

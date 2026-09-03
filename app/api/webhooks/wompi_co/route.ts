@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
           payload: body,
           status: 'rejected',
           error_message: 'Firma de webhook inválida',
-          event_time: new Date().toISOString(),
+          // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
         } as any)
 
         return NextResponse.json(
@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
       payload: body,
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     } as any)
 
     // 7. Actualizar last_received_at en integration_webhooks

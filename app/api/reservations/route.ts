@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           organization_id: organizationId,
           first_name: firstName,
           last_name: lastName || '',
-          full_name: `${firstName} ${lastName || ''}`.trim(),
+          // full_name es GENERATED ALWAYS AS (CASE ...), no se puede insertar.
           email: email,
           phone: phone,
           identification_type: identificationType || null,

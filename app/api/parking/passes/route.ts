@@ -94,8 +94,11 @@ export async function POST(request: NextRequest) {
           first_name: firstName,
           last_name: lastName,
           phone: customerPhone || null,
-          doc_type: customerDocType || null,
-          doc_number: customerDocNumber || null,
+          // doc_type y doc_number son GENERATED ALWAYS AS (...),
+          // no se pueden insertar. Se calculan a partir de
+          // identification_type e identification_number.
+          identification_type: customerDocType || null,
+          identification_number: customerDocNumber || null,
         })
         .select('id')
         .single()

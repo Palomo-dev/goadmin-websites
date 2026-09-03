@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           email: user.email,
           first_name: user.user_metadata?.first_name || '',
           last_name: user.user_metadata?.last_name || '',
-          full_name: `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || user.email,
+          // full_name es GENERATED ALWAYS AS (CASE ...), no se puede insertar.
           is_registered: true,
           address: address_line,
           city: city || null,

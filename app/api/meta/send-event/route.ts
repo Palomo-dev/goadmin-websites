@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         },
         status: 'failed',
         error_message: responseData.error?.message || `HTTP ${response.status}`,
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json(
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     })
 
     console.log(

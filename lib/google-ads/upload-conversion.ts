@@ -180,7 +180,7 @@ export async function uploadGoogleAdsConversion(
         payload: { orderId: data.orderId, category: data.category, error: err },
         status: 'failed',
         error_message: `HTTP ${uploadRes.status}: ${err.slice(0, 500)}`,
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       } as any)
 
       return { uploaded: false, error: `Upload failed: ${uploadRes.status}` }
@@ -196,7 +196,7 @@ export async function uploadGoogleAdsConversion(
       payload: { orderId: data.orderId, category: data.category, value: data.value, currency: data.currency },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     } as any)
 
     console.log(`[Google Ads] Conversión subida OK: orderId=${data.orderId} category=${data.category} value=${data.value} ${data.currency}`)

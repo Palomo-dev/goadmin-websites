@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
         payload,
         status: 'rejected',
         error_message: 'Firma inválida o merchant_id no coincide',
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       // PayU espera HTTP 200 siempre
@@ -363,7 +363,7 @@ export async function POST(request: NextRequest) {
         status: 'processed',
         error_message: `Orden no encontrada: ${reference}`,
         processed_at: new Date().toISOString(),
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json({ received: true, order_not_found: true })
@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
       payload: { ...payload, verified },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     })
 
     // 9. Actualizar last_received_at en integration_webhooks

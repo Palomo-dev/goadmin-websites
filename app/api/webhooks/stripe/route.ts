@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
         payload: { type: eventType, id: eventId },
         status: 'rejected',
         error_message: 'Firma de webhook inválida',
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json(
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         payload: { type: eventType, id: eventId, object_id: dataObject.id },
         status: 'processed',
         processed_at: new Date().toISOString(),
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json({ received: true, type: eventType, skipped: true })
@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
         payload: { type: eventType, id: eventId, object_id: dataObject.id, verified },
         status: 'processed',
         processed_at: new Date().toISOString(),
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
       })
 
       return NextResponse.json({ received: true, processed: true, no_order: true })
@@ -494,7 +494,7 @@ export async function POST(request: NextRequest) {
       },
       status: 'processed',
       processed_at: new Date().toISOString(),
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     })
 
     // 12. Actualizar last_received_at en integration_webhooks
