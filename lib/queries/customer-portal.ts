@@ -22,7 +22,7 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
     sb.from('coupons').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).or(`customer_id.eq.${customerId},customer_id.is.null`).eq('is_active', true),
     sb.from('memberships').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId).eq('status', 'active'),
     sb.from('member_checkins').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
-    sb.from('tickets').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
+    sb.from('trip_tickets').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('parking_passes').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId).eq('status', 'active'),
     sb.from('parking_vehicles').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
   ])

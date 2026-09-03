@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { cache } from 'react'
 import {
   getOrganizationByHost,
   getWebsiteHeaderNav,
@@ -27,7 +28,10 @@ export interface MegaMenuItem {
 
 export type FrozenReason = 'trial_expired' | 'suspended' | 'deleted' | 'payment_failed' | 'canceled' | null
 
-export async function getOrgContext() {
+// cache() de React deduplica llamadas dentro del mismo request.
+// getOrgContext se llama múltiples veces por página (generateMetadata + page),
+// esto elimina ~20 queries duplicadas a Supabase por carga de página.
+export const getOrgContext = cache(async () => {
   const headersList = await headers()
   const subdomain = headersList.get('x-subdomain')
   const customDomain = headersList.get('x-custom-domain')
@@ -42,13 +46,14 @@ export async function getOrgContext() {
   const templateId = organization.website_settings?.template_id || 'modern'
   const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
-  // Cargar navegación plana (compat) + árbol jerárquico (mega-menú)
-  const [headerNav, headerNavTree, footerNav, footerNavTree] = await Promise.all([
-    getWebsiteHeaderNav(organization.id),
+  // Cargar árbol jerárquico de navegación (header + footer)
+  // Las versiones planas se derivan del árbol para evitar queries duplicadas.
+  const [headerNavTree, footerNavTree] = await Promise.all([
     getWebsiteHeaderNavTree(organization.id),
-    getWebsiteFooterNav(organization.id),
     getWebsiteFooterNavTree(organization.id)
   ])
+  const headerNav = headerNavTree // el árbol ya contiene todos los nodos
+  const footerNav = footerNavTree
 
   // Cargar categorías para el mega-menú solo si la configuración lo activa
   const showCategoriesInHeader = organization.website_settings?.show_categories_in_header ?? false
@@ -87,7 +92,7 @@ export async function getOrgContext() {
   const currencyPosition = organization.website_settings?.currency_position ?? 'left'
 
   return { organization, primaryColor, template, headerNav, headerNavTree: effectiveHeaderNavTree, footerNav, footerNavTree, menuCategories, megaMenuItems, websiteMenus: footerMenus, frozenReason, showCurrencyCode, currencyPosition }
-}
+})
 
 export async function checkFrozenStatus(orgId: number, orgStatus: string | null): Promise<FrozenReason> {
   // Si la organización está suspendida o eliminada, está congelada

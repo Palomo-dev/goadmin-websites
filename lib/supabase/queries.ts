@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
@@ -197,7 +198,8 @@ export async function getOrganizationByCustomDomain(domain: string): Promise<Org
  * - Un host completo: "miempresa.goadmin.io"
  * - Un dominio personalizado: "www.miempresa.com"
  */
-export async function getOrganizationByHost(identifier: string): Promise<OrganizationWithDetails | null> {
+// cache() deduplica llamadas dentro del mismo request (layout + page + generateMetadata)
+export const getOrganizationByHost = cache(async (identifier: string): Promise<OrganizationWithDetails | null> => {
   if (!identifier) return null
   
   // Si el identificador no contiene punto, es un subdominio simple
@@ -220,7 +222,7 @@ export async function getOrganizationByHost(identifier: string): Promise<Organiz
   
   // Es un dominio personalizado
   return getOrganizationByCustomDomain(identifier)
-}
+})
 
 /**
  * Obtiene los ids de las sucursales cuyo inventario surte la tienda web.
@@ -228,7 +230,7 @@ export async function getOrganizationByHost(identifier: string): Promise<Organiz
  * Devuelve `null` si la organización no tiene ninguna sucursal marcada, para que
  * el sitio siga usando el inventario de todas las sucursales (comportamiento previo).
  */
-export async function getWebStockBranchIds(organizationId: number): Promise<number[] | null> {
+export const getWebStockBranchIds = cache(async (organizationId: number): Promise<number[] | null> => {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
@@ -239,7 +241,7 @@ export async function getWebStockBranchIds(organizationId: number): Promise<numb
 
   if (error || !data || data.length === 0) return null
   return data.map((b: any) => b.id as number)
-}
+})
 
 /**
  * Obtiene los productos de una organización para mostrar en el sitio
@@ -2301,13 +2303,80 @@ export async function getWebsiteMenus(organizationId: number): Promise<WebsiteMe
 /**
  * Obtiene menús filtrados por ubicación (header, footer, both).
  * Los menús con location='both' se incluyen en ambos filtros.
+ * Filtra en SQL para no traer menús innecesarios.
  */
 export async function getWebsiteMenusByLocation(
   organizationId: number,
   location: 'header' | 'footer'
 ): Promise<WebsiteMenuWithItems[]> {
-  const allMenus = await getWebsiteMenus(organizationId)
-  return allMenus.filter(m => m.location === location || m.location === 'both')
+  const supabase = getSupabaseForPublicRead()
+  if (!supabase) return []
+
+  // Filtrar por location en SQL: incluir 'both' siempre
+  const { data: menus, error: menusError } = await (supabase as any)
+    .from('website_menus')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .in('location', [location, 'both'])
+    .order('header_order', { ascending: true })
+
+  if (menusError || !menus || menus.length === 0) return []
+
+  const { data: items, error: itemsError } = await (supabase as any)
+    .from('website_menu_items')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  if (itemsError || !items) {
+    return (menus as WebsiteMenu[]).map(m => ({ ...m, items: [] }))
+  }
+
+  // Cargar páginas relacionadas (para items de tipo 'page' y 'policy')
+  const pageIds = (items as WebsiteMenuItem[])
+    .filter(i => i.page_id)
+    .map(i => i.page_id!) as string[]
+  let pagesMap = new Map<string, { id: string; slug: string; title: string }>()
+  if (pageIds.length > 0) {
+    const { data: pages } = await (supabase as any)
+      .from('website_pages')
+      .select('id, slug, title')
+      .in('id', pageIds)
+      .eq('is_published', true)
+    if (pages) {
+      pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
+    }
+  }
+
+  // Cargar categorías relacionadas (para items de tipo 'category')
+  const categoryIds = (items as WebsiteMenuItem[])
+    .filter(i => i.category_id)
+    .map(i => i.category_id!) as number[]
+  let categoriesMap = new Map<number, { id: number; name: string; slug: string }>()
+  if (categoryIds.length > 0) {
+    const { data: cats } = await (supabase as any)
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', categoryIds)
+    if (cats) {
+      categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
+    }
+  }
+
+  // Agrupar items por menu_id y construir árbol
+  const itemsByMenu = new Map<string, WebsiteMenuItem[]>()
+  ;(items as WebsiteMenuItem[]).forEach(item => {
+    const existing = itemsByMenu.get(item.menu_id) || []
+    existing.push(item)
+    itemsByMenu.set(item.menu_id, existing)
+  })
+
+  return (menus as WebsiteMenu[]).map(menu => ({
+    ...menu,
+    items: buildMenuItemTree(itemsByMenu.get(menu.id) || [], pagesMap, categoriesMap),
+  }))
 }
 
 /**

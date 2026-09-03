@@ -4,6 +4,7 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Button } from '@/components/ui/button'
 import { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
@@ -23,7 +24,9 @@ import { ProductDetailRenderer } from '@/components/sections/product-detail/Prod
 
 export const dynamic = 'force-dynamic'
 
-async function getProduct(productUuid: string, organizationId: number): Promise<any | null> {
+// cache() deduplica la llamada a getProduct dentro del mismo request
+// (generateMetadata + page la llaman con los mismos argumentos)
+const getProduct = cache(async (productUuid: string, organizationId: number): Promise<any | null> => {
   const supabase = createAdminClient() || createPublicClient()
   
   const { data, error } = await (supabase as any)
@@ -43,7 +46,7 @@ async function getProduct(productUuid: string, organizationId: number): Promise<
   const webBranchIds = await getWebStockBranchIds(organizationId)
   const [filtered] = filterStockByBranches(normalizeProductPrices([data as any]), webBranchIds)
   return filtered
-}
+})
 
 async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
