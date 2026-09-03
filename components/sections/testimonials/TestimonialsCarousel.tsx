@@ -72,7 +72,10 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
           <p>No hay testimonios disponibles aún</p>
         </div>
       ) : (
-      <div className={`grid ${gridCls}`} style={{ gap: `${gap}px` }}>
+      <div
+        className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0`}
+        style={{ gap: `${gap}px` }}
+      >
         {items.map((item) => {
           const isExpanded = expanded[item.id]
           const stars = ratingStars(item.rating)
@@ -81,7 +84,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
           return (
             <div
               key={item.id}
-              className={`relative bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 p-6`}
+              className={`relative bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 p-4 sm:p-6 snap-start flex-shrink-0 sm:flex-shrink-1 w-[85%] sm:w-auto`}
               style={{ padding: `${cardPadding}px`, backgroundColor: cardBg }}
             >
               {showRating && ratingStyle !== 'compact' && (

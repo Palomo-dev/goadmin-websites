@@ -159,9 +159,11 @@ export function gridColumnsClass(columns: any): string {
     const n = Number(val)
     return Number.isFinite(n) && n > 0 ? Math.min(n, 8) : fallback
   }
-  const desktop = resolve(typeof columns === 'object' ? columns?.desktop : columns, 3)
-  const tablet = resolve(typeof columns === 'object' ? columns?.tablet : columns, 2)
-  const mobile = resolve(typeof columns === 'object' ? columns?.mobile : columns, 1)
+  // Si columns es un número, usar defaults responsivos: mobile=1, tablet=2, desktop=columns
+  const isObj = typeof columns === 'object' && columns !== null
+  const desktop = resolve(isObj ? columns?.desktop : columns, 3)
+  const tablet = resolve(isObj ? columns?.tablet : undefined, 2)
+  const mobile = resolve(isObj ? columns?.mobile : undefined, 1)
   const map: Record<number, string> = {
     1: 'grid-cols-1',
     2: 'grid-cols-2',
