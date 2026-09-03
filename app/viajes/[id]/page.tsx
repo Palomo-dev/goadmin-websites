@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { getTripById } from '@/lib/supabase/queries'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
@@ -40,6 +41,7 @@ export default async function ViajeDetailPage({ params, searchParams }: { params
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const sp = await searchParams
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 

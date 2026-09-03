@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
 import Link from 'next/link'
@@ -17,6 +18,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { primaryColor } = ctx
 
   return (

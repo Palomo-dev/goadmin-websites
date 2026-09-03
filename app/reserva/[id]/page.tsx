@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { isValidUUID } from '@/lib/utils'
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Bed, CalendarDays, CheckCircle2, Clock, XCircle, ArrowLeft, Users, CreditCard } from 'lucide-react'
@@ -88,6 +89,7 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const reservation = await getReservation(id)

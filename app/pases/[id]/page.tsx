@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -56,6 +57,7 @@ export default async function PaseCheckoutPage({ params }: { params: Promise<{ i
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [passType, gateways] = await Promise.all([

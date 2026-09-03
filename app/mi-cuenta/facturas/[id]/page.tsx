@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerInvoiceDetail } from '@/lib/queries/customer-portal'
 import { createPublicClient } from '@/lib/supabase/server'
@@ -45,6 +46,7 @@ export default async function FacturaDetallePage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
   const { organization, primaryColor } = ctx
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const customer = await getAuthCustomer(organization.id)
 
   if (!customer) {

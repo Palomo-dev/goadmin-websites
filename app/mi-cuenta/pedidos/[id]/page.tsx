@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerOrderDetail } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -63,6 +64,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor } = ctx
   const customer = await getAuthCustomer(organization.id)
 

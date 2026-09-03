@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
@@ -20,6 +21,7 @@ export default async function ConfirmacionPage({ params }: { params: Promise<{ i
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   return (

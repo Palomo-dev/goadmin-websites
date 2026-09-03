@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { isValidUUID } from '@/lib/utils'
 import { createPublicClient } from '@/lib/supabase/server'
 import { getSpaceById } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
@@ -44,6 +45,7 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const [space, gateways] = await Promise.all([

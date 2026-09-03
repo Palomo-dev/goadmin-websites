@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { isValidUUID } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Metadata } from 'next'
 import { cache } from 'react'
@@ -117,6 +118,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const ctx = await getOrgContext()
   if (!ctx) return { title: 'Producto' }
   const { id } = await params
+  if (!isValidUUID(id)) return { title: 'Producto' }
   const product = await getProduct(id, ctx.organization.id)
   return {
     title: product ? `${product.name} | ${ctx.organization.name}` : `Producto | ${ctx.organization.name}`,
@@ -129,6 +131,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
 
   const product = await getProduct(id, organization.id)
