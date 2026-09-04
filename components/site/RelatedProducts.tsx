@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -24,9 +25,10 @@ interface RelatedProductsProps {
   cardStyle?: Record<string, any>
   layoutConfig?: Record<string, any>
   layout?: 'carousel' | 'grid'
+  branchId?: number | null
 }
 
-export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain, title, maxItems, cardStyle, layoutConfig, layout = 'carousel' }: RelatedProductsProps) {
+export function RelatedProducts({ products, primaryColor, currentProductId, organizationSubdomain, title, maxItems, cardStyle, layoutConfig, layout = 'carousel', branchId }: RelatedProductsProps) {
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
@@ -71,7 +73,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
     if (!price) return
 
     const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-    const cartKey = `cart_${subdomain}`
+    const cartKey = getCartKey(subdomain, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
     const existingIndex = cart.findIndex((item: any) => item.id === product.id)
@@ -121,6 +123,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
                 isAdded={isAdded}
                 organizationSubdomain={organizationSubdomain}
                 cardStyle={cardStyle}
+                branchId={branchId}
               />
             )
           })}
@@ -165,6 +168,7 @@ export function RelatedProducts({ products, primaryColor, currentProductId, orga
               isAdded={isAdded}
               organizationSubdomain={organizationSubdomain}
               cardStyle={cardStyle}
+              branchId={branchId}
               className={`flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] ${lgWidth} snap-start`}
             />
           )

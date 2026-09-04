@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ProductCard } from '@/components/sections/products/ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 const ITEMS_PER_PAGE = 12
@@ -40,14 +41,16 @@ interface OffersGridProps {
   }
   primaryColor?: string
   organization?: { subdomain?: string; website_settings?: any }
-  data?: { offerProducts?: any[] }
+  data?: { offerProducts?: any[]; branchId?: number | null }
+  branchId?: number | null
 }
 
-export function OffersGrid({ content, primaryColor = '#3B82F6', organization, data }: OffersGridProps) {
+export function OffersGrid({ content, primaryColor = '#3B82F6', organization, data, branchId }: OffersGridProps) {
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const manualOffers = content.offers || []
   const products = data?.offerProducts || []
+  const effectiveBranchId = branchId ?? data?.branchId ?? null
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
@@ -87,7 +90,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
     const price = Number(product.product_prices?.[0]?.price || 0)
     if (!price) return
     const subdomain = organization?.subdomain || (typeof window !== 'undefined' ? window.location.hostname.split('.')[0] : '')
-    const cartKey = `cart_${subdomain}`
+    const cartKey = getCartKey(subdomain, effectiveBranchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((item: any) => item.id === product.id)
     if (idx >= 0) { cart[idx].quantity += 1 } else {
@@ -190,6 +193,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                     onBuyNow={buyNow}
                     isAdded={isAdded}
                     organizationSubdomain={organization?.subdomain}
+                    branchId={effectiveBranchId}
                   />
                 )
               })}

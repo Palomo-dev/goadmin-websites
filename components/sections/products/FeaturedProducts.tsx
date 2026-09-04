@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -58,13 +59,14 @@ interface FeaturedProductsProps {
     icon_only?: boolean
   }
   primaryColor?: string
-  data?: { products?: any[] }
+  data?: { products?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: { show_buy_now_button?: boolean } }
 }
 
 export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsProps) {
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
+  const branchId = data?.branchId ?? null
   const allProducts = data?.products || []
   const maxItems = content.max_items || 8
   const products = allProducts.slice(0, maxItems)
@@ -92,7 +94,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
 
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const subdomain = organization?.subdomain || host.split('.')[0]
-    const cartKey = `cart_${subdomain}`
+    const cartKey = getCartKey(subdomain, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
     const existingIndex = cart.findIndex((item: any) => item.id === product.id)
@@ -170,6 +172,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                   onBuyNow={buyNow}
                   isAdded={isAdded}
                   organizationSubdomain={organization?.subdomain}
+                  branchId={branchId}
                   className="flex-shrink-0 w-[calc(50%-8px)] sm:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start"
                 />
               )

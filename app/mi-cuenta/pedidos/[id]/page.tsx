@@ -65,7 +65,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
 
   const { id } = await params
   if (!isValidUUID(id)) return <NotFoundPage />
-  const { organization, primaryColor } = ctx
+  const { organization, primaryColor, branchId } = ctx
   const customer = await getAuthCustomer(organization.id)
 
   if (!customer) {
@@ -119,6 +119,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
               }))}
               primaryColor={primaryColor}
               size="sm"
+              branchId={branchId}
             />
           )}
           {!isFinal && (

@@ -30,6 +30,7 @@ export default function MobileBottomSheet({
   settings,
   showCart,
   onCartClick,
+  branchId,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const navItems = buildNavItems(navTree);

@@ -8,6 +8,7 @@ import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { Zap, Minus, Plus } from 'lucide-react'
 import { isOutOfStock } from '@/lib/stock'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -19,13 +20,8 @@ function getVariantImageUrl(variant: any): string | null {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
 }
 
-function getCartKey(orgSubdomain?: string): string {
-  const subdomain = orgSubdomain || window.location.hostname.split('.')[0]
-  return `cart_${subdomain}`
-}
-
-function addItemToCart(item: { id: number; name: string; price: number; imageUrl?: string; comparePrice?: number; variantAttributes?: Record<string, string> }, orgSubdomain?: string) {
-  const cartKey = getCartKey(orgSubdomain)
+function addItemToCart(item: { id: number; name: string; price: number; imageUrl?: string; comparePrice?: number; variantAttributes?: Record<string, string> }, orgSubdomain?: string, branchId?: number | null) {
+  const cartKey = getCartKey(orgSubdomain || '', branchId)
   const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
   const idx = cart.findIndex((c: any) => c.id === item.id)
   if (idx >= 0) {
@@ -50,6 +46,7 @@ interface ProductDetailActionsProps {
   trackStock?: boolean
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
   buttonsLayout?: 'stacked' | 'inline' | 'split'
+  branchId?: number | null
 }
 
 export function ProductDetailActions({
@@ -65,6 +62,7 @@ export function ProductDetailActions({
   trackStock,
   stockLevels,
   buttonsLayout = 'stacked',
+  branchId,
 }: ProductDetailActionsProps) {
   const router = useRouter()
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
@@ -80,7 +78,7 @@ export function ProductDetailActions({
     const variantPrice = variant.product_prices?.[0]?.price || 0
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
-    const cartKey = getCartKey(organizationSubdomain)
+    const cartKey = getCartKey(organizationSubdomain || '', branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((c: any) => c.id === variant.id)
     if (idx >= 0) {
@@ -105,7 +103,7 @@ export function ProductDetailActions({
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
     // Limpiar carrito y agregar solo este producto
-    const cartKey = getCartKey(organizationSubdomain)
+    const cartKey = getCartKey(organizationSubdomain || '', branchId)
     const item = {
       id: variant.id,
       name: variant.name,
@@ -124,7 +122,7 @@ export function ProductDetailActions({
     if (modifierGroups.length > 0 && modifierRef.current) {
       if (!modifierRef.current.validate()) return
     }
-    const cartKey = getCartKey(organizationSubdomain)
+    const cartKey = getCartKey(organizationSubdomain || '', branchId)
     const modKey = selectedModifiers.map(m => m.modifierId).sort().join('-')
     const cartItemId = modKey ? `${product.id}_${modKey}` : product.id
     const item = {
@@ -146,7 +144,7 @@ export function ProductDetailActions({
     if (modifierGroups.length > 0 && modifierRef.current) {
       if (!modifierRef.current.validate()) return
     }
-    const cartKey = getCartKey(organizationSubdomain)
+    const cartKey = getCartKey(organizationSubdomain || '', branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const modKey = selectedModifiers.map(m => m.modifierId).sort().join('-')
     const cartItemId = modKey ? `${product.id}_${modKey}` : product.id
@@ -250,6 +248,7 @@ export function ProductDetailActions({
           onClick={handleAddWithQuantity}
           disabled={outOfStock}
           className={buttonsLayout === 'inline' ? 'flex-1' : undefined}
+          branchId={branchId}
         />
 
         <Button

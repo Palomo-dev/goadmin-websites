@@ -13,6 +13,7 @@ import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
+import { getCartKey } from '@/lib/utils'
 
 interface CartModifier {
   typeId: number
@@ -94,6 +95,7 @@ interface CheckoutWizardProps {
   checkoutSettings?: CheckoutSettings
   isRestaurant?: boolean
   organizationSubdomain?: string
+  branchId?: number | null
 }
 
 const METHOD_ICONS: Record<string, string> = {
@@ -122,7 +124,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingDescription: '',
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
   const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
@@ -226,8 +228,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   useEffect(() => {
     try {
-      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      const savedCart = localStorage.getItem(`cart_${subdomain}`)
+      const subdomain = organizationSubdomain || ''
+      // F5: carrito separado por outlet cuando hay branchId.
+      const cartKey = getCartKey(subdomain, branchId)
+      const savedCart = localStorage.getItem(cartKey)
       if (savedCart) {
         setCartItems(JSON.parse(savedCart))
       }
@@ -241,7 +245,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           const cartFromUrl = JSON.parse(cartParam)
           if (Array.isArray(cartFromUrl) && cartFromUrl.length > 0) {
             setCartItems(cartFromUrl)
-            localStorage.setItem(`cart_${subdomain}`, JSON.stringify(cartFromUrl))
+            localStorage.setItem(cartKey, JSON.stringify(cartFromUrl))
           }
         } catch {}
       }
@@ -326,8 +330,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         return item
       }).filter(item => item.quantity > 0)
 
-      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      localStorage.setItem(`cart_${subdomain}`, JSON.stringify(updated))
+      const subdomain = organizationSubdomain || ''
+      // F5: carrito separado por outlet cuando hay branchId.
+      const cartKey = getCartKey(subdomain, branchId)
+      localStorage.setItem(cartKey, JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
     })
@@ -336,8 +342,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const removeItem = (id: number | string) => {
     setCartItems(items => {
       const updated = items.filter(item => item.id !== id)
-      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      localStorage.setItem(`cart_${subdomain}`, JSON.stringify(updated))
+      const subdomain = organizationSubdomain || ''
+      // F5: carrito separado por outlet cuando hay branchId.
+      const cartKey = getCartKey(subdomain, branchId)
+      localStorage.setItem(cartKey, JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
     })
@@ -462,19 +470,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
     try {
       // 1. Crear la orden
+      // F5: branchId explícito del outlet activo. Si es undefined (sitio global
+      // sin outlet), se omite y el backend usa el fallback.
+      const finalBranchId = branchId ?? (cartItems.length > 0 ? (cartItems[0] as any).branchId : undefined)
       const orderPayload: any = {
         organizationId,
+        ...(typeof finalBranchId === 'number' ? { branchId: finalBranchId } : {}),
         customer: customerData,
-        ...(customerId && { customerId }),
+        ...(customerId ? { customerId } : {}),
         items: cartItems.map(item => ({
           id: item.productId || item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
           sku: (item as any).sku || null,
-          ...(item.modifiers && item.modifiers.length > 0 && { modifiers: item.modifiers }),
-          ...(item.newModifiers && item.newModifiers.length > 0 && { newModifiers: item.newModifiers }),
-          ...(item.notes && { notes: item.notes })
+          ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
+          ...(item.newModifiers && item.newModifiers.length > 0 ? { newModifiers: item.newModifiers } : {}),
+          ...(item.notes ? { notes: item.notes } : {})
         })),
         subtotal,
         shipping,
@@ -576,8 +588,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
         if (initRes.ok && initData.checkoutUrl) {
           // Limpiar carrito antes de redirigir
-          const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-          localStorage.removeItem(`cart_${subdomain}`)
+          localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
           window.dispatchEvent(new CustomEvent('cart-updated'))
 
           // Redirigir a la pasarela de pago
@@ -594,8 +605,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       setOrderNumber(createdOrderNumber)
       setOrderComplete(true)
 
-      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      localStorage.removeItem(`cart_${subdomain}`)
+      localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       setCartItems([])
     } catch (error) {

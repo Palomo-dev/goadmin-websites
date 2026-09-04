@@ -37,6 +37,7 @@ interface SiteHeaderProps {
   headerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
   megaMenuItems?: NavItem[]
+  branchId?: number | null
 }
 
 // Navegación por defecto si no hay template
@@ -218,6 +219,7 @@ function LegacyDesktopHeader({
   showCart,
   onCartClick,
   setMobileMenuOpen,
+  branchId,
 }: {
   organization: OrganizationWithDetails
   primaryColor: string
@@ -227,6 +229,7 @@ function LegacyDesktopHeader({
   showCart?: boolean
   onCartClick?: () => void
   setMobileMenuOpen: (open: boolean) => void
+  branchId?: number | null
 }) {
   const logoHeight = settings?.logo_height || 48
   const showHeaderCart = settings?.show_header_cart ?? false
@@ -303,7 +306,7 @@ function LegacyDesktopHeader({
               <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
               <CurrencySelector />
               {(showCart ?? showHeaderCart) && (
-                <CartIndicator onClick={onCartClick} primaryColor={primaryColor} />
+                <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
               )}
               {showHeaderAuth && (
                 <Link
@@ -320,7 +323,7 @@ function LegacyDesktopHeader({
             <div className="flex md:hidden items-center gap-2">
               <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
               {(showCart ?? showHeaderCart) && (
-                <CartIndicator onClick={onCartClick} primaryColor={primaryColor} />
+                <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
               )}
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -347,6 +350,7 @@ export default function SiteHeader({
   headerNavTree,
   menuCategories,
   megaMenuItems,
+  branchId,
 }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const settings = organization.website_settings
@@ -379,6 +383,7 @@ export default function SiteHeader({
     onCartClick,
     menuCategories,
     megaMenuItems,
+    branchId,
   }
 
   // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)

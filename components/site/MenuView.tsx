@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from './ProductModifierSelector'
 import { getAvailableStock } from '@/lib/stock'
+import { getCartKey } from '@/lib/utils'
 
 // ── Types ──
 
@@ -87,6 +88,7 @@ interface MenuViewProps {
   customerId?: string | null
   organizationId?: number | null
   initialFavorites?: number[]
+  branchId?: number | null
 }
 
 // ── Helpers ──
@@ -107,7 +109,7 @@ function getProductImageUrl(product: MenuProduct): string | null {
 export function MenuView({
   products, categories, tags, modifierTypes, variantRelations, modifierGroupsMap,
   primaryColor, organizationSubdomain, organizationName,
-  customerId, organizationId, initialFavorites = []
+  customerId, organizationId, initialFavorites = [], branchId
 }: MenuViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [selectedTags, setSelectedTags] = useState<Set<number>>(new Set())
@@ -239,7 +241,8 @@ export function MenuView({
     const basePrice = product.product_prices?.[0]?.price || 0
     const extraTotal = newModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
     const effectivePrice = Number(basePrice) + extraTotal
-    const cartKey = `cart_${organizationSubdomain}`
+    // F5: carrito separado por outlet cuando hay branchId (backward compat sin outlet).
+    const cartKey = getCartKey(organizationSubdomain, branchId)
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const imgUrl = getProductImageUrl(product)
 
@@ -261,10 +264,11 @@ export function MenuView({
         name: product.name,
         price: effectivePrice,
         quantity,
-        ...(imgUrl && { imageUrl: imgUrl }),
-        ...(notes && { notes }),
-        ...(modifiers.length > 0 && { modifiers }),
-        ...(newModifiers.length > 0 && { newModifiers })
+        ...(typeof branchId === 'number' ? { branchId } : {}),
+        ...(imgUrl ? { imageUrl: imgUrl } : {}),
+        ...(notes ? { notes } : {}),
+        ...(modifiers.length > 0 ? { modifiers } : {}),
+        ...(newModifiers.length > 0 ? { newModifiers } : {})
       })
     }
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isOutOfStock } from '@/lib/stock'
+import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 
 interface VariantData {
   id: number
@@ -25,13 +26,14 @@ interface StickyAddToCartProps {
   organizationSubdomain?: string
   trackStock?: boolean
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
+  branchId?: number | null
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
-function getCartKey(orgSubdomain?: string): string {
+function getCartKey(orgSubdomain?: string, branchId?: number | null): string {
   const subdomain = orgSubdomain || window.location.hostname.split('.')[0]
-  return `cart_${subdomain}`
+  return getCartKeyUtil(subdomain, branchId)
 }
 
 function getVariantImg(variant: VariantData): string | null {
@@ -53,7 +55,8 @@ export function StickyAddToCart({
   variants = [],
   organizationSubdomain,
   trackStock,
-  stockLevels
+  stockLevels,
+  branchId,
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -128,7 +131,7 @@ export function StickyAddToCart({
   const handleAddToCart = () => {
     if (outOfStock) return
     try {
-      const cartKey = getCartKey(organizationSubdomain)
+      const cartKey = getCartKey(organizationSubdomain, branchId)
       const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
       const activePrice = getActivePrice()
       const activeCp = getActiveComparePrice()

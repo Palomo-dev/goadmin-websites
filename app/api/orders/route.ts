@@ -39,14 +39,35 @@ export async function POST(request: NextRequest) {
     
     const supabase = getSupabase()
 
+    // ── F5: Validar branchId pertenece a la organización ──
+    // Si el cliente envía un branchId numérico (outlet), verificar que la
+    // sucursal existe y pertenece a la organización antes de usarlo.
+    if (Number.isFinite(branchId)) {
+      const { data: validBranch } = await (supabase as any)
+        .from('branches')
+        .select('id')
+        .eq('id', branchId)
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+
+      if (!validBranch) {
+        return NextResponse.json(
+          { error: 'branch_id no pertenece a la organización' },
+          { status: 400 }
+        )
+      }
+    }
+
     // ── Obtener branch_id (necesario para stock) ──
     // Prioridad: sucursal marcada como fuente de inventario web > principal > primera.
+    // F5: Si branchId es numérico y válido, se usa explícitamente sin fallback.
     let resolvedBranchId = branchId
-    if (!resolvedBranchId) {
+    if (!Number.isFinite(resolvedBranchId)) {
       const { data: branches } = await (supabase as any)
         .from('branches')
         .select('id, is_main, is_web_stock_source')
         .eq('organization_id', organizationId)
+        .eq('status', 'active')
         .order('id', { ascending: true })
 
       const list = branches || []

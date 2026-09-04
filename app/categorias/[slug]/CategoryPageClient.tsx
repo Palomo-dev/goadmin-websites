@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -60,6 +61,7 @@ interface CategoryPageClientProps {
   organizationSubdomain: string
   organizationId: number
   showBuyNow?: boolean
+  branchId?: number | null
 }
 
 function getProductImageUrl(product: Product): string | null {
@@ -93,7 +95,8 @@ export function CategoryPageClient({
   currentView,
   organizationSubdomain,
   organizationId,
-  showBuyNow = true
+  showBuyNow = true,
+  branchId
 }: CategoryPageClientProps) {
   const router = useRouter()
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
@@ -137,7 +140,7 @@ export function CategoryPageClient({
 
   const addToCart = (product: Product) => {
     const price = product.product_prices?.[0]?.price || 0
-    const cartKey = `cart_${organizationSubdomain}`
+    const cartKey = getCartKey(organizationSubdomain, branchId)
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const existingIndex = existingCart.findIndex((item: any) => item.id === product.id)
 
@@ -268,6 +271,7 @@ export function CategoryPageClient({
                   onBuyNow={() => buyNow(product)}
                   showBuyNow={showBuyNow}
                   organizationSubdomain={organizationSubdomain}
+                  branchId={branchId}
                 />
               ))}
             </div>
@@ -284,6 +288,7 @@ export function CategoryPageClient({
                   onBuyNow={() => buyNow(product)}
                   showBuyNow={showBuyNow}
                   organizationSubdomain={organizationSubdomain}
+                  branchId={branchId}
                 />
               ))}
             </div>

@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
+import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -244,12 +245,17 @@ export const getWebStockBranchIds = cache(async (organizationId: number): Promis
 })
 
 /**
- * Obtiene los productos de una organización para mostrar en el sitio
+ * Obtiene los productos de una organización para mostrar en el sitio.
+ * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getOrganizationProducts(organizationId: number, limit = 12) {
+export async function getOrganizationProducts(organizationId: number, limit = 12, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
-  
-  const { data, error } = await supabase
+
+  // F3: filtrar categorías permitidas según la regla de branch_id.
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+
+  let query = supabase
     .from('products')
     .select(`
       *,
@@ -273,8 +279,13 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .is('parent_product_id', null)
-    .limit(limit)
-  
+
+  if (allowedCategoryIds) {
+    query = query.in('category_id', allowedCategoryIds)
+  }
+
+  const { data, error } = await query.limit(limit)
+
   if (error) return []
 
   // Contar variantes para productos padre
@@ -293,7 +304,10 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     }
   }
 
-  const webBranchIds = await getWebStockBranchIds(organizationId)
+  // F3: cuando hay outlet activo, el stock se filtra solo por ese branch.
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
 
   return filterStockByBranches(
     normalizeProductPrices((data || []).map((p: any) => ({
@@ -301,18 +315,23 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
       has_variants: p.is_parent === true,
       variant_count: variantCountMap[p.id] || 0,
     }))),
-    webBranchIds
+    stockBranchIds
   )
 }
 
 /**
- * Obtiene productos en oferta (compare_price > price), ordenados por ventas
+ * Obtiene productos en oferta (compare_price > price), ordenados por ventas.
+ * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getOfferProducts(organizationId: number, limit = 500) {
+export async function getOfferProducts(organizationId: number, limit = 500, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
+  // F3: filtrar categorías permitidas según la regla de branch_id.
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+
   // 1. Traer todos los productos activos con precios
-  const { data: products, error } = await supabase
+  let baseQuery = supabase
     .from('products')
     .select(`
       *,
@@ -327,7 +346,12 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .is('parent_product_id', null)
-    .limit(500)
+
+  if (allowedCategoryIds) {
+    baseQuery = baseQuery.in('category_id', allowedCategoryIds)
+  }
+
+  const { data: products, error } = await baseQuery.limit(500)
 
   if (error || !products) return []
 
@@ -373,7 +397,9 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
     }
   }
 
-  const webBranchIds = await getWebStockBranchIds(organizationId)
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
 
   // 5. Ordenar por ventas (descendente) y limitar
   return filterStockByBranches(
@@ -383,29 +409,39 @@ export async function getOfferProducts(organizationId: number, limit = 500) {
       variant_count: variantCountMap[p.id] || 0,
       sales_count: salesMap[p.id] || 0,
     })),
-    webBranchIds
+    stockBranchIds
   )
     .sort((a: any, b: any) => b.sales_count - a.sales_count)
     .slice(0, limit)
 }
 
 /**
- * Obtiene los servicios de una organización (usando productos tipo servicio)
+ * Obtiene los servicios de una organización (usando productos tipo servicio).
+ * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getOrganizationServices(organizationId: number, limit = 12) {
+export async function getOrganizationServices(organizationId: number, limit = 12, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
-  
+
+  // F3: filtrar categorías permitidas según la regla de branch_id.
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+
   // Los servicios se manejan como productos con unit_code 'SV' (Servicio)
-  const { data, error } = await supabase
+  let query = supabase
     .from('products')
     .select(`
       *,
       product_prices (*)
     `)
     .eq('organization_id', organizationId)
-    .eq('unit_code', 'SV  ')
+    .eq('unit_code', 'SV')
     .eq('status', 'active')
-    .limit(limit)
+
+  if (allowedCategoryIds) {
+    query = query.in('category_id', allowedCategoryIds)
+  }
+
+  const { data, error } = await query.limit(limit)
 
   if (error) return []
   return normalizeProductPrices(data || [])
@@ -430,15 +466,29 @@ export async function getOrganizationBranches(organizationId: number) {
 }
 
 /**
- * Obtiene las categorías de productos de una organización
+ * Obtiene las categorías de productos de una organización.
+ * F3: acepta `branchId` opcional. undefined = no filtrar (backward compat),
+ * null = solo globales, X = outlet X + globales.
  */
-export async function getOrganizationCategories(organizationId: number) {
+export async function getOrganizationCategories(organizationId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
+    .eq('is_active', true)
+
+  // Regla de filtro branch_id (F1 §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+  // branchId === undefined → no filtrar (backward compat)
+
+  const { data, error } = await query
+    .order('display_order', { ascending: true })
     .order('rank', { ascending: true })
 
   if (error) return []
@@ -446,35 +496,66 @@ export async function getOrganizationCategories(organizationId: number) {
 }
 
 /**
- * Obtiene productos por categoría
+ * Obtiene productos por categoría.
+ * F3: acepta `branchId` opcional; valida que la categoría sea visible para el outlet.
  */
-export async function getProductsByCategory(organizationId: number, categoryId: number) {
+export async function getProductsByCategory(organizationId: number, categoryId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
-  
+
+  // F3: si hay branchId, validar que la categoría sea visible para ese outlet
+  if (typeof branchId === 'number') {
+    const { data: cat } = await (supabase as any)
+      .from('categories')
+      .select('id, branch_id')
+      .eq('organization_id', organizationId)
+      .eq('id', categoryId)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!cat || (cat.branch_id !== null && cat.branch_id !== branchId)) {
+      return [] // categoría no visible para este outlet
+    }
+  }
+
   const { data, error } = await supabase
     .from('products')
-    .select(`*, product_prices (*)`)
+    .select(`*, product_prices (*), stock_levels ( branch_id, qty_on_hand, qty_reserved )`)
     .eq('organization_id', organizationId)
     .eq('category_id', categoryId)
     .eq('status', 'active')
     .is('parent_product_id', null)
-  
+
   if (error) return []
-  return normalizeProductPrices(data || [])
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
 }
 
 /**
  * Obtiene productos con imagen para varias categorías a la vez.
  * Devuelve un mapa `categoryId -> products[]` (F7.2 preview de banners).
  * Incluye `product_images` para resolver la miniatura en el preview.
+ * F3: acepta `branchId` opcional para filtrar los categoryIds a los visibles del outlet.
  */
 export async function getProductsByCategoryIds(
   organizationId: number,
   categoryIds: number[],
   limitPerCategory = 12,
+  branchId?: number | null,
 ): Promise<Record<number, any[]>> {
   if (categoryIds.length === 0) return {}
   const supabase = getSupabaseForPublicRead()
+
+  // F3: si hay branchId, filtrar los categoryIds a solo los visibles del outlet
+  let effectiveCategoryIds = categoryIds
+  if (typeof branchId === 'number') {
+    const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+    if (allowedCategoryIds === null || allowedCategoryIds.length === 0) return {}
+    // Intersectar los categoryIds solicitados con los permitidos
+    const allowedSet = new Set(allowedCategoryIds)
+    effectiveCategoryIds = categoryIds.filter(id => allowedSet.has(id))
+    if (effectiveCategoryIds.length === 0) return {}
+  }
 
   const { data, error } = await supabase
     .from('products')
@@ -489,7 +570,7 @@ export async function getProductsByCategoryIds(
       )
     `)
     .eq('organization_id', organizationId)
-    .in('category_id', categoryIds)
+    .in('category_id', effectiveCategoryIds)
     .eq('status', 'active')
     .is('parent_product_id', null)
 
@@ -530,15 +611,24 @@ export async function getWebsitePagesByIds(
   })
   return map
 }
-export async function getCategoryBySlug(organizationId: number, slug: string) {
+export async function getCategoryBySlug(organizationId: number, slug: string, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('slug', slug)
-    .single()
+    .eq('is_active', true)
+
+  // F3-R3: filtrar por branchId del outlet
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+
+  const { data, error } = await query.single()
 
   if (error || !data) return null
   const [enriched] = await enrichCategoriesWithFallbackImage(supabase, [data])
@@ -548,22 +638,33 @@ export async function getCategoryBySlug(organizationId: number, slug: string) {
 /**
  * Obtiene subcategorías de una categoría padre
  */
-export async function getSubcategories(organizationId: number, parentId: number) {
+export async function getSubcategories(organizationId: number, parentId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('categories')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('parent_id', parentId)
-    .order('rank', { ascending: true })
+    .eq('is_active', true)
+
+  // F3-R3: filtrar por branchId del outlet
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+
+  const { data, error } = await query.order('rank', { ascending: true })
 
   if (error) return []
   return enrichCategoriesWithFallbackImage(supabase, data || [])
 }
 
 /**
- * Obtiene productos por categoría con paginación y ordenamiento
+ * Obtiene productos por categoría con paginación y ordenamiento.
+ * F3: acepta `branchId` opcional en `options` para validar que la categoría
+ * (y subcategorías) sean visibles para el outlet.
  */
 export async function getProductsByCategoryPaginated(
   organizationId: number,
@@ -573,24 +674,58 @@ export async function getProductsByCategoryPaginated(
     limit?: number
     sort?: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'newest' | 'best_selling'
     subcategoryId?: number
+    branchId?: number | null
   } = {}
 ) {
   const supabase = getSupabaseForPublicRead()
-  const { page = 1, limit = 12, sort = 'best_selling', subcategoryId } = options
+  const { page = 1, limit = 12, sort = 'best_selling', subcategoryId, branchId } = options
   const offset = (page - 1) * limit
+
+  // F3: si hay branchId, validar que la categoría padre sea visible para el outlet
+  if (typeof branchId === 'number') {
+    const { data: parentCat } = await (supabase as any)
+      .from('categories')
+      .select('id, branch_id')
+      .eq('organization_id', organizationId)
+      .eq('id', categoryId)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!parentCat || (parentCat.branch_id !== null && parentCat.branch_id !== branchId)) {
+      return { products: [], total: 0 } // categoría no visible para este outlet
+    }
+  }
 
   // Obtener IDs de subcategorías para incluir productos de subcategorías
   let categoryIds = [categoryId]
   if (!subcategoryId) {
-    const { data: subs } = await supabase
+    let subQuery = supabase
       .from('categories')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('parent_id', categoryId)
+      .eq('is_active', true)
+    // F3: filtrar subcategorías visibles del outlet
+    if (typeof branchId === 'number') {
+      subQuery = subQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`)
+    }
+    const { data: subs } = await subQuery
     if (subs && subs.length > 0) {
       categoryIds = [...categoryIds, ...subs.map((s: any) => s.id)]
     }
   } else {
+    // F3: si hay branchId y subcategoryId, validar que la subcategoría pertenece al outlet
+    if (typeof branchId === 'number') {
+      const { data: subCat } = await (supabase as any)
+        .from('categories')
+        .select('id, branch_id')
+        .eq('organization_id', organizationId)
+        .eq('id', subcategoryId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (!subCat || (subCat.branch_id !== null && subCat.branch_id !== branchId)) {
+        return { products: [], total: 0 }
+      }
+    }
     categoryIds = [subcategoryId]
   }
 
@@ -610,6 +745,11 @@ export async function getProductsByCategoryPaginated(
     .in('category_id', categoryIds)
     .eq('status', 'active')
     .is('parent_product_id', null)
+
+  // F3: stock por outlet activo
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
 
   // Para best_selling, traer todos y ordenar en memoria con datos de ventas
   if (sort === 'best_selling') {
@@ -639,7 +779,7 @@ export async function getProductsByCategoryPaginated(
       .sort((a: any, b: any) => b.sales_count - a.sales_count)
 
     const paginated = sorted.slice(offset, offset + limit)
-    return { products: filterStockByBranches(normalizeProductPrices(paginated), await getWebStockBranchIds(organizationId)), total: count || 0 }
+    return { products: filterStockByBranches(normalizeProductPrices(paginated), stockBranchIds), total: count || 0 }
   }
 
   // Ordenamiento estándar
@@ -665,10 +805,8 @@ export async function getProductsByCategoryPaginated(
 
   if (error) return { products: [], total: 0 }
 
-  const webBranchIds = await getWebStockBranchIds(organizationId)
-
   // Adjuntar sales_count para los demás sorts
-  const prods = filterStockByBranches(data || [], webBranchIds)
+  const prods = filterStockByBranches(data || [], stockBranchIds)
   if (prods.length > 0) {
     const productIds = prods.map((p: any) => p.id)
     const salesMap: Record<number, number> = {}
@@ -699,6 +837,7 @@ export async function getParentCategory(organizationId: number, parentId: number
     .select('id, name, slug')
     .eq('organization_id', organizationId)
     .eq('id', parentId)
+    .eq('is_active', true)
     .single()
   
   if (error || !data) return null
@@ -752,29 +891,49 @@ export async function getOrganizationSpaceTypes(organizationId: number) {
 
 /**
  * Obtiene los espacios reales (habitaciones) de una organización con imágenes, servicios y tipo.
+ * F3: acepta `branchId` opcional para filtrar espacios del outlet + globales.
  */
-export async function getOrganizationSpaces(organizationId: number) {
+export async function getOrganizationSpaces(organizationId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
-  // Branches de la org
-  const { data: branches } = await supabase
-    .from('branches')
-    .select('id')
-    .eq('organization_id', organizationId)
-
-  if (!branches || branches.length === 0) return []
-  const branchIds = branches.map((b: any) => b.id)
+  // F3: si hay branchId numérico, filtrar espacios del outlet + globales.
+  // Si branchId es undefined, traer todos los branches de la org (backward compat).
+  let branchIds: number[] | null = null
+  if (typeof branchId === 'number') {
+    // Outlet activo: espacios del outlet + globales (branch_id IS NULL).
+    // Se usa OR en vez de IN para incluir los globales.
+    branchIds = null // se maneja con OR abajo
+  } else if (branchId === undefined) {
+    const { data: branches } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', organizationId)
+    if (!branches || branches.length === 0) return []
+    branchIds = branches.map((b: any) => b.id as number)
+  } else {
+    // branchId === null → solo espacios globales (branch_id IS NULL)
+    branchIds = null
+  }
 
   // Spaces con tipo
-  const { data: spaces, error } = await supabase
+  let spacesQuery = supabase
     .from('spaces')
     .select(`
-      id, label, floor_zone, status, description, metadata, space_type_id,
+      id, label, floor_zone, status, description, metadata, space_type_id, branch_id,
       space_types ( id, name, short_name, category_code, base_rate, capacity, area_sqm, amenities, booking_rules )
     `)
-    .in('branch_id', branchIds)
     .eq('status', 'available')
-    .order('label', { ascending: true })
+
+  if (branchId === null) {
+    spacesQuery = (spacesQuery as any).is('branch_id', null)
+  } else if (typeof branchId === 'number') {
+    // Outlet activo: espacios del outlet + globales (branch_id IS NULL)
+    spacesQuery = (spacesQuery as any).or(`branch_id.eq.${branchId},branch_id.is.null`)
+  } else if (branchIds) {
+    spacesQuery = (spacesQuery as any).in('branch_id', branchIds)
+  }
+
+  const { data: spaces, error } = await spacesQuery.order('label', { ascending: true })
 
   if (error || !spaces) return []
 
@@ -1024,36 +1183,65 @@ export async function getOrCreateCustomer(organizationId: number, email: string,
 // ==========================================
 
 /**
- * Obtiene una página por slug con sus secciones visibles ordenadas
+ * Obtiene una página por slug con sus secciones visibles ordenadas.
+ *
+ * F1: acepta `branchId` opcional. Cuando es un número (outlet activo), busca
+ * primero la página del outlet (branch_id = branchId) y si no existe cae a la
+ * página global (branch_id IS NULL). Cuando es null/undefined, behavior
+ * idéntica a antes (solo página global).
  */
 export async function getWebsitePageBySlug(
   organizationId: number,
-  slug: string
+  slug: string,
+  branchId?: number | null,
 ): Promise<WebsitePageWithSections | null> {
   const supabase = getSupabaseForPublicRead()
 
+  const select = `
+    *,
+    website_page_sections (
+      id,
+      section_type,
+      section_variant,
+      content,
+      settings,
+      sort_order,
+      is_visible
+    )
+  `
+
+  // 1. Si hay outlet activo, buscar primero la página del outlet
+  if (typeof branchId === 'number') {
+    const { data: outletPage } = await supabase
+      .from('website_pages')
+      .select(select)
+      .eq('organization_id', organizationId)
+      .eq('slug', slug)
+      .eq('is_published', true)
+      .eq('branch_id', branchId)
+      .maybeSingle()
+    if (outletPage) {
+      const page = outletPage as WebsitePageWithSections
+      page.website_page_sections = (page.website_page_sections || [])
+        .filter((s) => s.is_visible)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      return page
+    }
+    // Fallback: buscar página global si no hay del outlet
+  }
+
+  // 2. Buscar página global (branch_id IS NULL)
   const { data, error } = await supabase
     .from('website_pages')
-    .select(`
-      *,
-      website_page_sections (
-        id,
-        section_type,
-        section_variant,
-        content,
-        settings,
-        sort_order,
-        is_visible
-      )
-    `)
+    .select(select)
     .eq('organization_id', organizationId)
     .eq('slug', slug)
     .eq('is_published', true)
-    .single()
+    .is('branch_id', null)
+    .maybeSingle()
 
   if (error || !data) return null
 
-  // Filtrar secciones visibles y ordenar por sort_order
   const page = data as WebsitePageWithSections
   page.website_page_sections = (page.website_page_sections || [])
     .filter((s) => s.is_visible)
@@ -1103,17 +1291,27 @@ export async function getWebsitePageByType(
 }
 /**
  * Incluye campos de mega-menú: parent_page_id, linked_category_id, menu_icon, menu_badge
+ * F1: acepta `branchId` opcional para filtrar páginas del outlet + globales.
  */
-export async function getWebsiteHeaderNav(organizationId: number): Promise<WebsitePage[]> {
+export async function getWebsiteHeaderNav(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('website_pages')
     .select('id, slug, title, header_order, parent_page_id, linked_category_id, menu_icon, menu_badge')
     .eq('organization_id', organizationId)
     .eq('is_published', true)
     .eq('show_in_header', true)
-    .order('header_order', { ascending: true })
+
+  // Regla de filtro branch_id (F1 §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+  // branchId === undefined → no filtrar (backward compat)
+
+  const { data, error } = await query.order('header_order', { ascending: true })
 
   if (error || !data) return []
   return data as WebsitePage[]
@@ -1122,25 +1320,35 @@ export async function getWebsiteHeaderNav(organizationId: number): Promise<Websi
 /**
  * Obtiene el árbol jerárquico de páginas del header (anidadas por parent_page_id)
  */
-export async function getWebsiteHeaderNavTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
-  const flat = await getWebsiteHeaderNav(organizationId)
+export async function getWebsiteHeaderNavTree(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
+  const flat = await getWebsiteHeaderNav(organizationId, branchId)
   return buildMenuTree(flat)
 }
 
 /**
  * Obtiene las páginas para el footer
  * Incluye campos de mega-menú para jerarquía del footer
+ * F1: acepta `branchId` opcional para filtrar páginas del outlet + globales.
  */
-export async function getWebsiteFooterNav(organizationId: number): Promise<WebsitePage[]> {
+export async function getWebsiteFooterNav(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('website_pages')
     .select('id, slug, title, footer_order, parent_page_id, linked_category_id, menu_icon, menu_badge')
     .eq('organization_id', organizationId)
     .eq('is_published', true)
     .eq('show_in_footer', true)
-    .order('footer_order', { ascending: true })
+
+  // Regla de filtro branch_id (F1 §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+  // branchId === undefined → no filtrar (backward compat)
+
+  const { data, error } = await query.order('footer_order', { ascending: true })
 
   if (error || !data) return []
   return data as WebsitePage[]
@@ -1149,8 +1357,8 @@ export async function getWebsiteFooterNav(organizationId: number): Promise<Websi
 /**
  * Obtiene el árbol jerárquico de páginas del footer (anidadas por parent_page_id)
  */
-export async function getWebsiteFooterNavTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
-  const flat = await getWebsiteFooterNav(organizationId)
+export async function getWebsiteFooterNavTree(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
+  const flat = await getWebsiteFooterNav(organizationId, branchId)
   return buildMenuTree(flat)
 }
 
@@ -1211,15 +1419,24 @@ export interface MenuCategory {
   children: MenuCategory[]
 }
 
-export async function getMenuCategories(organizationId: number): Promise<MenuCategory[]> {
+export async function getMenuCategories(organizationId: number, branchId?: number | null): Promise<MenuCategory[]> {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('categories')
     .select('id, uuid, name, slug, icon, color, image_url, parent_id, is_active, display_order, rank')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
-    .order('rank', { ascending: true })
+
+  // Regla de filtro branch_id (F1 §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  }
+  // branchId === undefined → no filtrar (backward compat)
+
+  const { data, error } = await query.order('display_order', { ascending: true }).order('rank', { ascending: true })
 
   if (error || !data) return []
 
@@ -1457,12 +1674,17 @@ export async function getGymClassById(classId: number, organizationId: number) {
 // ==========================================
 
 /**
- * Obtiene productos para el menú de restaurante con tags, imágenes y stock
+ * Obtiene productos para el menú de restaurante con tags, imágenes y stock.
+ * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getMenuProducts(organizationId: number, limit = 100) {
+export async function getMenuProducts(organizationId: number, limit = 100, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  // F3: filtrar categorías permitidas según la regla de branch_id.
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+
+  let query = supabase
     .from('products')
     .select(`
       *,
@@ -1476,22 +1698,29 @@ export async function getMenuProducts(organizationId: number, limit = 100) {
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
-    .order('name', { ascending: true })
-    .limit(limit)
+
+  if (allowedCategoryIds) {
+    query = query.in('category_id', allowedCategoryIds)
+  }
+
+  const { data, error } = await query.order('name', { ascending: true }).limit(limit)
 
   if (error) return []
-  const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
 }
 
 /**
  * Obtiene productos por sus IDs (para favoritos, re-pedidos, etc.)
+ * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getProductsByIds(productIds: number[], organizationId: number) {
+export async function getProductsByIds(productIds: number[], organizationId: number, branchId?: number | null) {
   if (!productIds.length) return []
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('products')
     .select(`
       *,
@@ -1506,9 +1735,20 @@ export async function getProductsByIds(productIds: number[], organizationId: num
     .eq('status', 'active')
     .in('id', productIds)
 
+  // F3: si hay branchId, filtrar por categorías visibles del outlet
+  if (typeof branchId === 'number') {
+    const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+    if (allowedCategoryIds === null || allowedCategoryIds.length === 0) return []
+    query = query.in('category_id', allowedCategoryIds)
+  }
+
+  const { data, error } = await query
+
   if (error) return []
-  const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
 }
 
 /**

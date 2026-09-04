@@ -9,6 +9,7 @@ import {
   ShoppingBag, Trash2, Plus, Minus, ArrowLeft, ArrowRight,
   Package, ShieldCheck, Truck, CreditCard
 } from 'lucide-react'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -62,6 +63,7 @@ interface CartPageClientProps {
   organizationId: number
   cartSettings: CartSettings
   suggestedProducts: SuggestedProduct[]
+  branchId?: number | null
 }
 
 function getProductImageUrl(product: SuggestedProduct): string | null {
@@ -78,14 +80,15 @@ export function CartPageClient({
   organizationSubdomain,
   organizationId,
   cartSettings,
-  suggestedProducts
+  suggestedProducts,
+  branchId
 }: CartPageClientProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
     return options[Math.floor(Math.random() * options.length)]
   })
-  const cartKey = `cart_${organizationSubdomain}`
+  const cartKey = getCartKey(organizationSubdomain, branchId)
 
   useEffect(() => {
     const loadCart = () => {

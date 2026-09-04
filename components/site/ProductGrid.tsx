@@ -9,6 +9,7 @@ import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizon
 import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
 import { getAvailableStock } from '@/lib/stock'
+import { getCartKey } from '@/lib/utils'
 
 interface ProductImage {
   id: number
@@ -73,11 +74,12 @@ interface ProductGridProps {
   organizationSubdomain: string
   organizationId?: number
   showBuyNow?: boolean
+  branchId?: number | null
 }
 
 const ITEMS_PER_PAGE = 12
 
-export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true }: ProductGridProps) {
+export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId }: ProductGridProps) {
   const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
@@ -130,7 +132,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
     const price = product.product_prices?.[0]?.price || 0
     
     // Obtener carrito actual
-    const cartKey = `cart_${organizationSubdomain}`
+    const cartKey = getCartKey(organizationSubdomain, branchId)
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     
     // Buscar si ya existe el producto

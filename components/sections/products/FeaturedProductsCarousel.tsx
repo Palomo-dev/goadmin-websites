@@ -4,17 +4,19 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 interface FeaturedProductsCarouselProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { products?: any[] }
+  data?: { products?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: any }
 }
 
 export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsCarouselProps) {
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
+  const branchId = data?.branchId ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = data?.products || []
   const maxItems = content.max_items || 8
@@ -68,7 +70,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
     if (price === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const sub = organizationSubdomain || host.split('.')[0]
-    const cartKey = `cart_${sub}`
+    const cartKey = getCartKey(sub, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((item: any) => item.id === product.id)
     if (idx >= 0) {
@@ -148,6 +150,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                   onBuyNow={buyNow}
                   isAdded={isAdded}
                   organizationSubdomain={organizationSubdomain}
+                  branchId={branchId}
                   className={cardWidthClass}
                 />
               )

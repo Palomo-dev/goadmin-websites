@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
 
@@ -33,6 +34,7 @@ interface CategoryProductsProps {
     currentView?: string
     organizationSubdomain?: string
     showBuyNow?: boolean
+    branchId?: number | null
   }
 }
 
@@ -55,6 +57,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
   const view = (data?.currentView || 'grid') as 'grid' | 'list'
   const organizationSubdomain = data?.organizationSubdomain || ''
   const showBuyNow = data?.showBuyNow ?? true
+  const branchId = data?.branchId ?? null
   const emptyMessage = content.empty_message || 'No hay productos en esta categoría'
 
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
@@ -80,7 +83,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
 
   const addToCart = (product: any) => {
     const price = product.product_prices?.[0]?.price || 0
-    const cartKey = `cart_${organizationSubdomain}`
+    const cartKey = getCartKey(organizationSubdomain, branchId)
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const existingIndex = existingCart.findIndex((item: any) => item.id === product.id)
 
@@ -145,6 +148,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
               onBuyNow={() => buyNow(product)}
               showBuyNow={showBuyNow}
               organizationSubdomain={organizationSubdomain}
+              branchId={branchId}
             />
           ))}
         </div>
@@ -161,6 +165,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
               onBuyNow={() => buyNow(product)}
               showBuyNow={showBuyNow}
               organizationSubdomain={organizationSubdomain}
+              branchId={branchId}
             />
           ))}
         </div>

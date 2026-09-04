@@ -1,20 +1,11 @@
-import { headers } from 'next/headers'
 import { Metadata } from 'next'
 import { 
-  getOrganizationByHost, 
   getOrganizationProducts, 
   getOrganizationCategories,
   getOrganizationSpaceTypes,
   getOrganizationSpaces,
   getOrganizationServices,
   getWebsitePageBySlug,
-  getWebsiteHeaderNav,
-  getWebsiteHeaderNavTree,
-  getWebsiteFooterNav,
-  getWebsiteFooterNavTree,
-  getMenuCategories,
-  getMenuById,
-  getWebsiteMenusByLocation,
   getMetaPixelId,
   getGoogleAdsConfig,
   getMenuProducts,
@@ -33,62 +24,53 @@ import {
   getProductsByCategoryIds,
   getWebsitePagesByIds
 } from '@/lib/supabase/queries'
-import type { MegaMenuItem } from '@/lib/get-org-context'
+import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
 import { getBusinessTypeConfig } from '@/types/organization'
-import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { PreviewableSections } from '@/components/sections/PreviewableSections'
 import { JsonLd, buildOrganizationJsonLd, buildWebsiteJsonLd, buildBreadcrumbJsonLd } from '@/components/site/JsonLd'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
-import { checkFrozenStatus, type FrozenReason } from '@/lib/get-org-context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-async function getOrganizationFromHeaders() {
-  const headersList = await headers()
-  const subdomain = headersList.get('x-subdomain')
-  const customDomain = headersList.get('x-custom-domain')
-  const identifier = customDomain || subdomain
-  if (!identifier) return null
-  return getOrganizationByHost(identifier)
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug?: string[] }> }): Promise<Metadata> {
-  const organization = await getOrganizationFromHeaders()
-  
-  if (!organization) {
+  const { slug } = await params
+  const ctx = await getOrgContext(slug?.[0])
+
+  if (!ctx) {
     return {
       title: 'Sitio no encontrado',
       description: 'El sitio que buscas no existe'
     }
   }
-  
-  const { slug } = await params
-  const currentSlug = slug?.[0] || 'home'
-  const settings = organization.website_settings
+
+  const { organization, branchId, effectiveSettings: settings, pathPrefixConsumed } = ctx
+  const pathSegments = slug || []
+  const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
+  const currentSlug = effectivePath[0] || 'home'
 
   // Intentar obtener metadatos de la página del builder
-  const page = await getWebsitePageBySlug(organization.id, currentSlug)
-  
+  const page = await getWebsitePageBySlug(organization.id, currentSlug, branchId)
+
   const pageTitle = page?.meta_title || page?.title
-  const title = pageTitle 
-    ? `${pageTitle} | ${organization.name}` 
+  const title = pageTitle
+    ? `${pageTitle} | ${organization.name}`
     : settings?.meta_title || organization.name
 
-  const description = page?.meta_description 
-    || settings?.meta_description 
-    || organization.description 
+  const description = page?.meta_description
+    || settings?.meta_description
+    || organization.description
     || `Bienvenido a ${organization.name}`
-  
-  const baseUrl = organization.custom_domain 
-    ? `https://${organization.custom_domain}` 
+
+  const baseUrl = organization.custom_domain
+    ? `https://${organization.custom_domain}`
     : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
-  
+
   return {
     title,
     description,
@@ -107,12 +89,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
       siteName: organization.name,
       title,
       description,
-      images: page?.og_image_url 
+      images: page?.og_image_url
         ? [{ url: page.og_image_url, width: 1200, height: 630 }]
-        : (settings as any)?.og_image_url 
-          ? [{ url: (settings as any).og_image_url, width: 1200, height: 630 }] 
-          : organization.logo_url 
-            ? [{ url: organization.logo_url }] 
+        : (settings as any)?.og_image_url
+          ? [{ url: (settings as any).og_image_url, width: 1200, height: 630 }]
+          : organization.logo_url
+            ? [{ url: organization.logo_url }]
             : []
     },
     twitter: {
@@ -135,90 +117,55 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
 }
 
 export default async function CatchAllPage({ params, searchParams }: { params: Promise<{ slug?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const headersList = await headers()
-  const subdomain = headersList.get('x-subdomain')
-  const customDomain = headersList.get('x-custom-domain')
-  
-  const identifier = customDomain || subdomain
-  
-  if (!identifier) {
+  const { slug } = await params
+  const ctx = await getOrgContext(slug?.[0])
+
+  if (!ctx) {
     return <NotFoundPage />
   }
-  
-  const organization = await getOrganizationByHost(identifier)
-  
-  if (!organization) {
-    return <NotFoundPage subdomain={identifier} />
-  }
 
-  const frozenReason = await checkFrozenStatus(organization.id, organization.status)
+  const { organization, outlet, branchId, pathPrefixConsumed, effectiveSettings: settings, primaryColor, template, headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, megaMenuItems, websiteMenus: footerMenus, frozenReason, showCurrencyCode, currencyPosition } = ctx
 
-  const { slug } = await params
-  const currentSlug = slug?.[0] || 'home'
-  const primaryColor = organization.website_settings?.primary_color || organization.primary_color || '#8B6914'
+  const pathSegments = slug || []
+  const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
+  const currentSlug = effectivePath[0] || 'home'
+
   const baseUrl = organization.custom_domain
     ? `https://${organization.custom_domain}`
     : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
-  const templateId = organization.website_settings?.template_id || 'modern'
-  const template = getTemplate(templateId) || getTemplateByBusinessType(organization.type_id)
 
-  // Fetch navegación dinámica + Meta Pixel + Google Ads
-  const showCategoriesInHeader = organization.website_settings?.show_categories_in_header ?? false
-  const [headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
-    getWebsiteHeaderNav(organization.id),
-    getWebsiteHeaderNavTree(organization.id),
-    getWebsiteFooterNav(organization.id),
-    getWebsiteFooterNavTree(organization.id),
-    showCategoriesInHeader ? getMenuCategories(organization.id) : Promise.resolve([]),
+  // Meta Pixel + Google Ads + tax (no incluidos en getOrgContext)
+  const [metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
     getDefaultTax(organization.id)
   ])
 
-  // Cargar menús nombrados (sistema nuevo) con fallback al sistema de páginas
-  const headerMenuId = organization.website_settings?.header_menu_id ?? null
-  const headerMegaMenuId = organization.website_settings?.header_mega_menu_id ?? null
-  const [namedHeaderMenu, namedMegaMenu] = await Promise.all([
-    headerMenuId ? getMenuById(headerMenuId) : Promise.resolve(null),
-    headerMegaMenuId ? getMenuById(headerMegaMenuId) : Promise.resolve(null),
-  ])
-
-  // Si hay menú nombrado de header, usarlo como headerNavTree (backward compat: fallback a headerNavTree)
-  const effectiveHeaderNavTree = namedHeaderMenu && namedHeaderMenu.items.length > 0
-    ? namedHeaderMenu.items.map(item => menuItemToPageWithChildren(item))
-    : headerNavTree
-
-  // Si hay menú mega nombrado, usarlo como megaMenuItems (backward compat: null = usar menuCategories)
-  const megaMenuItems: MegaMenuItem[] | null = namedMegaMenu && namedMegaMenu.items.length > 0
-    ? namedMegaMenu.items.map(item => menuItemToNavItem(item))
-    : null
-
-  // Cargar menús nombrados de footer (sistema nuevo)
-  const footerMenus = await getWebsiteMenusByLocation(organization.id, 'footer')
-
-  // 1. Intentar cargar página del Page Builder
-  const page = await getWebsitePageBySlug(organization.id, currentSlug)
+  // 1. Intentar cargar página del Page Builder (con branchId F1)
+  const page = await getWebsitePageBySlug(organization.id, currentSlug, branchId)
 
   if (page && page.website_page_sections.length > 0) {
     // Pre-fetch de datos para secciones data-driven
     const sectionTypes = page.website_page_sections.map(s => s.section_type)
     const data: Record<string, any> = {}
+    // F5: exponer branchId a las secciones para separar carrito por outlet
+    data.branchId = branchId
 
     if (sectionTypes.includes('room_types')) {
       data.spaceTypes = await getOrganizationSpaceTypes(organization.id)
-      data.spaces = await getOrganizationSpaces(organization.id)
+      data.spaces = await getOrganizationSpaces(organization.id, branchId)
     }
-    const needsProducts = sectionTypes.some(t => 
+    const needsProducts = sectionTypes.some(t =>
       ['products_grid', 'featured_products', 'menu_preview', 'specialties'].includes(t)
     )
     if (needsProducts) {
-      data.products = await getOrganizationProducts(organization.id, 500)
+      data.products = await getOrganizationProducts(organization.id, 500, branchId)
     }
     if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
-      data.categories = await getOrganizationCategories(organization.id)
+      data.categories = await getOrganizationCategories(organization.id, branchId)
     }
     if (sectionTypes.includes('offers')) {
-      data.offerProducts = await getOfferProducts(organization.id, 500)
+      data.offerProducts = await getOfferProducts(organization.id, 500, branchId)
     }
     // F7: Banners promocionales conectados al catálogo.
     // Resuelve enlaces tipados (categoría/producto/página) y pre-carga el
@@ -226,10 +173,10 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     if (sectionTypes.includes('promo_banners')) {
       // Asegurar categorías y productos para resolver href de categoría/producto.
       if (!data.categories) {
-        data.categories = await getOrganizationCategories(organization.id)
+        data.categories = await getOrganizationCategories(organization.id, branchId)
       }
       if (!data.products) {
-        data.products = await getOrganizationProducts(organization.id, 500)
+        data.products = await getOrganizationProducts(organization.id, 500, branchId)
       }
 
       const bannerSections = page.website_page_sections.filter(
@@ -254,6 +201,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
           organization.id,
           Array.from(previewCategoryIds),
           12,
+          branchId,
         )
       }
       if (pageIds.size > 0) {
@@ -295,7 +243,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={effectiveHeaderNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
         <JsonLd data={[
           buildOrganizationJsonLd({
             name: organization.name,
@@ -323,12 +271,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
   // 2. Fallbacks para slugs conocidos sin página en el builder
   const resolvedSearchParams = await searchParams
-  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, effectiveHeaderNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason)
+  const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason, branchId, settings, outlet, showCurrencyCode, currencyPosition)
   if (fallback) return fallback
 
   // 4. Página no encontrada
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={effectiveHeaderNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
@@ -362,10 +310,15 @@ async function renderSlugFallback(
   googleAdsConfig?: { conversionId: string; conversionLabel?: string } | null,
   searchParams?: Record<string, string | string[] | undefined>,
   taxSettings?: { name: string; rate: number; taxIncluded: boolean } | null,
-  frozenReason?: FrozenReason
+  frozenReason?: FrozenReason,
+  branchId?: number | null,
+  effectiveSettings?: any,
+  outlet?: any,
+  showCurrencyCode?: boolean,
+  currencyPosition?: 'left' | 'right',
 ): Promise<React.ReactElement | null> {
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus && footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus && footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={effectiveSettings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
       {children}
     </OrganizationLayout>
   )
@@ -375,8 +328,8 @@ async function renderSlugFallback(
   switch (slug) {
     case 'menu': {
       const [menuProducts, menuCategories, menuTags, menuModifiers, menuVariantRelations, menuModifierGroups] = await Promise.all([
-        getMenuProducts(organization.id, 200),
-        getOrganizationCategories(organization.id),
+        getMenuProducts(organization.id, 200, branchId),
+        getOrganizationCategories(organization.id, branchId),
         getOrganizationTags(organization.id),
         getProductModifiers(organization.id),
         getProductVariantRelations(organization.id),
@@ -409,6 +362,7 @@ async function renderSlugFallback(
             customerId={customerId}
             organizationId={organization.id}
             initialFavorites={initialFavorites}
+            branchId={branchId}
           />
         </Layout>
       )
@@ -421,8 +375,8 @@ async function renderSlugFallback(
       }[businessType.type] || 'Productos'
 
       const [products, categories] = await Promise.all([
-        getOrganizationProducts(organization.id, 500),
-        getOrganizationCategories(organization.id)
+        getOrganizationProducts(organization.id, 500, branchId),
+        getOrganizationCategories(organization.id, branchId)
       ])
 
       return (
@@ -441,6 +395,7 @@ async function renderSlugFallback(
               organizationSubdomain={organization.subdomain || ''}
               organizationId={organization.id}
               showBuyNow={organization.website_settings?.show_buy_now_button !== false}
+              branchId={branchId}
             />
           </div>
         </Layout>
@@ -455,7 +410,7 @@ async function renderSlugFallback(
         parking: { title: 'Espacios de Parqueo', subtitle: 'Reserva tu espacio' },
       }[businessType.type as string] || { title: 'Espacios', subtitle: 'Espacios disponibles' }
 
-      const allSpaces = await getOrganizationSpaces(organization.id)
+      const allSpaces = await getOrganizationSpaces(organization.id, branchId)
 
       // --- Booking search params del HeroBooking ---
       const bkCheckin = typeof searchParams?.checkin === 'string' ? searchParams.checkin : ''
@@ -717,7 +672,7 @@ async function renderSlugFallback(
         gym: 'Clases y Servicios', parking: 'Servicios Adicionales',
       }[businessType.type as string] || 'Servicios'
 
-      const services = await getOrganizationServices(organization.id, 50)
+      const services = await getOrganizationServices(organization.id, 50, branchId)
 
       return (
         <Layout>
@@ -850,78 +805,4 @@ async function renderSlugFallback(
     default:
       return null
   }
-}
-
-// ============================================================
-// HELPERS — Conversión de WebsiteMenuItem a formatos del header
-// ============================================================
-
-import type { WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
-
-function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
-  let name = item.custom_label || ''
-  let href = item.custom_url || '#'
-
-  if (item.item_type === 'page' || item.item_type === 'policy') {
-    if (item.page) {
-      name = item.page.title
-      href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
-    }
-  } else if (item.item_type === 'category') {
-    if (item.category) {
-      name = item.category.name
-      href = `/categorias/${item.category.slug}`
-    }
-  } else if (item.item_type === 'custom_link') {
-    name = item.custom_label || ''
-    href = item.custom_url || '#'
-  }
-
-  return {
-    name,
-    href,
-    children: item.children.length > 0 ? item.children.map(menuItemToNavItem) : undefined,
-    icon: item.icon ?? undefined,
-    badge: item.badge ?? undefined,
-  }
-}
-
-function menuItemToPageWithChildren(item: WebsiteMenuItemWithChildren): WebsitePageWithChildren {
-  let title = item.custom_label || ''
-  let slug = item.custom_url || ''
-
-  if (item.item_type === 'page' || item.item_type === 'policy') {
-    if (item.page) {
-      title = item.page.title
-      slug = item.page.slug
-    }
-  } else if (item.item_type === 'category') {
-    if (item.category) {
-      title = item.category.name
-      slug = `categorias/${item.category.slug}`
-    }
-  } else if (item.item_type === 'custom_link') {
-    title = item.custom_label || ''
-    slug = item.custom_url || ''
-  }
-
-  return {
-    id: item.id,
-    organization_id: item.organization_id,
-    slug,
-    title,
-    is_published: true,
-    show_in_header: true,
-    show_in_footer: false,
-    header_order: item.display_order,
-    footer_order: 0,
-    parent_page_id: item.parent_item_id,
-    linked_category_id: item.category_id,
-    menu_icon: item.icon,
-    menu_badge: item.badge,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    children: item.children.map(menuItemToPageWithChildren),
-    level: 0,
-  } as WebsitePageWithChildren
 }

@@ -26,6 +26,7 @@ export interface HeaderVariantProps {
   onCartClick?: () => void;
   menuCategories?: MenuCategory[];
   megaMenuItems?: NavItem[];
+  branchId?: number | null;
 }
 
 export interface MenuCategory {
@@ -248,6 +249,7 @@ export function HeaderActions({
   isMobile = false,
   hideCurrency = false,
   hideAuth = false,
+  branchId,
 }: {
   settings: HeaderVariantProps['settings'];
   showCart?: boolean;
@@ -260,6 +262,7 @@ export function HeaderActions({
   isMobile?: boolean;
   hideCurrency?: boolean;
   hideAuth?: boolean;
+  branchId?: number | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -312,6 +315,7 @@ export function HeaderActions({
         onClick={onCartClick}
         organizationSubdomain={organizationSubdomain || ''}
         icon={CartIconComp}
+        branchId={branchId}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (

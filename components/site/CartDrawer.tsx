@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { Price } from './CurrencyProvider'
+import { getCartKey } from '@/lib/utils'
 
 interface CartModifier {
   modifierId: number
@@ -53,9 +54,10 @@ interface CartDrawerProps {
     mode: 'dynamic' | 'fixed'
     texts: string[]
   }
+  branchId?: number | null
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig, cartButtonConfig }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const texts = cartButtonConfig?.texts?.length ? cartButtonConfig.texts : ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -63,7 +65,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
     return texts[Math.floor(Math.random() * texts.length)]
   })
   
-  const cartKey = `cart_${organizationSubdomain}`
+  const cartKey = getCartKey(organizationSubdomain, branchId)
   
   useEffect(() => {
     const loadCart = () => {

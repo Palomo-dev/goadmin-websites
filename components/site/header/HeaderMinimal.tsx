@@ -48,6 +48,7 @@ export default function HeaderMinimal({
   showCart,
   onCartClick,
   menuCategories,
+  branchId,
 }: HeaderVariantProps) {
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -142,6 +143,7 @@ export default function HeaderMinimal({
                 showSearchIcon={searchStyle !== 'bar'}
                 hideCurrency
                 hideAuth
+                branchId={branchId}
               />
               <HeaderCTA
                 text={ctaText}

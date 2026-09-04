@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -17,6 +18,7 @@ interface ProductsCarouselProps {
 export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: ProductsCarouselProps) {
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
+  const branchId = (data?.branchId as number | null | undefined) ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
   const maxItems = content.max_items || 12
@@ -86,7 +88,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
     if (price === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const sub = organizationSubdomain || host.split('.')[0]
-    const cartKey = `cart_${sub}`
+    const cartKey = getCartKey(sub, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((item: any) => item.id === product.id)
     if (idx >= 0) {
@@ -168,6 +170,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
                   onBuyNow={buyNow}
                   isAdded={isAdded}
                   organizationSubdomain={organizationSubdomain}
+                  branchId={branchId}
                   className={cardWidthClass}
                 />
               )

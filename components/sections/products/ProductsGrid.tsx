@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { ProductCard } from './ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -67,7 +68,7 @@ interface ProductsGridProps {
     icon_only?: boolean
   }
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[] }
+  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: any }
 }
 
@@ -76,6 +77,7 @@ const ITEMS_PER_PAGE = 12
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
+  const branchId = data?.branchId ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const products = data?.products || []
   const categories = data?.categories || []
@@ -132,7 +134,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const subdomain = organizationSubdomain || host.split('.')[0]
-    const cartKey = `cart_${subdomain}`
+    const cartKey = getCartKey(subdomain, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
     const existingIndex = cart.findIndex((item: any) => item.id === product.id)
@@ -253,6 +255,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                 onBuyNow={buyNow}
                 isAdded={isAdded}
                 organizationSubdomain={organizationSubdomain}
+                branchId={branchId}
               />
             )
           })}

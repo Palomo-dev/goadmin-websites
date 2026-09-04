@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FavoritosPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
-  const { organization, primaryColor } = ctx
+  const { organization, primaryColor, branchId } = ctx
   const customer = await getAuthCustomer(organization.id)
 
   if (!customer) {
@@ -41,7 +41,7 @@ export default async function FavoritosPage() {
 
   // Obtener productos
   const products = favoriteIds.length > 0
-    ? await getProductsByIds(favoriteIds, organization.id)
+    ? await getProductsByIds(favoriteIds, organization.id, branchId)
     : []
 
   return (

@@ -45,6 +45,7 @@ import { useFavorites } from '@/lib/hooks/useFavorites'
 import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
 import { ShareDialog } from '@/components/site/ShareDialog'
+import { getCartKey } from '@/lib/utils'
 import {
   buildCardStyle,
   resolveImageFitClass,
@@ -299,6 +300,8 @@ export interface ProductCardProps {
   customerId?: string | null
   /** ID de la organización (para favoritos). */
   organizationId?: number | null
+  /** ID de la sucursal/outlet activo (para separar carrito por outlet). */
+  branchId?: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -695,6 +698,7 @@ export function ProductCard({
   imageUrl,
   customerId,
   organizationId,
+  branchId,
 }: ProductCardProps) {
   const router = useRouter()
   const [internalAdded, setInternalAdded] = useState(false)
@@ -725,7 +729,7 @@ export function ProductCard({
     if (pr === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const sub = organizationSubdomain || host.split('.')[0]
-    const cartKey = `cart_${sub}`
+    const cartKey = getCartKey(sub, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((item: any) => item.id === p.id)
     if (idx >= 0) {

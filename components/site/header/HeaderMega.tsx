@@ -41,6 +41,7 @@ export default function HeaderMega({
   onCartClick,
   menuCategories,
   megaMenuItems,
+  branchId,
 }: HeaderVariantProps) {
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
@@ -102,6 +103,7 @@ export default function HeaderMega({
                 primaryColor={primaryColor}
                 organizationSubdomain={organization.subdomain || ''}
                 showSearchIcon={false}
+                branchId={branchId}
               />
               <HeaderCTA
                 text={ctaText}

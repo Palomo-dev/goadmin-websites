@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
+import { getCartKey } from '@/lib/utils'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -14,6 +15,7 @@ interface ProductsListProps {
 export function ProductsList({ content, primaryColor = '#3B82F6', data, organization }: ProductsListProps) {
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
+  const branchId = (data?.branchId as number | null | undefined) ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
   const maxItems = content.max_items || 12
@@ -41,7 +43,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
     if (price === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const sub = organizationSubdomain || host.split('.')[0]
-    const cartKey = `cart_${sub}`
+    const cartKey = getCartKey(sub, branchId)
     const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
     const idx = cart.findIndex((item: any) => item.id === product.id)
     if (idx >= 0) {
@@ -105,6 +107,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
                     onBuyNow={buyNow}
                     isAdded={isAdded}
                     organizationSubdomain={organizationSubdomain}
+                    branchId={branchId}
                   />
                 )
               })}

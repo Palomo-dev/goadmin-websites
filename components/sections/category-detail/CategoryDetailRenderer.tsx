@@ -31,6 +31,7 @@ interface CategoryDetailRendererProps {
   currentSubcategory: string
   currentView: string
   categorySlug: string
+  branchId?: number | null
 }
 
 export function CategoryDetailRenderer({
@@ -48,6 +49,7 @@ export function CategoryDetailRenderer({
   currentSubcategory,
   currentView,
   categorySlug,
+  branchId,
 }: CategoryDetailRendererProps) {
   const hasSections = templatePage && templatePage.website_page_sections.length > 0
 
@@ -66,6 +68,7 @@ export function CategoryDetailRenderer({
     categorySlug,
     organizationSubdomain: organization.subdomain || '',
     showBuyNow: organization.website_settings?.show_buy_now_button !== false,
+    branchId,
   }
 
   // ---- Modo plantilla: renderizar secciones ----
@@ -155,6 +158,7 @@ export function CategoryDetailRenderer({
         organizationSubdomain={organization.subdomain || ''}
         organizationId={organization.id}
         showBuyNow={organization.website_settings?.show_buy_now_button !== false}
+        branchId={branchId}
       />
     </div>
   )

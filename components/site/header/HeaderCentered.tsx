@@ -24,6 +24,7 @@ export default function HeaderCentered({
   settings,
   showCart,
   onCartClick,
+  branchId,
 }: HeaderVariantProps) {
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
@@ -61,6 +62,7 @@ export default function HeaderCentered({
                 organizationId={organizationId}
                 primaryColor={primaryColor}
                 organizationSubdomain={organization.subdomain || ''}
+                branchId={branchId}
               />
               {ctaText && (
                 <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />

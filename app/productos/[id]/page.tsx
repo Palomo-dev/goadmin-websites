@@ -16,6 +16,7 @@ import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType } from '@/lib/supabase/queries'
+import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
@@ -27,7 +28,7 @@ export const dynamic = 'force-dynamic'
 
 // cache() deduplica la llamada a getProduct dentro del mismo request
 // (generateMetadata + page la llaman con los mismos argumentos)
-const getProduct = cache(async (productUuid: string, organizationId: number): Promise<any | null> => {
+const getProduct = cache(async (productUuid: string, organizationId: number, branchId?: number | null): Promise<any | null> => {
   const supabase = createAdminClient() || createPublicClient()
   
   const { data, error } = await (supabase as any)
@@ -44,12 +45,22 @@ const getProduct = cache(async (productUuid: string, organizationId: number): Pr
     .single()
   
   if (error || !data) return null
-  const webBranchIds = await getWebStockBranchIds(organizationId)
+
+  // F3-R3: si hay outlet activo, validar que la categoría del producto sea visible
+  if (Number.isFinite(branchId)) {
+    const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+    if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return null
+    if (allowedCategoryIds !== null && !allowedCategoryIds.includes(data.category_id)) return null
+  }
+
+  const webBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
   const [filtered] = filterStockByBranches(normalizeProductPrices([data as any]), webBranchIds)
   return filtered
 })
 
-async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8): Promise<any[]> {
+async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8, branchId?: number | null): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
   const selectFields = `
     id, uuid, name, is_parent, track_stock,
@@ -63,9 +74,14 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
   `
   const collected = new Map<number, any>()
 
+  // F3-R3: categorías permitidas para el outlet
+  const allowedCategoryIds = Number.isFinite(branchId)
+    ? await getAllowedCategoryIds(organizationId, branchId)
+    : null
+
   // 1. Por categoría
   if (categoryId) {
-    const { data } = await (supabase as any)
+    let q = (supabase as any)
       .from('products')
       .select(selectFields)
       .eq('organization_id', organizationId)
@@ -74,12 +90,14 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
       .is('parent_product_id', null)
       .neq('id', currentProductId)
       .limit(limit)
+    if (allowedCategoryIds) q = q.in('category_id', allowedCategoryIds)
+    const { data } = await q
     if (data) data.forEach((p: any) => collected.set(p.id, p))
   }
 
   // 2. Por tag
   if (tagId && collected.size < limit) {
-    const { data } = await (supabase as any)
+    let q = (supabase as any)
       .from('products')
       .select(selectFields)
       .eq('organization_id', organizationId)
@@ -88,12 +106,14 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
       .is('parent_product_id', null)
       .neq('id', currentProductId)
       .limit(limit)
+    if (allowedCategoryIds) q = q.in('category_id', allowedCategoryIds)
+    const { data } = await q
     if (data) data.forEach((p: any) => collected.set(p.id, p))
   }
 
   // 3. Fallback: productos aleatorios de la misma organización
   if (collected.size < limit) {
-    const { data } = await (supabase as any)
+    let q = (supabase as any)
       .from('products')
       .select(selectFields)
       .eq('organization_id', organizationId)
@@ -101,12 +121,16 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
       .is('parent_product_id', null)
       .neq('id', currentProductId)
       .limit(limit * 2)
+    if (allowedCategoryIds) q = q.in('category_id', allowedCategoryIds)
+    const { data } = await q
     if (data) data.forEach((p: any) => collected.set(p.id, p))
   }
 
-  // Filtrar stock por sucursales web
-  const webBranchIds = await getWebStockBranchIds(organizationId)
-  const all = filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), webBranchIds)
+  // Filtrar stock por sucursales web (o por outlet activo)
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  const all = filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), stockBranchIds)
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [all[i], all[j]] = [all[j], all[i]]
@@ -119,7 +143,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!ctx) return { title: 'Producto' }
   const { id } = await params
   if (!isValidUUID(id)) return { title: 'Producto' }
-  const product = await getProduct(id, ctx.organization.id)
+  const product = await getProduct(id, ctx.organization.id, ctx.branchId)
   return {
     title: product ? `${product.name} | ${ctx.organization.name}` : `Producto | ${ctx.organization.name}`,
     description: product?.description || undefined
@@ -132,12 +156,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
 
   const { id } = await params
   if (!isValidUUID(id)) return <NotFoundPage />
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
 
-  const product = await getProduct(id, organization.id)
+  const product = await getProduct(id, organization.id, branchId)
   if (!product) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">📦</p>
@@ -163,7 +187,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const modifierGroups = await getProductModifierGroups(product.id)
 
   // Obtener productos relacionados por categoría, tag y aleatorio
-  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id)
+  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId)
 
   // F9.2 — Buscar plantilla de detalle de producto editable
   const productDetailTemplate = await getWebsitePageByType(organization.id, 'product_detail')
@@ -233,7 +257,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const hasTemplateSections = productDetailTemplate && productDetailTemplate.website_page_sections.length > 0
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId}>
       {/* JSON-LD Product */}
       <script
         type="application/ld+json"
@@ -347,6 +371,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 modifierGroups={modifierGroups}
                 trackStock={product.track_stock}
                 stockLevels={product.stock_levels}
+                branchId={branchId}
               />
             </div>
             
@@ -401,6 +426,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           primaryColor={primaryColor}
           currentProductId={product.id}
           organizationSubdomain={organization.subdomain || ''}
+          branchId={branchId}
         />
 
         {/* Reviews */}
@@ -430,6 +456,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           organizationSubdomain={organization.subdomain || ''}
           trackStock={product.track_stock}
           stockLevels={product.stock_levels}
+          branchId={branchId}
         />
       )}
     </OrganizationLayout>

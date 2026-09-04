@@ -14,9 +14,10 @@ import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
 import type { FrozenReason } from '@/lib/get-org-context'
-import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren, WebsiteMenuWithItems } from '@/types/database'
+import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren, WebsiteMenuWithItems, WebsiteSettings } from '@/types/database'
 import type { TemplateConfig, NavItem } from '@/lib/templates'
 import type { MenuCategory } from './header/HeaderShared'
+import type { ResolvedOutlet } from '@/lib/outlet/resolver'
 
 interface OrganizationLayoutProps {
   organization: OrganizationWithDetails
@@ -36,6 +37,9 @@ interface OrganizationLayoutProps {
   frozenReason?: FrozenReason
   showCurrencyCode?: boolean
   currencyPosition?: 'left' | 'right'
+  effectiveSettings?: WebsiteSettings | null
+  outlet?: ResolvedOutlet | null
+  branchId?: number | null
 }
 
 export function OrganizationLayout({
@@ -55,10 +59,13 @@ export function OrganizationLayout({
   taxSettings,
   frozenReason,
   showCurrencyCode,
-  currencyPosition
+  currencyPosition,
+  effectiveSettings,
+  outlet,
+  branchId
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
-  const settings = organization.website_settings as any
+  const settings = (effectiveSettings ?? organization.website_settings) as any
   const subdomain = organization.subdomain || ''
   const effectiveShowCurrencyCode = showCurrencyCode ?? settings?.show_currency_code ?? false
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
@@ -130,6 +137,7 @@ export function OrganizationLayout({
           headerNavTree={headerNavTree}
           menuCategories={menuCategories}
           megaMenuItems={megaMenuItems}
+          branchId={branchId}
         />
       )}
       
@@ -189,6 +197,7 @@ export function OrganizationLayout({
             mode: settings?.cart_button_mode || 'dynamic',
             texts: settings?.cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
           }}
+          branchId={branchId}
         />
       )}
       

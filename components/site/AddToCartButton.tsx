@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Check, Plus } from 'lucide-react'
 import { trackMetaAddToCart } from '@/components/site/MetaPixelEvents'
+import { getCartKey } from '@/lib/utils'
 
 interface AddToCartButtonProps {
   productId: number
@@ -18,6 +19,7 @@ interface AddToCartButtonProps {
   organizationSubdomain?: string
   disabled?: boolean
   onClick?: () => void
+  branchId?: number | null
 }
 
 export function AddToCartButton({ 
@@ -32,7 +34,8 @@ export function AddToCartButton({
   quantity = 1,
   organizationSubdomain,
   disabled = false,
-  onClick
+  onClick,
+  branchId
 }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false)
 
@@ -41,7 +44,7 @@ export function AddToCartButton({
     if (onClick) { onClick(); return }
     try {
       const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      const cartKey = `cart_${subdomain}`
+      const cartKey = getCartKey(subdomain, branchId)
       const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
       const existingIndex = existingCart.findIndex((item: any) => item.id === productId)

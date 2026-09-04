@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ShoppingCart, type LucideIcon } from 'lucide-react'
+import { getCartKey } from '@/lib/utils'
 
 interface CartIndicatorProps {
   primaryColor: string
@@ -12,9 +13,10 @@ interface CartIndicatorProps {
   organizationSubdomain?: string
   /** Icono personalizado (del editor). Default: ShoppingCart */
   icon?: LucideIcon
+  branchId?: number | null
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId }: CartIndicatorProps) {
   const Icon = IconProp || ShoppingCart
   const [itemCount, setItemCount] = useState(0)
   
@@ -22,7 +24,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
     const updateCount = () => {
       try {
         const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-        const cartKey = `cart_${subdomain}`
+        const cartKey = getCartKey(subdomain, branchId)
         const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
         const count = cart.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)
         setItemCount(count)
@@ -42,7 +44,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       window.removeEventListener('cart-updated', updateCount)
       window.removeEventListener('storage', updateCount)
     }
-  }, [organizationSubdomain])
+  }, [organizationSubdomain, branchId])
 
   const badge = itemCount > 0 && (
     <span 

@@ -82,7 +82,7 @@ export default async function CheckoutPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor } = ctx
+  const { organization, primaryColor, branchId } = ctx
   const [paymentMethods, metaPixelId, googleAdsConfig] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
@@ -174,6 +174,7 @@ export default async function CheckoutPage() {
           checkoutSettings={checkoutSettings}
           isRestaurant={organization.type_id === 1}
           organizationSubdomain={organization.subdomain || ''}
+          branchId={branchId}
         />
       </main>
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getCartKey } from '@/lib/utils'
 
 interface OrderItem {
   product_id: number
@@ -18,9 +19,10 @@ interface ReorderButtonProps {
   size?: 'sm' | 'md'
   primaryColor?: string
   organizationSubdomain?: string
+  branchId?: number | null
 }
 
-export function ReorderButton({ items, className, size = 'md', primaryColor, organizationSubdomain }: ReorderButtonProps) {
+export function ReorderButton({ items, className, size = 'md', primaryColor, organizationSubdomain, branchId }: ReorderButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -30,7 +32,7 @@ export function ReorderButton({ items, className, size = 'md', primaryColor, org
 
     try {
       const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-      const cartKey = `cart_${subdomain}`
+      const cartKey = getCartKey(subdomain, branchId)
 
       // Construir items para el carrito
       const cartItems = items.map((item) => ({

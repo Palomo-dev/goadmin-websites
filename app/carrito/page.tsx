@@ -20,7 +20,7 @@ export default async function CarritoPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
   const [metaPixelId, googleAdsConfig] = await Promise.all([
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id)
@@ -48,7 +48,7 @@ export default async function CarritoPage() {
   }
 
   // Productos sugeridos (últimos 8 para "Te puede interesar")
-  const suggestedProducts = await getOrganizationProducts(organization.id, 8)
+  const suggestedProducts = await getOrganizationProducts(organization.id, 8, branchId)
 
   return (
     <OrganizationLayout
@@ -60,6 +60,7 @@ export default async function CarritoPage() {
       metaPixelId={metaPixelId}
       googleAdsConfig={googleAdsConfig}
       frozenReason={frozenReason}
+      branchId={branchId}
     >
       <CartPageClient
         primaryColor={primaryColor}
@@ -67,6 +68,7 @@ export default async function CarritoPage() {
         organizationId={organization.id}
         cartSettings={cartSettings}
         suggestedProducts={suggestedProducts}
+        branchId={branchId}
       />
     </OrganizationLayout>
   )

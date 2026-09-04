@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const ctx = await getOrgContext()
   if (!ctx) return { title: 'Categoría' }
   const { slug } = await params
-  const category = await getCategoryBySlug(ctx.organization.id, slug)
+  const category = await getCategoryBySlug(ctx.organization.id, slug, ctx.branchId)
   if (!category) return { title: 'Categoría no encontrada' }
   return {
     title: `${category.meta_title || category.name} | ${ctx.organization.name}`,
@@ -32,10 +32,10 @@ export default async function CategoriaSlugPage({
 
   const { slug } = await params
   const resolvedSearchParams = await searchParams
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
 
   const [category, metaPixelId, googleAdsConfig] = await Promise.all([
-    getCategoryBySlug(organization.id, slug),
+    getCategoryBySlug(organization.id, slug, branchId),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id)
   ])
@@ -48,7 +48,7 @@ export default async function CategoriaSlugPage({
   const view = typeof resolvedSearchParams.vista === 'string' ? resolvedSearchParams.vista : 'grid'
 
   // Obtener subcategorías
-  const subcategories = await getSubcategories(organization.id, category.id)
+  const subcategories = await getSubcategories(organization.id, category.id, branchId)
 
   // Resolver subcategoría seleccionada
   let subcategoryId: number | undefined
@@ -62,7 +62,8 @@ export default async function CategoriaSlugPage({
     page,
     limit: 12,
     sort,
-    subcategoryId
+    subcategoryId,
+    branchId
   })
 
   // Breadcrumbs: obtener categoría padre si existe
@@ -95,7 +96,7 @@ export default async function CategoriaSlugPage({
   }
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId}>
       {/* F9.5 — JSON-LD ItemList */}
       <script
         type="application/ld+json"
@@ -116,6 +117,7 @@ export default async function CategoriaSlugPage({
         currentSubcategory={subcategorySlug || ''}
         currentView={view}
         categorySlug={slug}
+        branchId={branchId}
       />
     </OrganizationLayout>
   )
