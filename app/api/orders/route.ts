@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
         .from('branches')
         .select('id, is_main, is_web_stock_source')
         .eq('organization_id', organizationId)
+        .eq('is_active', true)
         .order('id', { ascending: true })
 
       const list = branches || []

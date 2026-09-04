@@ -459,8 +459,8 @@ export async function getOrganizationBranches(organizationId: number) {
     .from('branches')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('status', 'active')
-  
+    .eq('is_active', true)
+
   if (error) return []
   return data || []
 }
