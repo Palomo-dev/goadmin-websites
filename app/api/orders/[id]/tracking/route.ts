@@ -186,7 +186,9 @@ function buildTimeline(order: any, shipment: any, attempts: any[], orgTypeId: nu
     key: 'preparing',
     label: isRetail ? 'Empacando' : 'Preparando',
     description: order.estimated_ready_at
-      ? `Estimado: ${new Date(order.estimated_ready_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`
+      ? (isRetail
+        ? `Estimado: ${new Date(order.estimated_ready_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}`
+        : `Estimado: ${new Date(order.estimated_ready_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`)
       : undefined,
     timestamp: isPreparing ? (order.confirmed_at || order.created_at) : null,
     status: isPreparing ? 'completed' : (order.status === 'confirmed' ? 'current' : 'pending'),
