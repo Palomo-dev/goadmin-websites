@@ -27,6 +27,7 @@ interface CategoriesGridProps {
     enable_search?: boolean
     enable_pagination?: boolean
     page_size?: number
+    list_scroll?: boolean // Carrusel horizontal en modo lista
     // CARD_FIELDS (inyectados desde el catálogo del ERP)
     card_radius?: number
     card_shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
@@ -72,6 +73,19 @@ function getGridClass(count: number): string {
   if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
   if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+}
+
+/**
+ * Divide un array en chunks (páginas) de `size` elementos.
+ * Si `size <= 0` retorna un solo chunk con todos los elementos.
+ */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  if (size <= 0 || size >= arr.length) return [arr]
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
 }
 
 /**
@@ -290,6 +304,9 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
   const categories = paginatedCategories
 
+  // list_scroll: carrusel horizontal en modo lista (se usa en los useEffect de scroll)
+  const listScroll = content.list_scroll === true
+
   // Carousel refs (desktop y mobile)
   const scrollRef = useRef<HTMLDivElement>(null)
   const mobileScrollRef = useRef<HTMLDivElement>(null)
@@ -298,6 +315,76 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const [mobileCurrentIndex, setMobileCurrentIndex] = useState(0)
   const [mobileCanScrollLeft, setMobileCanScrollLeft] = useState(false)
   const [mobileCanScrollRight, setMobileCanScrollRight] = useState(false)
+
+  // --- Drag-to-scroll (mouse + touch) ---
+  // Permite arrastrar el carrusel con el mouse o el dedo, como un carrusel nativo.
+  const dragState = useRef<{ startX: number; startScroll: number; isDown: boolean; moved: boolean }>({
+    startX: 0, startScroll: 0, isDown: false, moved: false,
+  })
+
+  const attachDragHandlers = useCallback((el: HTMLDivElement) => {
+    const onMouseDown = (e: MouseEvent) => {
+      dragState.current = { startX: e.pageX - el.offsetLeft, startScroll: el.scrollLeft, isDown: true, moved: false }
+      el.style.cursor = 'grabbing'
+      el.style.userSelect = 'none'
+    }
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragState.current.isDown) return
+      const x = e.pageX - el.offsetLeft
+      const delta = x - dragState.current.startX
+      if (Math.abs(delta) > 4) dragState.current.moved = true
+      el.scrollLeft = dragState.current.startScroll - delta
+    }
+    const onMouseUp = () => {
+      dragState.current.isDown = false
+      el.style.cursor = ''
+      el.style.userSelect = ''
+    }
+    // Touch: el navegador ya maneja el scroll touch, pero prevenimos click
+    // después de arrastrar para que no se navegue a una categoría por accidente.
+    const onTouchStart = (e: TouchEvent) => {
+      dragState.current = { startX: e.touches[0].pageX - el.offsetLeft, startScroll: el.scrollLeft, isDown: true, moved: false }
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragState.current.isDown) return
+      const x = e.touches[0].pageX - el.offsetLeft
+      const delta = x - dragState.current.startX
+      if (Math.abs(delta) > 4) dragState.current.moved = true
+      // El navegador hace el scroll touch nativamente; solo trackeamos moved
+    }
+    const onTouchEnd = () => {
+      dragState.current.isDown = false
+    }
+    // Prevenir click después de arrastrar (pero no en botones de flecha)
+    const onClickCapture = (e: MouseEvent) => {
+      if (!dragState.current.moved) return
+      const target = e.target as HTMLElement
+      if (target.closest('button[aria-label]')) return // no bloquear flechas del carrusel
+      e.preventDefault()
+      e.stopPropagation()
+      dragState.current.moved = false
+    }
+
+    el.addEventListener('mousedown', onMouseDown)
+    el.addEventListener('mousemove', onMouseMove)
+    el.addEventListener('mouseup', onMouseUp)
+    el.addEventListener('mouseleave', onMouseUp)
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('click', onClickCapture, true)
+
+    return () => {
+      el.removeEventListener('mousedown', onMouseDown)
+      el.removeEventListener('mousemove', onMouseMove)
+      el.removeEventListener('mouseup', onMouseUp)
+      el.removeEventListener('mouseleave', onMouseUp)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('click', onClickCapture, true)
+    }
+  }, [])
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current
@@ -308,13 +395,21 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || desktopLayout !== 'carousel') return
+    if (!el || (desktopLayout !== 'carousel' && !(desktopLayout === 'list' && listScroll))) return
     updateScrollButtons()
     el.addEventListener('scroll', updateScrollButtons, { passive: true })
     const ro = new ResizeObserver(updateScrollButtons)
     ro.observe(el)
     return () => { el.removeEventListener('scroll', updateScrollButtons); ro.disconnect() }
-  }, [desktopLayout, updateScrollButtons, categories.length])
+  }, [desktopLayout, listScroll, updateScrollButtons, categories.length])
+
+  // Drag-to-scroll (desktop) — efecto separado para no interferir con el tracking
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || (desktopLayout !== 'carousel' && !(desktopLayout === 'list' && listScroll))) return
+    const detach = attachDragHandlers(el)
+    return () => { detach?.() }
+  }, [desktopLayout, listScroll, attachDragHandlers, categories.length])
 
   // Mobile carousel scroll tracking
   const updateMobileScroll = useCallback(() => {
@@ -330,25 +425,34 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
   useEffect(() => {
     const el = mobileScrollRef.current
-    if (!el || mobileLayout !== 'carousel') return
+    if (!el || (mobileLayout !== 'carousel' && !(mobileLayout === 'list' && listScroll))) return
     updateMobileScroll()
     el.addEventListener('scroll', updateMobileScroll, { passive: true })
     const ro = new ResizeObserver(updateMobileScroll)
     ro.observe(el)
     return () => { el.removeEventListener('scroll', updateMobileScroll); ro.disconnect() }
-  }, [mobileLayout, updateMobileScroll, categories.length])
+  }, [mobileLayout, listScroll, updateMobileScroll, categories.length])
 
+  // Drag-to-scroll (mobile) — efecto separado
+  useEffect(() => {
+    const el = mobileScrollRef.current
+    if (!el || (mobileLayout !== 'carousel' && !(mobileLayout === 'list' && listScroll))) return
+    const detach = attachDragHandlers(el)
+    return () => { detach?.() }
+  }, [mobileLayout, listScroll, attachDragHandlers, categories.length])
+
+  // Flechas: mueven una página completa (100% del ancho visible) con snap
   const scroll = (dir: 'left' | 'right') => {
     const el = scrollRef.current
     if (!el) return
-    const amount = el.clientWidth * 0.8
+    const amount = el.clientWidth
     el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
   }
 
   const scrollMobile = (dir: 'left' | 'right') => {
     const el = mobileScrollRef.current
     if (!el) return
-    const amount = el.clientWidth * 0.7
+    const amount = el.clientWidth
     el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
   }
 
@@ -418,11 +522,64 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
         <>
           {/* === Móvil: Lista === */}
           {isMobileList && (
-            <div className="grid grid-cols-1 gap-3 md:hidden">
-              {categories.map((cat: any) => (
-                <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
-              ))}
-            </div>
+            listScroll ? (
+              <div className="md:hidden relative group/carousel">
+                {mobileCanScrollLeft && (
+                  <button
+                    onClick={() => scrollMobile('left')}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center"
+                    aria-label="Anterior"
+                  >
+                    <svg className="w-4 h-4 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                )}
+                <div
+                  ref={mobileScrollRef}
+                  className="overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory cursor-grab"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  <div className="flex gap-3 px-1 pb-2 items-stretch">
+                    {chunkArray(categories, (mobileColumns > 0 ? mobileColumns : 1) * (mobileRows > 0 ? mobileRows : 1)).map((pageCats, pageIdx) => (
+                      <div
+                        key={pageIdx}
+                        className="flex-shrink-0 snap-start"
+                        style={{ width: '100%' }}
+                      >
+                        <div
+                          className="grid gap-3"
+                          style={{ gridTemplateColumns: `repeat(${mobileColumns > 0 ? mobileColumns : 1}, minmax(0, 1fr))` }}
+                        >
+                          {pageCats.map((cat: any) => (
+                            <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {mobileCanScrollRight && (
+                  <button
+                    onClick={() => scrollMobile('right')}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center"
+                    aria-label="Siguiente"
+                  >
+                    <svg className="w-4 h-4 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div
+                className={`grid gap-3 md:hidden ${mobileColumns <= 0 ? 'grid-cols-1' : ''}`}
+                style={mobileColumns > 0 ? { gridTemplateColumns: `repeat(${mobileColumns}, minmax(0, 1fr))` } : undefined}
+              >
+                {(mobileRows > 0
+                  ? categories.slice(0, (mobileColumns > 0 ? mobileColumns : 1) * mobileRows)
+                  : categories
+                ).map((cat: any) => (
+                  <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+                ))}
+              </div>
+            )
           )}
 
           {/* === Móvil: Carrusel con flechas y puntos === */}
@@ -440,12 +597,12 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               )}
               <div
                 ref={mobileScrollRef}
-                className="overflow-x-auto scrollbar-hide scroll-smooth"
+                className="overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory cursor-grab"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 <div className="flex gap-4 px-1 pb-2 items-start">
                   {categories.map((cat: any) => (
-                    <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[130px]' : 'w-[160px]'}`}>
+                    <div key={cat.id} className={`flex-shrink-0 snap-start ${isRound ? 'w-[130px]' : 'w-[160px]'}`}>
                       <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
                     </div>
                   ))}
@@ -510,11 +667,11 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
               )}
               <div
                 ref={scrollRef}
-                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth items-start"
+                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory items-start cursor-grab"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {categories.map((cat: any) => (
-                  <div key={cat.id} className={`flex-shrink-0 ${isRound ? 'w-[180px]' : 'w-[220px]'}`}>
+                  <div key={cat.id} className={`flex-shrink-0 snap-start ${isRound ? 'w-[180px]' : 'w-[220px]'}`}>
                     <CategoryCard cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
                   </div>
                 ))}
@@ -533,22 +690,67 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
           {/* === Escritorio: Lista === */}
           {isDesktopList && (
-            <div
-              className={`hidden md:grid gap-4 ${desktopColumns <= 0 ? 'grid-cols-1 max-w-3xl mx-auto' : ''}`}
-              style={desktopColumns > 0 ? { gridTemplateColumns: `repeat(${desktopColumns}, minmax(0, 1fr))` } : undefined}
-            >
-              {(desktopRows > 0 && desktopColumns > 0
-                ? categories.slice(0, desktopColumns * desktopRows)
-                : categories
-              ).map((cat: any) => (
-                <ListCard
-                  key={cat.id}
-                  cat={cat}
-                  cardStyle={cardStyle}
-                  primaryColor={primaryColor}
-                />
-              ))}
-            </div>
+            listScroll ? (
+              <div className="hidden md:block relative group/carousel">
+                {canScrollLeft && (
+                  <button
+                    onClick={() => scroll('left')}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -ml-4"
+                    aria-label="Anterior"
+                  >
+                    <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                )}
+                <div
+                  ref={scrollRef}
+                  className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory items-stretch cursor-grab"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {chunkArray(categories, (desktopColumns > 0 ? desktopColumns : 1) * (desktopRows > 0 ? desktopRows : 1)).map((pageCats, pageIdx) => (
+                    <div
+                      key={pageIdx}
+                      className="flex-shrink-0 snap-start"
+                      style={{ width: '100%' }}
+                    >
+                      <div
+                        className="grid gap-4"
+                        style={{ gridTemplateColumns: `repeat(${desktopColumns > 0 ? desktopColumns : 1}, minmax(0, 1fr))` }}
+                      >
+                        {pageCats.map((cat: any) => (
+                          <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {canScrollRight && (
+                  <button
+                    onClick={() => scroll('right')}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all -mr-4"
+                    aria-label="Siguiente"
+                  >
+                    <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div
+                className={`hidden md:grid gap-4 ${desktopColumns <= 0 ? 'grid-cols-1 max-w-3xl mx-auto' : ''}`}
+                style={desktopColumns > 0 ? { gridTemplateColumns: `repeat(${desktopColumns}, minmax(0, 1fr))` } : undefined}
+              >
+                {(desktopRows > 0
+                  ? categories.slice(0, (desktopColumns > 0 ? desktopColumns : 1) * desktopRows)
+                  : categories
+                ).map((cat: any) => (
+                  <ListCard
+                    key={cat.id}
+                    cat={cat}
+                    cardStyle={cardStyle}
+                    primaryColor={primaryColor}
+                  />
+                ))}
+              </div>
+            )
           )}
 
           {/* === Escritorio: Grid === */}
