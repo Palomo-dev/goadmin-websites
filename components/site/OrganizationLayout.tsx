@@ -8,7 +8,6 @@ import { CountdownBanner } from './CountdownBanner'
 import MetaPixel from './MetaPixel'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
-import CustomScripts from './CustomScripts'
 import { ChatWidget } from './ChatWidget'
 import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
@@ -215,9 +214,6 @@ export function OrganizationLayout({
         <style dangerouslySetInnerHTML={{ __html: settings.custom_css }} />
       )}
       
-      {/* Scripts Personalizados */}
-      {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
-
       {/* Chat Widget (oculto si la cuenta está congelada) */}
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
         <ChatWidget publicKey={settings.chat_widget_public_key} />
