@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
@@ -109,6 +109,18 @@ const METHOD_ICONS: Record<string, string> = {
   paypal_checkout: '🅿️',
   wompi: '💳',
   bold_link: '🟠',
+}
+
+// Códigos que corresponden a Wompi (pasarela colombiana)
+const WOMPI_CODES = new Set(['wompi', 'wompi_co'])
+
+// Ícono de Wompi: billetera verde sobre fondo verde claro, cuadrado redondeado
+function WompiIcon() {
+  return (
+    <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0 border border-green-200 dark:border-green-800">
+      <Wallet className="w-5 h-5 text-green-600 dark:text-green-400" />
+    </div>
+  )
 }
 
 const DEFAULT_SETTINGS: CheckoutSettings = {
@@ -668,12 +680,16 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   // --- WIZARD PRINCIPAL ---
 
   // Construir opciones de pago desde los métodos habilitados para website
-  const paymentOptions = availableMethods.map(m => ({
-    id: m.code,
-    icon: <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>,
-    label: m.name,
-    description: m.description || null,
-  }))
+  const paymentOptions = availableMethods.map(m => {
+    const isWompi = WOMPI_CODES.has(m.code)
+    return {
+      id: m.code,
+      icon: isWompi ? <WompiIcon /> : <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>,
+      label: m.name,
+      description: m.description || null,
+      isWompi,
+    }
+  })
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
