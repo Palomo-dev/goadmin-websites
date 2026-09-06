@@ -1,107 +1,92 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface CustomScriptsProps {
   scripts: string
 }
 
-interface ParsedScript {
-  id: string
-  src?: string
-  innerHTML?: string
-  async?: boolean
-}
-
-interface ParsedNoScript {
-  id: string
-  innerHTML: string
-}
-
-/**
- * Parsea un string de HTML para extraer tags <script> y <noscript>.
- * Usa regex en vez de DOMParser para funcionar también durante SSR.
- */
-function parseScripts(html: string): { scripts: ParsedScript[]; noscripts: ParsedNoScript[] } {
-  const scripts: ParsedScript[] = []
-  const noscripts: ParsedNoScript[] = []
-
-  // Extraer <script ...>contenido</script>
-  const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi
-  let match: RegExpExecArray | null
-  let idx = 0
-
-  while ((match = scriptRegex.exec(html)) !== null) {
-    const attrsStr = match[1] || ''
-    const content = match[2] || ''
-
-    // Extraer atributos
-    const srcMatch = attrsStr.match(/src\s*=\s*"([^"]*)"/i)
-    const asyncMatch = attrsStr.match(/\basync\b/i)
-
-    scripts.push({
-      id: `custom-script-${idx}`,
-      src: srcMatch ? srcMatch[1] : undefined,
-      innerHTML: content.trim() || undefined,
-      async: !!asyncMatch,
-    })
-    idx++
-  }
-
-  // Extraer <noscript ...>contenido</noscript>
-  const noscriptRegex = /<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi
-  let nidx = 0
-  while ((match = noscriptRegex.exec(html)) !== null) {
-    noscripts.push({
-      id: `custom-noscript-${nidx}`,
-      innerHTML: (match[1] || '').trim(),
-    })
-    nidx++
-  }
-
-  return { scripts, noscripts }
-}
-
 /**
  * Componente que inyecta scripts personalizados de la organización.
- * Soporta tags <script> completos (inline y con src) y <noscript>.
+ * Soporta tanto tags <script> completos como JavaScript raw.
  *
- * Usa <script> crudo con dangerouslySetInnerHTML para que los scripts aparezcan
- * en el HTML inicial (SSR). Esto es crítico para que crawlers como Meta
- * Events Manager detecten el pixel base code sin necesidad de ejecutar JS.
- *
+ * Se ejecuta una sola vez al montar (afterInteractive).
  * Cada organización tiene sus propios scripts aislados por su website_settings.
  */
 export default function CustomScripts({ scripts }: CustomScriptsProps) {
-  const parsed = useMemo(() => {
-    if (!scripts) return { scripts: [], noscripts: [] }
-    return parseScripts(scripts)
+  const injectedRef = useRef(false)
+
+  useEffect(() => {
+    if (!scripts || injectedRef.current) return
+    injectedRef.current = true
+
+    // Crear un contenedor temporal para parsear el HTML con scripts
+    const container = document.createElement('div')
+    container.innerHTML = scripts
+
+    // Extraer y ejecutar todos los <script> tags
+    const scriptTags = container.querySelectorAll('script')
+
+    if (scriptTags.length > 0) {
+      // Procesar scripts en orden, esperando carga de scripts externos
+      let scriptIndex = 0
+
+      const loadNextScript = () => {
+        if (scriptIndex >= scriptTags.length) return
+
+        const original = scriptTags[scriptIndex]
+        const script = document.createElement('script')
+
+        // Copiar atributos (src, async, defer, type, etc.)
+        Array.from(original.attributes).forEach((attr) => {
+          script.setAttribute(attr.name, attr.value)
+        })
+
+        // Si tiene src, esperar a que cargue antes del siguiente script
+        if (script.hasAttribute('src')) {
+          script.onload = () => {
+            scriptIndex++
+            loadNextScript()
+          }
+          script.onerror = () => {
+            console.warn('[CustomScripts] Error cargando script:', script.src)
+            scriptIndex++
+            loadNextScript()
+          }
+        }
+
+        // Copiar contenido inline
+        if (original.textContent) {
+          script.textContent = original.textContent
+        }
+
+        document.head.appendChild(script)
+
+        // Si no tiene src, pasar al siguiente inmediatamente
+        if (!script.hasAttribute('src')) {
+          scriptIndex++
+          loadNextScript()
+        }
+      }
+
+      loadNextScript()
+    } else {
+      // Si no hay tags <script>, tratar todo como JavaScript raw
+      try {
+        const script = document.createElement('script')
+        script.textContent = scripts
+        document.head.appendChild(script)
+      } catch (e) {
+        console.warn('[CustomScripts] Error al inyectar script:', e)
+      }
+    }
+
+    // Inyectar elementos no-script (ej: <noscript>, <img> de pixels)
+    const nonScriptElements = container.querySelectorAll(':not(script)')
+    nonScriptElements.forEach((el) => {
+      document.body.appendChild(el.cloneNode(true))
+    })
   }, [scripts])
 
-  return (
-    <>
-      {parsed.scripts.map((s) =>
-        s.src ? (
-          <script
-            key={s.id}
-            id={s.id}
-            src={s.src}
-            async={s.async}
-          />
-        ) : (
-          <script
-            key={s.id}
-            id={s.id}
-            dangerouslySetInnerHTML={{ __html: s.innerHTML || '' }}
-          />
-        )
-      )}
-      {parsed.noscripts.map((ns) => (
-        <noscript
-          key={ns.id}
-          dangerouslySetInnerHTML={{ __html: ns.innerHTML }}
-        />
-      ))}
-    </>
-  )
+  return null
 }
