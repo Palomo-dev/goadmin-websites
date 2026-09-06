@@ -166,7 +166,7 @@ export default async function CheckoutPage() {
 
       {/* Contenido */}
       <main className="flex-grow">
-        {metaPixelId && <MetaPixelInitiateCheckout />}
+        <MetaPixelInitiateCheckout />
         <CheckoutWizard
           organizationId={organization.id}
           primaryColor={primaryColor}

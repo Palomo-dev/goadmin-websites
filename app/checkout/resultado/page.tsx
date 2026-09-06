@@ -226,7 +226,7 @@ export default async function CheckoutResultadoPage({
         />
       )}
       {/* Meta Pixel Purchase — solo si pago exitoso */}
-      {paymentStatus === 'paid' && metaPixelId && (
+      {paymentStatus === 'paid' && (
         <MetaPixelPurchase
           orderNumber={order.order_number}
           value={Number(order.total)}
