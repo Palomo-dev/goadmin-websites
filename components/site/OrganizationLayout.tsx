@@ -9,6 +9,7 @@ import MetaPixel from './MetaPixel'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
 import { ChatWidget } from './ChatWidget'
+import CustomScripts from './CustomScripts'
 import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
@@ -202,6 +203,12 @@ export function OrganizationLayout({
       
       {/* Meta Pixel (Facebook) */}
       {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
+
+      {/* Custom Scripts (Meta Pixel, Google Analytics, chat widgets, etc.)
+          Inyectados client-side vía useEffect para que el Event Setup Tool
+          de Meta pueda detectar los pixels (necesita que los scripts se
+          ejecuten DESPUÉS de que Meta instale su interceptor en el iframe). */}
+      {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
       
       {/* Google Ads Tag (gtag.js) */}
       {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
