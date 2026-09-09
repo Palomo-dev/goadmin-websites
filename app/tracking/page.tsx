@@ -45,7 +45,11 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
   const params = await searchParams
   const trackingNumber = params.q || ''
 
-  const shipment = trackingNumber ? await getShipmentByTracking(trackingNumber) : null
+  // La organización se pasa siempre: sin ella, este sitio rastrearía guías de
+  // cualquier otra organización del proyecto.
+  const shipment = trackingNumber
+    ? await getShipmentByTracking(trackingNumber, organization.id)
+    : null
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
@@ -99,14 +103,12 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
                 </div>
               </div>
 
+              {/* No se muestra "Origen": los datos del remitente no viven en `shipments`.
+                  Las columnas sender_city/sender_department que se pintaban aquí no existen. */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <div className="text-gray-500 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Origen</div>
-                  <div className="font-medium">{shipment.sender_city}{shipment.sender_department ? `, ${shipment.sender_department}` : ''}</div>
-                </div>
-                <div>
                   <div className="text-gray-500 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Destino</div>
-                  <div className="font-medium">{shipment.receiver_city}{shipment.receiver_department ? `, ${shipment.receiver_department}` : ''}</div>
+                  <div className="font-medium">{shipment.delivery_city}{shipment.delivery_department ? `, ${shipment.delivery_department}` : ''}</div>
                 </div>
                 {shipment.expected_delivery_date && (
                   <div>
@@ -114,10 +116,12 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
                     <div className="font-medium">{new Date(shipment.expected_delivery_date).toLocaleDateString('es-CO', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                   </div>
                 )}
-                {shipment.total_packages && (
+                {shipment.package_count && (
                   <div>
                     <div className="text-gray-500">Paquetes</div>
-                    <div className="font-medium">{shipment.total_packages} ({shipment.total_weight_kg} kg)</div>
+                    <div className="font-medium">
+                      {shipment.package_count}{shipment.weight_kg ? ` (${shipment.weight_kg} kg)` : ''}
+                    </div>
                   </div>
                 )}
               </div>
@@ -125,13 +129,13 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
               {/* Proof of delivery */}
               {shipment.proof_of_delivery && (
                 <div className="mt-4 bg-green-50 rounded-lg p-3 text-sm">
-                  <div className="font-medium text-green-700 mb-1">Entregado a: {shipment.proof_of_delivery.receiver_name}</div>
-                  {shipment.proof_of_delivery.relationship && (
-                    <div className="text-green-600 text-xs">Parentesco: {shipment.proof_of_delivery.relationship}</div>
+                  <div className="font-medium text-green-700 mb-1">Entregado a: {shipment.proof_of_delivery.recipient_name}</div>
+                  {shipment.proof_of_delivery.recipient_relationship && (
+                    <div className="text-green-600 text-xs">Parentesco: {shipment.proof_of_delivery.recipient_relationship}</div>
                   )}
-                  {shipment.proof_of_delivery.confirmed_at && (
+                  {shipment.proof_of_delivery.delivered_at && (
                     <div className="text-green-600 text-xs">
-                      {new Date(shipment.proof_of_delivery.confirmed_at).toLocaleString('es-CO')}
+                      {new Date(shipment.proof_of_delivery.delivered_at).toLocaleString('es-CO')}
                     </div>
                   )}
                 </div>

@@ -36,6 +36,13 @@ export function normalizeProductPrices<T extends { product_prices?: any[] }>(pro
 }
 
 /**
+ * Cuántos productos por categoría se consideran al buscar la imagen de respaldo.
+ * Se recorren en orden de nombre y se usa la imagen del primero que tenga alguna.
+ * Acota el coste: antes se traían las imágenes de TODOS los productos.
+ */
+const FALLBACK_IMAGE_CANDIDATES = 8
+
+/**
  * Para categorías sin image_url, obtiene la imagen del primer producto
  * activo de esa categoría y la usa como fallback.
  */
@@ -44,6 +51,10 @@ async function enrichCategoriesWithFallbackImage(
   categories: any[]
 ): Promise<any[]> {
   // --- Contar productos activos por categoría (para show_count) ---
+  // OJO: PostgREST corta las respuestas a 2.000 filas, así que este conteo ya
+  // venía siendo incorrecto en organizaciones con más de 2.000 productos
+  // activos. Se deja EXACTAMENTE igual para no cambiar el comportamiento aquí;
+  // arreglarlo bien requiere agregar en base de datos, no contar filas en JS.
   const allCategoryIds = categories.map(c => c.id)
   const countMap: Record<number, number> = {}
   if (allCategoryIds.length > 0) {
@@ -67,35 +78,61 @@ async function enrichCategoriesWithFallbackImage(
 
   const categoryIds = withoutImage.map(c => c.id)
 
-  // Buscar productos activos en esas categorías, con sus imágenes
+  // Candidatos a imagen de respaldo, en el mismo orden que antes (nombre asc).
+  //
+  // Antes esta consulta traía TODOS los productos de esas categorías CON TODAS
+  // sus imágenes embebidas, para acabar usando como mucho UNA imagen por
+  // categoría. Ahora solo se piden id y category_id, y las imágenes se piden
+  // aparte para un puñado de candidatos por categoría.
   const { data: products } = await supabase
     .from('products')
-    .select(`
-      id, category_id,
-      product_images (
-        id, storage_path, is_primary, display_order,
-        shared_image_id,
-        shared_images ( storage_path )
-      )
-    `)
+    .select('id, category_id')
     .in('category_id', categoryIds)
     .eq('status', 'active')
     .is('parent_product_id', null)
     .order('name', { ascending: true })
 
+  const candidatesByCategory: Record<number, number[]> = {}
+  for (const product of (products || [])) {
+    const list = (candidatesByCategory[product.category_id] ||= [])
+    if (list.length < FALLBACK_IMAGE_CANDIDATES) list.push(product.id)
+  }
+
+  const candidateIds = Object.values(candidatesByCategory).flat()
+  const imagesByProduct: Record<number, any[]> = {}
+
+  if (candidateIds.length > 0) {
+    const { data: images } = await supabase
+      .from('product_images')
+      .select(`
+        product_id, storage_path, is_primary, display_order,
+        shared_image_id,
+        shared_images ( storage_path )
+      `)
+      .in('product_id', candidateIds)
+      // El embed anterior llegaba ordenado por display_order; se replica para
+      // que "la primera imagen" del producto siga siendo la misma de antes.
+      .order('display_order', { ascending: true })
+
+    for (const img of (images || [])) {
+      (imagesByProduct[img.product_id] ||= []).push(img)
+    }
+  }
+
   // Construir mapa: category_id → primera imagen disponible
   const fallbackMap: Record<number, string> = {}
-  for (const product of (products || [])) {
-    if (fallbackMap[product.category_id]) continue
+  for (const [catId, productIds] of Object.entries(candidatesByCategory)) {
+    for (const productId of productIds) {
+      const images = imagesByProduct[productId] || []
+      const primary = images.find((img: any) => img.is_primary) || images[0]
+      if (!primary) continue
 
-    const images = product.product_images || []
-    const primary = images.find((img: any) => img.is_primary) || images[0]
-    if (!primary) continue
+      const path = primary.storage_path || primary.shared_images?.storage_path
+      if (!path) continue
 
-    const path = primary.storage_path || primary.shared_images?.storage_path
-    if (!path) continue
-
-    fallbackMap[product.category_id] = `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+      fallbackMap[Number(catId)] = `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+      break
+    }
   }
 
   return categories.map(c =>
@@ -259,7 +296,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id,
         storage_path,
@@ -276,6 +313,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
         qty_reserved
       )
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .is('parent_product_id', null)
@@ -336,13 +374,14 @@ export async function getOfferProducts(organizationId: number, limit = 500, bran
     .select(`
       *,
       categories ( id, name, slug ),
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .is('parent_product_id', null)
@@ -431,8 +470,9 @@ export async function getOrganizationServices(organizationId: number, limit = 12
     .from('products')
     .select(`
       *,
-      product_prices (*)
+      product_prices (id, price, compare_price, effective_to)
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('unit_code', 'SV')
     .eq('status', 'active')
@@ -518,7 +558,8 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
 
   const { data, error } = await supabase
     .from('products')
-    .select(`*, product_prices (*), stock_levels ( branch_id, qty_on_hand, qty_reserved )`)
+    .select(`*, product_prices (id, price, compare_price, effective_to), stock_levels ( branch_id, qty_on_hand, qty_reserved )`)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('category_id', categoryId)
     .eq('status', 'active')
@@ -561,7 +602,7 @@ export async function getProductsByCategoryIds(
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id,
         storage_path,
@@ -569,6 +610,7 @@ export async function getProductsByCategoryIds(
         shared_images ( storage_path )
       )
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .in('category_id', effectiveCategoryIds)
     .eq('status', 'active')
@@ -733,7 +775,7 @@ export async function getProductsByCategoryPaginated(
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order,
         shared_image_id,
@@ -741,6 +783,7 @@ export async function getProductsByCategoryPaginated(
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `, { count: 'exact' })
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .in('category_id', categoryIds)
     .eq('status', 'active')
@@ -854,7 +897,7 @@ export async function getProductVariants(parentProductId: number, organizationId
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order,
         shared_image_id,
@@ -862,6 +905,7 @@ export async function getProductVariants(parentProductId: number, organizationId
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
+    .is('product_prices.effective_to', null)
     .eq('parent_product_id', parentProductId)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -1135,7 +1179,8 @@ export async function getProductById(productId: number) {
   
   const { data, error } = await supabase
     .from('products')
-    .select(`*, product_prices (*), categories (*)`)
+    .select(`*, product_prices (id, price, compare_price, effective_to), categories (*)`)
+    .is('product_prices.effective_to', null)
     .eq('id', productId)
     .eq('status', 'active')
     .single()
@@ -1688,7 +1733,7 @@ export async function getMenuProducts(organizationId: number, limit = 100, branc
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
@@ -1696,6 +1741,7 @@ export async function getMenuProducts(organizationId: number, limit = 100, branc
       stock_levels ( branch_id, qty_on_hand, qty_reserved ),
       product_tag_relations ( tag_id )
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
 
@@ -1724,13 +1770,14 @@ export async function getProductsByIds(productIds: number[], organizationId: num
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
+    .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
     .in('id', productIds)
@@ -2086,25 +2133,51 @@ export async function getTripById(tripId: string, organizationId: number) {
 }
 
 /**
- * Obtiene un envío por número de tracking para seguimiento público
+ * Obtiene un envío por número de tracking para seguimiento público.
+ *
+ * Esta función devolvía `null` para CUALQUIER guía: seleccionaba seis columnas que
+ * no existen en `shipments` (`sender_city`, `sender_department`, `receiver_city`,
+ * `receiver_department`, `total_weight_kg`, `total_packages`) y tres que no existen
+ * en `proof_of_delivery` (`receiver_name`, `relationship`, `confirmed_at`). El select
+ * fallaba, el error se colapsaba en `return null`, y la página lo mostraba como
+ * "envío no encontrado" — indistinguible de una guía inexistente.
+ *
+ * Nombres reales verificados contra el esquema; la referencia de columnas correctas
+ * es `app/api/orders/[id]/delivery/route.ts`, que sí funciona.
+ *
+ * `organizationId` es obligatorio: sin él, el sitio de cualquier organización podía
+ * rastrear guías de cualquier otra, y `tracking_number` no es único entre organizaciones
+ * (`idx_shipments_tracking` no es un índice único). Por eso también `.maybeSingle()`
+ * sobre el más reciente en vez de `.single()`, que lanza con 0 filas y con más de una.
+ *
+ * El origen del envío no vive en `shipments`, así que ya no se devuelve.
  */
-export async function getShipmentByTracking(trackingNumber: string) {
+export async function getShipmentByTracking(
+  trackingNumber: string,
+  organizationId: number
+) {
   const supabase = getSupabaseForPublicRead()
 
   const { data: shipment, error } = await supabase
     .from('shipments')
     .select(`
-      id, shipment_number, tracking_number, service_level,
-      sender_city, sender_department,
-      receiver_city, receiver_department,
-      total_weight_kg, total_packages,
+      id, organization_id, shipment_number, tracking_number, service_level,
+      delivery_city, delivery_department,
+      weight_kg, package_count,
       expected_delivery_date, delivered_at,
       status, created_at
     `)
     .eq('tracking_number', trackingNumber)
-    .single()
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (error || !shipment) return null
+  if (error) {
+    console.error('[getShipmentByTracking] error consultando shipments:', error)
+    return null
+  }
+  if (!shipment) return null
 
   const shipmentId = (shipment as any).id
 
@@ -2121,9 +2194,9 @@ export async function getShipmentByTracking(trackingNumber: string) {
   if ((shipment as any).status === 'delivered') {
     const { data: podData } = await supabase
       .from('proof_of_delivery')
-      .select('receiver_name, relationship, confirmed_at, photo_urls')
+      .select('recipient_name, recipient_relationship, delivered_at, photo_urls')
       .eq('shipment_id', shipmentId)
-      .order('confirmed_at', { ascending: false })
+      .order('delivered_at', { ascending: false })
       .limit(1)
 
     pod = podData?.[0] || null

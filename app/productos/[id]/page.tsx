@@ -35,10 +35,11 @@ const getProduct = cache(async (productUuid: string, organizationId: number, bra
     .from('products')
     .select(`
       *,
-      product_prices (*),
+      product_prices (id, price, compare_price, effective_to),
       product_images (*),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
+    .is('product_prices.effective_to', null)
     .eq('uuid', productUuid)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -64,7 +65,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
   const supabase = createAdminClient() || createPublicClient()
   const selectFields = `
     id, uuid, name, is_parent, track_stock,
-    product_prices (*),
+    product_prices (id, price, compare_price, effective_to),
     product_images (
       id, storage_path, is_primary, display_order,
       shared_image_id,
@@ -84,6 +85,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('category_id', categoryId)
       .eq('status', 'active')
@@ -100,6 +102,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('tag_id', tagId)
       .eq('status', 'active')
@@ -116,6 +119,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('status', 'active')
       .is('parent_product_id', null)
