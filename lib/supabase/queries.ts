@@ -3,6 +3,7 @@ import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
+import { cacheStructural, CONTENT_TTL, SETTINGS_TTL } from './cache'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -145,7 +146,7 @@ async function enrichCategoriesWithFallbackImage(
 /**
  * Obtiene una organización por su subdominio (busca en organization_domains)
  */
-export async function getOrganizationBySubdomain(subdomain: string): Promise<OrganizationWithDetails | null> {
+async function getOrganizationBySubdomainUncached(subdomain: string): Promise<OrganizationWithDetails | null> {
   const supabase = getSupabaseForPublicRead()
   const subdomainLower = subdomain.toLowerCase().trim()
   
@@ -198,7 +199,7 @@ export async function getOrganizationBySubdomain(subdomain: string): Promise<Org
 /**
  * Obtiene una organización por dominio personalizado
  */
-export async function getOrganizationByCustomDomain(domain: string): Promise<OrganizationWithDetails | null> {
+async function getOrganizationByCustomDomainUncached(domain: string): Promise<OrganizationWithDetails | null> {
   const supabase = getSupabaseForPublicRead()
   
   // Primero buscar en organization_domains
@@ -492,7 +493,7 @@ export async function getOrganizationServices(organizationId: number, limit = 12
 /**
  * Obtiene las sucursales de una organización
  */
-export async function getOrganizationBranches(organizationId: number) {
+async function getOrganizationBranchesUncached(organizationId: number) {
   const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
@@ -510,7 +511,7 @@ export async function getOrganizationBranches(organizationId: number) {
  * F3: acepta `branchId` opcional. undefined = no filtrar (backward compat),
  * null = solo globales, X = outlet X + globales.
  */
-export async function getOrganizationCategories(organizationId: number, branchId?: number | null) {
+async function getOrganizationCategoriesUncached(organizationId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -632,7 +633,7 @@ export async function getProductsByCategoryIds(
  * Obtiene páginas del sitio por ids (F7.1 enlace tipado a página).
  * Devuelve un mapa `pageId -> { slug, title }` para resolver `/{slug}`.
  */
-export async function getWebsitePagesByIds(
+async function getWebsitePagesByIdsUncached(
   organizationId: number,
   pageIds: string[],
 ): Promise<Record<string, { slug: string; title: string }>> {
@@ -653,7 +654,7 @@ export async function getWebsitePagesByIds(
   })
   return map
 }
-export async function getCategoryBySlug(organizationId: number, slug: string, branchId?: number | null) {
+async function getCategoryBySlugUncached(organizationId: number, slug: string, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -680,7 +681,7 @@ export async function getCategoryBySlug(organizationId: number, slug: string, br
 /**
  * Obtiene subcategorías de una categoría padre
  */
-export async function getSubcategories(organizationId: number, parentId: number, branchId?: number | null) {
+async function getSubcategoriesUncached(organizationId: number, parentId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -872,7 +873,7 @@ export async function getProductsByCategoryPaginated(
 /**
  * Obtiene la categoría padre de una categoría
  */
-export async function getParentCategory(organizationId: number, parentId: number) {
+async function getParentCategoryUncached(organizationId: number, parentId: number) {
   const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
@@ -1235,7 +1236,7 @@ export async function getOrCreateCustomer(organizationId: number, email: string,
  * página global (branch_id IS NULL). Cuando es null/undefined, behavior
  * idéntica a antes (solo página global).
  */
-export async function getWebsitePageBySlug(
+async function getWebsitePageBySlugUncached(
   organizationId: number,
   slug: string,
   branchId?: number | null,
@@ -1300,7 +1301,7 @@ export async function getWebsitePageBySlug(
  * Usado por las plantillas de detalle (product_detail, category_detail, etc.)
  * que usan slugs internos con prefijo __ y no se buscan por slug.
  */
-export async function getWebsitePageByType(
+async function getWebsitePageByTypeUncached(
   organizationId: number,
   pageType: string
 ): Promise<WebsitePageWithSections | null> {
@@ -1338,7 +1339,7 @@ export async function getWebsitePageByType(
  * Incluye campos de mega-menú: parent_page_id, linked_category_id, menu_icon, menu_badge
  * F1: acepta `branchId` opcional para filtrar páginas del outlet + globales.
  */
-export async function getWebsiteHeaderNav(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
+async function getWebsiteHeaderNavUncached(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -1365,7 +1366,7 @@ export async function getWebsiteHeaderNav(organizationId: number, branchId?: num
 /**
  * Obtiene el árbol jerárquico de páginas del header (anidadas por parent_page_id)
  */
-export async function getWebsiteHeaderNavTree(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
+async function getWebsiteHeaderNavTreeUncached(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
   const flat = await getWebsiteHeaderNav(organizationId, branchId)
   return buildMenuTree(flat)
 }
@@ -1375,7 +1376,7 @@ export async function getWebsiteHeaderNavTree(organizationId: number, branchId?:
  * Incluye campos de mega-menú para jerarquía del footer
  * F1: acepta `branchId` opcional para filtrar páginas del outlet + globales.
  */
-export async function getWebsiteFooterNav(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
+async function getWebsiteFooterNavUncached(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -1402,7 +1403,7 @@ export async function getWebsiteFooterNav(organizationId: number, branchId?: num
 /**
  * Obtiene el árbol jerárquico de páginas del footer (anidadas por parent_page_id)
  */
-export async function getWebsiteFooterNavTree(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
+async function getWebsiteFooterNavTreeUncached(organizationId: number, branchId?: number | null): Promise<WebsitePageWithChildren[]> {
   const flat = await getWebsiteFooterNav(organizationId, branchId)
   return buildMenuTree(flat)
 }
@@ -1464,7 +1465,7 @@ export interface MenuCategory {
   children: MenuCategory[]
 }
 
-export async function getMenuCategories(organizationId: number, branchId?: number | null): Promise<MenuCategory[]> {
+async function getMenuCategoriesUncached(organizationId: number, branchId?: number | null): Promise<MenuCategory[]> {
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -1522,7 +1523,7 @@ export async function getMenuCategories(organizationId: number, branchId?: numbe
  * Busca en integration_credentials de conexiones activas de meta_marketing.
  * Retorna null si no hay integración activa o no tiene pixel_id.
  */
-export async function getMetaPixelId(organizationId: number): Promise<string | null> {
+async function getMetaPixelIdUncached(organizationId: number): Promise<string | null> {
   const supabase = getSupabaseForPublicRead()
 
   // Connector ID de Meta Marketing
@@ -1563,7 +1564,7 @@ export async function getMetaPixelId(organizationId: number): Promise<string | n
  * Busca conversion_id (AW-XXXXXXX) y conversion_label en integration_credentials.
  * Retorna null si no hay integración activa.
  */
-export async function getGoogleAdsConfig(organizationId: number): Promise<{ conversionId: string; conversionLabel?: string } | null> {
+async function getGoogleAdsConfigUncached(organizationId: number): Promise<{ conversionId: string; conversionLabel?: string } | null> {
   const supabase = getSupabaseForPublicRead()
 
   const GOOGLE_ADS_CONNECTOR_ID = '876a3948-ddd2-4a80-9ffe-ed6d3882aa04'
@@ -1801,7 +1802,7 @@ export async function getProductsByIds(productIds: number[], organizationId: num
 /**
  * Obtiene las etiquetas de productos de una organización (vegetariano, picante, etc.)
  */
-export async function getOrganizationTags(organizationId: number) {
+async function getOrganizationTagsUncached(organizationId: number) {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
@@ -2312,7 +2313,7 @@ export async function getCustomerTickets(email: string, organizationId: number) 
 
 // ─── Parking: Queries SSR ─────────────────────────────────────
 
-export async function getBranchesByOrg(organizationId: number) {
+async function getBranchesByOrgUncached(organizationId: number) {
   const supabase = getSupabaseForPublicRead() as any
   const { data, error } = await supabase
     .from('branches')
@@ -2459,7 +2460,7 @@ export async function getServiceById(serviceId: string, organizationId: number) 
   }
 }
 
-export async function getWebsitePages(organizationId: number): Promise<WebsitePage[]> {
+async function getWebsitePagesUncached(organizationId: number): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
@@ -2475,7 +2476,7 @@ export async function getWebsitePages(organizationId: number): Promise<WebsitePa
 /**
  * Obtiene el impuesto predeterminado de la organización (is_default=true, is_active=true)
  */
-export async function getDefaultTax(organizationId: number): Promise<{ name: string; rate: number; taxIncluded: boolean } | null> {
+async function getDefaultTaxUncached(organizationId: number): Promise<{ name: string; rate: number; taxIncluded: boolean } | null> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return null
   const { data } = await (supabase as any)
@@ -2544,7 +2545,7 @@ function buildMenuItemTree(
  * Obtiene todos los menús de una organización con sus items en árbol jerárquico.
  * Incluye datos relacionados (páginas y categorías) para cada item.
  */
-export async function getWebsiteMenus(organizationId: number): Promise<WebsiteMenuWithItems[]> {
+async function getWebsiteMenusUncached(organizationId: number): Promise<WebsiteMenuWithItems[]> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return []
 
@@ -2618,7 +2619,7 @@ export async function getWebsiteMenus(organizationId: number): Promise<WebsiteMe
  * Los menús con location='both' se incluyen en ambos filtros.
  * Filtra en SQL para no traer menús innecesarios.
  */
-export async function getWebsiteMenusByLocation(
+async function getWebsiteMenusByLocationUncached(
   organizationId: number,
   location: 'header' | 'footer'
 ): Promise<WebsiteMenuWithItems[]> {
@@ -2696,7 +2697,7 @@ export async function getWebsiteMenusByLocation(
  * Obtiene un menú específico por ID con sus items en árbol jerárquico.
  * Útil para cargar el menú asignado a header_menu_id o header_mega_menu_id.
  */
-export async function getMenuById(menuId: string): Promise<WebsiteMenuWithItems | null> {
+async function getMenuByIdUncached(menuId: string): Promise<WebsiteMenuWithItems | null> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return null
 
@@ -2811,3 +2812,38 @@ export async function getOrganizationTestimonials(
   if (error || !data) return []
   return data as TestimonialRow[]
 }
+
+// ---------------------------------------------------------------------------
+// Caché de datos estructurales.
+//
+// Cada función de arriba conserva su implementación intacta (sufijo
+// `Uncached`) y se exporta envuelta, con la MISMA firma pública, así que
+// ningún llamador cambia. Solo se cachea lo que no caduca: organización,
+// páginas, menús, navegación, categorías, sucursales, impuestos y píxeles.
+// Precios, stock y disponibilidad se quedan fuera a propósito.
+// ---------------------------------------------------------------------------
+
+export const getOrganizationBySubdomain = cacheStructural('getOrganizationBySubdomain', getOrganizationBySubdomainUncached, SETTINGS_TTL)
+export const getOrganizationByCustomDomain = cacheStructural('getOrganizationByCustomDomain', getOrganizationByCustomDomainUncached, SETTINGS_TTL)
+export const getOrganizationBranches = cacheStructural('getOrganizationBranches', getOrganizationBranchesUncached, SETTINGS_TTL)
+export const getBranchesByOrg = cacheStructural('getBranchesByOrg', getBranchesByOrgUncached, SETTINGS_TTL)
+export const getMetaPixelId = cacheStructural('getMetaPixelId', getMetaPixelIdUncached, SETTINGS_TTL)
+export const getGoogleAdsConfig = cacheStructural('getGoogleAdsConfig', getGoogleAdsConfigUncached, SETTINGS_TTL)
+export const getDefaultTax = cacheStructural('getDefaultTax', getDefaultTaxUncached, SETTINGS_TTL)
+export const getOrganizationTags = cacheStructural('getOrganizationTags', getOrganizationTagsUncached, SETTINGS_TTL)
+export const getOrganizationCategories = cacheStructural('getOrganizationCategories', getOrganizationCategoriesUncached, CONTENT_TTL)
+export const getCategoryBySlug = cacheStructural('getCategoryBySlug', getCategoryBySlugUncached, CONTENT_TTL)
+export const getSubcategories = cacheStructural('getSubcategories', getSubcategoriesUncached, CONTENT_TTL)
+export const getParentCategory = cacheStructural('getParentCategory', getParentCategoryUncached, CONTENT_TTL)
+export const getMenuCategories = cacheStructural('getMenuCategories', getMenuCategoriesUncached, CONTENT_TTL)
+export const getWebsitePageBySlug = cacheStructural('getWebsitePageBySlug', getWebsitePageBySlugUncached, CONTENT_TTL)
+export const getWebsitePageByType = cacheStructural('getWebsitePageByType', getWebsitePageByTypeUncached, CONTENT_TTL)
+export const getWebsitePages = cacheStructural('getWebsitePages', getWebsitePagesUncached, CONTENT_TTL)
+export const getWebsitePagesByIds = cacheStructural('getWebsitePagesByIds', getWebsitePagesByIdsUncached, CONTENT_TTL)
+export const getWebsiteHeaderNav = cacheStructural('getWebsiteHeaderNav', getWebsiteHeaderNavUncached, CONTENT_TTL)
+export const getWebsiteHeaderNavTree = cacheStructural('getWebsiteHeaderNavTree', getWebsiteHeaderNavTreeUncached, CONTENT_TTL)
+export const getWebsiteFooterNav = cacheStructural('getWebsiteFooterNav', getWebsiteFooterNavUncached, CONTENT_TTL)
+export const getWebsiteFooterNavTree = cacheStructural('getWebsiteFooterNavTree', getWebsiteFooterNavTreeUncached, CONTENT_TTL)
+export const getWebsiteMenus = cacheStructural('getWebsiteMenus', getWebsiteMenusUncached, CONTENT_TTL)
+export const getWebsiteMenusByLocation = cacheStructural('getWebsiteMenusByLocation', getWebsiteMenusByLocationUncached, CONTENT_TTL)
+export const getMenuById = cacheStructural('getMenuById', getMenuByIdUncached, CONTENT_TTL)
