@@ -1,35 +1,136 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/services/quotes
  *
- * Solicita una cotización. Crea una opportunity en el pipeline default con status 'open'.
- * El admin gestiona la oportunidad desde el CRM del ERP.
+ * Solicita una cotización. Crea una opportunity con record_type 'lead' en el
+ * pipeline default, con status 'open'. El admin gestiona el lead desde el CRM
+ * del ERP y lo convierte a 'deal' cuando lo califica.
+ *
+ * Por qué 'lead' y no 'deal': una cotización web sin calificar entrando como
+ * negocio infla el pronóstico del ERP (pantallas de Pronóstico y Salud). El
+ * importe estimado se conserva en la MISMA fila, así que al convertir no se
+ * pierde nada.
+ *
+ * La organización se resuelve desde el host del sitio; el organizationId del
+ * body solo se admite si coincide.
+ *
+ * Defensas (las mismas que `/api/contact`, que es el otro formulario público
+ * que escribe en el CRM; esta ruta no las tenía y era el hueco por el que se
+ * podía llenar el pipeline de basura):
+ *  - Límite de tasa: 5 envíos por hora y por IP.
+ *  - Señuelo: campo oculto `website`; si viene relleno se descarta.
  */
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient() || createPublicClient()
 
   try {
-    const body = await request.json()
-    const {
-      organizationId,
-      serviceId,
-      serviceName,
-      customerEmail,
-      customerName,
-      customerPhone,
-      customerCompany,
-      projectDescription,
-      estimatedBudget,
-      currency,
-    } = body
-
-    if (!organizationId || !customerEmail) {
+    // ── Límite de tasa: 5 envíos/hora/IP ──
+    const clientIP = getClientIP(request)
+    const rate = checkRateLimit(clientIP, 5, 60 * 60 * 1000)
+    if (!rate.allowed) {
+      const retryAfter = Math.ceil((rate.resetAt - Date.now()) / 1000)
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: organizationId, customerEmail' },
+        { error: 'Has enviado demasiadas solicitudes. Inténtalo más tarde.', retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      )
+    }
+
+    const body = await request.json()
+
+    // ── Señuelo: los bots rellenan el campo oculto ──
+    if (typeof body?.website === 'string' && body.website.trim() !== '') {
+      console.warn(`[quotes] señuelo activado desde ${clientIP}; envío descartado`)
+      // No se le da ninguna pista al bot, pero tampoco se le dice que se guardó.
+      return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 })
+    }
+    // El formulario público (app/cotizar/QuoteForm.tsx) usa nombres cortos;
+    // se aceptan ambos esquemas para no perder solicitudes.
+    const { serviceId, serviceName, currency } = body
+
+    const customerEmail = body.customerEmail || body.email
+    const customerName =
+      body.customerName ||
+      [body.firstName, body.lastName].filter(Boolean).join(' ').trim() ||
+      undefined
+    const customerPhone = body.customerPhone || body.phone
+    const customerCompany = body.customerCompany || body.companyName
+    const projectDescription = body.projectDescription || body.description
+    const estimatedBudget = body.estimatedBudget ?? body.budget
+
+    // ── La organización sale del host, no se acepta a ciegas del body ──
+    const headersList = await headers()
+    const identifier = headersList.get('x-custom-domain') || headersList.get('x-subdomain')
+    if (!identifier) {
+      console.error('[quotes] petición sin host de tenant (x-custom-domain / x-subdomain)')
+      return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
+    }
+
+    const organizationFromHost = await getOrganizationByHost(identifier)
+    if (!organizationFromHost) {
+      console.error(`[quotes] host sin organización: ${identifier}`)
+      return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
+    }
+
+    if (
+      body.organizationId !== undefined &&
+      body.organizationId !== null &&
+      Number(body.organizationId) !== Number(organizationFromHost.id)
+    ) {
+      console.error(
+        `[quotes] organizationId del body (${body.organizationId}) no coincide con el host ${identifier} (org ${organizationFromHost.id})`
+      )
+      return NextResponse.json({ error: 'Solicitud inválida' }, { status: 403 })
+    }
+
+    const organizationId = organizationFromHost.id
+
+    // ── El servicio solicitado ────────────────────────────────────────────────
+    // `serviceId` llegaba del formulario y se descartaba: el comercial recibía
+    // el lead sin saber QUÉ le habían pedido. Y `serviceName` no lo envía nadie
+    // (`app/cotizar/QuoteForm.tsx` manda sólo el id), así que el nombre de la
+    // oportunidad salía siempre genérico.
+    //
+    // El id es de `organization_services` (así lo construye `cotizar/page.tsx`
+    // desde `getOrgServiceCatalog`), que sí lleva `organization_id`: se valida
+    // contra la organización del host, nunca contra lo que diga el body.
+    let servicioResuelto: { id: string; nombre: string; precio: number | null } | null = null
+    let servicioNoResuelto: string | null = null
+
+    if (typeof serviceId === 'string' && serviceId.trim() !== '') {
+      const { data: os } = await (supabase as any)
+        .from('organization_services')
+        .select('id, custom_name, price, is_active, services(name)')
+        .eq('id', serviceId.trim())
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+
+      if (os && os.is_active !== false) {
+        servicioResuelto = {
+          id: os.id,
+          nombre: os.custom_name || os.services?.name || 'Servicio',
+          precio: os.price ?? null,
+        }
+      } else {
+        // Un id que no es de esta organización, o que ya no está activo. NO se
+        // rechaza la cotización: perder un lead es peor que perder el dato. Pero
+        // tampoco se ignora en silencio, para que nadie lo dé por atribuido.
+        servicioNoResuelto = serviceId.trim()
+        console.warn(
+          `[quotes] servicio ${serviceId} no pertenece a la organización ${organizationId} o está inactivo; la cotización sigue sin él`
+        )
+      }
+    }
+
+    if (!customerEmail || typeof customerEmail !== 'string') {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos: email' },
         { status: 400 }
       )
     }
@@ -70,6 +171,8 @@ export async function POST(request: NextRequest) {
           last_name: lastName,
           phone: customerPhone || null,
           company_name: customerCompany || null,
+          // Todo lo que entra por la web nace como lead.
+          lifecycle_stage: 'lead',
         })
         .select('id')
         .single()
@@ -134,9 +237,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Crear opportunity
-    const oppName = serviceName
-      ? `Cotización Web: ${serviceName} - ${customerCompany || customerName || emailNorm}`
-      : `Cotización Web: ${customerCompany || customerName || emailNorm}`
+    const quien = customerCompany || customerName || emailNorm
+    // `serviceName` se sigue aceptando por si otro cliente de la API lo manda.
+    const etiquetaServicio = servicioResuelto?.nombre || (typeof serviceName === 'string' ? serviceName : '')
+    const oppName = etiquetaServicio
+      ? `Cotización Web: ${etiquetaServicio} - ${quien}`
+      : `Cotización Web: ${quien}`
 
     const { data: opportunity, error: oppError } = await (supabase as any)
       .from('opportunities')
@@ -149,8 +255,23 @@ export async function POST(request: NextRequest) {
         amount: estimatedBudget || 0,
         currency: currency || 'COP',
         status: 'open',
+        // Una cotización web sin calificar es un LEAD, no un negocio: si entra
+        // como 'deal' (el valor por defecto de la columna) infla el pronóstico.
+        record_type: 'lead',
+        source: 'website',
+        // Traza de lo que pidió el visitante. `metadata` es jsonb en
+        // `opportunities`; se guarda el servicio ya validado, y si el id no se
+        // pudo atribuir se deja constancia en vez de perderlo.
+        metadata: {
+          web_quote: {
+            organization_service_id: servicioResuelto?.id ?? null,
+            service_name: servicioResuelto?.nombre ?? null,
+            service_list_price: servicioResuelto?.precio ?? null,
+            unresolved_service_id: servicioNoResuelto,
+          },
+        },
       })
-      .select('id, name, amount, status')
+      .select('id, name, amount, status, record_type')
       .single()
 
     if (oppError || !opportunity) {

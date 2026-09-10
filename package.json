@@ -6,7 +6,9 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "verify:tracking": "node --env-file=.env.local scripts/verify-tracking.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

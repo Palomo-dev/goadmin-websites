@@ -1,3 +1,8 @@
+'use client'
+
+import { ContactFormFeedback } from './ContactFormFeedback'
+import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+
 interface ContactFormSplitProps {
   content: {
     title?: string
@@ -11,23 +16,77 @@ interface ContactFormSplitProps {
 }
 
 export function ContactFormSplit({ content, organization, primaryColor }: ContactFormSplitProps) {
+  const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
+    useContactForm({ organizationId: organization?.id, sourceForm: 'contact_form_split' })
+
+  const inputClass =
+    'w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-60'
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
       <div>
         {content.title && (
           <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{content.title}</h2>
         )}
-        <form className="space-y-4">
-          <input type="text" placeholder="Nombre completo" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2" />
-          <input type="email" placeholder="Email" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2" />
-          <input type="tel" placeholder="Teléfono" className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2" />
-          <textarea placeholder="Mensaje" rows={4} className="w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2 resize-none" />
+        <form className="space-y-4" onSubmit={submit} noValidate>
+          <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />
+
+          {/* Campo trampa anti-bots */}
+          <input
+            {...HONEYPOT_FIELD_PROPS}
+            value={values.website}
+            onChange={(e) => setField('website', e.target.value)}
+          />
+
+          <input
+            type="text"
+            required
+            placeholder="Nombre completo"
+            aria-label="Nombre completo"
+            maxLength={CONTACT_MAX_LENGTHS.name}
+            value={values.name}
+            onChange={(e) => setField('name', e.target.value)}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
+          <input
+            type="email"
+            required
+            placeholder="Email"
+            aria-label="Email"
+            maxLength={CONTACT_MAX_LENGTHS.email}
+            value={values.email}
+            onChange={(e) => setField('email', e.target.value)}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
+          <input
+            type="tel"
+            placeholder="Teléfono"
+            aria-label="Teléfono"
+            maxLength={CONTACT_MAX_LENGTHS.phone}
+            value={values.phone}
+            onChange={(e) => setField('phone', e.target.value)}
+            disabled={isSubmitting}
+            className={inputClass}
+          />
+          <textarea
+            placeholder="Mensaje"
+            aria-label="Mensaje"
+            rows={4}
+            maxLength={CONTACT_MAX_LENGTHS.message}
+            value={values.message}
+            onChange={(e) => setField('message', e.target.value)}
+            disabled={isSubmitting}
+            className={`${inputClass} resize-none`}
+          />
           <button
             type="submit"
-            className="w-full py-3 rounded-lg text-white font-semibold transition-opacity hover:opacity-90"
+            disabled={isSubmitting}
+            className="w-full py-3 rounded-lg text-white font-semibold transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ backgroundColor: primaryColor || '#8B6914' }}
           >
-            Enviar
+            {isSubmitting ? 'Enviando...' : 'Enviar'}
           </button>
         </form>
       </div>

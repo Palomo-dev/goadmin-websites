@@ -1,49 +1,227 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * POST /api/contact
+ *
+ * Recibe los formularios de contacto públicos del sitio y los guarda DONDE EL
+ * CRM SÍ MIRA:
+ *   1. `customers` con lifecycle_stage = 'lead' (nombre, correo, teléfono y el
+ *      mensaje en `notes`). Si el correo ya existe en esa organización se
+ *      reutiliza la ficha en vez de duplicarla.
+ *   2. `opportunities` con record_type = 'lead' y source = 'website', enlazada a
+ *      ese customer. Un lead y un negocio son la misma fila distinguida por
+ *      record_type: naciendo como 'lead' no infla el pronóstico del ERP.
+ *
+ * Todo pasa por la función `web_capture_lead` (SECURITY DEFINER, EXECUTE solo
+ * para service_role), de modo que no hace falta abrir escritura a `anon` sobre
+ * `customers` ni `opportunities`.
+ *
+ * Seguridad:
+ *  - `organization_id` se resuelve desde el Host de la petición (headers que
+ *    pone el middleware), NUNCA se acepta a ciegas del body. Si el body trae
+ *    uno distinto, se rechaza.
+ *  - Rate limit: 5 envíos/hora/IP.
+ *  - Honeypot: campo oculto `website`; si viene relleno se descarta.
+ *  - Validación y acotado de longitudes/formato, aquí y otra vez en la BD.
+ *
+ * Body: {
+ *   name, email, message, phone?, subject?, company?, sourceForm?,
+ *   organizationId?,  // solo para verificación cruzada
+ *   website?,         // honeypot — debe venir vacío
+ * }
+ */
+
+const MAX = {
+  name: 120,
+  email: 160,
+  phone: 40,
+  subject: 200,
+  company: 160,
+  message: 4000,
+}
+
+// Mensajes de error de la RPC → respuesta HTTP legible.
+const RPC_ERRORS: Record<string, { status: number; message: string }> = {
+  invalid_email: { status: 400, message: 'El correo no es válido.' },
+  invalid_name: { status: 400, message: 'El nombre no es válido.' },
+  invalid_phone: { status: 400, message: 'El teléfono no es válido.' },
+  invalid_company: { status: 400, message: 'El nombre de la empresa es demasiado largo.' },
+  invalid_subject: { status: 400, message: 'El asunto es demasiado largo.' },
+  message_too_long: { status: 400, message: 'El mensaje es demasiado largo.' },
+  organization_not_found: { status: 404, message: 'Organización no encontrada.' },
+  organization_inactive: { status: 403, message: 'Este sitio no está recibiendo mensajes.' },
+  organization_without_site: { status: 403, message: 'Este sitio no está publicado.' },
+}
+
+function str(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { organizationId, name, email, phone, message } = body
-    
-    if (!organizationId || !name || !email || !message) {
+    // ── 1. Rate limit: 5 envíos/hora/IP ──
+    const clientIP = getClientIP(request)
+    const rate = checkRateLimit(clientIP, 5, 60 * 60 * 1000)
+    if (!rate.allowed) {
+      const retryAfter = Math.ceil((rate.resetAt - Date.now()) / 1000)
       return NextResponse.json(
-        { error: 'Faltan campos requeridos' },
+        { error: 'Has enviado demasiados mensajes. Inténtalo más tarde.', retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      )
+    }
+
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 })
+    }
+
+    // ── 2. Honeypot: los bots rellenan el campo oculto ──
+    if (str((body as any).website)) {
+      console.warn(`[contact] honeypot activado desde ${clientIP}; envío descartado`)
+      // No damos pistas al bot, pero tampoco decimos que se guardó.
+      return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 })
+    }
+
+    const name = str((body as any).name)
+    const email = str((body as any).email).toLowerCase()
+    const message = str((body as any).message)
+    const phone = str((body as any).phone)
+    const subject = str((body as any).subject)
+    const company = str((body as any).company)
+    const sourceForm = str((body as any).sourceForm)
+
+    // ── 3. Validación de entrada ──
+    if (!name || !email) {
+      return NextResponse.json(
+        { error: 'El nombre y el correo son obligatorios.' },
         { status: 400 }
       )
     }
-    
-    const supabase = createPublicClient()
-    
-    // Crear un lead/contacto en la base de datos
-    const { data, error } = await supabase
-      .from('leads')
-      .insert({
-        organization_id: organizationId,
-        first_name: name.split(' ')[0],
-        last_name: name.split(' ').slice(1).join(' ') || null,
-        email,
-        phone: phone || null,
-        notes: message,
-        source: 'website',
-        status: 'new'
-      } as any)
-      .select()
-      .single()
-    
-    if (error) {
-      console.error('Error creating lead:', error)
-      // Si la tabla leads no existe, simplemente retornamos éxito
-      return NextResponse.json({ success: true, message: 'Mensaje recibido' })
+    if (!message && !subject) {
+      return NextResponse.json({ error: 'Escribe un mensaje.' }, { status: 400 })
     }
-    
-    return NextResponse.json({ success: true, data })
-  } catch (error) {
-    console.error('Contact API error:', error)
+    if (!/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(email) || email.length > MAX.email) {
+      return NextResponse.json({ error: 'El correo no es válido.' }, { status: 400 })
+    }
+    if (name.length > MAX.name) {
+      return NextResponse.json({ error: 'El nombre es demasiado largo.' }, { status: 400 })
+    }
+    if (message.length > MAX.message) {
+      return NextResponse.json({ error: 'El mensaje es demasiado largo.' }, { status: 400 })
+    }
+    if (phone.length > MAX.phone) {
+      return NextResponse.json({ error: 'El teléfono no es válido.' }, { status: 400 })
+    }
+    if (subject.length > MAX.subject || company.length > MAX.company) {
+      return NextResponse.json({ error: 'Alguno de los campos es demasiado largo.' }, { status: 400 })
+    }
+
+    // ── 4. La organización sale del Host, no del body ──
+    const headersList = await headers()
+    const identifier = headersList.get('x-custom-domain') || headersList.get('x-subdomain')
+    if (!identifier) {
+      console.error('[contact] petición sin host de tenant (x-custom-domain / x-subdomain)')
+      return NextResponse.json({ error: 'Organización no encontrada.' }, { status: 404 })
+    }
+
+    const organization = await getOrganizationByHost(identifier)
+    if (!organization) {
+      console.error(`[contact] host sin organización: ${identifier}`)
+      return NextResponse.json({ error: 'Organización no encontrada.' }, { status: 404 })
+    }
+
+    // Si el cliente manda organizationId, tiene que coincidir con la del sitio.
+    const claimedOrgId = (body as any).organizationId
+    if (
+      claimedOrgId !== undefined &&
+      claimedOrgId !== null &&
+      Number(claimedOrgId) !== Number(organization.id)
+    ) {
+      console.error(
+        `[contact] organizationId del body (${claimedOrgId}) no coincide con el host ${identifier} (org ${organization.id})`
+      )
+      return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 403 })
+    }
+
+    // ── 5. Escritura vía RPC con privilegios acotados ──
+    const supabase = createAdminClient()
+    if (!supabase) {
+      // Sin service role key no podemos ejecutar la RPC. Fallamos fuerte:
+      // jamás decir "mensaje recibido" si no se guardó.
+      console.error(
+        '[contact] SUPABASE_SERVICE_ROLE_KEY no configurada: no se puede guardar el contacto'
+      )
+      return NextResponse.json(
+        { error: 'No pudimos guardar tu mensaje ahora mismo. Inténtalo más tarde.' },
+        { status: 503 }
+      )
+    }
+
+    const { data, error } = await (supabase as any).rpc('web_capture_lead', {
+      p_organization_id: organization.id,
+      p_name: name,
+      p_email: email,
+      p_message: message,
+      p_phone: phone || null,
+      p_company: company || null,
+      p_subject: subject || null,
+      p_source_form: sourceForm || null,
+    })
+
+    if (error) {
+      const mapped = RPC_ERRORS[error.message?.trim() ?? '']
+      console.error(
+        `[contact] web_capture_lead falló para org ${organization.id} (${identifier}): ` +
+          `${error.message} | code=${error.code ?? 'n/a'} | details=${error.details ?? 'n/a'}`
+      )
+      return NextResponse.json(
+        { error: mapped?.message ?? 'No pudimos guardar tu mensaje. Inténtalo de nuevo.' },
+        { status: mapped?.status ?? 500 }
+      )
+    }
+
+    const result = (data ?? {}) as {
+      customer_id?: string
+      opportunity_id?: string | null
+      crm_warning?: string | null
+    }
+
+    if (!result.customer_id) {
+      console.error(
+        `[contact] web_capture_lead no devolvió customer_id para org ${organization.id}`
+      )
+      return NextResponse.json(
+        { error: 'No pudimos guardar tu mensaje. Inténtalo de nuevo.' },
+        { status: 500 }
+      )
+    }
+
+    if (result.crm_warning) {
+      // El contacto SÍ quedó guardado en customers, pero el embudo no está
+      // configurado, así que no hay lead en el pipeline. Queda registrado.
+      console.error(
+        `[contact] org ${organization.id}: contacto guardado (customer ${result.customer_id}) ` +
+          `pero SIN lead en el pipeline (${result.crm_warning}). Configura el CRM.`
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      customerId: result.customer_id,
+      leadId: result.opportunity_id ?? null,
+      crmWarning: result.crm_warning ?? null,
+      message: 'Mensaje recibido. Nos pondremos en contacto contigo.',
+    })
+  } catch (error: any) {
+    console.error('[contact] error inesperado:', error?.message || error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'No pudimos guardar tu mensaje. Inténtalo de nuevo.' },
       { status: 500 }
     )
   }

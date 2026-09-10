@@ -43,15 +43,35 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
     const isSpaceReservation = !!(spaceTypeId || spaceId || checkin)
 
-    // ── Resolver spaceTypeId desde spaceId si no viene ──
+    // ── Resolver spaceTypeId y sucursal desde spaceId ──
+    // La sucursal de una reserva es la del espacio reservado. Si no se reservo
+    // un espacio concreto (reserva por tipo o multi-room) se deja en null y el
+    // trigger trg_branch_default de la BD asigna la principal (Fase 9).
     let resolvedSpaceTypeId = spaceTypeId
-    if (spaceId && !resolvedSpaceTypeId) {
+    let resolvedBranchId: number | null = null
+    if (spaceId) {
       const { data: spaceData } = await (supabase as any)
         .from('spaces')
-        .select('space_type_id')
+        .select('space_type_id, branch_id')
         .eq('id', spaceId)
         .single()
-      if (spaceData) resolvedSpaceTypeId = spaceData.space_type_id
+      if (spaceData) {
+        if (!resolvedSpaceTypeId) resolvedSpaceTypeId = spaceData.space_type_id
+        resolvedBranchId = spaceData.branch_id ?? null
+      }
+    }
+
+    // Validar que la sucursal derivada pertenece a la organizacion: spaces no
+    // tiene organization_id, asi que un spaceId de otro tenant asignaria una
+    // sucursal ajena al cliente y a la reserva.
+    if (resolvedBranchId != null) {
+      const { data: validBranch } = await (supabase as any)
+        .from('branches')
+        .select('id')
+        .eq('id', resolvedBranchId)
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+      if (!validBranch) resolvedBranchId = null
     }
 
     // ── Validar disponibilidad para reservas de espacio ──
@@ -181,6 +201,7 @@ export async function POST(request: NextRequest) {
         .from('customers')
         .insert({
           organization_id: organizationId,
+          branch_id: resolvedBranchId,
           first_name: firstName,
           last_name: lastName || '',
           // full_name es GENERATED ALWAYS AS (CASE ...), no se puede insertar.
@@ -219,6 +240,7 @@ export async function POST(request: NextRequest) {
     const reservationData = (isSpaceReservation || isMultiRoom) ? {
       organization_id: organizationId,
       customer_id: customerId,
+      branch_id: resolvedBranchId,
       space_type_id: primarySpaceTypeId || null,
       space_id: spaceId || null,
       checkin: checkin,
@@ -240,6 +262,7 @@ export async function POST(request: NextRequest) {
     } : {
       organization_id: organizationId,
       customer_id: customerId,
+      branch_id: resolvedBranchId,
       start_date: `${date}T${time}:00`,
       end_date: `${date}T${time}:00`,
       occupant_count: guests || 1,

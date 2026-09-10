@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { trackMetaSchedule } from '@/components/site/MetaPixelEvents'
+// Mismo señuelo que los formularios de contacto y cotización: un solo patrón.
+import { HONEYPOT_FIELD_PROPS } from '@/components/sections/contact/useContactForm'
 
 interface ServiceOption {
   id: string
@@ -18,6 +20,7 @@ interface AppointmentFormProps {
 export function AppointmentForm({ organizationId, services, primaryColor, preselectedServiceId }: AppointmentFormProps) {
   const [form, setForm] = useState({
     serviceId: preselectedServiceId || '',
+    website: '', // señuelo: si un bot lo rellena, el servidor descarta el envío
     firstName: '',
     lastName: '',
     email: '',
@@ -54,6 +57,7 @@ export function AppointmentForm({ organizationId, services, primaryColor, presel
         body: JSON.stringify({
           organizationId,
           serviceId: form.serviceId || undefined,
+          website: form.website,
           firstName: form.firstName,
           lastName: form.lastName,
           email: form.email,
@@ -110,6 +114,7 @@ export function AppointmentForm({ organizationId, services, primaryColor, presel
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <input {...HONEYPOT_FIELD_PROPS} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 text-sm">
           {error}

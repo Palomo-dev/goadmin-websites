@@ -18,8 +18,33 @@ export default function CustomScripts({ scripts }: CustomScriptsProps) {
 
   useEffect(() => {
     if (!scripts || injectedRef.current) return
-    injectedRef.current = true
 
+    // El Meta Event Setup Tool abre el sitio dentro de un iframe y necesita
+    // instalar sus interceptores de fbq() antes de que los scripts corran.
+    // Solo en ese caso retrasamos la inyeccion: aplicar el delay a todos los
+    // visitantes atrasaria el PageView del pixel y perderia a quien rebota
+    // antes de que se dispare.
+    const enIframe = window.top !== window.self
+    const forzado = new URLSearchParams(window.location.search).has('fb_setup')
+
+    if (!enIframe && !forzado) {
+      injectedRef.current = true
+      injectScripts()
+      return
+    }
+
+    // El ref se marca dentro del callback, no antes: si el efecto se limpia
+    // antes de que dispare el timer (StrictMode en dev desmonta y remonta),
+    // marcarlo antes dejaria los scripts sin inyectar para siempre.
+    const timer = setTimeout(() => {
+      injectedRef.current = true
+      injectScripts()
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [scripts])
+
+  function injectScripts() {
     // Crear un contenedor temporal para parsear el HTML con scripts
     const container = document.createElement('div')
     container.innerHTML = scripts
@@ -82,11 +107,11 @@ export default function CustomScripts({ scripts }: CustomScriptsProps) {
     }
 
     // Inyectar elementos no-script (ej: <noscript>, <img> de pixels)
-    const nonScriptElements = container.querySelectorAll(':not(script)')
+    const nonScriptElements = container.querySelectorAll(':scope > :not(script)')
     nonScriptElements.forEach((el) => {
       document.body.appendChild(el.cloneNode(true))
     })
-  }, [scripts])
+  }
 
   return null
 }

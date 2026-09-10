@@ -166,6 +166,7 @@ export async function POST(request: NextRequest) {
           .from('customers')
           .insert({
             organization_id: organizationId,
+            branch_id: Number.isFinite(branchId) ? branchId : null,
             email: customer.email,
             first_name: customer.firstName,
             last_name: customer.lastName,

@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { trackMetaLead } from '@/components/site/MetaPixelEvents'
+// Mismo señuelo que usan los formularios de contacto: un solo patrón, no dos.
+import { HONEYPOT_FIELD_PROPS } from '@/components/sections/contact/useContactForm'
 
 interface ServiceOption {
   id: string
@@ -18,6 +20,7 @@ interface QuoteFormProps {
 export function QuoteForm({ organizationId, services, primaryColor, preselectedServiceId }: QuoteFormProps) {
   const [form, setForm] = useState({
     serviceId: preselectedServiceId || '',
+    website: '', // señuelo: si un bot lo rellena, el servidor descarta el envío
     firstName: '',
     lastName: '',
     email: '',
@@ -42,6 +45,7 @@ export function QuoteForm({ organizationId, services, primaryColor, preselectedS
         body: JSON.stringify({
           organizationId,
           serviceId: form.serviceId || undefined,
+          website: form.website,
           firstName: form.firstName,
           lastName: form.lastName,
           email: form.email,
@@ -85,6 +89,7 @@ export function QuoteForm({ organizationId, services, primaryColor, preselectedS
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <input {...HONEYPOT_FIELD_PROPS} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 text-sm">
           {error}

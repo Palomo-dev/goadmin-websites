@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react'
 import type { OrganizationWithDetails, WebsiteSettings } from '@/types/database'
+import {
+  useContactForm,
+  CONTACT_MAX_LENGTHS,
+  HONEYPOT_FIELD_PROPS,
+} from '@/components/sections/contact/useContactForm'
 
 interface ContactSectionProps {
   organization: OrganizationWithDetails
@@ -15,26 +19,19 @@ interface ContactSectionProps {
 }
 
 export function ContactSection({ organization, settings, primaryColor }: ContactSectionProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
+  // Este formulario FINGIA el envio: un `setTimeout` de un segundo y un tic
+  // verde, sin llamar nunca al servidor. Cada mensaje escrito aqui se perdia, y
+  // el visitante se iba creyendo que habia contactado. Es el mismo agujero que se
+  // cerro en los cuatro formularios de `components/sections/contact/`, pero este
+  // vive en la pagina publica (`app/[[...slug]]/page.tsx`) y se quedo fuera.
+  // Ahora usa el MISMO enganche que aquellos, para no repetir la logica de envio,
+  // validacion, honeypot y mensajes de error.
+  const form = useContactForm({
+    organizationId: organization?.id,
+    sourceForm: 'contact_section_site',
   })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    
-    // Simular envío
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setIsSubmitting(false)
-    setSubmitted(true)
-    setFormData({ name: '', email: '', phone: '', message: '' })
-  }
+  const { values, setField, status, errorMessage, successMessage, submit, isSubmitting, reset } = form
+  const submitted = status === 'success'
   
   return (
     <section id="contacto" className="py-20 bg-gray-50 dark:bg-gray-900/50">
@@ -141,26 +138,29 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     ¡Mensaje Enviado!
                   </h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Gracias por contactarnos. Te responderemos pronto.
+                    {successMessage || 'Gracias por contactarnos. Te responderemos pronto.'}
                   </p>
                   <Button
                     className="mt-4"
                     variant="outline"
-                    onClick={() => setSubmitted(false)}
+                    onClick={reset}
                   >
                     Enviar otro mensaje
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-4" noValidate>
+                  {/* Campo trampa: invisible para personas, tentador para robots. */}
+                  <input {...HONEYPOT_FIELD_PROPS} value={values.website} onChange={(e) => setField('website', e.target.value)} />
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Nombre
                     </label>
                     <Input
                       required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      value={values.name}
+                      onChange={(e) => setField('name', e.target.value)}
+                      maxLength={CONTACT_MAX_LENGTHS.name}
                       placeholder="Tu nombre"
                     />
                   </div>
@@ -172,8 +172,9 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <Input
                       type="email"
                       required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      value={values.email}
+                      onChange={(e) => setField('email', e.target.value)}
+                      maxLength={CONTACT_MAX_LENGTHS.email}
                       placeholder="tu@email.com"
                     />
                   </div>
@@ -184,8 +185,9 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     </label>
                     <Input
                       type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      value={values.phone}
+                      onChange={(e) => setField('phone', e.target.value)}
+                      maxLength={CONTACT_MAX_LENGTHS.phone}
                       placeholder="+57 300 123 4567"
                     />
                   </div>
@@ -197,12 +199,19 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <Textarea
                       required
                       rows={4}
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      value={values.message}
+                      onChange={(e) => setField('message', e.target.value)}
+                      maxLength={CONTACT_MAX_LENGTHS.message}
                       placeholder="¿En qué podemos ayudarte?"
                     />
                   </div>
                   
+                  {status === 'error' && errorMessage && (
+                    <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                      {errorMessage}
+                    </p>
+                  )}
+
                   <Button
                     type="submit"
                     className="w-full"
