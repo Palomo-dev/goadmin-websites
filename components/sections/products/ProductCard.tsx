@@ -624,9 +624,13 @@ function CardButtonRenderer({
 
   // Para padres con variantes, los botones add_to_cart y buy_now se convierten
   // en "Elegir" (link al detalle para elegir variante).
+  // NO usar button.label ni button.icon como fallback: son el label/icono del
+  // botón normal (sin variantes). Si se usan, un card_buttons configurado con
+  // label:"Agregar" icon:"Plus" sobreescribe el default "Elegir"/Layers y el
+  // padre se agrega al carrito sin elegir variante.
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
-    const chooseLabel = button.label_when_parent || button.label || 'Elegir'
-    const chooseIconName = button.icon || 'Layers'
+    const chooseLabel = button.label_when_parent || 'Elegir'
+    const chooseIconName = 'Layers'
     const ChooseIcon = ICON_MAP[chooseIconName] || Layers
     return (
       <Link href={`/productos/${product.uuid}`} className={btnFullWidth ? 'w-full' : ''}>
