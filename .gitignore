@@ -29,4 +29,8 @@ next-env.d.ts
 
 # Volcados de depuracion
 __*.html
+__*.txt
 *.tmp
+
+# IDE / agent configs
+.claude/

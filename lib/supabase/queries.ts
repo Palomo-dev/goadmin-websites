@@ -12,6 +12,58 @@ function getSupabaseForPublicRead() {
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
 /**
+ * Cuenta las variantes activas agrupadas por parent_product_id.
+ *
+ * PostgREST limita las respuestas (por defecto ~1000-2000 filas), por lo que
+ * traer TODAS las variantes de una organización grande (ej: 13.000+) y contar
+ * en JS deja a la mayoría de padres con variant_count = 0, lo que hace que el
+ * botón de la card muestre "Agregar" en vez de "Elegir".
+ *
+ * Solución: consultar en lotes pequeños (chunks) para que cada lote traiga
+ * todas sus filas sin ser cortado por el límite de PostgREST.
+ *
+ * @param supabase Cliente Supabase ya creado
+ * @param parentIds IDs de productos padre (is_parent = true)
+ * @returns Mapa parent_product_id → número de variantes activas
+ */
+async function countVariantsByParent(
+  supabase: ReturnType<typeof getSupabaseForPublicRead>,
+  parentIds: number[]
+): Promise<Record<number, number>> {
+  const variantCountMap: Record<number, number> = {}
+  if (!parentIds || parentIds.length === 0) return variantCountMap
+
+  // Procesar en lotes de 200 padres. Cada padre tiene como mucho ~15-20
+  // variantes, así que 200 padres = ~3000-4000 filas en el peor caso. Aun
+  // así puede superar el límite de PostgREST, por eso se pagina con range.
+  const CHUNK_SIZE = 200
+  for (let i = 0; i < parentIds.length; i += CHUNK_SIZE) {
+    const chunk = parentIds.slice(i, i + CHUNK_SIZE)
+    // Paginar dentro de cada chunk hasta traer todas las variantes.
+    // PostgREST devuelve máximo 1000 filas por defecto; usamos range.
+    let from = 0
+    const PAGE_SIZE = 1000
+    let hasMore = true
+    while (hasMore) {
+      const { data: children } = await supabase
+        .from('products')
+        .select('parent_product_id')
+        .in('parent_product_id', chunk)
+        .eq('status', 'active')
+        .range(from, from + PAGE_SIZE - 1)
+      if (children && children.length > 0) {
+        children.forEach((c: any) => {
+          variantCountMap[c.parent_product_id] = (variantCountMap[c.parent_product_id] || 0) + 1
+        })
+      }
+      hasMore = children ? children.length === PAGE_SIZE : false
+      from += PAGE_SIZE
+    }
+  }
+  return variantCountMap
+}
+
+/**
  * Normaliza el array product_prices de un producto para que [0] sea el precio vigente.
  *
  * Problema: Supabase devuelve product_prices ordenado por id ASC (el más antiguo primero).
@@ -329,19 +381,7 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
 
   // Contar variantes para productos padre
   const parentIds = (data || []).filter((p: any) => p.is_parent).map((p: any) => p.id)
-  let variantCountMap: Record<number, number> = {}
-  if (parentIds.length > 0) {
-    const { data: children } = await supabase
-      .from('products')
-      .select('parent_product_id')
-      .in('parent_product_id', parentIds)
-      .eq('status', 'active')
-    if (children) {
-      children.forEach((c: any) => {
-        variantCountMap[c.parent_product_id] = (variantCountMap[c.parent_product_id] || 0) + 1
-      })
-    }
-  }
+  const variantCountMap = await countVariantsByParent(supabase, parentIds)
 
   // F3: cuando hay outlet activo, el stock se filtra solo por ese branch.
   const stockBranchIds = (branchId !== undefined && branchId !== null)
@@ -423,19 +463,7 @@ export async function getOfferProducts(organizationId: number, limit = 500, bran
 
   // 4. Contar variantes para productos padre
   const parentIds = offers.filter((p: any) => p.is_parent).map((p: any) => p.id)
-  let variantCountMap: Record<number, number> = {}
-  if (parentIds.length > 0) {
-    const { data: children } = await supabase
-      .from('products')
-      .select('parent_product_id')
-      .in('parent_product_id', parentIds)
-      .eq('status', 'active')
-    if (children) {
-      children.forEach((c: any) => {
-        variantCountMap[c.parent_product_id] = (variantCountMap[c.parent_product_id] || 0) + 1
-      })
-    }
-  }
+  const variantCountMap = await countVariantsByParent(supabase, parentIds)
 
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
