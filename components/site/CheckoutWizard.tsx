@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Wallet } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Wallet, Tag } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
@@ -14,6 +14,7 @@ import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
+import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 
 interface CartModifier {
   typeId: number
@@ -184,9 +185,18 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
 
-  // Promotion states
-  const [appliedPromotions, setAppliedPromotions] = useState<{ id: string; name: string; discount: number; promotion_type: string }[]>([])
-  const [promoDiscount, setPromoDiscount] = useState(0)
+  // Promociones automáticas: mismo hook que el drawer y /carrito, y mismo
+  // motor que /api/orders, así el total que ve el cliente es el que se cobra.
+  // La sucursal sigue la misma regla que el envío del pedido (outlet explícito
+  // o la que traiga el carrito).
+  const promoBranchId = typeof branchId === 'number'
+    ? branchId
+    : (typeof (cartItems[0] as any)?.branchId === 'number' ? (cartItems[0] as any).branchId as number : null)
+  const {
+    promotions: appliedPromotions,
+    totalDiscount: promoDiscount,
+    itemDiscounts: promoItemDiscounts,
+  } = useCartPromotions({ organizationId, branchId: promoBranchId, items: cartItems })
 
   // Dynamic shipping states
   const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null }[]>([])
@@ -414,31 +424,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     }, 500) // Debounce 500ms
     return () => clearTimeout(timeout)
   }, [customerData.city, organizationId, needsShipping, subtotal])
-
-  // Auto-check promotions when cart changes
-  useEffect(() => {
-    if (cartItems.length === 0 || !organizationId) return
-    const checkPromos = async () => {
-      try {
-        const res = await fetch('/api/promotions/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            organizationId,
-            items: cartItems.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, categoryId: (i as any).categoryId })),
-            subtotal
-          })
-        })
-        const data = await res.json()
-        setAppliedPromotions(data.promotions || [])
-        setPromoDiscount(data.totalDiscount || 0)
-      } catch {
-        setAppliedPromotions([])
-        setPromoDiscount(0)
-      }
-    }
-    checkPromos()
-  }, [cartItems, organizationId, subtotal])
 
   // Coupon validation
   const validateCoupon = async () => {
@@ -830,6 +815,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                               {urgencyMessages[(typeof item.id === 'string' ? item.id.length : Number(item.id)) % urgencyMessages.length](getUrgencyNumber(item.productId || item.id))}
                             </p>
                           )}
+                          {promotionsForItem(appliedPromotions, item.id).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {promotionsForItem(appliedPromotions, item.id).map(promo => (
+                                <span
+                                  key={promo.id}
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700"
+                                  title={promo.name}
+                                >
+                                  <Tag className="h-3 w-3" />
+                                  {promotionBadgeLabel(promo, fmtPrice)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center gap-1.5">
@@ -847,15 +846,42 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                                 {fmtPrice(item.price)} c/u
                               </span>
                             </div>
-                            <p className="font-bold text-sm sm:text-base" style={{ color: primaryColor }}>
-                              {fmtPrice(item.price * item.quantity)}
-                            </p>
+                            {(promoItemDiscounts[String(item.id)] || 0) > 0 ? (
+                              <div className="text-right">
+                                <span className="block text-xs text-gray-400 line-through">{fmtPrice(item.price * item.quantity)}</span>
+                                <span className="font-bold text-sm sm:text-base text-green-600">
+                                  {fmtPrice(item.price * item.quantity - (promoItemDiscounts[String(item.id)] || 0))}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="font-bold text-sm sm:text-base" style={{ color: primaryColor }}>
+                                {fmtPrice(item.price * item.quantity)}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Promociones aplicadas al carrito */}
+                {appliedPromotions.length > 0 && (
+                  <div className="mt-4 rounded-lg bg-green-50 border border-green-100 p-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wide flex items-center gap-1">
+                      <Tag className="h-3.5 w-3.5" /> Promociones aplicadas
+                    </p>
+                    {appliedPromotions.map(promo => (
+                      <div key={promo.id} className="flex items-start justify-between gap-3 text-sm text-green-700">
+                        <div className="min-w-0">
+                          <span className="font-medium block truncate">{promo.name}</span>
+                          {promo.description && <span className="text-xs text-green-600/80 block line-clamp-2">{promo.description}</span>}
+                        </div>
+                        <span className="font-semibold flex-shrink-0">-{fmtPrice(promo.discount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Banner dine-in QR */}
                 {dineInTable && (
@@ -1286,7 +1312,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <div className="text-gray-600 flex-1 min-w-0">
-                      <span className="truncate block">{item.name} x{item.quantity}</span>
+                      <span className="truncate block">
+                        {item.name} x{item.quantity}
+                        {promotionsForItem(appliedPromotions, item.id).length > 0 && (
+                          <Tag className="inline h-3 w-3 ml-1 text-green-600 align-[-1px]" aria-label="Con promoción" />
+                        )}
+                      </span>
                       {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
                           {Object.entries(item.variantAttributes).map(([k, v]) => `${k}: ${v}`).join(' · ')}
@@ -1303,7 +1334,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         </span>
                       )}
                     </div>
-                    <span className="font-medium ml-2 flex-shrink-0">{fmtPrice(item.price * item.quantity)}</span>
+                    {(promoItemDiscounts[String(item.id)] || 0) > 0 ? (
+                      <span className="ml-2 flex-shrink-0 text-right">
+                        <span className="block text-xs text-gray-400 line-through">{fmtPrice(item.price * item.quantity)}</span>
+                        <span className="font-medium text-green-600">{fmtPrice(item.price * item.quantity - (promoItemDiscounts[String(item.id)] || 0))}</span>
+                      </span>
+                    ) : (
+                      <span className="font-medium ml-2 flex-shrink-0">{fmtPrice(item.price * item.quantity)}</span>
+                    )}
                   </div>
                 ))}
 
@@ -1349,7 +1387,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   )}
                   {appliedPromotions.map((promo) => (
                     <div key={promo.id} className="flex justify-between text-sm mt-1 text-green-600">
-                      <span className="truncate flex-1 mr-2">🏷️ {promo.name}</span>
+                      <span className="flex items-center gap-1 truncate flex-1 mr-2" title={promo.description || promo.name}>
+                        <Tag className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{promo.name}</span>
+                      </span>
                       <span className="flex-shrink-0">-{fmtPrice(promo.discount)}</span>
                     </div>
                   ))}
@@ -1388,6 +1429,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     <span>Total</span>
                     <span style={{ color: primaryColor }}>{fmtPrice(total)}</span>
                   </div>
+                  {(promoDiscount + couponDiscount) > 0 && (
+                    <p className="text-xs text-green-600 text-right mt-1">
+                      Estás ahorrando <strong>{fmtPrice(promoDiscount + couponDiscount)}</strong>
+                    </p>
+                  )}
                 </div>
 
                 {needsShipping && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
@@ -1433,6 +1479,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
               Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
+              {promoDiscount > 0 && (
+                <span className="block text-xs text-green-600">Ahorras {fmtPrice(promoDiscount)} en promociones</span>
+              )}
             </div>
             <Button
               type="button"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+import { evaluateCartPromotions } from '@/lib/promotions'
 
 export const dynamic = 'force-dynamic'
 
@@ -219,7 +220,27 @@ export async function POST(request: NextRequest) {
     const taxTotal = taxRate > 0 ? Math.round(calculatedSubtotal * taxRate / 100) : 0
     const resolvedTip = Number(tipAmount) || 0
     const resolvedCouponDiscount = Number(couponDiscount) || 0
-    const resolvedPromoDiscount = Number(promoDiscount) || 0
+
+    // Promociones automáticas: se recalculan en servidor con el mismo motor que
+    // usa /api/promotions/check (lib/promotions.ts). El `promoDiscount` que
+    // manda el cliente solo sirve para detectar desfases (carrito viejo, promo
+    // que venció entre el checkout y el pago); nunca se cobra a ciegas.
+    const promoEval = await evaluateCartPromotions(supabase, {
+      organizationId,
+      // Misma sucursal que vio el cliente en /api/promotions/check (outlet
+      // explícito o ninguna); no el fallback de stock, para no aplicar aquí
+      // promos por sucursal que el carrito nunca mostró.
+      branchId: Number.isFinite(branchId) ? branchId : null,
+      items,
+    })
+    const resolvedPromoDiscount = promoEval.totalDiscount
+    const clientPromoDiscount = Number(promoDiscount) || 0
+    if (clientPromoDiscount !== resolvedPromoDiscount) {
+      console.warn('[Orders] Descuento de promociones distinto al del cliente', {
+        organizationId, cliente: clientPromoDiscount, servidor: resolvedPromoDiscount,
+        promotionIdsCliente: promotionIds, promotionIdsServidor: promoEval.promotions.map(p => p.id),
+      })
+    }
     const totalDiscountAmount = resolvedCouponDiscount + resolvedPromoDiscount
     // Si el impuesto está incluido en el precio, no sumarlo al total
     const taxForTotal = taxIncluded ? 0 : taxTotal
@@ -374,9 +395,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Registrar redención de cupón
+      // Registrar redención de cupón. El trigger `trg_coupon_redemption_increment`
+      // de `coupon_redemptions` ya suma 1 a `coupons.usage_count`; aquí NO se
+      // incrementa a mano (hacerlo contaba cada cupón dos veces y agotaba el
+      // `usage_limit` a la mitad).
       if (couponId && resolvedCouponDiscount > 0) {
-        await (supabase as any)
+        const { error: redemptionError } = await (supabase as any)
           .from('coupon_redemptions')
           .insert({
             coupon_id: couponId,
@@ -384,16 +408,21 @@ export async function POST(request: NextRequest) {
             customer_id: customerId,
             discount_applied: resolvedCouponDiscount,
           })
-          .catch((err: any) => console.error('[Orders] Coupon redemption error:', err))
+        if (redemptionError) console.error('[Orders] Coupon redemption error:', redemptionError)
+      }
 
-        const { data: currentCoupon } = await (supabase as any)
-          .from('coupons').select('usage_count').eq('id', couponId).maybeSingle()
-        if (currentCoupon) {
-          await (supabase as any)
-            .from('coupons')
-            .update({ usage_count: (currentCoupon.usage_count || 0) + 1 })
-            .eq('id', couponId)
-        }
+      // Registrar uso de promociones automáticas (las que aplicó el servidor).
+      // Sin esto el descuento llegaba al ERP pero "Usos" seguía en 0 en el POS
+      // y no había forma de saber de dónde salía el descuento del pedido.
+      // La RPC `increment_promotion_usage` (migración 20260911020000 del ERP)
+      // hace un solo UPDATE `usage_count + 1`: atómico, dos pedidos
+      // simultáneos cuentan 2. Solo toca promociones de esta organización.
+      if (resolvedPromoDiscount > 0 && promoEval.promotions.length > 0) {
+        const { error: promoUsageError } = await (supabase as any).rpc('increment_promotion_usage', {
+          p_organization_id: organizationId,
+          p_promotion_ids: promoEval.promotions.map(p => p.id),
+        })
+        if (promoUsageError) console.error('[Orders] Promotion usage error:', promoUsageError)
       }
 
       // Enviar email de confirmación (fire-and-forget)
@@ -411,6 +440,9 @@ export async function POST(request: NextRequest) {
         subtotal: calculatedSubtotal,
         tax: taxTotal,
         shipping: shipping || 0,
+        discount: totalDiscountAmount,
+        promotions: promoEval.promotions.map(p => ({ name: p.name, discount: p.discount })),
+        ...(couponCode && resolvedCouponDiscount > 0 ? { couponCode, couponDiscount: resolvedCouponDiscount } : {}),
         total: calculatedTotal,
         organizationName: '',
         trackingUrl: `${origin}/pedido/${webOrder.order_number}`,

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, Tag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
-import { Price } from './CurrencyProvider'
+import { Price, useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
+import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 
 interface CartModifier {
   modifierId: number
@@ -39,6 +40,8 @@ interface CartDrawerProps {
   onClose: () => void
   primaryColor: string
   organizationSubdomain: string
+  /** Necesario para consultar promociones automáticas. */
+  organizationId?: number | null
   shippingSettings?: {
     shippingFlatRate: number
     freeShippingThreshold: number
@@ -57,8 +60,11 @@ interface CartDrawerProps {
   branchId?: number | null
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
   const [items, setItems] = useState<CartItem[]>([])
+  const { formatPrice } = useCurrency()
+  // Promociones automáticas (mismo motor que checkout y /api/orders)
+  const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
   const [checkoutButtonText] = useState(() => {
     const texts = cartButtonConfig?.texts?.length ? cartButtonConfig.texts : ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
     if (cartButtonConfig?.mode === 'fixed') return texts[0]
@@ -112,7 +118,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   const tax = taxSettings && taxSettings.rate > 0 && !taxSettings.taxIncluded
     ? Math.round(subtotal * taxSettings.rate / 100)
     : 0
-  
+  const shippingCost = shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold
+    ? shippingSettings.shippingFlatRate
+    : 0
+  // Mismo orden que el checkout: impuesto sobre el subtotal, descuento al final.
+  const total = Math.max(0, subtotal + tax + shippingCost - promoDiscount)
+
   if (!isOpen) return null
   
   return (
@@ -194,12 +205,39 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                     {item.notes && (
                       <p className="text-xs text-gray-400 italic truncate">📝 {item.notes}</p>
                     )}
-                    <div className="flex items-center gap-2">
-                      {item.comparePrice && item.comparePrice > item.price && (
-                        <Price value={Number(item.comparePrice)} className="text-xs text-gray-400 line-through" />
-                      )}
-                      <Price value={Number(item.price)} className="text-sm font-bold" style={{ color: primaryColor }} />
-                    </div>
+                    {(() => {
+                      const itemPromos = promotionsForItem(promotions, item.id)
+                      const lineDiscount = itemDiscounts[String(item.id)] || 0
+                      return (
+                        <>
+                          {itemPromos.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {itemPromos.map(p => (
+                                <span
+                                  key={p.id}
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                  title={p.name}
+                                >
+                                  <Tag className="w-3 h-3" />
+                                  {promotionBadgeLabel(p, formatPrice)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {item.comparePrice && item.comparePrice > item.price && (
+                              <Price value={Number(item.comparePrice)} className="text-xs text-gray-400 line-through" />
+                            )}
+                            <Price value={Number(item.price)} className="text-sm font-bold" style={{ color: primaryColor }} />
+                            {lineDiscount > 0 && (
+                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                -<Price value={lineDiscount} /> en promo
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )
+                    })()}
                     
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
@@ -249,6 +287,21 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               <p className="text-xs text-gray-400">{taxSettings.name} incluido en el precio</p>
             )}
 
+            {/* Promociones automáticas */}
+            {promotions.length > 0 && (
+              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 space-y-1">
+                {promotions.map((promo) => (
+                  <div key={promo.id} className="flex items-center justify-between text-sm text-green-700 dark:text-green-300">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <Tag className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{promo.name}</span>
+                    </span>
+                    <span className="font-semibold flex-shrink-0 ml-2">-<Price value={promo.discount} /></span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Envío */}
             {shippingSettings?.enableShipping && (
               <>
@@ -281,9 +334,16 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             )}
 
             {/* Total */}
-            <div className="flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
-              <span>Total</span>
-              <Price value={subtotal + tax + (shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? shippingSettings.shippingFlatRate : 0)} style={{ color: primaryColor }} />
+            <div className="pt-2 border-t dark:border-gray-700">
+              <div className="flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white">
+                <span>Total</span>
+                <Price value={total} style={{ color: primaryColor }} />
+              </div>
+              {promoDiscount > 0 && (
+                <p className="text-xs text-green-600 dark:text-green-400 text-right mt-0.5">
+                  Estás ahorrando <Price value={promoDiscount} className="font-semibold" />
+                </p>
+              )}
             </div>
             
             <Link href="/checkout" onClick={onClose}>

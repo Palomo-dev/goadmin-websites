@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   ShoppingBag, Trash2, Plus, Minus, ArrowLeft, ArrowRight,
-  Package, ShieldCheck, Truck, CreditCard
+  Package, ShieldCheck, Truck, CreditCard, Tag
 } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
+import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -89,6 +90,10 @@ export function CartPageClient({
     return options[Math.floor(Math.random() * options.length)]
   })
   const cartKey = getCartKey(organizationSubdomain, branchId)
+  const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
+
+  // Promociones automáticas (mismo motor que el drawer, el checkout y /api/orders)
+  const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
 
   useEffect(() => {
     const loadCart = () => {
@@ -145,7 +150,8 @@ export function CartPageClient({
   const shipping = cartSettings.enableShipping
     ? (cartSettings.freeShippingThreshold > 0 && subtotal >= cartSettings.freeShippingThreshold ? 0 : cartSettings.shippingFlatRate)
     : 0
-  const total = subtotal + tax + shipping
+  // Mismo orden que el checkout: impuesto sobre el subtotal, descuento al final.
+  const total = Math.max(0, subtotal + tax + shipping - promoDiscount)
 
   // Progreso para envío gratis
   const freeShippingProgress = cartSettings.freeShippingThreshold > 0
@@ -270,6 +276,20 @@ export function CartPageClient({
                   {item.notes && (
                     <p className="text-xs text-gray-400 italic mt-0.5">📝 {item.notes}</p>
                   )}
+                  {promotionsForItem(promotions, item.id).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {promotionsForItem(promotions, item.id).map(p => (
+                        <span
+                          key={p.id}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                          title={p.name}
+                        >
+                          <Tag className="w-3 h-3" />
+                          {promotionBadgeLabel(p, fmt)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     {item.comparePrice && item.comparePrice > item.price && (
                       <span className="text-sm text-gray-400 line-through">${Number(item.comparePrice).toLocaleString('es-CO')}</span>
@@ -300,9 +320,20 @@ export function CartPageClient({
 
                   {/* Subtotal + eliminar */}
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      ${(item.price * item.quantity).toLocaleString('es-CO')}
-                    </span>
+                    {(itemDiscounts[String(item.id)] || 0) > 0 ? (
+                      <span className="text-right">
+                        <span className="block text-xs text-gray-400 line-through">
+                          ${(item.price * item.quantity).toLocaleString('es-CO')}
+                        </span>
+                        <span className="font-bold text-green-600 dark:text-green-400">
+                          {fmt(item.price * item.quantity - (itemDiscounts[String(item.id)] || 0))}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="font-bold text-gray-900 dark:text-white">
+                        ${(item.price * item.quantity).toLocaleString('es-CO')}
+                      </span>
+                    )}
                     <button
                       onClick={() => removeItem(item.id)}
                       className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
@@ -345,6 +376,15 @@ export function CartPageClient({
                 {cartSettings.taxIncluded && cartSettings.taxRate > 0 && (
                   <p className="text-xs text-gray-400">{cartSettings.taxName} incluido en el precio</p>
                 )}
+                {promotions.map(promo => (
+                  <div key={promo.id} className="flex justify-between text-green-600 dark:text-green-400">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <Tag className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{promo.name}</span>
+                    </span>
+                    <span className="font-medium flex-shrink-0 ml-2">-{fmt(promo.discount)}</span>
+                  </div>
+                ))}
                 {cartSettings.enableShipping && (
                   <div className="flex justify-between text-gray-600 dark:text-gray-300">
                     <span>Envío estimado</span>
@@ -358,6 +398,11 @@ export function CartPageClient({
                     <span>Total</span>
                     <span style={{ color: primaryColor }}>${total.toLocaleString('es-CO')}</span>
                   </div>
+                  {promoDiscount > 0 && (
+                    <p className="text-xs text-green-600 dark:text-green-400 text-right mt-1">
+                      Estás ahorrando <strong>{fmt(promoDiscount)}</strong> con promociones
+                    </p>
+                  )}
                 </div>
               </div>
 

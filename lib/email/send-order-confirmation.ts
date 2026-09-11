@@ -12,9 +12,24 @@ interface OrderEmailData {
   subtotal: number
   tax: number
   shipping: number
+  /** Descuento total (cupón + promociones). */
+  discount?: number
+  promotions?: { name: string; discount: number }[]
+  couponCode?: string
+  couponDiscount?: number
   total: number
   organizationName: string
   trackingUrl: string
+}
+
+// Los nombres de promoción/cupón los escribe el comercio en el ERP; se escapan
+// antes de interpolarlos en el HTML del correo.
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<boolean> {
@@ -79,6 +94,18 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
           <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
             <span>Envío</span>
             <span>$${data.shipping.toLocaleString('es-CO')}</span>
+          </div>
+          ` : ''}
+          ${(data.promotions || []).filter(p => p.discount > 0).map(p => `
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:#16a34a;margin-bottom:4px;">
+            <span>🏷️ ${escapeHtml(p.name)}</span>
+            <span>-$${p.discount.toLocaleString('es-CO')}</span>
+          </div>
+          `).join('')}
+          ${data.couponCode && (data.couponDiscount || 0) > 0 ? `
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:#16a34a;margin-bottom:4px;">
+            <span>🎟️ Cupón ${escapeHtml(data.couponCode)}</span>
+            <span>-$${(data.couponDiscount || 0).toLocaleString('es-CO')}</span>
           </div>
           ` : ''}
           <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;color:#1a1a1a;margin-top:8px;padding-top:8px;border-top:1px solid #eee;">
