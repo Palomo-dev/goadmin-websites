@@ -201,9 +201,9 @@ async function enrichCategoriesWithFallbackImage(
 async function getOrganizationBySubdomainUncached(subdomain: string): Promise<OrganizationWithDetails | null> {
   const supabase = getSupabaseForPublicRead()
   const subdomainLower = subdomain.toLowerCase().trim()
-  
+
   // PRIMERO: Buscar directamente en organizations.subdomain
-  const { data: orgDirect } = await supabase
+  const { data: orgDirect, error: orgError } = await supabase
     .from('organizations')
     .select(`
       *,
@@ -212,7 +212,10 @@ async function getOrganizationBySubdomainUncached(subdomain: string): Promise<Or
     `)
     .ilike('subdomain', subdomainLower)
     .limit(1)
-  
+
+  // Si hay error de conexion, lanzar para que unstable_cache NO cachee null.
+  if (orgError) throw orgError
+
   if (orgDirect && orgDirect.length > 0) {
     return orgDirect[0] as OrganizationWithDetails
   }
@@ -253,7 +256,7 @@ async function getOrganizationBySubdomainUncached(subdomain: string): Promise<Or
  */
 async function getOrganizationByCustomDomainUncached(domain: string): Promise<OrganizationWithDetails | null> {
   const supabase = getSupabaseForPublicRead()
-  
+
   // Primero buscar en organization_domains
   const { data: domainData, error: domainError } = await supabase
     .from('organization_domains')
@@ -262,8 +265,17 @@ async function getOrganizationByCustomDomainUncached(domain: string): Promise<Or
     .eq('is_active', true)
     .eq('status', 'verified')
     .single()
-  
-  if (domainError || !domainData) return null
+
+  // Si hay error de conexion (BD caida), lanzar para que unstable_cache NO cachee null.
+  // Si es un 404/425 (no encontrado), devolver null (si se cachea, esta bien).
+  if (domainError) {
+    const code = (domainError as { code?: string }).code
+    const msg = (domainError as { message?: string }).message || ''
+    const isNotFound = code === 'PGRST116' || code === '425' || msg.includes('no rows')
+    if (!isNotFound) throw domainError
+    return null
+  }
+  if (!domainData) return null
   
   const orgId = (domainData as { organization_id: number }).organization_id
   
