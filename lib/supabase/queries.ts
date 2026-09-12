@@ -350,7 +350,7 @@ export const getWebStockBranchIds = cache(async (organizationId: number): Promis
  * Obtiene los productos de una organización para mostrar en el sitio.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getOrganizationProducts(organizationId: number, limit = 12, branchId?: number | null) {
+export const getOrganizationProducts = cache(async (organizationId: number, limit = 12, branchId?: number | null) => {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -408,13 +408,13 @@ export async function getOrganizationProducts(organizationId: number, limit = 12
     }))),
     stockBranchIds
   )
-}
+})
 
 /**
  * Obtiene productos en oferta (compare_price > price), ordenados por ventas.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getOfferProducts(organizationId: number, limit = 500, branchId?: number | null) {
+export const getOfferProducts = cache(async (organizationId: number, limit = 500, branchId?: number | null) => {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -493,7 +493,7 @@ export async function getOfferProducts(organizationId: number, limit = 500, bran
   )
     .sort((a: any, b: any) => b.sales_count - a.sales_count)
     .slice(0, limit)
-}
+})
 
 /**
  * Obtiene los servicios de una organización (usando productos tipo servicio).
@@ -619,12 +619,12 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
  * Incluye `product_images` para resolver la miniatura en el preview.
  * F3: acepta `branchId` opcional para filtrar los categoryIds a los visibles del outlet.
  */
-export async function getProductsByCategoryIds(
+export const getProductsByCategoryIds = cache(async (
   organizationId: number,
   categoryIds: number[],
   limitPerCategory = 12,
   branchId?: number | null,
-): Promise<Record<number, any[]>> {
+): Promise<Record<number, any[]>> => {
   if (categoryIds.length === 0) return {}
   const supabase = getSupabaseForPublicRead()
 
@@ -667,7 +667,7 @@ export async function getProductsByCategoryIds(
     }
   })
   return map
-}
+})
 
 /**
  * Obtiene páginas del sitio por ids (F7.1 enlace tipado a página).
