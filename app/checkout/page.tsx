@@ -5,7 +5,7 @@ import { CheckoutWizard } from '@/components/site/CheckoutWizard'
 import { CurrencySelector } from '@/components/site/CurrencySelector'
 import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
-import { getMetaPixelId, getGoogleAdsConfig } from '@/lib/supabase/queries'
+import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax } from '@/lib/supabase/queries'
 import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 import MetaPixel from '@/components/site/MetaPixel'
@@ -89,15 +89,8 @@ export default async function CheckoutPage() {
     getGoogleAdsConfig(organization.id)
   ])
 
-  // Impuesto: solo si hay uno marcado como predeterminado
-  const supabaseTax = (createAdminClient() || createPublicClient()) as any
-  const { data: defaultTax } = await supabaseTax
-    .from('organization_taxes')
-    .select('name, rate, tax_included')
-    .eq('organization_id', organization.id)
-    .eq('is_default', true)
-    .eq('is_active', true)
-    .single()
+  // Impuesto: solo si hay uno marcado como predeterminado (cacheado 300s)
+  const defaultTax = await getDefaultTax(organization.id)
 
   // Shipping + delivery: desde tabla website_settings
   const supabaseWs = createAdminClient() || createPublicClient()
@@ -111,7 +104,7 @@ export default async function CheckoutPage() {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
-    taxIncluded: defaultTax?.tax_included ?? wsRow?.tax_included ?? false,
+    taxIncluded: defaultTax?.taxIncluded ?? wsRow?.tax_included ?? false,
     shippingFlatRate: Number(wsRow?.shipping_flat_rate ?? 10000),
     freeShippingThreshold: Number(wsRow?.free_shipping_threshold ?? 100000),
     enableShipping: wsRow?.enable_shipping !== false,

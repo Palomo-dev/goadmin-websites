@@ -1,10 +1,9 @@
 import { getOrgContext } from '@/lib/get-org-context'
-import { getMetaPixelId, getGoogleAdsConfig, getOrganizationProducts } from '@/lib/supabase/queries'
+import { getMetaPixelId, getGoogleAdsConfig, getOrganizationProducts, getDefaultTax } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CartPageClient } from './CartPageClient'
 import { Metadata } from 'next'
-import { createPublicClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,15 +25,8 @@ export default async function CarritoPage() {
     getGoogleAdsConfig(organization.id)
   ])
 
-  // Impuesto default para mostrar estimado
-  const supabaseTax = createPublicClient()
-  const { data: defaultTax } = await (supabaseTax as any)
-    .from('organization_taxes')
-    .select('name, rate')
-    .eq('organization_id', organization.id)
-    .eq('is_default', true)
-    .eq('is_active', true)
-    .single()
+  // Impuesto default para mostrar estimado (cacheado 300s)
+  const defaultTax = await getDefaultTax(organization.id)
 
   // Shipping config
   const ws = organization.website_settings as any

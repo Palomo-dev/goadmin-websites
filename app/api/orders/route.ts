@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { evaluateCartPromotions } from '@/lib/promotions'
+import { getDefaultTax } from '@/lib/supabase/queries'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,21 +134,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── B2: Obtener impuesto default de la org ──
+    // ── B2: Obtener impuesto default de la org (cacheado 300s) ──
     let taxRate = 0
     let taxName = 'IVA'
-    const { data: defaultTax } = await (supabase as any)
-      .from('organization_taxes')
-      .select('name, rate, tax_included')
-      .eq('organization_id', organizationId)
-      .eq('is_default', true)
-      .eq('is_active', true)
-      .single()
+    const defaultTax = await getDefaultTax(organizationId)
     let taxIncluded = false
     if (defaultTax) {
       taxRate = Number(defaultTax.rate)
       taxName = defaultTax.name
-      taxIncluded = defaultTax.tax_included === true
+      taxIncluded = defaultTax.taxIncluded === true
     }
 
     // ── Buscar o crear customer ──
