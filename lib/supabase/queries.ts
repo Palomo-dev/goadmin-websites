@@ -26,7 +26,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzus
  * @param parentIds IDs de productos padre (is_parent = true)
  * @returns Mapa parent_product_id → número de variantes activas
  */
-async function countVariantsByParent(
+export async function countVariantsByParent(
   supabase: ReturnType<typeof getSupabaseForPublicRead>,
   parentIds: number[]
 ): Promise<Record<number, number>> {

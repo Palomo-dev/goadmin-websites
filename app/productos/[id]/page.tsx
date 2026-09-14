@@ -15,7 +15,7 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent } from '@/lib/supabase/queries'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
 import { ProductDetailActions } from './ProductDetailActions'
@@ -135,6 +135,15 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
   const all = filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), stockBranchIds)
+
+  // Contar variantes para productos padre (necesario para que ProductCard
+  // muestre "Elegir" en vez de "Agregar" en productos con variantes).
+  const parentIds = all.filter((p: any) => p.is_parent).map((p: any) => p.id)
+  const variantCountMap = await countVariantsByParent(supabase as any, parentIds)
+  all.forEach((p: any) => {
+    if (p.is_parent) p.variant_count = variantCountMap[p.id] || 0
+  })
+
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [all[i], all[j]] = [all[j], all[i]]
