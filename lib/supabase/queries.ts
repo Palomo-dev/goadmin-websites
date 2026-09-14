@@ -3,7 +3,7 @@ import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
 import { filterStockByBranches } from '@/lib/stock'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
-import { cacheStructural, CONTENT_TTL, SETTINGS_TTL } from './cache'
+import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -62,6 +62,26 @@ export async function countVariantsByParent(
   }
   return variantCountMap
 }
+
+/**
+ * Columnas de `products` que usan los listados del sitio.
+ *
+ * Sustituye a `*` en las consultas del catálogo. Se omiten `busqueda_nombre`,
+ * `busqueda_marca` y `busqueda_descripcion`: son copias normalizadas para la
+ * búsqueda de la base y pesaban un tercio de cada respuesta (medido en una
+ * tienda de 4.368 productos: 1.339 kB con `*` frente a 882 kB sin ellas). El
+ * sitio no las lee en ningún componente. Mantener el payload por debajo de
+ * 2 MB importa: Next descarta de la caché de datos las entradas mayores.
+ */
+export const PRODUCT_LIST_COLUMNS = [
+  'id', 'organization_id', 'sku', 'name', 'category_id', 'unit_code',
+  'created_at', 'updated_at', 'description', 'barcode', 'status', 'tag_id',
+  'parent_product_id', 'tax_id', 'is_parent', 'variant_data', 'uuid',
+  'station', 'track_stock', 'is_composite', 'production_type', 'product_type',
+  'brand', 'reference', 'track_serial', 'serial_pattern',
+  'auto_generate_serial', 'warranty_months', 'rating_avg', 'reviews_count',
+  'weight_kg', 'length_cm', 'width_cm', 'height_cm',
+].join(', ')
 
 /**
  * Normaliza el array product_prices de un producto para que [0] sea el precio vigente.
@@ -350,7 +370,7 @@ export const getWebStockBranchIds = cache(async (organizationId: number): Promis
  * Obtiene los productos de una organización para mostrar en el sitio.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export const getOrganizationProducts = cache(async (organizationId: number, limit = 12, branchId?: number | null) => {
+const getOrganizationProductsUncached = async (organizationId: number, limit = 12, branchId?: number | null) => {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -360,7 +380,7 @@ export const getOrganizationProducts = cache(async (organizationId: number, limi
   let query = supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       product_prices (id, price, compare_price, effective_to),
       product_images (
         id,
@@ -408,13 +428,13 @@ export const getOrganizationProducts = cache(async (organizationId: number, limi
     }))),
     stockBranchIds
   )
-})
+}
 
 /**
  * Obtiene productos en oferta (compare_price > price), ordenados por ventas.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export const getOfferProducts = cache(async (organizationId: number, limit = 500, branchId?: number | null) => {
+const getOfferProductsUncached = async (organizationId: number, limit = 500, branchId?: number | null) => {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -425,7 +445,7 @@ export const getOfferProducts = cache(async (organizationId: number, limit = 500
   let baseQuery = supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       categories ( id, name, slug ),
       product_prices (id, price, compare_price, effective_to),
       product_images (
@@ -493,7 +513,7 @@ export const getOfferProducts = cache(async (organizationId: number, limit = 500
   )
     .sort((a: any, b: any) => b.sales_count - a.sales_count)
     .slice(0, limit)
-})
+}
 
 /**
  * Obtiene los servicios de una organización (usando productos tipo servicio).
@@ -580,7 +600,7 @@ async function getOrganizationCategoriesUncached(organizationId: number, branchI
  * Obtiene productos por categoría.
  * F3: acepta `branchId` opcional; valida que la categoría sea visible para el outlet.
  */
-export async function getProductsByCategory(organizationId: number, categoryId: number, branchId?: number | null) {
+async function getProductsByCategoryUncached(organizationId: number, categoryId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   // F3: si hay branchId, validar que la categoría sea visible para ese outlet
@@ -599,7 +619,7 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
 
   const { data, error } = await supabase
     .from('products')
-    .select(`*, product_prices (id, price, compare_price, effective_to), stock_levels ( branch_id, qty_on_hand, qty_reserved )`)
+    .select(`${PRODUCT_LIST_COLUMNS}, product_prices (id, price, compare_price, effective_to), stock_levels ( branch_id, qty_on_hand, qty_reserved )`)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('category_id', categoryId)
@@ -619,7 +639,7 @@ export async function getProductsByCategory(organizationId: number, categoryId: 
  * Incluye `product_images` para resolver la miniatura en el preview.
  * F3: acepta `branchId` opcional para filtrar los categoryIds a los visibles del outlet.
  */
-export const getProductsByCategoryIds = cache(async (
+const getProductsByCategoryIdsUncached = async (
   organizationId: number,
   categoryIds: number[],
   limitPerCategory = 12,
@@ -642,7 +662,7 @@ export const getProductsByCategoryIds = cache(async (
   const { data, error } = await supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       product_prices (id, price, compare_price, effective_to),
       product_images (
         id,
@@ -667,7 +687,7 @@ export const getProductsByCategoryIds = cache(async (
     }
   })
   return map
-})
+}
 
 /**
  * Obtiene páginas del sitio por ids (F7.1 enlace tipado a página).
@@ -749,7 +769,7 @@ async function getSubcategoriesUncached(organizationId: number, parentId: number
  * F3: acepta `branchId` opcional en `options` para validar que la categoría
  * (y subcategorías) sean visibles para el outlet.
  */
-export async function getProductsByCategoryPaginated(
+async function getProductsByCategoryPaginatedUncached(
   organizationId: number,
   categoryId: number,
   options: {
@@ -815,7 +835,7 @@ export async function getProductsByCategoryPaginated(
   let query = supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order,
@@ -1763,7 +1783,7 @@ export async function getGymClassById(classId: number, organizationId: number) {
  * Obtiene productos para el menú de restaurante con tags, imágenes y stock.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
-export async function getMenuProducts(organizationId: number, limit = 100, branchId?: number | null) {
+async function getMenuProductsUncached(organizationId: number, limit = 100, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -1773,7 +1793,7 @@ export async function getMenuProducts(organizationId: number, limit = 100, branc
   let query = supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       product_prices (id, price, compare_price, effective_to),
       product_images (
         id, storage_path, is_primary, display_order, shared_image_id,
@@ -2887,3 +2907,29 @@ export const getWebsiteFooterNavTree = cacheStructural('getWebsiteFooterNavTree'
 export const getWebsiteMenus = cacheStructural('getWebsiteMenus', getWebsiteMenusUncached, CONTENT_TTL)
 export const getWebsiteMenusByLocation = cacheStructural('getWebsiteMenusByLocation', getWebsiteMenusByLocationUncached, CONTENT_TTL)
 export const getMenuById = cacheStructural('getMenuById', getMenuByIdUncached, CONTENT_TTL)
+
+// ---------------------------------------------------------------------------
+// Caché del catálogo (ver lib/supabase/cache.ts, sección "Caché del CATÁLOGO").
+//
+// Misma firma pública que antes. `cache()` de React sigue deduplicando dentro
+// de una misma petición (layout + page + generateMetadata); `cacheCatalog`
+// añade la caché ENTRE peticiones con TTL corto y etiqueta por organización,
+// que el ERP invalida al editar productos, precios o stock.
+// ---------------------------------------------------------------------------
+
+export const getOrganizationProducts = cache(
+  cacheCatalog('getOrganizationProducts', getOrganizationProductsUncached, (...args) => args[0])
+)
+export const getOfferProducts = cache(
+  cacheCatalog('getOfferProducts', getOfferProductsUncached, (...args) => args[0])
+)
+export const getProductsByCategoryIds = cache(
+  cacheCatalog('getProductsByCategoryIds', getProductsByCategoryIdsUncached, (...args) => args[0])
+)
+export const getProductsByCategory = cacheCatalog('getProductsByCategory', getProductsByCategoryUncached, (...args) => args[0])
+export const getProductsByCategoryPaginated = cacheCatalog(
+  'getProductsByCategoryPaginated',
+  getProductsByCategoryPaginatedUncached,
+  (...args) => args[0]
+)
+export const getMenuProducts = cacheCatalog('getMenuProducts', getMenuProductsUncached, (...args) => args[0])
