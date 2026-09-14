@@ -40,17 +40,21 @@ type SignatureVerdict = 'match' | 'mismatch' | 'no_secret' | 'no_signature'
 /**
  * Deja rastro del resultado de la verificación de firma en integration_events.
  *
- * `connection_id` va en null a propósito: `idx_integration_events_dedupe` es
- * UNIQUE (connection_id, external_event_id) y con la conexión real este registro
- * chocaría con el evento de procesamiento de la misma transacción.
+ * `connection_id` es NOT NULL en la tabla. La versión anterior de esta función lo
+ * mandaba en null —heredado del insert original, que además usaba `status: 'rejected'`,
+ * fuera del CHECK— y por eso ninguno de los dos rastros se escribió jamás: el insert
+ * fallaba en silencio. Sin conexión resuelta no hay fila; se deja en consola.
  *
- * `status` sólo admite 'received' | 'processed' | 'error'. El código anterior
- * insertaba 'rejected', que viola el CHECK: ese rastro de auditoría no se
- * escribió nunca.
+ * `external_event_id` va en null a propósito: `idx_integration_events_dedupe` es
+ * UNIQUE (connection_id, external_event_id) y con el id de la transacción este
+ * registro chocaría con el evento de procesamiento. El id queda en `payload`.
+ *
+ * `status` sólo admite 'received' | 'processed' | 'error'.
  */
 async function logSignatureCheck(
   supabase: any,
   params: {
+    connectionId: string | null
     organizationId: number
     transactionId: string | null
     body: Record<string, any>
@@ -58,15 +62,29 @@ async function logSignatureCheck(
     blocked: boolean
   }
 ): Promise<void> {
-  const { organizationId, transactionId, body, verdict, blocked } = params
+  const { connectionId, organizationId, transactionId, body, verdict, blocked } = params
+
+  if (!connectionId) {
+    console.error(
+      `[Wompi Webhook] veredicto de firma "${verdict}" sin conexión resuelta para org ${organizationId}; no se registra en integration_events`
+    )
+    return
+  }
+
   const { error } = await supabase.from('integration_events').insert({
-    connection_id: null,
+    connection_id: connectionId,
     organization_id: organizationId,
     source: 'webhook',
     direction: 'inbound',
     event_type: 'transaction.updated',
-    external_event_id: transactionId,
-    payload: { provider: 'wompi', signature_verdict: verdict, blocked, ...body },
+    external_event_id: null,
+    payload: {
+      provider: 'wompi',
+      signature_verdict: verdict,
+      blocked,
+      transaction_id: transactionId,
+      ...body,
+    },
     status: verdict === 'match' ? 'received' : 'error',
     error_message:
       verdict === 'match'
@@ -151,7 +169,7 @@ const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 async function getEventsSecret(
   supabase: any,
   organizationId: number
-): Promise<string | null> {
+): Promise<{ secret: string | null; connectionId: string | null }> {
   // 1. Buscar la conexión de Wompi para esta org (active o connected)
   const { data: connection } = await supabase
     .from('integration_connections')
@@ -162,13 +180,15 @@ async function getEventsSecret(
     .limit(1)
     .maybeSingle()
 
-  if (!connection) return null
+  if (!connection) return { secret: null, connectionId: null }
+
+  const connectionId: string = connection.id
 
   // 2. Buscar la credencial cuyo PROPÓSITO es el secreto de eventos
   const { data: credential } = await supabase
     .from('integration_credentials')
     .select('secret_ref')
-    .eq('connection_id', connection.id)
+    .eq('connection_id', connectionId)
     .eq('purpose', 'events_secret')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -182,26 +202,26 @@ async function getEventsSecret(
   if (secretRef) {
     try {
       const { data: secret, error } = await supabase.rpc('fn_get_provider_secret', {
-        p_connection_id: connection.id,
+        p_connection_id: connectionId,
         p_purpose: 'events_secret',
       })
-      if (!error && secret) return secret as string
+      if (!error && secret) return { secret: secret as string, connectionId }
     } catch {
       // Función aún no desplegada — se intenta el valor crudo abajo.
     }
 
     // 4. Valor crudo, sólo si todavía no es una referencia a Vault.
-    if (!UUID_RE.test(secretRef)) return secretRef
+    if (!UUID_RE.test(secretRef)) return { secret: secretRef, connectionId }
 
     console.error(
       '[Wompi Webhook] secret_ref es un uuid de Vault pero fn_get_provider_secret no respondió. org:',
       organizationId
     )
-    return null
+    return { secret: null, connectionId }
   }
 
   // 5. Fallback histórico en los settings de la conexión.
-  return connection.settings?.events_secret || null
+  return { secret: connection.settings?.events_secret || null, connectionId }
 }
 
 /**
@@ -372,7 +392,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Verificar la firma. Ausencia de secreto o de firma NO es un pase libre:
     //    es un veredicto que se registra y, con SIGNATURE_ENFORCED, bloquea.
-    const eventsSecret = await getEventsSecret(supabase, organizationId)
+    const { secret: eventsSecret, connectionId } = await getEventsSecret(supabase, organizationId)
 
     let verdict: SignatureVerdict
     if (!eventsSecret) {
@@ -391,6 +411,7 @@ export async function POST(request: NextRequest) {
           (SIGNATURE_ENFORCED ? ' — rechazado' : ' — MODO OBSERVACIÓN, se procesa igual')
       )
       await logSignatureCheck(supabase, {
+        connectionId,
         organizationId,
         transactionId,
         body,
@@ -405,6 +426,7 @@ export async function POST(request: NextRequest) {
       // En observación registramos también los aciertos: son la evidencia que
       // hace falta para poder activar SIGNATURE_ENFORCED con confianza.
       await logSignatureCheck(supabase, {
+        connectionId,
         organizationId,
         transactionId,
         body,
