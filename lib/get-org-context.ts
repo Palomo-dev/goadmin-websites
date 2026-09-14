@@ -15,6 +15,7 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { resolveOutletBySubSubdomain, resolveOutletByCustomDomain, resolveOutletFromPath, type ResolvedOutlet } from '@/lib/outlet/resolver'
 import { getEffectiveSettings } from '@/lib/outlet/theme-merge'
 import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
+import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 
 /**
  * Tipo para items de mega menú (compatible con NavItem de HeaderShared).
@@ -162,20 +163,37 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   }
 })
 
+type SubscriptionRow = { status: string; trial_end: string | null; current_period_end: string | null }
+
+// Solo se cachea la FILA de la suscripción, no el veredicto: el veredicto
+// compara fechas con `now` y tiene que recalcularse en cada petición.
+//
+// Antes se consultaba en cada petición de cada tienda: 714 veces en el minuto
+// del pico del 2026-09-14. Un cambio de estado de la suscripción tarda ahora
+// hasta CONTENT_TTL en reflejarse en el sitio público, que es aceptable.
+const getLatestSubscription = cacheStructural(
+  'getLatestSubscription',
+  async (orgId: number): Promise<SubscriptionRow | null> => {
+    const supabase = createAdminClient() || createPublicClient()
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('status, trial_end, current_period_end')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single() as { data: SubscriptionRow | null }
+    return data
+  },
+  CONTENT_TTL
+)
+
 export async function checkFrozenStatus(orgId: number, orgStatus: string | null): Promise<FrozenReason> {
   // Si la organización está suspendida o eliminada, está congelada
   if (orgStatus === 'suspended') return 'suspended'
   if (orgStatus === 'deleted') return 'deleted'
 
   // Consultar el estado de la suscripción
-  const supabase = createAdminClient() || createPublicClient()
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('status, trial_end, current_period_end')
-    .eq('organization_id', orgId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single() as { data: { status: string; trial_end: string | null; current_period_end: string | null } | null }
+  const sub = await getLatestSubscription(orgId)
 
   if (!sub) return null
 

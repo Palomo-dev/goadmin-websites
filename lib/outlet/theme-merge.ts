@@ -1,5 +1,6 @@
 import { cache } from 'react'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import type { WebsiteSettings } from '@/types/database'
 
 /**
@@ -45,7 +46,13 @@ export function mergeSettings(
  * Obtiene settings globales (branch_id IS NULL) por organization_id.
  * Query directa (no depende del select anidado organization.website_settings).
  */
-export const getOrgSettings = cache(async (organizationId: number): Promise<WebsiteSettings | null> => {
+//
+// Se consulta en CADA petición de CADA tienda (getEffectiveSettings desde el
+// contexto de organización). Solo con cache() de React se deduplicaba dentro
+// de una petición, pero entre peticiones volvía a la base: en el pico del
+// 2026-09-14 fueron 1.083 consultas en un minuto, y contribuyó al OOM que
+// tumbó Postgres. cacheStructural la comparte entre peticiones (60 s).
+const getOrgSettingsUncached = async (organizationId: number): Promise<WebsiteSettings | null> => {
   const supabase = createAdminClient() || createPublicClient()
   const { data } = await supabase
     .from('website_settings')
@@ -56,13 +63,14 @@ export const getOrgSettings = cache(async (organizationId: number): Promise<Webs
     .limit(1)
     .maybeSingle()
   return data as WebsiteSettings | null
-})
+}
+export const getOrgSettings = cache(cacheStructural('getOrgSettings', getOrgSettingsUncached, CONTENT_TTL))
 
 /**
  * Obtiene settings del outlet (branch_id = branchId) por organization_id.
  * Retorna null si el outlet no tiene settings propios (fallback a global).
  */
-export const getOutletSettings = cache(async (
+const getOutletSettingsUncached = async (
   organizationId: number,
   branchId: number,
 ): Promise<WebsiteSettings | null> => {
@@ -74,7 +82,8 @@ export const getOutletSettings = cache(async (
     .eq('branch_id', branchId)
     .maybeSingle()
   return data as WebsiteSettings | null
-})
+}
+export const getOutletSettings = cache(cacheStructural('getOutletSettings', getOutletSettingsUncached, CONTENT_TTL))
 
 /**
  * Settings efectivas = merge(global, outlet si existe).
