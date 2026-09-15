@@ -2240,6 +2240,8 @@ export async function getShipmentByTracking(
   }
   if (!shipment) return null
 
+  // `as any` a conciencia: types/database.ts hoy resuelve a `never` para todo (ver aviso en ese
+  // archivo). El contrato de columnas lo verifica scripts/verify-tracking.mjs contra la base real.
   const shipmentId = (shipment as any).id
 
   // Timeline de eventos

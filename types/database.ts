@@ -633,6 +633,166 @@ export interface Database {
           reported_count?: number
         }
       }
+      // ── Transporte (GO-1). Columnas verificadas contra el esquema real el 2026-09-15.
+      // El sitio sólo LEE estas tablas (server-side, service role): Insert/Update cerrados.
+      //
+      // AVISO: hoy este Database NO resuelve para supabase-js 2.107 — está declarado como
+      // `interface` (sin firma de índice) y ninguna tabla lleva `Relationships`, así que
+      // Schema cae a `never` y ningún select se comprueba. Al corregirlo aparecen ~200
+      // errores de tipo en el repo (evidencia en el issue de tipado del sitio). Estas cinco
+      // tablas ya vienen en la forma correcta para ese momento. Mientras tanto, la compuerta
+      // real de /tracking es scripts/verify-tracking.mjs.
+      shipments: {
+        Row: {
+          id: string
+          organization_id: number
+          branch_id: number | null
+          source_type: string
+          source_id: string | null
+          shipment_number: string
+          customer_id: string | null
+          address_id: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_department: string | null
+          delivery_postal_code: string | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
+          delivery_contact_name: string | null
+          delivery_contact_phone: string | null
+          delivery_instructions: string | null
+          carrier_id: string | null
+          service_level: string | null
+          tracking_number: string | null
+          external_tracking_url: string | null
+          package_count: number | null
+          weight_kg: number | null
+          volume_m3: number | null
+          declared_value: number | null
+          length_cm: number | null
+          width_cm: number | null
+          height_cm: number | null
+          shipping_fee: number | null
+          insurance_fee: number | null
+          cod_amount: number | null
+          total_cost: number | null
+          currency: string | null
+          expected_pickup_date: string | null
+          expected_delivery_date: string | null
+          picked_at: string | null
+          dispatched_at: string | null
+          delivered_at: string | null
+          status: string | null
+          notes: string | null
+          internal_notes: string | null
+          created_by: string | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+          payment_status: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      transport_carriers: {
+        Row: {
+          id: string
+          organization_id: number
+          name: string
+          code: string
+          carrier_type: string
+          service_type: string
+          api_provider: string | null
+          api_credentials_ref: string | null
+          tracking_url_template: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_email: string | null
+          is_active: boolean | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      transport_events: {
+        Row: {
+          id: string
+          reference_type: string
+          reference_id: string
+          event_type: string
+          event_time: string
+          stop_id: string | null
+          latitude: number | null
+          longitude: number | null
+          location_text: string | null
+          actor_type: string
+          actor_id: string | null
+          description: string | null
+          payload: Json | null
+          created_at: string | null
+          sequence: number | null
+          external_event_id: string | null
+          source: string | null
+          correlation_id: string | null
+          organization_id: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      proof_of_delivery: {
+        Row: {
+          id: string
+          shipment_id: string
+          delivered_at: string
+          recipient_name: string
+          recipient_doc_type: string | null
+          recipient_doc_number: string | null
+          recipient_relationship: string | null
+          signature_url: string | null
+          photo_urls: string[] | null
+          latitude: number | null
+          longitude: number | null
+          delivery_location_type: string | null
+          driver_id: string | null
+          device_info: Json | null
+          notes: string | null
+          customer_feedback: string | null
+          customer_rating: number | null
+          metadata: Json | null
+          created_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      delivery_attempts: {
+        Row: {
+          id: string
+          shipment_id: string
+          attempt_number: number
+          attempted_at: string
+          status: string
+          failure_reason_code: string | null
+          failure_reason_text: string | null
+          latitude: number | null
+          longitude: number | null
+          driver_id: string | null
+          driver_notes: string | null
+          reschedule_date: string | null
+          reschedule_notes: string | null
+          photo_urls: string[] | null
+          metadata: Json | null
+          created_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
