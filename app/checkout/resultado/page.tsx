@@ -193,6 +193,20 @@ export default async function CheckoutResultadoPage({
 
   const order = await getOrderByRef(orderRef, transactionId)
 
+  // Líneas del pedido para `contents`/`content_ids` del Purchase (SKU =
+  // retailer_id del catálogo de Meta; si no hay SKU, el id del producto).
+  const purchaseContents: { id: string; quantity: number }[] = []
+  if (order && order.organization_id === organization.id) {
+    const supabaseItems = createAdminClient() || createPublicClient()
+    const { data: orderItems } = await (supabaseItems as any)
+      .from('web_order_items')
+      .select('product_id, product_sku, quantity')
+      .eq('web_order_id', order.id)
+    for (const it of orderItems || []) {
+      purchaseContents.push({ id: it.product_sku || String(it.product_id), quantity: Number(it.quantity) || 1 })
+    }
+  }
+
   if (!order) {
     return (
       <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
@@ -231,6 +245,8 @@ export default async function CheckoutResultadoPage({
           orderNumber={order.order_number}
           value={Number(order.total)}
           currency="COP"
+          contents={purchaseContents}
+          numItems={purchaseContents.reduce((s, c) => s + c.quantity, 0) || undefined}
         />
       )}
       <div className="container mx-auto px-4 py-16">

@@ -15,6 +15,7 @@ import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
 
 interface CartModifier {
   typeId: number
@@ -601,6 +602,19 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       // 3. Si es pago offline (cash/transfer), mostrar confirmación
       setOrderNumber(createdOrderNumber)
       setOrderComplete(true)
+
+      // Meta Pixel Purchase: estos pedidos terminan aquí y nunca llegan a
+      // /checkout/resultado (donde se dispara para las pasarelas). Sin esto,
+      // una tienda contraentrega no registraba ninguna compra en Meta.
+      trackMetaPurchase({
+        orderNumber: createdOrderNumber,
+        value: total,
+        contents: cartItems.map(item => ({
+          id: (item as any).sku || String(item.productId || String(item.id).split(/[_:-]/)[0]),
+          quantity: item.quantity,
+        })),
+        numItems: cartItems.reduce((s, i) => s + i.quantity, 0),
+      })
 
       localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
       window.dispatchEvent(new CustomEvent('cart-updated'))

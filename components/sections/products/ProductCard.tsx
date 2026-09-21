@@ -38,7 +38,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
-import { trackMetaAddToCart } from '@/components/site/MetaPixelEvents'
 import { isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useFavorites } from '@/lib/hooks/useFavorites'
@@ -580,29 +579,13 @@ function CardButtonRenderer({
     e.stopPropagation()
     switch (button.action) {
       case 'add_to_cart':
+        // Meta Pixel / GA4 AddToCart: los dispara CartEventTracker al escribirse
+        // el carrito, para todos los caminos por igual.
         if (!isParent && !outOfStock) {
-          // Meta Pixel + Google Analytics: AddToCart
-          trackMetaAddToCart(String(product.id), product.name, price ?? 0)
-          if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-            (window as any).gtag('event', 'add_to_cart', {
-              currency: 'COP',
-              value: price ?? 0,
-              items: [{ id: String(product.id), name: product.name, price: price ?? 0, quantity: 1 }],
-            })
-          }
           onAddToCart?.()
         }
         break
       case 'buy_now':
-        // Meta Pixel + Google Analytics: AddToCart + InitiateCheckout
-        trackMetaAddToCart(String(product.id), product.name, price ?? 0)
-        if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-          (window as any).gtag('event', 'add_to_cart', {
-            currency: 'COP',
-            value: price ?? 0,
-            items: [{ id: String(product.id), name: product.name, price: price ?? 0, quantity: 1 }],
-          })
-        }
         onBuyNow?.()
         break
       case 'wishlist':
@@ -754,7 +737,8 @@ export function ProductCard({
     } else {
       const img = getProductImageUrl(p)
       const cp = getProductComparePrice(p)
-      cart.push({ id: p.id, name: p.name, price: pr, quantity: 1, ...(img && { imageUrl: img }), ...(cp && { comparePrice: cp }) })
+      // `sku` viaja con la línea: es el retailer_id del catálogo de Meta (content_ids).
+      cart.push({ id: p.id, name: p.name, price: pr, quantity: 1, ...(p.sku && { sku: p.sku }), ...(img && { imageUrl: img }), ...(cp && { comparePrice: cp }) })
     }
     localStorage.setItem(cartKey, JSON.stringify(cart))
     window.dispatchEvent(new CustomEvent('cart-updated'))

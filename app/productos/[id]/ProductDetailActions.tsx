@@ -87,6 +87,7 @@ export function ProductDetailActions({
       cart.push({
         id: variant.id,
         name: variant.name,
+        ...(variant.sku && { sku: variant.sku }),
         price: Number(variantPrice),
         quantity: qty,
         ...(variantImgUrl && { imageUrl: variantImgUrl }),
@@ -107,6 +108,7 @@ export function ProductDetailActions({
     const item = {
       id: variant.id,
       name: variant.name,
+      ...(variant.sku && { sku: variant.sku }),
       price: Number(variantPrice),
       quantity: 1,
       ...(variantImgUrl && { imageUrl: variantImgUrl }),
@@ -129,6 +131,7 @@ export function ProductDetailActions({
       id: cartItemId,
       productId: product.id,
       name: product.name,
+      ...(product.sku && { sku: product.sku }),
       price: Number(effectivePrice),
       quantity: 1,
       ...(imageUrl && { imageUrl }),
@@ -156,6 +159,7 @@ export function ProductDetailActions({
         id: cartItemId,
         productId: product.id,
         name: product.name,
+        ...(product.sku && { sku: product.sku }),
         price: Number(effectivePrice),
         quantity,
         ...(imageUrl && { imageUrl }),

@@ -9,6 +9,9 @@ import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax } from '@/lib/supabas
 import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 import MetaPixel from '@/components/site/MetaPixel'
+import CustomScripts from '@/components/site/CustomScripts'
+import GoogleAnalytics from '@/components/site/GoogleAnalytics'
+import { CartEventTracker } from '@/components/site/CartEventTracker'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,7 +99,7 @@ export default async function CheckoutPage() {
   const supabaseWs = createAdminClient() || createPublicClient()
   const { data: wsRow } = await (supabaseWs as any)
     .from('website_settings')
-    .select('checkout_mode, available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description, checkout_show_trust_badges, checkout_trust_badges, checkout_show_stock_warning, checkout_stock_warning_threshold, checkout_show_payment_logos, checkout_show_countdown, countdown_enabled, countdown_mode, countdown_end_date, countdown_timezone, countdown_reset_hour, countdown_title, countdown_show_in_cart')
+    .select('checkout_mode, available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description, checkout_show_trust_badges, checkout_trust_badges, checkout_show_stock_warning, checkout_stock_warning_threshold, checkout_show_payment_logos, checkout_show_countdown, countdown_enabled, countdown_mode, countdown_end_date, countdown_timezone, countdown_reset_hour, countdown_title, countdown_show_in_cart, custom_scripts, analytics_id')
     .eq('organization_id', organization.id)
     .single()
 
@@ -176,9 +179,15 @@ export default async function CheckoutPage() {
         <p>&copy; {new Date().getFullYear()} {orgName}. Todos los derechos reservados.</p>
       </footer>
 
-      {/* Tracking scripts */}
+      {/* Tracking scripts. El checkout no usa OrganizationLayout, así que hay
+          que repetir aquí lo que ese layout inyecta: sin `custom_scripts` las
+          tiendas cuyo pixel vive ahí (y no en la integración Meta) no tenían
+          pixel en /checkout y InitiateCheckout nunca se registraba. */}
       {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
+      {wsRow?.custom_scripts && <CustomScripts scripts={wsRow.custom_scripts} />}
       {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
+      {wsRow?.analytics_id && <GoogleAnalytics measurementId={wsRow.analytics_id} />}
+      <CartEventTracker organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
     </div>
     </CurrencyProvider>
   )

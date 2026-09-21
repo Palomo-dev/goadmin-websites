@@ -6,6 +6,7 @@ import { SiteFooter } from './SiteFooter'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
 import MetaPixel from './MetaPixel'
+import { CartEventTracker } from './CartEventTracker'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
 import { ChatWidget } from './ChatWidget'
@@ -229,6 +230,9 @@ export function OrganizationLayout({
 
       {/* Tracking de visitas web (page views) */}
       <VisitTracker organizationId={organization.id} />
+
+      {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
+      <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
     </CurrencyProvider>
   )
