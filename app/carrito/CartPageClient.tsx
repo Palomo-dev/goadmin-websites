@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { isParentProduct } from '@/components/sections/products/ProductCard'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -54,6 +55,9 @@ interface SuggestedProduct {
   uuid: string
   name: string
   description?: string
+  is_parent?: boolean
+  has_variants?: boolean
+  variant_count?: number
   product_prices?: { price: number }[]
   product_images?: any[]
 }
@@ -489,15 +493,24 @@ function SuggestedCard({
               ${Number(price).toLocaleString('es-CO')}
             </span>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs dark:border-gray-600"
-            onClick={(e) => { e.preventDefault(); onAdd() }}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Agregar
-          </Button>
+          {isParentProduct(product) ? (
+            // Padre con variantes: no se agrega a ciegas, se elige talla/color en el detalle.
+            <Link href={`/productos/${product.uuid}`}>
+              <Button size="sm" variant="outline" className="h-7 text-xs dark:border-gray-600">
+                Elegir
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs dark:border-gray-600"
+              onClick={(e) => { e.preventDefault(); onAdd() }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Agregar
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

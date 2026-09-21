@@ -102,6 +102,21 @@ export function getProductDiscount(product: any): number | null {
   return Math.round((1 - price / compare) * 100)
 }
 
+/**
+ * ¿La card debe comportarse como padre con variantes ("Elegir" → detalle)?
+ *
+ * `variant_count` lo calcula el listado en servidor. Si viene como número se
+ * respeta (0 = padre sin variantes activas, se vende como simple). Si NO viene
+ * (listado que no lo calcula, o la consulta de variantes falló) se asume que
+ * un `is_parent` sí tiene variantes: mandar al detalle a elegir talla es
+ * inofensivo; "Agregar" un padre al carrito genera pedidos sin talla.
+ */
+export function isParentProduct(product: any): boolean {
+  if (product?.is_parent !== true && product?.has_variants !== true) return false
+  const n = product.variant_count
+  return n === undefined || n === null ? true : Number(n) > 0
+}
+
 // ---------------------------------------------------------------------------
 // Defaults que reproducen el aspecto legacy
 // ---------------------------------------------------------------------------
@@ -322,7 +337,7 @@ function BadgeRenderer({
   const variantCount = product.variant_count || 0
   const salesCount = product.sales_count || 0
   const outOfStock = isOutOfStock(product)
-  const isParent = product.is_parent && variantCount > 0
+  const isParent = isParentProduct(product)
 
   // Resolver el valor dinámico según el tipo
   let value: number | string | null = null
@@ -464,8 +479,7 @@ function CardButtonRenderer({
   const router = useRouter()
   const price = getProductPrice(product)
   const outOfStock = isOutOfStock(product)
-  const variantCount = product.variant_count || 0
-  const isParent = product.is_parent && variantCount > 0
+  const isParent = isParentProduct(product)
 
   const variant = button.variant || 'solid'
   const size = button.size || 'md'
@@ -724,8 +738,7 @@ export function ProductCard({
   const discount = getProductDiscount(product)
   const imgUrl = imageUrl || getProductImageUrl(product)
   const outOfStock = isOutOfStock(product)
-  const variantCount = product.variant_count || 0
-  const isParent = product.is_parent && variantCount > 0
+  const isParent = isParentProduct(product)
 
   // Carrito interno (fallback cuando no se pasa onAddToCart)
   const internalAddToCart = (p: any) => {

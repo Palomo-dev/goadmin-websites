@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
 import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
+import { isParentProduct } from '@/components/sections/products/ProductCard'
 
 interface ProductImage {
   id: number
@@ -301,7 +302,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                     {(() => {
                       const stock = getAvailableStock(product)
                       const outOfStock = stock !== null && stock <= 0
-                      const isParent = product.has_variants && (product.variant_count ?? 0) > 0
+                      const isParent = isParentProduct(product)
                       return outOfStock && !isParent ? (
                         <span className="text-xs text-red-500 font-medium">Sin stock</span>
                       ) : isParent ? (
