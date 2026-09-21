@@ -1,62 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyTemplateToOrganization } from '@/lib/templates/apply-template'
-import { getTemplatePreset, getPresetsForBusinessType } from '@/lib/templates/presets'
+import { getPresetsForBusinessType } from '@/lib/templates/presets'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/templates/apply
- * 
- * Aplica un template preset a una organización.
- * Body: { organization_id: number, preset_id: string }
+ * POST /api/templates/apply — DESACTIVADO (2026-09-21).
+ *
+ * Aceptaba `organization_id` en el body sin autenticación, usaba el cliente
+ * con service role y borraba todas las páginas de esa organización antes de
+ * recrearlas, sin transacción. No tenía ningún llamador en este repositorio
+ * ni en el ERP. La aplicación de plantillas vuelve en el editor V2 como
+ * importación a borrador con organización derivada de la sesión
+ * (docs/website-builder-v2/ADR-002-DECISIONES-Y-SECUENCIA.md, D10).
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { organization_id, preset_id } = body
-
-    if (!organization_id || !preset_id) {
-      return NextResponse.json(
-        { error: 'Se requiere organization_id y preset_id' },
-        { status: 400 }
-      )
-    }
-
-    const preset = getTemplatePreset(preset_id)
-    if (!preset) {
-      return NextResponse.json(
-        { error: `Template "${preset_id}" no encontrado` },
-        { status: 404 }
-      )
-    }
-
-    const result = await applyTemplateToOrganization(organization_id, preset_id)
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      template: preset_id,
-      pages_created: result.pages_created,
-      sections_created: result.sections_created,
-    })
-  } catch (err: any) {
-    console.error('[API Templates Apply]', err)
-    return NextResponse.json(
-      { error: err.message || 'Error interno' },
-      { status: 500 }
-    )
-  }
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        'Endpoint desactivado. La aplicación de plantillas se realiza desde el editor del ERP.',
+    },
+    { status: 410 }
+  )
 }
 
 /**
  * GET /api/templates/apply?business_type=retail
- * 
+ *
  * Lista los presets disponibles para un tipo de negocio.
  */
 export async function GET(request: NextRequest) {
