@@ -11,8 +11,22 @@ function getSupabaseForPublicRead() {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
+export interface VariantChildrenInfo {
+  /** parent_product_id → número de variantes activas */
+  counts: Record<number, number>
+  /** id de variante → parent_product_id (para sumar ventas de hijos al padre) */
+  childToParent: Record<number, number>
+  /**
+   * `true` si alguna consulta falló (timeout, permisos…). En ese caso los
+   * padres sin dato NO deben tratarse como "sin variantes": el listado debe
+   * dejar `variant_count` indefinido para que la card muestre "Elegir" y no
+   * "Agregar" (un padre agregado al carrito acaba en un pedido sin talla).
+   */
+  failed: boolean
+}
+
 /**
- * Cuenta las variantes activas agrupadas por parent_product_id.
+ * Variantes activas agrupadas por parent_product_id.
  *
  * PostgREST limita las respuestas (por defecto ~1000-2000 filas), por lo que
  * traer TODAS las variantes de una organización grande (ej: 13.000+) y contar
@@ -24,14 +38,13 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzus
  *
  * @param supabase Cliente Supabase ya creado
  * @param parentIds IDs de productos padre (is_parent = true)
- * @returns Mapa parent_product_id → número de variantes activas
  */
-export async function countVariantsByParent(
+export async function getVariantChildrenByParent(
   supabase: ReturnType<typeof getSupabaseForPublicRead>,
   parentIds: number[]
-): Promise<Record<number, number>> {
-  const variantCountMap: Record<number, number> = {}
-  if (!parentIds || parentIds.length === 0) return variantCountMap
+): Promise<VariantChildrenInfo> {
+  const info: VariantChildrenInfo = { counts: {}, childToParent: {}, failed: false }
+  if (!parentIds || parentIds.length === 0) return info
 
   // Procesar en lotes de 200 padres. Cada padre tiene como mucho ~15-20
   // variantes, así que 200 padres = ~3000-4000 filas en el peor caso. Aun
@@ -45,22 +58,118 @@ export async function countVariantsByParent(
     const PAGE_SIZE = 1000
     let hasMore = true
     while (hasMore) {
-      const { data: children } = await supabase
+      const { data: children, error } = await supabase
         .from('products')
-        .select('parent_product_id')
+        .select('id, parent_product_id')
         .in('parent_product_id', chunk)
         .eq('status', 'active')
         .range(from, from + PAGE_SIZE - 1)
+      if (error) {
+        // Antes un error aquí se tragaba en silencio y todo el lote quedaba
+        // con 0 variantes → "Agregar" en padres con talla. Se marca y se sigue.
+        console.error('[queries] getVariantChildrenByParent error:', error.message || error)
+        info.failed = true
+        break
+      }
       if (children && children.length > 0) {
         children.forEach((c: any) => {
-          variantCountMap[c.parent_product_id] = (variantCountMap[c.parent_product_id] || 0) + 1
+          info.counts[c.parent_product_id] = (info.counts[c.parent_product_id] || 0) + 1
+          info.childToParent[c.id] = c.parent_product_id
         })
       }
       hasMore = children ? children.length === PAGE_SIZE : false
       from += PAGE_SIZE
     }
   }
-  return variantCountMap
+  return info
+}
+
+/**
+ * Cuenta las variantes activas agrupadas por parent_product_id.
+ * Envoltorio de `getVariantChildrenByParent` para quien solo necesita el conteo.
+ * @returns Mapa parent_product_id → número de variantes activas
+ */
+export async function countVariantsByParent(
+  supabase: ReturnType<typeof getSupabaseForPublicRead>,
+  parentIds: number[]
+): Promise<Record<number, number>> {
+  return (await getVariantChildrenByParent(supabase, parentIds)).counts
+}
+
+/**
+ * `variant_count` para el listado: el conteo real, o `undefined` cuando la
+ * consulta de variantes falló y el producto es padre (la card lo interpreta
+ * como "tiene variantes, cantidad desconocida" y muestra "Elegir").
+ */
+function variantCountFor(product: any, info: VariantChildrenInfo): number | undefined {
+  const n = info.counts[product.id]
+  if (n !== undefined) return n
+  return info.failed && product.is_parent === true ? undefined : 0
+}
+
+/**
+ * Unidades vendidas por producto en la web (web_order_items) de una
+ * organización, clave product_id.
+ *
+ * Una sola consulta por organización (paginada por `range`, PostgREST corta en
+ * ~1000 filas) en vez de una por listado con `.in(product_id, …)`: con
+ * cientos de ids la URL crecía sin control y, peor, nunca incluía a las
+ * variantes. Cuenta todos los pedidos web, igual que antes (también los que
+ * expiraron o se cancelaron); si algún día se quiere "vendidos" = pagados, el
+ * filtro va aquí y en un solo sitio.
+ */
+const getWebSalesByProductUncached = async (organizationId: number): Promise<Record<number, number>> => {
+  const supabase = getSupabaseForPublicRead()
+  const salesMap: Record<number, number> = {}
+  const PAGE_SIZE = 1000
+  let from = 0
+  let hasMore = true
+  while (hasMore) {
+    const { data, error } = await (supabase as any)
+      .from('web_order_items')
+      .select('product_id, quantity, web_orders!inner(organization_id)')
+      .eq('web_orders.organization_id', organizationId)
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) {
+      console.error('[queries] getWebSalesByProduct error:', error.message || error)
+      break
+    }
+    for (const item of data || []) {
+      if (item.product_id == null) continue
+      salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
+    }
+    hasMore = (data?.length || 0) === PAGE_SIZE
+    from += PAGE_SIZE
+  }
+  return salesMap
+}
+
+/**
+ * Enriquece un listado de productos padre/simples con `has_variants`,
+ * `variant_count` y `sales_count` (ventas propias + de variantes).
+ */
+async function enrichListing(
+  supabase: ReturnType<typeof getSupabaseForPublicRead>,
+  organizationId: number,
+  products: any[],
+): Promise<any[]> {
+  if (!products || products.length === 0) return []
+  const parentIds = products.filter((p: any) => p.is_parent).map((p: any) => p.id)
+  const [variants, salesMap] = await Promise.all([
+    getVariantChildrenByParent(supabase, parentIds),
+    getWebSalesByProduct(organizationId),
+  ])
+  // Índice padre → hijos para no recorrer childToParent por cada producto.
+  const childrenOf: Record<number, number[]> = {}
+  for (const [childId, parentId] of Object.entries(variants.childToParent)) {
+    ;(childrenOf[parentId] ||= []).push(Number(childId))
+  }
+  return products.map((p: any) => ({
+    ...p,
+    has_variants: p.is_parent === true,
+    variant_count: variantCountFor(p, variants),
+    sales_count: (salesMap[p.id] || 0) + (childrenOf[p.id] || []).reduce((s, id) => s + (salesMap[id] || 0), 0),
+  }))
 }
 
 /**
@@ -411,21 +520,14 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
 
   if (error) return []
 
-  // Contar variantes para productos padre
-  const parentIds = (data || []).filter((p: any) => p.is_parent).map((p: any) => p.id)
-  const variantCountMap = await countVariantsByParent(supabase, parentIds)
-
   // F3: cuando hay outlet activo, el stock se filtra solo por ese branch.
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
 
+  // Variantes (para "Elegir" y el badge) y ventas (para ordenar por vendidos).
   return filterStockByBranches(
-    normalizeProductPrices((data || []).map((p: any) => ({
-      ...p,
-      has_variants: p.is_parent === true,
-      variant_count: variantCountMap[p.id] || 0,
-    }))),
+    normalizeProductPrices(await enrichListing(supabase, organizationId, data || [])),
     stockBranchIds
   )
 }
@@ -463,7 +565,14 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
     baseQuery = baseQuery.in('category_id', allowedCategoryIds)
   }
 
-  const { data: products, error } = await baseQuery.limit(500)
+  // Orden explícito: sin él, en tiendas con más de 500 productos el `limit`
+  // devolvía un subconjunto distinto cada vez que Postgres reordenaba el heap
+  // (cada edición de stock/precio), y las ofertas "cambiaban solas" entre
+  // visitas. Los más recientes primero, siempre los mismos.
+  const { data: products, error } = await baseQuery
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(500)
 
   if (error || !products) return []
 
@@ -479,38 +588,15 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
 
   if (offers.length === 0) return []
 
-  // 3. Obtener conteo de ventas por producto desde web_order_items
-  const offerIds = offers.map((p: any) => p.id)
-  const { data: salesData } = await supabase
-    .from('web_order_items')
-    .select('product_id, quantity')
-    .in('product_id', offerIds)
-
-  const salesMap: Record<number, number> = {}
-  if (salesData) {
-    salesData.forEach((item: any) => {
-      salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
-    })
-  }
-
-  // 4. Contar variantes para productos padre
-  const parentIds = offers.filter((p: any) => p.is_parent).map((p: any) => p.id)
-  const variantCountMap = await countVariantsByParent(supabase, parentIds)
+  // 3. Variantes (para "Elegir") y ventas propias + de variantes.
+  const enriched = await enrichListing(supabase, organizationId, offers)
 
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
 
-  // 5. Ordenar por ventas (descendente) y limitar
-  return filterStockByBranches(
-    offers.map((p: any) => ({
-      ...p,
-      has_variants: p.is_parent === true,
-      variant_count: variantCountMap[p.id] || 0,
-      sales_count: salesMap[p.id] || 0,
-    })),
-    stockBranchIds
-  )
+  // 4. Ordenar por ventas (descendente) y limitar
+  return filterStockByBranches(enriched, stockBranchIds)
     .sort((a: any, b: any) => b.sales_count - a.sales_count)
     .slice(0, limit)
 }
@@ -686,6 +772,14 @@ const getProductsByCategoryIdsUncached = async (
       map[p.category_id].push(p)
     }
   })
+  // Variantes y ventas solo de los que se van a mostrar (antes no se
+  // calculaban y los padres salían con "Agregar").
+  const shown = Object.values(map).flat()
+  const enriched = await enrichListing(supabase, organizationId, shown)
+  const byId = new Map<number, any>(enriched.map((p: any) => [p.id, p]))
+  for (const catId of Object.keys(map)) {
+    map[Number(catId)] = map[Number(catId)].map((p: any) => byId.get(p.id) || p)
+  }
   return map
 }
 
@@ -862,24 +956,8 @@ async function getProductsByCategoryPaginatedUncached(
 
     if (allError || !allProducts) return { products: [], total: 0 }
 
-    // Obtener conteo de ventas
-    const productIds = allProducts.map((p: any) => p.id)
-    const salesMap: Record<number, number> = {}
-    if (productIds.length > 0) {
-      const { data: salesData } = await supabase
-        .from('web_order_items')
-        .select('product_id, quantity')
-        .in('product_id', productIds)
-      if (salesData) {
-        salesData.forEach((item: any) => {
-          salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
-        })
-      }
-    }
-
-    // Ordenar por ventas y paginar en memoria
-    const sorted = allProducts
-      .map((p: any) => ({ ...p, sales_count: salesMap[p.id] || 0 }))
+    // Ventas (propias + de variantes) y variantes, y ordenar/paginar en memoria
+    const sorted = (await enrichListing(supabase, organizationId, allProducts))
       .sort((a: any, b: any) => b.sales_count - a.sales_count)
 
     const paginated = sorted.slice(offset, offset + limit)
@@ -909,21 +987,10 @@ async function getProductsByCategoryPaginatedUncached(
 
   if (error) return { products: [], total: 0 }
 
-  // Adjuntar sales_count para los demás sorts
+  // Adjuntar sales_count y variantes para los demás sorts
   const prods = filterStockByBranches(data || [], stockBranchIds)
   if (prods.length > 0) {
-    const productIds = prods.map((p: any) => p.id)
-    const salesMap: Record<number, number> = {}
-    const { data: salesData } = await supabase
-      .from('web_order_items')
-      .select('product_id, quantity')
-      .in('product_id', productIds)
-    if (salesData) {
-      salesData.forEach((item: any) => {
-        salesMap[item.product_id] = (salesMap[item.product_id] || 0) + Number(item.quantity || 1)
-      })
-    }
-    const enriched = prods.map((p: any) => ({ ...p, sales_count: salesMap[p.id] || 0 }))
+    const enriched = await enrichListing(supabase, organizationId, prods)
     return { products: normalizeProductPrices(enriched), total: count || 0 }
   }
 
@@ -2935,3 +3002,8 @@ export const getProductsByCategoryPaginated = cacheCatalog(
   (...args) => args[0]
 )
 export const getMenuProducts = cacheCatalog('getMenuProducts', getMenuProductsUncached, (...args) => args[0])
+// Ventas web por producto de una organización: una consulta por org cada
+// CATALOG_TTL, compartida por todos los listados de la misma petición.
+export const getWebSalesByProduct = cache(
+  cacheCatalog('getWebSalesByProduct', getWebSalesByProductUncached, (...args) => args[0])
+)
