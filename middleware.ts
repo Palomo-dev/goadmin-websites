@@ -110,6 +110,12 @@ export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   // Usar service role key si disponible (la anon key falla en runtime de Vercel)
+  // Sin service role, la resolución de dominios de sucursal no encuentra filas
+  // (RLS no abre branches/organizations a anon): se registra en lugar de fallar
+  // en silencio. No se lanza aquí para no tumbar cada request del sitio.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('[middleware] Falta SUPABASE_SERVICE_ROLE_KEY: la resolución de dominios de sucursal quedará deshabilitada')
+  }
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
   const supabase = createServerClient(

@@ -9,6 +9,18 @@ function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
 }
 
+/**
+ * Columnas públicas de organizations. Nunca select('*'): la fila completa
+ * incluye datos fiscales e internos (NIT, razón social, dueño, plan) que
+ * terminarían serializados en props del cliente.
+ */
+const ORG_PUBLIC_COLUMNS =
+  'id, name, description, logo_url, website, email, phone, status, type_id, address, city, state, country, postal_code, primary_color, secondary_color, subdomain, custom_domain, country_code, timezone'
+
+/** Columnas públicas de branches (sin gerente, identificación tributaria ni códigos internos). */
+const BRANCH_PUBLIC_COLUMNS =
+  'id, organization_id, name, address, city, state, country, postal_code, latitude, longitude, phone, email, opening_hours, features, capacity, branch_type, is_main, is_active, slug, subdomain, custom_domain, website_logo_url, website_cover_url, is_web_published, is_web_stock_source, timezone, country_code, state_code'
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
 export interface VariantChildrenInfo {
@@ -335,7 +347,7 @@ async function getOrganizationBySubdomainUncached(subdomain: string): Promise<Or
   const { data: orgDirect, error: orgError } = await supabase
     .from('organizations')
     .select(`
-      *,
+      ${ORG_PUBLIC_COLUMNS},
       organization_types (*),
       website_settings (*)
     `)
@@ -369,7 +381,7 @@ async function getOrganizationBySubdomainUncached(subdomain: string): Promise<Or
   const { data, error } = await supabase
     .from('organizations')
     .select(`
-      *,
+      ${ORG_PUBLIC_COLUMNS},
       organization_types (*),
       website_settings (*)
     `)
@@ -412,7 +424,7 @@ async function getOrganizationByCustomDomainUncached(domain: string): Promise<Or
   const { data, error } = await supabase
     .from('organizations')
     .select(`
-      *,
+      ${ORG_PUBLIC_COLUMNS},
       organization_types (*),
       website_settings (*)
     `)
@@ -644,7 +656,7 @@ async function getOrganizationBranchesUncached(organizationId: number) {
   
   const { data, error } = await supabase
     .from('branches')
-    .select('*')
+    .select(BRANCH_PUBLIC_COLUMNS)
     .eq('organization_id', organizationId)
     .eq('is_active', true)
 

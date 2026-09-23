@@ -50,9 +50,23 @@ export async function createAuthClient() {
   )
 }
 
-// Cliente sin cookies para consultas públicas
+/**
+ * Devuelve la service role key o lanza. Las lecturas públicas del sitio
+ * corren en el servidor con service role; caer en silencio a la anon key
+ * rompería el sitio (RLS ya no abre esas tablas a anon) y ocultaría un
+ * error de configuración del despliegue.
+ */
+function requireServiceRoleKey(): string {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) {
+    throw new Error('Falta SUPABASE_SERVICE_ROLE_KEY: las consultas públicas del sitio requieren el cliente de servidor.')
+  }
+  return key
+}
+
+// Cliente sin cookies para consultas públicas (solo servidor)
 export function createPublicClient() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const key = requireServiceRoleKey()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     key,
