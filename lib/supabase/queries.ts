@@ -137,10 +137,13 @@ const getWebSalesByProductUncached = async (organizationId: number): Promise<Rec
   let from = 0
   let hasMore = true
   while (hasMore) {
+    // ORDER BY obligatorio: sin él, Postgres no garantiza el mismo orden entre
+    // páginas y `range` repite o se salta filas (hay orgs con >4.000 líneas).
     const { data, error } = await (supabase as any)
       .from('web_order_items')
       .select('product_id, quantity, web_orders!inner(organization_id)')
       .eq('web_orders.organization_id', organizationId)
+      .order('id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
     if (error) {
       console.error('[queries] getWebSalesByProduct error:', error.message || error)
@@ -154,6 +157,44 @@ const getWebSalesByProductUncached = async (organizationId: number): Promise<Rec
     from += PAGE_SIZE
   }
   return salesMap
+}
+
+/**
+ * Ids de productos de LISTADO (padre o simple, nunca variante) con ventas web,
+ * ordenados de más a menos vendido. Las ventas de una variante se suman a su
+ * padre, que es lo que se muestra en la card.
+ */
+async function getBestSellerListingIds(
+  supabase: ReturnType<typeof getSupabaseForPublicRead>,
+  organizationId: number,
+  max: number,
+): Promise<number[]> {
+  const salesMap = await getWebSalesByProduct(organizationId)
+  const soldIds = Object.keys(salesMap).map(Number).filter(Number.isFinite)
+  if (soldIds.length === 0) return []
+
+  const listingSales: Record<number, number> = {}
+  const CHUNK = 200
+  for (let i = 0; i < soldIds.length; i += CHUNK) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, parent_product_id')
+      .eq('organization_id', organizationId)
+      .in('id', soldIds.slice(i, i + CHUNK))
+    if (error) {
+      console.error('[queries] getBestSellerListingIds error:', error.message || error)
+      continue
+    }
+    for (const row of (data || []) as any[]) {
+      const listingId = row.parent_product_id ?? row.id
+      listingSales[listingId] = (listingSales[listingId] || 0) + (salesMap[row.id] || 0)
+    }
+  }
+
+  return Object.entries(listingSales)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([id]) => Number(id))
 }
 
 /**
@@ -555,10 +596,7 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
   const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
   if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
 
-  // 1. Traer todos los productos activos con precios
-  let baseQuery = supabase
-    .from('products')
-    .select(`
+  const OFFER_SELECT = `
       ${PRODUCT_LIST_COLUMNS},
       categories ( id, name, slug ),
       product_prices (id, price, compare_price, effective_to),
@@ -567,26 +605,48 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
         shared_images ( storage_path )
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
-    `)
-    .is('product_prices.effective_to', null)
-    .eq('organization_id', organizationId)
-    .eq('status', 'active')
-    .is('parent_product_id', null)
-
-  if (allowedCategoryIds) {
-    baseQuery = baseQuery.in('category_id', allowedCategoryIds)
+    `
+  const baseQuery = () => {
+    let q = supabase
+      .from('products')
+      .select(OFFER_SELECT)
+      .is('product_prices.effective_to', null)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+    if (allowedCategoryIds) q = q.in('category_id', allowedCategoryIds)
+    return q
   }
 
-  // Orden explícito: sin él, en tiendas con más de 500 productos el `limit`
-  // devolvía un subconjunto distinto cada vez que Postgres reordenaba el heap
-  // (cada edición de stock/precio), y las ofertas "cambiaban solas" entre
-  // visitas. Los más recientes primero, siempre los mismos.
-  const { data: products, error } = await baseQuery
+  // 1. Candidatos. Las tiendas grandes tienen miles de productos y aquí solo
+  //    caben 500 antes de ordenar por vendidos, así que la ELECCIÓN de esos 500
+  //    decide qué se ve. Regla: primero TODOS los que han vendido algo (propio
+  //    o por sus variantes), después se completa con los más recientes.
+  //    Antes se tomaban 500 sin orden (subconjunto aleatorio) y luego 500
+  //    recientes: en ambos casos el más vendido de una tienda podía quedarse
+  //    fuera (org 145: 152 vendidos, producto nº 4.330 por antigüedad).
+  const bestSellerIds = await getBestSellerListingIds(supabase, organizationId, limit)
+
+  const products: any[] = []
+  const seen = new Set<number>()
+  const IDS_PER_QUERY = 200 // mantiene la URL de PostgREST acotada
+  for (let i = 0; i < bestSellerIds.length; i += IDS_PER_QUERY) {
+    const { data, error } = await baseQuery().in('id', bestSellerIds.slice(i, i + IDS_PER_QUERY))
+    if (error) {
+      console.error('[queries] getOfferProducts best sellers error:', error.message || error)
+      continue
+    }
+    for (const p of (data || []) as any[]) if (!seen.has(p.id)) { seen.add(p.id); products.push(p) }
+  }
+
+  const { data: recent, error } = await baseQuery()
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(500)
+  if (error && products.length === 0) return []
+  for (const p of (recent || []) as any[]) if (!seen.has(p.id)) { seen.add(p.id); products.push(p) }
 
-  if (error || !products) return []
+  if (products.length === 0) return []
 
   // Normalizar precios para que [0] sea el vigente
   const normalized = normalizeProductPrices(products)
