@@ -4,7 +4,7 @@ import { isReservationReference, handleReservationPayment } from '@/lib/reservat
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
-import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
+import { isInvoiceReference, handleInvoicePayment, organizacionesCandidatasFactura } from '@/lib/services/payment-handler'
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
@@ -56,6 +56,36 @@ function validateBoldSignature(
   } catch {
     return false
   }
+}
+
+/**
+ * Organización de un pago de factura (INV-): entre las organizaciones que tienen una
+ * factura con esa referencia y una conexión de Bold, la única cuya llave verifica la
+ * firma del body. `null` si ninguna la verifica (o si falta la firma).
+ */
+async function resolverOrganizacionFacturaBold(
+  supabase: any,
+  reference: string,
+  rawBody: string,
+  signature: string
+): Promise<number | null> {
+  if (!signature) return null
+  const candidatas = await organizacionesCandidatasFactura(supabase, reference)
+  if (candidatas.length === 0) return null
+
+  const { data: conBold } = await supabase
+    .from('integration_connections')
+    .select('organization_id')
+    .in('organization_id', candidatas)
+    .eq('connector_id', BOLD_CONNECTOR_ID)
+    .in('status', ['active', 'connected'])
+  const orgs = Array.from(new Set<number>((conBold || []).map((c: any) => c.organization_id)))
+
+  for (const orgId of orgs) {
+    const secretKey = await getBoldSecretKey(supabase, orgId)
+    if (secretKey && validateBoldSignature(rawBody, signature, secretKey)) return orgId
+  }
+  return null
 }
 
 /**
@@ -240,13 +270,23 @@ export async function POST(request: NextRequest) {
       const paymentStatus = mapBoldStatus(type)
       const amountDecimal = Number(amountTotal || 0)
 
+      // La organización de la factura es la única cuya llave verifica la firma. Los
+      // números de factura se repiten entre organizaciones: sin esto, cualquiera marcaba
+      // pagada la factura de otra. Sin firma válida: 401.
+      const boldSignature = request.headers.get('x-bold-signature') || ''
+      const invoiceOrgId = await resolverOrganizacionFacturaBold(supabase, reference, rawBody, boldSignature)
+      if (!invoiceOrgId) {
+        console.error(`[Bold Webhook] Pago de factura ${reference} sin firma válida de ninguna organización: rechazado`)
+        return NextResponse.json({ error: 'Firma inválida' }, { status: 401 })
+      }
+
       const result = await handleInvoicePayment(supabase, reference, paymentStatus, {
         transactionId,
         amount: amountDecimal,
         currency,
         method: mapToPaymentMethodCode(paymentMethod, 'bold'),
         gateway: 'bold_link',
-      })
+      }, invoiceOrgId)
 
       return NextResponse.json({
         received: true,

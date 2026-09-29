@@ -472,7 +472,7 @@ export async function POST(request: NextRequest) {
         currency,
         method: mapToPaymentMethodCode(paymentMethodType, 'paypal'),
         gateway: 'paypal',
-      })
+      }, organizationId)
 
       return NextResponse.json({
         received: true,

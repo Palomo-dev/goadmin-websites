@@ -4,7 +4,7 @@ import { isReservationReference, handleReservationPayment } from '@/lib/reservat
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
-import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
+import { isInvoiceReference, handleInvoicePayment, organizacionesCandidatasFactura } from '@/lib/services/payment-handler'
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
@@ -144,6 +144,37 @@ async function validateSignature(
     console.error('[Wompi Webhook] Error validating signature:', error)
     return false
   }
+}
+
+/**
+ * Organización de un pago de factura (INV-): entre las organizaciones que tienen una
+ * factura con esa referencia y una conexión de Wompi, la única cuyo secreto de eventos
+ * verifica la firma. `null` si ninguna la verifica (o si falta la firma).
+ */
+async function resolverOrganizacionFacturaWompi(
+  supabase: any,
+  reference: string,
+  transaction: Record<string, any>,
+  signature: { properties: string[]; checksum: string } | undefined,
+  timestamp: number
+): Promise<number | null> {
+  if (!signature?.checksum || !Array.isArray(signature.properties)) return null
+  const candidatas = await organizacionesCandidatasFactura(supabase, reference)
+  if (candidatas.length === 0) return null
+
+  const { data: conWompi } = await supabase
+    .from('integration_connections')
+    .select('organization_id')
+    .in('organization_id', candidatas)
+    .eq('connector_id', WOMPI_CONNECTOR_ID)
+    .in('status', ['active', 'connected'])
+  const orgs = Array.from(new Set<number>((conWompi || []).map((c: any) => c.organization_id)))
+
+  for (const orgId of orgs) {
+    const { secret } = await getEventsSecret(supabase, orgId)
+    if (secret && (await validateSignature(transaction, signature, timestamp, secret))) return orgId
+  }
+  return null
 }
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
@@ -356,13 +387,23 @@ export async function POST(request: NextRequest) {
       const paymentStatus = mapWompiStatus(wompiStatus)
       const amountDecimal = amountInCents ? amountInCents / 100 : 0
 
+      // La organización de la factura es la única cuya firma verifica. Los números de
+      // factura se repiten entre organizaciones: sin esto, cualquiera marcaba pagada la
+      // factura de otra. Falla cerrado siempre (no depende de SIGNATURE_ENFORCED): este
+      // flujo no tiene tráfico que proteger y la firma de Wompi ya verifica en producción.
+      const invoiceOrgId = await resolverOrganizacionFacturaWompi(supabase, reference, transaction, signature, timestamp)
+      if (!invoiceOrgId) {
+        console.error(`[Wompi Webhook] Pago de factura ${reference} sin firma válida de ninguna organización: rechazado`)
+        return NextResponse.json({ error: 'Firma inválida' }, { status: 401 })
+      }
+
       const result = await handleInvoicePayment(supabase, reference, paymentStatus, {
         transactionId,
         amount: amountDecimal,
         currency: currency || 'COP',
         method: mapToPaymentMethodCode(paymentMethodType, 'wompi'),
         gateway: 'wompi_co',
-      })
+      }, invoiceOrgId)
 
       return NextResponse.json({
         received: true,

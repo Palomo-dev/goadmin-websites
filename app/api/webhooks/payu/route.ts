@@ -332,7 +332,7 @@ export async function POST(request: NextRequest) {
         currency: currency || 'COP',
         method: mapToPaymentMethodCode(paymentMethod || paymentMethodType, 'payu'),
         gateway: 'payu',
-      })
+      }, organizationId)
 
       return NextResponse.json({
         received: true,
