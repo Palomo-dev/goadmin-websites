@@ -31,12 +31,13 @@ export function isInvoiceReference(reference: string): boolean {
 const REFERENCIA_RE = /^INV-([A-Za-z0-9][A-Za-z0-9-]{0,39})$/
 const PREFIJO_ID_RE = /^[0-9a-f]{8}$/i
 
-const COLUMNAS_FACTURA = 'id, organization_id, branch_id, customer_id, number, total, balance, status, currency'
+const COLUMNAS_FACTURA = 'id, organization_id, branch_id, customer_id, sale_id, number, total, balance, status, currency'
 
 interface Factura {
   id: string
   organization_id: number
   branch_id: number | null
+  sale_id: string | null
   customer_id: string | null
   number: string | null
   total: number | null
@@ -214,6 +215,21 @@ export async function handleInvoicePayment(
       .maybeSingle()
     const newBalance = Number(actualizada?.balance ?? Math.max(0, Number(invoice.balance || 0) - paymentAmount))
     const newStatus: string = actualizada?.status || (newBalance <= 0 ? 'paid' : 'partial')
+
+    // Membresías: la misma activación que hace el ERP al cobrar una factura
+    // (`fn_registrar_pago`). La función decide si la factura ya quedó pagada, es
+    // idempotente y devuelve [] si la venta no tiene líneas de membresía.
+    if (invoice.sale_id) {
+      const { error: memError } = await supabase.rpc('fn_membresias_activar_venta', {
+        p_sale_id: invoice.sale_id,
+        p_invoice_id: invoice.id,
+        p_source: 'invoice',
+      })
+      if (memError) {
+        // El pago ya quedó registrado; la activación se puede repetir desde el ERP.
+        console.error(`[InvoicePayment] Factura ${invoice.id}: membresía sin activar`, memError)
+      }
+    }
 
     // 5. Datos del cliente para el email
     const { data: customer } = invoice.customer_id
