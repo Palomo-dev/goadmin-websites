@@ -1,43 +1,75 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, Star, Zap, Clock } from 'lucide-react'
+import { getCartKey } from '@/lib/utils'
 
 interface MembershipPlan {
   id: number
   name: string
-  description?: string
-  price: number
+  description?: string | null
+  /**
+   * Precio vigente del PRODUCTO del plan (`product_prices`). Null = el plan no se vende en
+   * línea (sin producto activo o sin precio vigente).
+   */
+  price: number | null
+  /** Producto que se agrega al carrito. La membresía se compra como un pedido web normal. */
+  product_id?: number | null
   duration_days: number
-  frequency?: string
+  duration_unit?: string | null
+  duration_value?: number | null
+  frequency?: string | null
   access_rules?: {
     features?: string[]
     classes_included?: boolean
     branches?: string[]
     max_freezes?: number
     [key: string]: any
-  }
+  } | null
 }
 
 interface MembershipPlansProps {
   plans?: MembershipPlan[]
   primaryColor: string
+  organizationSubdomain?: string
+  branchId?: number | null
 }
 
+// Planes de ejemplo para sitios sin planes configurados. No se venden: su botón lleva a contacto.
 const defaultPlans: MembershipPlan[] = [
   { id: 1, name: 'Plan Básico', description: 'Ideal para comenzar', price: 49900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito'] } },
   { id: 2, name: 'Plan Premium', description: 'El más popular', price: 89900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)'], classes_included: true } },
   { id: 3, name: 'Plan VIP', description: 'Experiencia completa', price: 149900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)', 'Acceso a spa y sauna', 'Estacionamiento gratuito'], classes_included: true } },
 ]
 
+const UNIDADES: Record<string, [string, string]> = {
+  day: ['día', 'días'],
+  week: ['semana', 'semanas'],
+  month: ['mes', 'meses'],
+  year: ['año', 'años'],
+}
+
+/** Sufijo del precio a partir de la duración del plan (`duration_unit`/`duration_value`). */
+function formatPeriodo(plan: MembershipPlan): string {
+  const unidad = plan.duration_unit ? UNIDADES[plan.duration_unit] : undefined
+  const valor = plan.duration_value ?? null
+  if (unidad && valor && valor > 0) {
+    return valor === 1 ? `/${unidad[0]}` : `/${valor} ${unidad[1]}`
+  }
+  return formatFrequency(plan.frequency ?? undefined)
+}
+
 function formatFrequency(frequency?: string): string {
   switch (frequency) {
     case 'monthly': return '/mes'
     case 'quarterly': return '/trimestre'
     case 'semiannual': return '/semestre'
+    case 'biannual': return '/semestre'
     case 'annual': return '/año'
+    case 'daily': return '/día'
     case 'weekly': return '/semana'
     default: return '/mes'
   }
@@ -53,8 +85,44 @@ function formatDuration(days: number): string {
   return `${days} días`
 }
 
-export function MembershipPlans({ plans: propPlans, primaryColor }: MembershipPlansProps) {
-  const plans = propPlans && propPlans.length > 0 ? propPlans : defaultPlans
+function formatDuracionPlan(plan: MembershipPlan): string {
+  const unidad = plan.duration_unit ? UNIDADES[plan.duration_unit] : undefined
+  const valor = plan.duration_value ?? null
+  if (unidad && valor && valor > 0) return `${valor} ${valor === 1 ? unidad[0] : unidad[1]}`
+  return formatDuration(plan.duration_days)
+}
+
+export function MembershipPlans({ plans: propPlans, primaryColor, organizationSubdomain, branchId }: MembershipPlansProps) {
+  const router = useRouter()
+  const esDemo = !(propPlans && propPlans.length > 0)
+  const plans = esDemo ? defaultPlans : (propPlans as MembershipPlan[])
+
+  /**
+   * La membresía se compra como su producto: se agrega al carrito y sigue el checkout normal
+   * (pedido web). Al confirmarse el pago, el ERP activa la membresía con
+   * `fn_membresias_activar_venta` — este sitio ya no crea filas en `memberships`.
+   * Misma forma de línea que AddToCartButton; CartEventTracker dispara el pixel.
+   */
+  const comprar = (plan: MembershipPlan) => {
+    if (!plan.product_id || plan.price === null) return
+    try {
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
+      const cartKey = getCartKey(subdomain, branchId)
+      const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+      const idx = cart.findIndex((item: any) => item.id === plan.product_id)
+      // Una membresía por plan en el carrito: la cantidad N compra N períodos seguidos
+      // (así lo interpreta la base); se deja en 1 y el cliente la cambia en el carrito si quiere.
+      if (idx < 0) {
+        cart.push({ id: plan.product_id, name: plan.name, price: Number(plan.price), quantity: 1 })
+        localStorage.setItem(cartKey, JSON.stringify(cart))
+        window.dispatchEvent(new CustomEvent('cart-updated'))
+      }
+    } catch (err) {
+      console.error('Error agregando la membresía al carrito:', err)
+      return
+    }
+    router.push('/checkout')
+  }
   
   return (
     <section className="py-16">
@@ -110,18 +178,24 @@ export function MembershipPlans({ plans: propPlans, primaryColor }: MembershipPl
                   </div>
                   
                   <div className="text-center mb-4">
-                    <span 
-                      className="text-5xl font-black"
-                      style={{ color: primaryColor }}
-                    >
-                      ${Number(plan.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
-                    </span>
-                    <span className="text-gray-500 text-sm">{formatFrequency(plan.frequency)}</span>
+                    {plan.price !== null ? (
+                      <>
+                        <span
+                          className="text-5xl font-black"
+                          style={{ color: primaryColor }}
+                        >
+                          ${Number(plan.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-gray-500 text-sm">{formatPeriodo(plan)}</span>
+                      </>
+                    ) : (
+                      <span className="text-2xl font-bold text-gray-500">Precio a consultar</span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-center gap-1 text-xs text-gray-400 mb-6">
                     <Clock className="w-3 h-3" />
-                    <span>Duración: {formatDuration(plan.duration_days)}</span>
+                    <span>Duración: {formatDuracionPlan(plan)}</span>
                   </div>
                   
                   {features.length > 0 && (
@@ -138,16 +212,27 @@ export function MembershipPlans({ plans: propPlans, primaryColor }: MembershipPl
                     </ul>
                   )}
                   
-                  <Link href={`/checkout?plan=${plan.id}`}>
+                  {!esDemo && plan.product_id && plan.price !== null ? (
                     <Button 
                       className="w-full font-semibold"
                       variant={isPremium ? 'default' : 'outline'}
                       style={isPremium ? { backgroundColor: primaryColor } : { borderColor: primaryColor, color: primaryColor }}
+                      onClick={() => comprar(plan)}
                     >
                       {isPremium && <Zap className="w-4 h-4 mr-2" />}
                       Comenzar Ahora
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link href="/contacto">
+                      <Button
+                        className="w-full font-semibold"
+                        variant={isPremium ? 'default' : 'outline'}
+                        style={isPremium ? { backgroundColor: primaryColor } : { borderColor: primaryColor, color: primaryColor }}
+                      >
+                        Consultar
+                      </Button>
+                    </Link>
+                  )}
                 </CardContent>
               </Card>
             )

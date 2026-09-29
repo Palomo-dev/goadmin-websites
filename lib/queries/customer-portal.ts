@@ -161,17 +161,71 @@ export async function getCustomerCoupons(customerId: string, organizationId: num
 
 // ─── Membresías (gym) ─────────────────────────────────────────
 
-export async function getCustomerMembership(customerId: string, organizationId: number) {
+/** Membresía que muestra el portal del cliente. */
+export interface CustomerMembership {
+  id: number
+  /** pending · active · frozen · past_due · expired · cancelled (CHECK de la base). */
+  status: string
+  start_date: string | null
+  end_date: string
+  grace_until: string | null
+  access_code: string | null
+  membership_plan_id: number
+  plan_name: string | null
+  /** Regla del plan copiada al venderse (`plan_snapshot.freeze_allowed`). */
+  freeze_allowed: boolean
+}
+
+// Columnas reales de memberships (verificadas por MCP el 2026-09-29). Antes era select('*') y la
+// página leía `plan_name` y `price`, que no existen en memberships: el plan salía siempre como
+// «Membresía» y el precio nunca se mostraba.
+const CUSTOMER_MEMBERSHIP_COLUMNS =
+  'id, status, start_date, end_date, grace_until, access_code, membership_plan_id, plan_snapshot, membership_plans ( name )'
+
+function toCustomerMembership(row: any): CustomerMembership {
+  return {
+    id: row.id,
+    status: row.status,
+    start_date: row.start_date ?? null,
+    end_date: row.end_date,
+    grace_until: row.grace_until ?? null,
+    access_code: row.access_code ?? null,
+    membership_plan_id: row.membership_plan_id,
+    plan_name: row.membership_plans?.name ?? null,
+    freeze_allowed: row.plan_snapshot?.freeze_allowed === true,
+  }
+}
+
+export async function getCustomerMembership(customerId: string, organizationId: number): Promise<CustomerMembership | null> {
   const supabase = await getSb()
-  const { data } = await (supabase as any)
+  // `as any`: types/database.ts resuelve hoy a `never` (ver el aviso allí); memberships está
+  // declarada en ese archivo con sus columnas reales.
+  const sb = supabase as any
+
+  // 1. La vigente: activa, congelada, en gracia o pendiente de pago. Una renovación extiende la
+  //    MISMA membresía (y una venta aplicada como renovación deja su fila `cancelled`), así que
+  //    «la más reciente por created_at» podía mostrar una cancelada en vez de la vigente.
+  const { data: viva } = await sb
     .from('memberships')
-    .select('*')
+    .select(CUSTOMER_MEMBERSHIP_COLUMNS)
     .eq('customer_id', customerId)
     .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
+    .in('status', ['active', 'frozen', 'past_due', 'pending'])
+    .order('end_date', { ascending: false })
     .limit(1)
-    .single()
-  return data as any | null
+    .maybeSingle()
+  if (viva) return toCustomerMembership(viva)
+
+  // 2. Si no hay vigente, la última (vencida o cancelada) para ofrecer renovar.
+  const { data: ultima } = await sb
+    .from('memberships')
+    .select(CUSTOMER_MEMBERSHIP_COLUMNS)
+    .eq('customer_id', customerId)
+    .eq('organization_id', organizationId)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return ultima ? toCustomerMembership(ultima) : null
 }
 
 // ─── Check-ins (gym) ──────────────────────────────────────────

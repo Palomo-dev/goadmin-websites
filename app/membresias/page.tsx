@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function MembresiasPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
-  const { organization, primaryColor } = ctx
+  const { organization, primaryColor, branchId } = ctx
 
   const plans = await getMembershipPlans(organization.id)
 
@@ -36,7 +36,12 @@ export default async function MembresiasPage() {
       </section>
 
       {/* Planes */}
-      <MembershipPlans plans={plans} primaryColor={primaryColor} />
+      <MembershipPlans
+        plans={plans}
+        primaryColor={primaryColor}
+        organizationSubdomain={organization.subdomain || ''}
+        branchId={branchId}
+      />
 
       {/* FAQ básico */}
       <section className="py-16 bg-gray-50">
@@ -46,7 +51,7 @@ export default async function MembresiasPage() {
             {[
               { q: '¿Puedo cambiar de plan?', a: 'Sí, puedes cambiar tu plan en cualquier momento. El cambio se refleja al inicio del siguiente período.' },
               { q: '¿Qué pasa si quiero cancelar?', a: 'Puedes cancelar tu membresía cuando quieras. Tu acceso permanece activo hasta el final del período pagado.' },
-              { q: '¿Puedo congelar mi membresía?', a: 'Sí, puedes solicitar el congelamiento de tu membresía desde tu portal de cuenta. El equipo del gimnasio aprobará la solicitud.' },
+              { q: '¿Puedo congelar mi membresía?', a: 'Si tu plan lo permite, el equipo puede congelarla: comunícate con nosotros y te ayudamos.' },
               { q: '¿Cómo accedo al gimnasio?', a: 'Al activarse tu membresía recibirás un código de acceso que puedes usar en la entrada del gimnasio.' },
             ].map((faq, idx) => (
               <details key={idx} className="bg-white rounded-lg border p-4 group">

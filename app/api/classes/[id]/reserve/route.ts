@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendClassReservationEmail } from '@/lib/email/send-class-reservation-email'
+import { getOrgContext } from '@/lib/get-org-context'
+import { getAuthCustomer } from '@/lib/get-auth-customer'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +13,11 @@ export const dynamic = 'force-dynamic'
  * Validaciones:
  *  1. Clase existe y está activa
  *  2. Hay cupos disponibles (capacity - reservas booked/checked_in)
- *  3. Customer tiene membresía activa en la organización
+ *  3. Customer tiene membresía vigente en la organización (activa, o en período de gracia)
  *  4. Customer no tiene reserva duplicada para esta clase
  *
- * Body: { customerId, organizationId }
+ * La organización sale del contexto del sitio (host) y el cliente de la sesión, nunca del
+ * body. Si el body trae `organizationId`/`customerId` distintos: 403.
  */
 export async function POST(
   request: NextRequest,
@@ -29,13 +32,28 @@ export async function POST(
   }
 
   try {
-    const { customerId, organizationId } = await request.json()
+    const ctx = await getOrgContext()
+    if (!ctx) {
+      return NextResponse.json({ error: 'Sitio no encontrado' }, { status: 404 })
+    }
+    const organizationId = ctx.organization.id
+    const authCustomer = await getAuthCustomer(organizationId)
+    if (!authCustomer) {
+      return NextResponse.json({ error: 'Inicia sesión para reservar' }, { status: 401 })
+    }
+    const customerId = authCustomer.id
 
-    if (!customerId || !organizationId) {
-      return NextResponse.json(
-        { error: 'Faltan parámetros: customerId, organizationId' },
-        { status: 400 }
-      )
+    // Compatibilidad con clientes que aún mandan los ids en el body: se ignoran, pero si
+    // no coinciden con el contexto se rechaza (y se registra).
+    const body = await request.json().catch(() => ({}))
+    if (
+      (body?.organizationId != null && Number(body.organizationId) !== organizationId) ||
+      (body?.customerId != null && String(body.customerId) !== customerId)
+    ) {
+      console.warn('[Class Reserve] organización o cliente del body distinto al de la sesión', {
+        organizationId, bodyOrganizationId: body?.organizationId,
+      })
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // 1. Validar que la clase existe y está activa
@@ -78,18 +96,26 @@ export async function POST(
       )
     }
 
-    // 4. Verificar membresía activa
-    const { data: membership, error: membershipError } = await (supabase as any)
+    // 4. Verificar membresía vigente: activa y sin vencer, o vencida dentro del período de
+    //    gracia (`past_due` + `grace_until`; en el ERP la gracia deja entrar con aviso).
+    //    Congelada, pendiente de pago, vencida o cancelada no reservan.
+    const ahora = Date.now()
+    const { data: candidatas } = await (supabase as any)
       .from('memberships')
-      .select('id, status, end_date, membership_plan_id')
+      .select('id, status, end_date, grace_until, membership_plan_id')
       .eq('customer_id', customerId)
       .eq('organization_id', organizationId)
-      .eq('status', 'active')
-      .gte('end_date', new Date().toISOString())
-      .limit(1)
-      .single()
+      .in('status', ['active', 'past_due'])
+      .order('end_date', { ascending: false })
+      .limit(5)
 
-    if (membershipError || !membership) {
+    const membership = ((candidatas || []) as any[]).find((m) =>
+      m.status === 'active'
+        ? new Date(m.end_date).getTime() >= ahora
+        : !!m.grace_until && new Date(m.grace_until).getTime() >= ahora
+    )
+
+    if (!membership) {
       return NextResponse.json(
         { error: 'Necesitas una membresía activa para reservar clases' },
         { status: 403 }
@@ -122,7 +148,8 @@ export async function POST(
         customer_id: customerId,
         membership_id: membership.id,
         status: 'booked',
-        reservation_source: 'website',
+        // CHECK de la base: app · web · staff · kiosk. 'website' hacía fallar toda reserva.
+        reservation_source: 'web',
         booked_at: new Date().toISOString(),
       })
       .select()
@@ -147,9 +174,10 @@ export async function POST(
       .eq('id', customerId)
       .single()
 
+    // `organizations.domain` no existe: el select fallaba y el correo nunca salía.
     const { data: orgData } = await (supabase as any)
       .from('organizations')
-      .select('name, domain')
+      .select('name, subdomain, custom_domain')
       .eq('id', organizationId)
       .single()
 
@@ -163,7 +191,7 @@ export async function POST(
     if (customerData?.email && orgData) {
       const instructor = classDetail?.profiles
       const instructorName = instructor ? `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim() : undefined
-      const domain = orgData.domain || 'localhost:3000'
+      const domain = orgData.custom_domain || (orgData.subdomain ? `${orgData.subdomain}.goadmin.io` : 'localhost:3000')
 
       sendClassReservationEmail({
         customerEmail: customerData.email,

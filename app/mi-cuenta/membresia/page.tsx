@@ -15,6 +15,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `Mi Membresía | ${ctx.organization.name}` }
 }
 
+// Estados que acepta la base (memberships_status_check) y cómo se muestran.
+const ESTADOS: Record<string, { label: string; bg: string; color: string }> = {
+  active: { label: 'Activa', bg: '#DCFCE7', color: '#166534' },
+  frozen: { label: 'Congelada', bg: '#DBEAFE', color: '#1E40AF' },
+  pending: { label: 'Pendiente de pago', bg: '#FEF3C7', color: '#92400E' },
+  past_due: { label: 'En período de gracia', bg: '#FEF3C7', color: '#92400E' },
+  expired: { label: 'Vencida', bg: '#FEE2E2', color: '#991B1B' },
+  cancelled: { label: 'Cancelada', bg: '#F3F4F6', color: '#374151' },
+}
+
 function getDaysUntilExpiry(endDate: string): number {
   const end = new Date(endDate)
   const now = new Date()
@@ -25,12 +35,19 @@ export default async function MembresiaPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
   const { organization, primaryColor } = ctx
+  // Las fechas de memberships son timestamptz: se pintan en la zona de la organización (un
+  // vencimiento a las 23:59:59 de Bogotá es el día siguiente en UTC, la zona del servidor).
+  const timeZone = (organization as { timezone?: string | null }).timezone || 'America/Bogota'
+  const formatFecha = (valor: string) =>
+    new Date(valor).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone })
   const customer = await getAuthCustomer(organization.id)
   const membership = customer ? await getCustomerMembership(customer.id, organization.id) : null
 
   const daysLeft = membership?.end_date ? getDaysUntilExpiry(membership.end_date) : null
   const showRenewalAlert = daysLeft !== null && daysLeft <= 7 && daysLeft > 0
-  const isExpired = membership?.status === 'expired' || (daysLeft !== null && daysLeft <= 0)
+  const enGracia = membership?.status === 'past_due'
+  const isExpired = membership?.status === 'expired' || (!enGracia && membership?.status !== 'cancelled' && daysLeft !== null && daysLeft <= 0)
+  const estado = membership ? (ESTADOS[membership.status] ?? { label: membership.status, bg: '#FEF3C7', color: '#92400E' }) : null
 
   return (
     <div className="space-y-6">
@@ -72,6 +89,26 @@ export default async function MembresiaPage() {
             </div>
           )}
 
+          {/* En período de gracia: vencida, pero todavía entra (regla del plan) */}
+          {enGracia && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-xl">⏳</span>
+              <div className="flex-1">
+                <p className="font-semibold text-amber-800 text-sm">Tu membresía venció y está en período de gracia</p>
+                <p className="text-amber-700 text-xs mt-0.5">
+                  {membership.grace_until ? `Puedes seguir entrando hasta el ${formatFecha(membership.grace_until)}. ` : ''}Renueva para no perder el acceso.
+                </p>
+              </div>
+              <Link
+                href={`/membresias?renew=${membership.membership_plan_id}`}
+                className="px-4 py-1.5 rounded-lg text-white text-xs font-medium hover:opacity-90 shrink-0"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Renovar
+              </Link>
+            </div>
+          )}
+
           {/* Alerta expirada */}
           {isExpired && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
@@ -100,12 +137,9 @@ export default async function MembresiaPage() {
                 <p className="font-bold text-lg">{membership.plan_name || 'Membresía'}</p>
                 <span
                   className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: membership.status === 'active' ? '#DCFCE7' : membership.status === 'frozen' ? '#DBEAFE' : '#FEF3C7',
-                    color: membership.status === 'active' ? '#166534' : membership.status === 'frozen' ? '#1E40AF' : '#92400E',
-                  }}
+                  style={{ backgroundColor: estado?.bg, color: estado?.color }}
                 >
-                  {membership.status === 'active' ? 'Activa' : membership.status === 'expired' ? 'Expirada' : membership.status === 'frozen' ? 'Congelada' : membership.status}
+                  {estado?.label}
                 </span>
               </div>
             </div>
@@ -114,13 +148,13 @@ export default async function MembresiaPage() {
               {membership.start_date && (
                 <div>
                   <p className="text-gray-500">Inicio</p>
-                  <p className="font-medium">{new Date(membership.start_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="font-medium">{formatFecha(membership.start_date)}</p>
                 </div>
               )}
               {membership.end_date && (
                 <div>
                   <p className="text-gray-500">Vencimiento</p>
-                  <p className="font-medium">{new Date(membership.end_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="font-medium">{formatFecha(membership.end_date)}</p>
                 </div>
               )}
               {daysLeft !== null && daysLeft > 0 && (
@@ -129,16 +163,10 @@ export default async function MembresiaPage() {
                   <p className="font-medium">{daysLeft} día{daysLeft !== 1 ? 's' : ''}</p>
                 </div>
               )}
-              {membership.price && (
-                <div>
-                  <p className="text-gray-500">Precio</p>
-                  <p className="font-medium">${Number(membership.price).toLocaleString('es-CO')}</p>
-                </div>
-              )}
             </div>
 
             {/* QR de acceso */}
-            {membership.access_code && membership.status === 'active' && (
+            {membership.access_code && (membership.status === 'active' || membership.status === 'past_due') && (
               <MembershipQR
                 accessCode={membership.access_code}
                 memberName={customer?.first_name ? `${customer.first_name} ${customer.last_name || ''}`.trim() : undefined}
@@ -146,15 +174,10 @@ export default async function MembresiaPage() {
               />
             )}
 
-            {/* Solicitud de congelamiento */}
-            {membership.status === 'active' && customer && (
+            {/* Congelamiento: solo si el plan lo permite. Hoy lo hace el staff (ver FreezeRequestForm). */}
+            {membership.status === 'active' && membership.freeze_allowed && customer && (
               <div className="mt-4">
-                <FreezeRequestForm
-                  membershipId={membership.id}
-                  customerId={customer.id}
-                  organizationId={organization.id}
-                  primaryColor={primaryColor}
-                />
+                <FreezeRequestForm organizationName={organization.name} />
               </div>
             )}
           </div>

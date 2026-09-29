@@ -578,43 +578,6 @@ async function getTripTicket(supabase: any, ticketId: string) {
 }
 
 /**
- * Obtiene una membresía por ID para generar pago.
- * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
- */
-async function getMembership(supabase: any, membershipId: string) {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('id, organization_id, customer_id, membership_plan_id, status, notes, membership_plans(name, price)')
-    .eq('id', membershipId)
-    .single()
-
-  if (error || !data) return null
-
-  const plan = data.membership_plans
-  const reference = `MEM-${data.id}`
-
-  // Buscar email del customer
-  const { data: customer } = await supabase
-    .from('customers')
-    .select('email, first_name, last_name')
-    .eq('id', data.customer_id)
-    .single()
-
-  return {
-    id: data.id,
-    organization_id: data.organization_id,
-    order_number: reference,
-    total: Number(plan?.price || 0),
-    currency: 'COP',
-    status: data.status,
-    payment_status: data.status === 'active' ? 'paid' : 'pending',
-    customer_email: customer?.email || '',
-    customer_name: `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim(),
-    _source: 'membership' as const,
-  }
-}
-
-/**
  * Obtiene un pase de parking por ID para generar pago.
  * Devuelve un objeto compatible con la interfaz de "order" para las pasarelas.
  */
@@ -722,7 +685,18 @@ export async function POST(request: NextRequest) {
     } else if (isTripTicket) {
       order = await getTripTicket(supabase, sourceId)
     } else if (isMembership) {
-      order = await getMembership(supabase, sourceId)
+      // Flujo retirado: la membresía se compra como su producto en un pedido web normal y la
+      // activa el ERP al confirmarse el pago (`fn_membresias_activar_venta`). Este ramal leía
+      // `memberships` por id sin filtrar organización y cobraba `membership_plans.price`
+      // (obsoleto). No existe ninguna membresía cobrable por aquí (la compra directa nunca
+      // pudo crear filas: la base rechaza `pending_payment`).
+      return NextResponse.json(
+        {
+          error: 'La compra de membresías se hace desde la página de planes: agrega el plan al carrito y paga el pedido.',
+          codigo: 'membresia_por_pedido_web',
+        },
+        { status: 410 }
+      )
     } else if (isReservation) {
       order = await getReservation(supabase, sourceId)
     } else if (orderNumber) {
@@ -830,14 +804,6 @@ export async function POST(request: NextRequest) {
             payment_gateway: gateway,
             payment_reference: order.order_number,
           },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.id)
-    } else if (isMembership) {
-      await (supabase as any)
-        .from('memberships')
-        .update({
-          notes: `Compra online - Gateway: ${gateway}`,
           updated_at: new Date().toISOString(),
         })
         .eq('id', order.id)

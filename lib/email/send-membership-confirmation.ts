@@ -16,6 +16,8 @@ interface MembershipEmailData {
   frequency: string
   organizationName: string
   portalUrl: string
+  /** Zona de la organización: las fechas son timestamptz y se pintan en esa zona. */
+  timeZone?: string
 }
 
 function formatFrequency(frequency: string): string {
@@ -23,17 +25,19 @@ function formatFrequency(frequency: string): string {
     case 'monthly': return 'Mensual'
     case 'quarterly': return 'Trimestral'
     case 'semiannual': return 'Semestral'
+    case 'biannual': return 'Semestral'
     case 'annual': return 'Anual'
     case 'weekly': return 'Semanal'
     default: return frequency
   }
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, timeZone = 'America/Bogota'): string {
   return new Date(dateStr).toLocaleDateString('es-CO', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone,
   })
 }
 
@@ -68,16 +72,16 @@ export async function sendMembershipConfirmationEmail(data: MembershipEmailData)
               <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${data.planName}</td>
             </tr>
             <tr>
-              <td style="padding:6px 0;color:#666;font-size:13px;">Frecuencia</td>
+              <td style="padding:6px 0;color:#666;font-size:13px;">Período</td>
               <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${formatFrequency(data.frequency)}</td>
             </tr>
             <tr>
               <td style="padding:6px 0;color:#666;font-size:13px;">Inicio</td>
-              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${formatDate(data.startDate)}</td>
+              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${formatDate(data.startDate, data.timeZone)}</td>
             </tr>
             <tr>
               <td style="padding:6px 0;color:#666;font-size:13px;">Vencimiento</td>
-              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${formatDate(data.endDate)}</td>
+              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${formatDate(data.endDate, data.timeZone)}</td>
             </tr>
             <tr>
               <td style="padding:6px 0;color:#666;font-size:13px;">Total pagado</td>
@@ -90,16 +94,18 @@ export async function sendMembershipConfirmationEmail(data: MembershipEmailData)
         <div style="background:#DBEAFE;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
           <p style="margin:0 0 8px;color:#666;font-size:13px;">Tu código de acceso</p>
           <p style="margin:0;font-size:28px;font-weight:bold;color:#1E40AF;letter-spacing:4px;">${data.accessCode}</p>
-          <p style="margin:8px 0 0;color:#666;font-size:12px;">Presenta este código en la recepción del gimnasio</p>
+          <p style="margin:8px 0 0;color:#666;font-size:12px;">Presenta este código en la recepción</p>
         </div>
         ` : ''}
         
+        ${data.portalUrl ? `
         <div style="text-align:center;margin:24px 0;">
           <a href="${data.portalUrl}" 
              style="display:inline-block;background:#1E40AF;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:600;font-size:14px;">
             Ver mi membresía
           </a>
         </div>
+        ` : ''}
         
         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
           Si tienes alguna pregunta, contacta directamente a ${data.organizationName}.

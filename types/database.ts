@@ -442,12 +442,16 @@ export interface Database {
         }
       }
       product_prices: {
+        // Columnas reales (verificadas el 2026-09-29). Antes declaraba `currency_code` e
+        // `is_default`, que no existen. El precio vigente es el de `effective_from` más
+        // reciente ya iniciado y sin `effective_to` vencido.
         Row: {
           id: number
           product_id: number
           price: number
-          currency_code: string
-          is_default: boolean
+          compare_price: number | null
+          effective_from: string
+          effective_to: string | null
           created_at: string | null
         }
       }
@@ -788,6 +792,76 @@ export interface Database {
           photo_urls: string[] | null
           metadata: Json | null
           created_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      // ── Membresías. Columnas verificadas contra el esquema real el 2026-09-29 (fases 1–2 del
+      // ERP). El sitio sólo LEE estas tablas: las membresías las crea/activa la base al
+      // confirmarse la venta (`fn_membresias_activar_venta`, desde el ERP). Insert/Update cerrados.
+      membership_plans: {
+        Row: {
+          id: number
+          organization_id: number
+          name: string
+          description: string | null
+          duration_days: number
+          /** OBSOLETO: el precio es el del producto (`product_prices`). Se retira en la fase 3. */
+          price: number | null
+          access_rules: Json | null
+          is_active: boolean | null
+          /** daily · weekly · monthly · quarterly · biannual · annual (CHECK) */
+          frequency: string | null
+          product_id: number | null
+          /** day · week · month · year */
+          duration_unit: string
+          duration_value: number | null
+          renewal_mode: string
+          billing_mode: string
+          grace_days: number
+          requires_activation: boolean
+          activation_window_days: number | null
+          freeze_allowed: boolean
+          freeze_max_times: number | null
+          freeze_max_days: number | null
+          allowed_branch_ids: number[] | null
+          access_schedule: Json | null
+          daily_checkin_limit: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      memberships: {
+        Row: {
+          id: number
+          organization_id: number
+          customer_id: string
+          membership_plan_id: number
+          start_date: string | null
+          end_date: string
+          /** pending · active · frozen · past_due · expired · cancelled (memberships_status_check) */
+          status: string
+          sale_id: string | null
+          freeze_history: Json | null
+          access_code: string | null
+          notes: string | null
+          product_id: number | null
+          sale_item_id: string | null
+          invoice_id: string | null
+          branch_id: number | null
+          plan_snapshot: Json | null
+          activated_at: string | null
+          grace_until: string | null
+          cancelled_at: string | null
+          cancel_reason: string | null
+          /** pos · invoice · web · manual_legacy */
+          source: string | null
+          created_at: string | null
+          updated_at: string | null
         }
         Insert: Record<string, never>
         Update: Record<string, never>

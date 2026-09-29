@@ -4,6 +4,7 @@ import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePag
 import { filterStockByBranches } from '@/lib/stock'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
+import { precioVigente } from '@/lib/memberships/precio'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -1806,39 +1807,75 @@ async function getGoogleAdsConfigUncached(organizationId: number): Promise<{ con
 // Gym / Membership Queries
 // ==========================================
 
-/**
- * Obtiene los planes de membresía activos de una organización
- */
-export async function getMembershipPlans(organizationId: number) {
-  const supabase = getSupabaseForPublicRead()
-
-  const { data, error } = await supabase
-    .from('membership_plans')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .eq('is_active', true)
-    .order('price', { ascending: true })
-
-  if (error) return []
-  return data || []
+/** Plan de membresía tal como lo pinta el sitio público. */
+export interface MembershipPlanPublic {
+  id: number
+  name: string
+  description: string | null
+  duration_days: number
+  duration_unit: string
+  duration_value: number | null
+  frequency: string | null
+  access_rules: Record<string, any> | null
+  /** Producto que se vende (el plan es su configuración). Null = el plan no se vende en línea. */
+  product_id: number | null
+  /** Precio vigente del producto en `product_prices`. Null = sin precio vigente: no se vende en línea. */
+  price: number | null
+  compare_price: number | null
 }
 
 /**
- * Obtiene un plan de membresía por ID
+ * Obtiene los planes de membresía activos de una organización.
+ *
+ * Una membresía se compra como su PRODUCTO (pedido web normal) y la base la activa al
+ * confirmarse el pago (`fn_membresias_activar_venta`, desde el ERP). Por eso el precio sale
+ * de `product_prices` del producto del plan, nunca de `membership_plans.price` (obsoleto),
+ * y un plan cuyo producto no está activo o no tiene precio vigente se devuelve con
+ * `price = null` (se muestra, pero no se puede agregar al carrito).
  */
-export async function getMembershipPlanById(planId: number, organizationId: number) {
+export async function getMembershipPlans(organizationId: number): Promise<MembershipPlanPublic[]> {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  // `as any`: types/database.ts hoy resuelve a `never` (ver el aviso en ese archivo). Las
+  // columnas de membership_plans están declaradas allí con sus nombres reales.
+  const { data, error } = await (supabase as any)
     .from('membership_plans')
-    .select('*')
-    .eq('id', planId)
+    .select('id, name, description, duration_days, duration_unit, duration_value, frequency, access_rules, product_id, products:product_id ( id, status, product_prices ( id, price, compare_price, effective_from, effective_to ) )')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
-    .single()
 
-  if (error) return null
-  return data
+  if (error) {
+    console.error('[getMembershipPlans] error consultando membership_plans:', error)
+    return []
+  }
+
+  const plans: MembershipPlanPublic[] = ((data || []) as any[]).map((row) => {
+    const product = row.products
+    const vendible = product && product.status === 'active'
+    const precio = vendible ? precioVigente(product.product_prices) : null
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description ?? null,
+      duration_days: row.duration_days,
+      duration_unit: row.duration_unit,
+      duration_value: row.duration_value ?? null,
+      frequency: row.frequency ?? null,
+      access_rules: row.access_rules ?? null,
+      product_id: precio ? row.product_id : null,
+      price: precio ? precio.price : null,
+      compare_price: precio ? precio.compare_price : null,
+    }
+  })
+
+  // Antes se ordenaba por membership_plans.price en la base; ahora por el precio vigente.
+  // Los que no se venden en línea (sin precio) van al final.
+  return plans.sort((a, b) => {
+    if (a.price === null && b.price === null) return a.id - b.id
+    if (a.price === null) return 1
+    if (b.price === null) return -1
+    return a.price - b.price || a.id - b.id
+  })
 }
 
 /**
