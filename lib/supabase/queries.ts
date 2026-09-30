@@ -5,6 +5,7 @@ import { filterStockByBranches } from '@/lib/stock'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
+import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -1373,20 +1374,24 @@ export async function createReservation(data: {
 }
 
 /**
- * Obtiene un producto por ID
+ * Obtiene un producto por ID dentro de la organización del contexto.
+ * Un producto eliminado, o una variante cuyo padre está eliminado, responde como
+ * no encontrado (`null`): ver `lib/products/visibilidad-web.ts`.
  */
-export async function getProductById(productId: number) {
+export async function getProductById(productId: number, organizationId: number) {
   const supabase = getSupabaseForPublicRead()
   
   const { data, error } = await supabase
     .from('products')
-    .select(`*, product_prices (id, price, compare_price, effective_to), categories (*)`)
+    .select(`*, product_prices (id, price, compare_price, effective_to), categories (*), ${SELECT_PADRE_ESTADO}`)
     .is('product_prices.effective_to', null)
     .eq('id', productId)
+    .eq('organization_id', organizationId)
     .eq('status', 'active')
-    .single()
+    .maybeSingle()
   
-  if (error) return null
+  if (error || !data) return null
+  if (!esProductoVisibleEnWeb(data, organizationId)) return null
   return normalizeProductPrices([data])[0]
 }
 export async function getOrCreateCustomer(organizationId: number, email: string, data: {
@@ -2012,7 +2017,8 @@ export async function getProductsByIds(productIds: number[], organizationId: num
         id, storage_path, is_primary, display_order, shared_image_id,
         shared_images ( storage_path )
       ),
-      stock_levels ( branch_id, qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved ),
+      ${SELECT_PADRE_ESTADO}
     `)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
@@ -2029,10 +2035,12 @@ export async function getProductsByIds(productIds: number[], organizationId: num
   const { data, error } = await query
 
   if (error) return []
+  // Variantes de un padre eliminado: fuera, como si no existieran.
+  const visibles = (data || []).filter((p: any) => esProductoVisibleEnWeb(p, organizationId))
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
+  return filterStockByBranches(normalizeProductPrices(visibles), stockBranchIds)
 }
 
 /**
@@ -2089,12 +2097,15 @@ export async function getProductVariantRelations(organizationId: number) {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id')
+    .select(`id, organization_id, status, parent_product_id, ${SELECT_PADRE_ESTADO}`)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
 
   if (!products || products.length === 0) return []
-  const productIds = products.map((p: any) => p.id)
+  const productIds = products
+    .filter((p: any) => esProductoVisibleEnWeb(p, organizationId))
+    .map((p: any) => p.id)
+  if (productIds.length === 0) return []
 
   const { data, error } = await supabase
     .from('product_variant_relations')

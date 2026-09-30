@@ -18,6 +18,7 @@ import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge
 import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent } from '@/lib/supabase/queries'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
+import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
@@ -31,13 +32,16 @@ export const dynamic = 'force-dynamic'
 const getProduct = cache(async (productUuid: string, organizationId: number, branchId?: number | null): Promise<any | null> => {
   const supabase = createAdminClient() || createPublicClient()
   
+  // `as any` se conserva: hoy `Database` (types/database.ts) resuelve a `never` para
+  // supabase-js y quitarlo aquí rompe el tipo de `data` (ver el AVISO de ese archivo).
   const { data, error } = await (supabase as any)
     .from('products')
     .select(`
       *,
       product_prices (id, price, compare_price, effective_to),
       product_images (*),
-      stock_levels ( branch_id, qty_on_hand, qty_reserved )
+      stock_levels ( branch_id, qty_on_hand, qty_reserved ),
+      ${SELECT_PADRE_ESTADO}
     `)
     .is('product_prices.effective_to', null)
     .eq('uuid', productUuid)
@@ -46,6 +50,9 @@ const getProduct = cache(async (productUuid: string, organizationId: number, bra
     .single()
   
   if (error || !data) return null
+  // Variante de un padre eliminado: responde como no encontrado (misma consulta, sin
+  // lecturas extra por render).
+  if (!esProductoVisibleEnWeb(data, organizationId)) return null
 
   // F3-R3: si hay outlet activo, validar que la categoría del producto sea visible
   if (Number.isFinite(branchId)) {

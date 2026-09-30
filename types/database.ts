@@ -436,18 +436,62 @@ export interface Database {
         }
       }
       products: {
+        // Columnas reales verificadas por MCP el 2026-09-30. `status` admite 'active',
+        // 'inactive', 'discontinued' o 'deleted' (CHECK); la baja es lógica ('deleted').
+        // Una variante apunta a su padre por `parent_product_id` (FK a products.id).
+        // No hay columna de publicación web. Precios en `product_prices`, costos en
+        // `product_costs`: `products` no tiene price, cost ni is_active.
         Row: {
           id: number
-          uuid: string | null
           organization_id: number
-          sku: string | null
+          sku: string
           name: string
-          description: string | null
           category_id: number | null
-          status: string | null
+          unit_code: string | null
           created_at: string | null
           updated_at: string | null
+          description: string | null
+          barcode: string | null
+          status: 'active' | 'inactive' | 'discontinued' | 'deleted' | null
+          tag_id: number | null
+          parent_product_id: number | null
+          tax_id: number | null
+          is_parent: boolean | null
+          variant_data: Json | null
+          uuid: string
+          station: string | null
+          track_stock: boolean
+          is_composite: boolean | null
+          production_type: string | null
+          product_type: string | null
+          brand: string | null
+          reference: string | null
+          track_serial: boolean | null
+          serial_pattern: string | null
+          auto_generate_serial: boolean | null
+          warranty_months: number | null
+          rating_avg: number | null
+          reviews_count: number | null
+          busqueda_nombre: string | null
+          busqueda_marca: string | null
+          busqueda_descripcion: string | null
+          weight_kg: number | null
+          length_cm: number | null
+          width_cm: number | null
+          height_cm: number | null
+          service_type: string | null
+          track_lots: boolean
+          sale_mode: string
+          qty_decimals: number
+          price_ref_qty: number | null
+          price_ref_unit_code: string | null
+          min_sale_qty: number | null
+          default_tare_qty: number | null
+          tare_required: boolean
+          require_scale: boolean
+          scale_plu: number | null
         }
+        Relationships: []
       }
       product_prices: {
         // Columnas reales (verificadas el 2026-09-29). Antes declaraba `currency_code` e
