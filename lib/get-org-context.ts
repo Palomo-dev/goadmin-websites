@@ -34,6 +34,23 @@ export type FrozenReason = 'trial_expired' | 'suspended' | 'deleted' | 'payment_
 // cache() de React deduplica llamadas dentro del mismo request.
 // getOrgContext se llama múltiples veces por página (generateMetadata + page),
 // esto elimina ~20 queries duplicadas a Supabase por carga de página.
+/**
+ * Solo el id de la organización del HOST de la petición (mismas cabeceras y
+ * misma búsqueda cacheada que el primer paso de `getOrgContext`), sin cargar
+ * menús, ajustes ni suscripción. Para rutas ligeras que se llaman en cada
+ * página vista (p. ej. `/api/track-visit`), donde `getOrgContext` completo
+ * multiplicaría las consultas por visitante.
+ *
+ * La organización sale del host, nunca del body ni de la query.
+ */
+export const getOrgIdDelHost = cache(async (): Promise<number | null> => {
+  const headersList = await headers()
+  const identifier = headersList.get('x-custom-domain') || headersList.get('x-subdomain')
+  if (!identifier) return null
+  const organization = await getOrganizationByHost(identifier)
+  return organization?.id ?? null
+})
+
 export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   const headersList = await headers()
   const subdomain = headersList.get('x-subdomain')

@@ -1,21 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/server'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { ubicacionDesdeCabeceras } from '@/lib/geo/ubicacionVisita'
+import type { Database } from '@/types/database'
+
+/** Fila a insertar, contra las columnas DECLARADAS (compila solo si existen). */
+type FilaVisita = Database['public']['Tables']['website_visits']['Insert']
+/**
+ * El cliente de `createPublicClient` no está parametrizado con `Database`
+ * (su `insert` se infiere como `never[]`): se tipa solo esta llamada.
+ */
+type TablaVisitas = { insert(fila: FilaVisita): PromiseLike<{ error: unknown }> }
 
 /**
  * Registra una visita (page view) en la tabla website_visits.
- * Recibe: organizationId, sessionId, pagePath, referrer, userAgent.
- * Es un endpoint público (sin auth) — el RLS permite INSERT a cualquiera.
+ * Recibe: sessionId, pagePath, referrer (y `organizationId`, que solo se contrasta).
+ *
+ * - La organización sale del HOST (`getOrgIdDelHost`, las mismas cabeceras que
+ *   `getOrgContext`), nunca del body. Si el body trae otra: 403 y se registra.
+ *   Sin organización resoluble para el host: 400 y no se guarda nada.
+ * - Ubicación aproximada (país, región, ciudad) desde las cabeceras de Vercel
+ *   (`lib/geo/ubicacionVisita.ts`). Nunca la IP en claro ni coordenadas: de la
+ *   IP solo se guarda un hash truncado, como antes.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { organizationId, sessionId, pagePath, referrer } = body
+    const { sessionId, pagePath, referrer } = body
 
-    if (!organizationId || !sessionId) {
-      return NextResponse.json(
-        { error: 'organizationId and sessionId are required' },
-        { status: 400 },
-      )
+    if (!sessionId) {
+      return NextResponse.json({ error: 'sessionId is required' }, { status: 400 })
+    }
+
+    const organizationId = await getOrgIdDelHost()
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization not resolved' }, { status: 400 })
+    }
+    if (body.organizationId != null && Number(body.organizationId) !== organizationId) {
+      console.warn('[track-visit] organización del body distinta a la del host', {
+        host: organizationId,
+        body: String(body.organizationId).slice(0, 20),
+      })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const supabase = createPublicClient()
@@ -39,31 +65,35 @@ export async function POST(request: NextRequest) {
         ).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16)
       : null
 
+    // País, región y ciudad aproximados (nunca IP ni coordenadas).
+    const ubicacion = ubicacionDesdeCabeceras(request.headers)
+
     // Verificar si es visitante nuevo (session_id no existe en las últimas 24h)
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: existingSession } = await supabase
       .from('website_visits')
       .select('id')
+      .eq('organization_id', organizationId)
       .eq('session_id', sessionId)
       .gt('created_at', yesterday)
       .limit(1)
 
     const isNewVisitor = !existingSession || existingSession.length === 0
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from('website_visits')
-      .insert({
-        organization_id: Number(organizationId),
-        session_id: sessionId,
-        page_path: pagePath || '/',
-        referrer: referrer || null,
-        user_agent: userAgent.substring(0, 500),
-        device_type: deviceType,
-        is_new_visitor: isNewVisitor,
-        country: null,
-        ip_hash: ipHash,
-      })
+    const fila: FilaVisita = {
+      organization_id: organizationId,
+      session_id: String(sessionId).slice(0, 100),
+      page_path: pagePath || '/',
+      referrer: referrer || null,
+      user_agent: userAgent.substring(0, 500),
+      device_type: deviceType,
+      is_new_visitor: isNewVisitor,
+      country: ubicacion.country,
+      region: ubicacion.region,
+      city: ubicacion.city,
+      ip_hash: ipHash,
+    }
+    const { error } = await (supabase.from('website_visits') as unknown as TablaVisitas).insert(fila)
 
     if (error) {
       console.error('Error tracking visit:', error)

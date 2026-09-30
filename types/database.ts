@@ -249,6 +249,10 @@ export interface Database {
           referrer: string | null
           user_agent: string | null
           country: string | null
+          /** Región aproximada (ISO 3166-2 sin país), cabecera de Vercel. Migración ERP 20260930180010. */
+          region: string | null
+          /** Ciudad aproximada, cabecera de Vercel. Nunca IP ni coordenadas. */
+          city: string | null
           ip_hash: string | null
           device_type: string
           is_new_visitor: boolean
@@ -261,6 +265,8 @@ export interface Database {
           referrer?: string | null
           user_agent?: string | null
           country?: string | null
+          region?: string | null
+          city?: string | null
           ip_hash?: string | null
           device_type?: string
           is_new_visitor?: boolean
@@ -270,6 +276,8 @@ export interface Database {
           referrer?: string | null
           user_agent?: string | null
           country?: string | null
+          region?: string | null
+          city?: string | null
           ip_hash?: string | null
           device_type?: string
           is_new_visitor?: boolean
