@@ -3,6 +3,8 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +41,22 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // ── Organización del contexto (host), nunca la del body ──
+    // Si el host resuelve una organización y el body trae otra: 403 y se registra.
+    // Si el host no resuelve (p. ej. localhost sin subdominio), se conserva el
+    // comportamiento anterior: se usa la del body.
+    const hostOrgId = await getOrgIdDelHost()
+    if (hostOrgId !== null && Number(organizationId) !== hostOrgId) {
+      console.warn('[Orders] organizationId del body distinto al del host', {
+        hostOrgId, bodyOrgId: organizationId,
+      })
+      return NextResponse.json(
+        { error: 'La organización del pedido no corresponde a este sitio' },
+        { status: 403 }
+      )
+    }
+    const contextOrgId: number = hostOrgId ?? Number(organizationId)
+
     const supabase = getSupabase()
 
     // ── F5: Validar branchId pertenece a la organización ──
@@ -83,12 +101,48 @@ export async function POST(request: NextRequest) {
     // el id real del producto viene en `productId`.
     const realProductId = (item: any): number => Number(item.productId ?? item.id)
 
-    // ── B1: Validación de stock (solo productos con track_stock=true) ──
+    // ── B0: Productos vendibles (una sola consulta por pedido, reutilizada por B1) ──
+    // Se rechazan las líneas cuyo producto no existe, es de otra organización, está
+    // eliminado, o es una variante cuyo padre está eliminado (regla única en
+    // lib/products/visibilidad-web.ts). `inactive`/`discontinued` no se miran aquí:
+    // antes tampoco se miraban.
     const productIds: number[] = Array.from(new Set<number>(items.map(realProductId)))
-    const { data: productsData } = await (supabase as any)
+    const { data: productsData, error: productsError } = await (supabase as any)
       .from('products')
-      .select('id, track_stock')
+      .select(`id, track_stock, organization_id, status, parent_product_id, ${SELECT_PADRE_ESTADO}`)
       .in('id', productIds)
+
+    if (productsError) {
+      // Comportamiento anterior ante un error de lectura: se seguía sin validar.
+      console.error('[Orders] No se pudieron leer los productos del carrito:', productsError)
+    } else {
+      const productById = new Map<number, any>(
+        (productsData || []).map((p: any) => [Number(p.id), p] as [number, any])
+      )
+      const noDisponibles = productIds.filter(
+        (id: number) => !esProductoVisibleEnWeb(productById.get(id), contextOrgId)
+      )
+      if (noDisponibles.length > 0) {
+        const nombres = noDisponibles.map((id: number) => {
+          const item = items.find((i: any) => realProductId(i) === id)
+          return item?.name ?? `Producto ${id}`
+        })
+        console.warn('[Orders] Carrito con productos no vendibles', {
+          organizationId: contextOrgId, productIds: noDisponibles,
+        })
+        return NextResponse.json(
+          {
+            error: `Algunos productos de tu carrito ya no están disponibles: ${nombres.join(', ')}. Quítalos del carrito para continuar.`,
+            code: 'PRODUCTOS_NO_DISPONIBLES',
+            productIds: noDisponibles,
+          },
+          { status: 422 }
+        )
+      }
+      // else: todos vendibles → sigue exactamente como antes.
+    }
+
+    // ── B1: Validación de stock (solo productos con track_stock=true) ──
     const trackStockMap = new Map<number, boolean>(
       (productsData || []).map((p: any) => [p.id, p.track_stock === true] as [number, boolean])
     )
