@@ -2828,6 +2828,7 @@ async function getWebsiteMenusUncached(organizationId: number): Promise<WebsiteM
       .from('website_pages')
       .select('id, slug, title')
       .in('id', pageIds)
+      .eq('organization_id', organizationId)
       .eq('is_published', true)
     if (pages) {
       pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
@@ -2844,6 +2845,7 @@ async function getWebsiteMenusUncached(organizationId: number): Promise<WebsiteM
       .from('categories')
       .select('id, name, slug')
       .in('id', categoryIds)
+      .eq('organization_id', organizationId)
     if (cats) {
       categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
     }
@@ -2882,7 +2884,7 @@ async function getWebsiteMenusByLocationUncached(
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .in('location', [location, 'both'])
-    .order('header_order', { ascending: true })
+    .order(location === 'footer' ? 'footer_order' : 'header_order', { ascending: true })
 
   if (menusError || !menus || menus.length === 0) return []
 
@@ -2907,6 +2909,7 @@ async function getWebsiteMenusByLocationUncached(
       .from('website_pages')
       .select('id, slug, title')
       .in('id', pageIds)
+      .eq('organization_id', organizationId)
       .eq('is_published', true)
     if (pages) {
       pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
@@ -2923,6 +2926,7 @@ async function getWebsiteMenusByLocationUncached(
       .from('categories')
       .select('id, name, slug')
       .in('id', categoryIds)
+      .eq('organization_id', organizationId)
     if (cats) {
       categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
     }
@@ -2946,16 +2950,20 @@ async function getWebsiteMenusByLocationUncached(
  * Obtiene un menú específico por ID con sus items en árbol jerárquico.
  * Útil para cargar el menú asignado a header_menu_id o header_mega_menu_id.
  */
-async function getMenuByIdUncached(menuId: string): Promise<WebsiteMenuWithItems | null> {
+async function getMenuByIdUncached(menuId: string, organizationId: number): Promise<WebsiteMenuWithItems | null> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return null
 
+  // Service role: sin el filtro por organización, un `header_menu_id` ajeno
+  // (la FK no exige que el menú sea de la misma organización) pintaría el
+  // menú de otra. Igual con sus ítems, páginas y categorías.
   const { data: menu, error: menuError } = await (supabase as any)
     .from('website_menus')
     .select('*')
     .eq('id', menuId)
+    .eq('organization_id', organizationId)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
   if (menuError || !menu) return null
 
@@ -2963,6 +2971,7 @@ async function getMenuByIdUncached(menuId: string): Promise<WebsiteMenuWithItems
     .from('website_menu_items')
     .select('*')
     .eq('menu_id', menuId)
+    .eq('organization_id', organizationId)
     .eq('is_active', true)
     .order('display_order', { ascending: true })
 
@@ -2980,6 +2989,7 @@ async function getMenuByIdUncached(menuId: string): Promise<WebsiteMenuWithItems
       .from('website_pages')
       .select('id, slug, title')
       .in('id', pageIds)
+      .eq('organization_id', organizationId)
       .eq('is_published', true)
     if (pages) {
       pagesMap = new Map(pages.map((p: any) => [p.id as string, p]))
@@ -2996,6 +3006,7 @@ async function getMenuByIdUncached(menuId: string): Promise<WebsiteMenuWithItems
       .from('categories')
       .select('id, name, slug')
       .in('id', categoryIds)
+      .eq('organization_id', organizationId)
     if (cats) {
       categoriesMap = new Map(cats.map((c: any) => [c.id as number, c]))
     }

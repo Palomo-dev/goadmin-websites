@@ -116,8 +116,11 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   const footerNav = footerNavTree
 
   // Cargar categorías para el mega-menú solo si la configuración lo activa
+  // El pie también las usa (`footer_show_categories`): antes solo se cargaban
+  // si el header las mostraba, y la columna «Categorías» del pie salía vacía.
   const showCategoriesInHeader = settings?.show_categories_in_header ?? false
-  const menuCategories = showCategoriesInHeader
+  const showCategoriesInFooter = settings?.footer_show_categories ?? false
+  const menuCategories = showCategoriesInHeader || showCategoriesInFooter
     ? await getMenuCategories(organization.id, branchId)
     : []
 
@@ -127,8 +130,8 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
 
   // Cargar menú de header nombrado (si existe) + menú mega nombrado (si existe)
   const [namedHeaderMenu, namedMegaMenu, footerMenus] = await Promise.all([
-    headerMenuId ? getMenuById(headerMenuId) : Promise.resolve(null),
-    headerMegaMenuId ? getMenuById(headerMegaMenuId) : Promise.resolve(null),
+    headerMenuId ? getMenuById(headerMenuId, organization.id) : Promise.resolve(null),
+    headerMegaMenuId ? getMenuById(headerMegaMenuId, organization.id) : Promise.resolve(null),
     getWebsiteMenusByLocation(organization.id, 'footer'),
   ])
 
