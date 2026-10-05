@@ -6,6 +6,7 @@ import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 import { esSede, leerCartaSede, preciosDeSede } from '@/lib/products/carta-sede'
+import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
 
 export const dynamic = 'force-dynamic'
 
@@ -395,31 +396,8 @@ export async function POST(request: NextRequest) {
     // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
     try {
       // Crear web_order_items con tax_amount por item, modifiers y notes
-      const orderItems = items.map((item: any) => {
-        const newModsExtraTotal = (item.newModifiers || []).reduce(
-          (sum: number, m: any) => sum + (Number(m.extraPrice) || 0), 0
-        )
-        const effectiveUnitPrice = Number(item.price) + newModsExtraTotal
-        const itemTotal = effectiveUnitPrice * item.quantity
-        const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
-        const allModifiers = [
-          ...(item.modifiers || []),
-          ...(item.newModifiers || []),
-        ]
-        return {
-          web_order_id: webOrder.id,
-          product_id: realProductId(item),
-          product_name: item.name,
-          product_sku: item.sku || null,
-          quantity: item.quantity,
-          unit_price: effectiveUnitPrice,
-          tax_amount: itemTax,
-          total: itemTotal,
-          ...(allModifiers.length > 0 && { modifiers: allModifiers }),
-          ...(item.notes && { notes: item.notes }),
-        }
-      })
-      
+      const orderItems = construirFilasPedido(items, webOrder.id, taxRate, realProductId)
+
       await (supabase as any)
         .from('web_order_items')
         .insert(orderItems)
@@ -528,12 +506,7 @@ export async function POST(request: NextRequest) {
         orderNumber: webOrder.order_number,
         customerEmail: customer.email,
         customerName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
-        items: items.map((item: any) => ({
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.price,
-          total: item.price * item.quantity,
-        })),
+        items: lineasCorreoPedido(items),
         subtotal: calculatedSubtotal,
         tax: taxTotal,
         shipping: shipping || 0,

@@ -16,6 +16,7 @@ import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
+import { mensajeErrorPedido } from '@/lib/checkout/respuesta-pedido'
 
 interface CartModifier {
   typeId: number
@@ -539,11 +540,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       const orderData = await orderRes.json()
 
       if (!orderRes.ok || !orderData.orderNumber) {
-        if (orderRes.status === 409 && orderData.details) {
-          setPaymentError(`Stock insuficiente:\n${orderData.details.join('\n')}`)
-        } else {
-          setPaymentError(orderData.error || 'Error al crear la orden')
-        }
+        setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
         setSubmitting(false)
         return
       }
