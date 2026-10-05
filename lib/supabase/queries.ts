@@ -6,9 +6,34 @@ import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
+import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, type CartaSede } from '@/lib/products/carta-sede'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
+}
+
+/** Carta de una sede, una sola lectura por petición (react.cache). */
+const getCartaSedeDePeticion = cache(async (organizationId: number, branchId: number): Promise<CartaSede | null> => {
+  const r = await leerCartaSede(getSupabaseForPublicRead(), organizationId, branchId)
+  if (!r.ok) {
+    // Fail-safe del listado: sin carta se muestra como el sitio principal. El cobro no depende
+    // de esto: /api/orders vuelve a leer la carta y falla cerrado.
+    console.error('[carta-sede] No se pudo leer website_branch_products', { organizationId, branchId, error: r.error })
+    return null
+  }
+  return r.carta
+})
+
+/**
+ * Carta por sede para los listados (lib/products/carta-sede.ts). Sin sede → `null` y los
+ * listados quedan exactamente como antes.
+ */
+export async function getCartaSedeParaListado(
+  organizationId: number,
+  branchId: number | null | undefined
+): Promise<CartaSede | null> {
+  if (!esSede(branchId)) return null
+  return getCartaSedeDePeticion(organizationId, branchId)
 }
 
 /**
@@ -540,6 +565,8 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
   // F3: filtrar categorías permitidas según la regla de branch_id.
   const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
   if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+  // Carta por sede: null sin sede (sin cambios).
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
 
   let query = supabase
     .from('products')
@@ -570,6 +597,7 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
   if (allowedCategoryIds) {
     query = query.in('category_id', allowedCategoryIds)
   }
+  query = excluirNoListados(query, cartaSede)
 
   const { data, error } = await query.limit(limit)
 
@@ -581,10 +609,10 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
     : await getWebStockBranchIds(organizationId)
 
   // Variantes (para "Elegir" y el badge) y ventas (para ordenar por vendidos).
-  return filterStockByBranches(
+  return aplicarCartaSede(filterStockByBranches(
     normalizeProductPrices(await enrichListing(supabase, organizationId, data || [])),
     stockBranchIds
-  )
+  ), cartaSede)
 }
 
 /**
@@ -650,8 +678,12 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
 
   if (products.length === 0) return []
 
-  // Normalizar precios para que [0] sea el vigente
-  const normalized = normalizeProductPrices(products)
+  // Normalizar precios para que [0] sea el vigente. Con sede, la carta va antes del filtro de
+  // ofertas: la oferta se decide contra el precio que de verdad se muestra en esa sede.
+  const normalized = aplicarCartaSede(
+    normalizeProductPrices(products),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 
   // 2. Filtrar solo los que tienen compare_price > price
   const offers = normalized.filter((p: any) => {
@@ -705,7 +737,10 @@ export async function getOrganizationServices(organizationId: number, limit = 12
   const { data, error } = await query.limit(limit)
 
   if (error) return []
-  return normalizeProductPrices(data || [])
+  return aplicarCartaSede(
+    normalizeProductPrices(data || []),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 }
 
 // getOrganizationSpaces movida más abajo con soporte de imágenes y servicios
@@ -790,7 +825,10 @@ async function getProductsByCategoryUncached(organizationId: number, categoryId:
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
+  return aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 }
 
 /**
@@ -839,8 +877,13 @@ const getProductsByCategoryIdsUncached = async (
 
   if (error || !data) return {}
 
+  // Carta por sede: los ocultos no ocupan hueco en el límite por categoría.
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
   const map: Record<number, any[]> = {}
-  data.forEach((p: any) => {
+  const filas: any[] = cartaSede
+    ? aplicarCartaSede(normalizeProductPrices(data as any[]), cartaSede)
+    : data // sin sede: exactamente como antes (sin normalizar aquí)
+  filas.forEach((p: any) => {
     if (!map[p.category_id]) map[p.category_id] = []
     if (map[p.category_id].length < limitPerCategory) {
       map[p.category_id].push(p)
@@ -1018,6 +1061,10 @@ async function getProductsByCategoryPaginatedUncached(
     .eq('status', 'active')
     .is('parent_product_id', null)
 
+  // Carta por sede: los ocultos se excluyen en SQL para que `count` y `range` cuadren.
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  query = excluirNoListados(query, cartaSede)
+
   // F3: stock por outlet activo
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
@@ -1035,7 +1082,7 @@ async function getProductsByCategoryPaginatedUncached(
       .sort((a: any, b: any) => b.sales_count - a.sales_count)
 
     const paginated = sorted.slice(offset, offset + limit)
-    return { products: filterStockByBranches(normalizeProductPrices(paginated), stockBranchIds), total: count || 0 }
+    return { products: aplicarCartaSede(filterStockByBranches(normalizeProductPrices(paginated), stockBranchIds), cartaSede), total: count || 0 }
   }
 
   // Ordenamiento estándar
@@ -1065,10 +1112,10 @@ async function getProductsByCategoryPaginatedUncached(
   const prods = filterStockByBranches(data || [], stockBranchIds)
   if (prods.length > 0) {
     const enriched = await enrichListing(supabase, organizationId, prods)
-    return { products: normalizeProductPrices(enriched), total: count || 0 }
+    return { products: aplicarCartaSede(normalizeProductPrices(enriched), cartaSede), total: count || 0 }
   }
 
-  return { products: normalizeProductPrices(prods), total: count || 0 }
+  return { products: aplicarCartaSede(normalizeProductPrices(prods), cartaSede), total: count || 0 }
 }
 
 /**
@@ -1092,7 +1139,7 @@ async function getParentCategoryUncached(organizationId: number, parentId: numbe
 /**
  * Obtiene las variantes (productos hijos) de un producto padre
  */
-export async function getProductVariants(parentProductId: number, organizationId: number) {
+export async function getProductVariants(parentProductId: number, organizationId: number, branchId?: number | null) {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
@@ -1115,7 +1162,11 @@ export async function getProductVariants(parentProductId: number, organizationId
 
   if (error) return []
   const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
+  // Carta por sede solo si se pasa una sede; sin ella, exactamente como antes.
+  return aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(data || []), webBranchIds),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 }
 
 /**
@@ -1990,6 +2041,9 @@ async function getMenuProductsUncached(organizationId: number, limit = 100, bran
   if (allowedCategoryIds) {
     query = query.in('category_id', allowedCategoryIds)
   }
+  // Carta por sede: null sin sede (sin cambios).
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  query = excluirNoListados(query, cartaSede)
 
   const { data, error } = await query.order('name', { ascending: true }).limit(limit)
 
@@ -1997,7 +2051,7 @@ async function getMenuProductsUncached(organizationId: number, limit = 100, bran
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
+  return aplicarCartaSede(filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds), cartaSede)
 }
 
 /**
@@ -2040,7 +2094,10 @@ export async function getProductsByIds(productIds: number[], organizationId: num
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(visibles), stockBranchIds)
+  return aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(visibles), stockBranchIds),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 }
 
 /**

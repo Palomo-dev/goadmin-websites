@@ -15,7 +15,8 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado } from '@/lib/supabase/queries'
+import { aplicarCartaSede } from '@/lib/products/carta-sede'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
@@ -65,7 +66,11 @@ const getProduct = cache(async (productUuid: string, organizationId: number, bra
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
   const [filtered] = filterStockByBranches(normalizeProductPrices([data as any]), webBranchIds)
-  return filtered
+  // Carta por sede (sin sede: null, sin cambios). Oculto en la sede → no encontrado.
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  if (!cartaSede) return filtered
+  const [conCarta] = aplicarCartaSede([filtered], cartaSede)
+  return conCarta ?? null
 })
 
 async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8, branchId?: number | null): Promise<any[]> {
@@ -141,7 +146,10 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
   const stockBranchIds = (branchId !== undefined && branchId !== null)
     ? [branchId]
     : await getWebStockBranchIds(organizationId)
-  const all = filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), stockBranchIds)
+  const all = aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(Array.from(collected.values())), stockBranchIds),
+    await getCartaSedeParaListado(organizationId, branchId)
+  )
 
   // Contar variantes para productos padre (necesario para que ProductCard
   // muestre "Elegir" en vez de "Agregar" en productos con variantes).
@@ -200,7 +208,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   // Obtener variantes si es producto padre
   let variants: any[] = []
   if (isParent) {
-    variants = await getProductVariants(product.id, organization.id)
+    variants = await getProductVariants(product.id, organization.id, branchId)
   }
 
   // Obtener grupos de modificadores del producto (nuevo sistema ERP)
