@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
+import { ZonaGlobalPreview } from './ZonaGlobalPreview'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
 import MetaPixel from './MetaPixel'
@@ -128,6 +129,7 @@ export function OrganizationLayout({
     >
       {/* Header específico según tipo (oculto si la cuenta está congelada) */}
       {!frozenReason && (
+        <ZonaGlobalPreview zona="header">
         <SiteHeader
           organization={organization}
           primaryColor={primaryColor}
@@ -140,6 +142,7 @@ export function OrganizationLayout({
           megaMenuItems={megaMenuItems}
           branchId={branchId}
         />
+        </ZonaGlobalPreview>
       )}
       
       {/* Countdown Banner (debajo del header, oculto si está congelada) */}
@@ -168,6 +171,7 @@ export function OrganizationLayout({
       
       {/* Footer (oculto si la cuenta está congelada) */}
       {!frozenReason && (
+        <ZonaGlobalPreview zona="footer">
         <SiteFooter
           organization={organization}
           settings={settings}
@@ -178,6 +182,7 @@ export function OrganizationLayout({
           menuCategories={menuCategories}
           menus={menus}
         />
+        </ZonaGlobalPreview>
       )}
       
       {/* Cart Drawer (oculto si la cuenta está congelada) */}
