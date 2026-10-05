@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
-import { Zap, Minus, Plus } from 'lucide-react'
+import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
 import { isOutOfStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
 
@@ -68,6 +68,31 @@ export function ProductDetailActions({
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([])
   const [quantity, setQuantity] = useState(1)
+  const [comprando, setComprando] = useState(false)
+
+  // /checkout es dinámico: traer su límite de carga por adelantado para que
+  // «Comprar ahora» responda al instante.
+  useEffect(() => {
+    router.prefetch('/checkout')
+  }, [router])
+
+  // Al volver con «Atrás» la página puede restaurarse tal cual: soltar el botón.
+  useEffect(() => {
+    const alVolver = () => setComprando(false)
+    window.addEventListener('pageshow', alVolver)
+    return () => window.removeEventListener('pageshow', alVolver)
+  }, [])
+
+  // Navegación con respuesta visible y respaldo: si la navegación del cliente
+  // no arranca en unos segundos, se hace una navegación completa.
+  const irAlCheckout = () => {
+    const desde = window.location.pathname
+    setComprando(true)
+    router.push('/checkout')
+    window.setTimeout(() => {
+      if (window.location.pathname === desde) window.location.assign('/checkout')
+    }, 6000)
+  }
 
   const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = price + modifiersExtraTotal
@@ -99,7 +124,7 @@ export function ProductDetailActions({
     window.dispatchEvent(new CustomEvent('cart-updated'))
   }
 
-  const handleBuyNowVariant = (variant: any) => {
+  const handleBuyNowVariant = (variant: any, qty: number = 1) => {
     const variantPrice = variant.product_prices?.[0]?.price || 0
     const variantComparePrice = variant.product_prices?.[0]?.compare_price
     const variantImgUrl = getVariantImageUrl(variant) || imageUrl
@@ -110,14 +135,14 @@ export function ProductDetailActions({
       name: variant.name,
       ...(variant.sku && { sku: variant.sku }),
       price: Number(variantPrice),
-      quantity: 1,
+      quantity: Math.max(1, qty),
       ...(variantImgUrl && { imageUrl: variantImgUrl }),
       ...(variantComparePrice && { comparePrice: Number(variantComparePrice) }),
       ...(variant.variant_data && { variantAttributes: variant.variant_data })
     }
     localStorage.setItem(cartKey, JSON.stringify([item]))
     window.dispatchEvent(new CustomEvent('cart-updated'))
-    router.push('/checkout')
+    irAlCheckout()
   }
 
   const handleBuyNowSimple = () => {
@@ -133,14 +158,14 @@ export function ProductDetailActions({
       name: product.name,
       ...(product.sku && { sku: product.sku }),
       price: Number(effectivePrice),
-      quantity: 1,
+      quantity,
       ...(imageUrl && { imageUrl }),
       ...(comparePrice && { comparePrice: Number(comparePrice) }),
       ...(selectedModifiers.length > 0 && { modifiers: selectedModifiers })
     }
     localStorage.setItem(cartKey, JSON.stringify([item]))
     window.dispatchEvent(new CustomEvent('cart-updated'))
-    router.push('/checkout')
+    irAlCheckout()
   }
 
   const handleAddWithQuantity = () => {
@@ -181,6 +206,7 @@ export function ProductDetailActions({
           mode="inline"
           onSelect={handleVariantSelect}
           onBuyNow={handleBuyNowVariant}
+          buyNowPending={comprando}
         />
       </div>
     )
@@ -261,9 +287,10 @@ export function ProductDetailActions({
           className={buttonsLayout === 'inline' ? 'flex-1' : 'w-full'}
           style={{ borderColor: primaryColor, color: primaryColor }}
           onClick={handleBuyNowSimple}
-          disabled={outOfStock}
+          disabled={outOfStock || comprando}
+          aria-busy={comprando}
         >
-          {outOfStock ? 'Sin stock' : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
+          {outOfStock ? 'Sin stock' : comprando ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />Abriendo el pago…</>) : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
         </Button>
       </div>
     </div>

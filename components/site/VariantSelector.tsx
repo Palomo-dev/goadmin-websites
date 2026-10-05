@@ -29,7 +29,9 @@ interface VariantSelectorProps {
   variants: VariantProduct[]
   primaryColor: string
   onSelect: (variant: VariantProduct, quantity?: number) => void
-  onBuyNow?: (variant: VariantProduct) => void
+  onBuyNow?: (variant: VariantProduct, quantity?: number) => void
+  /** «Comprar ahora» ya está navegando al checkout. */
+  buyNowPending?: boolean
   onClose?: () => void
   mode?: 'dialog' | 'inline'
 }
@@ -50,6 +52,7 @@ export function VariantSelector({
   primaryColor,
   onSelect,
   onBuyNow,
+  buyNowPending = false,
   onClose,
   mode = 'dialog'
 }: VariantSelectorProps) {
@@ -309,10 +312,18 @@ export function VariantSelector({
           variant="outline"
           className="w-full text-lg py-6"
           style={{ borderColor: primaryColor, color: primaryColor }}
-          disabled={!selectedVariant || !price || outOfStock}
-          onClick={() => selectedVariant && onBuyNow(selectedVariant)}
+          disabled={!selectedVariant || !price || outOfStock || buyNowPending}
+          aria-busy={buyNowPending}
+          onClick={() => selectedVariant && onBuyNow(selectedVariant, quantity)}
         >
-          Comprar ahora
+          {buyNowPending ? (
+            <>
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              Abriendo el pago…
+            </>
+          ) : (
+            'Comprar ahora'
+          )}
         </Button>
       )}
     </div>
