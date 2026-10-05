@@ -38,6 +38,8 @@ export interface Database {
           plan_id: number | null
           created_at: string | null
           updated_at: string | null
+          // NOT NULL en la base (verificado por MCP el 2026-10-05). Zona IANA.
+          timezone: string
         }
         Insert: {
           id?: number
@@ -507,6 +509,87 @@ export interface Database {
           created_at: string | null
         }
       }
+      categories: {
+        // Columnas reales verificadas por MCP el 2026-10-05. `slug` es NOT NULL y único
+        // por organización. `branch_id` NULL = categoría global; con valor = solo de esa
+        // sede. No hay horario ni "carta" (desayuno/almuerzo/bar) asociada.
+        Row: {
+          id: number
+          organization_id: number
+          parent_id: number | null
+          name: string
+          slug: string
+          rank: number
+          created_at: string | null
+          updated_at: string | null
+          icon: string | null
+          color: string | null
+          image_url: string | null
+          description: string | null
+          is_active: boolean | null
+          display_order: number | null
+          meta_title: string | null
+          meta_description: string | null
+          uuid: string
+          metadata: Json | null
+          requires_preparation: boolean | null
+          station: string | null
+          branch_id: number | null
+        }
+        Relationships: []
+      }
+      product_images: {
+        // Columnas reales verificadas por MCP el 2026-10-05. La ruta vive en
+        // `storage_path` o, si la imagen es compartida, en `shared_images.storage_path`.
+        Row: {
+          id: number
+          product_id: number
+          storage_path: string
+          display_order: number
+          is_primary: boolean | null
+          alt_text: string | null
+          created_at: string | null
+          updated_at: string | null
+          shared_image_id: number | null
+        }
+        Relationships: []
+      }
+      shared_images: {
+        // Columnas reales verificadas por MCP el 2026-10-05.
+        Row: {
+          id: number
+          storage_path: string
+          file_name: string
+          file_size: number
+          mime_type: string
+          dimensions: Json | null
+          organization_id: number | null
+          is_public: boolean | null
+          tags: string[] | null
+          created_at: string | null
+          updated_at: string | null
+          alt_text: string | null
+          created_by: string | null
+        }
+        Relationships: []
+      }
+      stock_levels: {
+        // Columnas reales verificadas por MCP el 2026-10-05. `branch_id` es NOT NULL y el
+        // UNIQUE incluye `lot_id` (admite NULL). Disponible = qty_on_hand - qty_reserved.
+        Row: {
+          id: number
+          product_id: number
+          branch_id: number
+          lot_id: number | null
+          qty_on_hand: number | null
+          qty_reserved: number | null
+          avg_cost: number | null
+          created_at: string | null
+          updated_at: string | null
+          min_level: number | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           id: string
@@ -946,6 +1029,11 @@ export type WebsitePageSectionInsert = Database['public']['Tables']['website_pag
 export type WebsiteMenu = Database['public']['Tables']['website_menus']['Row']
 export type WebsiteMenuItem = Database['public']['Tables']['website_menu_items']['Row']
 export type Product = Database['public']['Tables']['products']['Row']
+export type ProductPrice = Database['public']['Tables']['product_prices']['Row']
+export type Category = Database['public']['Tables']['categories']['Row']
+export type ProductImage = Database['public']['Tables']['product_images']['Row']
+export type SharedImage = Database['public']['Tables']['shared_images']['Row']
+export type StockLevelRow = Database['public']['Tables']['stock_levels']['Row']
 export type Service = Database['public']['Tables']['services']['Row']
 export type Space = Database['public']['Tables']['spaces']['Row']
 

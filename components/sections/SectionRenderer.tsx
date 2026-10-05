@@ -87,6 +87,7 @@ import { WhyChooseUsIcons } from './hotel/WhyChooseUsIcons'
 
 // Secciones restaurant
 import { MenuPreviewTabs } from './restaurant/MenuPreviewTabs'
+import { MenuFull } from './restaurant/MenuFull'
 import { SpecialtiesFeatured } from './restaurant/SpecialtiesFeatured'
 import { ReservationCtaForm } from './restaurant/ReservationCtaForm'
 import { DeliveryCtaBanner } from './restaurant/DeliveryCtaBanner'
@@ -266,6 +267,12 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   // Restaurant
   menu_preview: {
     tabs: MenuPreviewTabs,
+  },
+  // Carta completa (Figma MenuFull 136:2340). `editorial` del diseño queda fuera.
+  menu_full: {
+    anchors: MenuFull,
+    tabs: MenuFull,
+    per_category: MenuFull,
   },
   specialties: {
     featured: SpecialtiesFeatured,
@@ -449,6 +456,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
         primaryColor={primaryColor}
         data={data}
         sectionVariant={section.section_variant}
+        sectionId={section.id}
       />
     </SectionWrapper>
   )

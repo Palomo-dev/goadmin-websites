@@ -156,7 +156,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.spaces = await getOrganizationSpaces(organization.id, branchId)
     }
     const needsProducts = sectionTypes.some(t =>
-      ['products_grid', 'featured_products', 'menu_preview', 'specialties'].includes(t)
+      ['products_grid', 'featured_products', 'menu_preview', 'menu_full', 'specialties'].includes(t)
     )
     if (needsProducts) {
       data.products = await getOrganizationProducts(organization.id, 500, branchId)
