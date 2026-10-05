@@ -44,7 +44,7 @@ import { useFavorites } from '@/lib/hooks/useFavorites'
 import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
 import { ShareDialog } from '@/components/site/ShareDialog'
-import { getCartKey } from '@/lib/utils'
+import { addProductToCart } from '@/lib/cart'
 import {
   buildCardStyle,
   resolveImageFitClass,
@@ -729,19 +729,16 @@ export function ProductCard({
     if (pr === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
     const sub = organizationSubdomain || host.split('.')[0]
-    const cartKey = getCartKey(sub, branchId)
-    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-    const idx = cart.findIndex((item: any) => item.id === p.id)
-    if (idx >= 0) {
-      cart[idx].quantity += 1
-    } else {
-      const img = getProductImageUrl(p)
-      const cp = getProductComparePrice(p)
-      // `sku` viaja con la línea: es el retailer_id del catálogo de Meta (content_ids).
-      cart.push({ id: p.id, name: p.name, price: pr, quantity: 1, ...(p.sku && { sku: p.sku }), ...(img && { imageUrl: img }), ...(cp && { comparePrice: cp }) })
-    }
-    localStorage.setItem(cartKey, JSON.stringify(cart))
-    window.dispatchEvent(new CustomEvent('cart-updated'))
+    // Misma línea, clave y evento de siempre: la escritura vive en lib/cart.ts
+    // para que la carta completa (menu_full) no la duplique.
+    addProductToCart(sub, branchId, {
+      id: p.id,
+      name: p.name,
+      price: pr,
+      sku: p.sku,
+      imageUrl: getProductImageUrl(p),
+      comparePrice: getProductComparePrice(p),
+    })
     setInternalAdded(true)
     setTimeout(() => setInternalAdded(false), 1500)
   }
