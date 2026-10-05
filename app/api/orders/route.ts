@@ -154,39 +154,38 @@ export async function POST(request: NextRequest) {
     if (esSede(branchId)) {
       const lecturaCarta = await leerCartaSede(supabase, contextOrgId, branchId, productIds)
       if (!lecturaCarta.ok) {
-        // Falla cerrado: sin carta no se sabe qué precio cobrar en esta sede.
-        console.error('[Orders] No se pudo leer la carta de la sede', {
+        // Sin carta legible se sigue como antes de existir la carta por sede (las líneas del
+        // cliente, igual que en cualquier sitio sin carta): un fallo de lectura no puede tumbar
+        // los pedidos de los sitios que nunca configuraron carta. Queda registrado.
+        console.error('[Orders] No se pudo leer la carta de la sede; se sigue sin carta', {
           organizationId: contextOrgId, branchId, error: lecturaCarta.error,
         })
-        return NextResponse.json(
-          { error: 'No pudimos confirmar los precios de esta sede. Intenta de nuevo en unos segundos.' },
-          { status: 503 }
-        )
+      } else {
+        const cartaSede = preciosDeSede(items, lecturaCarta.carta, realProductId)
+        if (cartaSede.noDisponibles.length > 0) {
+          const nombres = cartaSede.noDisponibles.map((id: number) => {
+            const item = items.find((i: any) => realProductId(i) === id)
+            return item?.name ?? `Producto ${id}`
+          })
+          console.warn('[Orders] Productos ocultos o agotados en la sede', {
+            organizationId: contextOrgId, branchId, productIds: cartaSede.noDisponibles,
+          })
+          return NextResponse.json(
+            {
+              error: `Algunos productos de tu carrito no están disponibles en esta sede: ${nombres.join(', ')}. Quítalos del carrito para continuar.`,
+              code: 'PRODUCTOS_NO_DISPONIBLES',
+              productIds: cartaSede.noDisponibles,
+            },
+            { status: 422 }
+          )
+        }
+        if (cartaSede.desfases.length > 0) {
+          console.warn('[Orders] Precio del cliente distinto al precio web de la sede (se cobra el de la sede)', {
+            organizationId: contextOrgId, branchId, desfases: cartaSede.desfases,
+          })
+        }
+        items = cartaSede.items
       }
-      const cartaSede = preciosDeSede(items, lecturaCarta.carta, realProductId)
-      if (cartaSede.noDisponibles.length > 0) {
-        const nombres = cartaSede.noDisponibles.map((id: number) => {
-          const item = items.find((i: any) => realProductId(i) === id)
-          return item?.name ?? `Producto ${id}`
-        })
-        console.warn('[Orders] Productos ocultos o agotados en la sede', {
-          organizationId: contextOrgId, branchId, productIds: cartaSede.noDisponibles,
-        })
-        return NextResponse.json(
-          {
-            error: `Algunos productos de tu carrito no están disponibles en esta sede: ${nombres.join(', ')}. Quítalos del carrito para continuar.`,
-            code: 'PRODUCTOS_NO_DISPONIBLES',
-            productIds: cartaSede.noDisponibles,
-          },
-          { status: 422 }
-        )
-      }
-      if (cartaSede.desfases.length > 0) {
-        console.warn('[Orders] Precio del cliente distinto al precio web de la sede (se cobra el de la sede)', {
-          organizationId: contextOrgId, branchId, desfases: cartaSede.desfases,
-        })
-      }
-      items = cartaSede.items
     } else {
       // Sin sede explícita: sin carta por sede, exactamente como antes.
     }
