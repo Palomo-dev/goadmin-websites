@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit } from '@/lib/rateLimit'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { evaluateCartPromotions } from '@/lib/promotions'
@@ -71,6 +72,21 @@ export async function POST(request: NextRequest) {
       couponCode, couponId, couponDiscount,
       promoDiscount, promotionIds
     } = body
+
+    // Límite de pedidos por IP y por correo (CLAUDE.md: /api/orders). Generoso por IP porque
+    // en un restaurante muchos clientes piden en mesa desde la misma red; en memoria por
+    // instancia: frena ráfagas, no reemplaza un limitador distribuido.
+    const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'sin-ip'
+    const correo = typeof customer?.email === 'string' ? customer.email.trim().toLowerCase() : ''
+    const porIp = checkRateLimit(`orders:ip:${ip}`, 60, 10 * 60 * 1000)
+    const porCorreo = correo ? checkRateLimit(`orders:email:${correo}`, 10, 10 * 60 * 1000) : { allowed: true }
+    if (!porIp.allowed || !porCorreo.allowed) {
+      console.warn('[Orders] Límite de pedidos alcanzado', { ip, porCorreo: !porCorreo.allowed })
+      return NextResponse.json(
+        { error: 'Recibimos demasiados pedidos seguidos. Espera unos minutos e inténtalo de nuevo.', code: 'DEMASIADOS_PEDIDOS' },
+        { status: 429 }
+      )
+    }
 
     if (!organizationId || !customer || !Array.isArray(itemsCliente) || itemsCliente.length === 0) {
       return NextResponse.json(
