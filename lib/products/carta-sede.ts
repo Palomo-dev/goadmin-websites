@@ -174,55 +174,7 @@ export function aplicarCartaSede<T>(productos: T[], carta: CartaSede | null, aho
 }
 
 // ─── Cobro en el servidor (/api/orders) ─────────────────────────────────────────────────────
-
-export interface LineaPedido {
-  price: number
-  quantity: number
-  newModifiers?: { extraPrice?: number }[]
-  [clave: string]: unknown
-}
-
-export interface ResultadoPreciosSede<T> {
-  items: T[]
-  /** Productos ocultos o agotados en la sede (el pedido se rechaza). */
-  noDisponibles: number[]
-  /** Líneas cuyo precio del cliente no coincidía con el de la sede (solo para registro). */
-  desfases: { productId: number; cliente: number; sede: number }[]
-}
-
-/**
- * Precio que cobra el servidor para cada línea de un pedido de sede.
- *
- * - Sin fila: la línea queda EXACTAMENTE como la mandó el cliente (comportamiento de siempre).
- * - Con `web_price`: `price = web_price + extras de modificadores nuevos`, la misma fórmula con la
- *   que el carrito arma la línea (MenuView: precio base + `newModifiers[].extraPrice`). Nunca se
- *   usa el `price` que manda el cliente.
- * - Oculta o agotada en la sede: se informa en `noDisponibles` para rechazar el pedido.
- */
-export function preciosDeSede<T extends LineaPedido>(
-  items: T[],
-  carta: CartaSede,
-  productIdDe: (item: T) => number,
-  ahora: Date = new Date(),
-): ResultadoPreciosSede<T> {
-  const noDisponibles = new Set<number>()
-  const desfases: ResultadoPreciosSede<T>['desfases'] = []
-  const resultado = items.map((item) => {
-    const productId = productIdDe(item)
-    const fila = carta.filas.get(productId)
-    if (!fila) return item
-    if (noListadoEnSede(fila) || agotadoEnSede(fila, ahora)) {
-      noDisponibles.add(productId)
-      return item
-    }
-    const precioWeb = precioWebDeSede(fila)
-    if (precioWeb === null) return item
-    const extras = (item.newModifiers || []).reduce((s, m) => s + (Number(m?.extraPrice) || 0), 0)
-    const precio = precioWeb + extras
-    if (Number(item.price) !== precio) {
-      desfases.push({ productId, cliente: Number(item.price), sede: precio })
-    }
-    return { ...item, price: precio }
-  })
-  return { items: resultado, noDisponibles: Array.from(noDisponibles), desfases }
-}
+//
+// El cobro usa `precioWebDeSede`, `noListadoEnSede` y `agotadoEnSede` desde
+// lib/products/precio-servidor.ts, donde se arma el precio completo de la línea (web_price de la
+// sede + extras de modificadores leídos de la base, nunca los del cliente).

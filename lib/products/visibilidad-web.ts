@@ -13,7 +13,8 @@
  *  - si es variante (`parent_product_id`), su padre tampoco está `'deleted'`.
  *
  * Lo demás no cambia: las lecturas del sitio siguen exigiendo `status = 'active'` (ya lo
- * hacían) y `/api/orders` sigue sin mirar `inactive`/`discontinued` (tampoco lo hacía).
+ * hacían). `/api/orders` exige además `status = 'active'` desde que cobra con precios del
+ * servidor (lib/products/precio-servidor.ts): lo que el sitio no muestra, no se cobra.
  *
  * El estado del padre viaja en la MISMA consulta con el embebido `SELECT_PADRE_ESTADO`
  * (a-uno por `parent_product_id`): no añade consultas por render.

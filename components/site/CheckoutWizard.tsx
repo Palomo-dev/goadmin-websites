@@ -16,7 +16,7 @@ import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
-import { mensajeErrorPedido } from '@/lib/checkout/respuesta-pedido'
+import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
 
 interface CartModifier {
   typeId: number
@@ -479,6 +479,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         ...(customerId ? { customerId } : {}),
         items: cartItems.map(item => ({
           id: item.productId || item.id,
+          // Id de la línea en el carrito: /api/orders lo devuelve si el precio cambió.
+          lineId: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
@@ -540,7 +542,21 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       const orderData = await orderRes.json()
 
       if (!orderRes.ok || !orderData.orderNumber) {
-        setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
+        const cambios = preciosCambiados(orderRes.status, orderData)
+        if (cambios) {
+          // El servidor cobra su precio, no el del carrito: se actualiza el carrito y el cliente
+          // confirma de nuevo viendo el total real (promociones y envío se recalculan solos).
+          const actualizado = aplicarPreciosNuevos(cartItems, cambios)
+          setCartItems(actualizado)
+          localStorage.setItem(getCartKey(organizationSubdomain || '', branchId), JSON.stringify(actualizado))
+          window.dispatchEvent(new CustomEvent('cart-updated'))
+          setPaymentError(mensajePreciosCambiados(cambios, fmtPrice))
+        } else if (esCuponNoValido(orderRes.status, orderData)) {
+          removeCoupon()
+          setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
+        } else {
+          setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
+        }
         setSubmitting(false)
         return
       }
@@ -1247,7 +1263,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                 </div>
 
                 {paymentError && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm whitespace-pre-line" role="alert">
                     {paymentError}
                   </div>
                 )}

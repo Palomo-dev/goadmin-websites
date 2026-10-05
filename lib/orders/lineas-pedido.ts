@@ -1,47 +1,51 @@
 /**
- * Filas de `web_order_items` y líneas del correo de confirmación de un pedido web.
+ * Filas de `web_order_items` y líneas del correo de confirmación de un pedido web, a partir de
+ * las líneas ya resueltas en el servidor (lib/products/precio-servidor.ts).
  *
- * Extraído tal cual de `app/api/orders/route.ts` (sin cambio de comportamiento) para poder
- * corregir el formato de la línea en un commit aparte.
+ * `unit_price` es el precio unitario REAL de la línea: base + extras de modificadores, sumados una
+ * sola vez. Antes se volvían a sumar los extras de `newModifiers` sobre un precio que ya los
+ * traía. Es el formato que ya esperaban sus lectores, que nunca suman extras por su cuenta:
+ * el ERP (`webOrderTotals.ts`: bruto = quantity × unit_price, y las líneas deben cuadrar con
+ * `web_orders.total`), `/api/orders/lookup`, `/mi-cuenta/pedidos/[id]` y `ReorderButton`.
+ * Verificado por MCP el 2026-10-05: de 11.481 líneas guardadas, ninguna tiene extras con precio,
+ * así que el doble cobro nunca llegó a la base y no hay datos que migrar.
  */
 
+import type { LineaResuelta } from '@/lib/products/precio-servidor'
+
+const redondear2 = (n: number): number => Math.round(n * 100) / 100
+
 export function construirFilasPedido(
-  items: any[],
+  lineas: LineaResuelta[],
   webOrderId: string,
   taxRate: number,
-  productIdDe: (item: any) => number,
 ): Record<string, unknown>[] {
-  return items.map((item: any) => {
-    const newModsExtraTotal = (item.newModifiers || []).reduce(
-      (sum: number, m: any) => sum + (Number(m.extraPrice) || 0), 0
-    )
-    const effectiveUnitPrice = Number(item.price) + newModsExtraTotal
-    const itemTotal = effectiveUnitPrice * item.quantity
+  return lineas.map((l) => {
+    const itemTotal = redondear2(l.precioUnitario * l.cantidad)
     const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
-    const allModifiers = [
-      ...(item.modifiers || []),
-      ...(item.newModifiers || []),
-    ]
+    // Mismo contenido que antes en `modifiers`: los antiguos (sin precio) y los de grupos, estos
+    // con nombre y precio tomados de la base.
+    const allModifiers = [...l.modificadoresSinPrecio, ...l.modificadores]
     return {
       web_order_id: webOrderId,
-      product_id: productIdDe(item),
-      product_name: item.name,
-      product_sku: item.sku || null,
-      quantity: item.quantity,
-      unit_price: effectiveUnitPrice,
+      product_id: l.productId,
+      product_name: l.nombre,
+      product_sku: l.sku,
+      quantity: l.cantidad,
+      unit_price: l.precioUnitario,
       tax_amount: itemTax,
       total: itemTotal,
       ...(allModifiers.length > 0 && { modifiers: allModifiers }),
-      ...(item.notes && { notes: item.notes }),
+      ...(l.notas && { notes: l.notas }),
     }
   })
 }
 
-export function lineasCorreoPedido(items: any[]): { name: string; quantity: number; unitPrice: number; total: number }[] {
-  return items.map((item: any) => ({
-    name: item.name,
-    quantity: item.quantity,
-    unitPrice: item.price,
-    total: item.price * item.quantity,
+export function lineasCorreoPedido(lineas: LineaResuelta[]): { name: string; quantity: number; unitPrice: number; total: number }[] {
+  return lineas.map((l) => ({
+    name: l.nombre,
+    quantity: l.cantidad,
+    unitPrice: l.precioUnitario,
+    total: redondear2(l.precioUnitario * l.cantidad),
   }))
 }

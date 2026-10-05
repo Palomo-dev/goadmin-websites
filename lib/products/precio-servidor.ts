@@ -13,6 +13,10 @@
  *    MCP el 2026-10-05, no existe ninguna (0 de 76.335 productos con precio abierto), así que hoy
  *    el resultado es idéntico al que se muestra. Entre los 220 productos con varios precios
  *    abiertos, «mayor id» y «effective_from más reciente» eligen el mismo precio en los 220.
+ *    Los planes de membresía muestran su precio con `precioVigente` (lib/memberships/precio.ts:
+ *    `effective_from` más reciente, admite `effective_to` futuro). Con los datos de hoy coincide
+ *    (0 filas con `effective_to` futuro); si algún día divergen, el checkout recibe 409
+ *    PRECIOS_CAMBIARON con el precio de aquí en vez de cobrar distinto en silencio.
  * 2. Carta por sede: si la sede fija `web_price`, ese es el precio (lib/products/carta-sede.ts).
  * 3. Variante (`parent_product_id`): su propio precio. Si no tiene, el del padre: es lo que muestra
  *    `StickyAddToCart` (`selectedVariant.product_prices[0].price || price`), la única vía del sitio
