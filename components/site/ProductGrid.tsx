@@ -113,7 +113,9 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
     setVariantParent(product)
     setLoadingVariants(true)
     try {
-      const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}`)
+      // Con sede, la ruta aplica su carta (mismo precio que cobra /api/orders).
+      const sedeParam = typeof branchId === 'number' ? `&branchId=${branchId}` : ''
+      const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}${sedeParam}`)
       const data = await res.json()
       setVariantChildren(data.variants || [])
     } catch (err) {
