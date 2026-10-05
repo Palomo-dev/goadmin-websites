@@ -5,6 +5,7 @@ import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
+import { esSede, leerCartaSede, preciosDeSede } from '@/lib/products/carta-sede'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,14 +27,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      organizationId, branchId, customer, customerId: authCustomerId, items,
+      organizationId, branchId, customer, customerId: authCustomerId, items: itemsCliente,
       subtotal, shipping, total, paymentMethod,
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName,
       couponCode, couponId, couponDiscount,
       promoDiscount, promotionIds
     } = body
-    
+    // Líneas del pedido. Solo cambian en un pedido de sede con carta propia (bloque «Carta por
+    // sede» más abajo); en cualquier otro caso son exactamente las que mandó el cliente.
+    let items = itemsCliente
+
     if (!organizationId || !customer || !items || items.length === 0) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
@@ -140,6 +144,51 @@ export async function POST(request: NextRequest) {
         )
       }
       // else: todos vendibles → sigue exactamente como antes.
+    }
+
+    // ── B0.1: Carta por sede (website_branch_products) ──
+    // Solo con sede explícita y ya validada contra la organización (F5, arriba). Si la sede
+    // fija `web_price`, se cobra ese precio y nunca el que manda el cliente (es el que el sitio
+    // mostró, lib/products/carta-sede.ts). Oculto o agotado en la sede → 422. Sin fila para el
+    // producto → la línea queda tal cual.
+    if (esSede(branchId)) {
+      const lecturaCarta = await leerCartaSede(supabase, contextOrgId, branchId, productIds)
+      if (!lecturaCarta.ok) {
+        // Falla cerrado: sin carta no se sabe qué precio cobrar en esta sede.
+        console.error('[Orders] No se pudo leer la carta de la sede', {
+          organizationId: contextOrgId, branchId, error: lecturaCarta.error,
+        })
+        return NextResponse.json(
+          { error: 'No pudimos confirmar los precios de esta sede. Intenta de nuevo en unos segundos.' },
+          { status: 503 }
+        )
+      }
+      const cartaSede = preciosDeSede(items, lecturaCarta.carta, realProductId)
+      if (cartaSede.noDisponibles.length > 0) {
+        const nombres = cartaSede.noDisponibles.map((id: number) => {
+          const item = items.find((i: any) => realProductId(i) === id)
+          return item?.name ?? `Producto ${id}`
+        })
+        console.warn('[Orders] Productos ocultos o agotados en la sede', {
+          organizationId: contextOrgId, branchId, productIds: cartaSede.noDisponibles,
+        })
+        return NextResponse.json(
+          {
+            error: `Algunos productos de tu carrito no están disponibles en esta sede: ${nombres.join(', ')}. Quítalos del carrito para continuar.`,
+            code: 'PRODUCTOS_NO_DISPONIBLES',
+            productIds: cartaSede.noDisponibles,
+          },
+          { status: 422 }
+        )
+      }
+      if (cartaSede.desfases.length > 0) {
+        console.warn('[Orders] Precio del cliente distinto al precio web de la sede (se cobra el de la sede)', {
+          organizationId: contextOrgId, branchId, desfases: cartaSede.desfases,
+        })
+      }
+      items = cartaSede.items
+    } else {
+      // Sin sede explícita: sin carta por sede, exactamente como antes.
     }
 
     // ── B1: Validación de stock (solo productos con track_stock=true) ──
