@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getCategoryBySlug, getSubcategories, getProductsByCategoryPaginated, getParentCategory, getMetaPixelId, getGoogleAdsConfig, getWebsitePageByType } from '@/lib/supabase/queries'
 import { getOrgContext } from '@/lib/get-org-context'
+import { getPlantillaPublica } from '@/lib/website/v2/lectorPublico'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CategoryDetailRenderer } from '@/components/sections/category-detail/CategoryDetailRenderer'
@@ -75,7 +76,9 @@ export default async function CategoriaSlugPage({
   const totalPages = Math.ceil(total / 12)
 
   // F9.4 — Buscar plantilla de detalle de categoría editable
-  const categoryDetailTemplate = await getWebsitePageByType(organization.id, 'category_detail')
+  // Sitio V2: la plantilla sale de la revisión publicada; legacy: igual que antes.
+  const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
+    () => getWebsitePageByType(organization.id, 'category_detail'))
 
   // F9.5 — JSON-LD ItemList para categoría
   const baseUrl = organization.custom_domain

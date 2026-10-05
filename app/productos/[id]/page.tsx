@@ -17,6 +17,7 @@ import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado } from '@/lib/supabase/queries'
 import { aplicarCartaSede } from '@/lib/products/carta-sede'
+import { getPlantillaPublica } from '@/lib/website/v2/lectorPublico'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
@@ -218,7 +219,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId)
 
   // F9.2 — Buscar plantilla de detalle de producto editable
-  const productDetailTemplate = await getWebsitePageByType(organization.id, 'product_detail')
+  // Sitio V2: `plantillas/product-detail` de la revisión publicada; legacy: igual que antes.
+  const productDetailTemplate = await getPlantillaPublica(organization.id, 'product_detail', branchId,
+    () => getWebsitePageByType(organization.id, 'product_detail'))
 
   // Construir URLs de imágenes
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'

@@ -25,6 +25,7 @@ import {
   getWebsitePagesByIds
 } from '@/lib/supabase/queries'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
+import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
@@ -54,8 +55,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
   const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
   const currentSlug = effectivePath[0] || 'home'
 
-  // Intentar obtener metadatos de la página del builder
-  const page = await getWebsitePageBySlug(organization.id, currentSlug, branchId)
+  // Intentar obtener metadatos de la página del builder (V2 si el sitio lo adoptó)
+  const page = await getPaginaPublica(organization.id, currentSlug, branchId,
+    () => getWebsitePageBySlug(organization.id, currentSlug, branchId))
 
   const pageTitle = page?.meta_title || page?.title
   const title = pageTitle
@@ -141,8 +143,10 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     getDefaultTax(organization.id)
   ])
 
-  // 1. Intentar cargar página del Page Builder (con branchId F1)
-  const page = await getWebsitePageBySlug(organization.id, currentSlug, branchId)
+  // 1. Intentar cargar página del Page Builder (con branchId F1). Sitio V2: de la revisión
+  //    publicada; legacy: exactamente la misma consulta de antes.
+  const page = await getPaginaPublica(organization.id, currentSlug, branchId,
+    () => getWebsitePageBySlug(organization.id, currentSlug, branchId))
 
   if (page && page.website_page_sections.length > 0) {
     // Pre-fetch de datos para secciones data-driven

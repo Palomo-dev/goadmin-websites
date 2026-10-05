@@ -13,7 +13,14 @@ import {
 import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { resolveOutletBySubSubdomain, resolveOutletByCustomDomain, resolveOutletFromPath, type ResolvedOutlet } from '@/lib/outlet/resolver'
-import { getEffectiveSettings } from '@/lib/outlet/theme-merge'
+import { getEffectiveSettings, getOrgSettings } from '@/lib/outlet/theme-merge'
+import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorPublico'
+import {
+  ajustesPublicosDesdeDocumento,
+  idsCategoriasDeMenus,
+  menusPublicosDesdeDocumento,
+  type MenusPublicos,
+} from '@/lib/website/v2/vistaPublica'
 import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 
@@ -99,7 +106,39 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   // getEffectiveSettings hace query directa de website_settings (branch_id IS NULL
   // + branch_id = branchId) y mergea. Si no hay outlet, retorna los globales.
   // Si no hay globales pero sí outlet, retorna los del outlet.
-  const effectiveSettings = await getEffectiveSettings(organization.id, branchId)
+  const legacySettings = await getEffectiveSettings(organization.id, branchId)
+
+  // --- Sitio V2 (ADR-002 D4) ---
+  // Si el sitio adoptó V2, ajustes y menús salen de la revisión publicada (lib/website/v2).
+  // Las columnas sin destino en el documento (operación, integraciones) siguen saliendo de la
+  // fila legacy. Cualquier fallo → legacy exactamente como antes, con el error registrado.
+  let effectiveSettings = legacySettings
+  let menusV2: MenusPublicos | null = null
+  const sitioV2 = await getSitioPublicoV2(organization.id, branchId)
+  if (sitioV2) {
+    try {
+      const principalLegacy = sitioV2.principal && !sitioV2.principal.documento
+        ? await getOrgSettings(organization.id)
+        : null
+      const ajustesV2 = ajustesPublicosDesdeDocumento(
+        sitioV2.documento,
+        legacySettings,
+        sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
+      )
+      const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
+      menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
+      effectiveSettings = ajustesV2
+    } catch (error) {
+      console.error('[sitio-v2] Error aplicando el documento V2 al contexto; se sirve legacy', {
+        organizationId: organization.id, siteStateId: sitioV2.siteStateId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      effectiveSettings = legacySettings
+      menusV2 = null
+    }
+  } else {
+    // Sitio legacy: sin cambios.
+  }
   const settings = effectiveSettings
 
   const primaryColor = settings?.primary_color || organization.primary_color || '#3B82F6'
@@ -108,11 +147,16 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
 
   // Cargar árbol jerárquico de navegación (header + footer) con branchId (F1)
   // Las versiones planas se derivan del árbol para evitar queries duplicadas.
-  const [headerNavTree, footerNavTree] = await Promise.all([
-    getWebsiteHeaderNavTree(organization.id, branchId),
-    getWebsiteFooterNavTree(organization.id, branchId)
-  ])
-  const headerNav = headerNavTree // el árbol ya contiene todos los nodos
+  // V2: la navegación sale de los menús del documento; no se mezcla con páginas legacy.
+  const [headerNavTree, footerNavTreeLegacy] = menusV2
+    ? [[], []]
+    : await Promise.all([
+        getWebsiteHeaderNavTree(organization.id, branchId),
+        getWebsiteFooterNavTree(organization.id, branchId)
+      ])
+  const footerNavTree = menusV2
+    ? (menusV2.footerPaginas?.items ?? []).map(item => menuItemToPageWithChildren(item))
+    : footerNavTreeLegacy
   const footerNav = footerNavTree
 
   // Cargar categorías para el mega-menú solo si la configuración lo activa
@@ -129,7 +173,9 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   const headerMegaMenuId = settings?.header_mega_menu_id ?? null
 
   // Cargar menú de header nombrado (si existe) + menú mega nombrado (si existe)
-  const [namedHeaderMenu, namedMegaMenu, footerMenus] = await Promise.all([
+  const [namedHeaderMenu, namedMegaMenu, footerMenus] = menusV2
+    ? [menusV2.header, menusV2.mega, menusV2.footer]
+    : await Promise.all([
     // Con sede: la copia de esa sede si existe, si no el del principal. Sin sede (branchId
     // undefined): solo menús del principal (branch_id IS NULL).
     headerMenuId ? getMenuById(headerMenuId, organization.id, branchId) : Promise.resolve(null),
@@ -142,6 +188,8 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   const effectiveHeaderNavTree = namedHeaderMenu && namedHeaderMenu.items.length > 0
     ? namedHeaderMenu.items.map(item => menuItemToPageWithChildren(item))
     : headerNavTree
+  // Legacy: headerNav siguen siendo las páginas (como antes). V2: el menú del documento.
+  const headerNav = menusV2 ? effectiveHeaderNavTree : headerNavTree
 
   // Si hay menú mega nombrado, usarlo como megaMenuItems (NavItem[])
   // Si no, fallback a menuCategories (backward compat)
