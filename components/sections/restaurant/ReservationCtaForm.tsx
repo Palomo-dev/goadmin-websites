@@ -25,6 +25,8 @@ interface ReservationCtaFormProps {
   }
   primaryColor?: string
   organization?: any
+  /** Datos de la página; `branchId` es la sede (outlet) resuelta en el servidor. */
+  data?: Record<string, any>
 }
 
 type FormStatus = 'idle' | 'checking' | 'submitting' | 'success' | 'error' | 'no_availability'
@@ -35,7 +37,7 @@ interface AvailableSlot {
   remaining: number
 }
 
-export function ReservationCtaForm({ content, primaryColor, organization }: ReservationCtaFormProps) {
+export function ReservationCtaForm({ content, primaryColor, organization, data: datosPagina }: ReservationCtaFormProps) {
   // ── Configuración con defaults (compatibilidad hacia atrás) ──
   const minGuests = content.min_guests || 1
   const maxGuests = content.max_guests || 8
@@ -178,7 +180,8 @@ export function ReservationCtaForm({ content, primaryColor, organization }: Rese
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId,
-          branchId: organization?.branch_id || null,
+          // `organizations` no tiene `branch_id`: la sede llegaba siempre vacía.
+          branchId: datosPagina?.branchId ?? null,
           date: formData.date,
           time: formData.time,
           partySize: formData.guests,

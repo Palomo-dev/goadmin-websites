@@ -1,0 +1,101 @@
+import { NextResponse } from 'next/server'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+
+/**
+ * Contexto común de `/api/restaurant-reservations/**`.
+ *
+ * La organización sale del HOST, nunca del body ni del query string
+ * (CLAUDE.md, multi-tenancy): estas rutas corren con service role y no hay RLS
+ * debajo. Mismo criterio que `/api/orders`: si el host resuelve una
+ * organización y la petición trae otra → 403 y se registra; si el host no
+ * resuelve (localhost sin subdominio) se conserva el comportamiento anterior.
+ */
+export async function organizacionDeLaReserva(
+  pedida: unknown,
+  ruta: string,
+): Promise<{ orgId: number } | { respuesta: NextResponse }> {
+  const delHost = await getOrgIdDelHost()
+  const pedidaNum = pedida === undefined || pedida === null || pedida === '' ? null : Number(pedida)
+
+  if (delHost !== null) {
+    if (pedidaNum !== null && pedidaNum !== delHost) {
+      console.warn(`[${ruta}] organizationId distinto al del host`, { delHost, pedida: pedidaNum })
+      return {
+        respuesta: NextResponse.json(
+          { error: 'La organización no corresponde a este sitio' },
+          { status: 403 },
+        ),
+      }
+    }
+    return { orgId: delHost }
+  }
+
+  if (pedidaNum === null || !Number.isInteger(pedidaNum) || pedidaNum <= 0) {
+    return { respuesta: NextResponse.json({ error: 'Organización no válida' }, { status: 400 }) }
+  }
+  return { orgId: pedidaNum }
+}
+
+/** La sede debe ser de la organización; `null` = sin sede. */
+export async function sedeDeLaReserva(
+  supabase: any,
+  orgId: number,
+  pedida: unknown,
+): Promise<{ branchId: number | null } | { respuesta: NextResponse }> {
+  if (pedida === undefined || pedida === null || pedida === '') return { branchId: null }
+  const branchId = Number(pedida)
+  if (!Number.isInteger(branchId) || branchId <= 0) {
+    return { respuesta: NextResponse.json({ error: 'Sede no válida' }, { status: 400 }) }
+  }
+  const { data } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (!data) {
+    return { respuesta: NextResponse.json({ error: 'La sede no pertenece a este sitio' }, { status: 403 }) }
+  }
+  return { branchId }
+}
+
+/**
+ * Fecha (YYYY-MM-DD) y hora (HH:MM) actuales en la zona de la sede u
+ * organización (`fn_timezone_for`, la misma que usan las RPC de reservas).
+ * Comparar `new Date(\`${date}T${time}\`)` contra `new Date()` en el servidor
+ * (UTC) rechazaba reservas válidas de las próximas horas en Colombia.
+ */
+export async function ahoraEnLaZona(
+  supabase: any,
+  orgId: number,
+  branchId: number | null,
+): Promise<{ fecha: string; hora: string }> {
+  let zona = 'America/Bogota'
+  const { data } = await supabase.rpc('fn_timezone_for', {
+    p_organization_id: orgId,
+    p_branch_id: branchId,
+  })
+  if (typeof data === 'string' && data) zona = data
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zona,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? '00'
+  return { fecha: `${v('year')}-${v('month')}-${v('day')}`, hora: `${v('hour')}:${v('minute')}` }
+}
+
+/** «HH:MM» o «HH:MM:SS» → «HH:MM»; `null` si no es una hora válida. */
+export function horaNormalizada(valor: unknown): string | null {
+  const m = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(String(valor ?? ''))
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null
+  return `${m[1]}:${m[2]}`
+}
+
+export function fechaValida(valor: unknown): valor is string {
+  return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)
+}

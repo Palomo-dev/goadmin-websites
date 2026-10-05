@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendRestaurantTableConfirmationEmail } from '@/lib/email/send-restaurant-table-confirmation'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import {
+  ahoraEnLaZona,
+  fechaValida,
+  horaNormalizada,
+  organizacionDeLaReserva,
+  sedeDeLaReserva,
+} from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,8 +22,11 @@ export const dynamic = 'force-dynamic'
  * - Rate limiting: máximo 5 reservas/hora/IP
  * - Honeypot: campo oculto `website` que, si se rellena, rechaza silenciosamente
  *
+ * La organización sale del host (`organizacionDeLaReserva`); `organizationId`
+ * del body solo se compara (403 si es otra). La sede debe ser de la organización.
+ *
  * Body: {
- *   organizationId, branchId?, date, time, partySize,
+ *   organizationId?, branchId?, date, time, partySize,
  *   name, phone, email?, notes?, zone?,
  *   website?,  // honeypot — debe estar vacío
  *   successMessage?, organizationName?
@@ -72,9 +82,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Validación de campos requeridos ──
-    if (!organizationId || !date || !time || !partySize || !name) {
+    const hora = horaNormalizada(time)
+    if (!fechaValida(date) || !hora || !partySize || !name) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: organizationId, date, time, partySize, name' },
+        { error: 'Faltan campos requeridos: date, time, partySize, name' },
         { status: 400 }
       )
     }
@@ -86,27 +97,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── Validar que la fecha/hora no sea pasada ──
-    const now = new Date()
-    const requestDateTime = new Date(`${date}T${time}:00`)
-    if (requestDateTime < now) {
+    const contexto = await organizacionDeLaReserva(organizationId, 'Restaurant Reservations')
+    if ('respuesta' in contexto) return contexto.respuesta
+    const orgId = contexto.orgId
+
+    const supabase = createAdminClient() || createPublicClient()
+
+    const sede = await sedeDeLaReserva(supabase, orgId, branchId)
+    if ('respuesta' in sede) return sede.respuesta
+
+    // ── Validar que la fecha/hora no sea pasada (en la zona de la sede) ──
+    const ahora = await ahoraEnLaZona(supabase, orgId, sede.branchId)
+    if (date < ahora.fecha || (date === ahora.fecha && hora < ahora.hora)) {
       return NextResponse.json(
         { error: 'No se pueden crear reservas en el pasado' },
         { status: 400 }
       )
     }
 
-    const supabase = createAdminClient() || createPublicClient()
-
     // ── Llamar RPC transaccional create_restaurant_reservation ──
     const { data: rpcResult, error: rpcError } = await (supabase as any)
       .rpc('create_restaurant_reservation', {
-        p_organization_id: parseInt(organizationId, 10),
+        p_organization_id: orgId,
         p_reservation_date: date,
-        p_reservation_time: time,
+        p_reservation_time: hora,
         p_party_size: parseInt(partySize, 10),
         p_customer_name: name,
-        p_branch_id: branchId ? parseInt(branchId, 10) : null,
+        p_branch_id: sede.branchId,
         p_customer_phone: phone || null,
         p_customer_email: email || null,
         p_zone: zone || null,
@@ -125,7 +142,7 @@ export async function POST(request: NextRequest) {
         // Consultar disponibilidad para sugerir horarios alternativos
         const { data: availResult } = await (supabase as any)
           .rpc('get_restaurant_availability', {
-            p_organization_id: parseInt(organizationId, 10),
+            p_organization_id: orgId,
             p_date: date,
             p_party_size: parseInt(partySize, 10),
             p_zone: zone || null,
@@ -148,7 +165,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Errores de validación de tamaño → 400
-      if (errMsg.includes('mínimo') || errMsg.includes('máximo')) {
+      // La RPC escribe «minimo/maximo» sin tilde: sin esta comparación,
+      // un grupo fuera de rango terminaba en 500.
+      if (/m[ií]nimo|m[áa]ximo/i.test(errMsg)) {
         return NextResponse.json({ error: errMsg }, { status: 400 })
       }
 
@@ -164,7 +183,7 @@ export async function POST(request: NextRequest) {
         const { data: org } = await (supabase as any)
           .from('organizations')
           .select('name')
-          .eq('id', organizationId)
+          .eq('id', orgId)
           .single()
 
         await sendRestaurantTableConfirmationEmail({

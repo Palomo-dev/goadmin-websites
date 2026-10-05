@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,10 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
+    const contexto = await organizacionDeLaReserva(searchParams.get('organizationId'), 'Restaurant Availability')
+    if ('respuesta' in contexto) return contexto.respuesta
+    // La organización sale del host; la del query string solo se compara.
+    const organizationId = String(contexto.orgId)
     const date = searchParams.get('date')
     const time = searchParams.get('time')
     const partySizeParam = searchParams.get('partySize')

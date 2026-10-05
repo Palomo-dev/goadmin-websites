@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,10 @@ export const dynamic = 'force-dynamic'
  *
  * Devuelve los datos de la reserva sin exponer información sensible
  * (sin customer_id, sin created_by).
+ *
+ * Solo busca reservas de la organización del host: antes buscaba en todas, y
+ * con 8 caracteres devolvía nombre, teléfono y email de reservas de otros
+ * restaurantes.
  */
 export async function GET(
   request: NextRequest,
@@ -26,11 +31,13 @@ export async function GET(
       )
     }
 
-    const supabase = createAdminClient() || createPublicClient()
+    const contexto = await organizacionDeLaReserva(
+      request.nextUrl.searchParams.get('organizationId'),
+      'Restaurant Reservations',
+    )
+    if ('respuesta' in contexto) return contexto.respuesta
 
-    // El código son los primeros 8 caracteres del UUID en mayúsculas.
-    // Buscamos por prefijo del ID o por ID completo.
-    const upperCode = id.toUpperCase()
+    const supabase = createAdminClient() || createPublicClient()
 
     let query = (supabase as any)
       .from('restaurant_reservations')
@@ -52,13 +59,22 @@ export async function GET(
         cancellation_reason,
         confirmed_at
       `)
+      .eq('organization_id', contexto.orgId)
 
-    // Si es un UUID completo (36 chars), buscar por id exacto
-    if (id.length === 36) {
-      query = query.eq('id', id)
+    const codigo = id.toLowerCase()
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(codigo)) {
+      query = query.eq('id', codigo)
+    } else if (/^[0-9a-f]{8}$/.test(codigo)) {
+      // El código son los 8 primeros caracteres del UUID. `ilike` sobre una
+      // columna uuid no funciona en Postgres: se busca por rango.
+      query = query
+        .gte('id', `${codigo}-0000-0000-0000-000000000000`)
+        .lte('id', `${codigo}-ffff-ffff-ffff-ffffffffffff`)
     } else {
-      // Buscar por prefijo del código (case-insensitive en el primer tramo)
-      query = query.ilike('id', `${upperCode}%`)
+      return NextResponse.json(
+        { error: 'No se encontró ninguna reserva con ese código' },
+        { status: 404 }
+      )
     }
 
     const { data: reservation, error } = await query.limit(1).maybeSingle()

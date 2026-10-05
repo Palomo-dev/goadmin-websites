@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,21 @@ export async function POST(
       )
     }
 
+    const contexto = await organizacionDeLaReserva(body?.organizationId, 'Restaurant Reservations')
+    if ('respuesta' in contexto) return contexto.respuesta
+
     const supabase = createAdminClient() || createPublicClient()
+
+    // La RPC no comprueba la organización: solo se cancelan reservas de este sitio.
+    const { data: propia } = await (supabase as any)
+      .from('restaurant_reservations')
+      .select('id')
+      .eq('id', id)
+      .eq('organization_id', contexto.orgId)
+      .maybeSingle()
+    if (!propia) {
+      return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
+    }
 
     const { data: result, error } = await (supabase as any)
       .rpc('cancel_restaurant_reservation', {
