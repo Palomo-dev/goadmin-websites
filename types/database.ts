@@ -638,6 +638,10 @@ export interface Database {
           is_active: boolean
           created_at: string
           updated_at: string
+          /** NULL = menú del sitio principal; con valor, copia propia de esa sede (V2, ADR-002 D3). */
+          branch_id: number | null
+          /** Menú del principal del que se copió esta versión de sede (solo informativo). */
+          source_menu_id: string | null
         }
         Insert: {
           organization_id: number

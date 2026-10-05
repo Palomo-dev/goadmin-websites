@@ -2791,6 +2791,42 @@ function buildMenuItemTree(
 }
 
 /**
+ * Menús por sede (V2, ADR-002 D3). `website_menus.branch_id` NULL = menú del sitio principal; con
+ * valor, copia propia de esa sede (`source_menu_id` apunta al original del principal).
+ *
+ * - Sin sede (`branchId === undefined`): solo menús del principal. Las copias de sede nunca salen
+ *   en el sitio principal.
+ * - Con sede: el menú de la sede si existe; si no, el del principal. Una copia de sede reemplaza a
+ *   su original (aunque la sede la haya desactivado: desactivarla es ocultarlo en esa sede). Los
+ *   menús de otras sedes no salen nunca.
+ *
+ * Recibe las filas SIN filtrar por `is_active` cuando hay sede, para poder respetar una copia
+ * desactivada; filtra `is_active` al final.
+ */
+function menusParaSede(menus: WebsiteMenu[], branchId: number | undefined): WebsiteMenu[] {
+  if (branchId === undefined) {
+    return menus.filter(m => m.branch_id === null && m.is_active)
+  }
+  const reemplazados = new Set(
+    menus
+      .filter(m => m.branch_id === branchId && m.source_menu_id)
+      .map(m => m.source_menu_id as string)
+  )
+  return menus.filter(m => {
+    if (!m.is_active) return false
+    if (m.branch_id === null) return !reemplazados.has(m.id)
+    return m.branch_id === branchId
+  })
+}
+
+/** `branchId` válido para interpolar en un filtro `.or()` de PostgREST. */
+function sedeValida(branchId: number | undefined): branchId is number {
+  return typeof branchId === 'number' && Number.isInteger(branchId) && branchId > 0
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
  * Obtiene todos los menús de una organización con sus items en árbol jerárquico.
  * Incluye datos relacionados (páginas y categorías) para cada item.
  */
@@ -2798,10 +2834,12 @@ async function getWebsiteMenusUncached(organizationId: number): Promise<WebsiteM
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return []
 
+  // Solo menús del sitio principal: las copias por sede (branch_id no nulo) nunca salen aquí.
   const { data: menus, error: menusError } = await (supabase as any)
     .from('website_menus')
     .select('*')
     .eq('organization_id', organizationId)
+    .is('branch_id', null)
     .eq('is_active', true)
     .order('header_order', { ascending: true })
 
@@ -2872,21 +2910,31 @@ async function getWebsiteMenusUncached(organizationId: number): Promise<WebsiteM
  */
 async function getWebsiteMenusByLocationUncached(
   organizationId: number,
-  location: 'header' | 'footer'
+  location: 'header' | 'footer',
+  branchId?: number
 ): Promise<WebsiteMenuWithItems[]> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return []
 
   // Filtrar por location en SQL: incluir 'both' siempre
-  const { data: menus, error: menusError } = await (supabase as any)
+  let menusQuery = (supabase as any)
     .from('website_menus')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_active', true)
     .in('location', [location, 'both'])
+  if (sedeValida(branchId)) {
+    // Sede: menús del principal + copias de ESTA sede; menusParaSede elige y filtra is_active.
+    menusQuery = menusQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`)
+  } else {
+    // Sitio principal: exactamente la consulta de antes, más branch_id IS NULL.
+    menusQuery = menusQuery.is('branch_id', null).eq('is_active', true)
+  }
+  const { data: menusRaw, error: menusError } = await menusQuery
     .order(location === 'footer' ? 'footer_order' : 'header_order', { ascending: true })
 
-  if (menusError || !menus || menus.length === 0) return []
+  if (menusError || !menusRaw || menusRaw.length === 0) return []
+  const menus = menusParaSede(menusRaw as WebsiteMenu[], sedeValida(branchId) ? branchId : undefined)
+  if (menus.length === 0) return []
 
   const { data: items, error: itemsError } = await (supabase as any)
     .from('website_menu_items')
@@ -2950,27 +2998,52 @@ async function getWebsiteMenusByLocationUncached(
  * Obtiene un menú específico por ID con sus items en árbol jerárquico.
  * Útil para cargar el menú asignado a header_menu_id o header_mega_menu_id.
  */
-async function getMenuByIdUncached(menuId: string, organizationId: number): Promise<WebsiteMenuWithItems | null> {
+async function getMenuByIdUncached(
+  menuId: string,
+  organizationId: number,
+  branchId?: number
+): Promise<WebsiteMenuWithItems | null> {
   const supabase = getSupabaseForPublicRead()
   if (!supabase) return null
 
   // Service role: sin el filtro por organización, un `header_menu_id` ajeno
   // (la FK no exige que el menú sea de la misma organización) pintaría el
   // menú de otra. Igual con sus ítems, páginas y categorías.
-  const { data: menu, error: menuError } = await (supabase as any)
-    .from('website_menus')
-    .select('*')
-    .eq('id', menuId)
-    .eq('organization_id', organizationId)
-    .eq('is_active', true)
-    .maybeSingle()
+  let menu: WebsiteMenu | null = null
+  if (sedeValida(branchId) && UUID_RE.test(menuId)) {
+    // Sede: la copia de esta sede del menú pedido si existe; si no, el menú pedido (del principal
+    // o, si los ajustes de la sede ya apuntan a su copia, la propia copia). Nunca el de otra sede.
+    const { data: filas, error: menuError } = await (supabase as any)
+      .from('website_menus')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .or(`id.eq.${menuId},and(source_menu_id.eq.${menuId},branch_id.eq.${branchId})`)
+    if (menuError || !filas) return null
+    const lista = filas as WebsiteMenu[]
+    const copia = lista.find(m => m.branch_id === branchId && m.source_menu_id === menuId)
+    const pedido = lista.find(m => m.id === menuId && (m.branch_id === null || m.branch_id === branchId))
+    const elegido = copia ?? pedido ?? null
+    menu = elegido && elegido.is_active ? elegido : null
+  } else {
+    // Sitio principal: exactamente la consulta de antes, más branch_id IS NULL.
+    const { data, error: menuError } = await (supabase as any)
+      .from('website_menus')
+      .select('*')
+      .eq('id', menuId)
+      .eq('organization_id', organizationId)
+      .is('branch_id', null)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (menuError) return null
+    menu = (data as WebsiteMenu | null) ?? null
+  }
 
-  if (menuError || !menu) return null
+  if (!menu) return null
 
   const { data: items, error: itemsError } = await (supabase as any)
     .from('website_menu_items')
     .select('*')
-    .eq('menu_id', menuId)
+    .eq('menu_id', menu.id)
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .order('display_order', { ascending: true })

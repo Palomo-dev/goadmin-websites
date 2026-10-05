@@ -130,9 +130,11 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
 
   // Cargar menú de header nombrado (si existe) + menú mega nombrado (si existe)
   const [namedHeaderMenu, namedMegaMenu, footerMenus] = await Promise.all([
-    headerMenuId ? getMenuById(headerMenuId, organization.id) : Promise.resolve(null),
-    headerMegaMenuId ? getMenuById(headerMegaMenuId, organization.id) : Promise.resolve(null),
-    getWebsiteMenusByLocation(organization.id, 'footer'),
+    // Con sede: la copia de esa sede si existe, si no el del principal. Sin sede (branchId
+    // undefined): solo menús del principal (branch_id IS NULL).
+    headerMenuId ? getMenuById(headerMenuId, organization.id, branchId) : Promise.resolve(null),
+    headerMegaMenuId ? getMenuById(headerMegaMenuId, organization.id, branchId) : Promise.resolve(null),
+    getWebsiteMenusByLocation(organization.id, 'footer', branchId),
   ])
 
   // Si hay menú nombrado de header, usarlo como headerNavTree (convertido a WebsitePageWithChildren[])
