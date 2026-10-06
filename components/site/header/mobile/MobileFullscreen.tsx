@@ -1,5 +1,6 @@
 'use client';
 
+import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, X, Globe, Search } from 'lucide-react';
@@ -142,6 +143,7 @@ export default function MobileFullscreen({
           </nav>
         </div>
       )}
+      <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
 }

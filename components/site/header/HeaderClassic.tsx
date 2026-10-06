@@ -17,6 +17,7 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
+import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 
 export default function HeaderClassic({
   organization,
@@ -67,7 +68,8 @@ export default function HeaderClassic({
         organizationSubdomain={organization.subdomain || ''}
         branchId={branchId}
       />
-      <HeaderCTA2 settings={settings} />
+      <SelectorSedeEncabezado primaryColor={primaryColor} />
+              <HeaderCTA2 settings={settings} />
       {ctaText && <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />}
     </div>
   );

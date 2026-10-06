@@ -1,5 +1,6 @@
 'use client';
 
+import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, User, X, Globe } from 'lucide-react';
@@ -202,6 +203,7 @@ export default function MobileTabs({
           </div>
         </div>
       )}
+      <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
 }

@@ -23,6 +23,7 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
+import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import {
   Drawer,
   DrawerContent,
@@ -146,6 +147,7 @@ export default function HeaderMinimal({
                 hideAuth
                 branchId={branchId}
               />
+              <SelectorSedeEncabezado primaryColor={primaryColor} />
               <HeaderCTA2 settings={settings} />
               <HeaderCTA
                 text={ctaText}

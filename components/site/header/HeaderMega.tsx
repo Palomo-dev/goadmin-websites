@@ -21,6 +21,7 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
+import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
@@ -108,6 +109,7 @@ export default function HeaderMega({
                 showSearchIcon={false}
                 branchId={branchId}
               />
+              <SelectorSedeEncabezado primaryColor={primaryColor} />
               <HeaderCTA2 settings={settings} />
               <HeaderCTA
                 text={ctaText}

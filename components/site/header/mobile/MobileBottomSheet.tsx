@@ -1,5 +1,6 @@
 'use client';
 
+import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, ChevronDown, Globe, Search } from 'lucide-react';
@@ -121,6 +122,7 @@ export default function MobileBottomSheet({
           )}
         </div>
       </div>
+      <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
 }

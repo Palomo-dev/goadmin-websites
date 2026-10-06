@@ -17,6 +17,7 @@ import {
   navTextColor,
   accentColor,
 } from '../header/HeaderShared';
+import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 
 export default function HeaderCentered({
   organization,
@@ -65,6 +66,7 @@ export default function HeaderCentered({
                 organizationSubdomain={organization.subdomain || ''}
                 branchId={branchId}
               />
+              <SelectorSedeEncabezado primaryColor={primaryColor} />
               <HeaderCTA2 settings={settings} />
               {ctaText && (
                 <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />
