@@ -1,5 +1,9 @@
 'use client'
 
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { filasHorario, normalizarDias, parseHorario } from '@/lib/restaurant/horario'
+import { urlMapaEmbebido } from '@/lib/maps/comoLlegar'
+
 interface MapEmbeddedProps {
   content: Record<string, any>
   organization?: any
@@ -7,18 +11,25 @@ interface MapEmbeddedProps {
 }
 
 export function MapEmbedded({ content, organization, primaryColor = '#3B82F6' }: MapEmbeddedProps) {
+  const { horarioSede } = useRutaSitio()
   const title = content.title || 'Encuéntranos'
   const address = organization?.address || content.address || ''
-  const query = encodeURIComponent(address)
+  const mapa = urlMapaEmbebido({ direccion: address })
+
+  // Horario legible: el de la sede (el mismo del pie) o, si no, business_hours con los días en
+  // español. Antes se pintaba JSON.stringify: «Horario {}» en 47 sitios. Vacío → sin bloque.
+  const horario = horarioSede ?? parseHorario(normalizarDias(organization?.website_settings?.business_hours))
+  const filas = horario ? filasHorario(horario, null) : []
 
   return (
     <div>
       {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-2 rounded-xl overflow-hidden min-h-[350px]">
-          {address ? (
+          {mapa ? (
             <iframe
-              src={`https://maps.google.com/maps?q=${query}&output=embed`}
+              src={mapa}
+              title={`Mapa: ${address}`}
               className="w-full h-full min-h-[350px] border-0"
               allowFullScreen
               loading="lazy"
@@ -38,10 +49,17 @@ export function MapEmbedded({ content, organization, primaryColor = '#3B82F6' }:
               {organization?.city && <p className="text-gray-600 dark:text-gray-400 text-sm">{organization.city}, {organization?.state}</p>}
             </div>
           )}
-          {content.show_hours !== false && organization?.website_settings?.business_hours && (
+          {content.show_hours !== false && filas.length > 0 && (
             <div>
               <h3 className="font-semibold mb-1 text-gray-900 dark:text-white">Horario</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">{JSON.stringify(organization.website_settings.business_hours)}</p>
+              <dl className="text-sm">
+                {filas.map((fila) => (
+                  <div key={fila.etiqueta} className="flex justify-between gap-4 py-0.5">
+                    <dt className="text-gray-600 dark:text-gray-400">{fila.etiqueta}</dt>
+                    <dd className="text-gray-900 dark:text-gray-200 text-right">{fila.horas ?? 'Cerrado'}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           )}
           {organization?.phone && (

@@ -174,7 +174,7 @@ export function OrganizationLayoutCliente({
   
   return (
     <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
-    <RutaSitioProvider prefijo={prefijo}>
+    <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
