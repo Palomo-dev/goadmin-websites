@@ -42,6 +42,52 @@ export function esSede(branchId: number | null | undefined): branchId is number 
   return typeof branchId === 'number' && Number.isInteger(branchId) && branchId > 0
 }
 
+// ─── Sede efectiva de la carta ──────────────────────────────────────────────────────────────
+//
+// Regla única para los dos repos (la misma que abre el panel «Carta por sede» del ERP): con sede
+// explícita, la carta es la de esa sede; en el sitio principal, la de la sede activa marcada
+// `is_main`. Sin sede principal → `null` (sin carta por sede, como siempre).
+//
+// No confundir con la sede de inventario de `/api/orders` (`resolvedBranchId`), que prioriza
+// `is_web_stock_source` y puede ser otra: la carta es la que editó el negocio para la principal.
+
+export interface SedeParaCarta {
+  id: number
+  is_main?: boolean | null
+  is_active?: boolean | null
+}
+
+/** Parte pura de {@link resolverSedeCarta}: elige la sede de la carta entre las de la organización. */
+export function sedeCartaDe(sedes: SedeParaCarta[] | null | undefined, branchId?: number | null): number | null {
+  if (esSede(branchId)) return branchId
+  const principal = (sedes || []).find((s) => s.is_main === true && s.is_active !== false)
+  return principal && esSede(Number(principal.id)) ? Number(principal.id) : null
+}
+
+/**
+ * Sede cuya carta aplica a una petición (contrato publicado para el checkout y `/api/orders`).
+ *
+ * `organizationId` sale SIEMPRE del contexto del host. Con `branchId` válido (ya comprobado contra
+ * la organización por quien llama) lo devuelve tal cual, sin consultar. Sin él, busca la sede
+ * principal con la lista de sedes cacheada (`getOrganizationBranches`, SETTINGS_TTL): no suma
+ * consultas por render. Si la lectura falla, `null`: se cobra y se muestra sin carta, igual que
+ * un sitio que nunca la configuró.
+ *
+ * Importación dinámica a propósito: este módulo es puro (lo carga `scripts/verify-precios-pedido.mjs`
+ * sin Next) y `queries.ts` ya lo importa a él.
+ */
+export async function resolverSedeCarta(organizationId: number, branchId?: number | null): Promise<number | null> {
+  if (esSede(branchId)) return branchId
+  try {
+    const { getOrganizationBranches } = await import('@/lib/supabase/queries')
+    const sedes = (await getOrganizationBranches(organizationId)) as SedeParaCarta[]
+    return sedeCartaDe(sedes, null)
+  } catch (error) {
+    console.error('[carta-sede] No se pudo resolver la sede principal de la carta', { organizationId, error })
+    return null
+  }
+}
+
 /** Agotado en la sede ahora mismo. */
 export function agotadoEnSede(fila: FilaCartaSede | undefined, ahora: Date = new Date()): boolean {
   if (!fila || fila.is_sold_out !== true) return false
