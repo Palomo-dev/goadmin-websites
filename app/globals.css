@@ -121,3 +121,108 @@
     bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   Estilo del editor del ERP (Diseño › Estilo del sitio y estilo por sección).
+   Todas las reglas cuelgan de un atributo `data-*` que solo se pone cuando el sitio o la sección
+   lo definen (lib/website/v2/temaPublico.ts y estiloSeccionPublico.ts): un sitio o una sección
+   sin estilo guardado no cambia en nada.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+
+/* Visibilidad por dispositivo (mismos cortes que lib/sectionStyle.ts: 768 y 1024). */
+@media (max-width: 767px) {
+  [data-oculto-celular] { display: none !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-oculto-tableta] { display: none !important; }
+}
+@media (min-width: 1024px) {
+  [data-oculto-computador] { display: none !important; }
+}
+
+/* Fondo de la sección: «Alterno» (un tono sobre el fondo) y «Oscuro» (el oscuro de la marca). */
+[data-seccion-fondo='alterno'] {
+  background-color: color-mix(in srgb, var(--text-color, #111827) 4%, var(--background-color, #ffffff));
+}
+.dark [data-seccion-fondo='alterno'] {
+  background-color: color-mix(in srgb, var(--text-color, #ffffff) 6%, var(--background-color, #111827));
+}
+[data-seccion-fondo='oscuro'] {
+  background-color: var(--secondary-color);
+  color: #ffffff;
+}
+[data-seccion-fondo='oscuro'] :is(h1, h2, h3, h4, h5, h6, p, li) { color: inherit; }
+
+/* Tipografía propia de la sección (variables de variablesCssSeccion). */
+[data-seccion-fuente-titulo] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--seccion-fuente-titulo); }
+[data-seccion-fuente-texto] { font-family: var(--seccion-fuente-texto); }
+[data-seccion-tamano-titulo] :is(h1, h2) { font-size: var(--seccion-tamano-titulo); }
+[data-seccion-tamano-texto] :is(p, li) { font-size: var(--seccion-tamano-texto); }
+@media (max-width: 767px) {
+  [data-seccion-tamano-titulo] :is(h1, h2) { font-size: var(--seccion-tamano-titulo-movil, var(--seccion-tamano-titulo)); }
+  [data-seccion-tamano-texto] :is(p, li) { font-size: var(--seccion-tamano-texto-movil, var(--seccion-tamano-texto)); }
+}
+[data-seccion-grosor-titulo] :is(h1, h2, h3, h4, h5, h6) { font-weight: var(--seccion-grosor-titulo); }
+[data-seccion-grosor-texto] :is(p, li) { font-weight: var(--seccion-grosor-texto); }
+[data-seccion-interlineado-titulo] :is(h1, h2, h3, h4, h5, h6) { line-height: var(--seccion-interlineado-titulo); }
+[data-seccion-interlineado-texto] :is(p, li) { line-height: var(--seccion-interlineado-texto); }
+[data-seccion-mayusculas-titulo] :is(h1, h2, h3, h4, h5, h6) {
+  text-transform: var(--seccion-mayusculas-titulo);
+  letter-spacing: var(--seccion-espaciado-titulo);
+}
+[data-seccion-mayusculas-texto] :is(p, li) {
+  text-transform: var(--seccion-mayusculas-texto);
+  letter-spacing: var(--seccion-espaciado-texto);
+}
+
+/* Colores de la sección: `marca:<rol>` llega como var(--primary-color)… y sigue a la marca. */
+[data-seccion-color-texto],
+[data-seccion-color-texto] :is(h1, h2, h3, h4, h5, h6, p, li) { color: var(--seccion-color-texto); }
+[data-seccion-color-borde] :is(.border, .border-t, .border-b, .border-l, .border-r, .border-y, .border-x, hr) {
+  border-color: var(--seccion-color-borde);
+}
+
+/* Entrada al aparecer (EntradaSeccion marca data-motion/data-inview; nunca sin JS). La distancia
+   sale del «Movimiento» del sitio (--movimiento-distancia), 16 px si no lo define. */
+[data-seccion-entrada][data-motion='on'] > div {
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-seccion-entrada][data-motion='on']:not([data-inview='true']) > div {
+  opacity: 0;
+  transform: translateY(var(--movimiento-distancia, 16px));
+}
+[data-seccion-entrada='revelar_texto'][data-motion='on'] :is(h1, h2, h3) {
+  transition: clip-path 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s;
+  clip-path: inset(0 0 0 0);
+}
+[data-seccion-entrada='revelar_texto'][data-motion='on']:not([data-inview='true']) :is(h1, h2, h3) {
+  clip-path: inset(0 0 100% 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-seccion-entrada] > div,
+  [data-seccion-entrada] :is(h1, h2, h3) { transition: none !important; opacity: 1 !important; transform: none !important; clip-path: none !important; }
+}
+
+/* Estilo general del sitio V2 (data-* del layout). */
+[data-tema-colores] {
+  background-color: var(--background-color, #ffffff);
+  color: var(--text-color, #111827);
+}
+[data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
+[data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
+/* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian). */
+[data-radio-boton] section[data-section-id] :is(a, button)[class*='rounded']:not([class*='rounded-full']):not([class*='rounded-none']) {
+  border-radius: var(--radio-boton);
+}
+[data-radio-boton] section[data-section-id] :is(input, select, textarea)[class*='rounded'] {
+  border-radius: min(var(--radio-boton), 12px);
+}
+[data-estilo-boton='contorno'] section[data-section-id] :is(a, button)[style*='background'] {
+  background: transparent !important;
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color) !important;
+}
+[data-estilo-boton='sombra_dura'] section[data-section-id] :is(a, button)[style*='background'] {
+  border: 2px solid var(--text-color, #111827);
+  box-shadow: 4px 4px 0 0 var(--text-color, #111827);
+}

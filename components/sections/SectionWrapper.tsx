@@ -1,5 +1,8 @@
 import type { Json } from '@/types/database'
 import { buildSectionStyle } from '@/lib/sectionStyle'
+import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
+import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
+import { EntradaSeccion } from './EntradaSeccion'
 
 interface SectionSettings {
   bg_color?: string | null
@@ -53,7 +56,13 @@ const MARGIN_MAP: Record<string, string> = {
   xl: '16',
 }
 
-export function SectionWrapper({ settings, content, primaryColor, sectionType, sectionId, children }: SectionWrapperProps) {
+export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionId, children }: SectionWrapperProps) {
+  // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
+  // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
+  const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
+  if (presentacion.oculta) return null
+  const content = presentacion.contenido as Record<string, any>
+  const hojaFuentes = urlGoogleFonts(presentacion.fuentes)
   const paddingTop = content?.padding_top || 'lg'
   const paddingBottom = content?.padding_bottom || 'lg'
   const paddingX = content?.padding_x || 'md'
@@ -115,7 +124,7 @@ export function SectionWrapper({ settings, content, primaryColor, sectionType, s
     .join(' ')
 
   // Merge: el estilo del contrato (bg image, gradient, border, CSS vars) + fallback viejo
-  const style: React.CSSProperties = { ...contractStyle }
+  const style: React.CSSProperties = { ...contractStyle, ...(presentacion.variables as React.CSSProperties) }
   const hasContractBg = '--sec-bg' in (contractStyle as any)
   const hasContractText = '--sec-text' in (contractStyle as any)
 
@@ -144,7 +153,10 @@ export function SectionWrapper({ settings, content, primaryColor, sectionType, s
       className={`w-full ${pt} ${pb} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
       style={style}
       data-section-id={sectionId}
+      {...presentacion.datos}
     >
+      {hojaFuentes && <link rel="stylesheet" href={hojaFuentes} />}
+      {'data-seccion-entrada' in presentacion.datos && <EntradaSeccion />}
       <div className={innerClass}>
         {children}
       </div>

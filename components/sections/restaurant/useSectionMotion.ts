@@ -12,8 +12,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+/**
+ * Sin movimiento: el visitante lo pidió (`prefers-reduced-motion`) o el sitio eligió
+ * «Movimiento: Ninguno» en Diseño (atributo `data-movimiento` del layout, solo sitios V2).
+ */
 export function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (typeof window === 'undefined') return false
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true
+  return document.querySelector('[data-movimiento="ninguno"]') !== null
 }
 
 export function useReducedMotion(): boolean {

@@ -27,6 +27,7 @@ import { RutaSitioProvider } from '@/lib/outlet/RutaSitioContext'
 import { SelectorSede } from './header/SelectorSede'
 import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
+import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -69,6 +70,8 @@ export interface OrganizationLayoutProps {
   branchId?: number | null
   /** Lo pone el envoltorio de servidor (OrganizationLayout); las rutas no lo pasan. */
   datosSede?: DatosSedeLayout
+  /** Estilo general del sitio V2 (OrganizationLayout). `null`/ausente = legacy, como siempre. */
+  temaSitio?: TemaPublico | null
 }
 
 export function OrganizationLayoutCliente({
@@ -93,6 +96,7 @@ export function OrganizationLayoutCliente({
   outlet,
   branchId,
   datosSede,
+  temaSitio,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -162,6 +166,9 @@ export function OrganizationLayoutCliente({
   // El carrito está disponible para todos los tipos de organización
   const showCart = true
   
+  const temaVars = atributosTema(temaSitio ?? null)
+  const hojaFuentesTema = temaSitio ? urlGoogleFonts([temaSitio.fuenteTitulos, temaSitio.fuenteCuerpo]) : null
+
   // CSS Variables para colores personalizados
   const secondaryColor = settings?.secondary_color || organization.secondary_color || '#1E40AF'
   const cssVariables = {
@@ -170,6 +177,12 @@ export function OrganizationLayoutCliente({
     '--accent-color': settings?.accent_color || primaryColor,
     '--font-heading': template.fonts.heading,
     '--font-body': template.fonts.body,
+    // Fondo y texto del modo: los usan las referencias `marca:fondo` / `marca:texto` del estilo
+    // por sección y el fondo «Alterno». El tema V2 los reemplaza abajo si los define.
+    '--background-color': isDark ? '#111827' : '#ffffff',
+    '--text-color': isDark ? '#ffffff' : '#111827',
+    // Estilo general del sitio V2 (Diseño › Estilo del sitio). Legacy: sin variables nuevas.
+    ...temaVars.variables,
   } as React.CSSProperties
   
   return (
@@ -179,8 +192,10 @@ export function OrganizationLayoutCliente({
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
+      {...temaVars.datos}
       suppressHydrationWarning
     >
+      {hojaFuentesTema && <link rel="stylesheet" href={hojaFuentesTema} />}
       {/* Header específico según tipo (oculto si la cuenta está congelada) */}
       {!frozenReason && (
         <ZonaGlobalPreview zona="header">

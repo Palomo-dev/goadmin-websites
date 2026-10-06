@@ -17,6 +17,7 @@
 import { resolverCampo, LIMITES_DOCUMENTO, type DocumentoSitio, type ItemMenu, type MenuSitio, type PaginaSitio } from './contrato/documentoSitio'
 import { CAMPOS_HEREDABLES, COLUMNAS_SHELL_ESTRUCTURA, OPCIONES_SHELL, esVacio } from './mapeoAjustes'
 import { leerCampo, structuredCloneSeguro, valorPropioDe } from './rutasDocumento'
+import { visibilidadDesdeDocumento } from './estiloSeccion'
 import type {
   WebsiteMenuItemWithChildren,
   WebsiteMenuWithItems,
@@ -126,10 +127,14 @@ function textoSeo(campo: { mode: string; value?: unknown } | undefined): string 
 export function paginaAPublica(pagina: PaginaSitio, ctx: ContextoPublico): WebsitePageWithSections {
   const secciones: WebsitePageSection[] = []
   pagina.secciones.forEach((s, i) => {
-    // El renderizador solo conoce «visible»: visible si lo es en algún dispositivo (mismo
-    // criterio que el editor del ERP, seccionAVista).
-    const visible = s.visibilidad?.escritorio !== false || s.visibilidad?.movil !== false
-    if (!visible) return
+    // Visibilidad por dispositivo con la regla del editor (`visibilidadDesdeDocumento`): oculta
+    // en los tres → no sale; si difiere entre dispositivos va a `settings.visibilidad`
+    // {computador, tableta, celular}, el mismo formato que legacy, y la aplica SectionWrapper.
+    const vis = visibilidadDesdeDocumento(s.visibilidad)
+    if (!vis.computador && !vis.tableta && !vis.celular) return
+    const uniforme = vis.computador === vis.tableta && vis.tableta === vis.celular
+    const settings = structuredCloneSeguro(s.diseno ?? {}) as Record<string, unknown>
+    if (!uniforme) settings.visibilidad = vis
     secciones.push({
       id: s.id,
       page_id: pagina.id,
@@ -137,7 +142,7 @@ export function paginaAPublica(pagina: PaginaSitio, ctx: ContextoPublico): Websi
       section_type: s.tipo,
       section_variant: s.variante ?? 'default',
       content: structuredCloneSeguro(s.contenido) as WebsitePageSection['content'],
-      settings: structuredCloneSeguro(s.diseno ?? {}) as WebsitePageSection['settings'],
+      settings: settings as WebsitePageSection['settings'],
       sort_order: i,
       is_visible: true,
       created_at: '',
