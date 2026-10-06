@@ -460,31 +460,33 @@ export default function SiteHeader({
 function useCategoriaActiva(hrefs: string[] | null) {
   const clave = hrefs ? hrefs.join('|') : ''
   useEffect(() => {
-    if (!clave || typeof IntersectionObserver === 'undefined') return
+    if (!clave) return
     const slugs = clave.split('|').map((h) => decodeURIComponent(h.split('#cat-')[1] ?? '')).filter(Boolean)
+    const secciones = Array.from(document.querySelectorAll<HTMLElement>('[id^="carta-"]'))
     const objetivos = slugs
-      .map((slug) => ({ slug, el: Array.from(document.querySelectorAll<HTMLElement>('[id^="carta-"]')).find((e) => e.id.endsWith(`-${slug}`)) }))
+      .map((slug) => ({ slug, el: secciones.find((e) => e.id.endsWith(`-${slug}`)) }))
       .filter((o): o is { slug: string; el: HTMLElement } => !!o.el)
     if (objetivos.length === 0) return
-    const marcar = (slug: string) => {
+    let actual = ''
+    // Activa = la última categoría cuyo inicio ya pasó por debajo del encabezado fijo (en el orden
+    // de la carta). Antes de la primera, ninguna.
+    const calcular = () => {
+      const borde = (document.querySelector('header')?.getBoundingClientRect().bottom ?? 0) + 24
+      let activa = ''
+      for (const o of objetivos) if (o.el.getBoundingClientRect().top <= borde) activa = o.slug
+      if (activa === actual) return
+      actual = activa
       document.querySelectorAll('header a[data-categoria-activa]').forEach((a) => a.removeAttribute('data-categoria-activa'))
-      document.querySelectorAll(`header a[href$="#cat-${CSS.escape(encodeURIComponent(slug))}"]`).forEach((a) => a.setAttribute('data-categoria-activa', ''))
+      if (activa) {
+        document.querySelectorAll(`header a[href$="#cat-${CSS.escape(encodeURIComponent(activa))}"]`).forEach((a) => a.setAttribute('data-categoria-activa', ''))
+      }
     }
-    const visibles = new Set<string>()
-    const observador = new IntersectionObserver(
-      (entradas) => {
-        for (const e of entradas) {
-          const slug = objetivos.find((o) => o.el === e.target)?.slug
-          if (!slug) continue
-          if (e.isIntersecting) visibles.add(slug)
-          else visibles.delete(slug)
-        }
-        const primera = slugs.find((s) => visibles.has(s))
-        if (primera) marcar(primera)
-      },
-      { rootMargin: '-120px 0px -55% 0px', threshold: 0 },
-    )
-    objetivos.forEach((o) => observador.observe(o.el))
-    return () => observador.disconnect()
+    calcular()
+    window.addEventListener('scroll', calcular, { passive: true })
+    window.addEventListener('resize', calcular)
+    return () => {
+      window.removeEventListener('scroll', calcular)
+      window.removeEventListener('resize', calcular)
+    }
   }, [clave])
 }
