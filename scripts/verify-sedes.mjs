@@ -17,7 +17,9 @@
  * 3. Horario (lib/restaurant/horario.ts): turnos partidos (16:30 entre turnos → cerrado y
  *    «abre hoy a las 19:00»), turno que cruza la medianoche, horario por defecto del ERP en las
  *    formas reales de la BD (verificadas por MCP el 2026-10-06), días en español de
- *    business_hours, «Horario {}» → sin filas, y horaEnZona con la zona de la sede.
+ *    business_hours, «Horario {}» → sin filas, y horaEnZona con la zona de la sede. Además
+ *    horarioDeSede (el por defecto no rechaza pedidos) y franjasPedido con turno partido: ninguna
+ *    franja en el hueco entre turnos y todas aceptadas por validarMomentoPedido.
  * 4. «Cómo llegar» (lib/maps/comoLlegar.ts).
  */
 
@@ -33,6 +35,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MODULOS = {
   rutaSitio: 'lib/outlet/rutaSitio.ts',
   horario: 'lib/restaurant/horario.ts',
+  ventanaPedido: 'lib/restaurant/ventanaPedido.ts',
   comoLlegar: 'lib/maps/comoLlegar.ts',
 }
 
@@ -214,6 +217,30 @@ function igual(a, b, msg) {
   igual(parseHorario(normalizarDias({ 'Miércoles': { open: '08:00', close: '10:00' } }))?.wednesday, { abre: '08:00', cierra: '10:00' }, 'con tilde y mayúscula')
   igual(parseHorario(normalizarDias({})), null, "'{}' no produce horario («Horario {}» nunca se pinta)")
   igual(filasHorario(semana, null)[0], { etiqueta: 'Lunes', horas: '12:00 – 22:00', esHoy: false }, 'fila legible')
+
+  // horarioDeSede: la regla de la carta, el checkout y /api/orders (por defecto → sin horario).
+  igual(m.horario.horarioDeSede(defecto), null, 'horarioDeSede descarta el por defecto del ERP')
+  igual(m.horario.horarioDeSede({}), null, 'horarioDeSede sin datos')
+  igual(m.horario.horarioDeSede({ wednesday: { open: '12:00', close: '22:00' } })?.wednesday, { abre: '12:00', cierra: '22:00' }, 'horarioDeSede conserva un horario real')
+  // Con el por defecto, «lo antes posible» a las 20:00 se acepta (no se valida con un horario inventado).
+  check(m.ventanaPedido.validarMomentoPedido(m.horario.horarioDeSede(defecto), BOG, null, en('20:00')).ok, 'horario por defecto: el pedido «ya» a las 20:00 no se rechaza')
+
+  // Franjas con turno partido: ninguna en el hueco 15:00-19:00 y todas las acepta validarMomentoPedido.
+  {
+    const { franjasPedido, validarMomentoPedido } = m.ventanaPedido
+    const ahora = en('10:00')
+    const franjas = franjasPedido(partido, BOG, ahora, { diasAdelante: 1 })
+    const horas = franjas.map((iso) => horaEnZona(iso, BOG))
+    check(horas.length > 0, 'turno partido: hay franjas')
+    const enHueco = horas.filter((h) => h >= '15:00' && h < '19:00')
+    check(enHueco.length === 0, `turno partido: franjas en el hueco entre turnos ${JSON.stringify(enHueco)}`)
+    igual([horas[0], horas.includes('14:30'), horas.includes('19:00'), horas[horas.length - 1]], ['12:00', true, true, '22:30'], 'turno partido: franjas de los dos turnos')
+    const rechazadas = franjas.filter((iso) => !validarMomentoPedido(partido, BOG, iso, ahora).ok)
+    check(rechazadas.length === 0, `turno partido: el servidor rechazaría franjas ofrecidas ${JSON.stringify(rechazadas.map((iso) => horaEnZona(iso, BOG)))}`)
+    // Turno de ayer que pasa la medianoche: miércoles 00:10 ofrece 01:00 y 01:30 del turno del martes.
+    const deNoche = franjasPedido(noche, BOG, en('00:10'), { diasAdelante: 1 }).map((iso) => horaEnZona(iso, BOG))
+    igual(deNoche, ['01:00', '01:30'], 'turno de ayer que cruza la medianoche (00:10 + 30 min de antelación, cierra 02:00)')
+  }
 
   igual(horaEnZona('2026-10-07T21:30:00Z', BOG), '16:30', 'horaEnZona Bogotá')
   igual(horaEnZona(new Date('2026-10-07T21:30:00Z'), 'Europe/Madrid'), '23:30', 'horaEnZona Madrid')

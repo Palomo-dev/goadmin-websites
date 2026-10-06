@@ -23,6 +23,7 @@ import {
   hoyEnZona,
   instanteEnZona,
   sumarDias,
+  turnosDe,
   aMinutos,
   DIAS,
   type Dia,
@@ -51,7 +52,7 @@ function diaDeFecha(fecha: string): Dia {
 }
 
 /**
- * Franjas (instantes ISO) en las que se puede programar un pedido: dentro de los tramos de la
+ * Franjas (instantes ISO) en las que se puede programar un pedido: dentro de los turnos de la
  * sede, en su zona, desde `ahora + antelacionMin`. Incluye el turno de ayer que sigue abierto
  * pasada la medianoche y turnos que cierran después de las 00:00.
  */
@@ -72,19 +73,22 @@ export function franjasPedido(
   // Desde ayer (turno que cruza la medianoche) hasta el último día pedido.
   for (let d = -1; d < diasAdelante; d++) {
     const fecha = sumarDias(hoy, d)
-    const tramo = horario[diaDeFecha(fecha)]
-    if (!tramo) continue
-    const abre = aMinutos(tramo.abre)
-    let cierra = aMinutos(tramo.cierra)
-    if (cierra <= abre) cierra += 24 * 60
-    for (let m = abre; m < cierra; m += pasoMin) {
-      const fechaFranja = m >= 24 * 60 ? sumarDias(fecha, 1) : fecha
-      const t = instanteEnZona(fechaFranja, horaDeMinutos(m % (24 * 60)), zona).getTime()
-      if (t < desde || t > hasta) continue
-      const iso = new Date(t).toISOString()
-      if (vistos.has(iso)) continue
-      vistos.add(iso)
-      franjas.push({ t, iso })
+    // Turno por turno (turnosDe): con turno partido (12:00-15:00 · 19:00-23:00) no se ofrecen las
+    // horas del hueco, que validarMomentoPedido (estadoApertura) rechaza. De ayer solo cuenta el
+    // tramo que pasa de la medianoche; los demás ya quedaron antes de `desde`.
+    for (const turno of turnosDe(horario[diaDeFecha(fecha)])) {
+      const abre = aMinutos(turno.abre)
+      let cierra = aMinutos(turno.cierra)
+      if (cierra <= abre) cierra += 24 * 60
+      for (let m = abre; m < cierra; m += pasoMin) {
+        const fechaFranja = m >= 24 * 60 ? sumarDias(fecha, 1) : fecha
+        const t = instanteEnZona(fechaFranja, horaDeMinutos(m % (24 * 60)), zona).getTime()
+        if (t < desde || t > hasta) continue
+        const iso = new Date(t).toISOString()
+        if (vistos.has(iso)) continue
+        vistos.add(iso)
+        franjas.push({ t, iso })
+      }
     }
   }
   return franjas.sort((a, b) => a.t - b.t).map((f) => f.iso)
