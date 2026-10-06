@@ -19,7 +19,7 @@ import {
 } from '@/lib/products/precio-servidor'
 import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
-import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
+import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, sedePorDefectoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
 import { hoyEnZona, parseHorario } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
@@ -184,11 +184,7 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true)
         .order('id', { ascending: true })
 
-      const list = branches || []
-      resolvedBranchId =
-        list.find((b: any) => b.is_web_stock_source)?.id ??
-        list.find((b: any) => b.is_main)?.id ??
-        list[0]?.id
+      resolvedBranchId = sedePorDefectoPedido<{ id: number; is_main: boolean | null; is_web_stock_source: boolean | null }>(branches)?.id
     }
 
     const sedeExplicita: number | null = Number.isFinite(branchId) ? Number(branchId) : null

@@ -184,3 +184,15 @@ export async function leerContextoPedido(
       : null,
   }
 }
+
+/**
+ * Sede del pedido cuando el checkout no manda una explícita: la fuente de inventario web, si no
+ * la principal, si no la primera (por id) entre las activas. La usan `/api/orders` (stock y
+ * horario) y la página del checkout (horario que se le muestra al cliente), para que sean la misma.
+ */
+export function sedePorDefectoPedido<T extends { id: number; is_main?: boolean | null; is_web_stock_source?: boolean | null; is_active?: boolean | null }>(
+  sedes: T[] | null | undefined,
+): T | null {
+  const activas = (sedes || []).filter((b) => b.is_active !== false).sort((a, b) => a.id - b.id)
+  return activas.find((b) => b.is_web_stock_source) ?? activas.find((b) => b.is_main) ?? activas[0] ?? null
+}
