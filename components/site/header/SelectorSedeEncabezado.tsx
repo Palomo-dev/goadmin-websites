@@ -24,6 +24,26 @@ export function SelectorSedeEncabezado({ primaryColor }: { primaryColor: string 
         primaryColor={primaryColor}
         prefijoActual={selector.prefijoActual}
         hrefTodas={selector.hrefTodas}
+        apariencia="pastilla"
+      />
+    </div>
+  );
+}
+
+/** Dentro de la hoja inferior del celular (Carta QR): sin fila aparte bajo el encabezado. */
+export function SelectorSedeHoja({ primaryColor }: { primaryColor: string }) {
+  const { selector } = useEncabezadoPie();
+  if (!selector) return null;
+  return (
+    <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <SelectorSede
+        sedes={selector.sedes}
+        actualId={selector.actualId}
+        subdomain={selector.subdomain}
+        primaryColor={primaryColor}
+        prefijoActual={selector.prefijoActual}
+        hrefTodas={selector.hrefTodas}
+        apariencia="pastilla"
       />
     </div>
   );
@@ -42,6 +62,7 @@ export function FilaSedeMovil({ primaryColor }: { primaryColor: string }) {
         primaryColor={primaryColor}
         prefijoActual={selector.prefijoActual}
         hrefTodas={selector.hrefTodas}
+        apariencia="pastilla"
       />
     </div>
   );

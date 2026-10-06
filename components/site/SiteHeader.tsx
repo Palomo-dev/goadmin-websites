@@ -381,6 +381,8 @@ export default function SiteHeader({
         level: 0,
       }) as unknown as WebsitePageWithChildren)
     : navTreeSitio
+  // Categoría activa al hacer scroll por la carta: resalta su enlace del encabezado.
+  useCategoriaActiva(categoriasCarta && categoriasCarta.length > 0 ? categoriasCarta.map((c) => c.href) : null)
 
   // Determinar variante de header
   const headerStyle = settings?.header_style || 'default'
@@ -448,4 +450,41 @@ export default function SiteHeader({
       return <HeaderClassic {...variantProps} />
   }
   }
+}
+
+/**
+ * Carta QR: marca con `data-categoria-activa` el enlace del encabezado (`…#cat-<slug>`) cuya
+ * categoría está a la vista (las secciones de la carta llevan id `carta-<sección>-<slug>`).
+ * Sin categorías de la carta no hace nada.
+ */
+function useCategoriaActiva(hrefs: string[] | null) {
+  const clave = hrefs ? hrefs.join('|') : ''
+  useEffect(() => {
+    if (!clave || typeof IntersectionObserver === 'undefined') return
+    const slugs = clave.split('|').map((h) => decodeURIComponent(h.split('#cat-')[1] ?? '')).filter(Boolean)
+    const objetivos = slugs
+      .map((slug) => ({ slug, el: Array.from(document.querySelectorAll<HTMLElement>('[id^="carta-"]')).find((e) => e.id.endsWith(`-${slug}`)) }))
+      .filter((o): o is { slug: string; el: HTMLElement } => !!o.el)
+    if (objetivos.length === 0) return
+    const marcar = (slug: string) => {
+      document.querySelectorAll('header a[data-categoria-activa]').forEach((a) => a.removeAttribute('data-categoria-activa'))
+      document.querySelectorAll(`header a[href$="#cat-${CSS.escape(encodeURIComponent(slug))}"]`).forEach((a) => a.setAttribute('data-categoria-activa', ''))
+    }
+    const visibles = new Set<string>()
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) {
+          const slug = objetivos.find((o) => o.el === e.target)?.slug
+          if (!slug) continue
+          if (e.isIntersecting) visibles.add(slug)
+          else visibles.delete(slug)
+        }
+        const primera = slugs.find((s) => visibles.has(s))
+        if (primera) marcar(primera)
+      },
+      { rootMargin: '-120px 0px -55% 0px', threshold: 0 },
+    )
+    objetivos.forEach((o) => observador.observe(o.el))
+    return () => observador.disconnect()
+  }, [clave])
 }

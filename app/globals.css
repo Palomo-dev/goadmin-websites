@@ -350,3 +350,8 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) details {
   border-color: transparent !important;
 }
+/* Carta QR: categoría de la carta a la vista, resaltada en el menú del encabezado (SiteHeader). */
+header a[data-categoria-activa][data-categoria-activa] {
+  font-weight: 600;
+  color: var(--text-color, #111827) !important;
+}

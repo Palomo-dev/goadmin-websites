@@ -1,6 +1,8 @@
 'use client';
 
-import { FilaSedeMovil } from '../SelectorSedeEncabezado';
+import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
+import { useEncabezadoPie } from '../../EncabezadoPieContext';
+import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, ChevronDown, Globe, Search } from 'lucide-react';
@@ -35,6 +37,8 @@ export default function MobileBottomSheet({
   branchId,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
+  const { opciones: opcionesShell } = useEncabezadoPie();
+  const temaColores = useTemaColores();
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
@@ -87,6 +91,10 @@ export default function MobileBottomSheet({
                       ))}
                     </div>
 
+                    {/* Selector de sede dentro de la hoja (header_show_branch_selector): sin fila aparte. */}
+                    <SelectorSedeHoja primaryColor={primaryColor} />
+
+                    {opcionesShell.moneda && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                       <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
                         <Globe className="h-4 w-4" />
@@ -94,7 +102,10 @@ export default function MobileBottomSheet({
                       </div>
                       <MobileCurrencyChips primaryColor={primaryColor} />
                     </div>
+                    )}
 
+                    {/* V2 con tema y sin cuenta en el encabezado (Carta QR): sin «Mi Cuenta». Legacy: como siempre. */}
+                    {!(temaColores && settings?.show_header_auth === false) && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                       <Link
                         href="/auth"
@@ -105,6 +116,7 @@ export default function MobileBottomSheet({
                         Mi Cuenta
                       </Link>
                     </div>
+                    )}
                   </div>
                 </Drawer.Content>
               </Drawer.Root>
@@ -119,12 +131,12 @@ export default function MobileBottomSheet({
                 className="w-full"
                 size="sm"
                 icon={SearchIconComp}
+                placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined}
               />
             </div>
           )}
         </div>
       </div>
-      <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
 }

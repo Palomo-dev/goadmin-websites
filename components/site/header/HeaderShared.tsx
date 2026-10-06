@@ -780,6 +780,7 @@ export function SearchBarInline({
   className = '',
   size = 'md',
   icon,
+  placeholder,
 }: {
   primaryColor: string;
   /** Ya no se usa: el buscador resuelve la organización por el host. Se acepta por compatibilidad. */
@@ -787,6 +788,8 @@ export function SearchBarInline({
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   icon?: any;
+  /** Sin valor, el de siempre («Buscar productos...»). */
+  placeholder?: string;
 }) {
   return (
     <div className={className}>
@@ -795,6 +798,7 @@ export function SearchBarInline({
         size={size}
         className="w-full"
         icon={icon}
+        {...(placeholder ? { placeholder } : {})}
       />
     </div>
   );

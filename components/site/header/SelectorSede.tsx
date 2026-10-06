@@ -47,8 +47,11 @@ export interface SelectorSedeProps {
   /** «Ver todas las sedes y horarios» (opcional). */
   hrefTodas?: string | null
   className?: string
-  /** `chip` (encabezado) o `enlace` (texto «Cambiar sede», p. ej. en el checkout). */
-  apariencia?: 'chip' | 'enlace'
+  /**
+   * `chip` (franja bajo el encabezado), `enlace` (texto «Cambiar sede», p. ej. en el checkout) o
+   * `pastilla` (dentro del encabezado, láminas de Figma: «📍 Sede Centro ● Abierto ahora ▾»).
+   */
+  apariencia?: 'chip' | 'enlace' | 'pastilla'
 }
 
 /** Rutas que no tienen sentido en otra sede (otro pedido, otro plato): se va a la portada de la sede. */
@@ -156,12 +159,26 @@ export function SelectorSede({
         className={cn(
           apariencia === 'chip'
             ? 'inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800'
-            : 'inline-flex items-center gap-1 text-sm font-medium underline-offset-2 hover:underline',
+            : apariencia === 'pastilla'
+              ? 'inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800'
+              : 'inline-flex items-center gap-1 text-sm font-medium underline-offset-2 hover:underline',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
         )}
         style={apariencia === 'enlace' ? { color: primaryColor } : { outlineColor: primaryColor }}
       >
-        {apariencia === 'chip' ? (
+        {apariencia === 'pastilla' ? (
+          <>
+            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="max-w-[10rem] truncate">{actual ? actual.nombre : 'Elige tu sede'}</span>
+            {puntoActual && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', puntoActual)} aria-hidden="true" />}
+            {estadoActual && (
+              <span className="whitespace-nowrap text-xs font-normal text-gray-500 dark:text-gray-400">
+                {estadoActual.estado === 'closed' ? 'Cerrado' : estadoActual.estado === 'closing_soon' ? 'Cierra pronto' : 'Abierto ahora'}
+              </span>
+            )}
+            <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform', abierto && 'rotate-180')} aria-hidden="true" />
+          </>
+        ) : apariencia === 'chip' ? (
           <>
             <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" style={{ color: primaryColor }} />
             <span className="max-w-[12rem] truncate">{actual ? actual.nombre : 'Elige tu sede'}</span>
