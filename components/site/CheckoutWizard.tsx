@@ -10,6 +10,8 @@ import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSe
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation } from '@/components/site/OrderConfirmation'
+import type { HorarioSemana } from '@/lib/restaurant/horario'
+import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
@@ -92,6 +94,21 @@ interface CheckoutSettings {
   countdownConfig?: CountdownConfig
 }
 
+/** Sede del pedido (restaurante): la misma que usa /api/orders para validar el horario. */
+export interface SedePedidoCheckout {
+  id: number
+  nombre: string
+  direccion: string | null
+  horario: HorarioSemana | null
+  zona: string
+}
+
+export interface SedePublicadaCheckout {
+  id: number
+  nombre: string
+  slug: string
+}
+
 interface CheckoutWizardProps {
   organizationId: number
   primaryColor: string
@@ -100,6 +117,8 @@ interface CheckoutWizardProps {
   isRestaurant?: boolean
   organizationSubdomain?: string
   branchId?: number | null
+  sedePedido?: SedePedidoCheckout | null
+  sedesPublicadas?: SedePublicadaCheckout[]
 }
 
 const METHOD_ICONS: Record<string, string> = {
@@ -140,7 +159,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingDescription: '',
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesPublicadas = [] }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
   const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
@@ -687,9 +706,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   }
 
   // Validación para one-page: permitir submit solo si tiene datos requeridos
+  // Horario de la sede (restaurante): misma regla que /api/orders. Con la sede cerrada hay que
+  // programar, y programar exige una hora. Sin horario, o fuera de restaurante, no bloquea nada.
+  const horarioPedido = isRestaurant && orderType !== 'dine_in' ? sedePedido?.horario ?? null : null
+  const momentoBloqueado = horarioPedido
+    ? (isScheduled ? !scheduledAt : !validarMomentoPedido(horarioPedido, sedePedido?.zona, null).ok)
+    : false
+
   const canSubmitOnePage = customerData.firstName && customerData.email && customerData.phone &&
     !!customerData.countryCode &&
-    (isRestaurant && orderType !== 'delivery' ? true : !!customerData.address)
+    (isRestaurant && orderType !== 'delivery' ? true : !!customerData.address) &&
+    !momentoBloqueado
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -916,6 +943,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                         onScheduledChange={setIsScheduled}
                         onTimeChange={setScheduledAt}
                         primaryColor={primaryColor}
+                        horario={horarioPedido}
+                        zona={sedePedido?.zona}
+                        verbo={orderType === 'delivery' ? 'recibes' : orderType === 'pickup' ? 'recoges' : 'quieres'}
                       />
                     )}
                   </div>
@@ -929,6 +959,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       onScheduledChange={setIsScheduled}
                       onTimeChange={setScheduledAt}
                       primaryColor={primaryColor}
+                      horario={horarioPedido}
+                      zona={sedePedido?.zona}
+                      verbo={orderType === 'delivery' ? 'recibes' : orderType === 'pickup' ? 'recoges' : 'quieres'}
                     />
                   </div>
                 )}
@@ -938,8 +971,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     className="w-full mt-6"
                     style={{ backgroundColor: primaryColor }}
                     onClick={() => setStep(2)}
+                    disabled={momentoBloqueado}
                   >
-                    Continuar
+                    {momentoBloqueado ? 'Elige la hora del pedido' : 'Continuar'}
                   </Button>
                 )}
               </CardContent>
@@ -1309,7 +1343,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     {orderType === 'delivery' ? '🛵 Domicilio' : orderType === 'pickup' ? '🏪 Recoger' : '🍽️ Comer aquí'}
                     {isScheduled && scheduledAt && (
                       <span className="text-gray-500 ml-auto">
-                        {new Date(scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        {sedePedido
+                          ? momentoPedido(scheduledAt, sedePedido.zona)
+                          : new Date(scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </span>
                     )}
                   </div>

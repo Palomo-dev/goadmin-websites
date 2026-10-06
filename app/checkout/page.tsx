@@ -5,7 +5,9 @@ import { CheckoutWizard } from '@/components/site/CheckoutWizard'
 import { CurrencySelector } from '@/components/site/CurrencySelector'
 import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
-import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax } from '@/lib/supabase/queries'
+import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
+import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
+import { parseHorario, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
 import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 import MetaPixel from '@/components/site/MetaPixel'
@@ -86,11 +88,35 @@ export default async function CheckoutPage() {
   if (!ctx) return <NotFoundPage />
 
   const { organization, primaryColor, branchId } = ctx
-  const [paymentMethods, metaPixelId, googleAdsConfig] = await Promise.all([
+  const isRestaurant = organization.type_id === 1
+  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
-    getGoogleAdsConfig(organization.id)
+    getGoogleAdsConfig(organization.id),
+    // Lista cacheada (SETTINGS_TTL); solo restaurante la usa para el horario y la banda de sede.
+    isRestaurant ? getOrganizationBranches(organization.id) : Promise.resolve([]),
   ])
+
+  // Sede del pedido: la del sitio de sede o, en el sitio principal, la misma que elige
+  // /api/orders (sedePorDefectoPedido). Su horario y su zona alimentan «¿Para cuándo?» con la
+  // misma regla que valida el servidor.
+  const listaSedes = (sucursales || []) as any[]
+  const sedeFila = typeof branchId === 'number'
+    ? listaSedes.find((b) => Number(b.id) === branchId) ?? null
+    : sedePorDefectoPedido(listaSedes)
+  const sedePedido = isRestaurant && sedeFila
+    ? {
+        id: Number(sedeFila.id),
+        nombre: String(sedeFila.name || ''),
+        direccion: sedeFila.address ? String(sedeFila.address) : null,
+        horario: parseHorario(sedeFila.opening_hours),
+        zona: String(sedeFila.timezone || (organization as any).timezone || ZONA_POR_DEFECTO),
+      }
+    : null
+  // Sedes publicadas en la web (para «Cambiar sede» y el aviso del carrito de otra sede).
+  const sedesPublicadas = listaSedes
+    .filter((b) => b.is_web_published === true && b.slug)
+    .map((b) => ({ id: Number(b.id), nombre: String(b.name || ''), slug: String(b.slug) }))
 
   // Impuesto: solo si hay uno marcado como predeterminado (cacheado 300s)
   const defaultTax = await getDefaultTax(organization.id)
@@ -168,9 +194,11 @@ export default async function CheckoutPage() {
           primaryColor={primaryColor}
           paymentMethods={paymentMethods}
           checkoutSettings={checkoutSettings}
-          isRestaurant={organization.type_id === 1}
+          isRestaurant={isRestaurant}
           organizationSubdomain={organization.subdomain || ''}
           branchId={branchId}
+          sedePedido={sedePedido}
+          sedesPublicadas={sedesPublicadas}
         />
       </main>
 
