@@ -7,6 +7,9 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { ReservationWizard } from './ReservationWizard'
+import { redirect } from 'next/navigation'
+import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +43,16 @@ export default async function ReservasPage() {
   if (!ctx) return <NotFoundPage />
 
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
+
+  // Restaurante: /reservas (y /<sede>/reservas) es el asistente de espacios de hotel. La reserva
+  // de mesa vive en la página con la sección de reserva: se lleva allí, con la sede.
+  if (organization.type_id === 1 && !frozenReason) {
+    const paginas = await getPaginasPublicas(organization.id, ctx.branchId ?? null)
+    const destino = rutaDePaginaCon(paginas, ['reservation', 'reservation_cta'])
+    if (destino && destino !== '/reservas') redirect(conPrefijo(destino, ctx.prefijoSede))
+  } else {
+    // Otras verticales: el asistente de siempre.
+  }
   const [spaceTypes, gateways] = await Promise.all([
     getOrganizationSpaceTypes(organization.id),
     getAvailableGateways(organization.id)
