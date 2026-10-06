@@ -47,6 +47,7 @@ const MODULOS_PUROS = {
   'get-current-price': 'lib/get-current-price.ts',
   'carta-sede': 'lib/products/carta-sede.ts',
   'visibilidad-web': 'lib/products/visibilidad-web.ts',
+  'modificadores': 'lib/products/modificadores.ts',
   'precio-servidor': 'lib/products/precio-servidor.ts',
 }
 
@@ -73,6 +74,7 @@ async function cargarModulos(dir) {
     servidor: await imp('precio-servidor'),
     carta: await imp('carta-sede'),
     visibilidad: await imp('visibilidad-web'),
+    modificadores: await imp('modificadores'),
     normalize: (await imp('normalize')).normalizeProductPrices,
   }
 }
@@ -164,7 +166,7 @@ async function main() {
       const [prods, precios, grupos, cartaFilas] = await Promise.all([
         rest(`products?select=${sel(SEL_PRODUCTO)}&organization_id=eq.${orgId}&id=${enLista(ids)}`),
         rest(`product_prices?select=${sel(SEL_PRECIO)}&product_id=${enLista([...ids, ...padresIds])}&effective_to=is.null`),
-        rest(`product_modifier_groups?select=${sel(SEL_GRUPOS)}&organization_id=eq.${orgId}&product_id=${enLista(ids)}`),
+        rest(`product_modifier_groups?select=${sel(SEL_GRUPOS)}&organization_id=eq.${orgId}&product_id=${enLista([...ids, ...padresIds])}`),
         rest(`website_branch_products?select=${sel(M.carta.SELECT_CARTA_SEDE + ', branch_id')}&organization_id=eq.${orgId}&product_id=${enLista(ids)}&limit=${N}`),
       ])
       for (const [n, r] of [['products', prods], ['product_prices', precios], ['product_modifier_groups', grupos], ['website_branch_products', cartaFilas]]) {
@@ -178,18 +180,34 @@ async function main() {
         grupos: agrupar(grupos.json, 'product_id'),
       }
 
-      // Casos: cada producto solo, y con su primer modificador activo con precio si lo tiene.
+      // Casos: cada producto solo (o, si tiene grupos obligatorios, con lo mínimo que exige el
+      // selector del sitio), y con su primer modificador activo con precio si lo tiene. Los grupos
+      // de una variante sin grupos propios son los de su padre (modificadores.ts).
+      const MO = M.modificadores
       const casos = []
       for (const p of vistos) {
         const propio = p.product_prices?.[0]?.price
         const base = propio ?? (p.parent_product_id != null ? precioWebPadre.get(Number(p.parent_product_id)) : undefined)
         if (base === undefined || base === null) { notes.push(`org ${orgId}: producto ${p.id} sin precio en el sitio (no se vende)`); continue }
-        casos.push({ item: { id: p.id, price: Number(base), quantity: 1 }, etiqueta: `producto ${p.id}`, carta: null })
-        const mod = (datos.grupos.get(Number(p.id)) || []).flatMap((g) => (g.product_modifiers || []).filter((m) => m.is_active).map((m) => ({ g, m })))
-          .find(({ m }) => Number(m.extra_price) > 0)
+        const grupos = MO.gruposVisibles(MO.gruposDeProducto(p, datos.grupos))
+        // Lo mínimo que exige el selector: las primeras opciones activas de cada grupo obligatorio.
+        const minimos = grupos.flatMap((g) => MO.opcionesActivas(g).slice(0, MO.minimoExigido(g)).map((m) => ({ g, m })))
+        const aMod = ({ g, m }) => ({ groupId: g.id, modifierId: m.id, extraPrice: Number(m.extra_price) })
+        const extrasMin = minimos.reduce((t, { m }) => t + Number(m.extra_price), 0)
+        if (minimos.length > 0) {
+          // El sitio no deja «Agregar» sin elegir: el servidor debe rechazarlo (422 modificador).
+          casos.push({ item: { id: p.id, price: Number(base), quantity: 1 }, etiqueta: `producto ${p.id} sin el grupo obligatorio`, carta: null, rechazo: 'modificador' })
+        }
+        casos.push({
+          item: { id: p.id, price: Number(base) + extrasMin, quantity: 1, ...(minimos.length ? { newModifiers: minimos.map(aMod) } : {}) },
+          etiqueta: minimos.length ? `producto ${p.id} con lo obligatorio` : `producto ${p.id}`, carta: null,
+        })
+        const usados = new Set(minimos.map(({ m }) => m.id))
+        const mod = grupos.flatMap((g) => MO.opcionesActivas(g).map((m) => ({ g, m })))
+          .find(({ g, m }) => Number(m.extra_price) > 0 && !usados.has(m.id) && !minimos.some((x) => x.g.id === g.id && (g.selection_mode === 'single')))
         if (mod) {
           casos.push({
-            item: { id: p.id, price: Number(base) + Number(mod.m.extra_price), quantity: 1, newModifiers: [{ groupId: mod.g.id, modifierId: mod.m.id, extraPrice: Number(mod.m.extra_price) }] },
+            item: { id: p.id, price: Number(base) + extrasMin + Number(mod.m.extra_price), quantity: 1, newModifiers: [...minimos.map(aMod), aMod(mod)] },
             etiqueta: `producto ${p.id} + modificador ${mod.m.id}`, carta: null,
           })
         }
@@ -201,14 +219,48 @@ async function main() {
         for (const p of M.carta.aplicarCartaSede(vistos, carta)) {
           const fila = carta.filas.get(Number(p.id))
           if (!fila || M.carta.agotadoEnSede(fila) || p.product_prices?.[0]?.price == null) continue
+          if (MO.exigeEleccion(MO.gruposDeProducto(p, datos.grupos))) continue
           casos.push({ item: { id: p.id, price: Number(p.product_prices[0].price), quantity: 1 }, etiqueta: `producto ${p.id} en sede ${branchId}`, carta })
         }
       }
       if (porSede.size === 0) notes.push(`org ${orgId}: sin carta por sede en la muestra`)
 
+      // Precio por sede del ERP (product_branch_prices): lo que muestra el listado
+      // (`aplicarCartaSede` con `precios`) frente a lo que cobra el servidor con `preciosSede`,
+      // ambos desde la misma RPC fn_precios_vigentes_lote que usa el POS.
+      const pbp = await rest(`product_branch_prices?select=branch_id,product_id&organization_id=eq.${orgId}&effective_to=is.null&limit=${N}`)
+      if (!pbp.ok) fail(`org ${orgId}: product_branch_prices (${pbp.status}): ${JSON.stringify(pbp.json)}`)
+      const sedesConPrecio = agrupar(pbp.ok ? pbp.json : [], 'branch_id')
+      for (const [branchId] of sedesConPrecio) {
+        const rpc = await fetch(`${URL_BASE}/rest/v1/rpc/fn_precios_vigentes_lote`, {
+          method: 'POST',
+          headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_organization_id: orgId, p_branch_id: branchId, p_product_ids: ids, p_heredar_padre: true }),
+        })
+        if (!rpc.ok) { fail(`org ${orgId}: fn_precios_vigentes_lote (${rpc.status}): ${await rpc.text()}`); continue }
+        const filasRpc = await rpc.json()
+        const precios = new Map()
+        for (const f of filasRpc) {
+          if (f.origen !== 'sede' && f.origen !== 'padre_sede') continue
+          precios.set(Number(f.product_id), { precio: Number(f.precio), comparacion: f.precio_comparacion == null ? null : Number(f.precio_comparacion) })
+        }
+        const carta = { branchId, filas: new Map(), precios }
+        const datosSede = { ...datos, preciosSede: precios }
+        for (const p of M.carta.aplicarCartaSede(vistos, carta)) {
+          if (!precios.has(Number(p.id)) || p.product_prices?.[0]?.price == null) continue
+          if (MO.exigeEleccion(MO.gruposDeProducto(p, datos.grupos))) continue
+          casos.push({ item: { id: p.id, price: Number(p.product_prices[0].price), quantity: 1 }, etiqueta: `producto ${p.id} con precio de la sede ${branchId}`, carta, datos: datosSede })
+        }
+      }
+      if (sedesConPrecio.size === 0) notes.push(`org ${orgId}: sin precios por sede (product_branch_prices) en la muestra`)
+
       for (const caso of casos) {
-        const r = M.servidor.resolverLineasPedido([caso.item], datos, { organizationId: orgId, carta: caso.carta })
+        const r = M.servidor.resolverLineasPedido([caso.item], caso.datos || datos, { organizationId: orgId, carta: caso.carta })
         comparados++
+        if (caso.rechazo) {
+          if (!r.problemas.some((x) => x.motivo === caso.rechazo)) fail(`org ${orgId}, ${caso.etiqueta}: el servidor debía rechazarlo (${caso.rechazo}) y lo aceptó`)
+          continue
+        }
         if (r.problemas.length) {
           fail(`org ${orgId}, ${caso.etiqueta}: el sitio lo vende y el servidor lo rechaza (${r.problemas[0].motivo}: ${r.problemas[0].detalle})`)
           continue

@@ -22,10 +22,17 @@
  *    `StickyAddToCart` (`selectedVariant.product_prices[0].price || price`), la única vía del sitio
  *    que deja añadir una variante sin precio propio (`VariantSelector` deshabilita el botón).
  *    137 variantes activas sin precio propio; 129 con padre con precio (MCP, 2026-10-05).
+ * 2b. Precio por sede del ERP (`product_branch_prices`), resuelto por la RPC
+ *    `fn_precios_vigentes_lote` (la misma del POS): si la sede tiene precio propio vigente para el
+ *    producto (origen 'sede') o, en una variante sin precio propio, para su padre ('padre_sede'),
+ *    ese es el precio cuando la sede no fija `web_price`. Si la RPC no devuelve precio de sede, la
+ *    regla de los puntos 1 y 3 queda exactamente como antes.
  * 4. Modificadores: tabla `product_modifier_groups` (por producto) → `product_modifiers`
  *    (`extra_price`, `is_active`). El carrito suma los extras al precio de la línea
  *    (MenuView y ProductDetailActions: `precio base + Σ extraPrice`). Los modificadores antiguos
  *    (`variant_types`/`variant_values`, con `typeId`/`valueId`) no tienen precio.
+ *    Grupos obligatorios (`required` o `min_selections > 0`) se exigen aquí, y una variante sin
+ *    grupos propios usa los de su padre (reglas en lib/products/modificadores.ts).
  * 5. Venta por peso/medida (`products.sale_mode`): el precio de `product_prices` es SIEMPRE por la
  *    unidad de venta (`unit_code`, p. ej. por kg); `price_ref_qty` es solo presentación («cada
  *    100 g»), comentario de columna del ERP. Así que el precio unitario no cambia: lo que cambia es
@@ -41,6 +48,7 @@ import {
   type CartaSede,
 } from '@/lib/products/carta-sede'
 import { esProductoVisibleEnWeb, type FilaProductoConPadre } from '@/lib/products/visibilidad-web'
+import { gruposDeProducto, gruposVisibles, mensajeObligatorio, minimoExigido } from '@/lib/products/modificadores'
 
 // ─── Tipos de datos leídos de la base ───────────────────────────────────────────────────────
 
@@ -78,15 +86,26 @@ export interface GrupoModificadores {
   name: string
   selection_mode: string
   max_selections: number | null
+  /** Columnas NOT NULL en la base; opcionales aquí para datos de prueba antiguos. */
+  required?: boolean | null
+  min_selections?: number | null
   product_modifiers: FilaModificador[] | null
+}
+
+/** Precio de la sede (`product_branch_prices` vía `fn_precios_vigentes_lote`). */
+export interface PrecioSede {
+  precio: number
+  comparacion: number | null
 }
 
 export interface DatosPrecio {
   productos: Map<number, FilaProductoPrecio>
   /** Filas de `product_prices` con `effective_to IS NULL`, por `product_id` (productos y padres). */
   precios: Map<number, FilaPrecio[]>
-  /** Grupos de modificadores por `product_id`. */
+  /** Grupos de modificadores por `product_id` (productos y padres de las variantes). */
   grupos: Map<number, GrupoModificadores[]>
+  /** Precio de la sede del pedido por `product_id`, solo los de origen sede. Vacío sin sede. */
+  preciosSede?: Map<number, PrecioSede>
 }
 
 // ─── 1. Precio vigente ──────────────────────────────────────────────────────────────────────
@@ -110,17 +129,25 @@ export function precioVigenteWeb(precios: FilaPrecio[] | null | undefined, ahora
   return Number.isFinite(precio) && precio >= 0 ? precio : null
 }
 
-export type OrigenPrecio = 'sede' | 'producto' | 'padre'
+export type OrigenPrecio = 'sede' | 'precio_sede' | 'producto' | 'padre'
 
-/** Precio base (sin modificadores): `web_price` de la sede → propio → del padre. */
+/**
+ * Precio base (sin modificadores): `web_price` de la sede → precio de la sede del ERP
+ * (`product_branch_prices`) → propio → del padre.
+ */
 export function precioBaseProducto(
   producto: Pick<FilaProductoPrecio, 'id' | 'parent_product_id'>,
   precios: Map<number, FilaPrecio[]>,
   carta: CartaSede | null | undefined,
   ahora: Date = new Date(),
+  preciosSede?: Map<number, PrecioSede> | null,
 ): { precio: number; origen: OrigenPrecio } | null {
   const deSede = precioWebDeSede(carta?.filas.get(Number(producto.id)))
   if (deSede !== null) return { precio: deSede, origen: 'sede' }
+  const deSedeErp = preciosSede?.get(Number(producto.id))
+  if (deSedeErp && Number.isFinite(deSedeErp.precio) && deSedeErp.precio >= 0) {
+    return { precio: deSedeErp.precio, origen: 'precio_sede' }
+  }
   const propio = precioVigenteWeb(precios.get(Number(producto.id)), ahora)
   if (propio !== null) return { precio: propio, origen: 'producto' }
   if (producto.parent_product_id != null) {
@@ -212,7 +239,12 @@ export function resolverModificadores(
     if (m.modifierId !== undefined && m.modifierId !== null) conPrecio.push(m)
     else sinPrecio.push({ typeId: m.typeId, typeName: m.typeName, valueId: m.valueId, valueName: m.valueName })
   }
-  if (conPrecio.length === 0) return { ok: true, elegidos: [], sinPrecio, extras: 0 }
+  if (conPrecio.length === 0) {
+    // Sin opciones elegidas: solo vale si ningún grupo con opciones activas es obligatorio.
+    const faltante = faltaObligatorio(grupos, new Map())
+    if (faltante) return { ok: false, detalle: faltante }
+    return { ok: true, elegidos: [], sinPrecio, extras: 0 }
+  }
 
   const porId = new Map<number, { grupo: GrupoModificadores; mod: FilaModificador }>()
   for (const grupo of grupos || []) {
@@ -247,8 +279,19 @@ export function resolverModificadores(
       extraPrice: Number.isFinite(extra) && extra > 0 ? extra : 0,
     })
   }
+  const faltante = faltaObligatorio(grupos, porGrupo)
+  if (faltante) return { ok: false, detalle: faltante }
   const extras = elegidos.reduce((s, e) => s + e.extraPrice, 0)
   return { ok: true, elegidos, sinPrecio, extras }
+}
+
+/** Primer grupo obligatorio sin las opciones mínimas, como texto para el cliente; o `null`. */
+function faltaObligatorio(grupos: GrupoModificadores[] | undefined, porGrupo: Map<number, number>): string | null {
+  for (const grupo of gruposVisibles(grupos)) {
+    const minimo = minimoExigido(grupo)
+    if (minimo > 0 && (porGrupo.get(grupo.id) || 0) < minimo) return mensajeObligatorio(grupo, minimo)
+  }
+  return null
 }
 
 // ─── 4. Línea completa ──────────────────────────────────────────────────────────────────────
@@ -358,7 +401,7 @@ export function resolverLineasPedido(
       problema('no_disponible_en_sede', 'no está disponible en esta sede')
       return
     }
-    const base = precioBaseProducto(producto, datos.precios, ctx.carta, ahora)
+    const base = precioBaseProducto(producto, datos.precios, ctx.carta, ahora, datos.preciosSede)
     if (!base) {
       problema('sin_precio', 'no tiene precio de venta')
       return
@@ -368,7 +411,8 @@ export function resolverLineasPedido(
       problema('cantidad', cantidad.detalle)
       return
     }
-    const mods = resolverModificadores(item.modifiers, item.newModifiers, datos.grupos.get(productId))
+    // Variante sin grupos propios → los del padre (gruposDeProducto). Los demás, como antes.
+    const mods = resolverModificadores(item.modifiers, item.newModifiers, gruposDeProducto(producto, datos.grupos))
     if (!mods.ok) {
       problema('modificador', mods.detalle)
       return
