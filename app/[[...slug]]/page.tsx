@@ -192,7 +192,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // Sedes (hours_location / reservation / estado del restaurant_hero): una
     // consulta cacheada por organización.
     // La carta también la usa: horario de la sede («Cerrado ahora»), su nombre y si acepta reservas.
-    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview')) {
+    // reservation_cta (límites de personas de la sede) y private_events (selector de sede del
+    // lead) leen lo mismo: sin la precarga caían a los límites de la base y sin selector.
+    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
     }
 
