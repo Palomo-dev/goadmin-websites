@@ -225,9 +225,50 @@
   background-color: var(--background-color) !important;
   color: var(--text-color);
 }
-[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) {
-  background-color: color-mix(in srgb, var(--text-color) 6%, var(--background-color)) !important;
+/* Barra superior sin color propio (HeaderTopbar: `bg-gray-900 dark:bg-black text-white` fijos, salía
+   gris carbón): un tono separada del fondo del tema, hacia su texto (más clara en las plantillas
+   oscuras, más oscura en las claras), con el texto del tema. Láminas Figma «16 Sitio web»: Noir
+   #0E0E0E → #1E1E1D, Marfil #F6F1E7 → #E7E2D8 (7 % del texto). Con `topbar_bg_color` o
+   `header_bg_color` la barra no lleva estas clases y sigue con su color. */
+[data-tema-colores] header [class~='bg-gray-900'][class~='dark:bg-black'] {
+  background-color: color-mix(in srgb, var(--text-color) 7%, var(--background-color)) !important;
   color: var(--text-color) !important;
+}
+/* Hijos del encabezado (NavLink, NavList, NavDropdown, menús móviles, iconos): sus `text-gray-*`,
+   `border-gray-*` y `hover:bg-gray-*` ganaban al color del contenedor. Solo dentro de las superficies
+   que ya pinta el tema: la barra de escritorio sin color a mano (su estilo en línea lleva
+   `--header-bg-light`, ver `headerBgStyle`), las capas móviles `bg-white`/`dark:bg-gray-*` y la
+   franja del selector de sede. Un color en línea (`color:`) o un fondo en línea por encima (color
+   elegido en el editor) siguen mandando. Los selectores de estilo exigen inicio, `;` o `; ` delante
+   para no confundir `--hover-color` ni la variable `--background-color` de la raíz. */
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='text-gray-']:not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: color-mix(in srgb, var(--text-color) 72%, var(--background-color)) !important;
+}
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) :is([class~='text-gray-900'], [class~='text-gray-800'], [class~='dark:text-white'], [class*='text-gray-']:hover):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: var(--text-color) !important;
+}
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='hover:bg-gray-']:hover:not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  background-color: color-mix(in srgb, var(--text-color) 8%, var(--background-color)) !important;
+}
+[data-tema-colores] header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800'])[class*='border-gray-'],
+[data-tema-colores] header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']) [class*='border-gray-'],
+[data-tema-colores] [data-franja-sede],
+[data-tema-colores] [data-franja-sede] [class*='border-gray-'] {
+  border-color: color-mix(in srgb, var(--text-color) 10%, var(--background-color)) !important;
+}
+/* Chip y menú del selector de sede (SelectorSede, `bg-white dark:bg-gray-900`), fuera del <header>. */
+[data-tema-colores] [data-franja-sede] [class~='bg-white'] {
+  background-color: var(--background-color) !important;
+}
+/* Pie: el fondo del tema un 5 % hacia el texto en las plantillas claras (Marfil #F6F1E7 → #EBE6DD)
+   y un 40 % más oscuro en las oscuras (Noir #0E0E0E → #080808), como las láminas. Sin
+   `data-tema-fondo` (el tema define texto pero no fondo) queda la mezcla clara. */
+[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) {
+  background-color: color-mix(in srgb, var(--text-color) 5%, var(--background-color)) !important;
+  color: var(--text-color) !important;
+}
+[data-tema-colores][data-tema-fondo='oscuro'] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) {
+  background-color: color-mix(in srgb, var(--background-color) 60%, #000000) !important;
 }
 [data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) :is(h2, h3, h4, summary, [class~='text-white']):not([style*='background']) {
   color: var(--text-color) !important;
