@@ -36,13 +36,25 @@ export type Disponibilidad =
       proximaApertura: string | null
     }
 
+/** Mensaje del 403 y del aviso del checkout y la carta: el mismo texto en los tres sitios. */
+export const MENSAJE_PEDIDO_EN_LINEA_APAGADO = 'Este restaurante no está recibiendo pedidos en línea en este momento.'
+
+/**
+ * Regla 1 sola, para la UI (checkout, carta clásica): ¿el servidor rechazaría con 403
+ * PEDIDO_EN_LINEA_APAGADO? `valor` es `website_settings.enable_online_ordering` efectivo (la fila de
+ * la sede gana a la global, como en `leerContextoPedido` y `getEffectiveSettings`).
+ */
+export function pedidoEnLineaApagado(esRestaurante: boolean, valor: unknown): boolean {
+  return esRestaurante && valor === false
+}
+
 export function evaluarDisponibilidadPedido(e: EntradaDisponibilidad): Disponibilidad {
-  if (e.esRestaurante && e.pedidoEnLinea === false) {
+  if (pedidoEnLineaApagado(e.esRestaurante, e.pedidoEnLinea)) {
     return {
       ok: false,
       status: 403,
       code: 'PEDIDO_EN_LINEA_APAGADO',
-      error: 'Este restaurante no está recibiendo pedidos en línea en este momento.',
+      error: MENSAJE_PEDIDO_EN_LINEA_APAGADO,
       proximaApertura: null,
     }
   }

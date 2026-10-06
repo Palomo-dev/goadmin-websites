@@ -7,7 +7,7 @@ import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
 import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
-import { horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
+import { horarioSedeObligatorio, MENSAJE_PEDIDO_EN_LINEA_APAGADO, pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
 import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
 import { rutaSitio } from '@/lib/outlet/rutaSitio'
 import { horarioDeSede, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
@@ -104,6 +104,10 @@ export default async function CheckoutPage() {
   ])
   // Enlaces internos con el prefijo de la sede servida por ruta (contrato de C, rutaSitio).
   const ruta = (r: string) => rutaSitio(r, outlet, sedePorPrefijo)
+  // Pedido en línea apagado (restaurante): la misma regla que el 403 de /api/orders, sobre los
+  // ajustes efectivos de la petición (la sede gana a la global). En vez de dejar armar el pedido y
+  // rechazarlo al final, se avisa aquí.
+  const pedidoApagado = pedidoEnLineaApagado(isRestaurant, (organization.website_settings as any)?.enable_online_ordering)
 
   // Sede del pedido: la del sitio de sede o, en el sitio principal, la misma que elige
   // /api/orders (sedePorDefectoPedido). Su horario y su zona alimentan «¿Para cuándo?» con la
@@ -194,21 +198,37 @@ export default async function CheckoutPage() {
 
       {/* Contenido */}
       <main className="flex-grow">
-        <MetaPixelInitiateCheckout />
-        <CheckoutWizard
-          organizationId={organization.id}
-          primaryColor={primaryColor}
-          paymentMethods={paymentMethods}
-          checkoutSettings={checkoutSettings}
-          isRestaurant={isRestaurant}
-          organizationSubdomain={organization.subdomain || ''}
-          branchId={branchId}
-          sedePedido={sedePedido}
-          sedesSelector={datosSede?.sedesSelector ?? []}
-          sedeActualId={datosSede?.sedeActualId ?? (typeof branchId === 'number' ? branchId : null)}
-          prefijoSede={datosSede?.prefijoSede ?? ctx.prefijoSede ?? ''}
-          rutaSeguirPidiendo={ruta(isRestaurant ? '/menu' : '/productos')}
-        />
+        {pedidoApagado ? (
+          <div className="max-w-lg mx-auto text-center py-16 px-4" role="status">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">No recibimos pedidos en línea</h1>
+            <p className="text-gray-600 mb-8">{MENSAJE_PEDIDO_EN_LINEA_APAGADO}</p>
+            <a
+              href={ruta('/menu')}
+              className="inline-block px-6 py-3 rounded-lg text-white font-medium"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Ver la carta
+            </a>
+          </div>
+        ) : (
+          <>
+            <MetaPixelInitiateCheckout />
+            <CheckoutWizard
+              organizationId={organization.id}
+              primaryColor={primaryColor}
+              paymentMethods={paymentMethods}
+              checkoutSettings={checkoutSettings}
+              isRestaurant={isRestaurant}
+              organizationSubdomain={organization.subdomain || ''}
+              branchId={branchId}
+              sedePedido={sedePedido}
+              sedesSelector={datosSede?.sedesSelector ?? []}
+              sedeActualId={datosSede?.sedeActualId ?? (typeof branchId === 'number' ? branchId : null)}
+              prefijoSede={datosSede?.prefijoSede ?? ctx.prefijoSede ?? ''}
+              rutaSeguirPidiendo={ruta(isRestaurant ? '/menu' : '/productos')}
+            />
+          </>
+        )}
       </main>
 
       {/* Mini footer */}
