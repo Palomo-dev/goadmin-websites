@@ -620,9 +620,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Reservar stock atómicamente via RPC (FOR UPDATE evita overselling)
-    // Solo productos con track_stock=true
-    if (resolvedBranchId && requestedMap.size > 0) {
-      const rpcItems = Array.from(requestedMap.entries()).map(([pid, qty]) => ({
+    // Van TODAS las líneas, no solo las de productos con track_stock: el núcleo
+    // (fn_inv_int_expandir_items) expande la receta de cada plato y se queda solo con lo que
+    // rastrea inventario. Un producto simple sin rastreo desaparece; un plato con receta reserva
+    // sus insumos en la sede, que antes se vendían aunque faltaran. La validación previa (B1)
+    // sigue para los productos rastreados directos; la RPC es el todo o nada.
+    const cantidadPorProducto = new Map<number, number>()
+    for (const l of lineas) {
+      cantidadPorProducto.set(l.productId, (cantidadPorProducto.get(l.productId) || 0) + l.cantidad)
+    }
+    if (resolvedBranchId && cantidadPorProducto.size > 0) {
+      const rpcItems = Array.from(cantidadPorProducto.entries()).map(([pid, qty]) => ({
         product_id: pid,
         quantity: qty,
       }))
@@ -649,10 +657,21 @@ export async function POST(request: NextRequest) {
         console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
         await cancelarPedidoWeb(supabase as any, webOrder.id, 'Stock insuficiente al reservar')
 
-        const shortages = reserveResult?.shortages || []
-        const outOfStock = shortages.map((s: any) =>
-          `Producto ${s.product_id} (disponible: ${Math.max(0, Math.floor(s.available))}, solicitado: ${s.requested})`
-        )
+        const shortages: { product_id: number; available: number; requested: number }[] = reserveResult?.shortages || []
+        // Nombres para el cliente: los del carrito y, si falta un insumo de receta, el del insumo
+        // (sin cantidades exactas del inventario de la sede).
+        const idsInsumo = shortages.map((f) => Number(f.product_id)).filter((id) => !lineas.some((l) => l.productId === id))
+        const nombresInsumo = new Map<number, string>()
+        if (idsInsumo.length > 0) {
+          const { data: insumos } = await (supabase as any)
+            .from('products').select('id, name').eq('organization_id', contextOrgId).in('id', idsInsumo)
+          for (const p of insumos || []) nombresInsumo.set(Number(p.id), String(p.name))
+        }
+        const outOfStock = shortages.map((f) => {
+          const linea = lineas.find((l) => l.productId === Number(f.product_id))
+          if (linea) return `${linea.nombre} (disponible: ${Math.max(0, Math.floor(f.available))}, solicitado: ${f.requested})`
+          return `No alcanza ${nombresInsumo.get(Number(f.product_id)) ?? 'un ingrediente'} en esta sede para preparar tu pedido`
+        })
         return NextResponse.json(
           { error: 'Stock insuficiente', details: outOfStock },
           { status: 409 }
