@@ -17,6 +17,7 @@ import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+import { useTopbarExtras } from './TopbarExtras';
 
 // ============================================================
 // SHARED TYPES
@@ -500,6 +501,10 @@ export function HeaderTopbar({
   const textColor = bgColor ? topbarTextColor(settings) : '';
   const textClass = bgColor ? '' : 'text-white';
   const textStyle = textColor ? { color: textColor } : undefined;
+  // Sede y estado, envío gratis, cupos e idioma (TopbarExtras). Vacío con las opciones en su
+  // default: entonces la barra se pinta exactamente como antes (ramas de abajo).
+  const nuevos = useTopbarExtras(textStyle);
+  const hayNuevos = nuevos.izquierda.length > 0 || nuevos.idioma !== null;
 
   // Componente de contacto (email + teléfono)
   // En móvil (forceVisible) el email se muestra; en desktop solo en lg+
@@ -550,6 +555,47 @@ export function HeaderTopbar({
       )}
     </div>
   );
+
+  // Con lo nuevo: sede/estado, envío o cupos a la izquierda; anuncios al centro; contacto e
+  // idioma a la derecha (láminas de Figma). En móvil, lo nuevo va en una fila propia arriba.
+  if (hayNuevos && forceVisible) {
+    return (
+      <div
+        className={`block text-xs py-1.5 px-4 ${bgColor ? '' : 'bg-gray-900 dark:bg-black'} ${textClass}`}
+        style={bgStyle}
+        data-topbar-extras=""
+      >
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">{nuevos.izquierda}{nuevos.idioma}</div>
+          {announcements.length > 0 && (
+            <div className="text-center truncate" style={textStyle}>
+              {announcements[currentIdx]}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  // Sin contacto ni anuncios (p. ej. solo «Envío gratis»), centrado como la franja de anuncio.
+  const soloNuevos = !(showPhone && phone) && !(showEmail && email) && announcements.length === 0 && !nuevos.idioma;
+  if (hayNuevos) {
+    return (
+      <div
+        className={`hidden md:block text-xs py-1.5 px-4 ${bgColor ? '' : 'bg-gray-900 dark:bg-black'} ${textClass}`}
+        style={bgStyle}
+        data-topbar-extras=""
+      >
+        <div className={`max-w-7xl mx-auto flex items-center gap-4 overflow-hidden ${soloNuevos ? 'justify-center' : 'justify-between'}`}>
+          <div className="flex items-center gap-5 flex-shrink-0">{nuevos.izquierda}</div>
+          {announcementsBlock || (soloNuevos ? null : <div className="flex-1" />)}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            {contactBlock}
+            {nuevos.idioma}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // En móvil: layout vertical por falta de espacio horizontal.
   // contactPosition controla la alineación del bloque de contacto.
