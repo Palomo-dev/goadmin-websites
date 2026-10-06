@@ -147,6 +147,14 @@ export interface ReservaPorToken {
   cancelableHasta: string
   /** El cliente puede cancelar ya mismo (estado y plazo). La base vuelve a decidir. */
   puedeCancelar: boolean
+  /** Depósito de la reserva (migración D7); `null` si no lleva o si la migración no está. */
+  deposito: {
+    estado: string
+    monto: number
+    moneda: string
+    reembolsableHasta: string | null
+    venceEn: string | null
+  } | null
 }
 
 const ESTADOS_CANCELABLES = new Set(['pending', 'confirmed'])
@@ -163,14 +171,17 @@ export async function leerReservaPorToken(
   token: string,
   ahora: Date = new Date(),
 ): Promise<ReservaPorToken | null> {
-  const { data: r, error } = await supabase
-    .from('restaurant_reservations')
-    .select(
-      'id, branch_id, status, customer_name, party_size, reservation_date, reservation_time, notes, cancellation_reason, branches!restaurant_reservations_branch_id_fkey(name, address, city, phone)',
-    )
-    .eq('organization_id', orgId)
-    .eq('manage_token', token)
-    .maybeSingle()
+  const columnas =
+    'id, branch_id, status, customer_name, party_size, reservation_date, reservation_time, notes, cancellation_reason, branches!restaurant_reservations_branch_id_fkey(name, address, city, phone)'
+  const leer = (cols: string) =>
+    supabase.from('restaurant_reservations').select(cols).eq('organization_id', orgId).eq('manage_token', token).maybeSingle()
+  let { data: r, error } = await leer(
+    `${columnas}, deposit_status, deposit_amount, deposit_currency, deposit_refundable_until, deposit_due_at`,
+  )
+  if (error?.code === '42703') {
+    // Migración D7 sin aplicar: la lectura de siempre, sin depósito.
+    ;({ data: r, error } = await leer(columnas))
+  }
   if (error || !r) {
     if (error && error.code !== '42703') console.error('[reserva/mesa] lectura por token', error.code)
     return null
@@ -215,5 +226,15 @@ export async function leerReservaPorToken(
     horasCancelacion: horas,
     cancelableHasta: limite.toISOString(),
     puedeCancelar: ESTADOS_CANCELABLES.has(r.status) && ahora.getTime() < limite.getTime(),
+    deposito:
+      r.deposit_status && Number(r.deposit_amount) > 0
+        ? {
+            estado: String(r.deposit_status),
+            monto: Number(r.deposit_amount),
+            moneda: String(r.deposit_currency || 'COP').toUpperCase(),
+            reembolsableHasta: r.deposit_refundable_until ?? null,
+            venceEn: r.deposit_due_at ?? null,
+          }
+        : null,
   }
 }

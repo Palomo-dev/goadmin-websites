@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useReservaMesa } from '@/lib/restaurant/useReservaMesa'
+import { useCotizacionDeposito, useReservaMesa } from '@/lib/restaurant/useReservaMesa'
+import { formatoMonto, montoParaPersonas, textoDeposito } from '@/lib/restaurant/deposito-modelo'
+import { TelefonoPais, telefonoValido } from '@/components/site/TelefonoPais'
 import { ajustesDeSede, esSedesRestaurante, limitesPersonas } from '@/lib/restaurant/sedes-modelo'
 
 interface ReservationCtaFormProps {
@@ -84,6 +86,7 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
     fallar,
     checkAvailability,
     submit,
+    pagarDeposito,
     reiniciar,
   } = useReservaMesa({
     organizationId: organization?.id,
@@ -91,6 +94,9 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
     slotInterval,
     errorMessage,
   })
+
+  // Depósito de la sede (D7): lo decide la base; aquí solo se muestra.
+  const deposito = useCotizacionDeposito(organization?.id, datosPagina?.branchId ?? null)
 
   // ── Fecha mínima (hoy) para bloquear fechas pasadas ──
   const todayStr = useMemo(() => {
@@ -145,6 +151,10 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
       fallar('Se requiere al menos un teléfono o email de contacto.')
       return
     }
+    if (formData.phone.trim() && !telefonoValido(formData.phone)) {
+      fallar('El teléfono no es válido para el país elegido.')
+      return
+    }
 
     await submit({
       date: formData.date,
@@ -154,6 +164,33 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
       phone: formData.phone,
       email: formData.email,
     })
+  }
+
+  // ── Depósito por pagar: la pasarela no abrió; se ofrece reintentar ──
+  if (status === 'success' && reservationResult?.deposito) {
+    const d = reservationResult.deposito
+    return (
+      <div className="text-center" style={content.bg_color ? { backgroundColor: content.bg_color } : undefined}>
+        <div className="max-w-2xl mx-auto py-8">
+          <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: content.text_color || undefined }}>
+            Falta pagar el depósito
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Tu reserva {reservationResult.code} queda apartada mientras pagas el depósito de {formatoMonto(d.monto, d.moneda)}. Si no se
+            paga a tiempo, la mesa se libera.
+          </p>
+          {errorMsg && <p className="mb-4 text-sm text-red-700 dark:text-red-300">{errorMsg}</p>}
+          <button
+            type="button"
+            onClick={() => void pagarDeposito()}
+            className="w-full max-w-md px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Pagar {formatoMonto(d.monto, d.moneda)}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // ── Pantalla de éxito ──
@@ -257,14 +294,13 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Teléfono {requirePhone && <span className="text-red-500">*</span>}
                   </label>
-                  <input
-                    type="tel"
+                  <TelefonoPais
                     value={formData.phone}
-                    onChange={(e) => handleFieldChange('phone', e.target.value)}
+                    onChange={(v) => handleFieldChange('phone', v)}
                     required={requirePhone}
-                    className={inputClass}
+                    className="rounded-lg border dark:border-gray-700 bg-transparent dark:text-white"
                     style={{ '--tw-ring-color': primaryColor } as any}
-                    placeholder="300 123 4567"
+                    aria-label="Teléfono"
                   />
                 </div>
               )}
@@ -398,15 +434,32 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
             />
           </div>
 
+          {/* Depósito de la sede: monto y reembolso antes de reservar */}
+          {deposito.requiere && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-left text-sm">
+              <p className="font-medium">{textoDeposito(deposito, formData.guests)}</p>
+              <p className="mt-1 text-gray-600 dark:text-gray-300">
+                Lo pagas en línea al reservar. Tu mesa queda apartada {deposito.minutosParaPagar} minutos mientras pagas; si el pago no se
+                completa, se libera.
+              </p>
+            </div>
+          )}
+
           {/* Botón de envío */}
           <div className="mt-6">
             <button
               type="submit"
-              disabled={status === 'submitting' || availabilityLoading}
+              disabled={status === 'submitting' || status === 'paying' || availabilityLoading}
               className="w-full px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: primaryColor }}
             >
-              {status === 'submitting' ? 'Reservando…' : (content.cta_text || 'Reservar Mesa')}
+              {status === 'submitting'
+                ? 'Reservando…'
+                : status === 'paying'
+                  ? 'Abriendo el pago…'
+                  : deposito.requiere
+                    ? `Reservar y pagar ${formatoMonto(montoParaPersonas(deposito, formData.guests), deposito.moneda)}`
+                    : (content.cta_text || 'Reservar Mesa')}
             </button>
           </div>
         </form>

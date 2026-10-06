@@ -20,7 +20,9 @@ import Link from 'next/link'
 import { CalendarDays, Check, ExternalLink, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
-import { useReservaMesa, type FranjaDisponible, type ReservaCreada } from '@/lib/restaurant/useReservaMesa'
+import { useCotizacionDeposito, useReservaMesa, type FranjaDisponible, type ReservaCreada } from '@/lib/restaurant/useReservaMesa'
+import { formatoMonto, montoParaPersonas, textoDeposito } from '@/lib/restaurant/deposito-modelo'
+import { TelefonoPais, telefonoValido } from '@/components/site/TelefonoPais'
 import { fechaCorta, fechaLarga, hoyEnZona, instanteEnZona, sumarDias } from '@/lib/restaurant/horario'
 import { AJUSTES_RESERVA_POR_DEFECTO, type AjustesReserva, limitesPersonas } from '@/lib/restaurant/sedes-modelo'
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from '@/lib/website/botonSitio'
@@ -207,6 +209,8 @@ function useFlujoReserva(props: ReservationViewProps) {
   const requiereTelefono = ajustes?.requiereTelefono ?? true
   const requiereEmail = props.requireEmail || ajustes?.requiereEmail === true
   const politica = ajustes?.politica ?? props.policyText
+  // Depósito de la sede (D7): lo decide la base; aquí solo se muestra.
+  const deposito = useCotizacionDeposito(organizationId, sede?.id ?? null)
 
   /** Valida y envía. Devuelve false si falta algo (el mensaje queda en `reserva.errorMsg`). */
   /** Más personas que el umbral de la sede: no se reserva en línea, se contacta. */
@@ -219,6 +223,7 @@ function useFlujoReserva(props: ReservationViewProps) {
     if (requiereTelefono && !telefono.trim()) return reserva.fallar('El celular es obligatorio.')
     if (requiereEmail && !email.trim()) return reserva.fallar('El correo es obligatorio.')
     if (!telefono.trim() && !email.trim()) return reserva.fallar('Se requiere al menos un celular o correo de contacto.')
+    if (telefono.trim() && !telefonoValido(telefono)) return reserva.fallar('El celular no es válido para el país elegido.')
     if (politica && !acepta) return reserva.fallar('Debes aceptar la política de reservas.')
     await reserva.submit({
       date: fecha,
@@ -271,6 +276,7 @@ function useFlujoReserva(props: ReservationViewProps) {
     requiereTelefono,
     requiereEmail,
     politica,
+    deposito,
     grupoGrande,
     esGrupoGrande,
     reserva,
@@ -379,15 +385,12 @@ function CamposContacto({ flujo, base, mostrarNotas }: { flujo: Flujo; base: str
           />
         </Campo>
         <Campo id={`${base}-tel`} label={flujo.requiereTelefono ? 'Celular' : 'Celular (opcional)'}>
-          <input
+          <TelefonoPais
             id={`${base}-tel`}
-            type="tel"
-            inputMode="tel"
-            className={inputClass}
-            autoComplete="tel"
+            className="rounded-lg border border-border bg-background text-base leading-6 text-foreground [--tw-ring-color:var(--primary-color)]"
             required={flujo.requiereTelefono}
             value={flujo.telefono}
-            onChange={(e) => flujo.setTelefono(e.target.value)}
+            onChange={flujo.setTelefono}
           />
         </Campo>
       </div>
@@ -422,10 +425,35 @@ function CamposContacto({ flujo, base, mostrarNotas }: { flujo: Flujo; base: str
           </label>
         </div>
       )}
+      <AvisoDeposito flujo={flujo} />
       <Honeypot flujo={flujo} base={base} />
     </>
   )
 }
+
+/** Depósito de la sede: monto, cálculo y reembolso, antes de reservar (mismo lenguaje visual que los avisos del formulario). */
+function AvisoDeposito({ flujo }: { flujo: Flujo }) {
+  if (!flujo.deposito.requiere) return null
+  return (
+    <div className="rounded-lg border border-border bg-muted p-4 text-left text-sm leading-5">
+      <p className="font-medium">{textoDeposito(flujo.deposito, flujo.personas)}</p>
+      <p className="mt-1 text-muted-foreground">
+        Lo pagas en línea al reservar. Tu mesa queda apartada {flujo.deposito.minutosParaPagar} minutos mientras pagas; si el pago no se
+        completa, se libera.
+      </p>
+    </div>
+  )
+}
+
+/** Texto del botón de enviar: con depósito, «Reservar y pagar $ …». */
+function textoEnviar(flujo: Flujo, defecto: string): string {
+  if (flujo.reserva.status === 'paying') return 'Abriendo el pago…'
+  if (flujo.reserva.status === 'submitting') return 'Enviando…'
+  if (flujo.deposito.requiere) return `Reservar y pagar ${formatoMonto(montoParaPersonas(flujo.deposito, flujo.personas), flujo.deposito.moneda)}`
+  return defecto
+}
+
+const ocupado = (flujo: Flujo) => flujo.reserva.status === 'submitting' || flujo.reserva.status === 'paying'
 
 function Honeypot({ flujo, base }: { flujo: Flujo; base: string }) {
   return (
@@ -514,7 +542,7 @@ function Mensajes({ flujo }: { flujo: Flujo }) {
 
 /** Formulario completo (form_image, band): sede, personas/día/hora y datos. */
 function FormularioCompleto({ flujo, base, ctaText, showNotes }: { flujo: Flujo; base: string; ctaText: string; showNotes: boolean }) {
-  const enviando = flujo.reserva.status === 'submitting'
+  const enviando = ocupado(flujo)
   return (
     <form
       noValidate
@@ -533,7 +561,7 @@ function FormularioCompleto({ flujo, base, ctaText, showNotes }: { flujo: Flujo;
       <CamposContacto flujo={flujo} base={base} mostrarNotas={showNotes} />
       <Mensajes flujo={flujo} />
       <button type="submit" disabled={enviando} {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'w-full')} style={{ backgroundColor: PRIMARY }}>
-        {enviando ? 'Enviando…' : ctaText}
+        {textoEnviar(flujo, ctaText)}
       </button>
     </form>
   )
@@ -578,6 +606,7 @@ function Confirmacion({ flujo, props }: { flujo: Flujo; props: ReservationViewPr
   const tituloRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => tituloRef.current?.focus(), [])
   if (!r) return null
+  if (r.deposito) return <PagoPendiente flujo={flujo} r={r} />
   const pendiente = r.status === 'pending'
   const lugar = [flujo.sede?.nombre, flujo.sede?.direccion].filter(Boolean).join(' · ') || null
   const cal = enlacesCalendario(r, flujo.zona, `Reserva en ${props.organizationName}`, lugar)
@@ -639,6 +668,49 @@ function Confirmacion({ flujo, props }: { flujo: Flujo; props: ReservationViewPr
       <button type="button" onClick={flujo.reiniciar} className="text-sm underline underline-offset-4 hover:opacity-70">
         Hacer otra reserva
       </button>
+    </div>
+  )
+}
+
+/**
+ * La reserva quedó «pendiente de pago» pero la pasarela no abrió: se ofrece
+ * reintentar. La mesa sigue apartada hasta que venza el plazo de pago.
+ */
+function PagoPendiente({ flujo, r }: { flujo: Flujo; r: ReservaCreada }) {
+  const d = r.deposito
+  if (!d) return null
+  return (
+    <div className={cn('mx-auto flex w-full max-w-md flex-col items-center gap-4 text-center', fadeUp)} aria-live="polite">
+      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+        Pendiente de pago
+      </span>
+      <h3 className="text-2xl font-bold leading-8" style={{ fontFamily: 'var(--font-heading)' }}>
+        Falta pagar el depósito
+      </h3>
+      <p className="text-muted-foreground">
+        Tu reserva {r.code} queda apartada mientras pagas el depósito de {formatoMonto(d.monto, d.moneda)}. Si no se paga a tiempo, la mesa
+        se libera.
+      </p>
+      {flujo.reserva.errorMsg && (
+        <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 p-3 text-left text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          {flujo.reserva.errorMsg}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => void flujo.reserva.pagarDeposito()}
+        disabled={flujo.reserva.status === 'paying'}
+        {...BOTON_PRIMARIO}
+        className={cn(primaryButtonClass, 'w-full')}
+        style={{ backgroundColor: PRIMARY }}
+      >
+        {flujo.reserva.status === 'paying' ? 'Abriendo el pago…' : `Pagar ${formatoMonto(d.monto, d.moneda)}`}
+      </button>
+      {r.manageUrl && (
+        <Link href={r.manageUrl} className="text-sm font-medium underline underline-offset-4" style={{ color: ACCENT }}>
+          Ver mi reserva
+        </Link>
+      )}
     </div>
   )
 }
@@ -854,11 +926,11 @@ function Stepper({ flujo, props, base }: { flujo: Flujo; props: ReservationViewP
           )}
           <button
             type="submit"
-            disabled={!puedeSeguir || reserva.status === 'submitting'}
+            disabled={!puedeSeguir || ocupado(flujo)}
             {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'flex-1 px-4 py-2')}
             style={{ backgroundColor: PRIMARY }}
           >
-            {paso < 3 ? 'Continuar' : reserva.status === 'submitting' ? 'Enviando…' : props.ctaText || 'Confirmar reserva'}
+            {paso < 3 ? 'Continuar' : textoEnviar(flujo, props.ctaText || 'Confirmar reserva')}
           </button>
         </div>
       </form>
@@ -1024,7 +1096,7 @@ export function ReservationView(props: ReservationViewProps) {
   }
 
   // ── Hero con widget ──
-  const enviando = flujo.reserva.status === 'submitting'
+  const enviando = ocupado(flujo)
   return (
     <div
       id={props.anchorId}
@@ -1075,7 +1147,7 @@ export function ReservationView(props: ReservationViewProps) {
                 <div className={cn('flex flex-col gap-4', fadeUp)}>
                   <CamposContacto flujo={flujo} base={base} mostrarNotas={props.showNotes} />
                   <button type="submit" disabled={enviando} {...BOTON_PRIMARIO} className={primaryButtonClass} style={{ backgroundColor: PRIMARY }}>
-                    {enviando ? 'Enviando…' : 'Confirmar reserva'}
+                    {textoEnviar(flujo, 'Confirmar reserva')}
                   </button>
                 </div>
               )}

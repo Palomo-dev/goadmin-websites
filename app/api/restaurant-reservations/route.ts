@@ -4,7 +4,10 @@ import { sendRestaurantTableConfirmationEmail } from '@/lib/email/send-restauran
 import { sendRestaurantTeamNotice } from '@/lib/email/send-restaurant-team-notice'
 import { fechaLarga } from '@/lib/restaurant/horario'
 import { reglaDeError, respuestaDeRegla, rutaGestionReserva, tokenValido } from '@/lib/restaurant/reservas-errores'
-import { contextoCorreoReserva, crearReservaWeb, urlEnElSitio } from '@/lib/restaurant/reservas-servidor'
+import { contextoCorreoReserva, urlEnElSitio } from '@/lib/restaurant/reservas-servidor'
+import { crearReservaWebConDeposito } from '@/lib/restaurant/deposito-servidor'
+import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
+import { aE164 } from '@/lib/utils/telefono'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import {
   ahoraEnLaZona,
@@ -29,6 +32,16 @@ export const dynamic = 'force-dynamic'
  *
  * La organización sale del host (`organizacionDeLaReserva`); `organizationId`
  * del body solo se compara (403 si es otra). La sede debe ser de la organización.
+ *
+ * Teléfono: se guarda en formato internacional E.164 («+573001234567»). Un
+ * número sin indicativo se lee como de Colombia; uno que no es válido para su
+ * país → 400 TELEFONO_INVALIDO.
+ *
+ * Depósito (ERP, migración D7): si la sede lo pide y la organización tiene
+ * pasarela, la reserva queda «pendiente de pago» y la respuesta trae
+ * `deposito` y `pago` ({ source, sourceId }) para `/api/checkout/init`. Los
+ * correos al cliente y al equipo los manda entonces el webhook cuando la
+ * pasarela confirma el pago. Sin depósito, todo sigue igual.
  *
  * Body: {
  *   organizationId?, branchId?, date, time, partySize,
@@ -102,6 +115,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Teléfono en formato internacional (E.164).
+    let telefono: string | null = null
+    if (phone && String(phone).trim() !== '') {
+      telefono = aE164(String(phone))
+      if (!telefono) {
+        return NextResponse.json(
+          { error: 'El celular no es válido para el país elegido.', code: 'TELEFONO_INVALIDO' },
+          { status: 400 }
+        )
+      }
+    } else {
+      // Sin teléfono: la RPC exige al menos teléfono o correo (validado arriba).
+    }
+
     const contexto = await organizacionDeLaReserva(organizationId, 'Restaurant Reservations')
     if ('respuesta' in contexto) return contexto.respuesta
     const orgId = contexto.orgId
@@ -125,14 +152,14 @@ export async function POST(request: NextRequest) {
     // zona, aforo y contacto de la sede (errores con prefijo). Solo bloquea con
     // RESERVAS_ENFORCE_REGLAS=true; sin la variable observa y registra
     // (ver lib/restaurant/reservas-servidor.ts).
-    const { data: rpcResult, error: rpcError } = await crearReservaWeb(supabase, {
+    const { data: rpcResult, error: rpcError, deposito } = await crearReservaWebConDeposito(supabase, {
       p_organization_id: orgId,
       p_reservation_date: date,
       p_reservation_time: hora,
       p_party_size: parseInt(partySize, 10),
       p_customer_name: name,
       p_branch_id: sede.branchId,
-      p_customer_phone: phone || null,
+      p_customer_phone: telefono,
       p_customer_email: email || null,
       p_zone: zone || null,
       p_notes: notes || null,
@@ -199,6 +226,26 @@ export async function POST(request: NextRequest) {
     const token = tokenValido(rpcResult.manage_token) ? rpcResult.manage_token : null
     const manageUrl = token ? rutaGestionReserva(token) : null
 
+    // ── Con depósito: sin correos todavía; se paga y el webhook avisa ──
+    if (deposito) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: rpcResult.reservation_id,
+          code: rpcResult.code,
+          status: 'pending',
+          date,
+          time,
+          partySize: parseInt(partySize, 10),
+          ...(manageUrl ? { manageUrl } : {}),
+          deposito,
+          pago: { source: FUENTE_COBRO_DEPOSITO, sourceId: rpcResult.reservation_id, gateway: deposito.pasarela },
+        },
+      })
+    } else {
+      // Sin depósito: correos y respuesta de siempre (abajo).
+    }
+
     // ── Correos (best-effort): al cliente y al equipo (notify_emails) ──
     // El texto del cliente sigue `rpcResult.status`: `pending` no se anuncia como confirmada.
     const personas = parseInt(partySize, 10)
@@ -239,7 +286,7 @@ export async function POST(request: NextRequest) {
           sede: datosCorreo.sede?.nombre ?? null,
           codigo: rpcResult.code,
           cliente: name,
-          telefono: phone || null,
+          telefono,
           email: email || null,
           personas,
           fecha: fechaLarga(date),
