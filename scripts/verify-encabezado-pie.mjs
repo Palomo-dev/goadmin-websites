@@ -170,6 +170,34 @@ for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo
   check(css.includes(atributo), `app/globals.css sin reglas para [${atributo}]`)
 }
 
+// ─── 4. Hojas del menú del celular ─────────────────────────────────────────────────────────────
+// Producción (org 140, «Menú en el celular = Hoja inferior»): el `Drawer.Content` de vaul sin
+// `Drawer.Portal` ni posición fija se pintaba EN LÍNEA dentro de la fila del encabezado al abrir
+// la hoja: encabezado altísimo con el logo y los botones en el medio, la hoja recortada a la
+// derecha y el buscador abajo. Toda hoja de vaul del sitio va en un portal y es `fixed`.
+{
+  const archivos = ['components/site/header/mobile/MobileBottomSheet.tsx']
+  for (const ruta of archivos) {
+    const src = await fuente(ruta)
+    const aperturas = [...src.matchAll(/<Drawer\.Content\b[^>]*>/g)]
+    check(aperturas.length > 0, `${ruta}: no se encontró <Drawer.Content> (¿cambió la hoja? actualiza este verify)`)
+    for (const a of aperturas) {
+      const antes = src.slice(0, a.index)
+      const abre = antes.lastIndexOf('<Drawer.Portal')
+      const cierra = antes.lastIndexOf('</Drawer.Portal>')
+      check(abre > cierra, `${ruta}: <Drawer.Content> fuera de <Drawer.Portal> (se pinta en línea dentro del encabezado)`)
+      const clase = /className="([^"]*)"/.exec(a[0])?.[1] ?? ''
+      check(/(^|\s)fixed(\s|$)/.test(clase) && /(^|\s)bottom-0(\s|$)/.test(clase), `${ruta}: <Drawer.Content> sin «fixed … bottom-0» (la hoja no queda abajo)`)
+    }
+    check(/<Drawer\.Overlay\b/.test(src), `${ruta}: la hoja no tiene <Drawer.Overlay>`)
+    // El portal va al propio <header>: así heredan el tema V2 y el modo oscuro de la raíz.
+    check(/<Drawer\.Portal\s+container=\{headerEl\}/.test(src) && /<header\s+ref=\{setHeaderEl\}/.test(src),
+      `${ruta}: el portal de la hoja ya no va al <header> (perdería el tema V2 y el modo oscuro)`)
+    // Abierta, por encima de las barras fijas del celular (BarraMovilGiro / MobileCTABar, z-40).
+    check(src.includes("open ? 'z-[60]' : 'z-40'"), `${ruta}: abierta, la hoja queda bajo la barra fija del celular`)
+  }
+}
+
 if (problemas.length > 0) {
   console.error(`✗ verify-encabezado-pie: ${problemas.length} problema(s) en ${casos} casos`)
   for (const p of problemas) console.error(`  - ${p}`)

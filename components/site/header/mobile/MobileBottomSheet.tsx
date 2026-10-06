@@ -37,6 +37,11 @@ export default function MobileBottomSheet({
   branchId,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
+  // La hoja se monta dentro del propio <header> (portal) y no en la fila de botones: así queda
+  // fija abajo, hereda el tema V2 (reglas `[data-tema-colores] header …` de app/globals.css) y el
+  // modo oscuro de la raíz del layout. Sin el portal, vaul la pintaba en línea dentro de la fila
+  // del encabezado: encabezado altísimo y la hoja recortada a la derecha.
+  const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
   const { opciones: opcionesShell } = useEncabezadoPie();
   const temaColores = useTemaColores();
   const navItems = buildNavItems(navTree);
@@ -45,7 +50,9 @@ export default function MobileBottomSheet({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full">
+    // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
+    // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
+    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -74,12 +81,18 @@ export default function MobileBottomSheet({
                     <MenuIcon className="h-5 w-5" />
                   </button>
                 </Drawer.Trigger>
-                <Drawer.Content className="bg-white dark:bg-gray-900 rounded-t-2xl max-h-[80vh] outline-none">
-                  <div className="mx-auto w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700 mt-3 mb-2" />
-                  <div className="px-4 pb-6 overflow-y-auto">
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                <Drawer.Portal container={headerEl}>
+                <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" data-hoja-menu-fondo="" />
+                <Drawer.Content
+                  className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-white dark:bg-gray-900 rounded-t-2xl max-h-[80vh] outline-none"
+                  aria-describedby={undefined}
+                  data-hoja-menu=""
+                >
+                  <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-gray-300 dark:bg-gray-700 mt-3 mb-2" />
+                  <div className="min-h-0 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-y-auto">
+                    <Drawer.Title className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                       Menú
-                    </h3>
+                    </Drawer.Title>
                     <div className="grid grid-cols-2 gap-3">
                       {navItems.map((item, i) => (
                         <BottomSheetItem
@@ -119,6 +132,7 @@ export default function MobileBottomSheet({
                     )}
                   </div>
                 </Drawer.Content>
+                </Drawer.Portal>
               </Drawer.Root>
             </div>
           </div>
