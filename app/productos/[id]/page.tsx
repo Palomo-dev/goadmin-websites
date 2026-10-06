@@ -15,7 +15,7 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getProductModifierGroupsDe, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches } from '@/lib/supabase/queries'
 import { aplicarCartaSede, resolverSedeCarta } from '@/lib/products/carta-sede'
 import { exigeEleccion } from '@/lib/products/modificadores'
 import { soldOutReturnLabel } from '@/lib/menu/menuFull'
@@ -212,6 +212,14 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   let variants: any[] = []
   if (isParent) {
     variants = await getProductVariants(product.id, organization.id, branchId)
+    // Grupos propios de cada variante (si tiene): el selector los usa en vez de los del padre,
+    // como el cobro (`gruposDeProducto`). Hoy ninguna variante tiene grupos propios.
+    if (variants.length > 0) {
+      const propiosVariantes = await getProductModifierGroupsDe(variants.map((v) => Number(v.id)), organization.id)
+      if (propiosVariantes.size > 0) {
+        variants = variants.map((v) => (propiosVariantes.has(Number(v.id)) ? { ...v, modifier_groups: propiosVariantes.get(Number(v.id)) } : v))
+      }
+    }
   }
 
   // Obtener grupos de modificadores del producto (nuevo sistema ERP). Una variante sin grupos

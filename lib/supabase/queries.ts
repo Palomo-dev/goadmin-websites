@@ -2377,59 +2377,7 @@ export async function getProductVariantRelations(organizationId: number) {
 // Product Modifier Groups (nuevo sistema ERP)
 // ==========================================
 
-/**
- * Obtiene los grupos de modificadores de un producto específico
- * con sus opciones (modificadores) activas
- */
-export async function getProductModifierGroups(productId: number, organizationId?: number) {
-  const supabase = getSupabaseForPublicRead()
-
-  let query = supabase
-    .from('product_modifier_groups')
-    .select(`
-      id,
-      name,
-      selection_mode,
-      min_selections,
-      max_selections,
-      required,
-      display_order,
-      product_modifiers (
-        id,
-        name,
-        extra_price,
-        is_active,
-        display_order
-      )
-    `)
-    .eq('product_id', productId)
-  // Con organización (rutas públicas): filtro explícito, aquí no hay RLS.
-  if (typeof organizationId === 'number') query = query.eq('organization_id', organizationId)
-  const { data, error } = await query.order('display_order')
-
-  if (error || !data) return []
-
-  return (data as any[])
-    .map((group) => ({
-      ...group,
-      product_modifiers: (group.product_modifiers || [])
-        .filter((m: any) => m.is_active)
-        .sort((a: any, b: any) => a.display_order - b.display_order),
-    }))
-    // Un grupo sin opciones activas no se pinta ni se exige (lib/products/modificadores.ts).
-    .filter((group) => group.product_modifiers.length > 0)
-}
-
-/**
- * Obtiene todos los grupos de modificadores de una organización
- * con sus opciones activas, agrupados por product_id
- */
-export async function getProductModifierGroupsByOrg(organizationId: number) {
-  const supabase = getSupabaseForPublicRead()
-
-  const { data, error } = await supabase
-    .from('product_modifier_groups')
-    .select(`
+const SELECT_GRUPOS_SITIO = `
       id,
       product_id,
       name,
@@ -2445,22 +2393,105 @@ export async function getProductModifierGroupsByOrg(organizationId: number) {
         is_active,
         display_order
       )
-    `)
+    `
+
+/**
+ * Normaliza los grupos tal como los ve el cliente: solo opciones activas, ordenadas, y sin los
+ * grupos que se quedan vacíos (no se pintan ni se exigen: lib/products/modificadores.ts). Una sola
+ * regla para la ficha, la hoja del plato, el selector de variantes y la carta clásica.
+ */
+function gruposParaCliente(grupos: any[]): any[] {
+  return grupos
+    .map((group) => ({
+      ...group,
+      product_modifiers: (group.product_modifiers || [])
+        .filter((m: any) => m.is_active)
+        .sort((a: any, b: any) => a.display_order - b.display_order),
+    }))
+    .filter((group) => group.product_modifiers.length > 0)
+}
+
+/**
+ * Obtiene los grupos de modificadores de un producto específico
+ * con sus opciones (modificadores) activas
+ */
+export async function getProductModifierGroups(productId: number, organizationId?: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  let query = supabase
+    .from('product_modifier_groups')
+    .select(SELECT_GRUPOS_SITIO)
+    .eq('product_id', productId)
+  // Con organización (rutas públicas): filtro explícito, aquí no hay RLS.
+  if (typeof organizationId === 'number') query = query.eq('organization_id', organizationId)
+  const { data, error } = await query.order('display_order')
+
+  if (error || !data) return []
+
+  return gruposParaCliente(data as any[])
+}
+
+/**
+ * Grupos (ya normalizados con `gruposParaCliente`) de varios productos de la organización,
+ * agrupados por `product_id`. Lo usa la ruta de variantes para devolver los grupos propios de
+ * cada variante. Solo aparecen los productos con algún grupo visible.
+ */
+export async function getProductModifierGroupsDe(productIds: number[], organizationId: number): Promise<Map<number, any[]>> {
+  const ids = Array.from(new Set(productIds.filter((id) => Number.isInteger(id) && id > 0)))
+  const map = new Map<number, any[]>()
+  if (ids.length === 0) return map
+  const supabase = getSupabaseForPublicRead()
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from('product_modifier_groups')
+      .select(SELECT_GRUPOS_SITIO)
+      .eq('organization_id', organizationId)
+      .in('product_id', ids.slice(i, i + 200))
+      .order('display_order')
+    if (error || !data) {
+      console.error('[queries] getProductModifierGroupsDe', { organizationId, error: error?.message })
+      continue
+    }
+    for (const group of data as any[]) {
+      const list = map.get(Number(group.product_id)) || []
+      list.push(group)
+      map.set(Number(group.product_id), list)
+    }
+  }
+  for (const [id, grupos] of Array.from(map.entries())) {
+    const visibles = gruposParaCliente(grupos)
+    if (visibles.length > 0) map.set(id, visibles)
+    else map.delete(id)
+  }
+  return map
+}
+
+/**
+ * Obtiene todos los grupos de modificadores de una organización
+ * con sus opciones activas, agrupados por product_id.
+ * Sin los grupos vacíos, igual que `getProductModifierGroups`.
+ */
+export async function getProductModifierGroupsByOrg(organizationId: number) {
+  const supabase = getSupabaseForPublicRead()
+
+  const { data, error } = await supabase
+    .from('product_modifier_groups')
+    .select(SELECT_GRUPOS_SITIO)
     .eq('organization_id', organizationId)
     .order('display_order')
 
   if (error || !data) return new Map<number, any[]>()
 
-  const map = new Map<number, any[]>()
+  const crudos = new Map<number, any[]>()
   for (const group of data as any[]) {
-    const list = map.get(group.product_id) || []
-    list.push({
-      ...group,
-      product_modifiers: (group.product_modifiers || [])
-        .filter((m: any) => m.is_active)
-        .sort((a: any, b: any) => a.display_order - b.display_order),
-    })
-    map.set(group.product_id, list)
+    const list = crudos.get(group.product_id) || []
+    list.push(group)
+    crudos.set(group.product_id, list)
+  }
+  const map = new Map<number, any[]>()
+  for (const [id, grupos] of Array.from(crudos.entries())) {
+    const visibles = gruposParaCliente(grupos)
+    if (visibles.length > 0) map.set(id, visibles)
   }
   return map
 }

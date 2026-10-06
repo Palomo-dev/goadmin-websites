@@ -6,6 +6,7 @@ import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-re
 import Image from 'next/image'
 import { getAvailableStock } from '@/lib/stock'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
+import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 
 interface VariantProduct {
   id: number
@@ -23,7 +24,12 @@ interface VariantProduct {
     shared_images?: { storage_path: string } | null
   }[]
   stock_levels?: { qty_on_hand: number; qty_reserved: number }[]
+  /** Grupos propios de la variante (solo si tiene). Sin ellos, hereda `modifierGroups` del padre. */
+  modifier_groups?: ModifierGroup[]
 }
+
+/** Clave del padre en el mapa de grupos: el selector no necesita su id real. */
+const PADRE = 0
 
 interface VariantSelectorProps {
   parentName: string
@@ -34,7 +40,7 @@ interface VariantSelectorProps {
   onBuyNow?: (variant: VariantProduct, quantity?: number, modifiers?: SelectedModifier[]) => void
   /**
    * Grupos de modificadores del padre (acompañante, adiciones). Las variantes sin grupos propios
-   * los heredan en el cobro (lib/products/modificadores.ts): tamaño + acompañante en una hoja.
+   * (`modifier_groups`) los heredan, con la regla del cobro (`gruposDeProducto`).
    */
   modifierGroups?: ModifierGroup[]
   /** «Comprar ahora» ya está navegando al checkout. */
@@ -71,6 +77,25 @@ export function VariantSelector({
   const [selectedVariant, setSelectedVariant] = useState<VariantProduct | null>(null)
   const [added, setAdded] = useState(false)
   const [quantity, setQuantity] = useState(1)
+
+  // Grupos de la variante elegida: los suyos si tiene; si no, los del padre (regla del cobro).
+  const mapaGrupos = useMemo(
+    () =>
+      mapaGruposDeVariantes(
+        PADRE,
+        modifierGroups,
+        Object.fromEntries(variants.filter((v) => (v.modifier_groups?.length ?? 0) > 0).map((v) => [String(v.id), v.modifier_groups!])),
+      ),
+    [modifierGroups, variants],
+  )
+  const gruposLinea = useMemo(
+    () => gruposDeProducto(selectedVariant ? { id: selectedVariant.id, parent_product_id: PADRE } : { id: PADRE }, mapaGrupos),
+    [selectedVariant, mapaGrupos],
+  )
+  const claveGrupos = gruposLinea.map((g) => g.id).join('-')
+  useEffect(() => {
+    setMods([])
+  }, [claveGrupos])
 
   // Extraer grupos de atributos de variant_data
   const attributeGroups = useMemo(() => {
@@ -274,9 +299,9 @@ export function VariantSelector({
         </div>
       )}
 
-      {/* Grupos de modificadores del padre (obligatorios con la misma regla que el servidor) */}
-      {modifierGroups.length > 0 && (
-        <ProductModifierSelector ref={modifierRef} groups={modifierGroups} primaryColor={primaryColor} onChange={setMods} />
+      {/* Grupos de la variante o del padre (obligatorios con la misma regla que el servidor) */}
+      {gruposLinea.length > 0 && (
+        <ProductModifierSelector key={claveGrupos} ref={modifierRef} groups={gruposLinea} primaryColor={primaryColor} onChange={setMods} />
       )}
 
       {/* Selector de cantidad */}

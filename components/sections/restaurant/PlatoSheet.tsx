@@ -8,14 +8,15 @@
  * servidor), «Nota para la cocina», cantidad, «Agregar al pedido · $ total» y «Reservar mesa».
  *
  * Datos: las variantes y los grupos se piden al abrir, a `/api/products/[id]/variants` (filtra
- * por la organización del host y aplica la carta de la sede). Una variante sin grupos propios
- * usa los del plato: es la regla del cobro (lib/products/modificadores.ts).
+ * por la organización del host y aplica la carta de la sede). Los grupos de la línea salen de
+ * `gruposDeProducto`, la misma función que usa el cobro: los propios de la variante elegida si
+ * tiene, y si no, los del plato (lib/products/modificadores.ts).
  *
  * El precio que se escribe en el carrito es el que se ve (variante o plato + extras); el
  * servidor lo vuelve a calcular y, si difiere, responde 409 antes de cobrar.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -31,6 +32,8 @@ import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
 import { getAvailableStock } from '@/lib/stock'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
+import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { MenuItem } from '@/lib/menu/menuFull'
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
@@ -142,7 +145,7 @@ function ContenidoPlato({
   const [fallo, setFallo] = useState(false)
   const [intento, setIntento] = useState(0)
   const [variantes, setVariantes] = useState<VarianteApi[]>([])
-  const [grupos, setGrupos] = useState<ModifierGroup[]>([])
+  const [gruposPorProducto, setGruposPorProducto] = useState<Map<number, ModifierGroup[]>>(() => new Map())
   const [varianteId, setVarianteId] = useState<number | null>(null)
   const [errorVariante, setErrorVariante] = useState(false)
   const [mods, setMods] = useState<SelectedModifier[]>([])
@@ -157,13 +160,13 @@ function ContenidoPlato({
     const qs = typeof branchId === 'number' ? `?branchId=${branchId}` : ''
     fetch(`/api/products/${item.id}/variants${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d: { variants?: VarianteApi[]; modifierGroups?: ModifierGroup[] }) => {
+      .then((d: { variants?: VarianteApi[]; modifierGroups?: ModifierGroup[]; variantModifierGroups?: Record<string, ModifierGroup[]> }) => {
         if (!vivo) return
         const lista = Array.isArray(d.variants) ? d.variants : []
         setVariantes(lista)
         // Una sola opción: elegida de entrada.
         if (lista.length === 1) setVarianteId(lista[0].id)
-        setGrupos(Array.isArray(d.modifierGroups) ? d.modifierGroups : [])
+        setGruposPorProducto(mapaGruposDeVariantes(item.id, d.modifierGroups, d.variantModifierGroups))
       })
       .catch(() => vivo && setFallo(true))
       .finally(() => vivo && setCargando(false))
@@ -174,6 +177,17 @@ function ContenidoPlato({
 
   const conVariantes = item.hasVariants && variantes.length > 0
   const variante = conVariantes ? variantes.find((v) => v.id === varianteId) ?? null : null
+  // Grupos de la línea que se va a pedir (regla única del cobro).
+  const grupos = useMemo(
+    () => gruposDeProducto(variante ? { id: variante.id, parent_product_id: item.id } : { id: item.id }, gruposPorProducto),
+    [variante, item.id, gruposPorProducto],
+  )
+  // Si la variante elegida trae grupos propios, el selector se reinicia (otras opciones).
+  const claveGrupos = grupos.map((g) => g.id).join('-')
+  useEffect(() => {
+    setMods([])
+  }, [claveGrupos])
+  const { ruta } = useRutaSitio()
   const base = variante ? precioVariante(variante, item.price) : item.price
   const extras = mods.reduce((s, m) => s + (m.extraPrice || 0), 0)
   const unitario = base === null ? null : base + extras
@@ -271,7 +285,7 @@ function ContenidoPlato({
                 <button type="button" className="font-medium underline" style={{ color: ACCENT }} onClick={() => setIntento((n) => n + 1)}>
                   Intentar de nuevo
                 </button>
-                <Link href={`/productos/${item.uuid}`} className="font-medium underline" style={{ color: ACCENT }}>
+                <Link href={ruta(`/productos/${item.uuid}`)} className="font-medium underline" style={{ color: ACCENT }}>
                   Ver el plato
                 </Link>
               </div>
@@ -331,7 +345,7 @@ function ContenidoPlato({
           )}
 
           {!cargando && !fallo && grupos.length > 0 && (
-            <ProductModifierSelector ref={selectorRef} groups={grupos} primaryColor={PRIMARY} onChange={setMods} />
+            <ProductModifierSelector key={claveGrupos} ref={selectorRef} groups={grupos} primaryColor={PRIMARY} onChange={setMods} />
           )}
 
           {canOrder && !cargando && !fallo && (

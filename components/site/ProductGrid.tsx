@@ -120,8 +120,10 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
       const sedeParam = typeof branchId === 'number' ? `&branchId=${branchId}` : ''
       const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}${sedeParam}`)
       const data = await res.json()
-      setVariantChildren(data.variants || [])
-      // Grupos del padre (acompañante…): las variantes los heredan en el cobro.
+      // Cada variante lleva sus grupos propios (si tiene); las demás heredan los del padre
+      // (acompañante…), con la regla del cobro (`gruposDeProducto`, en VariantSelector).
+      const propios: Record<string, ModifierGroup[]> = data.variantModifierGroups || {}
+      setVariantChildren(((data.variants || []) as any[]).map((v) => (propios[String(v.id)] ? { ...v, modifier_groups: propios[String(v.id)] } : v)))
       setVariantGroups(Array.isArray(data.modifierGroups) ? data.modifierGroups : [])
     } catch (err) {
       console.error('Error loading variants:', err)
