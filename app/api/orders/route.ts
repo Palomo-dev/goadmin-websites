@@ -436,16 +436,78 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Post-procesamiento: items, stock, cupones, email
-    // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
+    // ── Pasos críticos: líneas del pedido y reserva de stock ──
+    // Fuera del try de post-procesamiento: un pedido sin líneas (o con la reserva a medias) no
+    // puede responder `success` ni llegar a /api/checkout/init. Si fallan, el pedido se cancela y
+    // se responde con error. Así quedaron 2 pedidos sin líneas, uno de ellos pagado.
+    // Crear web_order_items con el precio unitario real (base + extras, una sola vez)
+    const orderItems = construirFilasPedido(lineas, webOrder.id, taxRate)
+    let itemsError: unknown = null
     try {
-      // Crear web_order_items con el precio unitario real (base + extras, una sola vez)
-      const orderItems = construirFilasPedido(lineas, webOrder.id, taxRate)
-
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from('web_order_items')
         .insert(orderItems)
+      itemsError = error
+    } catch (err) {
+      itemsError = err
+    }
+    if (itemsError) {
+      console.error('[Orders] No se pudieron guardar las líneas del pedido; se cancela', {
+        organizationId: contextOrgId, webOrderId: webOrder.id, error: itemsError,
+      })
+      await cancelarPedidoWeb(supabase as any, webOrder.id, 'Error al guardar los ítems del pedido')
+      return NextResponse.json(
+        { error: 'No pudimos registrar tu pedido. No se hizo ningún cobro; intenta de nuevo en un momento.', code: 'PEDIDO_SIN_LINEAS' },
+        { status: 500 }
+      )
+    } else {
+      // Líneas guardadas: sigue el flujo de siempre.
+    }
 
+    // Reservar stock atómicamente via RPC (FOR UPDATE evita overselling)
+    // Solo productos con track_stock=true
+    if (resolvedBranchId && requestedMap.size > 0) {
+      const rpcItems = Array.from(requestedMap.entries()).map(([pid, qty]) => ({
+        product_id: pid,
+        quantity: qty,
+      }))
+
+      let reserveResult: any = null
+      let reserveError: unknown = null
+      try {
+        const r = await (supabase as any)
+          .rpc('reserve_stock_for_web_order', {
+            p_organization_id: contextOrgId,
+            p_branch_id: resolvedBranchId,
+            p_order_id: webOrder.id,
+            p_items: rpcItems,
+          })
+        reserveResult = r.data
+        reserveError = r.error
+      } catch (err) {
+        // Una excepción (red, timeout) se trata igual que un error de la RPC: sin reserva no hay pedido.
+        reserveError = err
+      }
+
+      if (reserveError || !reserveResult?.ok) {
+        // La reserva atómica falló: cancelar la orden y devolver 409
+        console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
+        await cancelarPedidoWeb(supabase as any, webOrder.id, 'Stock insuficiente al reservar')
+
+        const shortages = reserveResult?.shortages || []
+        const outOfStock = shortages.map((s: any) =>
+          `Producto ${s.product_id} (disponible: ${Math.max(0, Math.floor(s.available))}, solicitado: ${s.requested})`
+        )
+        return NextResponse.json(
+          { error: 'Stock insuficiente', details: outOfStock },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Post-procesamiento: propina, cupones, promociones, email
+    // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
+    try {
       // Registrar propina en tabla tips
       if (resolvedTip > 0) {
         await (supabase as any)
@@ -462,38 +524,6 @@ export async function POST(request: NextRequest) {
             notes: `Propina online - Pedido #${orderNumber}`,
           })
           .catch((err: any) => console.error('[Orders] Tip insert error:', err))
-      }
-
-      // Reservar stock atómicamente via RPC (FOR UPDATE evita overselling)
-      // Solo productos con track_stock=true
-      if (resolvedBranchId && requestedMap.size > 0) {
-        const rpcItems = Array.from(requestedMap.entries()).map(([pid, qty]) => ({
-          product_id: pid,
-          quantity: qty,
-        }))
-
-        const { data: reserveResult, error: reserveError } = await (supabase as any)
-          .rpc('reserve_stock_for_web_order', {
-            p_organization_id: contextOrgId,
-            p_branch_id: resolvedBranchId,
-            p_order_id: webOrder.id,
-            p_items: rpcItems,
-          })
-
-        if (reserveError || !reserveResult?.ok) {
-          // La reserva atómica falló: cancelar la orden y devolver 409
-          console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
-          await cancelarPedidoWeb(supabase as any, webOrder.id, 'Stock insuficiente al reservar')
-
-          const shortages = reserveResult?.shortages || []
-          const outOfStock = shortages.map((s: any) =>
-            `Producto ${s.product_id} (disponible: ${Math.max(0, Math.floor(s.available))}, solicitado: ${s.requested})`
-          )
-          return NextResponse.json(
-            { error: 'Stock insuficiente', details: outOfStock },
-            { status: 409 }
-          )
-        }
       }
 
       // Registrar redención de cupón. El trigger `trg_coupon_redemption_increment`
