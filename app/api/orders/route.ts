@@ -729,22 +729,12 @@ export async function POST(request: NextRequest) {
       // de `server_id` y, con `.catch` sobre un builder sin ese método, lanzaba un TypeError que
       // saltaba la reserva de stock, el cupón y el correo de todo pedido con propina.
 
-      // Registrar redención de cupón. El trigger `trg_coupon_redemption_increment`
-      // de `coupon_redemptions` ya suma 1 a `coupons.usage_count`; aquí NO se
-      // incrementa a mano (hacerlo contaba cada cupón dos veces y agotaba el
-      // `usage_limit` a la mitad). El cupón es el que validó el servidor, no el
-      // `couponId` del cliente.
-      if (resolvedCoupon && resolvedCouponDiscount > 0) {
-        const { error: redemptionError } = await (supabase as any)
-          .from('coupon_redemptions')
-          .insert({
-            coupon_id: resolvedCoupon.id,
-            sale_id: webOrder.id,
-            customer_id: customerId,
-            discount_applied: resolvedCouponDiscount,
-          })
-        if (redemptionError) console.error('[Orders] Coupon redemption error:', redemptionError)
-      }
+      // Cupón: aquí NO se registra la redención. `coupon_redemptions.sale_id` es FK a
+      // `sales(id)` y el pedido web aún no tiene venta: el insert de antes usaba el uuid del
+      // pedido y la FK lo rechazaba (23503) en todos los pedidos con cupón. El pedido guarda
+      // `coupon_code` (arriba) y el ERP redime el cupón contra la venta al confirmar, por el
+      // botón «Confirmar pedido» o por la pasarela (`redimirCuponPedidoWeb` del ERP), y el
+      // trigger `trg_coupon_redemption_increment` suma el uso.
 
       // Registrar uso de promociones automáticas (las que aplicó el servidor).
       // Sin esto el descuento llegaba al ERP pero "Usos" seguía en 0 en el POS
