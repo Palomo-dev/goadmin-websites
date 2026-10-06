@@ -279,6 +279,29 @@
 [data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) [class*='border-gray-'] {
   border-color: color-mix(in srgb, var(--text-color) 14%, var(--background-color)) !important;
 }
+/* Encabezado transparente (components/site/header/HeaderTransparent.tsx, header_style 'transparent').
+   `sobre`: sin fondo, borde ni sombra y con texto claro sobre la portada; `solido`: el fondo de
+   siempre (o el del tema) con sombra. Solo los encabezados con el atributo: ningún otro cambia.
+   El atributo va dos veces para ganar en especificidad a las reglas del tema de arriba. */
+header[data-encabezado-transparente] > div {
+  transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+header[data-encabezado-transparente='sobre'][data-encabezado-transparente] > div {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  color: #ffffff;
+}
+header[data-encabezado-transparente='sobre'][data-encabezado-transparente][data-encabezado-transparente] > div :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: #ffffff !important;
+}
+header[data-encabezado-transparente='sobre'][data-encabezado-transparente] > div[class*='border-'] {
+  border-color: transparent !important;
+}
+header[data-encabezado-transparente='solido'] > div:last-child {
+  box-shadow: 0 6px 24px -12px rgba(0, 0, 0, 0.35);
+}
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 /* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian).

@@ -25,7 +25,14 @@ export default function HeaderClassic({
   showCart,
   onCartClick,
   branchId,
-}: HeaderVariantProps) {
+  transparente,
+}: HeaderVariantProps & {
+  /**
+   * Solo HeaderTransparent: `sobre` = transparente sobre la portada, `solido` = con fondo y
+   * sombra (scroll o página sin portada). Ausente = el clásico de siempre.
+   */
+  transparente?: 'sobre' | 'solido';
+}) {
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const logoPosition = settings?.logo_position ?? 'left';
@@ -99,7 +106,7 @@ export default function HeaderClassic({
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-40 w-full" data-encabezado-transparente={transparente}>
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
         <div className="max-w-7xl mx-auto px-4">

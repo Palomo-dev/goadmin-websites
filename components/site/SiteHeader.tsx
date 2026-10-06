@@ -20,6 +20,7 @@ import HeaderCentered from './header/HeaderCentered'
 import HeaderSplit from './header/HeaderSplit'
 import HeaderMinimal from './header/HeaderMinimal'
 import HeaderMega from './header/HeaderMega'
+import HeaderTransparent from './header/HeaderTransparent'
 import MobileDrawer from './header/mobile/MobileDrawer'
 import MobileBottomSheet from './header/mobile/MobileBottomSheet'
 import MobileFullscreen from './header/mobile/MobileFullscreen'
@@ -411,6 +412,8 @@ export default function SiteHeader({
       return <HeaderMinimal {...variantProps} />
     case 'mega':
       return <HeaderMega {...variantProps} />
+    case 'transparent':
+      return <HeaderTransparent {...variantProps} />
     default:
       return <HeaderClassic {...variantProps} />
   }
