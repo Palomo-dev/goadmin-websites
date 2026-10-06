@@ -14,7 +14,7 @@
  * Uso: node --disable-warning=ExperimentalWarning scripts/verify-reservas.mjs
  */
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -80,9 +80,15 @@ for (const ruta of ['lib/restaurant/reservas-servidor.ts', 'app/api/contact/rout
 
 // ─── 3. Prefijos de la migración D1 ──────────────────────────────────────────
 const erp = process.env.ERP_REPO || join(ROOT, '..', 'go-admin-erp')
-const d1 = join(erp, 'supabase/pendientes/20261007100100_reservas_reglas_servidor.sql')
-const d1Aplicada = join(erp, 'supabase/migrations/20261007100100_reservas_reglas_servidor.sql')
-const ruta = existsSync(d1) ? d1 : existsSync(d1Aplicada) ? d1Aplicada : null
+// Al aplicarse, la migración cambia de carpeta y de marca de tiempo (la de
+// aplicación): se busca por nombre en pendientes/ y en migrations/.
+const buscarD1 = (carpeta) => {
+  const dir = join(erp, 'supabase', carpeta)
+  if (!existsSync(dir)) return null
+  const f = readdirSync(dir).find((n) => /^\d+_reservas_reglas_servidor\.sql$/.test(n))
+  return f ? join(dir, f) : null
+}
+const ruta = buscarD1('pendientes') ?? buscarD1('migrations')
 if (ruta) {
   const sql = await readFile(ruta, 'utf8')
   const prefijos = new Set([...sql.matchAll(/'([A-Z_]{4,}): /g)].map((x) => x[1]))
