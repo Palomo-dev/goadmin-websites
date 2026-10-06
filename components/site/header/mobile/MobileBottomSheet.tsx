@@ -60,9 +60,9 @@ export default function MobileBottomSheet({
                 showSearchIcon={searchStyle === 'icon'}
                 isMobile={true}
               />
+              <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               <Drawer.Root open={open} onOpenChange={setOpen} direction="bottom">
                 <Drawer.Trigger asChild>
-                  <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
                   <button
                     aria-label="Abrir menú"
                     className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
