@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { isReservationReference, handleReservationPayment } from '@/lib/reservations/payment-handler'
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
+import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
 import { isInvoiceReference, handleInvoicePayment, organizacionesCandidatasFactura } from '@/lib/services/payment-handler'
@@ -571,6 +572,16 @@ export async function POST(request: NextRequest) {
       notifyErpAutoConfirm((webOrder as any).id).catch(err =>
         console.error('[Wompi Webhook] ERP auto-confirm error:', err)
       )
+
+      // Correo «Pago confirmado» al cliente, solo en la transición pending → paid (un reintento
+      // del webhook sobre un pedido ya pagado no lo repite). /api/orders ya no lo envía para Wompi.
+      if (!updateError && (webOrder as any).payment_status !== 'paid') {
+        enviarCorreoPedidoPagado((webOrder as any).id).catch(err =>
+          console.error('[Wompi Webhook] Correo de pago confirmado:', err)
+        )
+      } else {
+        // Ya estaba pagado (reintento) o no se pudo actualizar: sin correo.
+      }
     }
 
     // Liberar stock reservado si el pago falló
