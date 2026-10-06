@@ -33,6 +33,15 @@ export const metadata: Metadata = {
 }
 
 type Params = { token: string; slug?: string[] }
+
+/**
+ * Motivo de cada 404 de la vista previa, para que no vuelva a ser un 404 mudo. Sin datos
+ * sensibles: nunca el token, la firma ni el secreto; solo el motivo y los ids de organización
+ * y sitio (no son secretos y sirven para cruzar con el ERP).
+ */
+function registrarNoEncontrado(motivo: string, detalle: Record<string, string | number | null> = {}) {
+  console.warn('[vista-previa] 404', JSON.stringify({ motivo, ...detalle }))
+}
 type Busqueda = Record<string, string | string[] | undefined>
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -67,16 +76,29 @@ export default async function VistaPreviaBorradorPage({
   const { token, slug } = await params
   const busqueda = await searchParams
   const verificacion = verificarTokenVistaPrevia(decodeURIComponent(token))
-  if (!verificacion.ok) notFound()
+  if (!verificacion.ok) {
+    registrarNoEncontrado(verificacion.motivo)
+    notFound()
+  }
   const { carga } = verificacion
 
   // La organización sale del host; el token solo la confirma. Otro host → 404.
   const orgDelHost = await getOrgIdDelHost()
-  if (!orgDelHost || orgDelHost !== carga.o) notFound()
+  if (!orgDelHost) {
+    registrarNoEncontrado('host_sin_organizacion', { org: carga.o })
+    notFound()
+  }
+  if (orgDelHost !== carga.o) {
+    registrarNoEncontrado('organizacion_distinta', { org: carga.o, orgHost: orgDelHost })
+    notFound()
+  }
 
   const pedido = typeof busqueda.sitio === 'string' && UUID.test(busqueda.sitio) ? busqueda.sitio : carga.s
   const borrador = await getSitioBorradorV2(carga.o, pedido)
-  if (!borrador) notFound()
+  if (!borrador) {
+    registrarNoEncontrado('sin_borrador', { org: carga.o, sitio: pedido })
+    notFound()
+  }
 
   const sedes = await sedesDe(
     carga.o,

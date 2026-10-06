@@ -200,10 +200,14 @@ export async function middleware(request: NextRequest) {
   // Ignorar rutas de assets estáticos (pero NO /api, para que auth funcione).
   // /sitemap.xml y /robots.txt sí pasan: son por organización y necesitan las cabeceras del host.
   const esArchivoPorHost = url.pathname === '/sitemap.xml' || url.pathname === '/robots.txt'
+  // /vista-previa/<carga>.<firma>: el token lleva un punto pero no es un archivo. Si se
+  // tomaba por archivo salía de aquí sin `x-subdomain`, la página no resolvía la organización
+  // del host y respondía 404 a todo enlace de vista previa.
+  const esVistaPrevia = url.pathname.startsWith('/vista-previa/')
   if (
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/static') ||
-    (url.pathname.includes('.') && !esArchivoPorHost) // archivos con extensión
+    (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia) // archivos con extensión
   ) {
     return NextResponse.next()
   }
@@ -315,7 +319,7 @@ export async function middleware(request: NextRequest) {
 
   // Vista previa privada del borrador (app/vista-previa/[token]): nunca se indexa ni se
   // cachea en el borde. Solo esa ruta; el resto de respuestas no cambia.
-  if (url.pathname.startsWith('/vista-previa/')) {
+  if (esVistaPrevia) {
     supabaseResponse.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
     supabaseResponse.headers.set('Cache-Control', 'private, no-store, max-age=0')
     supabaseResponse.headers.set('Referrer-Policy', 'no-referrer')
