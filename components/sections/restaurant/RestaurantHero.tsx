@@ -9,13 +9,20 @@
  * `RestaurantHero.CONTENT_KEYS` desde un route handler. La interacción vive
  * en RestaurantHeroView.
  *
- * Pendiente: el estado de la sede («Abierto ahora · Cierra a las 22:00») del
- * diseño se conectará con `estadoApertura` de lib/restaurant/horario.ts, el
- * mismo cálculo de la sección `hours_location`, en vez de duplicarlo aquí.
+ * Estado de la sede («Abierto ahora · Cierra a las 22:00»): `estadoApertura`
+ * de lib/restaurant/horario.ts, el mismo cálculo y el mismo badge que
+ * `hours_location` (EstadoApertura.tsx). La sede es la de la página; si la
+ * página no tiene sede, la principal; si no, la primera con horario. Sin
+ * horario cargado en ninguna sede no se pinta nada.
+ *
+ * Datos: `data.sedesRestaurante` (consulta cacheada de lib/restaurant/sedes.ts),
+ * precargado por `app/[[...slug]]/page.tsx` cuando la página tiene esta sección.
  */
 
 import type { OrganizationWithDetails } from '@/types/database'
 import { cardVisual, items, oneOf, safeHref, str, strOr, type Content } from '@/lib/restaurant/secciones'
+import type { SedeSitio, SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import type { SedeConHorario } from './EstadoApertura'
 import { RestaurantHeroView, type HeroCard, type RestaurantHeroVariant } from './RestaurantHeroView'
 
 export const CONTENT_KEYS = [
@@ -36,11 +43,28 @@ const VARIANTS: readonly RestaurantHeroVariant[] = ['typographic', 'split_bento'
 interface RestaurantHeroProps {
   content: Content
   organization: OrganizationWithDetails
+  data?: Record<string, unknown>
   sectionVariant?: string
 }
 
-export function RestaurantHero({ content, organization, sectionVariant }: RestaurantHeroProps) {
+function esSedesRestaurante(v: unknown): v is SedesRestaurante {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
+}
+
+/** Sede cuyo estado muestra el hero: la de la página, la principal o la primera con horario. */
+export function sedeDelHero(datos: SedesRestaurante | null, sedePagina: number | null): SedeConHorario | null {
+  const conHorario = (datos?.sedes ?? []).filter((s): s is SedeSitio & { horario: NonNullable<SedeSitio['horario']> } => s.horario !== null)
+  const elegida =
+    (sedePagina !== null ? conHorario.find((s) => s.id === sedePagina) : undefined) ??
+    conHorario.find((s) => s.esPrincipal) ??
+    conHorario[0]
+  return elegida ? { id: elegida.id, horario: elegida.horario, zonaHoraria: elegida.zonaHoraria } : null
+}
+
+export function RestaurantHero({ content, organization, data, sectionVariant }: RestaurantHeroProps) {
   const variant = oneOf(sectionVariant, VARIANTS, 'typographic')
+  const datos = esSedesRestaurante(data?.sedesRestaurante) ? data.sedesRestaurante : null
+  const sedePagina = typeof data?.branchId === 'number' ? data.branchId : null
 
   const cards: HeroCard[] = items(content.cards)
     .map((c) => ({ label: str(c.label), url: safeHref(c.url), imageUrl: str(c.image_url) }))
@@ -59,6 +83,7 @@ export function RestaurantHero({ content, organization, sectionVariant }: Restau
       imageAlt={str(content.image_alt) ?? ''}
       cards={cards}
       visual={cardVisual(content)}
+      sede={sedeDelHero(datos, sedePagina)}
     />
   )
 }

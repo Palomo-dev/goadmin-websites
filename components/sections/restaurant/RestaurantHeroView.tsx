@@ -10,12 +10,17 @@
  *  - split_bento: parallax ≤ 15 % del panel (no en móvil), tarjetas con
  *    fade-up escalonado, zoom 1.05 y flecha en diagonal en hover/foco.
  *  - prefers-reduced-motion: nada se mueve.
+ *
+ * Estado de la sede: badge «Abierto ahora · Cierra a las …» (EstadoApertura),
+ * solo en cliente y recalculado cada minuto.
  */
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CardVisual } from '@/lib/restaurant/secciones'
+import { OpenStatusBadge, useEstadosEnVivo, type SedeConHorario } from './EstadoApertura'
 import { SiteImage } from './SiteImage'
 import { useParallax, useSectionMotion } from './useSectionMotion'
 import m from './motion.module.css'
@@ -44,6 +49,8 @@ export interface RestaurantHeroViewProps {
   imageAlt: string
   cards: HeroCard[]
   visual: CardVisual
+  /** Sede cuyo estado se muestra; `null` = sin horario, no se muestra nada. */
+  sede: SedeConHorario | null
 }
 
 const PRIMARY_BTN =
@@ -82,6 +89,19 @@ export function RestaurantHeroView(props: RestaurantHeroViewProps) {
   return props.variant === 'split_bento' ? <SplitBento {...props} /> : <Typographic {...props} />
 }
 
+/** Badge de la sede del hero; nada hasta el montaje o si la sede no tiene horario. */
+function EstadoSede({ sede, className }: { sede: SedeConHorario | null; className?: string }) {
+  const sedes = useMemo(() => (sede ? [sede] : []), [sede])
+  const estados = useEstadosEnVivo(sedes)
+  const apertura = sede ? estados?.get(sede.id)?.apertura : null
+  if (!apertura) return null
+  return (
+    <div className={className} aria-live="polite">
+      <OpenStatusBadge apertura={apertura} />
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // typographic
 // ---------------------------------------------------------------------------
@@ -95,7 +115,14 @@ function Typographic(props: RestaurantHeroViewProps) {
 
   return (
     <div ref={ref} {...motionProps} className="flex flex-col gap-6 pb-10 pt-14 md:gap-10 md:pb-24 md:pt-[120px]">
-      {props.eyebrow && <Eyebrow>{props.eyebrow}</Eyebrow>}
+      {props.eyebrow ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Eyebrow>{props.eyebrow}</Eyebrow>
+          <EstadoSede sede={props.sede} />
+        </div>
+      ) : (
+        <EstadoSede sede={props.sede} />
+      )}
       <h1
         className="break-words text-[56px] font-bold leading-none tracking-[-0.02em] text-foreground [font-family:var(--font-heading)] sm:text-[80px] lg:text-[144px] lg:leading-[0.95]"
         aria-label={props.title.replace(/\s+/g, ' ')}
@@ -146,6 +173,7 @@ function SplitBento(props: RestaurantHeroViewProps) {
           <SiteImage src={props.imageUrl} alt={props.imageAlt} sizes="(min-width: 768px) 66vw, 100vw" priority />
         </div>
         <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+        <EstadoSede sede={props.sede} className="absolute left-5 top-5 md:left-10 md:top-10" />
         <div className="relative flex flex-col gap-3">
           {props.eyebrow && <p className="text-xs font-medium uppercase leading-4 tracking-[0.12em] text-white/85">{props.eyebrow}</p>}
           <h1 className="text-4xl font-bold uppercase leading-10 text-white [font-family:var(--font-heading)] md:text-6xl md:leading-[1]">

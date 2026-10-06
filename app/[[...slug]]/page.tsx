@@ -157,11 +157,14 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // F5: exponer branchId a las secciones para separar carrito por outlet
     data.branchId = branchId
 
-    // Sedes (hours_location / reservation): una consulta cacheada por organización.
-    // En la vista previa del editor también, porque una sección recién añadida
-    // todavía no está en la página guardada y no llegaría a esta lista.
+    // Vista previa del editor (?preview=1): se lee UNA vez. En ella se precargan
+    // también los datos de secciones que aún no están en la página guardada
+    // (una sección recién añadida no llegaría a `sectionTypes`).
     const esVistaPrevia = (await searchParams)?.preview === '1'
-    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation')) {
+
+    // Sedes (hours_location / reservation / estado del restaurant_hero): una
+    // consulta cacheada por organización.
+    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'restaurant_hero')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
     }
 
@@ -170,10 +173,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.spaces = await getOrganizationSpaces(organization.id, branchId)
     }
     // `signature_dishes` elige platos de la misma lista que la carta. En la
-    // vista previa del editor (?preview=1) también se precargan: una sección
-    // recién añadida aún no está en la página guardada.
-    const isEditorPreview = (await searchParams)?.preview === '1'
-    const needsProducts = isEditorPreview || sectionTypes.some(t =>
+    // vista previa también se precargan (ver `esVistaPrevia`).
+    const needsProducts = esVistaPrevia || sectionTypes.some(t =>
       ['products_grid', 'featured_products', 'menu_preview', 'menu_full', 'specialties', 'signature_dishes'].includes(t)
     )
     if (needsProducts) {
