@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { getOrder } from '@/lib/checkout/pedido-web'
+import { getOrder, organizacionDelPedido } from '@/lib/checkout/pedido-web'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -610,16 +612,47 @@ async function getInvoice(supabase: any, invoiceId: string) {
   }
 }
 
+/** Respuesta 429 de esta ruta (mismo criterio que /api/orders). */
+function demasiadosIntentos() {
+  return NextResponse.json(
+    { error: 'Recibimos demasiados intentos de pago seguidos. Espera unos minutos e inténtalo de nuevo.', code: 'DEMASIADOS_INTENTOS' },
+    { status: 429 }
+  )
+}
+
+/** 403 cuando el host pide cobrar algo de otra organización. Se registra. */
+function organizacionAjena(detalle: Record<string, unknown>) {
+  console.warn('[Checkout Init] El cobro pedido es de otra organización que la del host', detalle)
+  return NextResponse.json(
+    { error: 'Este pago no corresponde a este sitio' },
+    { status: 403 }
+  )
+}
+
 /**
  * POST /api/checkout/init
  *
  * Recibe orderNumber + gateway code → genera URL de checkout de la pasarela.
+ *
+ * La organización sale del HOST (CLAUDE.md, multi-tenancy): si el host resuelve
+ * una organización, el pedido (o reserva, boleto, pase, factura) tiene que ser
+ * suyo; si no, 403 y se registra. Si el host no resuelve (localhost sin
+ * subdominio) se conserva el comportamiento anterior.
+ * Límite por IP (60 / 10 min) y por correo del pedido (10 / 10 min), en memoria
+ * por instancia, como /api/orders.
  */
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient() || createPublicClient()
 
   try {
+    const ip = getClientIP(request)
+    if (!checkRateLimit(`checkout-init:ip:${ip}`, 60, 10 * 60 * 1000).allowed) {
+      console.warn('[Checkout Init] Límite de intentos por IP alcanzado', { ip })
+      return demasiadosIntentos()
+    }
+
     const { orderNumber, gateway, returnUrl, source, sourceId } = await request.json()
+    const hostOrgId = await getOrgIdDelHost()
 
     if (!gateway || !returnUrl) {
       return NextResponse.json(
@@ -658,7 +691,17 @@ export async function POST(request: NextRequest) {
     } else if (isReservation) {
       order = await getReservation(supabase, sourceId)
     } else if (orderNumber) {
-      order = await getOrder(supabase, orderNumber)
+      if (hostOrgId !== null) {
+        order = await getOrder(supabase, orderNumber, hostOrgId)
+        if (!order) {
+          const orgDelPedido = await organizacionDelPedido(supabase, orderNumber)
+          if (orgDelPedido !== null && orgDelPedido !== hostOrgId) {
+            return organizacionAjena({ fuente: 'web_order', orderNumber, hostOrgId, orgDelPedido })
+          }
+        }
+      } else {
+        order = await getOrder(supabase, orderNumber)
+      }
     }
 
     if (!order) {
@@ -667,6 +710,20 @@ export async function POST(request: NextRequest) {
         { error: `${label} no encontrado` },
         { status: 404 }
       )
+    }
+
+    // Reservas, boletos, pases y facturas se leen por id: también tienen que
+    // ser de la organización del host.
+    if (hostOrgId !== null && Number(order.organization_id) !== hostOrgId) {
+      return organizacionAjena({ fuente: source || 'web_order', sourceId: sourceId ?? null, hostOrgId, orgDelPedido: order.organization_id })
+    } else {
+      // Host sin organización o cobro de la misma organización: sigue como antes.
+    }
+
+    const correo = typeof order.customer_email === 'string' ? order.customer_email.trim().toLowerCase() : ''
+    if (correo && !checkRateLimit(`checkout-init:email:${correo}`, 10, 10 * 60 * 1000).allowed) {
+      console.warn('[Checkout Init] Límite de intentos por correo alcanzado', { organizationId: order.organization_id })
+      return demasiadosIntentos()
     }
 
     if (order.payment_status === 'paid') {

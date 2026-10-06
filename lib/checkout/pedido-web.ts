@@ -13,14 +13,24 @@ const COUNTRY_CURRENCY: Record<string, string> = {
 }
 
 /**
- * Obtiene la orden de web_orders por order_number
+ * Obtiene la orden de web_orders por order_number.
+ *
+ * Con `organizationId` (la del HOST) solo busca en esa organización:
+ * `order_number` no tiene UNIQUE en la base, y sin el filtro el sitio de una
+ * organización podía iniciar el cobro de un pedido de otra. Sin organización
+ * (host que no resuelve, p. ej. localhost sin subdominio), como antes.
  */
-export async function getOrder(supabase: any, orderNumber: string) {
-  const { data, error } = await supabase
+export async function getOrder(supabase: any, orderNumber: string, organizationId: number | null = null) {
+  let consulta = supabase
     .from('web_orders')
     .select('id, organization_id, order_number, total, status, payment_status, customer_email, customer_name, customer_phone, delivery_address, delivery_type')
     .eq('order_number', orderNumber)
-    .single()
+  if (organizationId !== null) {
+    consulta = consulta.eq('organization_id', organizationId)
+  } else {
+    // Sin organización del host: comportamiento anterior, solo por número.
+  }
+  const { data, error } = await consulta.single()
 
   if (error || !data) return null
 
@@ -46,4 +56,18 @@ export async function getOrder(supabase: any, orderNumber: string) {
     customer_city: customerCity,
     customer_address: customerAddressLine,
   }
+}
+
+/**
+ * Organización dueña de un número de pedido, o `null` si no existe. Solo para
+ * registrar y responder 403 cuando el host pide el pedido de otra organización.
+ */
+export async function organizacionDelPedido(supabase: any, orderNumber: string): Promise<number | null> {
+  const { data } = await supabase
+    .from('web_orders')
+    .select('organization_id')
+    .eq('order_number', orderNumber)
+    .limit(1)
+    .maybeSingle()
+  return typeof data?.organization_id === 'number' ? data.organization_id : null
 }
