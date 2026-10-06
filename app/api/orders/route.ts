@@ -23,7 +23,9 @@ import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leer
 import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
 import { hoyEnZona, parseHorario } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
-import { esDomicilio } from '@/lib/orders/estados-pedido'
+import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
+import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
+import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 
 export const dynamic = 'force-dynamic'
@@ -55,6 +57,9 @@ const MOTIVOS_PRODUCTO: ReadonlySet<MotivoProblema> = new Set<MotivoProblema>([
 ])
 
 const redondear2 = (n: number): number => Math.round(n * 100) / 100
+
+/** Pasarelas cuyo webhook envía el correo al pasar el pago a `paid` (app/api/webhooks/wompi_co). */
+const PASARELAS_CON_CORREO_AL_PAGAR: ReadonlySet<string> = new Set(['wompi', 'wompi_co'])
 
 /** Interruptor de despliegue: cobrar el envío calculado en el servidor (por defecto, solo observar). */
 const ENVIO_SERVIDOR_OBLIGATORIO = process.env.ORDERS_ENFORCE_SERVER_SHIPPING === 'true'
@@ -718,23 +723,33 @@ export async function POST(request: NextRequest) {
         if (promoUsageError) console.error('[Orders] Promotion usage error:', promoUsageError)
       }
 
-      // Enviar email de confirmación (fire-and-forget)
-      const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
-      sendOrderConfirmationEmail({
-        orderNumber: webOrder.order_number,
-        customerEmail: customer.email,
-        customerName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
-        items: lineasCorreoPedido(lineas),
-        subtotal: calculatedSubtotal,
-        tax: taxTotal,
-        shipping: resolvedShipping,
-        discount: totalDiscountAmount,
-        promotions: promoEval.promotions.map(p => ({ name: p.name, discount: p.discount })),
-        ...(resolvedCoupon && resolvedCouponDiscount > 0 ? { couponCode: resolvedCoupon.code, couponDiscount: resolvedCouponDiscount } : {}),
-        total: calculatedTotal,
-        organizationName: '',
-        trackingUrl: `${origin}/pedido/${webOrder.order_number}`,
-      }).catch(err => console.error('[Orders] Email error:', err))
+      // Correo al cliente (fire-and-forget). Pago fuera de línea (efectivo, contraentrega,
+      // transferencia…): «Recibimos tu pedido» ahora. Wompi: lo envía el webhook cuando el pago
+      // pasa a `paid` («Pago confirmado»), así nadie recibe un «confirmado» de un pago que falló.
+      // Las demás pasarelas aún no envían correo desde su webhook: siguen recibiéndolo aquí.
+      if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
+        const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
+        sendOrderConfirmationEmail({
+          orderNumber: webOrder.order_number,
+          customerEmail: customer.email,
+          customerName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
+          items: lineasCorreoPedido(lineas),
+          subtotal: calculatedSubtotal,
+          tax: taxTotal,
+          shipping: resolvedShipping,
+          discount: totalDiscountAmount,
+          promotions: promoEval.promotions.map(p => ({ name: p.name, discount: p.discount })),
+          ...(resolvedCoupon && resolvedCouponDiscount > 0 ? { couponCode: resolvedCoupon.code, couponDiscount: resolvedCouponDiscount } : {}),
+          total: calculatedTotal,
+          organizationName: contexto.nombreOrganizacion,
+          trackingUrl: `${origin}${rutaSeguimiento(contextOrgId, webOrder)}`,
+          paymentStatus: 'pending',
+          tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · Mesa ${mesaPedido.name}` : ''}`,
+          programadoPara: isScheduled && disponibilidad.programadoPara ? momentoPedido(disponibilidad.programadoPara, contexto.zona) : null,
+        }).catch(err => console.error('[Orders] Email error:', err))
+      } else {
+        // Wompi: el correo sale del webhook al confirmarse el pago.
+      }
     } catch (postErr) {
       console.error('[Orders] Post-processing error (order already created):', postErr)
     }
@@ -743,6 +758,9 @@ export async function POST(request: NextRequest) {
       success: true,
       orderId: webOrder.id,
       orderNumber: webOrder.order_number,
+      // Enlace de seguimiento con su token (lib/orders/tokenSeguimiento.ts): con él, /pedido/<n>
+      // muestra también dirección, conductor y entrega. Sin secreto configurado, null.
+      trackingToken: tokenSeguimiento(contextOrgId, webOrder.id),
       message: 'Pedido creado exitosamente'
     })
   } catch (error) {
