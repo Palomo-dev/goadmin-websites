@@ -167,8 +167,11 @@ export function OrganizationLayoutCliente({
   // El carrito está disponible para todos los tipos de organización
   const showCart = true
   
-  const temaVars = atributosTema(temaSitio ?? null)
-  const hojaFuentesTema = temaSitio ? urlGoogleFonts([temaSitio.fuenteTitulos, temaSitio.fuenteCuerpo]) : null
+  // En el lienzo del editor, el estilo general en edición (fuentes, redondeo, botón, movimiento)
+  // reemplaza al guardado; se pinta con las mismas funciones que el sitio publicado.
+  const temaEfectivo = vivos?.tema ?? temaSitio ?? null
+  const temaVars = atributosTema(temaEfectivo)
+  const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo]) : null
 
   // CSS Variables para colores personalizados
   const secondaryColor = settings?.secondary_color || organization.secondary_color || '#1E40AF'

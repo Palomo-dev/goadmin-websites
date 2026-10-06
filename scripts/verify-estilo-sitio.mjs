@@ -67,7 +67,7 @@ const igual = (a, b, msg) => check(JSON.stringify(a) === JSON.stringify(b), `${m
 
 const { presentacionSeccion } = m.estiloSeccionPublico
 const { visibilidadDesdeDocumento, visibilidadAlDocumento } = m.estiloSeccion
-const { temaPublicoDesdeDocumento, atributosTema, urlGoogleFonts, familiaSegura } = m.temaPublico
+const { temaPublicoDesdeDocumento, temaPublicoDesdeMensaje, atributosTema, urlGoogleFonts, familiaSegura } = m.temaPublico
 const { validarDocumentoSitio } = m.documentoSitio
 
 // ─── 1. Visibilidad ──────────────────────────────────────────────────────────────────────────
@@ -169,6 +169,16 @@ const { validarDocumentoSitio } = m.documentoSitio
   igual(atributosTema(ts).datos['data-movimiento'], 'ninguno', 'ninguno se marca para apagar el movimiento')
   const tsLegacy = temaPublicoDesdeDocumento(sede.documento, true, null)
   igual(tsLegacy.fondo, null, 'principal legacy no aporta tokens')
+
+  // Lienzo del editor: el tema en edición llega en `goadmin:settings` y sale IGUAL que publicado.
+  igual(temaPublicoDesdeMensaje({ tema: principal.tema, esSede: false, principal: null }), t, 'lienzo: mismo tema que publicado')
+  igual(temaPublicoDesdeMensaje({ tema: sede.documento.tema, esSede: true, principal: principal.tema }), ts, 'lienzo: sede con herencia como publicada')
+  igual(temaPublicoDesdeMensaje({ tema: sede.documento.tema, esSede: true, principal: null }), tsLegacy, 'lienzo: principal legacy no aporta')
+  check(temaPublicoDesdeMensaje(undefined) === undefined, 'lienzo: sin tema se queda el del servidor')
+  check(temaPublicoDesdeMensaje({ tema: { colores: {}, tipografia: {}, radio: { mode: 'value', value: 7 } } }) === undefined, 'lienzo: radio fuera del contrato se ignora')
+  check(temaPublicoDesdeMensaje({ tema: { colores: {}, tipografia: {}, extra: 1 } }) === undefined, 'lienzo: tema con claves ajenas se ignora (esquema estricto)')
+  const inyectada = temaPublicoDesdeMensaje({ tema: { colores: {}, tipografia: { titulos: { mode: 'value', value: "x'); } body { display:none" } } } })
+  check(inyectada && inyectada.fuenteTitulos === null, 'lienzo: familia inyectada no llega al CSS')
 
   igual(atributosTema(null), { variables: {}, datos: {} }, 'legacy: ni variables ni atributos')
   check(urlGoogleFonts([]) === null, 'sin familias no hay hoja')

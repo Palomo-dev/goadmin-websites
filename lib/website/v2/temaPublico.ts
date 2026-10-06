@@ -16,7 +16,7 @@
  * Sitio legacy → `null` y la web queda exactamente como antes (ninguna variable, ningún atributo).
  * Código puro: sin React, Next ni Supabase.
  */
-import { resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
+import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -67,8 +67,14 @@ export function temaPublicoDesdeDocumento(
   esSede: boolean,
   principal: DocumentoSitio | null,
 ): TemaPublico {
-  const t = documento.tema
-  const p = principal?.tema ?? null
+  return temaPublicoDesdeTema(documento.tema, esSede, principal?.tema ?? null)
+}
+
+/**
+ * Lo mismo que `temaPublicoDesdeDocumento`, desde el grupo `tema` suelto. Es la única regla:
+ * la usan el sitio publicado (vía el documento) y el lienzo del editor (`temaPublicoDesdeMensaje`).
+ */
+export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): TemaPublico {
   const color = (v: unknown) => (typeof v === 'string' && HEX.test(v) ? v : null)
   const radio = resolver(t, p, (x) => x.radio, esSede)
   const boton = resolver(t, p, (x) => x.estiloBoton, esSede)
@@ -82,6 +88,26 @@ export function temaPublicoDesdeDocumento(
     estiloBoton: typeof boton === 'string' && BOTONES.includes(boton) ? (boton as EstiloBotonSitio) : null,
     movimiento: typeof movimiento === 'string' && MOVIMIENTOS.includes(movimiento) ? (movimiento as MovimientoSitio) : null,
   }
+}
+
+/**
+ * Estilo general EN EDICIÓN que manda el editor del ERP al lienzo (solo `?preview=1`), dentro de
+ * `goadmin:settings`: `{ tema, principal, esSede }`, con `tema` y `principal` como el grupo
+ * `tema` del documento V2 (el del borrador y, en una sede, el del principal publicado).
+ *
+ * Se valida con el MISMO esquema del contrato (`esquemaTema`, estricto) y se resuelve con la
+ * MISMA regla que el sitio publicado (`temaPublicoDesdeTema`): fuentes, colores, redondeo, botón
+ * y movimiento se ven igual que al publicar. `undefined` = el mensaje no trae tema o no es válido:
+ * el lienzo se queda con el tema que pintó el servidor.
+ */
+export function temaPublicoDesdeMensaje(crudo: unknown): TemaPublico | undefined {
+  if (!crudo || typeof crudo !== 'object') return undefined
+  const m = crudo as Record<string, unknown>
+  const tema = esquemaTema.safeParse(m.tema)
+  if (!tema.success) return undefined
+  const esSede = m.esSede === true
+  const principal = esSede && m.principal ? esquemaTema.safeParse(m.principal) : null
+  return temaPublicoDesdeTema(tema.data, esSede, principal?.success ? principal.data : null)
 }
 
 /** Distancia de la entrada de las secciones según el movimiento del sitio (px). */

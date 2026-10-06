@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { esOrigenEditor, useIsPreviewMode } from '@/components/sections/PreviewBridge'
+import { temaPublicoDesdeMensaje, type TemaPublico } from '@/lib/website/v2/temaPublico'
 
 /**
  * Encabezado, pie y tema en edición, aplicados en vivo SOLO en modo preview (`?preview=1`).
  *
- * El editor del ERP envía `{ type: 'goadmin:settings', ajustes, menuEncabezado }` (con
- * debounce) mientras se edita, sin guardar. Aquí se guardan en memoria del iframe y
+ * El editor del ERP envía `{ type: 'goadmin:settings', ajustes, menuEncabezado, tema? }` (con
+ * debounce) mientras se edita, sin guardar. `tema` es el estilo general V2 en edición (fuentes,
+ * colores, redondeo, botón y movimiento): se valida y se resuelve con la misma regla que el sitio
+ * publicado (`temaPublicoDesdeMensaje`). Aquí se guardan en memoria del iframe y
  * `OrganizationLayout` los aplica sobre los ajustes guardados. Nada se escribe ni se cachea.
  *
  * Fuera del preview el hook no escucha nada y devuelve `null`: la web pública no cambia.
@@ -24,6 +27,8 @@ export interface ItemMenuVivo {
 export interface AjustesVivos {
   ajustes: Record<string, unknown>
   menuEncabezado: ItemMenuVivo[] | null
+  /** Estilo general V2 en edición. `undefined` = el editor no lo mandó: se queda el del servidor. */
+  tema?: TemaPublico
 }
 
 /** Columnas que el editor puede cambiar en vivo (encabezado, pie y tema). */
@@ -88,7 +93,7 @@ export function useAjustesVivosPreview(): AjustesVivos | null {
           if (clavePermitida(clave) && valorSimple(valor)) ajustes[clave] = valor
         }
       }
-      setVivos({ ajustes, menuEncabezado: menuValido(e.data.menuEncabezado) })
+      setVivos({ ajustes, menuEncabezado: menuValido(e.data.menuEncabezado), tema: temaPublicoDesdeMensaje(e.data.tema) })
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
