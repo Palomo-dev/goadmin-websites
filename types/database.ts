@@ -1090,6 +1090,104 @@ export interface Database {
         Update: Record<string, never>
         Relationships: []
       }
+      /** Columnas verificadas por MCP el 2026-10-06. Las escribe `/api/orders`. */
+      web_order_items: {
+        Row: {
+          id: string
+          web_order_id: string
+          product_id: number | null
+          product_name: string
+          product_sku: string | null
+          quantity: number
+          unit_price: number
+          tax_amount: number | null
+          discount_amount: number | null
+          total: number
+          modifiers: Json | null
+          notes: string | null
+          /** CHECK: pending | preparing | ready | cancelled */
+          status: string | null
+          created_at: string | null
+          serial_ids: number[] | null
+        }
+        Insert: {
+          web_order_id: string
+          product_id?: number | null
+          product_name: string
+          product_sku?: string | null
+          quantity: number
+          unit_price: number
+          tax_amount?: number | null
+          discount_amount?: number | null
+          total: number
+          modifiers?: Json | null
+          notes?: string | null
+        }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      /** Mesas del POS. Columnas verificadas por MCP el 2026-10-06 (id uuid, branch_id NOT NULL). */
+      restaurant_tables: {
+        Row: {
+          id: string
+          organization_id: number
+          branch_id: number
+          name: string
+          zone: string | null
+          capacity: number | null
+          /** CHECK: free | occupied | reserved */
+          state: string
+          position_x: number | null
+          position_y: number | null
+          rotation: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      /** Tarifas de envío del módulo de transporte. Columnas verificadas por MCP el 2026-10-06. */
+      shipping_rates: {
+        Row: {
+          id: string
+          organization_id: number
+          carrier_id: string | null
+          rate_name: string
+          rate_code: string | null
+          origin_zone: string | null
+          destination_zone: string | null
+          origin_city: string | null
+          destination_city: string | null
+          service_level: string | null
+          calculation_method: string | null
+          base_rate: number | null
+          rate_per_kg: number | null
+          rate_per_m3: number | null
+          dimensional_factor: number | null
+          min_weight_kg: number | null
+          max_weight_kg: number | null
+          min_charge: number | null
+          fuel_surcharge_percent: number | null
+          insurance_percent: number | null
+          currency: string | null
+          /** `date` */
+          valid_from: string | null
+          /** `date` */
+          valid_until: string | null
+          is_active: boolean | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+          show_on_website: boolean
+          free_shipping_threshold: number | null
+          show_on_pos: boolean
+          estimated_transit_days: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
@@ -1126,6 +1224,10 @@ export type Service = Database['public']['Tables']['services']['Row']
 export type Space = Database['public']['Tables']['spaces']['Row']
 export type Branch = Database['public']['Tables']['branches']['Row']
 export type RestaurantBookingSettings = Database['public']['Tables']['restaurant_booking_settings']['Row']
+export type WebOrderItemRow = Database['public']['Tables']['web_order_items']['Row']
+export type WebOrderItemInsert = Database['public']['Tables']['web_order_items']['Insert']
+export type RestaurantTable = Database['public']['Tables']['restaurant_tables']['Row']
+export type ShippingRate = Database['public']['Tables']['shipping_rates']['Row']
 
 // Tipo extendido de organización con relaciones
 export interface OrganizationWithDetails extends Organization {
