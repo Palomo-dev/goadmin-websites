@@ -123,6 +123,8 @@ export function PlatoSheet({
             'md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:max-h-[88vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl',
           )}
           aria-describedby={undefined}
+          // Carta QR: la ficha toma el fondo y el texto del tema (lámina 03).
+          style={mesaQr ? { backgroundColor: 'var(--background-color, #ffffff)', color: 'var(--text-color, inherit)' } : undefined}
         >
           {item && (
             <ContenidoPlato
@@ -286,7 +288,7 @@ function ContenidoPlato({
       <div className="relative">
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border md:hidden" aria-hidden="true" />
         {foto ? (
-          <div className="relative mt-2 h-48 w-full bg-muted md:mt-0 md:h-56">
+          <div className={cn('relative mt-2 w-full bg-muted md:mt-0', mesaQr ? 'h-[260px] md:h-72' : 'h-48 md:h-56')}>
             <Image src={foto} alt={item.name} fill sizes="(min-width: 768px) 512px, 100vw" className="object-cover" unoptimized={!isOptimizableImage(foto)} />
           </div>
         ) : null}
@@ -299,7 +301,14 @@ function ContenidoPlato({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4">
-        <Dialog.Title className="pr-10 text-2xl font-bold leading-tight [font-family:var(--font-heading)]">{item.name}</Dialog.Title>
+        {mesaQr ? (
+          <div className="flex items-start justify-between gap-3">
+            <Dialog.Title className="text-[30px] leading-9 [font-family:var(--font-heading)]">{item.name}</Dialog.Title>
+            {unitario !== null && <Price value={base ?? unitario} className="mt-1 shrink-0 text-xl font-bold" />}
+          </div>
+        ) : (
+          <Dialog.Title className="pr-10 text-2xl font-bold leading-tight [font-family:var(--font-heading)]">{item.name}</Dialog.Title>
+        )}
         {(descripcion || sedeNombre) && (
           <p className="mt-2 text-sm leading-5 text-muted-foreground">
             {descripcion}
@@ -467,6 +476,29 @@ function ContenidoPlato({
         </div>
       </div>
 
+      {mesaQr && canOrder ? (
+        // Carta QR (lámina 03): cantidad y «Agregar · $» en una sola fila.
+        <div className="flex items-stretch gap-3 border-t border-border px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+          <div className="flex items-center rounded-lg border border-border">
+            <button type="button" onClick={() => setCantidad((q) => Math.max(1, q - 1))} className="flex h-full w-11 items-center justify-center disabled:opacity-40" disabled={cantidad <= 1} aria-label="Quitar uno">
+              <Minus className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <span className="min-w-[2.5rem] text-center text-lg font-semibold" aria-live="polite">{cantidad}</span>
+            <button type="button" onClick={() => setCantidad((q) => Math.min(99, q + 1))} className="flex h-full w-11 items-center justify-center" aria-label="Agregar uno">
+              <Plus className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={agregar}
+            disabled={!puedePedir}
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-lg px-4 text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: PRIMARY }}
+          >
+            Agregar{unitario !== null && <>&nbsp;·&nbsp;<Price value={unitario * cantidad} /></>}
+          </button>
+        </div>
+      ) : (
       <div className="border-t border-border px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         {canOrder && (
           <div className="mb-3 flex items-center justify-between">
@@ -528,6 +560,7 @@ function ContenidoPlato({
           )}
         </div>
       </div>
+      )}
     </>
   )
 }

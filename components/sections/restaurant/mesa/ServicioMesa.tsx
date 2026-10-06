@@ -14,7 +14,7 @@
  * abre la hoja de la cuenta. Sin QR de mesa, la sección no pinta nada (salvo en el editor).
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BellRing, ReceiptText, Search, WifiOff } from 'lucide-react'
 import { normalizarServicioMesa, varianteSeccionMesa } from '@/lib/website/v2/contrato/seccionesMesa'
 import { irA, mostrarAviso, pedirCuenta, refrescarMesa, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
@@ -32,12 +32,27 @@ export function ServicioMesa(props: PropsSeccionMesa) {
   useEffect(() => {
     fijarConfigServicio(c)
   })
+  // La barra queda fija arriba al pasar por ella (cada sección vive en su propio contenedor, así
+  // que `sticky` no la sostendría): un centinela marca cuándo salió de la pantalla.
+  const centinela = useRef<HTMLDivElement>(null)
+  const [fija, setFija] = useState(false)
+  const [alto, setAlto] = useState(0)
+  useEffect(() => {
+    const el = centinela.current
+    if (!el || preview || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setFija(!e.isIntersecting && e.boundingClientRect.top < 0))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [preview, mesa])
   // Alto de la barra: la carta fija sus categorías justo debajo (--barra-mesa-h).
   const barraRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = barraRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--barra-mesa-h', `${el.offsetHeight}px`))
+    const ro = new ResizeObserver(() => {
+      setAlto(el.offsetHeight)
+      document.documentElement.style.setProperty('--barra-mesa-h', `${el.offsetHeight}px`)
+    })
     ro.observe(el)
     return () => {
       ro.disconnect()
@@ -87,7 +102,10 @@ export function ServicioMesa(props: PropsSeccionMesa) {
   }
 
   return (
-    <div ref={barraRef} className={preview ? '' : 'sticky top-0 z-40 -mx-4 sm:mx-0'} data-barra-mesa>
+    <div>
+    <div ref={centinela} aria-hidden="true" />
+    <div style={fija ? { height: alto } : undefined}>
+    <div ref={barraRef} className={fija ? 'fixed inset-x-0 top-0 z-40' : ''} data-barra-mesa>
       <div className="flex items-center gap-3 border-b px-4 py-3 md:px-5" style={{ backgroundColor: C.fondo, borderColor: C.borde, color: C.texto }}>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold" style={{ ...TITULO, backgroundColor: C.oscuro, color: C.sobreOscuro }}>
           {inicial}
@@ -141,6 +159,8 @@ export function ServicioMesa(props: PropsSeccionMesa) {
           </div>
         </div>
       )}
+    </div>
+    </div>
       <AvisosMesa />
     </div>
   )

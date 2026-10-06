@@ -17,6 +17,8 @@ interface SectionWrapperProps {
   content?: Record<string, any>
   primaryColor?: string
   sectionType?: string
+  /** Variante de la sección (la Carta QR ajusta márgenes por variante). */
+  sectionVariant?: string
   sectionId?: string
   children: React.ReactNode
 }
@@ -56,16 +58,28 @@ const MARGIN_MAP: Record<string, string> = {
   xl: '16',
 }
 
-export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionId, children }: SectionWrapperProps) {
+/**
+ * Carta QR en la mesa: sus secciones son barras y pantallas de la mesa, no bloques de contenido;
+ * sin márgenes propios salvo que el editor los fije. La portada «mesa» va a sangre como en la
+ * lámina 01. Las demás secciones, con los valores de siempre.
+ */
+const SIN_RELLENO_POR_DEFECTO: ReadonlySet<string> = new Set([
+  'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
+])
+
+export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, children }: SectionWrapperProps) {
   // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
   // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
   if (presentacion.oculta) return null
   const content = presentacion.contenido as Record<string, any>
   const hojaFuentes = urlGoogleFonts(presentacion.fuentes)
-  const paddingTop = content?.padding_top || 'lg'
-  const paddingBottom = content?.padding_bottom || 'lg'
-  const paddingX = content?.padding_x || 'md'
+  const sinRelleno = SIN_RELLENO_POR_DEFECTO.has(sectionType ?? '') || SIN_RELLENO_POR_DEFECTO.has(`${sectionType}:${sectionVariant}`)
+  // La carta «qr» empieza pegada a la barra de la mesa.
+  const cartaQr = sectionType === 'menu_full' && sectionVariant === 'qr'
+  const paddingTop = content?.padding_top || (sinRelleno || cartaQr ? 'none' : 'lg')
+  const paddingBottom = content?.padding_bottom || (sinRelleno ? 'none' : 'lg')
+  const paddingX = content?.padding_x || (sinRelleno ? 'none' : 'md')
   const marginTop = content?.margin_top || 'none'
   const marginBottom = content?.margin_bottom || 'none'
 

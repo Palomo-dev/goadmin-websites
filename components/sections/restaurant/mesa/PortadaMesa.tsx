@@ -73,7 +73,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
   }
 
   return (
-    <div className="-mx-4 sm:mx-0" style={{ backgroundColor: C.fondo, color: C.texto }}>
+    <div style={{ backgroundColor: C.fondo, color: C.texto }}>
       <div className="relative h-[230px] w-full overflow-hidden md:h-[320px] md:rounded-xl" style={{ backgroundColor: C.muySuave }}>
         {c.imageUrl ? (
           <Image src={c.imageUrl} alt={c.imageAlt} fill sizes="(min-width: 768px) 960px, 100vw" className="object-cover" unoptimized={!isOptimizableImage(c.imageUrl)} priority />
@@ -130,7 +130,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
                 <button
                   type="button"
                   onClick={llamar}
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border px-2 text-base font-semibold"
+                  className="inline-flex min-h-[48px] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 text-[15px] font-semibold"
                   style={{ borderColor: C.texto, color: C.texto }}
                 >
                   <BellRing className="h-5 w-5" aria-hidden="true" />
@@ -141,7 +141,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
                 <button
                   type="button"
                   onClick={pedirLaCuenta}
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border px-2 text-base font-semibold"
+                  className="inline-flex min-h-[48px] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 text-[15px] font-semibold"
                   style={{ borderColor: C.texto, color: C.texto }}
                 >
                   {pedido?.sesion?.estado === 'bill_requested' ? <CheckCircle2 className="h-5 w-5" aria-hidden="true" /> : <ReceiptText className="h-5 w-5" aria-hidden="true" />}

@@ -118,7 +118,7 @@ function BarraVerPedido({ ronda, pedido }: { ronda: LineaRonda[]; pedido: DatosP
         className="pointer-events-auto flex min-h-[56px] w-full max-w-md items-center justify-between gap-3 rounded-xl px-4 text-[17px] font-semibold text-white shadow-lg"
         style={{ backgroundColor: C.primario }}
       >
-        <span className="flex items-center gap-3">
+        <span className="flex items-center gap-3 whitespace-nowrap">
           {unidades > 0 && (
             <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-sm font-bold" style={{ color: C.primario }}>
               {unidades}

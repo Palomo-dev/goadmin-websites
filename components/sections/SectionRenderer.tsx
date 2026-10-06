@@ -527,7 +527,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
   const content = (section.content || {}) as Record<string, any>
 
   return (
-    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionId={section.id}>
+    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id}>
       <Component
         content={content}
         organization={organization}
