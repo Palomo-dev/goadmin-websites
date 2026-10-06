@@ -137,13 +137,19 @@ export default async function CheckoutPage() {
     .from('website_settings')
     .select('checkout_mode, available_delivery_types, shipping_flat_rate, free_shipping_threshold, enable_shipping, tax_included, shipping_flat_rate_title, shipping_flat_rate_description, checkout_show_trust_badges, checkout_trust_badges, checkout_show_stock_warning, checkout_stock_warning_threshold, checkout_show_payment_logos, checkout_show_countdown, countdown_enabled, countdown_mode, countdown_end_date, countdown_timezone, countdown_reset_hour, countdown_title, countdown_show_in_cart, custom_scripts, analytics_id')
     .eq('organization_id', organization.id)
-    .single()
+    // La fila global: con filas por sede, `.single()` sin este filtro fallaría y el checkout caería
+    // a todos los valores por defecto.
+    .is('branch_id', null)
+    .maybeSingle()
 
   const checkoutSettings = {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
     taxIncluded: defaultTax?.taxIncluded ?? wsRow?.tax_included ?? false,
+    // 10000 y 100000 son los DEFAULT de las columnas (MCP 2026-10-06: ninguna fila en NULL). Solo
+    // aplican sin fila de website_settings, y en ese caso resolverEnvio (servidor) no decide y
+    // /api/orders conserva el envío del checkout: el cliente ve lo mismo que se cobra.
     shippingFlatRate: Number(wsRow?.shipping_flat_rate ?? 10000),
     freeShippingThreshold: Number(wsRow?.free_shipping_threshold ?? 100000),
     enableShipping: wsRow?.enable_shipping !== false,
