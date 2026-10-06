@@ -95,6 +95,27 @@ if (ruta) {
   console.warn('verify-reservas: no se encontró la migración D1 del ERP (ERP_REPO=<ruta>); se omite la comparación de prefijos')
 }
 
+// ─── 4. Revisión 2026-10-07 ──────────────────────────────────────────────────
+{
+  const servidor = await readFile(join(ROOT, 'lib/restaurant/reservas-servidor.ts'), 'utf8')
+  // Interruptor como Wompi: SOLO 'true' bloquea; sin la variable, observa.
+  check(/RESERVAS_ENFORCE_REGLAS !== 'true'/.test(servidor), 'RESERVAS_ENFORCE_REGLAS: sin la variable debe observar, no bloquear')
+  check(!/RESERVAS_ENFORCE_REGLAS === 'false'/.test(servidor), 'RESERVAS_ENFORCE_REGLAS: el default invertido volvió')
+  check(/p_validar_reglas: bloquear/.test(servidor), 'crearReservaWeb manda p_validar_reglas explícito')
+  // Una sola regla «la sede gana, la organización respalda» sobre filas crudas.
+  check(/filaEfectiva/.test(servidor) && !/filas\.find\(/.test(servidor), 'reservas-servidor usa filaEfectiva (sin un segundo find de sede/organización)')
+
+  const cancelar = await readFile(join(ROOT, 'app/api/restaurant-reservations/[id]/cancel/route.ts'), 'utf8')
+  check(/conToken\.error\.code === '42703'/.test(cancelar), '/[id]/cancel: la vía sin token solo con la columna inexistente (42703)')
+  check(/status: 503/.test(cancelar), '/[id]/cancel: otros errores de lectura → 503, nunca cancelar sin token')
+  check(/reglaDeError\(errMsg\)/.test(cancelar) && /no se presento/.test(cancelar), '/[id]/cancel: mapea PASADA/ANTICIPACION y no_show')
+
+  const cta = await readFile(join(ROOT, 'components/sections/restaurant/ReservationCtaForm.tsx'), 'utf8')
+  const vista = await readFile(join(ROOT, 'components/sections/restaurant/ReservationView.tsx'), 'utf8')
+  check(/limitesPersonas\(/.test(cta) && /limitesPersonas\(/.test(vista), 'reservation_cta y reservation comparten limitesPersonas (ajustes de la sede)')
+  check(/ajustesDeSede\(/.test(cta), 'reservation_cta resuelve los ajustes de la sede como reservation')
+}
+
 if (fallos > 0) {
   console.error(`verify-reservas: ${fallos} de ${total} comprobaciones fallaron`)
   process.exit(1)
