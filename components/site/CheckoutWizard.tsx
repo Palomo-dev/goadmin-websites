@@ -12,6 +12,7 @@ import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation } from '@/components/site/OrderConfirmation'
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
@@ -406,9 +407,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-  const tax = settings.taxRate > 0 && !settings.taxIncluded
-    ? Math.round(subtotal * settings.taxRate / 100)
-    : 0
+  // Impuesto con la misma regla que cobra /api/orders (lib/orders/impuestoPedido.ts): sobre la
+  // base con el cupón y las promociones prorrateados. `tax` es lo que se suma al total (0 si va
+  // incluido en el precio); `impuestoIncluido`, lo que el precio ya trae.
+  const impuestoPedido = calcularImpuestoPedido({
+    brutos: cartItems.map((item) => item.price * item.quantity),
+    descuento: couponDiscount + promoDiscount,
+    tasa: settings.taxRate,
+    incluido: settings.taxIncluded,
+  })
+  const tax = impuestoPedido.sumaAlTotal
+  const impuestoIncluido = settings.taxIncluded ? impuestoPedido.total : 0
   // Shipping solo aplica cuando el tipo seleccionado es delivery
   const needsShipping = orderType === 'delivery' && hasDelivery
   const flatShipping = settings.enableShipping && needsShipping
@@ -1454,7 +1463,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     </div>
                   )}
                   {settings.taxIncluded && settings.taxRate > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">{settings.taxName} incluido en el precio</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {settings.taxName} incluido en el precio{impuestoIncluido > 0 ? `: ${fmtPrice(impuestoIncluido)}` : ''}
+                    </p>
                   )}
                   {needsShipping && settings.enableShipping && (
                     <div className="mt-1">
