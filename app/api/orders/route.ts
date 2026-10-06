@@ -27,6 +27,7 @@ import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
+import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 
 export const dynamic = 'force-dynamic'
 
@@ -759,7 +760,7 @@ export async function POST(request: NextRequest) {
           organizationName: contexto.nombreOrganizacion,
           trackingUrl: `${origin}${rutaSeguimiento(contextOrgId, webOrder)}`,
           paymentStatus: 'pending',
-          tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · Mesa ${mesaPedido.name}` : ''}`,
+          tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · ${etiquetaMesa(mesaPedido.name)}` : ''}`,
           programadoPara: isScheduled && programadoParaGuardado ? momentoPedido(programadoParaGuardado, contexto.zona) : null,
         }).catch(err => console.error('[Orders] Email error:', err))
       } else {
