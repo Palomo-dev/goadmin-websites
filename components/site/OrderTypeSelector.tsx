@@ -16,7 +16,7 @@ interface OrderTypeSelectorProps {
 const ORDER_TYPES: { id: OrderType; label: string; description: string; icon: typeof Truck }[] = [
   { id: 'delivery', label: 'Domicilio', description: 'Te lo llevamos a tu dirección', icon: Truck },
   { id: 'pickup', label: 'Recoger', description: 'Recógelo en el local', icon: Store },
-  { id: 'dine_in', label: 'Comer aquí', description: 'Disfruta en nuestro restaurante', icon: UtensilsCrossed },
+  { id: 'dine_in', label: 'Comer aquí', description: 'Te lo llevamos a tu mesa', icon: UtensilsCrossed },
 ]
 
 export function OrderTypeSelector({
@@ -34,8 +34,8 @@ export function OrderTypeSelector({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-gray-700">Tipo de pedido</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <h3 className="text-sm font-semibold text-gray-700" id="tipo-pedido-titulo">Tipo de pedido</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-labelledby="tipo-pedido-titulo">
         {enabledTypes.map(type => {
           const isSelected = value === type.id
           const Icon = type.icon
@@ -43,6 +43,8 @@ export function OrderTypeSelector({
             <button
               key={type.id}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
               onClick={() => onChange(type.id)}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 isSelected
@@ -52,6 +54,7 @@ export function OrderTypeSelector({
               style={isSelected ? { borderColor: primaryColor } : {}}
             >
               <Icon
+                aria-hidden="true"
                 className="h-6 w-6 mb-2"
                 style={{ color: isSelected ? primaryColor : '#9CA3AF' }}
               />
