@@ -199,7 +199,10 @@ export function OrganizationLayoutCliente({
         </ZonaGlobalPreview>
       )}
 
-      {/* Sede (Figma «Elegir la sede»): chip «Sede X ▾» bajo el encabezado, a la derecha.
+      {/* Sede (Figma 02-componentes 27:214, chip «Sede X ▾» con «Ver todas las sedes y horarios»):
+          franja propia bajo el encabezado, a la derecha, igual en las 6 variantes de encabezado y en
+          móvil. El Figma dibuja el chip como componente suelto, sin fijar su sitio dentro de cada
+          variante; meterlo dentro de los 6 encabezados queda como decisión de producto.
           Solo con 2 o más sedes publicadas (hoy ninguna organización las tiene). */}
       {!frozenReason && sedesSelector.length >= 2 && (
         <div className="border-b border-gray-100 dark:border-gray-800">
@@ -210,6 +213,7 @@ export function OrganizationLayoutCliente({
               subdomain={subdomain}
               primaryColor={primaryColor}
               prefijoActual={prefijo}
+              hrefTodas={datosSede?.hrefTodasSedes ?? null}
             />
           </div>
         </div>

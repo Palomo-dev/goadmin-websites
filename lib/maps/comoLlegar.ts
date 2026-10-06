@@ -34,3 +34,13 @@ export function urlMapaEmbebido(lugar: LugarMapa | null | undefined): string | n
   const destino = destinoMapa(lugar)
   return destino ? `https://maps.google.com/maps?q=${encodeURIComponent(destino)}&output=embed` : null
 }
+
+/**
+ * `tel:` para «Llamar» (barra móvil, «Horario y sedes»): dígitos y un «+» inicial.
+ * `null` si el teléfono no tiene al menos 7 dígitos.
+ */
+export function urlLlamar(telefono: string | null | undefined): string | null {
+  if (!telefono) return null
+  const limpio = telefono.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '')
+  return limpio.replace(/\D/g, '').length >= 7 ? `tel:${limpio}` : null
+}

@@ -22,13 +22,15 @@ import { getSedesWeb, getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { direccionCompleta, sedeAceptaReservas } from '@/lib/restaurant/sedes-modelo'
 import { horarioDeSede, horarioRevisado, type HorarioSemana } from '@/lib/restaurant/horario'
 import { urlBasePrincipal } from '@/lib/seo/sede'
-import { urlComoLlegar } from '@/lib/maps/comoLlegar'
+import { urlComoLlegar, urlLlamar } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import type { SedeSelector } from '@/components/site/header/SelectorSede'
 
 export interface AccionesBarraMovil {
   pedir: string | null
   reservar: string | null
+  /** `tel:` de la sede actual (o de la organización si la sede no tiene teléfono). */
+  llamar: string | null
   comoLlegar: string | null
 }
 
@@ -37,6 +39,8 @@ export interface DatosSedeLayout {
   prefijoSede: string
   /** Sedes para el selector (vacío o 1 → no se pinta). */
   sedesSelector: SedeSelector[]
+  /** «Ver todas las sedes y horarios» del selector: la página del sitio principal con «Horario y sedes»; null si no hay. */
+  hrefTodasSedes: string | null
   /** Barra móvil del restaurante; null fuera de restaurantes o sin ninguna acción. */
   barraMovil: AccionesBarraMovil | null
   /** Horario de la sede de la página (o de la principal en restaurantes), revisado; null → el pie usa business_hours. */
@@ -45,7 +49,7 @@ export interface DatosSedeLayout {
   sedeActualId: number | null
 }
 
-const VACIO: DatosSedeLayout = { prefijoSede: '', sedesSelector: [], barraMovil: null, horarioPie: null, sedeActualId: null }
+const VACIO: DatosSedeLayout = { prefijoSede: '', sedesSelector: [], hrefTodasSedes: null, barraMovil: null, horarioPie: null, sedeActualId: null }
 
 export async function getDatosSedeLayout(
   organization: OrganizationWithDetails,
@@ -126,12 +130,21 @@ export async function getDatosSedeLayout(
       const acciones: AccionesBarraMovil = {
         pedir: settings?.enable_online_ordering === true ? conPrefijo(carta, prefijo) : null,
         reservar: paginaReserva && aceptaReservas ? conPrefijo(paginaReserva, prefijo) : null,
+        llamar: urlLlamar(sedeActual?.telefono ?? organization.phone),
         comoLlegar,
       }
-      barraMovil = acciones.pedir || acciones.reservar || acciones.comoLlegar ? acciones : null
+      barraMovil = acciones.pedir || acciones.reservar || acciones.llamar || acciones.comoLlegar ? acciones : null
     }
 
-    return { prefijoSede: prefijo, sedesSelector, barraMovil, horarioPie, sedeActualId }
+    // «Ver todas las sedes y horarios»: solo si el selector se pinta (2+ sedes) y el sitio
+    // principal tiene una página con la sección «Horario y sedes» (consulta cacheada).
+    let hrefTodasSedes: string | null = null
+    if (sedesSelector.length >= 2) {
+      const pagina = rutaDePaginaCon(await getPaginasPublicas(organization.id, null), ['hours_location'])
+      if (pagina) hrefTodasSedes = `${origen}${pagina}`
+    }
+
+    return { prefijoSede: prefijo, sedesSelector, hrefTodasSedes, barraMovil, horarioPie, sedeActualId }
   } catch (error) {
     // Nunca tumbar la página por el selector o la barra: se sirve el layout de antes.
     console.error('[sede-layout] Error armando los datos de sede del layout', {

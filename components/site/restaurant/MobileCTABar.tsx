@@ -2,18 +2,23 @@
 
 /**
  * Barra fija móvil del restaurante (Figma «Celular: carta y hoja del plato» y componente
- * «Reservar · Llamar · Cómo llegar · Pedir»): «Reservar» (primaria) · «Cómo llegar» · «Pedir».
+ * «Reservar · Llamar · Cómo llegar · Pedir», 02-componentes 27:214): «Reservar» (primaria) ·
+ * «Llamar» · «Cómo llegar» · «Pedir».
  *
  * Las acciones las decide el servidor (lib/outlet/sedeLayout.ts):
  * - «Pedir» solo con el pedido en línea activo, a la página de la carta;
  * - «Reservar» solo si alguna sede acepta reservas web y hay página de reserva;
+ * - «Llamar» con el teléfono de la sede actual (o el de la organización);
  * - «Cómo llegar» con la dirección o las coordenadas de la sede actual.
  * Sin ninguna acción no se pinta. Solo en móvil (`md:hidden`), con espacio para el área
- * segura del iPhone y un espaciador para no tapar el pie.
+ * segura del iPhone y un espaciador para no tapar el pie. Mientras está montada, el body lleva
+ * la clase `con-barra-movil` y app/globals.css sube la burbuja del chat (#go-chat-btn) para
+ * que no tape «Pedir».
  */
 
+import { useEffect } from 'react'
 import Link from 'next/link'
-import { CalendarDays, Navigation, ShoppingBag } from 'lucide-react'
+import { CalendarDays, Navigation, Phone, ShoppingBag } from 'lucide-react'
 import type { AccionesBarraMovil } from '@/lib/outlet/sedeLayout'
 
 /** Rutas con barra inferior propia o donde la barra estorba (checkout, carrito, detalle, pedido). */
@@ -29,10 +34,18 @@ export function rutaConBarraMovil(pathname: string): boolean {
 export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBarraMovil; primaryColor: string }) {
   const items = [
     acciones.reservar && { clave: 'reservar', href: acciones.reservar, texto: 'Reservar', Icono: CalendarDays, externo: false },
+    acciones.llamar && { clave: 'llamar', href: acciones.llamar, texto: 'Llamar', Icono: Phone, externo: false },
     acciones.comoLlegar && { clave: 'llegar', href: acciones.comoLlegar, texto: 'Cómo llegar', Icono: Navigation, externo: true },
     acciones.pedir && { clave: 'pedir', href: acciones.pedir, texto: 'Pedir', Icono: ShoppingBag, externo: false },
   ].filter(Boolean) as { clave: string; href: string; texto: string; Icono: typeof CalendarDays; externo: boolean }[]
-  if (items.length === 0) return null
+  const visible = items.length > 0
+  // La burbuja del chat (widget externo, position:fixed abajo a la derecha) sube mientras hay barra.
+  useEffect(() => {
+    if (!visible) return
+    document.body.classList.add('con-barra-movil')
+    return () => document.body.classList.remove('con-barra-movil')
+  }, [visible])
+  if (!visible) return null
   // La acción principal (rellena con el color de la marca): Reservar; si no hay, Pedir.
   const principal = acciones.reservar ? 'reservar' : acciones.pedir ? 'pedir' : null
 
@@ -59,7 +72,12 @@ export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBar
             )
             return (
               <li key={clave} className="flex flex-1">
-                {externo ? (
+                {clave === 'llamar' ? (
+                  // tel: no es una ruta de Next: <a> simple, en la misma pestaña.
+                  <a href={href} className={clase} style={estilo}>
+                    {contenido}
+                  </a>
+                ) : externo ? (
                   <a href={href} target="_blank" rel="noopener noreferrer" className={clase} style={estilo}>
                     {contenido}
                     <span className="sr-only"> (abre Google Maps)</span>

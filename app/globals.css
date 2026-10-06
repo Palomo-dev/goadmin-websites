@@ -113,3 +113,11 @@
     overflow-x: hidden;
   }
 }
+
+/* Barra fija móvil del restaurante (components/site/restaurant/MobileCTABar.tsx): mientras se
+   ve, la burbuja del chat (#go-chat-btn, la pone el widget con estilo en línea) sube por encima. */
+@media (max-width: 767px) {
+  body.con-barra-movil #go-chat-btn {
+    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+  }
+}

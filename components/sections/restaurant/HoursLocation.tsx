@@ -13,7 +13,7 @@
 import type { OrganizationWithDetails } from '@/types/database'
 import { direccionCompleta, sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import { HoursLocationView, type HoursLocationVariant, type SedeVista } from './HoursLocationView'
-import { urlComoLlegar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
+import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
@@ -75,12 +75,6 @@ function conSede(url: string, sedeId: number): string {
   return `${ruta}${sep}sede=${sedeId}${ancla !== undefined ? `#${ancla}` : ''}`
 }
 
-/** Teléfono para `tel:`: dígitos y «+» inicial. */
-function telHref(telefono: string): string | null {
-  const limpio = telefono.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '')
-  return limpio.replace(/\D/g, '').length >= 7 ? `tel:${limpio}` : null
-}
-
 export function HoursLocation({ content, organization, data, sectionVariant, sectionId }: HoursLocationProps) {
   const variant: HoursLocationVariant = VARIANTS.includes(sectionVariant as HoursLocationVariant)
     ? (sectionVariant as HoursLocationVariant)
@@ -117,7 +111,7 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
         nombre: s.nombre,
         direccion,
         telefono: s.telefono,
-        telHref: showCall && s.telefono ? telHref(s.telefono) : null,
+        telHref: showCall ? urlLlamar(s.telefono) : null,
         comoLlegar: showDirections ? urlComoLlegar(lugar) : null,
         mapaEmbed: urlMapaEmbebido(lugar),
         horario: s.horario,
