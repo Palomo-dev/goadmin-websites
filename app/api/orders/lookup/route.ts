@@ -2,16 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/orders/lookup?q=...&type=order_number|email
  * Busca pedidos por número de pedido o email del cliente
- * Filtrado por organización del host actual
+ * Filtrado por organización del host actual.
+ *
+ * Coincidencia EXACTA del número de pedido (antes `ilike '%q%'` listaba los pedidos de otros
+ * clientes con 3 caracteres) o del correo (sin comodines), y límite por IP.
  */
 export async function GET(request: NextRequest) {
   try {
+    const limite = checkRateLimit(`lookup:ip:${getClientIP(request)}`, 20, 10 * 60 * 1000)
+    if (!limite.allowed) {
+      return NextResponse.json({ error: 'Demasiadas búsquedas. Espera unos minutos.' }, { status: 429 })
+    }
+
     const headersList = await headers()
     const identifier = headersList.get('x-custom-domain') || headersList.get('x-subdomain')
     if (!identifier) {
@@ -50,16 +59,17 @@ export async function GET(request: NextRequest) {
       .limit(10)
 
     if (type === 'email') {
-      query = query.ilike('customer_email', q)
+      // ilike sin comodines = igualdad sin distinguir mayúsculas; se escapan % y _ del texto.
+      query = query.ilike('customer_email', q.replace(/[\\%_]/g, (c) => `\\${c}`))
     } else {
-      query = query.ilike('order_number', `%${q}%`)
+      query = query.eq('order_number', q.toUpperCase())
     }
 
     const { data: orders, error } = await query
 
     if (error) {
       console.error('Lookup error:', error)
-      return NextResponse.json({ error: 'Error al buscar pedidos', detail: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Error al buscar pedidos' }, { status: 500 })
     }
 
     // Sanitizar datos sensibles - solo mostrar info relevante
@@ -88,6 +98,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ orders: sanitized })
   } catch (err: any) {
     console.error('Lookup catch:', err)
-    return NextResponse.json({ error: 'Error interno', detail: err?.message }, { status: 500 })
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import { tokenSeguimientoValido } from '@/lib/orders/tokenSeguimiento'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,42 +18,61 @@ export const dynamic = 'force-dynamic'
  * Busca: web_orders → shipments → metadata.driver_id → driver_credentials → profiles
  *                                → metadata.vehicle_id → vehicles
  *                                → transport_events (último GPS)
+ *
+ * Solo pedidos de la organización del HOST (404 si no), y conductor, vehículo, GPS y prueba de
+ * entrega solo con el token de seguimiento (`?t=`, lib/orders/tokenSeguimiento.ts): sin él, el
+ * estado del envío y nada más. Antes cualquier sitio devolvía teléfono, GPS y fotos de entrega
+ * de pedidos de cualquier organización.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createAdminClient() || createPublicClient()
   const { id } = await params
 
   try {
-    // 1. Buscar el web_order (por order_number o id)
+    const limite = checkRateLimit(`delivery:ip:${getClientIP(request)}`, 300, 10 * 60 * 1000)
+    if (!limite.allowed) {
+      return NextResponse.json({ error: 'Demasiadas consultas. Espera un momento.' }, { status: 429 })
+    }
+    const orgId = await getOrgIdDelHost()
+    if (orgId === null) return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
+    const supabase = createAdminClient()
+    if (!supabase) {
+      console.error('[Delivery API] Falta SUPABASE_SERVICE_ROLE_KEY')
+      return NextResponse.json({ error: 'Servicio no disponible' }, { status: 503 })
+    }
+
+    // 1. Buscar el web_order (por order_number o id) de esta organización
     let orderQuery = (supabase as any)
       .from('web_orders')
-      .select('id, order_number, status, delivery_type, delivery_address, organization_id')
+      .select('id, order_number, status, delivery_type, organization_id')
+      .eq('organization_id', orgId)
 
     // Intentar por order_number primero, luego por id
-    const isUuid = id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-/i)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     if (isUuid) {
       orderQuery = orderQuery.eq('id', id)
     } else {
       orderQuery = orderQuery.eq('order_number', id)
     }
 
-    const { data: order } = await orderQuery.single()
+    const { data: order } = await orderQuery.maybeSingle()
     if (!order) {
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
     }
+    const verificado = tokenSeguimientoValido(orgId, order.id, request.nextUrl.searchParams.get('t'))
 
     // 2. Buscar shipment asociado
     const { data: shipment } = await (supabase as any)
       .from('shipments')
       .select('id, status, tracking_number, expected_delivery_date, picked_at, delivered_at, dispatched_at, metadata, delivery_latitude, delivery_longitude, delivery_address, delivery_contact_name')
+      .eq('organization_id', orgId)
       .eq('source_type', 'web_order')
       .eq('source_id', order.id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (!shipment) {
       return NextResponse.json({
@@ -69,13 +91,18 @@ export async function GET(
         pickedAt: shipment.picked_at,
         deliveredAt: shipment.delivered_at,
         dispatchedAt: shipment.dispatched_at,
-        deliveryLatitude: shipment.delivery_latitude,
-        deliveryLongitude: shipment.delivery_longitude,
+        deliveryLatitude: verificado ? shipment.delivery_latitude : null,
+        deliveryLongitude: verificado ? shipment.delivery_longitude : null,
       },
       driver: null,
       vehicle: null,
       lastEvent: null,
       proofOfDelivery: null,
+    }
+
+    // Sin token: solo el estado del envío.
+    if (!verificado) {
+      return NextResponse.json(result)
     }
 
     const meta = shipment.metadata || {}
@@ -95,7 +122,7 @@ export async function GET(
           )
         `)
         .eq('id', meta.driver_id)
-        .single()
+        .maybeSingle()
 
       if (driver) {
         const profile = driver.employments?.organization_members?.profiles
@@ -115,7 +142,8 @@ export async function GET(
         .from('vehicles')
         .select('id, plate_number, vehicle_type, brand, model, color, year')
         .eq('id', meta.vehicle_id)
-        .single()
+        .eq('organization_id', orgId)
+        .maybeSingle()
 
       if (vehicle) {
         result.vehicle = {
@@ -134,12 +162,13 @@ export async function GET(
     const { data: lastEvent } = await (supabase as any)
       .from('transport_events')
       .select('id, event_type, event_time, latitude, longitude, location_text, description')
+      .eq('organization_id', orgId)
       .eq('reference_type', 'shipment')
       .eq('reference_id', shipment.id)
       .not('latitude', 'is', null)
       .order('event_time', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (lastEvent) {
       result.lastEvent = {
@@ -158,7 +187,9 @@ export async function GET(
         .from('proof_of_delivery')
         .select('id, delivered_at, recipient_name, recipient_relationship, signature_url, photo_urls, customer_rating, customer_feedback, notes')
         .eq('shipment_id', shipment.id)
-        .single()
+        .order('delivered_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (pod) {
         result.proofOfDelivery = {
