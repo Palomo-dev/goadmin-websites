@@ -99,12 +99,14 @@ const iMesa = wompi.indexOf('esReferenciaDeposito(reference)')
 check(iMesa > 0 && iMesa < wompi.indexOf('isReservationReference(reference)'), 'el webhook despacha MESA- antes que RES- y el resto')
 check(/esReferenciaDeposito\(reference\)\) \{[\s\S]{0,200}\} else \{/.test(wompi), 'el if del depósito en el webhook lleva su else')
 
-const hook = await leer('lib/restaurant/deposito-webhook.ts')
+// Firma, idempotencia e integration_events viven en el esqueleto compartido con el abono de la
+// Carta QR (lib/payments/wompi-cobro-firmado.ts); lo propio del depósito, en deposito-webhook.ts.
+const hook = (await leer('lib/restaurant/deposito-webhook.ts')) + '\n' + (await leer('lib/payments/wompi-cobro-firmado.ts'))
 check(/verdict !== 'match'[\s\S]{0,300}status: 401/.test(hook), 'webhook del depósito: sin firma válida → 401 (falla cerrado)')
 check(!/SIGNATURE_ENFORCED/.test(hook), 'webhook del depósito no depende del modo observación')
 check(/external_event_id: transactionId/.test(hook) && /'23505'/.test(hook), 'idempotente por external_event_id (23505)')
 check(/status: 'received'/.test(hook) && /'processed' \| 'error'/.test(hook) && !/event_time\s*:/.test(hook), 'integration_events: estados válidos y sin event_time')
-check(/\.eq\('deposit_reference', reference\)/.test(hook) && /p_organization_id: organizationId/.test(hook), 'la organización sale de la reserva, no del payload')
+check(/\.eq\('deposit_reference', reference\)/.test(hook) && /p_organization_id: reserva\.organizationId/.test(hook), 'la organización sale de la reserva, no del payload')
 
 const init = await leer('app/api/checkout/init/route.ts')
 check(/isDepositoMesa\)? \{[\s\S]{0,300}\} else if \(isParkingPass\)/.test(init) || /if \(isDepositoMesa\) \{[\s\S]{0,300}\} else if \(isParkingPass\)/.test(init), 'checkout/init: la escritura de la fuente nueva no toca web_orders')
