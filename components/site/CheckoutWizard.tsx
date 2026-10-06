@@ -521,6 +521,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         })),
         subtotal,
         shipping,
+        // Tarifa elegida de /api/shipping/calculate: el servidor recalcula el envío con ella (sin
+        // tarifa dinámica, null = tarifa plana de los ajustes).
+        shippingRateId: needsShipping && dynamicShippingCost !== null ? selectedShippingRate : null,
         total,
         paymentMethod
       }
