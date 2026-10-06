@@ -480,6 +480,7 @@ async function renderSlugFallback(
             organizationId={organization.id}
             initialFavorites={initialFavorites}
             branchId={branchId}
+            timeZone={organization.timezone ?? null}
           />
         </Layout>
       )

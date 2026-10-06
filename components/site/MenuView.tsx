@@ -13,6 +13,11 @@ import { getAvailableStock } from '@/lib/stock'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
 import { useMesaQR } from '@/lib/restaurant/useMesaQR'
 import { BannerMesa, BarraPedidoMesa } from '@/components/sections/restaurant/BannerMesa'
+import { PlatoSheet } from '@/components/sections/restaurant/PlatoSheet'
+import { isParentProduct } from '@/components/sections/products/ProductCard'
+import { exigeEleccion, gruposDeProducto } from '@/lib/products/modificadores'
+import { mapaDeTags, soldOutReturnLabel, toMenuItem, type MenuItem, type MenuSourceProduct } from '@/lib/menu/menuFull'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 // ── Types ──
 
@@ -41,6 +46,12 @@ interface MenuProduct {
   product_images?: ProductImage[]
   stock_levels?: StockLevel[]
   product_tag_relations?: { tag_id: number }[]
+  /** Variante: hereda los grupos del padre si no tiene propios (regla del cobro). */
+  parent_product_id?: number | null
+  is_parent?: boolean
+  tag_id?: number | null
+  /** Lo añade `aplicarCartaSede`: agotado en la sede y hasta cuándo. */
+  carta_sede?: { agotado?: boolean; agotado_hasta?: string | null }
 }
 
 interface Category {
@@ -91,7 +102,11 @@ interface MenuViewProps {
   organizationId?: number | null
   initialFavorites?: number[]
   branchId?: number | null
+  /** Zona de la organización: «Agotado hoy · vuelve mañana» en su hora. */
+  timeZone?: string | null
 }
+
+const SIN_GRUPOS = new Map<number, ModifierGroup[]>()
 
 // ── Helpers ──
 
@@ -111,8 +126,18 @@ function getProductImageUrl(product: MenuProduct): string | null {
 export function MenuView({
   products, categories, tags, modifierTypes, variantRelations, modifierGroupsMap,
   primaryColor, organizationSubdomain, organizationName,
-  customerId, organizationId, initialFavorites = [], branchId
+  customerId, organizationId, initialFavorites = [], branchId, timeZone
 }: MenuViewProps) {
+  const { ruta } = useRutaSitio()
+  const zona = timeZone || 'America/Bogota'
+  // Grupos que aplican a cada plato con la regla única del cobro: los propios (con opciones
+  // activas) o, en una variante sin propios, los del padre (lib/products/modificadores.ts).
+  const gruposDe = (product: MenuProduct): ModifierGroup[] => gruposDeProducto(product, modifierGroupsMap ?? SIN_GRUPOS)
+  const tagsPorId = useMemo(() => mapaDeTags(tags), [tags])
+  // Hoja del plato de la carta V2 (variante, grupos, nota, etiquetas): para los platos sin
+  // modificadores antiguos (`variant_types`), que siguen en la ventana de abajo.
+  const [platoAbierto, setPlatoAbierto] = useState<MenuItem | null>(null)
+
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [selectedTags, setSelectedTags] = useState<Set<number>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
@@ -208,6 +233,13 @@ export function MenuView({
   }
 
   const openProductDetail = (product: MenuProduct) => {
+    if (getProductModifiers(product.id).length === 0) {
+      setPlatoAbierto({
+        ...toMenuItem(product as unknown as MenuSourceProduct, tagsPorId),
+        requiresChoice: exigeEleccion(gruposDe(product)),
+      })
+      return
+    }
     setSelectedProduct(product)
     setItemQuantity(1)
     setItemNotes('')
@@ -256,10 +288,12 @@ export function MenuView({
     setSelectedProduct(null)
   }
 
+  /** Padre con variantes o plato con grupos: se elige en la hoja, no se agrega directo. */
+  const debeElegir = (product: MenuProduct) =>
+    isParentProduct(product) || getProductModifiers(product.id).length > 0 || gruposDe(product).length > 0
+
   const quickAdd = (product: MenuProduct) => {
-    const mods = getProductModifiers(product.id)
-    const newMods = modifierGroupsMap?.get(product.id) || []
-    if (mods.length > 0 || newMods.length > 0) {
+    if (debeElegir(product)) {
       openProductDetail(product)
       return
     }
@@ -444,6 +478,11 @@ export function MenuView({
                     const imgUrl = getProductImageUrl(product)
                     const stock = getAvailableStock(product)
                     const outOfStock = stock !== null && stock <= 0
+                    // Agotado por la sede con fecha de vuelta: «Agotado hoy · vuelve mañana».
+                    const vuelve = outOfStock && product.carta_sede?.agotado
+                      ? soldOutReturnLabel(product.carta_sede.agotado_hasta, zona)
+                      : null
+                    const elegir = debeElegir(product)
                     const productTags = tags.filter(t =>
                       product.product_tag_relations?.some(r => r.tag_id === t.id)
                     )
@@ -492,14 +531,18 @@ export function MenuView({
                                 </span>
                               )}
                               {outOfStock ? (
-                                <span className="text-xs text-red-500 font-medium">Agotado</span>
+                                <span className="text-xs text-red-500 font-medium">
+                                  {product.carta_sede?.agotado ? 'Agotado hoy' : 'Agotado'}
+                                  {vuelve ? <span className="block font-normal text-gray-500">{vuelve}</span> : null}
+                                </span>
                               ) : (
                                 <Button
                                   size="sm"
                                   onClick={(e) => { e.stopPropagation(); quickAdd(product) }}
                                   style={{ backgroundColor: primaryColor }}
+                                  aria-label={elegir ? `Elegir opciones de ${product.name}` : `Agregar ${product.name}`}
                                 >
-                                  <Plus className="h-4 w-4" />
+                                  {elegir ? 'Elegir' : <Plus className="h-4 w-4" />}
                                 </Button>
                               )}
                             </div>
@@ -556,7 +599,7 @@ export function MenuView({
       {!mesa && (
       <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
         <a
-          href="/checkout"
+          href={ruta('/checkout')}
           className="pointer-events-auto px-6 py-3 rounded-full text-white font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
           style={{ backgroundColor: primaryColor }}
         >
@@ -607,7 +650,7 @@ export function MenuView({
 
               {/* Modificadores nuevos (sistema ERP) */}
               {(() => {
-                const newGroups = modifierGroupsMap?.get(selectedProduct.id) || []
+                const newGroups = gruposDe(selectedProduct)
                 return newGroups.length > 0 ? (
                   <div className="mb-4">
                     <ProductModifierSelector
@@ -693,8 +736,6 @@ export function MenuView({
                   style={{ backgroundColor: primaryColor }}
                   onClick={() => {
                     if (modifierSelectorRef.current && !modifierSelectorRef.current.validate()) return
-                    const extraTotal = selectedNewModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
-                    const basePrice = selectedProduct.product_prices?.[0]?.price || 0
                     addToCart(selectedProduct, itemQuantity, itemNotes, selectedModifiers, selectedNewModifiers)
                   }}
                 >
@@ -709,6 +750,15 @@ export function MenuView({
           </div>
         </div>
       )}
+
+      {/* Hoja del plato (misma pieza que la carta V2): variante, grupos, nota y cantidad. */}
+      <PlatoSheet
+        item={platoAbierto}
+        onClose={() => setPlatoAbierto(null)}
+        canOrder
+        organizationSubdomain={organizationSubdomain}
+        branchId={branchId ?? null}
+      />
     </div>
   )
 }
