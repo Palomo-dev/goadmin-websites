@@ -12,6 +12,7 @@ import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation } from '@/components/site/OrderConfirmation'
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
@@ -194,11 +195,19 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
   const hasDelivery = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
   const defaultOrderType: OrderType = hasDelivery ? 'delivery' : 'pickup'
+  // «Comer aquí»: con una mesa escaneada, o si el negocio lo activó en sus tipos de entrega.
+  const dineInEnAjustes = !!settings.availableDeliveryTypes?.includes('dine_in')
   const [orderType, setOrderType] = useState<OrderType>(defaultOrderType)
   const [tipAmount, setTipAmount] = useState(0)
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
-  const [dineInTable, setDineInTable] = useState<string | null>(null)
+  // Mesa del QR (contrato de B, lib/restaurant/useMesaQR.ts: sessionStorage con caducidad y sede).
+  // Sin QR, si el negocio ofrece «Comer aquí», el cliente escribe su mesa; el servidor la valida.
+  const [mesa, setMesa] = useState<MesaGuardada | null>(null)
+  const [mesaManual, setMesaManual] = useState('')
+  const hasDineIn = isRestaurant && (dineInEnAjustes || !!mesa)
+  // Sin «Comer aquí» la cuenta es la de siempre (recoger + domicilio).
+  const opcionesEntrega = [hasPickup, hasDelivery, hasDineIn].filter(Boolean).length
 
   // Coupon states
   const [couponCode, setCouponCode] = useState('')
@@ -308,11 +317,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         window.history.replaceState({}, '', cleanUrl)
       }
 
-      // QR dine-in: leer mesa de localStorage
+      // QR de mesa: vigente y de la sede de este checkout (leerMesaGuardada borra la clave antigua
+      // de localStorage que dejaba la mesa pegada para siempre).
       if (isRestaurant) {
-        const table = localStorage.getItem(`dine_in_table_${subdomain}`)
-        if (table) {
-          setDineInTable(table)
+        const guardada = leerMesaGuardada(subdomain, branchId)
+        if (guardada) {
+          setMesa(guardada)
           setOrderType('dine_in')
         }
       }
@@ -535,8 +545,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           orderPayload.isScheduled = true
           orderPayload.scheduledAt = scheduledAt
         }
-        if (dineInTable) {
-          orderPayload.tableName = dineInTable
+        // La mesa solo viaja con «Comer aquí»: un pedido cambiado a domicilio o recoger no la lleva.
+        if (orderType === 'dine_in') {
+          const ref = mesa?.mesa ?? mesaManual.trim()
+          if (ref) orderPayload.tableRef = ref
         }
       }
 
@@ -621,6 +633,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
           // Limpiar carrito antes de redirigir
           localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
           window.dispatchEvent(new CustomEvent('cart-updated'))
+          // Pedido creado: la mesa del QR ya cumplió (el siguiente pedido no sale como «comer aquí»).
+          if (orderType === 'dine_in') limpiarMesa(organizationSubdomain || '')
 
           // Redirigir a la pasarela de pago
           window.location.href = initData.checkoutUrl
@@ -651,6 +665,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
       localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
       window.dispatchEvent(new CustomEvent('cart-updated'))
+      if (orderType === 'dine_in') limpiarMesa(organizationSubdomain || '')
       setCartItems([])
     } catch (error) {
       console.error('Error creating order:', error)
@@ -709,6 +724,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   // Horario de la sede (restaurante): misma regla que /api/orders. Con la sede cerrada hay que
   // programar, y programar exige una hora. Sin horario, o fuera de restaurante, no bloquea nada.
   const horarioPedido = isRestaurant && orderType !== 'dine_in' ? sedePedido?.horario ?? null : null
+  // «Comer aquí» exige mesa: la del QR o la que escriba el cliente.
+  const mesaFaltante = orderType === 'dine_in' && !mesa && !mesaManual.trim()
   const momentoBloqueado = horarioPedido
     ? (isScheduled ? !scheduledAt : !validarMomentoPedido(horarioPedido, sedePedido?.zona, null).ok)
     : false
@@ -716,7 +733,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const canSubmitOnePage = customerData.firstName && customerData.email && customerData.phone &&
     !!customerData.countryCode &&
     (isRestaurant && orderType !== 'delivery' ? true : !!customerData.address) &&
-    !momentoBloqueado
+    !momentoBloqueado && !mesaFaltante
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -916,17 +933,34 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                 )}
 
-                {/* Banner dine-in QR */}
-                {dineInTable && (
-                  <div className="mt-4 flex items-center gap-2 rounded-lg p-3 text-sm font-medium"
+                {/* Comer aquí: mesa del QR, con salida «No estoy en la mesa» */}
+                {orderType === 'dine_in' && mesa && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg p-3 text-sm"
                     style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
+                    role="status"
                   >
-                    🍽️ Pidiendo desde <strong>{dineInTable}</strong>
+                    <span aria-hidden="true">🍽️</span>
+                    <span>
+                      Pides en la <strong>Mesa {mesa.nombre || ''}</strong>
+                      {mesa.zona ? ` · ${mesa.zona}` : ''}
+                      {mesa.nombreSede ? ` · ${mesa.nombreSede}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        limpiarMesa(organizationSubdomain || '')
+                        setMesa(null)
+                        setOrderType(defaultOrderType)
+                      }}
+                      className="ml-auto text-xs font-medium underline underline-offset-2 text-gray-600 hover:text-gray-900"
+                    >
+                      No estoy en la mesa
+                    </button>
                   </div>
                 )}
 
                 {/* Tipo de pedido: se muestra si hay más de 1 opción */}
-                {(hasPickup && hasDelivery) && (
+                {opcionesEntrega > 1 && (
                   <div className="mt-6 space-y-5 border-t pt-5">
                     <OrderTypeSelector
                       value={orderType}
@@ -934,9 +968,27 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       primaryColor={primaryColor}
                       enableDelivery={hasDelivery}
                       enablePickup={hasPickup}
-                      enableDineIn={false}
+                      enableDineIn={hasDineIn}
                     />
-                    {isRestaurant && (
+                    {orderType === 'dine_in' && !mesa && (
+                      <div>
+                        <label htmlFor="checkout-mesa" className="block text-sm font-medium text-gray-700 mb-1">
+                          Número de mesa <span className="text-red-400">*</span>
+                        </label>
+                        <Input
+                          id="checkout-mesa"
+                          value={mesaManual}
+                          onChange={(e) => setMesaManual(e.target.value)}
+                          placeholder="Ej.: 4"
+                          maxLength={20}
+                          aria-describedby="checkout-mesa-ayuda"
+                        />
+                        <p id="checkout-mesa-ayuda" className="text-xs text-gray-500 mt-1">
+                          Está en la mesa o en el código QR. Lo confirmamos antes de enviarlo a cocina.
+                        </p>
+                      </div>
+                    )}
+                    {isRestaurant && orderType !== 'dine_in' && (
                       <ScheduleSelector
                         isScheduled={isScheduled}
                         scheduledAt={scheduledAt}
@@ -951,7 +1003,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                 )}
                 {/* Solo restaurant: programar pedido (cuando solo hay 1 tipo de entrega) */}
-                {isRestaurant && !(hasPickup && hasDelivery) && (
+                {isRestaurant && !(opcionesEntrega > 1) && orderType !== 'dine_in' && (
                   <div className="mt-6 space-y-5 border-t pt-5">
                     <ScheduleSelector
                       isScheduled={isScheduled}
@@ -971,9 +1023,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     className="w-full mt-6"
                     style={{ backgroundColor: primaryColor }}
                     onClick={() => setStep(2)}
-                    disabled={momentoBloqueado}
+                    disabled={momentoBloqueado || mesaFaltante}
                   >
-                    {momentoBloqueado ? 'Elige la hora del pedido' : 'Continuar'}
+                    {mesaFaltante ? 'Indica tu mesa' : momentoBloqueado ? 'Elige la hora del pedido' : 'Continuar'}
                   </Button>
                 )}
               </CardContent>
