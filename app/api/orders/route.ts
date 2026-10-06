@@ -5,7 +5,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
-import { esSede, leerCartaSede, type CartaSede } from '@/lib/products/carta-sede'
+import { esSede, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
 import {
   desfasesDePrecio,
@@ -20,6 +20,7 @@ import { validarCupon } from '@/lib/coupons/validar-cupon'
 import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
 import { parseHorario } from '@/lib/restaurant/horario'
+import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,17 @@ const MOTIVOS_PRODUCTO: ReadonlySet<MotivoProblema> = new Set<MotivoProblema>([
 const redondear2 = (n: number): number => Math.round(n * 100) / 100
 
 /**
+ * El insert con `dine_in` falló porque la base aún no tiene la migración E1: CHECK de
+ * `delivery_type` (23514) o columna `restaurant_table_id` inexistente (PGRST204 / 42703).
+ */
+function rechazaComerAqui(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  const msg = String(error.message || '')
+  if (error.code === '23514') return msg.includes('delivery_type')
+  return (error.code === 'PGRST204' || error.code === '42703') && msg.includes('restaurant_table_id')
+}
+
+/**
  * POST /api/orders — crea un pedido web.
  *
  * Todo lo que es dinero se calcula aquí (lib/products/precio-servidor.ts):
@@ -71,7 +83,7 @@ export async function POST(request: NextRequest) {
       organizationId, branchId, customer, customerId: authCustomerId, items: itemsCliente,
       subtotal, shipping, total, paymentMethod,
       deliveryType, deliveryAddress,
-      tipAmount, isScheduled, scheduledAt, tableName,
+      tipAmount, isScheduled, scheduledAt, tableName, tableRef,
       couponCode, couponId, couponDiscount,
       promoDiscount, promotionIds
     } = body
@@ -119,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Envío y propina: importes del cliente, nunca negativos (restarían del total) ──
-    const resolvedShipping = importeNoNegativo(shipping)
+    let resolvedShipping = importeNoNegativo(shipping)
     const resolvedTip = importeNoNegativo(tipAmount)
     if (resolvedShipping === null || resolvedTip === null) {
       console.warn('[Orders] Envío o propina inválidos', { organizationId: contextOrgId, shipping, tipAmount })
@@ -166,8 +178,45 @@ export async function POST(request: NextRequest) {
         list[0]?.id
     }
 
-    // ── Contexto del pedido: organización, ajustes de venta y sede (filtrados por la org del host) ──
     const sedeExplicita: number | null = Number.isFinite(branchId) ? Number(branchId) : null
+
+    // ── Comer aquí: la mesa se valida en el servidor (lib/orders/mesaPedido.ts) ──
+    // Solo con deliveryType 'dine_in'. La referencia (uuid que guardó useMesaQR, o el nombre de
+    // un QR antiguo en `tableName`) debe ser una mesa de esta organización y de la sede de la
+    // carta; si no, 400 MESA_INVALIDA. La sede del pedido pasa a ser la de la mesa. Cualquier otro
+    // tipo ignora la mesa: un QR viejo ya no convierte un domicilio en «comer aquí».
+    let mesaPedido: MesaPedido | null = null
+    if (deliveryType === 'dine_in') {
+      const ref = tableRef ?? tableName
+      if (!ref) {
+        return NextResponse.json(
+          { error: 'Indica tu mesa para pedir «Comer aquí».', code: 'MESA_REQUERIDA' },
+          { status: 400 }
+        )
+      }
+      const sedeCarta = await resolverSedeCarta(contextOrgId, sedeExplicita)
+      const resultadoMesa = await buscarMesaDeOrganizacion(supabase as any, contextOrgId, ref, sedeCarta)
+      if (!resultadoMesa.ok) {
+        console.warn('[Orders] Mesa no válida', { organizationId: contextOrgId, sedeCarta, motivo: resultadoMesa.motivo })
+        return NextResponse.json(
+          {
+            error: resultadoMesa.motivo === 'otra_sede'
+              ? 'Esa mesa es de otra sede. Escanea el QR de tu mesa o elige otra forma de entrega.'
+              : 'No encontramos esa mesa. Escanea de nuevo el QR de tu mesa o elige otra forma de entrega.',
+            code: 'MESA_INVALIDA',
+          },
+          { status: resultadoMesa.motivo === 'error' ? 503 : 400 }
+        )
+      }
+      mesaPedido = resultadoMesa.mesa
+      resolvedBranchId = mesaPedido.branch_id
+      // En la mesa no hay envío, diga lo que diga el cliente.
+      resolvedShipping = 0
+    } else {
+      // Domicilio o recoger: sin mesa, exactamente como antes.
+    }
+
+    // ── Contexto del pedido: organización, ajustes de venta y sede (filtrados por la org del host) ──
     const contexto = await leerContextoPedido(
       supabase as any, contextOrgId, Number.isFinite(resolvedBranchId) ? Number(resolvedBranchId) : null, sedeExplicita,
     )
@@ -180,7 +229,9 @@ export async function POST(request: NextRequest) {
     const disponibilidad = evaluarDisponibilidadPedido({
       esRestaurante: contexto.esRestaurante,
       pedidoEnLinea: contexto.ajustes?.pedidoEnLinea ?? null,
-      horario: parseHorario(contexto.horarioSede),
+      // En la mesa el cliente ya está en el local: no se le pide programar aunque el horario guardado
+      // diga otra cosa (los horarios por defecto del ERP no siempre son los reales).
+      horario: mesaPedido ? null : parseHorario(contexto.horarioSede),
       zona: contexto.zona,
       programadoPara: isScheduled && scheduledAt ? String(scheduledAt) : null,
     })
@@ -424,9 +475,7 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderNumber(contextOrgId)
 
     // Crear web_order
-    const { data: webOrder, error: orderError } = await (supabase as any)
-      .from('web_orders')
-      .insert({
+    const filaPedido: Record<string, unknown> = {
         organization_id: contextOrgId,
         branch_id: resolvedBranchId,
         customer_id: customerId,
@@ -437,8 +486,11 @@ export async function POST(request: NextRequest) {
         tax_total: taxTotal,
         delivery_fee: resolvedShipping,
         total: calculatedTotal,
-        delivery_type: tipoEntregaCliente(deliveryType, resolvedShipping),
-        delivery_address: deliveryAddress || {
+        // Comer aquí: `dine_in` real con la mesa (migración E1 del ERP). Si la base aún no lo admite,
+        // se reintenta abajo con el mapeo temporal a `pickup`.
+        delivery_type: mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping),
+        ...(mesaPedido && { restaurant_table_id: mesaPedido.id }),
+        delivery_address: mesaPedido ? {} : deliveryAddress || {
           address: customer.address,
           city: customer.city,
           ...(customer.countryCode && { country: customer.countryCode }),
@@ -454,12 +506,25 @@ export async function POST(request: NextRequest) {
         ...(resolvedTip > 0 && { tip_amount: resolvedTip }),
         // Hora programada ya validada y normalizada a ISO (UTC) por evaluarDisponibilidadPedido.
         ...(isScheduled && disponibilidad.programadoPara && { is_scheduled: true, scheduled_at: disponibilidad.programadoPara }),
-        ...(tableName && { internal_notes: `Mesa: ${tableName}` }),
+        // Mesa validada (respaldo legible para el ERP y la cocina: «[Comer aquí] Mesa: 4 (Terraza)»).
+        ...(mesaPedido && { internal_notes: notaMesa(mesaPedido) }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
+    }
+    const insertarPedido = (fila: Record<string, unknown>) =>
+      (supabase as any).from('web_orders').insert(fila).select('id, order_number').single()
+    let { data: webOrder, error: orderError } = await insertarPedido(filaPedido)
+    if (orderError && mesaPedido && rechazaComerAqui(orderError)) {
+      // E1 sin aplicar: el CHECK aún no admite 'dine_in' o falta restaurant_table_id. Mapeo
+      // temporal: se guarda como `pickup` y la mesa queda en internal_notes con la marca.
+      console.warn('[Orders] web_orders aún no admite dine_in; se guarda como pickup con la mesa en notas', {
+        organizationId: contextOrgId, code: orderError.code,
       })
-      .select('id, order_number')
-      .single()
+      const { restaurant_table_id: _sinColumna, ...filaTemporal } = filaPedido
+      ;({ data: webOrder, error: orderError } = await insertarPedido({ ...filaTemporal, delivery_type: 'pickup' }))
+    } else {
+      // Sin mesa, o la base aceptó dine_in: el resultado del insert es el definitivo.
+    }
 
     if (orderError) {
       console.error('Error creating web_order:', orderError)
