@@ -21,7 +21,7 @@ import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { parseSedesRestaurante, type SedesRestaurante } from './sedes-modelo'
 
 const COLUMNAS_AJUSTES =
-  'branch_id, is_enabled, min_party_size, max_party_size, max_advance_days, require_phone, require_email, require_confirmation, policy_text, allow_zone_choice, allowed_zones, slot_interval_minutes'
+  'branch_id, is_enabled, min_party_size, max_party_size, max_advance_days, require_phone, require_email, require_confirmation, policy_text, allow_zone_choice, allowed_zones, slot_interval_minutes, large_party_threshold'
 
 const SELECT_SEDES = [
   'timezone',
