@@ -23,8 +23,10 @@ import {
   getOrganizationTestimonials,
   getProductsByCategoryIds,
   getProductsByIdsCatalog,
-  getWebsitePagesByIds
+  getWebsitePagesByIds,
+  getMenuCatalogProducts
 } from '@/lib/supabase/queries'
+import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
@@ -151,6 +153,18 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const page = await getPaginaPublica(organization.id, currentSlug, branchId,
     () => getWebsitePageBySlug(organization.id, currentSlug, branchId))
 
+  // QR de mesa (?mesa= / ?table=) sobre una página /menu del constructor sin carta pedible: se
+  // cae a la carta clásica (MenuView), que sí deja pedir. Con carta en la página, sin cambios.
+  const sp = await searchParams
+  const traeMesa = typeof sp?.mesa === 'string' || typeof sp?.table === 'string'
+  const paginaSinCarta = !!page && !page.website_page_sections.some(
+    (s) => s.section_type === 'menu_full' || s.section_type === 'menu_preview'
+  )
+  if (currentSlug === 'menu' && traeMesa && paginaSinCarta) {
+    const fallbackMesa = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, sp, taxSettings, frozenReason, branchId, settings, outlet, showCurrencyCode, currencyPosition)
+    if (fallbackMesa) return fallbackMesa
+  }
+
   if (page && page.website_page_sections.length > 0) {
     // Pre-fetch de datos para secciones data-driven
     const sectionTypes = page.website_page_sections.map(s => s.section_type)
@@ -165,7 +179,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
 
     // Sedes (hours_location / reservation / estado del restaurant_hero): una
     // consulta cacheada por organización.
-    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'restaurant_hero')) {
+    // La carta también la usa: horario de la sede («Cerrado ahora»), su nombre y si acepta reservas.
+    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
     }
 
@@ -181,6 +196,49 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     if (needsProducts) {
       data.products = await getOrganizationProducts(organization.id, 500, branchId)
     }
+    // Carta completa: sin el corte de 500 del listado general (cartas de cientos de platos).
+    // Solo en páginas con carta; las demás secciones siguen con `data.products`. Si alguna
+    // sección de carta no limita categorías, se carga todo; si todas limitan, solo su unión.
+    // `menu_preview` solo es la carta en la página /menu; en la home es un avance y sigue con
+    // `data.products` (no se carga el catálogo completo en la portada: incidente 2026-09-14).
+    data.pageSlug = currentSlug
+    const seccionesCarta = page.website_page_sections.filter(
+      (s) => s.section_type === 'menu_full' || (s.section_type === 'menu_preview' && currentSlug === 'menu')
+    )
+    if (seccionesCarta.length > 0) {
+      const union = new Set<number>()
+      let todas = false
+      for (const s of seccionesCarta) {
+        const ids = (s.content as { selected_category_ids?: unknown } | null)?.selected_category_ids
+        const lista = Array.isArray(ids) ? ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : []
+        if (lista.length === 0) todas = true
+        else lista.forEach((n) => union.add(n))
+      }
+      const [menuProducts, etiquetas] = await Promise.all([
+        getMenuCatalogProducts(organization.id, branchId, todas ? null : Array.from(union).sort((a, b) => a - b)),
+        getOrganizationTags(organization.id),
+      ])
+      data.menuProducts = menuProducts
+      data.productTags = etiquetas
+      // «Reservar mesa» de la hoja del plato: la sección `reservation` de esta página o la de
+      // la página de reservas de las plantillas (`reservas-mesa`). Sin ninguna, no se ofrece.
+      const ancla = (sec: { section_type: string; content: unknown }) => {
+        const a = (sec.content as { anchor_id?: unknown } | null)?.anchor_id
+        return typeof a === 'string' && /^[a-z0-9][a-z0-9_-]*$/i.test(a) ? a : 'reservar'
+      }
+      const reservaAqui = page.website_page_sections.find((s) => s.section_type === 'reservation')
+      if (reservaAqui) {
+        data.reservarUrl = `#${ancla(reservaAqui)}`
+      } else {
+        const paginaReservas = currentSlug === 'reservas-mesa' ? null : await getPaginaPublica(organization.id, 'reservas-mesa', branchId,
+          () => getWebsitePageBySlug(organization.id, 'reservas-mesa', branchId))
+        const seccion = paginaReservas?.website_page_sections.find((s) => s.section_type === 'reservation')
+        if (seccion) data.reservarUrl = `/reservas-mesa#${ancla(seccion)}`
+      }
+    }
+    // «Ver como» del editor: hora simulada solo en la vista previa (?preview=1&hora=HH:MM).
+    const horaSimulada = esVistaPrevia ? horaSimuladaDeVistaPrevia((await searchParams)?.hora) : null
+    if (horaSimulada !== null) data.horaSimulada = horaSimulada
     // Platos estrella que no vinieron entre los 500 precargados (cartas
     // grandes): se piden por id, con la caché del catálogo. Van aparte para no
     // alterar lo que muestran las demás secciones de productos.

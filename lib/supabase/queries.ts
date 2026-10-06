@@ -8,6 +8,7 @@ import { precioVigente } from '@/lib/memberships/precio'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
+import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -282,10 +283,12 @@ async function enrichListing(
 ): Promise<any[]> {
   if (!products || products.length === 0) return []
   const parentIds = products.filter((p: any) => p.is_parent).map((p: any) => p.id)
-  const [variants, salesMap] = await Promise.all([
+  const [variants, salesMap, conEleccion] = await Promise.all([
     getVariantChildrenByParent(supabase, parentIds),
     getWebSalesByProduct(organizationId),
+    getProductosConEleccion(organizationId),
   ])
+  const eleccion = new Set(conEleccion)
   // Índice padre → hijos para no recorrer childToParent por cada producto.
   const childrenOf: Record<number, number[]> = {}
   for (const [childId, parentId] of Object.entries(variants.childToParent)) {
@@ -296,7 +299,34 @@ async function enrichListing(
     has_variants: p.is_parent === true,
     variant_count: variantCountFor(p, variants),
     sales_count: (salesMap[p.id] || 0) + (childrenOf[p.id] || []).reduce((s, id) => s + (salesMap[id] || 0), 0),
+    // Grupo obligatorio (acompañante…): «Elegir» en vez de «Agregar» (lib/products/modificadores.ts).
+    requires_choice: eleccion.has(Number(p.id)),
   }))
+}
+
+/**
+ * Ids de productos con al menos un grupo de modificadores obligatorio con opciones activas.
+ * Una consulta por organización (pocas filas: solo grupos `required` o con mínimo), cacheada
+ * con el catálogo. Si falla, lista vacía: el servidor sigue exigiendo el grupo (422) y el
+ * selector del detalle también; solo se pierde el aviso «Elegir» del listado.
+ */
+const getProductosConEleccionUncached = async (organizationId: number): Promise<number[]> => {
+  const supabase = getSupabaseForPublicRead() as any
+  const { data, error } = await supabase
+    .from('product_modifier_groups')
+    .select('product_id, name, selection_mode, required, min_selections, max_selections, product_modifiers ( is_active )')
+    .eq('organization_id', organizationId)
+    .or('required.eq.true,min_selections.gt.0')
+    .limit(5000)
+  if (error) {
+    console.error('[queries] getProductosConEleccion', { organizationId, error: error.message })
+    return []
+  }
+  const ids = new Set<number>()
+  for (const g of (data || []) as (GrupoReglas & { product_id: number })[]) {
+    if (exigeEleccion([g])) ids.add(Number(g.product_id))
+  }
+  return Array.from(ids)
 }
 
 /**
@@ -646,7 +676,8 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
   }
   query = excluirNoListados(query, cartaSede)
 
-  const { data, error } = await query.limit(limit)
+  // Orden estable antes del límite: con más productos que el límite, siempre salen los mismos.
+  const { data, error } = await query.order('id', { ascending: true }).limit(limit)
 
   if (error) return []
 
@@ -2101,6 +2132,79 @@ async function getMenuProductsUncached(organizationId: number, limit = 100, bran
   return aplicarCartaSede(filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds), cartaSede)
 }
 
+/** Columnas de la carta: lo que pinta `menu_full` / `menu_preview` y nada más (payload < 2 MB). */
+const MENU_CATALOG_COLUMNS = [
+  'id', 'uuid', 'organization_id', 'name', 'description', 'sku', 'category_id', 'tag_id',
+  'parent_product_id', 'is_parent', 'track_stock', 'status',
+].join(', ')
+
+/** Tope de platos de la carta completa (el corte anterior era 500 sin orden). */
+export const MENU_CATALOG_MAX = 2000
+const MENU_CATALOG_PAGE = 500
+
+/**
+ * Catálogo completo de la carta (`menu_full` / `menu_preview`), sin el corte de 500 de
+ * `getOrganizationProducts`: pagina por id hasta {@link MENU_CATALOG_MAX}. Misma regla de
+ * visibilidad que los demás listados (categorías permitidas de la sede, carta y precios de la
+ * sede, stock de la sede) y la misma caché del catálogo por organización.
+ *
+ * `categoryIds`: solo esas categorías (unión de las secciones de la página); vacío = todas.
+ */
+const getMenuCatalogProductsUncached = async (
+  organizationId: number,
+  branchId?: number | null,
+  categoryIds?: number[] | null,
+) => {
+  const supabase = getSupabaseForPublicRead()
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+  let categorias: number[] | null = allowedCategoryIds
+  if (categoryIds && categoryIds.length > 0) {
+    const pedidas = new Set(categoryIds)
+    categorias = (allowedCategoryIds ?? categoryIds).filter((id) => pedidas.has(id))
+    if (categorias.length === 0) return []
+  }
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+
+  const filas: any[] = []
+  for (let desde = 0; desde < MENU_CATALOG_MAX; desde += MENU_CATALOG_PAGE) {
+    let query = supabase
+      .from('products')
+      .select(`
+        ${MENU_CATALOG_COLUMNS},
+        product_prices (id, price, compare_price, effective_to),
+        product_images ( id, storage_path, is_primary, display_order, shared_image_id, shared_images ( storage_path ) ),
+        stock_levels ( branch_id, qty_on_hand, qty_reserved ),
+        product_tag_relations ( tag_id )
+      `)
+      .is('product_prices.effective_to', null)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+    if (categorias) query = query.in('category_id', categorias)
+    query = excluirNoListados(query, cartaSede)
+    const { data, error } = await query
+      .order('id', { ascending: true })
+      .range(desde, Math.min(desde + MENU_CATALOG_PAGE, MENU_CATALOG_MAX) - 1)
+    if (error) {
+      console.error('[queries] getMenuCatalogProducts', { organizationId, branchId, desde, error: error.message })
+      if (desde === 0) return []
+      break
+    }
+    const lote = (data || []) as any[]
+    filas.push(...lote)
+    if (lote.length < MENU_CATALOG_PAGE) break
+  }
+
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  return aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(await enrichListing(supabase, organizationId, filas)), stockBranchIds),
+    cartaSede,
+  )
+}
+
 /**
  * Obtiene productos por sus IDs (para favoritos, re-pedidos, etc.)
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
@@ -2228,10 +2332,10 @@ export async function getProductVariantRelations(organizationId: number) {
  * Obtiene los grupos de modificadores de un producto específico
  * con sus opciones (modificadores) activas
  */
-export async function getProductModifierGroups(productId: number) {
+export async function getProductModifierGroups(productId: number, organizationId?: number) {
   const supabase = getSupabaseForPublicRead()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('product_modifier_groups')
     .select(`
       id,
@@ -2250,16 +2354,21 @@ export async function getProductModifierGroups(productId: number) {
       )
     `)
     .eq('product_id', productId)
-    .order('display_order')
+  // Con organización (rutas públicas): filtro explícito, aquí no hay RLS.
+  if (typeof organizationId === 'number') query = query.eq('organization_id', organizationId)
+  const { data, error } = await query.order('display_order')
 
   if (error || !data) return []
 
-  return (data as any[]).map((group) => ({
-    ...group,
-    product_modifiers: (group.product_modifiers || [])
-      .filter((m: any) => m.is_active)
-      .sort((a: any, b: any) => a.display_order - b.display_order),
-  }))
+  return (data as any[])
+    .map((group) => ({
+      ...group,
+      product_modifiers: (group.product_modifiers || [])
+        .filter((m: any) => m.is_active)
+        .sort((a: any, b: any) => a.display_order - b.display_order),
+    }))
+    // Un grupo sin opciones activas no se pinta ni se exige (lib/products/modificadores.ts).
+    .filter((group) => group.product_modifiers.length > 0)
 }
 
 /**
@@ -3310,6 +3419,13 @@ export const getProductsByCategoryPaginated = cacheCatalog(
   (...args) => args[0]
 )
 export const getMenuProducts = cacheCatalog('getMenuProducts', getMenuProductsUncached, (...args) => args[0])
+// Carta completa paginada (menu_full / menu_preview). Solo la piden las páginas con esas secciones.
+export const getMenuCatalogProducts = cache(
+  cacheCatalog('getMenuCatalogProducts', getMenuCatalogProductsUncached, (...args) => args[0])
+)
+export const getProductosConEleccion = cache(
+  cacheCatalog('getProductosConEleccion', getProductosConEleccionUncached, (...args) => args[0])
+)
 // Ventas web por producto de una organización: una consulta por org cada
 // CATALOG_TTL, compartida por todos los listados de la misma petición.
 export const getWebSalesByProduct = cache(
