@@ -192,6 +192,11 @@ export async function POST(request: NextRequest) {
     }
 
     const sedeExplicita: number | null = Number.isFinite(branchId) ? Number(branchId) : null
+    // Sede cuya carta y precios aplican al pedido (contrato de B, lib/products/carta-sede.ts): la
+    // de la página o, en el sitio principal, la sede principal — la misma que edita el negocio en
+    // «Carta por sede» y la que pinta la carta. No es `resolvedBranchId` (que prioriza la sede
+    // fuente de inventario web): esa sigue mandando para el stock.
+    const sedeCarta = await resolverSedeCarta(contextOrgId, sedeExplicita)
 
     // ── Comer aquí: la mesa se valida en el servidor (lib/orders/mesaPedido.ts) ──
     // Solo con deliveryType 'dine_in'. La referencia (uuid que guardó useMesaQR, o el nombre de
@@ -207,7 +212,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      const sedeCarta = await resolverSedeCarta(contextOrgId, sedeExplicita)
       const resultadoMesa = await buscarMesaDeOrganizacion(supabase as any, contextOrgId, ref, sedeCarta)
       if (!resultadoMesa.ok) {
         console.warn('[Orders] Mesa no válida', { organizationId: contextOrgId, sedeCarta, motivo: resultadoMesa.motivo })
@@ -265,7 +269,7 @@ export async function POST(request: NextRequest) {
     const productIds: number[] = Array.from(new Set<number>(
       items.map(productIdDeLinea).filter((id) => !Number.isNaN(id))
     ))
-    const lectura = await leerDatosPrecio(supabase, contextOrgId, productIds)
+    const lectura = await leerDatosPrecio(supabase, contextOrgId, productIds, sedeCarta)
     if (!lectura.ok) {
       console.error('[Orders] No se pudieron leer los precios del carrito', {
         organizationId: contextOrgId, error: lectura.error,
@@ -277,23 +281,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ── B0.1: Carta por sede (website_branch_products) ──
-    // Solo con sede explícita y ya validada contra la organización (F5, arriba). `web_price` de la
-    // sede manda sobre el precio vigente; oculto o agotado en la sede → 422.
+    // Con la sede de la carta: la explícita (ya validada contra la organización, F5) o, en el sitio
+    // principal, la sede principal (antes lo que el negocio ajustaba ahí nunca llegaba al cobro).
+    // `web_price` de la sede manda sobre el precio vigente; oculto o agotado en la sede → 422.
     let carta: CartaSede | null = null
-    if (esSede(branchId)) {
-      const lecturaCarta = await leerCartaSede(supabase, contextOrgId, branchId, productIds)
+    if (esSede(sedeCarta)) {
+      const lecturaCarta = await leerCartaSede(supabase, contextOrgId, sedeCarta, productIds)
       if (!lecturaCarta.ok) {
         // Sin carta legible se cobra el precio vigente del producto, igual que en cualquier sitio
         // sin carta: un fallo de lectura no puede tumbar los pedidos de los sitios que nunca la
         // configuraron. Si el cliente vio el precio de la sede, el 409 de abajo se lo muestra.
         console.error('[Orders] No se pudo leer la carta de la sede; se sigue sin carta', {
-          organizationId: contextOrgId, branchId, error: lecturaCarta.error,
+          organizationId: contextOrgId, branchId: sedeCarta, error: lecturaCarta.error,
         })
       } else {
         carta = lecturaCarta.carta
       }
     } else {
-      // Sin sede explícita: sin carta por sede, exactamente como antes.
+      // Sin sede de carta (organización sin sede principal activa): sin carta, exactamente como antes.
     }
 
     const { lineas, problemas } = resolverLineasPedido(items, lectura.datos, {
