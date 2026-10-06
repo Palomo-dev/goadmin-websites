@@ -206,7 +206,7 @@ export function OrganizationLayoutCliente({
           <div className="container mx-auto flex justify-end px-4 py-2">
             <SelectorSede
               sedes={sedesSelector}
-              actualId={outlet?.branchId ?? null}
+              actualId={datosSede?.sedeActualId ?? outlet?.branchId ?? null}
               subdomain={subdomain}
               primaryColor={primaryColor}
               prefijoActual={prefijo}

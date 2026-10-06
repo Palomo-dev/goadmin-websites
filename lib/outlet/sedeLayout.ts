@@ -41,9 +41,11 @@ export interface DatosSedeLayout {
   barraMovil: AccionesBarraMovil | null
   /** Horario de la sede de la página (o de la principal en restaurantes), revisado; null → el pie usa business_hours. */
   horarioPie: HorarioSemana | null
+  /** Sede de la petición (la que pasó la página o la que resuelven las cabeceras del middleware). */
+  sedeActualId: number | null
 }
 
-const VACIO: DatosSedeLayout = { prefijoSede: '', sedesSelector: [], barraMovil: null, horarioPie: null }
+const VACIO: DatosSedeLayout = { prefijoSede: '', sedesSelector: [], barraMovil: null, horarioPie: null, sedeActualId: null }
 
 export async function getDatosSedeLayout(
   organization: OrganizationWithDetails,
@@ -52,15 +54,27 @@ export async function getDatosSedeLayout(
 ): Promise<DatosSedeLayout> {
   try {
     const h = await headers()
-    // Prefijo solo si la sede de la página es la que el middleware sacó de la ruta.
-    const sedeRuta = h.get(CABECERA_SEDE_RUTA)
-    const porPrefijo = !!outlet && !!sedeRuta && sedeRuta.toLowerCase() === outlet.branchSlug.toLowerCase()
-    const prefijo = prefijoSede(outlet, porPrefijo)
-    // Desde el host de una sede (sub-subdominio o dominio propio) las demás sedes viven bajo el principal.
-    const enHostDeSede = !!h.get('x-outlet-subdomain') || !!h.get('x-custom-outlet-domain')
-    const origen = enHostDeSede ? urlBasePrincipal(organization) : ''
-
     const sedesWeb = await getSedesWeb(organization.id)
+
+    // La sede de la petición. Varias rutas montan el layout sin pasar `outlet`; con las
+    // cabeceras del middleware se reconoce igual, siempre contra las sedes PUBLICADAS de la
+    // organización del host (getSedesWeb filtra por organization_id).
+    const igual = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+    const subSede = h.get('x-outlet-subdomain')
+    const dominioSede = h.get('x-custom-outlet-domain')
+    const enHostDeSede = !!subSede || !!dominioSede
+    const sedeRuta = enHostDeSede ? null : h.get(CABECERA_SEDE_RUTA)
+    const sedeDeRuta = sedeRuta ? sedesWeb.find((s) => igual(s.slug, sedeRuta)) ?? null : null
+    const sedeDeHost = dominioSede
+      ? sedesWeb.find((s) => igual(s.customDomain, dominioSede)) ?? null
+      : subSede
+        ? sedesWeb.find((s) => igual(s.slug, subSede)) ?? null
+        : null
+    const sedeActualId = outlet?.branchId ?? sedeDeRuta?.id ?? sedeDeHost?.id ?? null
+    // Prefijo solo si la sede de la petición es la que el middleware sacó de la ruta.
+    const prefijo = sedeDeRuta?.slug && sedeDeRuta.id === sedeActualId ? prefijoSede({ branchSlug: sedeDeRuta.slug }, true) : ''
+    // Desde el host de una sede (sub-subdominio o dominio propio) las demás sedes viven bajo el principal.
+    const origen = enHostDeSede ? urlBasePrincipal(organization) : ''
     const sedesSelector: SedeSelector[] = sedesWeb.flatMap((s) => {
       const href = s.customDomain
         ? `https://${s.customDomain}`
@@ -83,16 +97,16 @@ export async function getDatosSedeLayout(
     let barraMovil: AccionesBarraMovil | null = null
     let horarioPie: HorarioSemana | null = null
 
-    const sedeWebActual = outlet ? sedesWeb.find((s) => s.id === outlet.branchId) ?? null : null
+    const sedeWebActual = sedeActualId !== null ? sedesWeb.find((s) => s.id === sedeActualId) ?? null : null
     if (sedeWebActual) horarioPie = horarioRevisado(parseHorario(sedeWebActual.horarioJson))
 
     if (esRestaurante) {
       const [datos, paginas] = await Promise.all([
         getSedesRestaurante(organization.id),
-        getPaginasPublicas(organization.id, outlet?.branchId ?? null),
+        getPaginasPublicas(organization.id, sedeActualId),
       ])
       const sedes = datos?.sedes ?? []
-      const sedeActual = (outlet ? sedes.find((s) => s.id === outlet.branchId) : null)
+      const sedeActual = (sedeActualId !== null ? sedes.find((s) => s.id === sedeActualId) : null)
         ?? sedes.find((s) => s.esPrincipal)
         ?? sedes[0]
         ?? null
@@ -100,9 +114,9 @@ export async function getDatosSedeLayout(
 
       const carta = rutaDePaginaCon(paginas, ['menu_full', 'menu_preview']) ?? '/menu'
       const paginaReserva = rutaDePaginaCon(paginas, ['reservation', 'reservation_cta'])
-      const candidatas = outlet ? sedes.filter((s) => s.id === outlet.branchId) : sedes
+      const candidatas = sedeActualId !== null ? sedes.filter((s) => s.id === sedeActualId) : sedes
       const aceptaReservas = !!datos && (
-        candidatas.some((s) => sedeAceptaReservas(s, datos)) || (!outlet && datos.mesasSinSede > 0)
+        candidatas.some((s) => sedeAceptaReservas(s, datos)) || (sedeActualId === null && datos.mesasSinSede > 0)
       )
       const comoLlegar = urlComoLlegar(
         sedeActual
@@ -117,7 +131,7 @@ export async function getDatosSedeLayout(
       barraMovil = acciones.pedir || acciones.reservar || acciones.comoLlegar ? acciones : null
     }
 
-    return { prefijoSede: prefijo, sedesSelector, barraMovil, horarioPie }
+    return { prefijoSede: prefijo, sedesSelector, barraMovil, horarioPie, sedeActualId }
   } catch (error) {
     // Nunca tumbar la página por el selector o la barra: se sirve el layout de antes.
     console.error('[sede-layout] Error armando los datos de sede del layout', {
