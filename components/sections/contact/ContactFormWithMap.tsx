@@ -2,6 +2,7 @@
 
 import { ContactFormFeedback } from './ContactFormFeedback'
 import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ContactFormWithMapProps {
   content: Record<string, any>
@@ -64,15 +65,12 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
                 className={inputClass}
               />
             </div>
-            <input
-              type="tel"
-              placeholder="Teléfono"
+            <TelefonoPais
               aria-label="Teléfono"
-              maxLength={CONTACT_MAX_LENGTHS.phone}
               value={values.phone}
-              onChange={(e) => setField('phone', e.target.value)}
+              onChange={(v) => setField('phone', v)}
               disabled={isSubmitting}
-              className={`w-full ${inputClass}`}
+              className="rounded-lg border border-border bg-background text-foreground"
             />
             <textarea
               rows={4}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { User, Mail, Phone, CreditCard, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface Gateway {
   code: string
@@ -172,10 +173,7 @@ export function TripBookingForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-          <div className="flex items-center gap-2 border rounded-lg px-3 py-2">
-            <Phone className="h-4 w-4 text-gray-400" />
-            <input type="tel" className="w-full outline-none text-sm" placeholder="300 123 4567" value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
+          <TelefonoPais value={phone} onChange={setPhone} className="rounded-lg border text-sm" aria-label="Teléfono" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>

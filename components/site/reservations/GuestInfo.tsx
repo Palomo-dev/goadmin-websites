@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { User, Mail, Phone, FileText, CreditCard } from 'lucide-react'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface GuestData {
   firstName: string
@@ -76,12 +77,12 @@ export function GuestInfo({ guestData, onChange, primaryColor }: GuestInfoProps)
           <Phone className="h-4 w-4 mr-2" />
           Teléfono
         </label>
-        <Input
-          type="tel"
+        <TelefonoPais
           value={guestData.phone}
-          onChange={(e) => updateField('phone', e.target.value)}
-          placeholder="+57 300 123 4567"
+          onChange={(v) => updateField('phone', v)}
           required
+          className="rounded-md border border-input bg-background text-sm [&_input]:h-9"
+          aria-label="Teléfono"
         />
       </div>
       

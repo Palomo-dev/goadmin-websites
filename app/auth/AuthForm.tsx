@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface AuthFormProps {
   organizationId: number
@@ -232,10 +233,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input type="tel" required className="pl-10" placeholder="+57 300 123 4567" value={registerData.phone} onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })} />
-                </div>
+                <TelefonoPais required className="rounded-md border border-input bg-background text-sm [&_input]:h-9" value={registerData.phone} onChange={(v) => setRegisterData({ ...registerData, phone: v })} aria-label="Teléfono" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>

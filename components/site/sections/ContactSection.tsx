@@ -11,6 +11,7 @@ import {
   CONTACT_MAX_LENGTHS,
   HONEYPOT_FIELD_PROPS,
 } from '@/components/sections/contact/useContactForm'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ContactSectionProps {
   organization: OrganizationWithDetails
@@ -183,12 +184,11 @@ export function ContactSection({ organization, settings, primaryColor }: Contact
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Teléfono (opcional)
                     </label>
-                    <Input
-                      type="tel"
+                    <TelefonoPais
                       value={values.phone}
-                      onChange={(e) => setField('phone', e.target.value)}
-                      maxLength={CONTACT_MAX_LENGTHS.phone}
-                      placeholder="+57 300 123 4567"
+                      onChange={(v) => setField('phone', v)}
+                      className="rounded-md border border-input bg-background text-sm [&_input]:h-9"
+                      aria-label="Teléfono"
                     />
                   </div>
                   

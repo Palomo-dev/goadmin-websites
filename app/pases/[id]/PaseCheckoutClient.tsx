@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Car, User, CreditCard, Check, Droplets, Star, Loader2, AlertCircle } from 'lucide-react'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface Gateway { code: string; name: string }
 
@@ -178,13 +179,12 @@ export function PaseCheckoutClient({
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">Teléfono</label>
-                    <input
-                      type="tel"
+                    <TelefonoPais
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      placeholder="300 123 4567"
-                      className="w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2"
+                      onChange={setPhone}
+                      className="rounded-lg border text-sm"
                       style={{ '--tw-ring-color': primaryColor } as any}
+                      aria-label="Teléfono"
                     />
                   </div>
                   <div>

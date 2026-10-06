@@ -28,6 +28,9 @@ export const COPIAS = [
   ['lib/website/v2/estiloSeccion.ts', 'src/lib/website/v2/estiloSeccion.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
+  // Teléfono con país: parseo, validación por país y E.164 (los usa components/site/TelefonoPais.tsx).
+  ['lib/utils/telefono.ts', 'src/lib/utils/telefono.ts'],
+  ['lib/data/countryPhoneCodes.ts', 'src/lib/data/countryPhoneCodes.ts'],
 ]
 
 const problemas = []

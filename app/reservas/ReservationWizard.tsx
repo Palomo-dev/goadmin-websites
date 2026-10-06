@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Users, Check, AlertCircle, CreditCard, Loader2, Bed } from 'lucide-react'
 import Link from 'next/link'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface SpaceType {
   id: string
@@ -601,7 +602,7 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
-                <Input type="tel" required value={guestData.phone} onChange={(e) => setGuestData({ ...guestData, phone: e.target.value })} placeholder="+57 300 123 4567" />
+                <TelefonoPais required className="rounded-md border border-input bg-background text-sm [&_input]:h-9" value={guestData.phone} onChange={(v) => setGuestData({ ...guestData, phone: v })} aria-label="Teléfono" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionales</label>

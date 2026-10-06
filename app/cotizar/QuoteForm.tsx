@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { trackMetaLead } from '@/components/site/MetaPixelEvents'
 // Mismo señuelo que usan los formularios de contacto: un solo patrón, no dos.
 import { HONEYPOT_FIELD_PROPS } from '@/components/sections/contact/useContactForm'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ServiceOption {
   id: string
@@ -154,12 +155,11 @@ export function QuoteForm({ organizationId, services, primaryColor, preselectedS
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
-          <input
-            type="tel"
+          <TelefonoPais
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:outline-none"
-            placeholder="+57 300 123 4567"
+            onChange={(v) => setForm({ ...form, phone: v })}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white [&_input]:py-3"
+            aria-label="Teléfono"
           />
         </div>
       </div>
