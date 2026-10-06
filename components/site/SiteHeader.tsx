@@ -303,7 +303,7 @@ function LegacyDesktopHeader({
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-              <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
+              <ProductSearch primaryColor={primaryColor} />
               <CurrencySelector />
               {(showCart ?? showHeaderCart) && (
                 <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
@@ -321,7 +321,7 @@ function LegacyDesktopHeader({
 
             {/* Mobile Actions */}
             <div className="flex md:hidden items-center gap-2">
-              <ProductSearch primaryColor={primaryColor} organizationId={organization.id} />
+              <ProductSearch primaryColor={primaryColor} />
               {(showCart ?? showHeaderCart) && (
                 <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
               )}

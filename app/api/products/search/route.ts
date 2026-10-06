@@ -3,7 +3,9 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getCurrentPrice } from '@/lib/get-current-price'
 import { getCartaSedeParaListado } from '@/lib/supabase/queries'
-import { aplicarCartaSede } from '@/lib/products/carta-sede'
+import { aplicarCartaSede, excluirNoListados } from '@/lib/products/carta-sede'
+import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
+import { resolverOrganizacionBusqueda } from '@/lib/products/organizacionBusqueda'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -47,24 +49,49 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ products: [] })
   }
 
-  // Intentar obtener orgId de getOrgContext (headers) o del query param (fallback)
-  const orgIdParam = searchParams.get('organizationId')
-  let orgId: number | null = null
-
+  // La organización sale del contexto del host (middleware → getOrgContext), nunca de la query.
+  // `organizationId` en la query solo se tolera si es la misma (JS anterior en caché); otra → 403.
   const ctx = await getOrgContext()
-  const branchId = ctx?.branchId ?? null
-  if (ctx) {
-    orgId = ctx.organization.id
-  } else if (orgIdParam) {
-    orgId = parseInt(orgIdParam)
+  const resolucion = resolverOrganizacionBusqueda(ctx?.organization.id ?? null, searchParams.get('organizationId'))
+  if (resolucion.tipo === 'prohibido') {
+    console.warn('[products/search] organizationId de la query rechazado', JSON.stringify({
+      motivo: resolucion.motivo,
+      organizacionContexto: ctx?.organization.id ?? null,
+      organizacionQuery: searchParams.get('organizationId')?.slice(0, 32) ?? null,
+      host: request.headers.get('host'),
+    }))
+    return NextResponse.json({ error: 'Organización no permitida' }, { status: 403 })
   }
-
-  if (!orgId) {
+  if (resolucion.tipo === 'sin_organizacion') {
     return NextResponse.json({ products: [] })
   }
+  const orgId = resolucion.organizationId
+  const branchId = ctx?.branchId ?? null
+
   const supabase = createAdminClient() || createPublicClient()
   if (!supabase) {
     return NextResponse.json({ products: [] })
+  }
+
+  // Misma regla de visibilidad que el catálogo público (getOrganizationProducts): activo, sin
+  // variantes sueltas, categoría visible para la sede (sin sede: sin filtro) y no oculto en la
+  // carta de la sede. `products` no tiene columna de publicación web propia.
+  const [categoriasPermitidas, carta] = await Promise.all([
+    getAllowedCategoryIds(orgId, ctx?.branchId),
+    getCartaSedeParaListado(orgId, branchId),
+  ])
+  if (categoriasPermitidas !== null && categoriasPermitidas.length === 0) {
+    return NextResponse.json({ products: [] })
+  }
+  const productosVisibles = () => {
+    let consulta = (supabase as any)
+      .from('products')
+      .select(SELECT_FIELDS)
+      .eq('organization_id', orgId)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+    if (categoriasPermitidas) consulta = consulta.in('category_id', categoriasPermitidas)
+    return excluirNoListados(consulta, carta)
   }
   const collected = new Map<number, any>()
 
@@ -74,12 +101,7 @@ export async function GET(request: NextRequest) {
 
   // 1. Búsqueda por nombre del producto
   try {
-    const { data: byName } = await (supabase as any)
-      .from('products')
-      .select(SELECT_FIELDS)
-      .eq('organization_id', orgId)
-      .eq('status', 'active')
-      .is('parent_product_id', null)
+    const { data: byName } = await productosVisibles()
       .ilike('name', `%${q}%`)
       .limit(10)
     if (byName) byName.forEach((p: any) => collected.set(p.id, p))
@@ -96,12 +118,7 @@ export async function GET(request: NextRequest) {
         .limit(5)
       if (cats && cats.length > 0) {
         const catIds = cats.map((c: any) => c.id)
-        const { data: byCat } = await (supabase as any)
-          .from('products')
-          .select(SELECT_FIELDS)
-          .eq('organization_id', orgId)
-          .eq('status', 'active')
-          .is('parent_product_id', null)
+        const { data: byCat } = await productosVisibles()
           .in('category_id', catIds)
           .limit(10)
         if (byCat) byCat.forEach((p: any) => collected.set(p.id, p))
@@ -120,12 +137,7 @@ export async function GET(request: NextRequest) {
         .limit(5)
       if (tags && tags.length > 0) {
         const tagIds = tags.map((t: any) => t.id)
-        const { data: byTag } = await (supabase as any)
-          .from('products')
-          .select(SELECT_FIELDS)
-          .eq('organization_id', orgId)
-          .eq('status', 'active')
-          .is('parent_product_id', null)
+        const { data: byTag } = await productosVisibles()
           .in('tag_id', tagIds)
           .limit(10)
         if (byTag) byTag.forEach((p: any) => collected.set(p.id, p))
@@ -151,12 +163,7 @@ export async function GET(request: NextRequest) {
           .limit(20)
         if (productSuppliers && productSuppliers.length > 0) {
           const productIds = productSuppliers.map((ps: any) => ps.product_id)
-          const { data: bySupplier } = await (supabase as any)
-            .from('products')
-            .select(SELECT_FIELDS)
-            .eq('organization_id', orgId)
-            .eq('status', 'active')
-            .is('parent_product_id', null)
+          const { data: bySupplier } = await productosVisibles()
             .in('id', productIds)
             .limit(10)
           if (bySupplier) bySupplier.forEach((p: any) => collected.set(p.id, p))
@@ -168,12 +175,7 @@ export async function GET(request: NextRequest) {
   // 5. Búsqueda por descripción o SKU
   try {
     if (collected.size < 12) {
-      const { data: byDesc } = await (supabase as any)
-        .from('products')
-        .select(SELECT_FIELDS)
-        .eq('organization_id', orgId)
-        .eq('status', 'active')
-        .is('parent_product_id', null)
+      const { data: byDesc } = await productosVisibles()
         .or(`description.ilike.%${q}%,sku.ilike.%${q}%`)
         .limit(8)
       if (byDesc) byDesc.forEach((p: any) => collected.set(p.id, p))
@@ -191,12 +193,7 @@ export async function GET(request: NextRequest) {
     })
     // Si no encontró nada con nombre+precio, buscar solo por precio
     if (results.length === 0) {
-      const { data: byPrice } = await (supabase as any)
-        .from('products')
-        .select(SELECT_FIELDS)
-        .eq('organization_id', orgId)
-        .eq('status', 'active')
-        .is('parent_product_id', null)
+      const { data: byPrice } = await productosVisibles()
         .limit(15)
       if (byPrice) {
         results = byPrice.filter((p: any) => {
@@ -214,7 +211,7 @@ export async function GET(request: NextRequest) {
     const actual = getCurrentPrice(p)
     return { ...p, product_prices: actual ? [actual] : [] }
   })
-  const conCarta = aplicarCartaSede(vigentes, await getCartaSedeParaListado(orgId, branchId))
+  const conCarta = aplicarCartaSede(vigentes, carta)
   const products = conCarta.slice(0, 12).map(formatProduct)
 
   return NextResponse.json({ products })
