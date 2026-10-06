@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getCurrentPrice } from '@/lib/get-current-price'
+import { getCartaSedeParaListado } from '@/lib/supabase/queries'
+import { aplicarCartaSede } from '@/lib/products/carta-sede'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
   let orgId: number | null = null
 
   const ctx = await getOrgContext()
+  const branchId = ctx?.branchId ?? null
   if (ctx) {
     orgId = ctx.organization.id
   } else if (orgIdParam) {
@@ -205,7 +208,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const products = results.slice(0, 12).map(formatProduct)
+  // Carta de la sede (oculto, precio web y precio de sede): el buscador muestra el mismo precio
+  // que la carta y que cobra /api/orders. `aplicarCartaSede` espera el vigente en [0].
+  const vigentes = results.map((p) => {
+    const actual = getCurrentPrice(p)
+    return { ...p, product_prices: actual ? [actual] : [] }
+  })
+  const conCarta = aplicarCartaSede(vigentes, await getCartaSedeParaListado(orgId, branchId))
+  const products = conCarta.slice(0, 12).map(formatProduct)
 
   return NextResponse.json({ products })
 }

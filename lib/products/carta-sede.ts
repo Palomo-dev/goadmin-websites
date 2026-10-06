@@ -3,11 +3,14 @@
  * migración 20261005214525_v2_menus_y_carta_por_sede.sql).
  *
  * Regla única para el sitio público y para el cobro en el servidor:
- * - Sin sede (sitio principal): no se aplica nada. Comportamiento idéntico al de antes.
+ * - La sede de la carta la decide `resolverSedeCarta`: la de la página o, en el sitio principal,
+ *   la sede principal (`is_main`). Sin sede principal: no se aplica nada, como antes.
  * - Con sede y SIN fila para el producto: igual que en el sitio principal.
  * - `is_listed = false`: el producto no sale en esa sede (ni se puede pedir allí).
  * - `is_sold_out = true` y (`sold_out_until` nulo o futuro): se muestra agotado.
  * - `web_price` no nulo: es el precio que se muestra Y el que cobra `/api/orders`.
+ * - Sin `web_price`, el precio de la sede del ERP (`product_branch_prices`, RPC
+ *   `fn_precios_vigentes_lote`, origen 'sede') si lo hay: el mismo que cobra el POS.
  *
  * Columnas verificadas por MCP el 2026-10-05: organization_id, branch_id, product_id,
  * is_listed, web_price (numeric, NULL-able), is_sold_out, sold_out_until (timestamptz, NULL-able).
@@ -25,9 +28,17 @@ export interface FilaCartaSede {
   sold_out_until: string | null
 }
 
+/** Precio de la sede del ERP ya resuelto por `fn_precios_vigentes_lote` (solo origen sede). */
+export interface PrecioSedeCarta {
+  precio: number
+  comparacion: number | null
+}
+
 export interface CartaSede {
   branchId: number
   filas: Map<number, FilaCartaSede>
+  /** Precios de `product_branch_prices` de la sede. Ausente o vacío = sin precios de sede. */
+  precios?: Map<number, PrecioSedeCarta>
 }
 
 /** Máximo de ids por `.in()`/`.not in` para mantener acotada la URL de PostgREST. */
@@ -179,25 +190,29 @@ export function excluirNoListados<Q extends { not: (...args: any[]) => Q }>(quer
  * `normalizeProductPrices`). Sin carta o sin filas devuelve el mismo array.
  */
 export function aplicarCartaSede<T>(productos: T[], carta: CartaSede | null, ahora: Date = new Date()): T[] {
-  if (!carta || carta.filas.size === 0) return productos
+  const precios = carta?.precios
+  if (!carta || (carta.filas.size === 0 && (!precios || precios.size === 0))) return productos
   const resultado: T[] = []
   for (const original of productos) {
     const p = original as any
     const fila = carta.filas.get(Number(p?.id))
-    if (!fila) {
+    const precioSede = precios?.get(Number(p?.id))
+    if (!fila && !precioSede) {
       resultado.push(original)
       continue
     }
     if (noListadoEnSede(fila)) continue
 
     let copia: any = p
-    const precioWeb = precioWebDeSede(fila)
+    // Mismo orden que el cobro (precioBaseProducto): web_price de la carta → precio de la sede.
+    const precioWeb = precioWebDeSede(fila) ?? (precioSede ? precioSede.precio : null)
     if (precioWeb !== null) {
       const precios: any[] = Array.isArray(p.product_prices) ? p.product_prices : []
       const vigente = precios[0]
-      const comparar = vigente?.compare_price !== null && vigente?.compare_price !== undefined
-        ? Number(vigente.compare_price)
-        : null
+      const compararBase = precioWebDeSede(fila) === null && precioSede
+        ? precioSede.comparacion
+        : vigente?.compare_price
+      const comparar = compararBase !== null && compararBase !== undefined ? Number(compararBase) : null
       const nuevoVigente = {
         ...(vigente ?? { id: 0, effective_to: null }),
         price: precioWeb,
@@ -206,13 +221,19 @@ export function aplicarCartaSede<T>(productos: T[], carta: CartaSede | null, aho
       }
       copia = { ...copia, product_prices: [nuevoVigente, ...precios.slice(1)] }
     }
-    if (agotadoEnSede(fila, ahora)) {
+    const agotado = agotadoEnSede(fila, ahora)
+    if (agotado) {
       // Mismo contrato que `isOutOfStock` (lib/stock.ts): rastrea inventario y sin existencias.
       copia = { ...copia, track_stock: true, stock_levels: [] }
     }
     copia = {
       ...copia,
-      carta_sede: { precio_web: precioWeb !== null, agotado: agotadoEnSede(fila, ahora) },
+      carta_sede: {
+        precio_web: precioWeb !== null,
+        agotado,
+        // Hasta cuándo (timestamptz tal cual; se formatea en la zona de la organización al pintar).
+        agotado_hasta: agotado ? (fila?.sold_out_until ?? null) : null,
+      },
     }
     resultado.push(copia as T)
   }

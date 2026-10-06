@@ -6,34 +6,81 @@ import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
-import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, type CartaSede } from '@/lib/products/carta-sede'
+import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
+import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
 }
 
+/** Tope de productos con precio de sede que se resuelven por petición (2 lotes de la RPC). */
+const MAX_PRECIOS_SEDE = 1000
+
+/**
+ * Precios de `product_branch_prices` vigentes de la sede, resueltos con la RPC del ERP
+ * (`fn_precios_vigentes_lote`, la misma regla que cobra `/api/orders`). Primero una consulta
+ * mínima de ids con precio de sede (hoy 0 filas en producción: es la única que se paga) y,
+ * solo si hay, la RPC sobre esos productos y sus variantes (heredan el precio de sede del padre).
+ */
+async function leerPreciosSedeListado(organizationId: number, branchId: number) {
+  const supabase = getSupabaseForPublicRead() as any
+  const ahora = new Date().toISOString()
+  const { data: filas, error } = await supabase
+    .from('product_branch_prices')
+    .select('product_id')
+    .eq('organization_id', organizationId)
+    .eq('branch_id', branchId)
+    .lte('effective_from', ahora)
+    .or(`effective_to.is.null,effective_to.gt.${ahora}`)
+    .limit(MAX_PRECIOS_SEDE)
+  if (error) {
+    console.error('[carta-sede] No se pudo leer product_branch_prices', { organizationId, branchId, error: error.message })
+    return null
+  }
+  const ids = Array.from(new Set(((filas || []) as { product_id: number }[]).map((f) => Number(f.product_id))))
+  if (ids.length === 0) return null
+  const { data: hijos } = await supabase
+    .from('products')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .in('parent_product_id', ids.slice(0, 200))
+    .limit(MAX_PRECIOS_SEDE)
+  const todos = [...ids, ...((hijos || []) as { id: number }[]).map((h) => Number(h.id))].slice(0, MAX_PRECIOS_SEDE)
+  const r = await leerPreciosSede(supabase, organizationId, branchId, todos)
+  if (!r.ok) {
+    console.error('[carta-sede] fn_precios_vigentes_lote falló en el listado', { organizationId, branchId, error: r.error })
+    return null
+  }
+  return r.precios
+}
+
 /** Carta de una sede, una sola lectura por petición (react.cache). */
 const getCartaSedeDePeticion = cache(async (organizationId: number, branchId: number): Promise<CartaSede | null> => {
-  const r = await leerCartaSede(getSupabaseForPublicRead(), organizationId, branchId)
+  const [r, precios] = await Promise.all([
+    leerCartaSede(getSupabaseForPublicRead(), organizationId, branchId),
+    leerPreciosSedeListado(organizationId, branchId),
+  ])
   if (!r.ok) {
     // Fail-safe del listado: sin carta se muestra como el sitio principal. El cobro no depende
     // de esto: /api/orders vuelve a leer la carta y falla cerrado.
     console.error('[carta-sede] No se pudo leer website_branch_products', { organizationId, branchId, error: r.error })
     return null
   }
-  return r.carta
+  return precios && precios.size > 0 ? { ...r.carta, precios } : r.carta
 })
 
 /**
- * Carta por sede para los listados (lib/products/carta-sede.ts). Sin sede → `null` y los
- * listados quedan exactamente como antes.
+ * Carta por sede para los listados (lib/products/carta-sede.ts). La sede es la de la página o,
+ * en el sitio principal, la sede principal (`resolverSedeCarta`, la misma regla que el cobro).
+ * Sin sede principal → `null` y los listados quedan exactamente como antes.
  */
 export async function getCartaSedeParaListado(
   organizationId: number,
   branchId: number | null | undefined
 ): Promise<CartaSede | null> {
-  if (!esSede(branchId)) return null
-  return getCartaSedeDePeticion(organizationId, branchId)
+  const sede = await resolverSedeCarta(organizationId, branchId)
+  if (!esSede(sede)) return null
+  return getCartaSedeDePeticion(organizationId, sede)
 }
 
 /**
