@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useReservaMesa } from '@/lib/restaurant/useReservaMesa'
+import { AJUSTES_RESERVA_POR_DEFECTO } from '@/lib/restaurant/sedes-modelo'
 
 interface ReservationCtaFormProps {
   content: {
@@ -34,12 +35,17 @@ interface ReservationCtaFormProps {
 
 export function ReservationCtaForm({ content, primaryColor, organization, data: datosPagina }: ReservationCtaFormProps) {
   // ── Configuración con defaults (compatibilidad hacia atrás) ──
-  const minGuests = content.min_guests || 1
-  const maxGuests = content.max_guests || 8
+  // Sin valor en la sección, los límites de la base (los mismos que la sección
+  // `reservation`); la RPC vuelve a validar con los de la sede.
+  const minGuests = content.min_guests || AJUSTES_RESERVA_POR_DEFECTO.minPersonas
+  const maxGuests = content.max_guests || AJUSTES_RESERVA_POR_DEFECTO.maxPersonas
   const slotInterval = content.time_slot_interval || '30'
   const requirePhone = content.require_phone !== false // default true
   const requireEmail = content.require_email === true   // default false
-  const showAvailableTimes = content.show_available_times === true
+  // Las franjas reales salen de la sede: se ofrecen siempre que la API las
+  // devuelva, salvo que la sección las apague de forma explícita. Si no hay
+  // franjas (o la API falla), queda el campo de hora libre de siempre.
+  const showAvailableTimes = content.show_available_times !== false
   const successMessage = content.success_message || '¡Reserva confirmada! Te esperamos.'
   const errorMessage = content.error_message || 'No se pudo completar la reserva. Inténtalo de nuevo.'
 
@@ -180,6 +186,16 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
               </div>
             </div>
           </div>
+          {reservationResult.manageUrl && (
+            <Link
+              href={reservationResult.manageUrl}
+              className="mt-4 inline-block text-sm font-medium underline underline-offset-4"
+              style={{ color: primaryColor }}
+            >
+              Consultar o cancelar tu reserva
+            </Link>
+          )}
+          <br />
           <button
             type="button"
             onClick={() => {
