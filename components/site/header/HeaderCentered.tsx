@@ -5,6 +5,7 @@ import {
   HeaderLogo,
   HeaderActions,
   HeaderCTA,
+  HeaderCTA2,
   HeaderTopbar,
   NavList,
   SearchBarInline,
@@ -64,6 +65,7 @@ export default function HeaderCentered({
                 organizationSubdomain={organization.subdomain || ''}
                 branchId={branchId}
               />
+              <HeaderCTA2 settings={settings} />
               {ctaText && (
                 <HeaderCTA text={ctaText} href={settings?.header_cta_url ?? undefined} primaryColor={primaryColor} settings={settings} />
               )}

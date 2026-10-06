@@ -15,6 +15,8 @@ import NavDropdown from './NavDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
+import { useEncabezadoPie } from '../EncabezadoPieContext';
+import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
 
 // ============================================================
 // SHARED TYPES
@@ -356,8 +358,15 @@ export function HeaderCTA({
   settings?: HeaderVariantProps['settings'];
 }) {
   const temaColores = useTemaColores();
+  const { extras } = useEncabezadoPie();
   if (!text) return null;
-  const linkHref = href || '#';
+  // Destinos especiales del contrato: `whatsapp` (número del sitio) y `maps` (Cómo llegar de la
+  // sede). Sin ese dato el botón no se pinta. Cualquier otro enlace, igual que siempre.
+  const especial = href === 'whatsapp' || href === 'maps';
+  const resuelto = especial ? hrefBoton(href, extras.enlaces) : href || '#';
+  if (!resuelto) return null;
+  const linkHref = resuelto;
+  const externo = especial && esEnlaceExterno(resuelto);
 
   // Fase 12C: Estilos personalizados del CTA desde settings
   const paddingX = settings?.cta_padding_x ?? 16;
@@ -390,6 +399,7 @@ export function HeaderCTA({
   return (
     <Link
       href={linkHref}
+      {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className={className}
       style={{
         backgroundColor: bgColor,
@@ -406,6 +416,37 @@ export function HeaderCTA({
       }}
     >
       {text}
+    </Link>
+  );
+}
+
+/**
+ * Segundo botón del encabezado (`header_cta2_text` / `header_cta2_url`), en contorno, antes del
+ * principal (láminas de Figma «16 Sitio web»). Mismo tamaño y redondeo que el principal
+ * (cta_padding_*, cta_border_radius). Sin texto o sin enlace (lo de hoy) no pinta nada.
+ */
+export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settings'] }) {
+  const { opciones, extras } = useEncabezadoPie();
+  const boton = opciones.boton2;
+  if (!boton) return null;
+  const href = hrefBoton(boton.url, extras.enlaces);
+  if (!href) return null;
+  const paddingX = settings?.cta_padding_x ?? 16;
+  const paddingY = settings?.cta_padding_y ?? 8;
+  const borderRadius = settings?.cta_border_radius ?? 8;
+  const externo = esEnlaceExterno(href) || href.startsWith('tel:') || href.startsWith('mailto:');
+  const estilo: React.CSSProperties = {
+    padding: `${Math.max(0, paddingY - 1)}px ${Math.max(0, paddingX - 1)}px`,
+    borderRadius: `${borderRadius}px`,
+  };
+  const clase = 'hidden md:inline-flex items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
+  return externo ? (
+    <a href={href} className={clase} style={estilo} data-boton-secundario="" {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+      {boton.texto}
+    </a>
+  ) : (
+    <Link href={href} className={clase} style={estilo} data-boton-secundario="">
+      {boton.texto}
     </Link>
   );
 }

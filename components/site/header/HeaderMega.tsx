@@ -7,6 +7,7 @@ import {
   HeaderLogo,
   HeaderActions,
   HeaderCTA,
+  HeaderCTA2,
   HeaderTopbar,
   NavLink,
   SearchBarInline,
@@ -107,6 +108,7 @@ export default function HeaderMega({
                 showSearchIcon={false}
                 branchId={branchId}
               />
+              <HeaderCTA2 settings={settings} />
               <HeaderCTA
                 text={ctaText}
                 href={ctaHref}

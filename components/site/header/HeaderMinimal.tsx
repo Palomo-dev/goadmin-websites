@@ -7,6 +7,7 @@ import {
   HeaderLogo,
   HeaderActions,
   HeaderCTA,
+  HeaderCTA2,
   HeaderTopbar,
   SearchBarInline,
   MobileMenuButton,
@@ -145,6 +146,7 @@ export default function HeaderMinimal({
                 hideAuth
                 branchId={branchId}
               />
+              <HeaderCTA2 settings={settings} />
               <HeaderCTA
                 text={ctaText}
                 href={ctaHref}
