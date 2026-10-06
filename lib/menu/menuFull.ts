@@ -87,7 +87,7 @@ export interface MenuSchedule {
 
 const UNCATEGORIZED_ID = -1
 
-function toMenuItem(p: MenuSourceProduct): MenuItem {
+export function toMenuItem(p: MenuSourceProduct): MenuItem {
   const soldOut = isOutOfStock({
     track_stock: p.track_stock,
     stock_levels: (p.stock_levels || []).map((sl) => ({
@@ -236,6 +236,32 @@ export function parseSchedules(raw: unknown): MenuSchedule[] {
       end_time: typeof e.end_time === 'string' ? e.end_time : null,
       category_ids: ids,
     })
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
+// Platos elegidos por id (sección `signature_dishes`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Devuelve los platos con esos ids en el orden pedido. Misma regla que la
+ * carta: solo productos que la página precargó para la sede (activos, de la
+ * carta de la sede) y con precio vigente; los demás se omiten en silencio.
+ */
+export function pickMenuItems(products: MenuSourceProduct[], ids: number[]): MenuItem[] {
+  const byId = new Map<number, MenuSourceProduct>()
+  for (const p of products) byId.set(p.id, p)
+  const out: MenuItem[] = []
+  const seen = new Set<number>()
+  for (const id of ids) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    const p = byId.get(id)
+    if (!p) continue
+    const item = toMenuItem(p)
+    if (item.price === null) continue
+    out.push(item)
   }
   return out
 }

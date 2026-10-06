@@ -10,6 +10,9 @@
  *                    sección) y sub-filtro por categoría.
  *  - `per_category`: una URL por categoría (<página>/<slug-categoría>), chips
  *                    fijos y «Siguiente» al final.
+ *  - `editorial`:    nombres grandes por categoría con la foto que sigue al
+ *                    cursor (solo con @media (hover:hover)); en pantallas
+ *                    táctiles, cada plato con su miniatura fija (MenuItemRow).
  *
  * Todo sale de props ya precargadas por la página: aquí no hay consultas.
  */
@@ -17,7 +20,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowRight, FileText } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, FileText, ImageIcon } from 'lucide-react'
+import Image from 'next/image'
+import { Price } from '@/components/site/CurrencyProvider'
+import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
 import { addProductToCart } from '@/lib/cart'
 import {
@@ -33,7 +39,7 @@ import {
 } from '@/lib/menu/menuFull'
 import { MenuItemRow, type MenuItemLayout, type MenuItemSize } from './MenuItemRow'
 
-export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category'
+export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category' | 'editorial'
 
 export interface MenuFullViewProps {
   variant: MenuFullVariant
@@ -189,6 +195,7 @@ export function MenuFullView(props: MenuFullViewProps) {
   const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd }
   if (props.variant === 'tabs') return <TabsMenu {...variantProps} />
   if (props.variant === 'per_category') return <PerCategoryMenu {...variantProps} />
+  if (props.variant === 'editorial') return <EditorialMenu {...variantProps} />
   return <AnchorsMenu {...variantProps} />
 }
 
@@ -552,6 +559,120 @@ function PerCategoryMenu(props: VariantProps) {
           <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </Link>
       )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// editorial — nombres grandes con foto que sigue al cursor (Figma 134:2281)
+// ---------------------------------------------------------------------------
+
+/**
+ * Con puntero que hace hover: filas grandes que enlazan al plato y una foto
+ * flotante que sigue al cursor. En táctil no hay hover: cada plato se pinta
+ * con MenuItemRow (miniatura fija, agotado, «Agregar» si hay pedido en línea).
+ * Las dos versiones se alternan con CSS (`@media (hover:hover)`), no con JS,
+ * para que el HTML del servidor ya sea el correcto en cada dispositivo.
+ */
+function EditorialMenu(props: VariantProps) {
+  const { groups } = props
+  const floatRef = useRef<HTMLDivElement>(null)
+  const [preview, setPreview] = useState<MenuItem | null>(null)
+
+  const onMove = (e: MouseEvent<HTMLElement>) => {
+    const el = floatRef.current
+    if (!el) return
+    // Desplazada del puntero para no tapar el nombre del plato.
+    el.style.transform = `translate3d(${e.clientX + 24}px, ${e.clientY - 190}px, 0) rotate(3deg)`
+  }
+
+  const touchRow = rowRenderer({ ...props, layout: 'photo', size: 'compact' }, null)
+
+  return (
+    <div className="flex flex-col gap-16">
+      <Intro eyebrow={props.eyebrow} title={props.title} subtitle={props.subtitle} />
+      {groups.map((g) => (
+        <section key={g.id} aria-labelledby={`carta-${props.sectionKey}-${g.slug}`} className="flex flex-col gap-4 md:gap-8">
+          <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
+            <h3
+              id={`carta-${props.sectionKey}-${g.slug}`}
+              className="text-xs font-medium uppercase leading-4 tracking-[0.12em]"
+              style={{ color: 'var(--accent-color, var(--primary-color))' }}
+            >
+              {g.name}
+            </h3>
+            <p className="hidden text-sm leading-5 text-muted-foreground/70 [@media(hover:hover)]:block">
+              Pasa el cursor por un plato para ver la foto
+            </p>
+          </div>
+
+          {/* Puntero con hover */}
+          <ul className="hidden flex-col [@media(hover:hover)]:flex" onMouseMove={onMove} onMouseLeave={() => setPreview(null)}>
+            {g.items.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/productos/${item.uuid}`}
+                  onMouseEnter={() => setPreview(item.imageUrl ? item : null)}
+                  onFocus={() => setPreview(null)}
+                  className={cn(
+                    'group flex items-center gap-6 border-b border-border py-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+                    item.soldOut && 'opacity-50',
+                  )}
+                >
+                  <span className="min-w-0 flex-1 text-3xl font-bold leading-tight text-foreground transition-colors [font-family:var(--font-heading)] group-hover:text-[color:var(--accent-color,var(--primary-color))] group-focus-visible:text-[color:var(--accent-color,var(--primary-color))] lg:text-5xl">
+                    {item.name}
+                  </span>
+                  {item.soldOut && (
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium leading-4 text-muted-foreground">Agotado</span>
+                  )}
+                  {item.price !== null && (
+                    <Price
+                      value={item.price}
+                      className="shrink-0 text-lg leading-7 text-muted-foreground transition-colors group-hover:text-[color:var(--accent-color,var(--primary-color))]"
+                    />
+                  )}
+                  <ArrowUpRight
+                    className="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    style={{ color: 'var(--accent-color, var(--primary-color))' }}
+                    aria-hidden="true"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {/* Táctil */}
+          <div className="[@media(hover:hover)]:hidden">
+            {g.items.map((item) => (
+              <div key={item.id}>{touchRow(item)}</div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {/* Foto flotante: decorativa (el nombre ya está en el enlace). */}
+      <div
+        ref={floatRef}
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none fixed left-0 top-0 z-40 hidden h-[380px] w-[300px] overflow-hidden rounded-xl bg-muted shadow-xl [@media(hover:hover)]:block',
+          preview ? 'opacity-100' : 'opacity-0',
+          'transition-opacity duration-200 motion-reduce:transition-none',
+        )}
+      >
+        {preview?.imageUrl ? (
+          isOptimizableImage(preview.imageUrl) ? (
+            <Image src={preview.imageUrl} alt="" fill sizes="300px" className="object-cover" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- URL externa: next/image no la admite
+            <img src={preview.imageUrl} alt="" className="h-full w-full object-cover" />
+          )
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

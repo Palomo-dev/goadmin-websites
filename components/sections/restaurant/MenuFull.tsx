@@ -1,5 +1,6 @@
 /**
- * Sección `menu_full` — «Carta completa» (Figma MenuFull 136:2340).
+ * Sección `menu_full` — «Carta completa» (Figma MenuFull 136:2340), con las
+ * variantes anchors, tabs, per_category y editorial.
  *
  * Sin directiva de cliente a propósito: el manifiesto del sitio
  * (lib/sectionManifest.ts) lee `MenuFull.CONTENT_KEYS` desde un route handler,
@@ -34,7 +35,7 @@ export const CONTENT_KEYS = [
   'menus',
 ] as const
 
-const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category']
+const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial']
 const SIZES: readonly MenuItemSize[] = ['regular', 'compact', 'auto']
 
 interface MenuFullProps {

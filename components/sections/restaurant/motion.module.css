@@ -1,0 +1,203 @@
+/*
+ * Movimiento de las secciones nuevas de restaurante (notas de animación de
+ * Figma 149:7296…149:8283).
+ *
+ * Regla común: el contenido está completo y visible en el SSR. Las clases de
+ * animación solo actúan cuando el cliente marca el contenedor con
+ * `data-motion="on"` (useMotionReady), y nada se mueve con
+ * prefers-reduced-motion: reduce.
+ */
+
+/* ---- Fade-up escalonado (tarjetas, filas, paquetes) ---- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-motion='on'] .fadeUp {
+  opacity: 0;
+}
+
+[data-motion='on'][data-inview='true'] .fadeUp {
+  animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger, 80ms));
+}
+
+/* ---- Revelado de texto por líneas / palabras (máscara) ---- */
+.mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* Evita recortar descendentes de la tipografía display. */
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.maskInner {
+  display: inline-block;
+}
+
+@keyframes maskUp {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+[data-motion='on'] .maskInner {
+  transform: translateY(105%);
+}
+
+[data-motion='on'][data-inview='true'] .maskInner {
+  animation: maskUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger, 80ms));
+}
+
+/* ---- Palabra a palabra al hacer scroll (cita del chef) ---- */
+.word {
+  transition: opacity 0.3s ease;
+}
+
+[data-motion='on'] .word {
+  opacity: 0.18;
+}
+
+[data-motion='on'] .word[data-lit='true'] {
+  opacity: 1;
+}
+
+/* ---- Zoom lento de entrada (detalle de evento: 1.05 → 1) ---- */
+@keyframes settle {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: none;
+  }
+}
+
+[data-motion='on'][data-inview='true'] .settle {
+  animation: settle 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- Zoom 1.05 en hover/foco, solo con puntero fino ---- */
+.zoomImg {
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .zoomHost:hover .zoomImg,
+  .zoomHost:focus-visible .zoomImg,
+  .zoomHost:focus-within .zoomImg {
+    transform: scale(1.05);
+  }
+}
+
+/* Flecha que se desplaza en diagonal (tarjetas del hero bento). */
+.arrow {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .zoomHost:hover .arrow {
+    transform: translate(3px, -3px);
+  }
+}
+
+.zoomHost:focus-visible .arrow {
+  transform: translate(3px, -3px);
+}
+
+/* Pie de foto que aparece en hover (galería). */
+.caption {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+@media (hover: hover) {
+  .captionHost .caption {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  .captionHost:hover .caption,
+  .captionHost:focus-visible .caption {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Marquee: dos copias, translateX(-50 %) lineal ---- */
+@keyframes marqueeLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marqueeRight {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.marqueeViewport {
+  overflow: hidden;
+}
+
+.marqueeTrack {
+  display: flex;
+  width: max-content;
+  animation: marqueeLeft var(--marquee-duration, 30s) linear infinite;
+}
+
+.marqueeTrack[data-direction='right'] {
+  animation-name: marqueeRight;
+}
+
+/* WCAG 2.2.2: pausa en hover y en foco. */
+.marqueeViewport:hover .marqueeTrack,
+.marqueeViewport:focus-within .marqueeTrack,
+.marqueeViewport[data-paused='true'] .marqueeTrack {
+  animation-play-state: paused;
+}
+
+/* ---- Sin movimiento ---- */
+@media (prefers-reduced-motion: reduce) {
+  [data-motion='on'] .fadeUp,
+  [data-motion='on'] .maskInner,
+  [data-motion='on'] .word {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+  .settle,
+  .zoomImg,
+  .arrow,
+  .caption {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  /* Franja de texto: estática. Franja de fotos: scroll horizontal manual. */
+  .marqueeTrack {
+    animation: none !important;
+  }
+  .marqueeViewport {
+    overflow-x: auto;
+  }
+  .marqueeClone {
+    display: none;
+  }
+}

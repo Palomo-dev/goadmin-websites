@@ -22,6 +22,7 @@ import {
   getDefaultTax,
   getOrganizationTestimonials,
   getProductsByCategoryIds,
+  getProductsByIdsCatalog,
   getWebsitePagesByIds
 } from '@/lib/supabase/queries'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
@@ -159,11 +160,38 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.spaceTypes = await getOrganizationSpaceTypes(organization.id)
       data.spaces = await getOrganizationSpaces(organization.id, branchId)
     }
-    const needsProducts = sectionTypes.some(t =>
-      ['products_grid', 'featured_products', 'menu_preview', 'menu_full', 'specialties'].includes(t)
+    // `signature_dishes` elige platos de la misma lista que la carta. En la
+    // vista previa del editor (?preview=1) también se precargan: una sección
+    // recién añadida aún no está en la página guardada.
+    const isEditorPreview = (await searchParams)?.preview === '1'
+    const needsProducts = isEditorPreview || sectionTypes.some(t =>
+      ['products_grid', 'featured_products', 'menu_preview', 'menu_full', 'specialties', 'signature_dishes'].includes(t)
     )
     if (needsProducts) {
       data.products = await getOrganizationProducts(organization.id, 500, branchId)
+    }
+    // Platos estrella que no vinieron entre los 500 precargados (cartas
+    // grandes): se piden por id, con la caché del catálogo. Van aparte para no
+    // alterar lo que muestran las demás secciones de productos.
+    if (sectionTypes.includes('signature_dishes')) {
+      const loaded = new Set(((data.products || []) as { id: number }[]).map((p) => p.id))
+      const wanted = new Set<number>()
+      for (const s of page.website_page_sections) {
+        if (s.section_type !== 'signature_dishes') continue
+        const dishes = (s.content as { dishes?: unknown } | null)?.dishes
+        if (!Array.isArray(dishes)) continue
+        for (const d of dishes) {
+          const id = Number((d as { product_id?: unknown } | null)?.product_id)
+          if (Number.isInteger(id) && id > 0 && !loaded.has(id)) wanted.add(id)
+        }
+      }
+      if (wanted.size > 0) {
+        data.signatureProducts = await getProductsByIdsCatalog(
+          Array.from(wanted).sort((a, b) => a - b).slice(0, 24),
+          organization.id,
+          branchId,
+        )
+      }
     }
     if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
       data.categories = await getOrganizationCategories(organization.id, branchId)

@@ -55,6 +55,12 @@ interface UseContactFormOptions {
   requireMessage?: boolean
   /** Valores de partida (p. ej. un asunto fijo). Se restauran al limpiar. */
   initialValues?: Partial<ContactFormValues>
+  /**
+   * Formularios con campos propios (p. ej. cotización de evento privado):
+   * arma el asunto y el mensaje que se envían a /api/contact a partir de
+   * esos campos. Sin esta opción se envían `subject` y `message` tal cual.
+   */
+  composeMessage?: (values: ContactFormValues) => { subject?: string; message: string }
 }
 
 export function useContactForm({
@@ -62,6 +68,7 @@ export function useContactForm({
   sourceForm,
   requireMessage = true,
   initialValues,
+  composeMessage,
 }: UseContactFormOptions) {
   // Sin dependencias reactivas a propósito: los valores de partida son fijos.
   const [baseValues] = useState<ContactFormValues>(() => ({ ...EMPTY, ...initialValues }))
@@ -92,8 +99,9 @@ export function useContactForm({
 
       const name = values.name.trim()
       const email = values.email.trim()
-      const message = values.message.trim()
-      const subject = values.subject.trim()
+      const composed = composeMessage?.(values)
+      const message = (composed ? composed.message : values.message).trim()
+      const subject = (composed ? composed.subject ?? '' : values.subject).trim()
 
       if (!name || !email) {
         setStatus('error')
@@ -149,7 +157,7 @@ export function useContactForm({
         setErrorMessage('No hay conexión con el servidor. Inténtalo de nuevo.')
       }
     },
-    [baseValues, organizationId, requireMessage, sourceForm, status, values]
+    [baseValues, composeMessage, organizationId, requireMessage, sourceForm, status, values]
   )
 
   return {

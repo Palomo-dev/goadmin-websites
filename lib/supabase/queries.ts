@@ -3268,3 +3268,12 @@ export const getMenuProducts = cacheCatalog('getMenuProducts', getMenuProductsUn
 export const getWebSalesByProduct = cache(
   cacheCatalog('getWebSalesByProduct', getWebSalesByProductUncached, (...args) => args[0])
 )
+
+// Platos elegidos por id para `signature_dishes` cuando no están entre los
+// 500 que precarga getOrganizationProducts (cartas grandes). Misma consulta
+// que favoritos/re-pedidos (organización + sede + carta de la sede), con la
+// caché del catálogo: la clave incluye los ids, así que una misma sección no
+// vuelve a consultar en cada visita.
+export const getProductsByIdsCatalog = cache(
+  cacheCatalog('getProductsByIds', getProductsByIds, (...args) => args[1])
+)

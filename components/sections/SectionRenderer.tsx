@@ -92,6 +92,14 @@ import { SpecialtiesFeatured } from './restaurant/SpecialtiesFeatured'
 import { ReservationCtaForm } from './restaurant/ReservationCtaForm'
 import { DeliveryCtaBanner } from './restaurant/DeliveryCtaBanner'
 import { ChefSectionProfile } from './restaurant/ChefSectionProfile'
+// Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358)
+import { RestaurantHero } from './restaurant/RestaurantHero'
+import { Marquee } from './restaurant/Marquee'
+import { SignatureDishes } from './restaurant/SignatureDishes'
+import { Events } from './restaurant/Events'
+import { PrivateEvents } from './restaurant/PrivateEvents'
+import { ChefTeam } from './restaurant/ChefTeam'
+import { GalleryBento } from './restaurant/GalleryBento'
 
 // Secciones retail
 import { PromoBannersGrid } from './retail/PromoBannersGrid'
@@ -268,11 +276,12 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   menu_preview: {
     tabs: MenuPreviewTabs,
   },
-  // Carta completa (Figma MenuFull 136:2340). `editorial` del diseño queda fuera.
+  // Carta completa (Figma MenuFull 136:2340).
   menu_full: {
     anchors: MenuFull,
     tabs: MenuFull,
     per_category: MenuFull,
+    editorial: MenuFull,
   },
   specialties: {
     featured: SpecialtiesFeatured,
@@ -286,6 +295,33 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   chef_section: {
     profile: ChefSectionProfile,
+  },
+  // Secciones nuevas de restaurante (Figma 167:5358)
+  restaurant_hero: {
+    typographic: RestaurantHero,
+    split_bento: RestaurantHero,
+  },
+  marquee: {
+    text: Marquee,
+    photos: Marquee,
+  },
+  signature_dishes: {
+    carousel: SignatureDishes,
+    scrollytelling: SignatureDishes,
+  },
+  events: {
+    list: Events,
+    detail: Events,
+  },
+  private_events: {
+    default: PrivateEvents,
+  },
+  chef_team: {
+    chef: ChefTeam,
+    team: ChefTeam,
+  },
+  gallery_bento: {
+    default: GalleryBento,
   },
   // Retail
   promo_banners: {
