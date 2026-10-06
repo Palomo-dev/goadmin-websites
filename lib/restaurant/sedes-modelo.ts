@@ -22,6 +22,7 @@ type FilaAjustes = Pick<
   | 'allow_zone_choice'
   | 'allowed_zones'
   | 'slot_interval_minutes'
+  | 'large_party_threshold'
 >
 
 export interface AjustesReserva {
@@ -37,7 +38,25 @@ export interface AjustesReserva {
   /** Zonas elegibles por el cliente; vacío = no se ofrece elegir zona. */
   zonas: string[]
   intervaloMinutos: number
+  /**
+   * Grupos de MÁS personas que esto no reservan en línea: el sitio invita a
+   * contactar y, si llegan, la RPC los deja `pending`. `null` = sin umbral.
+   */
+  grupoGrande: number | null
 }
+
+/**
+ * Valores que usa la base cuando la sede no tiene configuración
+ * (DEFAULT de `restaurant_booking_settings` y de las RPC). Una sola constante
+ * para las dos secciones de reserva: antes el sitio usaba 8 personas y 30 días
+ * mientras la base aceptaba 12 y 60.
+ */
+export const AJUSTES_RESERVA_POR_DEFECTO = {
+  minPersonas: 1,
+  maxPersonas: 12,
+  maxDiasAnticipacion: 60,
+  intervaloMinutos: 30,
+} as const
 
 export interface SedeSitio {
   id: number
@@ -99,13 +118,14 @@ function zonaValida(v: unknown): string | null {
 }
 
 function parseAjustes(fila: Partial<Record<keyof FilaAjustes, unknown>>): AjustesReserva {
-  const min = numero(fila.min_party_size) ?? 1
-  const max = numero(fila.max_party_size) ?? 12
+  const min = numero(fila.min_party_size) ?? AJUSTES_RESERVA_POR_DEFECTO.minPersonas
+  const max = numero(fila.max_party_size) ?? AJUSTES_RESERVA_POR_DEFECTO.maxPersonas
+  const grande = numero(fila.large_party_threshold)
   return {
     habilitada: fila.is_enabled !== false,
     minPersonas: Math.max(1, min),
     maxPersonas: Math.max(Math.max(1, min), max),
-    maxDiasAnticipacion: Math.max(0, numero(fila.max_advance_days) ?? 30),
+    maxDiasAnticipacion: Math.max(0, numero(fila.max_advance_days) ?? AJUSTES_RESERVA_POR_DEFECTO.maxDiasAnticipacion),
     requiereTelefono: fila.require_phone !== false,
     requiereEmail: fila.require_email === true,
     requiereConfirmacion: fila.require_confirmation === true,
@@ -114,7 +134,8 @@ function parseAjustes(fila: Partial<Record<keyof FilaAjustes, unknown>>): Ajuste
       fila.allow_zone_choice === true
         ? lista(fila.allowed_zones).map(texto).filter((z): z is string => z !== null)
         : [],
-    intervaloMinutos: numero(fila.slot_interval_minutes) ?? 30,
+    intervaloMinutos: numero(fila.slot_interval_minutes) ?? AJUSTES_RESERVA_POR_DEFECTO.intervaloMinutos,
+    grupoGrande: grande !== null && grande >= 1 ? grande : null,
   }
 }
 
