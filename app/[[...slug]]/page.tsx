@@ -27,6 +27,7 @@ import {
 } from '@/lib/supabase/queries'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
+import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
@@ -155,6 +156,14 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     const data: Record<string, any> = {}
     // F5: exponer branchId a las secciones para separar carrito por outlet
     data.branchId = branchId
+
+    // Sedes (hours_location / reservation): una consulta cacheada por organización.
+    // En la vista previa del editor también, porque una sección recién añadida
+    // todavía no está en la página guardada y no llegaría a esta lista.
+    const esVistaPrevia = (await searchParams)?.preview === '1'
+    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation')) {
+      data.sedesRestaurante = await getSedesRestaurante(organization.id)
+    }
 
     if (sectionTypes.includes('room_types')) {
       data.spaceTypes = await getOrganizationSpaceTypes(organization.id)

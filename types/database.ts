@@ -1006,6 +1006,90 @@ export interface Database {
         Update: Record<string, never>
         Relationships: []
       }
+      // Sedes de la organización. Columnas verificadas por MCP el 2026-10-05.
+      // El sitio sólo las LEE (secciones `hours_location` y `reservation`).
+      branches: {
+        Row: {
+          id: number
+          organization_id: number
+          name: string
+          address: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          postal_code: string | null
+          /** numeric en la base: PostgREST lo entrega como número. Hoy ninguna sede lo tiene. */
+          latitude: number | null
+          longitude: number | null
+          phone: string | null
+          email: string | null
+          is_main: boolean | null
+          /** { monday: { open: 'HH:MM', close: 'HH:MM', closed?: boolean }, … } */
+          opening_hours: Json | null
+          features: Json | null
+          capacity: number | null
+          branch_type: string | null
+          zone: string | null
+          branch_code: string
+          is_active: boolean | null
+          is_web_stock_source: boolean
+          slug: string | null
+          subdomain: string | null
+          custom_domain: string | null
+          website_logo_url: string | null
+          website_cover_url: string | null
+          is_web_published: boolean
+          /** Zona IANA propia de la sede; null = la de la organización (fn_timezone_for). */
+          timezone: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      // Configuración de reservas de mesa. `branch_id` null = de toda la organización.
+      // UNIQUE (organization_id, branch_id). Columnas verificadas por MCP el 2026-10-05.
+      restaurant_booking_settings: {
+        Row: {
+          id: string
+          organization_id: number
+          branch_id: number | null
+          is_enabled: boolean
+          /** { mon: [{ from: 'HH:MM', to: 'HH:MM' }], … } — claves de `to_char(date,'Dy')` */
+          service_hours: Json
+          slot_interval_minutes: number
+          turn_duration_minutes: number
+          buffer_minutes: number
+          min_party_size: number
+          max_party_size: number
+          max_covers_per_slot: number | null
+          large_party_threshold: number | null
+          min_advance_minutes: number
+          max_advance_days: number
+          cancellation_hours: number
+          auto_assign_table: boolean
+          allow_zone_choice: boolean
+          allowed_zones: string[] | null
+          /** true: la reserva entra `pending` y la confirma el equipo. */
+          require_confirmation: boolean
+          require_deposit: boolean
+          deposit_amount: number | null
+          deposit_per_person: boolean
+          policy_text: string | null
+          notify_emails: string[] | null
+          send_customer_email: boolean
+          send_customer_whatsapp: boolean
+          reminder_hours_before: number | null
+          require_phone: boolean
+          require_email: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
@@ -1040,6 +1124,8 @@ export type SharedImage = Database['public']['Tables']['shared_images']['Row']
 export type StockLevelRow = Database['public']['Tables']['stock_levels']['Row']
 export type Service = Database['public']['Tables']['services']['Row']
 export type Space = Database['public']['Tables']['spaces']['Row']
+export type Branch = Database['public']['Tables']['branches']['Row']
+export type RestaurantBookingSettings = Database['public']['Tables']['restaurant_booking_settings']['Row']
 
 // Tipo extendido de organización con relaciones
 export interface OrganizationWithDetails extends Organization {

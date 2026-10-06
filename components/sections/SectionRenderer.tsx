@@ -90,6 +90,8 @@ import { MenuPreviewTabs } from './restaurant/MenuPreviewTabs'
 import { MenuFull } from './restaurant/MenuFull'
 import { SpecialtiesFeatured } from './restaurant/SpecialtiesFeatured'
 import { ReservationCtaForm } from './restaurant/ReservationCtaForm'
+import { Reservation } from './restaurant/Reservation'
+import { HoursLocation } from './restaurant/HoursLocation'
 import { DeliveryCtaBanner } from './restaurant/DeliveryCtaBanner'
 import { ChefSectionProfile } from './restaurant/ChefSectionProfile'
 // Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358)
@@ -289,6 +291,20 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   reservation_cta: {
     with_form: ReservationCtaForm,
     simple: ReservationCtaForm,
+  },
+  // Reserva de mesa (Figma TableReservation 141:5796). Mismo flujo que reservation_cta.
+  reservation: {
+    stepper: Reservation,
+    form_image: Reservation,
+    band: Reservation,
+    hero_widget: Reservation,
+    external: Reservation,
+  },
+  // Horario y sedes (Figma Locations 144:6644). Datos de `branches`.
+  hours_location: {
+    hours_map: HoursLocation,
+    cards: HoursLocation,
+    list: HoursLocation,
   },
   delivery_cta: {
     banner: DeliveryCtaBanner,
