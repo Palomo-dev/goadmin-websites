@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { useReservaMesa, type FranjaDisponible, type ReservaCreada } from '@/lib/restaurant/useReservaMesa'
 import { fechaCorta, fechaLarga, hoyEnZona, instanteEnZona, sumarDias } from '@/lib/restaurant/horario'
-import { AJUSTES_RESERVA_POR_DEFECTO, type AjustesReserva } from '@/lib/restaurant/sedes-modelo'
+import { AJUSTES_RESERVA_POR_DEFECTO, type AjustesReserva, limitesPersonas } from '@/lib/restaurant/sedes-modelo'
 
 export type ReservationVariant = 'stepper' | 'form_image' | 'band' | 'hero_widget' | 'external'
 
@@ -155,8 +155,7 @@ function useFlujoReserva(props: ReservationViewProps) {
   // La sección solo puede RESTRINGIR lo que fija la sede; sin ajustes, los
   // valores de la base (AJUSTES_RESERVA_POR_DEFECTO), no unos propios del sitio.
   const base = ajustes ?? AJUSTES_RESERVA_POR_DEFECTO
-  const minPersonas = Math.max(base.minPersonas, props.minGuests ?? base.minPersonas)
-  const maxPersonas = Math.max(minPersonas, Math.min(base.maxPersonas, props.maxGuests ?? base.maxPersonas))
+  const { min: minPersonas, max: maxPersonas } = limitesPersonas(ajustes, props.minGuests, props.maxGuests)
   const diasMax = Math.max(0, Math.min(base.maxDiasAnticipacion, props.maxDays ?? base.maxDiasAnticipacion))
   const grupoGrande = ajustes?.grupoGrande ?? null
 

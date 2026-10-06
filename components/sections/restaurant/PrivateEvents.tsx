@@ -16,7 +16,7 @@
 import type { OrganizationWithDetails } from '@/types/database'
 import { cardVisual, items, lines, str, strOr, type Content } from '@/lib/restaurant/secciones'
 import { PrivateEventsView, type PrivatePackage } from './PrivateEventsView'
-import type { SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import { esSedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 
 export const CONTENT_KEYS = [
   'eyebrow',
@@ -38,10 +38,6 @@ interface PrivateEventsProps {
   organization: OrganizationWithDetails
   data?: Record<string, unknown>
   sectionId?: string
-}
-
-function esSedesRestaurante(v: unknown): v is SedesRestaurante {
-  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
 }
 
 export function PrivateEvents({ content, organization, data, sectionId }: PrivateEventsProps) {

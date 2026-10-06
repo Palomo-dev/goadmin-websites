@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useReservaMesa } from '@/lib/restaurant/useReservaMesa'
-import { AJUSTES_RESERVA_POR_DEFECTO } from '@/lib/restaurant/sedes-modelo'
+import { ajustesDeSede, esSedesRestaurante, limitesPersonas } from '@/lib/restaurant/sedes-modelo'
 
 interface ReservationCtaFormProps {
   content: {
@@ -35,13 +35,20 @@ interface ReservationCtaFormProps {
 
 export function ReservationCtaForm({ content, primaryColor, organization, data: datosPagina }: ReservationCtaFormProps) {
   // ── Configuración con defaults (compatibilidad hacia atrás) ──
-  // Sin valor en la sección, los límites de la base (los mismos que la sección
-  // `reservation`); la RPC vuelve a validar con los de la sede.
-  const minGuests = content.min_guests || AJUSTES_RESERVA_POR_DEFECTO.minPersonas
-  const maxGuests = content.max_guests || AJUSTES_RESERVA_POR_DEFECTO.maxPersonas
+  // Ajustes de la sede como en la sección `reservation` (`ajustesDeSede`: la
+  // sede de la página o, sin ella, los de la organización). Solo si la página
+  // precargó `data.sedesRestaurante`; si no, los límites de la base. La
+  // sección solo puede RESTRINGIR lo que fija la sede, y la RPC vuelve a validar.
+  const datosSedes = esSedesRestaurante(datosPagina?.sedesRestaurante) ? datosPagina.sedesRestaurante : null
+  const sedePagina = typeof datosPagina?.branchId === 'number' ? datosPagina.branchId : null
+  const ajustesSede = datosSedes
+    ? ajustesDeSede(datosSedes.sedes.find((s) => s.id === sedePagina) ?? null, datosSedes)
+    : null
+  const { min: minGuests, max: maxGuests } = limitesPersonas(ajustesSede, content.min_guests, content.max_guests)
   const slotInterval = content.time_slot_interval || '30'
-  const requirePhone = content.require_phone !== false // default true
-  const requireEmail = content.require_email === true   // default false
+  // Con ajustes de la sede, lo que ella exige manda sobre la sección.
+  const requirePhone = content.require_phone !== false || ajustesSede?.requiereTelefono === true // default true
+  const requireEmail = content.require_email === true || ajustesSede?.requiereEmail === true   // default false
   // Las franjas reales salen de la sede: se ofrecen siempre que la API las
   // devuelva, salvo que la sección las apague de forma explícita. Si no hay
   // franjas (o la API falla), queda el campo de hora libre de siempre.

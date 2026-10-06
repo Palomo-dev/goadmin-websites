@@ -13,7 +13,7 @@
  */
 
 import type { OrganizationWithDetails } from '@/types/database'
-import { ajustesDeSede, direccionCompleta, sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import { ajustesDeSede, direccionCompleta, esSedesRestaurante, sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import { ReservationView, type ReservationVariant, type SedeReserva } from './ReservationView'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
@@ -74,10 +74,6 @@ function idsDe(value: unknown): number[] {
 function anclaValida(value: unknown): string {
   const a = str(value)
   return a && /^[a-z0-9][a-z0-9_-]*$/i.test(a) ? a : 'reservar'
-}
-
-function esSedesRestaurante(v: unknown): v is SedesRestaurante {
-  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
 }
 
 export function Reservation({ content, organization, data, sectionVariant, sectionId }: ReservationProps) {

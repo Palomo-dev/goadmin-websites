@@ -213,6 +213,27 @@ export function ajustesDeSede(sede: SedeSitio | null, datos: SedesRestaurante): 
   return sede?.ajustes ?? datos.ajustesOrganizacion
 }
 
+/** `data.sedesRestaurante` precargado por la página (forma mínima). */
+export function esSedesRestaurante(v: unknown): v is SedesRestaurante {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
+}
+
+/**
+ * Personas que ofrece un formulario de reserva: la sección solo puede
+ * RESTRINGIR lo que fija la sede; sin ajustes, los de la base
+ * (`AJUSTES_RESERVA_POR_DEFECTO`). Lo usan `reservation` y `reservation_cta`.
+ */
+export function limitesPersonas(
+  ajustes: AjustesReserva | null,
+  minSeccion: number | null | undefined,
+  maxSeccion: number | null | undefined,
+): { min: number; max: number } {
+  const base = ajustes ?? AJUSTES_RESERVA_POR_DEFECTO
+  const min = Math.max(base.minPersonas, minSeccion || base.minPersonas)
+  const max = Math.max(min, Math.min(base.maxPersonas, maxSeccion || base.maxPersonas))
+  return { min, max }
+}
+
 /**
  * Una sede acepta reservas web si tiene mesas (`create_restaurant_reservation`
  * con branch_id sólo asigna mesas de esa sede) y sus ajustes no las
