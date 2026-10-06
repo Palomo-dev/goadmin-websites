@@ -179,7 +179,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── Enviar email de confirmación (best-effort) ──
+    // ── Enviar el correo de la reserva (best-effort) ──
+    // El texto sigue `rpcResult.status`: `pending` no se anuncia como confirmada.
     if (email) {
       try {
         const { data: org } = await (supabase as any)
@@ -196,6 +197,7 @@ export async function POST(request: NextRequest) {
           time,
           partySize: parseInt(partySize, 10),
           organizationName: org?.name || 'El restaurante',
+          status: rpcResult.status,
         })
       } catch (emailError) {
         console.error('[Restaurant Reservations] Error sending email:', emailError)
