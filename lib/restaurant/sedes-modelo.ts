@@ -194,6 +194,21 @@ export function parseSedesRestaurante(raw: unknown): SedesRestaurante | null {
 // ---------------------------------------------------------------------------
 
 /** Ajustes efectivos de una sede: los suyos, si no los de la organización. */
+/**
+ * Fila efectiva de `restaurant_booking_settings` para una sede, sobre filas
+ * crudas: la de la sede gana y la de la organización (`branch_id` NULL) es el
+ * respaldo. Misma regla que `fn_ajustes_reserva` (D1) y que `ajustesDeSede`
+ * (que trabaja sobre el modelo ya parseado). Sin sede, la de la organización.
+ */
+export function filaEfectiva<T extends { branch_id?: unknown }>(
+  filas: readonly T[] | null | undefined,
+  branchId: number | null,
+): T | null {
+  const lista = Array.isArray(filas) ? filas : []
+  const propia = branchId !== null ? lista.find((f) => f.branch_id != null && Number(f.branch_id) === branchId) : undefined
+  return propia ?? lista.find((f) => f.branch_id === null || f.branch_id === undefined) ?? null
+}
+
 export function ajustesDeSede(sede: SedeSitio | null, datos: SedesRestaurante): AjustesReserva | null {
   return sede?.ajustes ?? datos.ajustesOrganizacion
 }

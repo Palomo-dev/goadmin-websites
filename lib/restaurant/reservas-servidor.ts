@@ -13,6 +13,7 @@
  */
 
 import { instanteEnZona } from './horario'
+import { filaEfectiva } from './sedes-modelo'
 
 export interface ArgsReservaWeb {
   p_organization_id: number
@@ -105,10 +106,7 @@ export async function contextoCorreoReserva(
 
   const sedes: any[] = Array.isArray(org.data?.branches) ? org.data.branches : []
   const sede = branchId !== null ? sedes.find((b) => Number(b.id) === branchId) : null
-  const filas: any[] = Array.isArray(ajustes.data) ? ajustes.data : []
-  const fila =
-    (branchId !== null ? filas.find((f) => Number(f.branch_id) === branchId) : null) ??
-    filas.find((f) => f.branch_id === null || f.branch_id === undefined)
+  const fila = filaEfectiva<{ branch_id: number | null; notify_emails?: unknown }>(ajustes.data, branchId)
 
   const direccion = sede ? [sede.address, sede.city].filter(Boolean).join(', ') || null : null
   return {
@@ -186,10 +184,11 @@ export async function leerReservaPorToken(
       .eq('organization_id', orgId),
   ])
   const zonaHoraria = typeof zona.data === 'string' && zona.data ? zona.data : 'America/Bogota'
-  const filas: any[] = Array.isArray(ajustes.data) ? ajustes.data : []
-  const fila =
-    filas.find((f) => Number(f.branch_id) === Number(r.branch_id)) ?? filas.find((f) => f.branch_id === null)
-  const horas = Number.isFinite(Number(fila?.cancellation_hours)) ? Number(fila.cancellation_hours) : HORAS_CANCELACION_POR_DEFECTO
+  const fila = filaEfectiva<{ branch_id: number | null; cancellation_hours?: unknown }>(
+    ajustes.data,
+    r.branch_id == null ? null : Number(r.branch_id),
+  )
+  const horas = Number.isFinite(Number(fila?.cancellation_hours)) ? Number(fila?.cancellation_hours) : HORAS_CANCELACION_POR_DEFECTO
 
   const hora = String(r.reservation_time).slice(0, 5)
   const inicio = instanteEnZona(r.reservation_date, hora, zonaHoraria)
