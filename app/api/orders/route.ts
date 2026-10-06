@@ -21,7 +21,9 @@ import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
 import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
-import { parseHorario } from '@/lib/restaurant/horario'
+import { hoyEnZona, parseHorario } from '@/lib/restaurant/horario'
+import { resolverEnvio } from '@/lib/shipping/resolveShipping'
+import { esDomicilio } from '@/lib/orders/estados-pedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 
 export const dynamic = 'force-dynamic'
@@ -54,6 +56,9 @@ const MOTIVOS_PRODUCTO: ReadonlySet<MotivoProblema> = new Set<MotivoProblema>([
 
 const redondear2 = (n: number): number => Math.round(n * 100) / 100
 
+/** Interruptor de despliegue: cobrar el envío calculado en el servidor (por defecto, solo observar). */
+const ENVIO_SERVIDOR_OBLIGATORIO = process.env.ORDERS_ENFORCE_SERVER_SHIPPING === 'true'
+
 /**
  * El insert con `dine_in` falló porque la base aún no tiene la migración E1: CHECK de
  * `delivery_type` (23514) o columna `restaurant_table_id` inexistente (PGRST204 / 42703).
@@ -75,8 +80,9 @@ function rechazaComerAqui(error: { code?: string; message?: string } | null): bo
  *   que vio otro precio: en ese caso 409 PRECIOS_CAMBIARON con los precios nuevos.
  * - Subtotal, impuesto, promociones y cupón se recalculan sobre esos precios. El `subtotal`, el
  *   `total` y el `couponDiscount` del cliente se ignoran (solo se registra el desfase).
- * - Envío y propina siguen saliendo del cliente (pendiente: ver nota en el cálculo del total),
- *   pero ya no se aceptan negativos.
+ * - Envío: lo decide el servidor con lib/shipping/resolveShipping.ts (tarifa elegida o tarifa
+ *   plana); se cobra cuando ORDERS_ENFORCE_SERVER_SHIPPING=true, si no solo se registra el desfase.
+ *   Propina: sale del cliente, nunca negativa.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +91,7 @@ export async function POST(request: NextRequest) {
       organizationId, branchId, customer, customerId: authCustomerId, items: itemsCliente,
       subtotal, shipping, total, paymentMethod,
       deliveryType, deliveryAddress,
-      tipAmount, isScheduled, scheduledAt, tableName, tableRef,
+      tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount,
       promoDiscount, promotionIds
     } = body
@@ -472,10 +478,38 @@ export async function POST(request: NextRequest) {
     })
     const taxTotal = impuesto.total
     const taxForTotal = impuesto.sumaAlTotal
-    // PENDIENTE (envío): el costo sigue viniendo del cliente. El checkout elige la tarifa de
-    // /api/shipping/calculate o la tarifa plana de los ajustes del sitio, pero no envía el id de
-    // la tarifa, así que el servidor no puede recalcularlo sin cambiar el contrato del checkout
-    // de los 83 sitios. Aquí solo se impide que sea negativo (arriba).
+    // ── Envío: decidido en el servidor (lib/shipping/resolveShipping.ts) ──
+    // Misma función que /api/shipping/calculate: la tarifa que eligió el checkout
+    // (`shippingRateId`, de esta organización, vigente y aplicable a la ciudad) o la tarifa plana de
+    // los ajustes, sobre el subtotal del servidor. Detrás de ORDERS_ENFORCE_SERVER_SHIPPING (igual
+    // que la firma de Wompi): en `false` solo se registra la diferencia y se cobra el envío del
+    // cliente; en `true` se cobra el del servidor. Si el servidor no puede decidir (tarifa ajena o
+    // sin ajustes), se cobra el del cliente como siempre.
+    const tipoGuardado = mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping)
+    if (!mesaPedido) {
+      const envioServidor = await resolverEnvio(supabase as any, {
+        organizationId: contextOrgId,
+        esDomicilio: esDomicilio(tipoGuardado),
+        tarifaId: typeof shippingRateId === 'string' && shippingRateId ? shippingRateId : null,
+        ciudad: String(deliveryAddress?.city ?? customer.city ?? ''),
+        subtotal: calculatedSubtotal,
+        ajustes: contexto.ajustes,
+        hoy: hoyEnZona(contexto.zona),
+      })
+      if (envioServidor && Math.abs(envioServidor.costo - resolvedShipping) > 0.5) {
+        console.warn('[Orders] Envío del cliente distinto al del servidor', {
+          organizationId: contextOrgId, cliente: resolvedShipping, servidor: envioServidor.costo,
+          fuente: envioServidor.fuente, aplicado: ENVIO_SERVIDOR_OBLIGATORIO ? 'servidor' : 'cliente',
+        })
+      }
+      if (ENVIO_SERVIDOR_OBLIGATORIO && envioServidor) {
+        resolvedShipping = envioServidor.costo
+      } else {
+        // Observación (o sin decisión del servidor): se cobra el envío del cliente, como antes.
+      }
+    } else {
+      // Comer aquí: sin envío (ya puesto en 0 al validar la mesa).
+    }
     const calculatedTotal = redondear2(calculatedSubtotal + taxForTotal + resolvedShipping + resolvedTip - totalDiscountAmount)
 
     // El subtotal/total del cliente no se usan: solo se registra si no coinciden.
@@ -509,7 +543,7 @@ export async function POST(request: NextRequest) {
         total: calculatedTotal,
         // Comer aquí: `dine_in` real con la mesa (migración E1 del ERP). Si la base aún no lo admite,
         // se reintenta abajo con el mapeo temporal a `pickup`.
-        delivery_type: mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping),
+        delivery_type: tipoGuardado,
         ...(mesaPedido && { restaurant_table_id: mesaPedido.id }),
         delivery_address: mesaPedido ? {} : deliveryAddress || {
           address: customer.address,
