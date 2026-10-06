@@ -17,6 +17,7 @@ import { ShoppingBag, UtensilsCrossed, X } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import type { MesaGuardada } from '@/lib/restaurant/useMesaQR'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const PRIMARY = 'var(--primary-color)'
 
@@ -99,11 +100,13 @@ export function BarraPedidoMesa({
   href?: string
 }) {
   const { unidades, total } = useResumenCarrito(subdomain, branchId)
+  // En una sede servida por prefijo, su checkout (`/sede-norte/checkout`): mismo carrito y sede.
+  const { ruta } = useRutaSitio()
   if (!mesa || unidades === 0) return null
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Link
-        href={href}
+        href={ruta(href)}
         className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-xl px-5 py-3.5 font-semibold text-white shadow-lg transition-shadow hover:shadow-xl"
         style={{ backgroundColor: PRIMARY }}
       >

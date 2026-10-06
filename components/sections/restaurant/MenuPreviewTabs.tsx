@@ -17,6 +17,7 @@ import type { OrganizationWithDetails } from '@/types/database'
 import { Price } from '@/components/site/CurrencyProvider'
 import { buildMenuGroups, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'
 import { MenuFull } from './MenuFull'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 interface MenuPreviewTabsProps {
   content: {
@@ -64,6 +65,8 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
   // buildMenuGroups ya descarta categorías sin platos con precio: el límite va después.
   const grupos = buildMenuGroups(products, categories).slice(0, maxCategories)
   const cta = enlaceSeguro(content.cta_url)
+  // Sede servida por prefijo de ruta (`data.prefijoSede`, lo pone page.tsx): enlaces de la sede.
+  const prefijo = typeof data?.prefijoSede === 'string' ? data.prefijoSede : ''
 
   return (
     <div>
@@ -86,7 +89,7 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
                 {g.items.slice(0, maxItems).map((item) => (
                   <Link
                     key={item.id}
-                    href={`/productos/${item.uuid}`}
+                    href={conPrefijo(`/productos/${item.uuid}`, prefijo)}
                     className={`flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${item.soldOut ? 'opacity-60' : ''}`}
                   >
                     {item.imageUrl && (
@@ -119,7 +122,7 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
 
       {content.cta_text && cta && (
         <div className="mt-8 text-center">
-          <Link href={cta} className="inline-block rounded-lg px-6 py-3 font-medium text-white" style={{ backgroundColor: primaryColor }}>
+          <Link href={conPrefijo(cta, prefijo)} className="inline-block rounded-lg px-6 py-3 font-medium text-white" style={{ backgroundColor: primaryColor }}>
             {content.cta_text}
           </Link>
         </div>

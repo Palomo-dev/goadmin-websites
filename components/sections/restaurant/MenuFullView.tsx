@@ -55,6 +55,7 @@ import { useCartaSedeViva } from '@/components/sections/useCartaSedeViva'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { PlatoSheet } from './PlatoSheet'
 import { BannerMesa, BarraPedidoMesa } from './BannerMesa'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 /** Sede de la carta para la hoja del plato y el banner de cerrado (sale de getSedesRestaurante). */
 export interface SedeDeCarta {
@@ -709,6 +710,7 @@ function EditorialMenu(props: VariantProps) {
   const { groups } = props
   const floatRef = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<MenuItem | null>(null)
+  const { ruta } = useRutaSitio()
   // Lienzo del editor: cada plato lleva su id para abrir el constructor de la carta.
   const enLienzo = useIsPreviewMode()
 
@@ -744,7 +746,7 @@ function EditorialMenu(props: VariantProps) {
             {g.items.map((item) => (
               <li key={item.id} data-goadmin-producto={enLienzo ? item.id : undefined}>
                 <Link
-                  href={`/productos/${item.uuid}`}
+                  href={ruta(`/productos/${item.uuid}`)}
                   onMouseEnter={() => setPreview(item.imageUrl ? item : null)}
                   onFocus={() => setPreview(null)}
                   className={cn(

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { Button } from '@/components/ui/button'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
@@ -65,6 +66,7 @@ export function ProductDetailActions({
   puedePedir = true,
 }: ProductDetailActionsProps) {
   const router = useRouter()
+  const { ruta } = useRutaSitio()
   const { formatPrice } = useCurrency()
   const [nota, setNota] = useState('')
   const sub = () => organizationSubdomain || window.location.hostname.split('.')[0]
@@ -76,7 +78,7 @@ export function ProductDetailActions({
   // /checkout es dinámico: traer su límite de carga por adelantado para que
   // «Comprar ahora» responda al instante.
   useEffect(() => {
-    router.prefetch('/checkout')
+    router.prefetch(ruta('/checkout'))
   }, [router])
 
   // Al volver con «Atrás» la página puede restaurarse tal cual: soltar el botón.
@@ -91,9 +93,9 @@ export function ProductDetailActions({
   const irAlCheckout = () => {
     const desde = window.location.pathname
     setComprando(true)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
     window.setTimeout(() => {
-      if (window.location.pathname === desde) window.location.assign('/checkout')
+      if (window.location.pathname === desde) window.location.assign(ruta('/checkout'))
     }, 6000)
   }
 

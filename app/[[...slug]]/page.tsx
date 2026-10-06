@@ -40,6 +40,8 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { PreviewableSections } from '@/components/sections/PreviewableSections'
 import { JsonLd, buildOrganizationJsonLd, buildWebsiteJsonLd, buildBreadcrumbJsonLd } from '@/components/site/JsonLd'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -137,9 +139,10 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
   const currentSlug = effectivePath[0] || 'home'
 
-  const baseUrl = organization.custom_domain
-    ? `https://${organization.custom_domain}`
-    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  // Base pública del principal (Organization) y del sitio que se sirve (con la sede).
+  const baseUrl = ctx.urlBasePrincipal
+  const baseSitio = ctx.urlBase
+  const prefijo = ctx.prefijoSede ?? ''
 
   // Meta Pixel + Google Ads + tax (no incluidos en getOrgContext)
   const [metaPixelId, googleAdsConfig, taxSettings] = await Promise.all([
@@ -171,6 +174,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     const data: Record<string, any> = {}
     // F5: exponer branchId a las secciones para separar carrito por outlet
     data.branchId = branchId
+    // Prefijo de la sede servida por ruta (`''` sin sede): enlaces de las secciones de servidor.
+    data.prefijoSede = prefijo
 
     // Vista previa del editor (?preview=1): se lee UNA vez. En ella se precargan
     // también los datos de secciones que aún no están en la página guardada
@@ -233,7 +238,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         const paginaReservas = currentSlug === 'reservas-mesa' ? null : await getPaginaPublica(organization.id, 'reservas-mesa', branchId,
           () => getWebsitePageBySlug(organization.id, 'reservas-mesa', branchId))
         const seccion = paginaReservas?.website_page_sections.find((s) => s.section_type === 'reservation')
-        if (seccion) data.reservarUrl = `/reservas-mesa#${ancla(seccion)}`
+        if (seccion) data.reservarUrl = conPrefijo(`/reservas-mesa#${ancla(seccion)}`, prefijo)
       }
     }
     // «Ver como» del editor: hora simulada solo en la vista previa (?preview=1&hora=HH:MM).

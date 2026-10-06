@@ -12,6 +12,7 @@ import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
 import { isParentProduct, requiereElegir } from '@/components/sections/products/ProductCard'
 import { agregarPlatoAlCarrito } from '@/lib/cart'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { ModifierGroup, SelectedModifier } from './ProductModifierSelector'
 
 interface ProductImage {
@@ -84,6 +85,7 @@ const ITEMS_PER_PAGE = 12
 
 export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId }: ProductGridProps) {
   const router = useRouter()
+  const { ruta } = useRutaSitio()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [variantParent, setVariantParent] = useState<Product | null>(null)
@@ -136,7 +138,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
 
   const buyNow = (product: Product) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   const addToCart = (product: Product) => {
@@ -245,7 +247,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             
             return (
               <Card key={product.id} className="group overflow-hidden hover:shadow-lg transition-all h-full">
-                <Link href={`/productos/${product.uuid}`}>
+                <Link href={ruta(`/productos/${product.uuid}`)}>
                   <div 
                     className="aspect-square flex items-center justify-center relative overflow-hidden"
                     style={{ 
@@ -291,7 +293,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                 </Link>
                 
                 <CardContent className="p-2.5 sm:p-4">
-                  <Link href={`/productos/${product.uuid}`}>
+                  <Link href={ruta(`/productos/${product.uuid}`)}>
                     <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-1 line-clamp-2 transition-colors">
                       {product.name}
                     </h3>
@@ -322,7 +324,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                           size="sm"
                           onClick={(e) => {
                             e.preventDefault()
-                            router.push(`/productos/${product.uuid}`)
+                            router.push(ruta(`/productos/${product.uuid}`))
                           }}
                           className="w-full text-xs sm:text-sm"
                           style={{ backgroundColor: primaryColor }}

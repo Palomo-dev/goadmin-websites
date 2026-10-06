@@ -26,6 +26,7 @@ import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 interface ProductDetailRendererProps {
   organization: OrganizationWithDetails
@@ -44,6 +45,8 @@ interface ProductDetailRendererProps {
   /** Modo restaurante (type_id = 1): ficha de plato, sin beneficios de e-commerce por defecto. */
   restaurante?: { textoAgotado: string | null } | null
   puedePedir?: boolean
+  /** `''` o `'/sede-norte'` (sede servida por prefijo de ruta): «Volver a la carta» de la sede. */
+  prefijoSede?: string
 }
 
 export function ProductDetailRenderer({
@@ -62,8 +65,11 @@ export function ProductDetailRenderer({
   branchId = null,
   restaurante = null,
   puedePedir = true,
+  prefijoSede = '',
 }: ProductDetailRendererProps) {
-  const volver = restaurante ? { href: '/menu', texto: 'Volver a la carta' } : { href: '/productos', texto: 'Volver a productos' }
+  const volver = restaurante
+    ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
+    : { href: conPrefijo('/productos', prefijoSede), texto: 'Volver a productos' }
   const hasSections = templatePage && templatePage.website_page_sections.length > 0
 
   const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? null

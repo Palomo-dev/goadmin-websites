@@ -45,6 +45,7 @@ import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
 import { ShareDialog } from '@/components/site/ShareDialog'
 import { addProductToCart } from '@/lib/cart'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import {
   buildCardStyle,
   resolveImageFitClass,
@@ -485,6 +486,7 @@ function CardButtonRenderer({
   onShare?: () => void
 }) {
   const router = useRouter()
+  const { ruta } = useRutaSitio()
   const price = getProductPrice(product)
   const outOfStock = isOutOfStock(product)
   // Padre con variantes o grupo obligatorio: «Elegir» → detalle.
@@ -603,13 +605,13 @@ function CardButtonRenderer({
         break
       case 'quick_view':
         if (onQuickView) onQuickView()
-        else router.push(`/productos/${product.uuid}`)
+        else router.push(ruta(`/productos/${product.uuid}`))
         break
       case 'view_detail':
-        router.push(`/productos/${product.uuid}`)
+        router.push(ruta(`/productos/${product.uuid}`))
         break
       case 'whatsapp': {
-        const msg = encodeURIComponent(`Hola, me interesa el producto "${product.name}" — ${typeof window !== 'undefined' ? window.location.origin : ''}/productos/${product.uuid}`)
+        const msg = encodeURIComponent(`Hola, me interesa el producto "${product.name}" — ${typeof window !== 'undefined' ? window.location.origin : ''}${ruta(`/productos/${product.uuid}`)}`)
         const num = whatsappNumber?.replace(/[^0-9]/g, '') || ''
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank')
         break
@@ -618,7 +620,7 @@ function CardButtonRenderer({
         if (onShare) {
           onShare()
         } else if (typeof navigator !== 'undefined' && navigator.share) {
-          navigator.share({ title: product.name, url: `${window.location.origin}/productos/${product.uuid}` })
+          navigator.share({ title: product.name, url: `${window.location.origin}${ruta(`/productos/${product.uuid}`)}` })
         }
         break
       }
@@ -640,7 +642,7 @@ function CardButtonRenderer({
     const chooseIconName = 'Layers'
     const ChooseIcon = ICON_MAP[chooseIconName] || Layers
     return (
-      <Link href={`/productos/${product.uuid}`} className={btnFullWidth ? 'w-full' : ''}>
+      <Link href={ruta(`/productos/${product.uuid}`)} className={btnFullWidth ? 'w-full' : ''}>
         <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${btnFullWidth ? 'w-full' : ''} ${sizeTextClass}`} style={baseStyle}>
           <ChooseIcon className={iconSizeClass} />{!btnIconOnly && <span className="ml-1">{chooseLabel}</span>}
         </Button>
@@ -712,6 +714,7 @@ export function ProductCard({
   branchId,
 }: ProductCardProps) {
   const router = useRouter()
+  const { ruta } = useRutaSitio()
   const [internalAdded, setInternalAdded] = useState(false)
   const [quickViewOpen, setQuickViewOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -756,7 +759,7 @@ export function ProductCard({
 
   const internalBuyNow = (p: any) => {
     internalAddToCart(p)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   const handleAdd = onAddToCart ? () => onAddToCart(product) : () => internalAddToCart(product)
@@ -902,7 +905,7 @@ export function ProductCard({
       <div
         className={`flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-md transition-shadow ${className}`}
       >
-        <Link href={`/productos/${product.uuid}`} className="shrink-0">
+        <Link href={ruta(`/productos/${product.uuid}`)} className="shrink-0">
           <div className={`w-28 h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative ${imageFitClass}`}>
             {BADGE_CORNERS.map((corner) => {
               const cornerBadges = effectiveBadges.filter((b) => (b.position ?? 'top-left') === corner)
@@ -926,7 +929,7 @@ export function ProductCard({
         </Link>
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-            <Link href={`/productos/${product.uuid}`}>
+            <Link href={ruta(`/productos/${product.uuid}`)}>
               <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-1">
                 {product.name}
               </h3>
@@ -1043,7 +1046,7 @@ export function ProductCard({
       className={`group ${cardClassName} ${legacyDarkClasses.join(' ')} ${className}`}
       style={cardStyleObj}
     >
-      <Link href={`/productos/${product.uuid}`}>
+      <Link href={ruta(`/productos/${product.uuid}`)}>
         <div className={`${imageRatioClass} bg-gray-100 dark:bg-gray-700 overflow-hidden relative`}>
           {/* Badges agrupados por esquina + botones overlay de esquina (evita superposición) */}
           {BADGE_CORNERS.map((corner) => {
@@ -1093,7 +1096,7 @@ export function ProductCard({
       </Link>
       {!isOverlay && (
         <div className="p-2.5 sm:p-4">
-          <Link href={`/productos/${product.uuid}`}>
+          <Link href={ruta(`/productos/${product.uuid}`)}>
             <h3 className={`font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 ${titleLinesClass} group-hover:underline`}>
               {product.name}
             </h3>

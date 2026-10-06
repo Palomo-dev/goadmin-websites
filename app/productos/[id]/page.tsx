@@ -28,6 +28,7 @@ import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 export const dynamic = 'force-dynamic'
 
@@ -188,6 +189,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const { id } = await params
   if (!isValidUUID(id)) return <NotFoundPage />
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
+  // Sede servida por prefijo de ruta: los enlaces de la ficha se quedan en la sede (otra carta,
+  // otro precio y otro carrito en la principal). Sin sede, `''` y todo queda igual.
+  const prefijo = ctx.prefijoSede ?? ''
 
   const product = await getProduct(id, organization.id, branchId)
   if (!product) {
@@ -197,7 +201,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           <div className="text-center">
             <p className="text-4xl mb-3">📦</p>
             <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Producto no encontrado</h1>
-            <Link href="/productos" className="text-sm hover:underline" style={{ color: primaryColor }}>Ver todos los productos</Link>
+            <Link href={conPrefijo('/productos', prefijo)} className="text-sm hover:underline" style={{ color: primaryColor }}>Ver todos los productos</Link>
           </div>
         </div>
       </OrganizationLayout>
@@ -308,10 +312,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     }
   }
 
-  // F9.5 — BreadcrumbList JSON-LD
-  const baseUrl = organization.custom_domain
-    ? `https://${organization.custom_domain}`
-    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  // F9.5 — BreadcrumbList JSON-LD. Base del sitio que se sirve: la de la sede si la hay
+  // (`ctx.urlBase`, lib/seo/sede.ts); sin sede, la del principal como siempre.
+  const baseUrl = ctx.urlBase
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'BreadcrumbList',
@@ -361,13 +364,14 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           branchId={branchId}
           restaurante={restaurante}
           puedePedir={puedePedir}
+          prefijoSede={prefijo}
         />
       ) : (
       <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link 
-            href={esRestaurante ? '/menu' : '/productos'}
+            href={conPrefijo(esRestaurante ? '/menu' : '/productos', prefijo)}
             className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

@@ -26,6 +26,7 @@ import { Price } from '@/components/site/CurrencyProvider'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { soldOutReturnLabel, type MenuItem } from '@/lib/menu/menuFull'
 
 export type MenuItemLayout = 'list' | 'photo'
@@ -65,6 +66,7 @@ function AddButton({
   className?: string
 }) {
   const [added, setAdded] = useState(false)
+  const { ruta } = useRutaSitio()
   const base =
     'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm leading-5 transition-colors'
 
@@ -90,7 +92,7 @@ function AddButton({
   if (elegir) {
     return (
       <Link
-        href={`/productos/${item.uuid}`}
+        href={ruta(`/productos/${item.uuid}`)}
         className={cn(base, 'hover:bg-muted', disabled && 'pointer-events-none opacity-50', className)}
         style={{ borderColor: ACCENT, color: ACCENT }}
         aria-disabled={disabled || undefined}

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { Price } from '@/components/site/CurrencyProvider'
 import type { MenuItem } from '@/lib/menu/menuFull'
 import { SiteImage } from './SiteImage'
@@ -55,9 +56,10 @@ function DishLink({ dish, enabled, className, children, style }: {
   children: React.ReactNode
   style?: React.CSSProperties
 }) {
+  const { ruta } = useRutaSitio()
   if (!enabled) return <div className={className} style={style}>{children}</div>
   return (
-    <Link href={`/productos/${dish.uuid}`} className={className} style={style}>
+    <Link href={ruta(`/productos/${dish.uuid}`)} className={className} style={style}>
       {children}
     </Link>
   )
@@ -215,6 +217,7 @@ function Carousel(props: SignatureDishesViewProps) {
 function Scrollytelling(props: SignatureDishesViewProps) {
   const { dishes } = props
   const reduced = useReducedMotion()
+  const { ruta } = useRutaSitio()
   const [active, setActive] = useState(0)
   const blockRefs = useRef<(HTMLElement | null)[]>([])
 
@@ -279,7 +282,7 @@ function Scrollytelling(props: SignatureDishesViewProps) {
                 </p>
                 <h3 className="text-3xl font-bold leading-9 text-foreground [font-family:var(--font-heading)] md:text-5xl md:leading-[48px]">
                   {props.linkToProduct ? (
-                    <Link href={`/productos/${dish.uuid}`} className="hover:underline focus-visible:underline">
+                    <Link href={ruta(`/productos/${dish.uuid}`)} className="hover:underline focus-visible:underline">
                       {dish.name}
                     </Link>
                   ) : (
