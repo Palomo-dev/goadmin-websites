@@ -44,6 +44,8 @@ import { PreviewableSections } from '@/components/sections/PreviewableSections'
 import { JsonLd, buildOrganizationJsonLd, buildWebsiteJsonLd, buildBreadcrumbJsonLd } from '@/components/site/JsonLd'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { redirect } from 'next/navigation'
+import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 
 export const dynamic = 'force-dynamic'
@@ -174,6 +176,20 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const paginaSinCarta = !!page && !page.website_page_sections.some(
     (s) => s.section_type === 'menu_full' || s.section_type === 'menu_preview'
   )
+  // Carta QR en la mesa: el QR impreso (/menu?mesa=<uuid>, src/lib/pos/mesas/qrMesa.ts del ERP)
+  // abre la página «carta-qr» si el sitio la tiene armada con sus secciones de mesa. Solo con
+  // `?mesa=` (una consulta más por escaneo, cacheada); sin esa página, como hoy.
+  if (currentSlug === 'menu' && traeMesa) {
+    const refQr = refMesaDeUrl(typeof sp?.mesa === 'string' ? sp.mesa : typeof sp?.table === 'string' ? sp.table : null)
+    const paginaQr = refQr
+      ? await getPaginaPublica(organization.id, 'carta-qr', branchId, () => getWebsitePageBySlug(organization.id, 'carta-qr', branchId))
+      : null
+    if (refQr && paginaQr?.website_page_sections.some((s) => s.section_type === 'table_order' || s.section_type === 'table_service')) {
+      redirect(conPrefijo(`/carta-qr?mesa=${encodeURIComponent(refQr)}`, prefijo))
+    } else {
+      // Sin página Carta QR: la carta de siempre con la mesa.
+    }
+  }
   if (currentSlug === 'menu' && traeMesa && paginaSinCarta) {
     const fallbackMesa = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, sp, taxSettings, frozenReason, branchId, settings, outlet, showCurrencyCode, currencyPosition)
     if (fallbackMesa) return fallbackMesa
@@ -198,7 +214,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // La carta también la usa: horario de la sede («Cerrado ahora»), su nombre y si acepta reservas.
     // reservation_cta (límites de personas de la sede) y private_events (selector de sede del
     // lead) leen lo mismo: sin la precarga caían a los límites de la base y sin selector.
-    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview')) {
+    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview' || t === 'table_service' || t === 'table_order' || t === 'table_bill')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
     }
 
