@@ -8,6 +8,7 @@ import { Price } from '@/components/site/CurrencyProvider'
 import { getProductPrice, getProductComparePrice, getProductImageUrl, getProductDiscount } from '@/components/sections/products/ProductCard'
 import { isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface ProductQuickViewProps {
   product: any
@@ -32,6 +33,7 @@ export function ProductQuickView({
   onToggleFavorite,
   onShare,
 }: ProductQuickViewProps) {
+  const { ruta } = useRutaSitio()
   const [added, setAdded] = useState(isAdded)
 
   useEffect(() => {
@@ -204,7 +206,7 @@ export function ProductQuickView({
                 )}
               </div>
 
-              <Link href={`/productos/${product.uuid}`} className="w-full">
+              <Link href={ruta(`/productos/${product.uuid}`)} className="w-full">
                 <Button size="lg" variant="ghost" className="w-full text-sm sm:text-base h-12">
                   Ver detalle completo
                 </Button>

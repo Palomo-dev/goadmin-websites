@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface OrderItem {
   product_id: number
@@ -23,6 +24,7 @@ interface ReorderButtonProps {
 }
 
 export function ReorderButton({ items, className, size = 'md', primaryColor, organizationSubdomain, branchId }: ReorderButtonProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -58,7 +60,7 @@ export function ReorderButton({ items, className, size = 'md', primaryColor, org
       localStorage.setItem(cartKey, JSON.stringify(existing))
       window.dispatchEvent(new CustomEvent('cart-updated'))
 
-      router.push('/checkout')
+      router.push(ruta('/checkout'))
     } catch (err) {
       console.error('Error re-ordering:', err)
     } finally {

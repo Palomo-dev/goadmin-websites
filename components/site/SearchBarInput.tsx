@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -55,6 +56,7 @@ export function SearchBarInput({
   size = 'md',
   icon: SearchIconComp = Search,
 }: SearchBarInputProps) {
+  const { ruta } = useRutaSitio();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -186,7 +188,7 @@ export function SearchBarInput({
                 {results.map((product) => (
                   <Link
                     key={product.id}
-                    href={`/productos/${product.uuid}`}
+                    href={ruta(`/productos/${product.uuid}`)}
                     onClick={() => handleResultClick(product)}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >

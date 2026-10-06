@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ShoppingCart, type LucideIcon } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface CartIndicatorProps {
   primaryColor: string
@@ -17,6 +18,7 @@ interface CartIndicatorProps {
 }
 
 export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId }: CartIndicatorProps) {
+  const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
   const [itemCount, setItemCount] = useState(0)
   
@@ -59,7 +61,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
   if (cartBehavior === 'redirect') {
     return (
       <Link 
-        href="/checkout"
+        href={ruta('/checkout')}
         className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <Icon className="h-6 w-6 text-gray-700 dark:text-gray-300" />

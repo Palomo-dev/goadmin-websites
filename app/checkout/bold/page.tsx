@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 function BoldButtonContent() {
+  const { ruta } = useRutaSitio()
   const searchParams = useSearchParams()
   const containerRef = useRef<HTMLDivElement>(null)
   const scriptLoadedRef = useRef(false)
@@ -92,7 +94,7 @@ function BoldButtonContent() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8">
           <p className="text-red-600 font-semibold mb-4">Faltan parámetros para iniciar el pago con Bold.</p>
-          <a href="/checkout" className="text-blue-600 hover:underline">Volver al checkout</a>
+          <a href={ruta('/checkout')} className="text-blue-600 hover:underline">Volver al checkout</a>
         </div>
       </div>
     )
@@ -109,7 +111,7 @@ function BoldButtonContent() {
           Si el botón no aparece automáticamente, haz clic abajo para continuar.
         </p>
         <div ref={containerRef} className="flex justify-center" />
-        <a href="/checkout" className="inline-block mt-6 text-sm text-gray-400 hover:text-gray-600">
+        <a href={ruta('/checkout')} className="inline-block mt-6 text-sm text-gray-400 hover:text-gray-600">
           ← Volver al checkout
         </a>
       </div>

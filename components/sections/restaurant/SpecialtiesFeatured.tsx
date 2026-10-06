@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { EnlaceSitio } from '@/components/site/EnlaceSitio'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -45,7 +45,7 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
             const imgUrl = getImageUrl(product)
             const price = getPrice(product)
             return (
-              <Link
+              <EnlaceSitio
                 key={product.id}
                 href={`/productos/${product.uuid}`}
                 className="group text-center"
@@ -61,7 +61,7 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
                 {price !== null && (
                   <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                 )}
-              </Link>
+              </EnlaceSitio>
             )
           })}
         </div>

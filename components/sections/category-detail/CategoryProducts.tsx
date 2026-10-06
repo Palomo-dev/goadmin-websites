@@ -13,6 +13,7 @@ import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
 
@@ -48,6 +49,7 @@ function getProductImageUrl(product: any): string | null {
 }
 
 export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: CategoryProductsProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const products = data?.products || []
   const categorySlug = data?.categorySlug || ''
@@ -114,7 +116,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
 
   const buyNow = (product: any) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   if (products.length === 0) {
@@ -123,7 +125,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
         <Package className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-500 dark:text-gray-400 text-lg">{emptyMessage}</p>
         <Link
-          href="/productos"
+          href={ruta('/productos')}
           className="inline-block mt-4 text-sm font-medium hover:underline"
           style={{ color: primaryColor }}
         >

@@ -21,6 +21,8 @@
  *    horarioDeSede (el por defecto no rechaza pedidos) y franjasPedido con turno partido: ninguna
  *    franja en el hueco entre turnos y todas aceptadas por validarMomentoPedido.
  * 4. «Cómo llegar» (lib/maps/comoLlegar.ts).
+ * 5. Ningún href ni router.push literal a /checkout, /carrito o /productos en components/ ni
+ *    app/ (salvo app/api): con sede por prefijo sacarían al cliente de /<sede>/….
  */
 
 import { readFile, writeFile, mkdtemp, rm, readdir } from 'node:fs/promises'
@@ -253,6 +255,47 @@ function igual(a, b, msg) {
   igual(destinoMapa({ lat: 4.6, lng: -74.08, direccion: 'Calle 1' }), '4.6,-74.08', 'coordenadas primero')
   igual(urlComoLlegar({ direccion: 'Calle 1 # 2-3, Bogotá' }), 'https://www.google.com/maps/dir/?api=1&destination=Calle%201%20%23%202-3%2C%20Bogot%C3%A1', 'cómo llegar por dirección')
   igual(urlMapaEmbebido({ direccion: '  ' }), null, 'sin dirección no hay mapa')
+}
+
+// ─── 5. Enlaces del recorrido carta → carrito → checkout ────────────────────────────────────
+// Un href o router.push LITERAL a /checkout, /carrito o /productos saca al cliente de
+// /<sede>/…: el checkout pierde la sede, lee el carrito global y el POST va sin branchId. Todo
+// enlace a esas rutas pasa por ruta()/useRutaSitio, rutaSitio/conPrefijo o <EnlaceSitio>.
+{
+  const LITERAL = /(?:href\s*=\s*\{?\s*|\.(?:push|replace)\(\s*)["'`]\/(?:checkout|carrito|productos)(?=[\/"'`?#$])/
+  // Excepciones con motivo (archivo:texto de la línea). Cada una debe seguir existiendo.
+  const EXCEPCIONES = [
+    // Valor por defecto de la prop; el componente lo pinta con href={ruta(href)}.
+    ['components/sections/restaurant/BannerMesa.tsx', "href = '/checkout',"],
+    // PENDIENTE (paquete A): «Tu carrito está vacío» → /productos. CheckoutWizard es archivo
+    // sensible con trabajo en curso de A; el cambio va en su propio commit de A.
+    ['components/site/CheckoutWizard.tsx', '<Link href="/productos">'],
+  ]
+  const pendientes = []
+  const usadas = new Set()
+  async function recorrer(dirRel) {
+    for (const e of await readdir(join(ROOT, dirRel), { withFileTypes: true })) {
+      const rel = `${dirRel}/${e.name}`
+      if (e.isDirectory()) {
+        if (rel !== 'app/api') await recorrer(rel)
+      } else if (/\.(tsx|ts)$/.test(e.name)) {
+        const lineas = (await readFile(join(ROOT, rel), 'utf8')).split('\n')
+        lineas.forEach((l, i) => {
+          if (!LITERAL.test(l)) return
+          // <EnlaceSitio href="/x"> ya aplica el prefijo (la etiqueta puede ir unas líneas arriba).
+          if (lineas.slice(Math.max(0, i - 3), i + 1).some((x) => x.includes('<EnlaceSitio'))) return
+          if (EXCEPCIONES.some(([f, texto]) => f === rel && l.includes(texto))) { usadas.add(`${rel}|${l.trim()}`); return }
+          pendientes.push(`${rel}:${i + 1}`)
+        })
+      }
+    }
+  }
+  await recorrer('components')
+  await recorrer('app')
+  for (const [f, texto] of EXCEPCIONES) {
+    check([...usadas].some((u) => u.startsWith(`${f}|`) && u.includes(texto)), `excepción que ya no hace falta (quítala): ${f} «${texto}»`)
+  }
+  check(pendientes.length === 0, `enlaces literales a /checkout, /carrito o /productos sin ruta(): ${pendientes.join(', ')}`)
 }
 
 if (problemas.length > 0) {

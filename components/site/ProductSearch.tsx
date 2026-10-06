@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface ProductSearchProps {
   primaryColor: string
@@ -29,6 +30,7 @@ const popularSearches = [
 ]
 
 export function ProductSearch({ primaryColor, organizationId, icon: SearchIconComp = Search }: ProductSearchProps) {
+  const { ruta } = useRutaSitio()
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -129,7 +131,7 @@ export function ProductSearch({ primaryColor, organizationId, icon: SearchIconCo
           {results.map((product) => (
             <Link
               key={product.id}
-              href={`/productos/${product.uuid}`}
+              href={ruta(`/productos/${product.uuid}`)}
               onClick={() => handleResultClick(product)}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >

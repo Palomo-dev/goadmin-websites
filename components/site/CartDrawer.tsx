@@ -9,6 +9,7 @@ import { Price, useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface CartModifier {
   modifierId: number
@@ -62,6 +63,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
+  const { ruta } = useRutaSitio()
   const [items, setItems] = useState<CartItem[]>([])
   const { formatPrice } = useCurrency()
   // Promociones automáticas (mismo motor que checkout y /api/orders)
@@ -354,7 +356,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               )}
             </div>
             
-            <Link href="/checkout" onClick={onClose}>
+            <Link href={ruta('/checkout')} onClick={onClose}>
               <Button 
                 className="w-full h-12 font-semibold"
                 style={{ backgroundColor: primaryColor }}
@@ -363,7 +365,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               </Button>
             </Link>
 
-            <Link href="/carrito" onClick={onClose}>
+            <Link href={ruta('/carrito')} onClick={onClose}>
               <Button variant="outline" className="w-full h-10 dark:border-gray-600 dark:text-white">
                 Ver carrito completo
               </Button>

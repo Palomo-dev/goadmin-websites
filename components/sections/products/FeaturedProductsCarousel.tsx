@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface FeaturedProductsCarouselProps {
   content: Record<string, any>
@@ -14,6 +15,7 @@ interface FeaturedProductsCarouselProps {
 }
 
 export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsCarouselProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = data?.branchId ?? null
@@ -90,7 +92,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
 
   const buyNow = (product: any) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   return (

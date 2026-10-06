@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -98,6 +99,7 @@ export function CategoryPageClient({
   showBuyNow = true,
   branchId
 }: CategoryPageClientProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [view, setView] = useState<'grid' | 'list'>(currentView)
@@ -171,7 +173,7 @@ export function CategoryPageClient({
 
   const buyNow = (product: Product) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   return (
@@ -339,7 +341,7 @@ export function CategoryPageClient({
           <Package className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
           <p className="text-gray-500 dark:text-gray-400 text-lg">No hay productos en esta categoría</p>
           <Link
-            href="/productos"
+            href={ruta('/productos')}
             className="inline-block mt-4 text-sm font-medium hover:underline"
             style={{ color: primaryColor }}
           >

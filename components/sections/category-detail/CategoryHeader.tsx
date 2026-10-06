@@ -8,6 +8,7 @@
 
 import Link from 'next/link'
 import { ChevronRight, Home } from 'lucide-react'
+import { EnlaceSitio } from '@/components/site/EnlaceSitio'
 
 export const CONTENT_KEYS = ['show_image', 'show_breadcrumb', 'show_count'] as const
 
@@ -43,9 +44,9 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
             <Home className="h-4 w-4" />
           </Link>
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <Link href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
+          <EnlaceSitio href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
             Productos
-          </Link>
+          </EnlaceSitio>
           {parentCategory && (
             <>
               <ChevronRight className="h-3.5 w-3.5 shrink-0" />

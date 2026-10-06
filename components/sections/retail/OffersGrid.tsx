@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 const ITEMS_PER_PAGE = 12
@@ -46,6 +47,7 @@ interface OffersGridProps {
 }
 
 export function OffersGrid({ content, primaryColor = '#3B82F6', organization, data, branchId }: OffersGridProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const manualOffers = content.offers || []
@@ -106,7 +108,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
 
   const buyNow = (product: any) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   return (

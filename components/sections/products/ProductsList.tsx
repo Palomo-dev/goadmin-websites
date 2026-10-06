@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -13,6 +14,7 @@ interface ProductsListProps {
 }
 
 export function ProductsList({ content, primaryColor = '#3B82F6', data, organization }: ProductsListProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = (data?.branchId as number | null | undefined) ?? null
@@ -63,7 +65,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
 
   const buyNow = (product: any) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   return (

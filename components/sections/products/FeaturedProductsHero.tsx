@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Package } from 'lucide-react'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -28,6 +29,7 @@ interface FeaturedProductsHeroProps {
 }
 
 export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }: FeaturedProductsHeroProps) {
+  const { ruta } = useRutaSitio()
   const title = content.title || 'Productos Destacados'
   const allProducts = data?.products || []
   const maxItems = content.max_items || 5
@@ -52,7 +54,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
       {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Producto principal */}
-        <a href={`/productos/${hero.uuid}`} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden">
+        <a href={ruta(`/productos/${hero.uuid}`)} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden">
           <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
             {heroImg ? (
               <Image src={heroImg} alt={hero.name} fill className="object-cover group-hover:scale-105 transition-transform" sizes="(max-width: 1024px) 100vw, 50vw" />
@@ -76,7 +78,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
             const imgUrl = getImageUrl(product)
             const price = getPrice(product)
             return (
-              <a key={product.id} href={`/productos/${product.uuid}`} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden">
+              <a key={product.id} href={ruta(`/productos/${product.uuid}`)} className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 overflow-hidden">
                 <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                   {imgUrl ? (
                     <Image src={imgUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" sizes="25vw" />

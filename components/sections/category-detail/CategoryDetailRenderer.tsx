@@ -15,6 +15,7 @@ import { SectionRenderer } from '@/components/sections/SectionRenderer'
 import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
+import { EnlaceSitio } from '@/components/site/EnlaceSitio'
 
 interface CategoryDetailRendererProps {
   organization: OrganizationWithDetails
@@ -97,9 +98,9 @@ export function CategoryDetailRenderer({
           <Home className="h-4 w-4" />
         </Link>
         <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        <Link href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
+        <EnlaceSitio href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
           Productos
-        </Link>
+        </EnlaceSitio>
         {parentCategory && (
           <>
             <ChevronRight className="h-3.5 w-3.5 shrink-0" />

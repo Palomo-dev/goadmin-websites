@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -16,6 +17,7 @@ interface ProductsCarouselProps {
 }
 
 export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: ProductsCarouselProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = (data?.branchId as number | null | undefined) ?? null
@@ -108,7 +110,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
 
   const buyNow = (product: any) => {
     addToCart(product)
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
 
   return (

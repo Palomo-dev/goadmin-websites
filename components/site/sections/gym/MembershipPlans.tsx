@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Check, Star, Zap, Clock } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
 import { formatDuracionPlan, formatPeriodo } from '@/lib/memberships/periodo'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 interface MembershipPlan {
   id: number
@@ -47,6 +48,7 @@ const defaultPlans: MembershipPlan[] = [
 ]
 
 export function MembershipPlans({ plans: propPlans, primaryColor, organizationSubdomain, branchId }: MembershipPlansProps) {
+  const { ruta } = useRutaSitio()
   const router = useRouter()
   const esDemo = !(propPlans && propPlans.length > 0)
   const plans = esDemo ? defaultPlans : (propPlans as MembershipPlan[])
@@ -75,7 +77,7 @@ export function MembershipPlans({ plans: propPlans, primaryColor, organizationSu
       console.error('Error agregando la membresía al carrito:', err)
       return
     }
-    router.push('/checkout')
+    router.push(ruta('/checkout'))
   }
   
   return (

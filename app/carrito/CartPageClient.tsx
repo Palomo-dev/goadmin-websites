@@ -13,6 +13,7 @@ import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { isParentProduct } from '@/components/sections/products/ProductCard'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -89,6 +90,7 @@ export function CartPageClient({
   suggestedProducts,
   branchId
 }: CartPageClientProps) {
+  const { ruta } = useRutaSitio()
   const [items, setItems] = useState<CartItem[]>([])
   const [checkoutButtonText] = useState(() => {
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -177,7 +179,7 @@ export function CartPageClient({
           <ShoppingBag className="h-20 w-20 mx-auto text-gray-300 dark:text-gray-600 mb-6" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Tu carrito está vacío</h1>
           <p className="text-gray-500 dark:text-gray-400 mb-8">Agrega productos para comenzar tu compra</p>
-          <Link href="/productos">
+          <Link href={ruta('/productos')}>
             <Button style={{ backgroundColor: primaryColor }} className="px-8 h-12 text-base">
               <ShoppingBag className="h-5 w-5 mr-2" />
               Ver productos
@@ -248,7 +250,7 @@ export function CartPageClient({
               className="flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-sm transition-shadow"
             >
               {/* Imagen */}
-              <Link href={`/productos/${item.productId || item.id}`} className="shrink-0">
+              <Link href={ruta(`/productos/${item.productId || item.id}`)} className="shrink-0">
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -263,7 +265,7 @@ export function CartPageClient({
               {/* Info */}
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <Link href={`/productos/${item.productId || item.id}`}>
+                  <Link href={ruta(`/productos/${item.productId || item.id}`)}>
                     <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-2">{item.name}</h3>
                   </Link>
                   {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
@@ -358,7 +360,7 @@ export function CartPageClient({
 
           {/* Link volver */}
           <Link
-            href="/productos"
+            href={ruta('/productos')}
             className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mt-4"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -416,7 +418,7 @@ export function CartPageClient({
                 </div>
               </div>
 
-              <Link href="/checkout" className="block mt-6">
+              <Link href={ruta('/checkout')} className="block mt-6">
                 <Button
                   className="w-full h-12 font-semibold text-base"
                   style={{ backgroundColor: primaryColor }}
@@ -475,12 +477,13 @@ function SuggestedCard({
   primaryColor: string
   onAdd: () => void
 }) {
+  const { ruta } = useRutaSitio()
   const price = product.product_prices?.[0]?.price
   const imgUrl = getProductImageUrl(product)
 
   return (
     <Card className="group overflow-hidden dark:bg-gray-800/50 dark:border-gray-700">
-      <Link href={`/productos/${product.uuid}`}>
+      <Link href={ruta(`/productos/${product.uuid}`)}>
         <div className="aspect-square relative bg-gray-100 dark:bg-gray-700 overflow-hidden">
           {imgUrl ? (
             <Image src={imgUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" sizes="(max-width: 768px) 50vw, 25vw" />
@@ -501,7 +504,7 @@ function SuggestedCard({
           )}
           {isParentProduct(product) ? (
             // Padre con variantes: no se agrega a ciegas, se elige talla/color en el detalle.
-            <Link href={`/productos/${product.uuid}`}>
+            <Link href={ruta(`/productos/${product.uuid}`)}>
               <Button size="sm" variant="outline" className="h-7 text-xs dark:border-gray-600">
                 Elegir
               </Button>
