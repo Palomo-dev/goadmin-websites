@@ -96,7 +96,8 @@ export function useReservaMesa({ organizationId, branchId, slotInterval, errorMe
         })
         if (time) params.set('time', time)
         if (zone) params.set('zone', zone)
-        // Sólo para calcular «hoy» en la zona de la sede.
+        // La sede fija «hoy» en su zona horaria y, con la RPC por sede, sus
+        // horas y sus mesas: las mismas con las que luego se valida la reserva.
         if (branchId) params.set('branchId', String(branchId))
 
         const res = await fetch(`/api/restaurant-reservations/availability?${params}`)

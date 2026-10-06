@@ -89,6 +89,45 @@ export async function ahoraEnLaZona(
   return { fecha: `${v('year')}-${v('month')}-${v('day')}`, hora: `${v('hour')}:${v('minute')}` }
 }
 
+interface ArgsDisponibilidad {
+  orgId: number
+  branchId: number | null
+  date: string
+  partySize: number
+  zone: string | null
+  slotInterval?: number
+}
+
+/**
+ * Llama a `get_restaurant_availability` con la sede, si la hay.
+ *
+ * La firma con sede (`p_branch_id`, migración del ERP
+ * `20261006200000_disponibilidad_restaurante_por_sede`) filtra configuración,
+ * mesas y zona horaria por sede, igual que `create_restaurant_reservation`.
+ * Mientras esa migración no esté aplicada, PostgREST responde PGRST202 (no
+ * existe la función con esos nombres): se repite la llamada sin sede, que es
+ * exactamente el comportamiento anterior. Así este repo nunca depende de algo
+ * que aún no esté desplegado en el ERP.
+ */
+export async function disponibilidadDeLaSede(
+  supabase: any,
+  { orgId, branchId, date, partySize, zone, slotInterval }: ArgsDisponibilidad,
+): Promise<{ data: any; error: any }> {
+  const base: Record<string, unknown> = {
+    p_organization_id: orgId,
+    p_date: date,
+    p_party_size: partySize,
+    p_zone: zone,
+  }
+  if (slotInterval !== undefined) base.p_slot_interval = slotInterval
+
+  if (branchId !== null) {
+    const conSede = await supabase.rpc('get_restaurant_availability', { ...base, p_branch_id: branchId })
+    if (conSede.error?.code !== 'PGRST202') return conSede
+  }
+  return supabase.rpc('get_restaurant_availability', base)
+}
+
 /** «HH:MM» o «HH:MM:SS» → «HH:MM»; `null` si no es una hora válida. */
 export function horaNormalizada(valor: unknown): string | null {
   const m = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(String(valor ?? ''))

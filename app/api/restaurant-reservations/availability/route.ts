@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { ahoraEnLaZona, fechaValida, organizacionDeLaReserva, sedeDeLaReserva } from '@/lib/restaurant/reservas-contexto'
+import {
+  ahoraEnLaZona,
+  disponibilidadDeLaSede,
+  fechaValida,
+  organizacionDeLaReserva,
+  sedeDeLaReserva,
+} from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +19,10 @@ export const dynamic = 'force-dynamic'
  *
  * Query params: organizationId, date (YYYY-MM-DD), time? (HH:MM), partySize, zone?, branchId?
  *
- * `branchId` sólo fija la zona horaria con la que se decide si la fecha ya pasó
- * (la RPC aún no filtra mesas por sede). Debe ser una sede de la organización.
+ * `branchId` (sede de la organización) fija la zona horaria con la que se
+ * decide si la fecha ya pasó y, con la firma por sede de la RPC, la
+ * configuración y las mesas de ESA sede: las mismas que valida
+ * `create_restaurant_reservation`. Sin sede, horas de toda la organización.
  *
  * Si se pasa `time`, devuelve disponibilidad para esa hora exacta.
  * Si NO se pasa `time`, devuelve la lista de slots disponibles del día.
@@ -66,20 +74,20 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // ── Llamar RPC get_restaurant_availability ──
-    const { data: availResult, error: rpcError } = await (supabase as any)
-      .rpc('get_restaurant_availability', {
-        p_organization_id: parseInt(organizationId, 10),
-        p_date: date,
-        p_party_size: partySize,
-        p_zone: zone || null,
-        p_slot_interval: [15, 30, 60, 90].includes(slotIntervalParam) ? slotIntervalParam : 30,
-      })
+    // ── Llamar RPC get_restaurant_availability (por sede si la hay) ──
+    const { data: availResult, error: rpcError } = await disponibilidadDeLaSede(supabase, {
+      orgId: contexto.orgId,
+      branchId: sede.branchId,
+      date,
+      partySize,
+      zone: zone || null,
+      slotInterval: [15, 30, 60, 90].includes(slotIntervalParam) ? slotIntervalParam : 30,
+    })
 
     if (rpcError) {
       console.error('[Restaurant Availability] RPC error:', rpcError)
       // Fallback al método anterior si la RPC falla
-      return fallbackAvailability(supabase as any, organizationId, date, time, partySize, zone, slotIntervalParam)
+      return fallbackAvailability(supabase as any, organizationId, date, time, partySize, zone, slotIntervalParam, sede.branchId)
     }
 
     const slots = availResult?.slots || []
@@ -135,7 +143,8 @@ async function fallbackAvailability(
   time: string | null,
   partySize: number,
   zone: string | null,
-  slotInterval: number
+  slotInterval: number,
+  branchId: number | null = null
 ) {
   // Obtener mesas
   let tableQuery = supabase
@@ -146,6 +155,10 @@ async function fallbackAvailability(
 
   if (zone) {
     tableQuery = tableQuery.eq('zone', zone)
+  }
+  // Misma regla que la RPC: con sede, solo sus mesas.
+  if (branchId !== null) {
+    tableQuery = tableQuery.eq('branch_id', branchId)
   }
 
   const { data: tables } = await tableQuery

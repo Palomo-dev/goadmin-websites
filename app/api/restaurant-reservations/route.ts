@@ -4,6 +4,7 @@ import { sendRestaurantTableConfirmationEmail } from '@/lib/email/send-restauran
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import {
   ahoraEnLaZona,
+  disponibilidadDeLaSede,
   fechaValida,
   horaNormalizada,
   organizacionDeLaReserva,
@@ -140,13 +141,14 @@ export async function POST(request: NextRequest) {
       // Errores de disponibilidad → 409 con sugerencias
       if (errMsg.includes('No hay mesas disponibles')) {
         // Consultar disponibilidad para sugerir horarios alternativos
-        const { data: availResult } = await (supabase as any)
-          .rpc('get_restaurant_availability', {
-            p_organization_id: orgId,
-            p_date: date,
-            p_party_size: parseInt(partySize, 10),
-            p_zone: zone || null,
-          })
+        // De la misma sede en la que se intentó reservar.
+        const { data: availResult } = await disponibilidadDeLaSede(supabase, {
+          orgId,
+          branchId: sede.branchId,
+          date,
+          partySize: parseInt(partySize, 10),
+          zone: zone || null,
+        })
 
         const suggestedTimes = availResult?.suggestedTimes || []
 
