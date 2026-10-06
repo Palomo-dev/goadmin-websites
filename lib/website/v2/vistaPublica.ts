@@ -124,7 +124,8 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal: 
         propio,
       )
     : propio?.mode === 'value' ? propio.value : null
-  return typeof valor === 'string' && /^(https:\/\/|\/)/i.test(valor.trim()) ? valor.trim() : null
+  // https o ruta propia; nunca `//host` (protocolo relativo = recurso de otro dominio).
+  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
 }
 
 // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────

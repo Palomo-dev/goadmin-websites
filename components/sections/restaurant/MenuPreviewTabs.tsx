@@ -6,7 +6,9 @@
  *   mesa del QR. Antes enseñaba como máximo 4 categorías y no dejaba pedir (8 sitios en vivo).
  * - En cualquier otra página (la home) es un avance: primero las categorías que tienen platos,
  *   después el límite (`content.max_categories`, 4 por defecto) y `max_items` por categoría,
- *   con el precio en la moneda del sitio y el agotado marcado.
+ *   con el precio en la moneda del sitio y el agotado marcado. Con cartas por horario del ERP
+ *   (`data.cartasPublicas`) el avance respeta la carta vigente (o la primera): sus categorías en
+ *   su orden, sin los platos que oculta y con los destacados primero. Sin ellas, como siempre.
  *
  * Sin directiva de cliente (como MenuFull). No declara CONTENT_KEYS para no cambiar el contrato
  * editor ↔ sitio: `max_categories` es opcional y el editor aún no lo ofrece.
@@ -16,6 +18,8 @@ import Link from 'next/link'
 import type { OrganizationWithDetails } from '@/types/database'
 import { Price } from '@/components/site/CurrencyProvider'
 import { buildMenuGroups, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'
+import { aplicarCartaPlatos } from '@/lib/menu/cartaPlatos'
+import { cartasParaSeccion, categoriasDeCarta, platosDeCarta } from '@/lib/menu/cartasPublicas'
 import { MenuFull } from './MenuFull'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
@@ -63,7 +67,16 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
   const maxItems = entero(content.max_items, 6)
   const maxCategories = entero(content.max_categories, 4)
   // buildMenuGroups ya descarta categorías sin platos con precio: el límite va después.
-  const grupos = buildMenuGroups(products, categories).slice(0, maxCategories)
+  // Misma elección de carta que /menu (cartasParaSeccion): la vigente o la primera con categorías.
+  const carta = cartasParaSeccion(data?.cartasPublicas, null)?.elegida ?? null
+  const grupos = (carta
+    ? aplicarCartaPlatos(
+        buildMenuGroups(products, categories, categoriasDeCarta(carta)),
+        platosDeCarta(carta, products.map((p) => ({ id: p.id, category_id: p.category_id ?? null }))),
+        categoriasDeCarta(carta),
+      )
+    : buildMenuGroups(products, categories)
+  ).slice(0, maxCategories)
   const cta = enlaceSeguro(content.cta_url)
   // Sede servida por prefijo de ruta (`data.prefijoSede`, lo pone page.tsx): enlaces de la sede.
   const prefijo = typeof data?.prefijoSede === 'string' ? data.prefijoSede : ''

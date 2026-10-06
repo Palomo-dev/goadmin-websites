@@ -103,8 +103,10 @@ export interface MenuFullViewProps {
   /** «Ver como» del editor: minutos simulados (solo vista previa). */
   horaSimulada?: number | null
   /** Variantes y extras que la carta del ERP no muestra, por plato (lib/menu/cartasPublicas). */
-  opcionesOcultas?: Record<number, { variantes: number[]; extras: number[] }> | null
+  opcionesOcultas?: OpcionesOcultas | null
 }
+
+type OpcionesOcultas = Record<number, { variantes: number[]; extras: number[] }>
 
 const PRIMARY = 'var(--primary-color)'
 
@@ -216,6 +218,13 @@ export function MenuFullView(props: MenuFullViewProps) {
   }, [products, categories, selectedCategoryIds, cartaPlatos, cambiosSede, tagsPorId])
 
   const [platoAbierto, setPlatoAbierto] = useState<MenuItem | null>(null)
+  // Variantes y extras ocultos de la pestaña desde la que se abrió el plato (cartas del ERP en
+  // pestañas); `null` = los de la sección.
+  const [ocultasDePestana, setOcultasDePestana] = useState<OpcionesOcultas | null>(null)
+  const abrirPlato = useCallback((item: MenuItem, ocultas?: OpcionesOcultas) => {
+    setPlatoAbierto(item)
+    setOcultasDePestana(ocultas ?? null)
+  }, [])
   const { mesa, limpiar: salirDeLaMesa } = useMesaQR(organizationSubdomain, branchId)
   const nowMinutes = useNowMinutes(props.timeZone, props.horaSimulada ?? null)
   const apertura = useAperturaSede(props.sede ?? null, props.horaSimulada ?? null)
@@ -245,7 +254,7 @@ export function MenuFullView(props: MenuFullViewProps) {
     )
   }
 
-  const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd, onOpen: setPlatoAbierto, nowMinutes }
+  const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd, onOpen: abrirPlato, nowMinutes }
   // Con una mesa del QR (validada en el servidor) la carta pasa a la variante `qr`.
   const modoQr = props.variant === 'qr' || mesa !== null
   const cuerpo =
@@ -277,7 +286,7 @@ export function MenuFullView(props: MenuFullViewProps) {
         branchId={branchId}
         sedeNombre={props.sede?.nombre ?? null}
         reservarHref={props.sede?.reservarHref ?? null}
-        opcionesOcultas={platoAbierto ? props.opcionesOcultas?.[platoAbierto.id] ?? null : null}
+        opcionesOcultas={platoAbierto ? (ocultasDePestana ?? props.opcionesOcultas)?.[platoAbierto.id] ?? null : null}
       />
       <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />
     </>
@@ -336,7 +345,8 @@ function useAperturaSede(sede: SedeDeCarta | null, horaSimulada: number | null):
 type VariantProps = MenuFullViewProps & {
   groups: MenuCategoryGroup[]
   onAdd: (item: MenuItem) => void
-  onOpen: (item: MenuItem) => void
+  /** `ocultas`: variantes y extras de la pestaña (cartas del ERP); sin ella, los de la sección. */
+  onOpen: (item: MenuItem, ocultas?: OpcionesOcultas) => void
   /** Minutos «ahora» en la zona de la organización (o simulados); null hasta montar. */
   nowMinutes: number | null
 }
@@ -526,6 +536,11 @@ function TabsMenu(props: VariantProps) {
   }, [carta, groups])
 
   const visibleGroups = categoryId === null ? cartaGroups : cartaGroups.filter((g) => g.id === categoryId)
+  // La hoja del plato oculta las variantes y extras de ESTA pestaña (cartas del ERP).
+  const ocultasPestana = carta.opcionesOcultas
+  const propsDePestana: VariantProps = ocultasPestana
+    ? { ...props, onOpen: (item: MenuItem) => props.onOpen(item, ocultasPestana) }
+    : props
   const closed = nowMinutes !== null && schedules.length > 0 && !isScheduleOpen(carta, nowMinutes)
   // «Disponible desde las 12:00» si abre hoy más tarde; «Disponible mañana desde…» si ya pasó.
   const unavailableFrom = closed && nowMinutes !== null ? unavailableLabel(carta, nowMinutes) : null
@@ -624,7 +639,7 @@ function TabsMenu(props: VariantProps) {
             {visibleGroups.map((g) => (
               <section key={g.id} className="flex flex-col gap-4">
                 <CategoryHeading name={g.name} count={g.items.length} />
-                <ItemsGrid items={g.items} columns={props.columns} render={rowRenderer(props, unavailableFrom)} />
+                <ItemsGrid items={g.items} columns={props.columns} render={rowRenderer(propsDePestana, unavailableFrom)} />
               </section>
             ))}
           </div>

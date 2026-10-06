@@ -155,6 +155,8 @@ export interface MenuSchedule {
   inicioManana?: string | null
   /** Orden, ocultos y destacados propios de esta carta (pestañas con excepciones distintas). */
   carta?: CartaPlatos
+  /** Variantes y extras que oculta esta carta, por plato (la hoja del plato de esta pestaña). */
+  opcionesOcultas?: Record<number, { variantes: number[]; extras: number[] }>
 }
 
 const UNCATEGORIZED_ID = -1

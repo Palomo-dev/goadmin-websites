@@ -9,8 +9,10 @@
  *   desplazan el cambio de carta.
  * - Degrada sola, sin tocar a nadie:
  *     · firma de 20261010090000 (p_todas) → todas las cartas activas de la sede;
- *     · solo la de 20261008150100 (3 argumentos) → las vigentes;
- *     · sin la función (PGRST202 / 42883) → `null` = la vía actual de la sección.
+ *     · sin esa firma (PGRST202 / 42883) → `null` = la vía actual de la sección. Eso incluye
+ *       tener SOLO la de 20261008150100 (3 argumentos): esa devuelve únicamente las vigentes, y
+ *       usarla haría que la misma página pintara la carta del ERP en horario y el contenido
+ *       viejo de la sección fuera de él. Nunca se llama a la firma de 3.
  *   El «no existe» también se cachea: no hay una llamada fallida por visita.
  *
  * Solo servidor. La organización sale del host (getOrgContext), nunca del cliente.
@@ -20,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { leerCartasPublicas, type CartasPublicas } from './cartasPublicas'
 
-/** Firma nueva (todas las cartas) y firma de 20261008150100 (solo vigentes). */
+/** Única firma que usa el sitio: la de 20261010090000 (todas las cartas, con `vigente`). */
 export const ARGUMENTOS_GET_PUBLIC_MENU = ['p_org', 'p_branch', 'p_at', 'p_todas'] as const
 
 function noExiste(error: { code?: string; message?: string } | null): boolean {
@@ -34,10 +36,8 @@ async function getCartasPublicasSinCache(organizationId: number, branchId: numbe
   const ahora = new Date().toISOString()
   const base = { p_org: organizationId, p_branch: branchId, p_at: ahora }
 
-  let { data, error } = await (supabase as any).rpc('get_public_menu', { ...base, p_todas: true })
-  if (noExiste(error)) {
-    ;({ data, error } = await (supabase as any).rpc('get_public_menu', base))
-  }
+  const { data, error } = await (supabase as any).rpc('get_public_menu', { ...base, p_todas: true })
+  // Sin la firma de p_todas (aunque exista la de 3 argumentos): vía actual, sin alternancia.
   if (noExiste(error)) return null
   // Otro fallo: lanzar para no cachearlo; quien llama cae a la vía actual.
   if (error) throw new Error(`get_public_menu: ${error.message || error.code}`)

@@ -58,6 +58,9 @@ export interface CartasPublicas {
   cartas: CartaPublica[]
 }
 
+/** https o ruta del propio sitio; nunca `//host` (protocolo relativo = otro dominio). */
+export const URL_PROPIA_O_HTTPS = /^(https:\/\/|\/(?!\/))/i
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/
 const MAX_CARTAS = 30
@@ -127,7 +130,7 @@ export function leerCartasPublicas(crudo: unknown): CartasPublicas | null {
     cartas.push({
       id: cc.id,
       nombre: cc.nombre.trim().slice(0, 80) || 'Carta',
-      pdfUrl: typeof cc.pdfUrl === 'string' && /^(https:\/\/|\/)/i.test(cc.pdfUrl) ? cc.pdfUrl.slice(0, 1000) : null,
+      pdfUrl: typeof cc.pdfUrl === 'string' && URL_PROPIA_O_HTTPS.test(cc.pdfUrl) ? cc.pdfUrl.slice(0, 1000) : null,
       horario: leerHorario(cc.horario),
       // La RPC de 20261008150100 (sin `vigente`) solo devuelve vigentes.
       vigente: typeof cc.vigente === 'boolean' ? cc.vigente : true,
@@ -201,20 +204,36 @@ export function pestanaDeCarta(carta: CartaPublica, dia: number, platos: CartaPl
     franjas,
     inicioManana: carta.horario[String(manana)]?.[0]?.from ?? null,
     carta: platos,
+    // La hoja del plato de ESTA pestaña oculta lo que oculta esta carta, no la vigente.
+    opcionesOcultas: opcionesOcultasDeCarta(carta),
   }
 }
 
+export function esCartasPublicas(v: unknown): v is CartasPublicas {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { cartas?: unknown }).cartas)
+}
+
 /**
- * Qué carta pinta una sección que no usa pestañas: la fija (si está activa en la sede), si no la
- * primera vigente, si no la primera. `null` sin cartas.
+ * Cartas que una sección puede pintar, con la regla de la carta vacía:
+ * - Una carta sin secciones (recién creada, o sin categorías) NO se pinta: una lista vacía de
+ *   categorías significa «todas» en buildMenuGroups y publicaría el catálogo completo.
+ * - Carta fija (`content.carta_id`) encontrada pero vacía → `null`: la vía actual de la sección,
+ *   nunca otra carta que el dueño no eligió.
+ * `null` = la sección sigue con su contenido (vía actual).
  */
-export function cartaDeSeccion(cartas: CartasPublicas, cartaFijaId: unknown): CartaPublica | null {
-  if (cartas.cartas.length === 0) return null
+export function cartasParaSeccion(
+  cartas: unknown,
+  cartaFijaId: unknown,
+): { lista: CartaPublica[]; elegida: CartaPublica; fija: boolean; dia: number } | null {
+  if (!esCartasPublicas(cartas)) return null
   if (esIdCarta(cartaFijaId)) {
     const fija = cartas.cartas.find((c) => c.id === cartaFijaId)
-    if (fija) return fija
+    if (fija) return fija.secciones.length > 0 ? { lista: [fija], elegida: fija, fija: true, dia: cartas.dia } : null
   }
-  return cartas.cartas.find((c) => c.vigente) ?? cartas.cartas[0]
+  const lista = cartas.cartas.filter((c) => c.secciones.length > 0)
+  if (lista.length === 0) return null
+  const elegida = lista.find((c) => c.vigente) ?? lista[0]
+  return { lista, elegida, fija: false, dia: cartas.dia }
 }
 
 /**

@@ -269,6 +269,13 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         if (seccion) data.reservarUrl = conPrefijo(`/reservas-mesa#${ancla(seccion)}`, prefijo)
       }
     }
+    // Avance de la carta fuera de /menu (`menu_preview` en la home): respeta la carta del ERP
+    // (platos ocultos, orden). Misma lectura cacheada por organización y sede (60 s), una por
+    // página: nunca por plato. Sin la RPC, `null` y el avance sigue como siempre.
+    if (seccionesCarta.length === 0 && sectionTypes.includes('menu_preview')) {
+      const cartasAvance = await getCartasPublicas(organization.id, branchId ?? null)
+      if (cartasAvance) data.cartasPublicas = cartasAvance
+    }
     // «Ver como» del editor: hora simulada solo en la vista previa (?preview=1&hora=HH:MM).
     const horaSimulada = esVistaPrevia ? horaSimuladaDeVistaPrevia((await searchParams)?.hora) : null
     if (horaSimulada !== null) data.horaSimulada = horaSimulada

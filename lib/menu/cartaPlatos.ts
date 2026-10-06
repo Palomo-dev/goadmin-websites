@@ -46,7 +46,8 @@ function ids(v: unknown): number[] {
 function urlSegura(v: unknown): string | undefined {
   if (typeof v !== 'string' || !v.trim()) return undefined
   const t = v.trim().slice(0, 1000)
-  return /^https:\/\//i.test(t) || t.startsWith('/') ? t : undefined
+  // https o ruta propia; nunca `//host` (protocolo relativo = otro dominio).
+  return /^(https:\/\/|\/(?!\/))/i.test(t) ? t : undefined
 }
 
 export function leerCartaPlatos(content: Record<string, unknown> | null | undefined): CartaPlatos {

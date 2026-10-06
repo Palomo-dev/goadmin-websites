@@ -27,12 +27,12 @@ import { sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sede
 import { horarioRevisado } from '@/lib/restaurant/horario'
 import type { MenuItemSize } from './MenuItemRow'
 import {
-  cartaDeSeccion,
+  cartasParaSeccion,
   categoriasDeCarta,
   opcionesOcultasDeCarta,
   pestanaDeCarta,
   platosDeCarta,
-  type CartasPublicas,
+  URL_PROPIA_O_HTTPS,
 } from '@/lib/menu/cartasPublicas'
 import type { CartaPlatos } from '@/lib/menu/cartaPlatos'
 import type { MenuSchedule } from '@/lib/menu/menuFull'
@@ -77,11 +77,13 @@ function bool(value: unknown, fallback: boolean): boolean {
   return fallback
 }
 
-/** Solo enlaces http(s) o rutas del propio sitio para «Carta en PDF». */
+/** Solo enlaces http(s) o rutas del propio sitio para «Carta en PDF»; nunca `//otro-dominio`. */
 function safeUrl(value: unknown): string | null {
   const url = str(value)
   if (!url) return null
-  return /^(https?:\/\/|\/)/i.test(url) ? url : null
+  // `http://` se sigue aceptando en el contenido de la sección (vía actual); la carta del ERP
+  // ya llega filtrada a https o ruta propia (URL_PROPIA_O_HTTPS).
+  return /^http:\/\//i.test(url) || URL_PROPIA_O_HTTPS.test(url) ? url : null
 }
 
 function esSedes(v: unknown): v is SedesRestaurante {
@@ -105,10 +107,6 @@ function sedeDeCarta(datos: unknown, branchId: number | null, reservarUrl: strin
   }
 }
 
-function esCartas(v: unknown): v is CartasPublicas {
-  return typeof v === 'object' && v !== null && Array.isArray((v as { cartas?: unknown }).cartas)
-}
-
 interface CartaResuelta {
   selectedIds: number[] | null
   cartaPlatos: CartaPlatos
@@ -119,11 +117,12 @@ interface CartaResuelta {
 
 /**
  * Cartas por horario del ERP (`data.cartasPublicas`, lib/menu/cartasPublicas.ts). `null` =
- * la página no las trae (sin RPC o sin cartas): la sección sigue con su contenido.
+ * la página no las trae (sin RPC, sin cartas con categorías, o carta fija vacía): la sección
+ * sigue con su contenido.
  * - Carta fija (`content.carta_id`) o cualquier variante sin pestañas: una sola carta (la fija,
- *   la vigente o la primera).
- * - Pestañas sin carta fija y con varias cartas: una pestaña por carta con su horario de hoy y
- *   sus propias excepciones.
+ *   la vigente o la primera; nunca una sin categorías).
+ * - Pestañas sin carta fija y con varias cartas: una pestaña por carta con su horario de hoy,
+ *   sus excepciones y sus variantes/extras ocultos.
  */
 function resolverCartaErp(
   cartas: unknown,
@@ -131,30 +130,28 @@ function resolverCartaErp(
   variant: MenuFullVariant,
   products: MenuSourceProduct[],
 ): CartaResuelta | null {
-  if (!esCartas(cartas) || cartas.cartas.length === 0) return null
+  const elegidas = cartasParaSeccion(cartas, content.carta_id)
+  if (!elegidas) return null
   const catalogo = products.map((p) => ({ id: p.id, category_id: p.category_id ?? null }))
-  const fija = typeof content.carta_id === 'string' ? content.carta_id : null
-  const unaSola = cartaDeSeccion(cartas, fija)
-  if (!unaSola) return null
-  const fijaEncontrada = fija !== null && unaSola.id === fija
-  if (variant === 'tabs' && !fijaEncontrada && cartas.cartas.length > 1) {
+  const { lista, elegida } = elegidas
+  if (variant === 'tabs' && !elegidas.fija && lista.length > 1) {
     const union: number[] = []
-    for (const c of cartas.cartas) for (const id of categoriasDeCarta(c)) if (!union.includes(id)) union.push(id)
+    for (const c of lista) for (const id of categoriasDeCarta(c)) if (!union.includes(id)) union.push(id)
     return {
       selectedIds: union,
       cartaPlatos: { orden: {}, ocultos: [], destacados: [], textos: {} },
-      schedules: cartas.cartas.map((c) => pestanaDeCarta(c, cartas.dia, platosDeCarta(c, catalogo))),
-      pdfUrl: unaSola.pdfUrl,
-      // La hoja del plato usa las opciones de la carta vigente (o la primera).
-      opcionesOcultas: opcionesOcultasDeCarta(unaSola),
+      schedules: lista.map((c) => pestanaDeCarta(c, elegidas.dia, platosDeCarta(c, catalogo))),
+      pdfUrl: elegida.pdfUrl,
+      // Respaldo fuera de las pestañas; cada pestaña lleva las suyas (MenuSchedule.opcionesOcultas).
+      opcionesOcultas: opcionesOcultasDeCarta(elegida),
     }
   }
   return {
-    selectedIds: categoriasDeCarta(unaSola),
-    cartaPlatos: platosDeCarta(unaSola, catalogo),
+    selectedIds: categoriasDeCarta(elegida),
+    cartaPlatos: platosDeCarta(elegida, catalogo),
     schedules: [],
-    pdfUrl: unaSola.pdfUrl,
-    opcionesOcultas: opcionesOcultasDeCarta(unaSola),
+    pdfUrl: elegida.pdfUrl,
+    opcionesOcultas: opcionesOcultasDeCarta(elegida),
   }
 }
 

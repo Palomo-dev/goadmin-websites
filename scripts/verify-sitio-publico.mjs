@@ -42,7 +42,14 @@ const dir = join(ROOT, '.verify-sitio-tmp')
 await rm(dir, { recursive: true, force: true })
 await mkdir(dir)
 let cp
+let rp
 try {
+  const tsP = await readFile(join(ROOT, 'lib/seo/reglaPixeles.ts'), 'utf8')
+  const jsP = stripTypeScriptTypes(tsP, { mode: 'strip' }).replace(/^import\s+type[^\n]*\n/gm, '')
+  if (/^import\s/m.test(jsP)) throw new Error('lib/seo/reglaPixeles.ts dejó de ser puro (import con valor)')
+  await writeFile(join(dir, 'reglaPixeles.mjs'), jsP)
+  rp = await import(pathToFileURL(join(dir, 'reglaPixeles.mjs')).href)
+
   const ts = await readFile(join(ROOT, 'lib/menu/cartasPublicas.ts'), 'utf8')
   const js = stripTypeScriptTypes(ts, { mode: 'strip' }).replace(/^import\s+type[^\n]*\n/gm, '')
   if (/^import\s/m.test(js)) throw new Error('lib/menu/cartasPublicas.ts dejó de ser puro (import con valor)')
@@ -96,10 +103,22 @@ const crudo = {
   igual(platos.destacados, [100], 'destacados')
   igual(cp.opcionesOcultasDeCarta(c.cartas[0]), { 100: { variantes: [5], extras: [7] } }, 'variantes y extras ocultos por plato')
 
-  igual(cp.cartaDeSeccion(c, ID_B).id, ID_B, 'carta fija aunque no esté vigente')
-  igual(cp.cartaDeSeccion(c, null).id, ID_A, 'sin fija: la vigente')
-  igual(cp.cartaDeSeccion(c, '99999999-9999-4999-8999-999999999999').id, ID_A, 'fija inexistente en la sede: la vigente')
-  igual(cp.cartaDeSeccion({ ...c, cartas: [] }, null), null, 'sin cartas: null')
+  const elegida = (cartas, fija) => cp.cartasParaSeccion(cartas, fija)?.elegida.id ?? null
+  igual(elegida(c, ID_B), ID_B, 'carta fija aunque no esté vigente')
+  igual(elegida(c, null), ID_A, 'sin fija: la vigente')
+  igual(elegida(c, '99999999-9999-4999-8999-999999999999'), ID_A, 'fija inexistente en la sede: la vigente')
+  igual(cp.cartasParaSeccion({ ...c, cartas: [] }, null), null, 'sin cartas: null')
+  // Carta sin secciones: nunca «todas» (buildMenuGroups trata [] como el catálogo completo).
+  const vacia = { id: '33333333-3333-4333-8333-333333333333', nombre: 'Nueva', pdfUrl: null, horario: {}, vigente: true, secciones: [] }
+  const conVacia = { ...c, cartas: [vacia, ...c.cartas] }
+  igual(elegida(conVacia, null), ID_A, 'la vigente vacía se salta: la siguiente con categorías')
+  igual(cp.cartasParaSeccion(conVacia, vacia.id), null, 'carta fija vacía: vía actual, no otra carta')
+  igual(cp.cartasParaSeccion({ ...c, cartas: [vacia] }, null), null, 'solo cartas vacías: vía actual')
+  igual(cp.cartasParaSeccion(conVacia, null).lista.map((x) => x.id), [ID_A, ID_B], 'las pestañas no incluyen la carta vacía')
+  igual(cp.cartasParaSeccion('x', null), null, 'datos que no son cartas: vía actual')
+  // URLs: protocolo relativo = otro dominio.
+  igual(cp.leerCartasPublicas({ cartas: [{ id: ID_A, nombre: 'P', pdfUrl: '//evil.example/x.pdf', secciones: [] }] }).cartas[0].pdfUrl, null, 'PDF con //host se descarta')
+  igual(cp.leerCartasPublicas({ cartas: [{ id: ID_A, nombre: 'P', pdfUrl: '/carta.pdf', secciones: [] }] }).cartas[0].pdfUrl, '/carta.pdf', 'PDF con ruta propia se conserva')
 
   const tab = cp.pestanaDeCarta(c.cartas[1], 2, platos)
   igual(tab.franjas, [{ from: '00:00', to: '02:00' }], 'martes: la franja del lunes que cruza la medianoche')
@@ -107,6 +126,8 @@ const crudo = {
   const tabA = cp.pestanaDeCarta(c.cartas[0], 2, platos)
   igual([tabA.start_time, tabA.end_time, tabA.inicioManana], ['07:00', '11:00', '07:30'], 'pestaña con franja de hoy y de mañana')
   igual(tabA.category_ids, [10], 'categorías de la pestaña')
+  igual(tabA.opcionesOcultas, { 100: { variantes: [5], extras: [7] } }, 'la pestaña lleva SUS variantes y extras ocultos')
+  igual(tab.opcionesOcultas, {}, 'otra pestaña: los suyos (ninguno), no los de la vigente')
 
   const grupos = new Map([[100, [{ id: 7, required: false, min_selections: 0 }, { id: 8, required: true }, { id: 9, min_selections: 1 }]]])
   const f = cp.filtrarOpcionesDePlato([{ id: 5 }, { id: 6 }], grupos, { variantes: [5], extras: [7, 8, 9] })
@@ -115,6 +136,43 @@ const crudo = {
   const todas = cp.filtrarOpcionesDePlato([{ id: 5 }], grupos, { variantes: [5], extras: [] })
   igual(todas.variantes.map((v) => v.id), [5], 'si se ocultan todas las variantes, se muestran como hoy')
   check(cp.filtrarOpcionesDePlato([{ id: 5 }], grupos, null).grupos === grupos, 'sin ocultas: los mismos datos')
+}
+
+// ─── 1c. Píxeles: una regla para el layout y /checkout ──────────────────────────────────────
+{
+  const vacio = { metaPixelId: null, gtmId: null, googleAdsId: null, tiktokPixelId: null, noindex: false }
+  const tipados = { metaPixelId: '1234567890', gtmId: 'GTM-ABCD12', googleAdsId: 'AW-123456789', tiktokPixelId: 'ABCDEFGHIJKLMNO12', noindex: false }
+  const integ = { metaPixelId: '999999999', googleAds: { conversionId: 'AW-123456789', conversionLabel: 'lbl' } }
+  const hoy = rp.resolverPixeles(vacio, integ, null)
+  igual([hoy.meta, hoy.googleAds, hoy.gtm, hoy.tiktok], ['999999999', integ.googleAds, null, null], 'sin tipados: exactamente lo de hoy (integración)')
+  const t = rp.resolverPixeles(tipados, integ, null)
+  igual([t.meta, t.googleAds, t.gtm, t.tiktok], ['1234567890', { conversionId: 'AW-123456789', conversionLabel: 'lbl' }, 'GTM-ABCD12', 'ABCDEFGHIJKLMNO12'], 'tipados ganan; etiqueta de Ads solo si es del mismo id')
+  igual(rp.resolverPixeles({ ...tipados, googleAdsId: 'AW-555555' }, integ, null).googleAds, { conversionId: 'AW-555555', conversionLabel: undefined }, 'otro id de Ads: sin la etiqueta ajena')
+  const snippet = "<script>!function(f,b,e,v){}(window);fbq('init', '777777777');fbq('track','PageView');</script>"
+  const dup = rp.resolverPixeles(tipados, integ, snippet)
+  igual([dup.meta, dup.metaTipadoOmitidoPorSnippet], ['999999999', true], 'snippet con fbq(init): el Meta tipado no se pinta encima (queda lo de hoy)')
+  igual(rp.resolverPixeles(tipados, {}, snippet).meta, null, 'snippet con fbq(init) y sin integración: solo el snippet')
+  check(!rp.snippetConMeta("fbq('track','Purchase')"), 'un fbq(track) suelto no cuenta como init')
+  check(rp.snippetConMeta('fbq ( "init" , "1")'), 'fbq("init") con comillas dobles y espacios')
+  for (const ruta of ['components/site/OrganizationLayoutCliente.tsx', 'app/checkout/page.tsx']) {
+    const fuente = await readFile(join(ROOT, ruta), 'utf8')
+    check(fuente.includes('<PixelesSitio') || fuente.includes('<PixelesDelSitio'), `${ruta} pinta los píxeles con el componente compartido`)
+    check(!/<MetaPixel\s/.test(fuente) && !/<GoogleAdsTag\s/.test(fuente), `${ruta} no pinta píxeles por su cuenta (regla duplicada)`)
+  }
+  const checkout = await readFile(join(ROOT, 'app/checkout/page.tsx'), 'utf8')
+  check(checkout.includes('getPixelesSitio('), '/checkout lee los píxeles tipados')
+}
+
+// ─── 1b. Contratos en el fuente (sin base) ──────────────────────────────────────────────────
+{
+  const servidor = await readFile(join(ROOT, 'lib/menu/cartasPublicas.server.ts'), 'utf8')
+  const llamadas = servidor.match(/\.rpc\('get_public_menu'[^)]*\)/g) ?? []
+  check(llamadas.length === 1 && llamadas.every((l) => l.includes('p_todas')), 'cartasPublicas.server.ts solo llama a get_public_menu con p_todas (la firma de 3 argumentos haría alternar la carta según la hora)')
+  const avance = await readFile(join(ROOT, 'components/sections/restaurant/MenuPreviewTabs.tsx'), 'utf8')
+  check(/pageSlug === 'menu'[\s\S]{0,200}<MenuFull/.test(avance), 'menu_preview en /menu delega en MenuFull (las 8 cartas en vivo usan menu_preview)')
+  check(avance.includes('cartasParaSeccion('), 'el avance de la home usa la misma elección de carta que /menu')
+  const vista = await readFile(join(ROOT, 'lib/website/v2/vistaPublica.ts'), 'utf8')
+  check(!vista.includes('/^(https:\\/\\/|\\/)/i'), 'vistaPublica.ts: el logo no acepta //host')
 }
 
 // ─── 2. Base de datos (opcional) ─────────────────────────────────────────────────────────────
@@ -149,7 +207,7 @@ if (!URL_BASE || !KEY) {
       check(c !== null, `get_public_menu(org ${org}): respuesta que leerCartasPublicas no entiende`)
       notas.push(`get_public_menu(org ${org}): ${c?.cartas.length ?? 0} carta(s)`)
     } else if (r.json?.code === 'PGRST202') {
-      pendiente(`get_public_menu con p_todas no existe (20261008150100 / 20261010090000 sin aplicar; la carta sigue con el contenido de la sección)`)
+      pendiente(`get_public_menu con p_todas no existe (20261010090000 sin aplicar; la carta sigue con el contenido de la sección, aunque exista la firma de 3 argumentos de 20261008150100)`)
       break
     } else {
       problemas.push(`get_public_menu(org ${org}): ${r.status} ${JSON.stringify(r.json).slice(0, 200)}`)
