@@ -328,3 +328,25 @@ header[data-encabezado-transparente='solido'] > div:last-child {
   border: 2px solid var(--text-color, #111827);
   box-shadow: 4px 4px 0 0 var(--text-color, #111827);
 }
+
+/* Panel «Encabezado» / «Pie de página» (lib/website/encabezadoPie.ts). Los atributos solo van en
+   la raíz del layout cuando la opción difiere del default; sin ellos nada de esto aplica.
+   `:not(main *)`: solo el encabezado y el pie del sitio, nunca un <header>/<footer> de una sección.
+   Los atributos repetidos ganan en especificidad a las reglas del tema de más arriba. */
+[data-encabezado-no-fijo] header[class*='sticky']:not(main *) {
+  position: relative;
+}
+[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: var(--encabezado-texto) !important;
+}
+[data-encabezado-texto] header:not(main *) > div:not([style*='background-color']) {
+  color: var(--encabezado-texto);
+}
+[data-pie-texto][data-pie-texto][data-pie-texto] footer:not(main *),
+[data-pie-texto][data-pie-texto][data-pie-texto] footer:not(main *) :is(h2, h3, h4, summary, [class*='text-gray-'], [class~='text-white'], [class~='text-current']):not([style*='background-color']) {
+  color: var(--pie-texto) !important;
+}
+[data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) [class*='border-'],
+[data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) details {
+  border-color: transparent !important;
+}

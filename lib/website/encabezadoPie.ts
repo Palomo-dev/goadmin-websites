@@ -45,7 +45,22 @@ export interface OpcionesEncabezadoPie {
   fuenteMenu: 'menu' | 'categorias_carta'
   /** `auto` (hoy: solo restaurantes), `ninguna` o la lista de acciones. */
   barraMovil: 'auto' | 'ninguna' | AccionBarraMovil[]
-  pie: { whatsapp: boolean; mapa: boolean; mediosPago: boolean; fondoTema: boolean }
+  pie: {
+    whatsapp: boolean
+    mapa: boolean
+    mediosPago: boolean
+    fondoTema: boolean
+    /** Color fijo del texto del pie; `null` = sigue el tema / el fondo (hoy). */
+    colorTexto: string | null
+    /** Líneas separadoras (hoy: sí). */
+    separadores: boolean
+  }
+  /** Selector de moneda en el encabezado (hoy: sí, con 2 o más monedas). */
+  moneda: boolean
+  /** Color fijo del texto y los enlaces del encabezado; `null` = sigue el tema (hoy). */
+  colorTextoEncabezado: string | null
+  /** Encabezado fijo al bajar (hoy: sí). */
+  fijo: boolean
 }
 
 type Ajustes = Record<string, unknown> | null | undefined
@@ -78,7 +93,12 @@ export function opcionesEncabezadoPie(ajustes: Ajustes): OpcionesEncabezadoPie {
       mapa: leer(ajustes, 'footer_show_map') === true,
       mediosPago: leer(ajustes, 'footer_show_payment_methods') === true,
       fondoTema: leer(ajustes, 'footer_background') === 'tema',
+      colorTexto: leer(ajustes, 'footer_text_color') as string | null,
+      separadores: leer(ajustes, 'footer_show_dividers') !== false,
     },
+    moneda: leer(ajustes, 'header_show_currency') !== false,
+    colorTextoEncabezado: leer(ajustes, 'header_text_color') as string | null,
+    fijo: leer(ajustes, 'header_sticky') !== false,
   }
 }
 

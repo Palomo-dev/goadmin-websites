@@ -274,6 +274,8 @@ export function HeaderActions({
   branchId?: number | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // header_show_currency (panel «Encabezado»): `false` quita la moneda; default, como siempre.
+  const { opciones: opcionesShell } = useEncabezadoPie();
 
   useEffect(() => {
     const supabase = createClient();
@@ -313,7 +315,7 @@ export function HeaderActions({
     search: showSearchIcon && searchStyle === 'icon' ? (
       <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} />
     ) : null,
-    currency: !isMobile && !hideCurrency ? (
+    currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
       <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} />
     ) : null,
     cart: showHeaderCart ? (
@@ -764,8 +766,9 @@ export function MobileMenuButton({
 export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency();
   const [open, setOpen] = useState(false);
+  const { opciones: opcionesShell } = useEncabezadoPie();
 
-  if (loading || availableCurrencies.length <= 1) return null;
+  if (loading || availableCurrencies.length <= 1 || !opcionesShell.moneda) return null;
 
   const current = availableCurrencies.find((c) => c.code === currency);
 

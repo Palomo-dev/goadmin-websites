@@ -30,7 +30,7 @@ import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v
 import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
-import { EXTRAS_VACIOS, opcionesEncabezadoPie, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
+import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -48,6 +48,17 @@ function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel
     level: nivel,
     children: arbolDesdeMenuVivo(item.hijos, organizationId, nivel + 1),
   }) as unknown as WebsitePageWithChildren)
+}
+
+/** Acciones de la barra `auto` del restaurante en el orden de las láminas: Reservar · Cómo llegar · Llamar · Pedir. */
+function accionesDeBarraAuto(a: NonNullable<DatosSedeLayout['barraMovil']>): AccionBarra[] {
+  const lista: AccionBarra[] = []
+  if (a.reservar) lista.push({ accion: 'reservar', href: a.reservar })
+  else if (a.pedir) lista.push({ accion: 'pedir', href: a.pedir })
+  if (a.comoLlegar) lista.push({ accion: 'como_llegar', href: a.comoLlegar })
+  if (a.llamar) lista.push({ accion: 'llamar', href: a.llamar })
+  if (a.reservar && a.pedir) lista.push({ accion: 'pedir', href: a.pedir })
+  return lista
 }
 
 export interface OrganizationLayoutProps {
@@ -163,7 +174,7 @@ export function OrganizationLayoutCliente({
     ? datosSede.barraMovil
     : null
   // Lista de acciones (cualquier giro); `ninguna` → sin barra.
-  const barraMovilGiro = rutaAdmiteBarra && Array.isArray(opcionesShell.barraMovil) && extras.barraMovil && extras.barraMovil.length > 0
+  const barraMovilLista = rutaAdmiteBarra && Array.isArray(opcionesShell.barraMovil) && extras.barraMovil && extras.barraMovil.length > 0
     ? extras.barraMovil
     : null
 
@@ -185,6 +196,14 @@ export function OrganizationLayoutCliente({
     return () => observer.disconnect()
   }, [frozenReason])
   
+  // Panel «Encabezado» / «Pie de página»: color de texto fijo, fijo al bajar y separadores. Solo
+  // atributos cuando difieren del default (app/globals.css); sin ellos, todo como siempre.
+  const atributosShell: Record<string, string> = {}
+  if (opcionesShell.colorTextoEncabezado) atributosShell['data-encabezado-texto'] = ''
+  if (!opcionesShell.fijo) atributosShell['data-encabezado-no-fijo'] = ''
+  if (opcionesShell.pie.colorTexto) atributosShell['data-pie-texto'] = ''
+  if (!opcionesShell.pie.separadores) atributosShell['data-pie-sin-separadores'] = ''
+
   // Theme mode: light | dark | auto
   const themeMode: string = settings?.theme_mode || 'light'
   const [isDark, setIsDark] = useState(themeMode === 'dark')
@@ -208,6 +227,12 @@ export function OrganizationLayoutCliente({
   const temaEfectivo = vivos?.tema ?? temaSitio ?? null
   const temaVars = atributosTema(temaEfectivo)
   const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo]) : null
+  // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de
+  // las láminas (fondo del tema, «Reservar» relleno y el resto en contorno). Legacy (sin tema): la
+  // barra de siempre, sin cambios.
+  const temaConColores = 'data-tema-colores' in temaVars.datos
+  const barraAutoConTema = barraMovil && temaConColores ? accionesDeBarraAuto(barraMovil) : null
+  const barraMovilGiro = barraMovilLista ?? barraAutoConTema
 
   // CSS Variables para colores personalizados
   const secondaryColor = settings?.secondary_color || organization.secondary_color || '#1E40AF'
@@ -223,6 +248,8 @@ export function OrganizationLayoutCliente({
     '--text-color': isDark ? '#ffffff' : '#111827',
     // Estilo general del sitio V2 (Diseño › Estilo del sitio). Legacy: sin variables nuevas.
     ...temaVars.variables,
+    ...(opcionesShell.colorTextoEncabezado ? { '--encabezado-texto': opcionesShell.colorTextoEncabezado } : {}),
+    ...(opcionesShell.pie.colorTexto ? { '--pie-texto': opcionesShell.pie.colorTexto } : {}),
   } as React.CSSProperties
   
   return (
@@ -235,6 +262,7 @@ export function OrganizationLayoutCliente({
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
       style={cssVariables}
       {...temaVars.datos}
+      {...atributosShell}
       suppressHydrationWarning
     >
       {hojaFuentesTema && <link rel="stylesheet" href={hojaFuentesTema} />}
@@ -359,7 +387,7 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
-      {barraMovil && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
+      {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
       {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
       {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} />}
 
