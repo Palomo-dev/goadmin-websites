@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
-import { OrderConfirmation } from '@/components/site/OrderConfirmation'
+import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/site/OrderConfirmation'
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
@@ -174,6 +174,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [orderComplete, setOrderComplete] = useState(false)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [resumenPedido, setResumenPedido] = useState<ResumenPedidoConfirmado | null>(null)
   // Urgencia: generar número pseudo-aleatorio estable por producto
   const getUrgencyNumber = (id: number | string) => {
     const seed = typeof id === 'string' ? id.charCodeAt(0) * 7 + id.length : Number(id) * 13
@@ -659,6 +660,16 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       }
 
       // 3. Si es pago offline (cash/transfer), mostrar confirmación
+      // Copia de lo pedido antes de vaciar carrito y estado (resumen de la confirmación).
+      setResumenPedido({
+        tipo: orderType === 'delivery' ? 'Domicilio' : orderType === 'pickup' ? 'Recoger' : 'Comer aquí',
+        mesa: orderType === 'dine_in' ? (mesa?.nombre || mesaManual.trim() || null) : null,
+        sede: orderType === 'dine_in' ? (mesa?.nombreSede || sedePedido?.nombre || null) : (sedePedido?.nombre || null),
+        programadoPara: isScheduled && scheduledAt && orderType !== 'dine_in' ? scheduledAt : null,
+        zona: sedePedido?.zona || null,
+        total: fmtPrice(total),
+        trackingToken: typeof orderData.trackingToken === 'string' ? orderData.trackingToken : null,
+      })
       setOrderNumber(createdOrderNumber)
       setOrderComplete(true)
 
@@ -695,6 +706,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         orderNumber={orderNumber}
         customerEmail={customerData.email}
         primaryColor={primaryColor}
+        isRestaurant={isRestaurant}
+        resumen={resumenPedido}
       />
     )
   }
