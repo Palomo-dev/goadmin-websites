@@ -481,24 +481,59 @@ export async function POST(request: NextRequest) {
     const paymentStatus = mapWompiStatus(wompiStatus)
 
     // 4. Actualizar web_order
-    const { error: updateError } = await (supabase as any)
-      .from('web_orders')
-      .update({
-        payment_status: paymentStatus,
-        payment_method: paymentMethodType?.toLowerCase() || 'card',
-        payment_reference: transactionId,
-        updated_at: new Date().toISOString(),
-        ...(paymentStatus === 'paid' && {
-          status: 'confirmed',
-          confirmed_at: new Date().toISOString(),
-        }),
-        ...(paymentStatus === 'failed' && {
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: `Pago rechazado por Wompi: ${wompiStatus}`,
-        }),
-      } as any)
-      .eq('id', (webOrder as any).id)
+    const camposPago = {
+      payment_status: paymentStatus,
+      payment_method: paymentMethodType?.toLowerCase() || 'card',
+      payment_reference: transactionId,
+      updated_at: new Date().toISOString(),
+      ...(paymentStatus === 'paid' && {
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+      }),
+      ...(paymentStatus === 'failed' && {
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: `Pago rechazado por Wompi: ${wompiStatus}`,
+      }),
+    }
+    // Pago aprobado: la MISMA actualización, condicionada a que el pedido aún no esté pagado. Si
+    // afecta la fila, este webhook es quien hizo la transición a «pagado» y solo él envía el
+    // correo; /checkout/resultado hace lo mismo con `.eq('payment_status','pending')`, así que entre
+    // los dos sale un solo «Pago confirmado» aunque lleguen a la vez. Siempre es UNA sola
+    // actualización por evento (el trigger contable de web_orders corre una vez, como antes).
+    let updateError: unknown = null
+    let transicionAPagado = false
+    if (paymentStatus === 'paid') {
+      const condicionada = await (supabase as any)
+        .from('web_orders')
+        .update(camposPago as any)
+        .eq('id', (webOrder as any).id)
+        .or('payment_status.is.null,payment_status.neq.paid')
+        .select('id')
+      updateError = condicionada.error
+      transicionAPagado = !condicionada.error && Array.isArray(condicionada.data) && condicionada.data.length > 0
+      if (condicionada.error) {
+        console.error('[Wompi Webhook] Error en la actualización condicionada; se aplica la de siempre:', condicionada.error)
+      }
+      if (!transicionAPagado) {
+        // Ya estaba pagado (reintento del webhook o lo marcó /checkout/resultado), o falló la
+        // condicionada: la actualización de siempre, sin condición, y sin correo.
+        const { error } = await (supabase as any)
+          .from('web_orders')
+          .update(camposPago as any)
+          .eq('id', (webOrder as any).id)
+        updateError = error
+      } else {
+        // Transición hecha por este webhook: la fila ya quedó actualizada.
+      }
+    } else {
+      // Cualquier otro estado: exactamente la actualización de antes.
+      const { error } = await (supabase as any)
+        .from('web_orders')
+        .update(camposPago as any)
+        .eq('id', (webOrder as any).id)
+      updateError = error
+    }
 
     if (updateError) {
       console.error('[Wompi Webhook] Error actualizando orden:', updateError)
@@ -573,9 +608,10 @@ export async function POST(request: NextRequest) {
         console.error('[Wompi Webhook] ERP auto-confirm error:', err)
       )
 
-      // Correo «Pago confirmado» al cliente, solo en la transición pending → paid (un reintento
-      // del webhook sobre un pedido ya pagado no lo repite). /api/orders ya no lo envía para Wompi.
-      if (!updateError && (webOrder as any).payment_status !== 'paid') {
+      // Correo «Pago confirmado» al cliente, solo si ESTE webhook hizo la transición a pagado
+      // (update condicionado de arriba): ni un reintento ni una carrera con /checkout/resultado lo
+      // repiten. /api/orders ya no lo envía para Wompi.
+      if (transicionAPagado) {
         enviarCorreoPedidoPagado((webOrder as any).id).catch(err =>
           console.error('[Wompi Webhook] Correo de pago confirmado:', err)
         )
