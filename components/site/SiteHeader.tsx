@@ -364,9 +364,23 @@ export default function SiteHeader({
     : template?.navigation || defaultNavItems
 
   // Si no hay headerNavTree, construir uno plano desde headerNav
-  const navTree: WebsitePageWithChildren[] = headerNavTree && headerNavTree.length > 0
+  const navTreeSitio: WebsitePageWithChildren[] = headerNavTree && headerNavTree.length > 0
     ? headerNavTree
     : (headerNav || []).map(p => ({ ...p, children: [], level: 0 }))
+  // Carta QR (header_menu_source = categorias_carta): el menú son las categorías de la carta,
+  // enlazadas a su sitio en la página de la carta. Sin categorías, o con 'menu' (default), el de siempre.
+  const { opciones: opcionesShell, extras: extrasShell } = useEncabezadoPie()
+  const categoriasCarta = opcionesShell.fuenteMenu === 'categorias_carta' ? extrasShell.categoriasCarta : null
+  const navTree: WebsitePageWithChildren[] = categoriasCarta && categoriasCarta.length > 0
+    ? categoriasCarta.map((c, i) => ({
+        id: `carta-${i}`,
+        organization_id: organization.id,
+        title: c.name,
+        slug: c.href.replace(/^\/+/, ''),
+        children: [],
+        level: 0,
+      }) as unknown as WebsitePageWithChildren)
+    : navTreeSitio
 
   // Determinar variante de header
   const headerStyle = settings?.header_style || 'default'
@@ -375,7 +389,6 @@ export default function SiteHeader({
   // así que se usa el menú móvil hasta llegar a lg.
   const mobileBreakpoint = settings?.mobile_breakpoint || 1024
   const isMobile = useMobileHeader(mobileBreakpoint)
-  const { opciones: opcionesShell } = useEncabezadoPie()
 
   // Props comunes para todas las variantes
   const variantProps = {
