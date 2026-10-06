@@ -11,18 +11,29 @@ import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
 import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
 import { temaPublicoDesdeDocumento, type TemaPublico } from '@/lib/website/v2/temaPublico'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { OrganizationLayoutCliente, type OrganizationLayoutProps } from './OrganizationLayoutCliente'
 
 export type { OrganizationLayoutProps }
 
 export async function OrganizationLayout(props: OrganizationLayoutProps) {
   const settings = (props.effectiveSettings ?? props.organization.website_settings ?? null) as OrganizationLayoutProps['effectiveSettings']
-  const [datosSede, temaSitio, pixeles] = await Promise.all([
+  const [datosSede, temaSitio, pixeles, ajustes] = await Promise.all([
     getDatosSedeLayout(props.organization, props.outlet ?? null, settings ?? null),
     getTemaSitio(props.organization.id, props.outlet?.branchId ?? undefined),
     getPixelesSitio(props.organization.id),
+    // Misma fila global ya cacheada que lee getOrgContext (react.cache + cacheStructural).
+    getAjustesSitio(props.organization.id),
   ])
-  return <OrganizationLayoutCliente {...props} datosSede={datosSede} temaSitio={temaSitio} pixeles={pixeles} />
+  return (
+    <OrganizationLayoutCliente
+      {...props}
+      datosSede={datosSede}
+      temaSitio={temaSitio}
+      pixeles={pixeles}
+      codigoPropio={ajustes.codigoPropio}
+    />
+  )
 }
 
 /**

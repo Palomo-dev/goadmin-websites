@@ -7,6 +7,7 @@ import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
 import { horarioSedeObligatorio, MENSAJE_PEDIDO_EN_LINEA_APAGADO, pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
 import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
@@ -90,7 +91,7 @@ export default async function CheckoutPage() {
 
   const { organization, primaryColor, branchId, outlet, sedePorPrefijo } = ctx
   const isRestaurant = organization.type_id === 1
-  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede, pixeles] = await Promise.all([
+  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede, pixeles, ajustesSitio] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
@@ -101,6 +102,8 @@ export default async function CheckoutPage() {
     isRestaurant ? getDatosSedeLayout(organization, outlet, (organization.website_settings as any) ?? null) : Promise.resolve(null),
     // Píxeles tipados de Analítica: de la fila del principal ya cacheada (sin consulta nueva).
     getPixelesSitio(organization.id),
+    // Ajustes del ERP de la misma fila global ya cacheada (sin consulta nueva): aquí, el código a medida.
+    getAjustesSitio(organization.id),
   ])
   // Enlaces internos con el prefijo de la sede servida por ruta (contrato de C, rutaSitio).
   const ruta = (r: string) => rutaSitio(r, outlet, sedePorPrefijo)
@@ -254,6 +257,8 @@ export default async function CheckoutPage() {
         integracion={{ metaPixelId, googleAds: googleAdsConfig }}
         customScripts={wsRow?.custom_scripts ?? null}
         analyticsId={wsRow?.analytics_id ?? null}
+        codigoPropio={ajustesSitio.codigoPropio}
+        prefijoSede={ctx.prefijoSede ?? ''}
       />
       <CartEventTracker organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
     </div>

@@ -10,6 +10,7 @@ import { CountdownBanner } from './CountdownBanner'
 import { CartEventTracker } from './CartEventTracker'
 import { PixelesSitio as PixelesDelSitio } from './PixelesSitio'
 import type { PixelesSitio } from '@/lib/seo/pixelesSitio'
+import type { BloqueCodigo } from '@/lib/website/ajustesSitio'
 import { ChatWidget } from './ChatWidget'
 import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
@@ -72,6 +73,8 @@ export interface OrganizationLayoutProps {
   temaSitio?: TemaPublico | null
   /** Píxeles tipados de Sitio web › Analítica (OrganizationLayout). Ausentes = los de hoy. */
   pixeles?: PixelesSitio | null
+  /** Código a medida del ERP (OrganizationLayout). Ausente o vacío = nada nuevo. */
+  codigoPropio?: BloqueCodigo[] | null
 }
 
 export function OrganizationLayoutCliente({
@@ -98,6 +101,7 @@ export function OrganizationLayoutCliente({
   datosSede,
   temaSitio,
   pixeles,
+  codigoPropio,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -309,6 +313,8 @@ export function OrganizationLayoutCliente({
         integracion={{ metaPixelId, googleAds: googleAdsConfig }}
         customScripts={settings?.custom_scripts ?? null}
         analyticsId={settings?.analytics_id ?? null}
+        codigoPropio={codigoPropio}
+        prefijoSede={prefijo}
       />
       
       {/* CSS Personalizado */}
