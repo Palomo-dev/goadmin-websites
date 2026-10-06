@@ -51,3 +51,71 @@ async function getSedesRestauranteUncached(organizationId: number): Promise<Sede
 export const getSedesRestaurante = cache(
   cacheStructural('getSedesRestaurante', getSedesRestauranteUncached, CONTENT_TTL),
 )
+
+// ---------------------------------------------------------------------------
+// Sedes publicadas para el selector del encabezado y la barra móvil
+// ---------------------------------------------------------------------------
+
+/** Sede publicada en la web (`is_web_published` y activa), tal como la usa el encabezado. */
+export interface SedeWeb {
+  id: number
+  nombre: string
+  slug: string | null
+  customDomain: string | null
+  direccion: string | null
+  ciudad: string | null
+  telefono: string | null
+  lat: number | null
+  lng: number | null
+  esPrincipal: boolean
+  /** `branches.opening_hours` tal cual (se lee con `parseHorario`). */
+  horarioJson: unknown
+  /** `branches.timezone` (null → la de la organización). */
+  zonaHoraria: string | null
+}
+
+/**
+ * Una consulta ligera por organización, cacheada entre peticiones (60 s) y deduplicada en
+ * la petición. Se ejecuta en TODAS las páginas de los 83 sitios (lo pide el encabezado), por
+ * eso no trae ajustes de reserva ni mesas como `getSedesRestaurante`. Hoy devuelve [] en
+ * todas las organizaciones (0 sedes publicadas el 2026-10-06).
+ *
+ * Columnas verificadas por MCP el 2026-10-06 (`branches`).
+ */
+async function getSedesWebUncached(organizationId: number): Promise<SedeWeb[]> {
+  const supabase = createAdminClient()
+  if (!supabase) {
+    console.error('[sedes] Falta SUPABASE_SERVICE_ROLE_KEY: no se leen las sedes publicadas')
+    return []
+  }
+  const { data, error } = await (supabase as any)
+    .from('branches')
+    .select('id, name, slug, custom_domain, address, city, phone, latitude, longitude, is_main, opening_hours, timezone')
+    .eq('organization_id', organizationId)
+    .eq('is_web_published', true)
+    .or('is_active.is.null,is_active.eq.true')
+    .order('is_main', { ascending: false })
+    .order('name', { ascending: true })
+  if (error) {
+    console.error('[sedes] Error leyendo sedes publicadas', { organizationId, error: error.message })
+    return []
+  }
+  const texto = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
+  const numero = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
+  return ((data ?? []) as Record<string, unknown>[]).map((b) => ({
+    id: Number(b.id),
+    nombre: texto(b.name) ?? `Sede ${b.id}`,
+    slug: texto(b.slug),
+    customDomain: texto(b.custom_domain),
+    direccion: texto(b.address),
+    ciudad: texto(b.city),
+    telefono: texto(b.phone),
+    lat: numero(b.latitude),
+    lng: numero(b.longitude),
+    esPrincipal: b.is_main === true,
+    horarioJson: b.opening_hours ?? null,
+    zonaHoraria: texto(b.timezone),
+  }))
+}
+
+export const getSedesWeb = cache(cacheStructural('getSedesWeb', getSedesWebUncached, CONTENT_TTL))

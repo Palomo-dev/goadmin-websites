@@ -9,6 +9,7 @@
  *  - WebSite (en home)
  *  - BreadcrumbList (en páginas internas)
  *  - Product / ItemList (en páginas de productos/categorías)
+ *  - Restaurant / LocalBusiness por sede (SEO local; lo arma lib/seo/sede.ts)
  *
  * El componente renderiza un <script type="application/ld+json"> que Next.js
  * inyecta en el <head> vía el metadata API o directamente.
@@ -135,6 +136,74 @@ export function buildProductListJsonLd(products: ProductData[], baseUrl: string)
   };
 }
 
+interface SedeJsonLd {
+  nombre: string;
+  direccion: string | null;
+  ciudad: string | null;
+  telefono: string | null;
+  lat: number | null;
+  lng: number | null;
+  foto: string | null;
+}
+
+export interface EspecificacionHorario {
+  '@type': 'OpeningHoursSpecification';
+  dayOfWeek: string;
+  opens: string;
+  closes: string;
+}
+
+/**
+ * Restaurant (o LocalBusiness fuera de restaurantes) de UNA sede: dirección, geo,
+ * teléfono, horario, carta y reservas. `horario` ya viene en el formato de schema.org
+ * (lo calcula lib/seo/sede.ts desde `branches.opening_hours`; vacío si no está revisado).
+ */
+export function buildRestaurantJsonLd(
+  sede: SedeJsonLd,
+  url: string,
+  opciones: {
+    tipo: 'Restaurant' | 'LocalBusiness';
+    marca: string;
+    horario: EspecificacionHorario[];
+    aceptaReservas?: boolean;
+    carta?: string | null;
+    logo?: string | null;
+  },
+) {
+  const ld: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': opciones.tipo,
+    name: sede.nombre === opciones.marca ? opciones.marca : `${opciones.marca} · ${sede.nombre}`,
+    url,
+  };
+  if (sede.foto || opciones.logo) ld.image = sede.foto || opciones.logo;
+  if (sede.telefono) ld.telephone = sede.telefono;
+  if (sede.direccion || sede.ciudad) {
+    ld.address = {
+      '@type': 'PostalAddress',
+      ...(sede.direccion && { streetAddress: sede.direccion }),
+      ...(sede.ciudad && { addressLocality: sede.ciudad }),
+    };
+  }
+  if (sede.lat !== null && sede.lng !== null) {
+    ld.geo = { '@type': 'GeoCoordinates', latitude: sede.lat, longitude: sede.lng };
+  }
+  if (opciones.horario.length > 0) ld.openingHoursSpecification = opciones.horario;
+  if (opciones.tipo === 'Restaurant') {
+    if (opciones.carta) ld.hasMenu = opciones.carta;
+    if (typeof opciones.aceptaReservas === 'boolean') ld.acceptsReservations = opciones.aceptaReservas;
+  }
+  return ld;
+}
+
+/**
+ * JSON dentro de <script>: `<` se escapa para que un nombre con «</script>» no cierre
+ * la etiqueta (los textos vienen de lo que escribe cada organización).
+ */
+function jsonSeguro(ld: Record<string, any>): string {
+  return JSON.stringify(ld).replace(/</g, '\\u003c');
+}
+
 /**
  * Componente que renderiza uno o varios objetos JSON-LD en un <script>.
  */
@@ -146,7 +215,7 @@ export function JsonLd({ data }: { data: Record<string, any> | Record<string, an
         <script
           key={i}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
+          dangerouslySetInnerHTML={{ __html: jsonSeguro(ld) }}
         />
       ))}
     </>

@@ -23,6 +23,15 @@ import {
 } from '@/lib/website/v2/vistaPublica'
 import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
+import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
+import { urlsSitio } from '@/lib/seo/sede'
+
+/**
+ * Cabecera que pone el middleware al reescribir `/<slug-de-sede>/resto` → `/resto`
+ * (sede por prefijo de ruta). Lleva el slug; aquí se valida contra las sedes
+ * publicadas de la organización del host, igual que el prefijo de ruta.
+ */
+export const CABECERA_SEDE_RUTA = 'x-outlet-path'
 
 /**
  * Tipo para items de mega menú (compatible con NavItem de HeaderShared).
@@ -64,6 +73,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   const customDomain = headersList.get('x-custom-domain')
   const outletSubdomainHeader = headersList.get('x-outlet-subdomain')
   const customOutletDomainHeader = headersList.get('x-custom-outlet-domain')
+  const outletPathHeader = headersList.get(CABECERA_SEDE_RUTA)
   const identifier = customDomain || subdomain
 
   if (!identifier) return null
@@ -72,9 +82,14 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   if (!organization) return null
 
   // --- Resolver outlet (branch) por headers + path-prefix (F1) ---
-  // Prioridad: 1) custom-domain de branch, 2) sub-subdomain, 3) path-prefix.
+  // Prioridad: 1) custom-domain de branch, 2) sub-subdomain, 3) prefijo reescrito por el
+  // middleware (x-outlet-path), 4) path-prefix consumido por la página.
   let outlet: ResolvedOutlet | null = null
   let pathPrefixConsumed = false
+  // true si la sede se sirve por prefijo de ruta (reescrito o consumido): los enlaces
+  // internos llevan `/<slug>` (lib/outlet/rutaSitio.ts). `pathPrefixConsumed` sigue
+  // significando solo «la página debe quitar el primer segmento».
+  let sedePorPrefijo = false
   try {
     if (customOutletDomainHeader) {
       // Dominio personalizado de un branch: restaurante1.tugranhotel.com
@@ -88,13 +103,24 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       outlet = await resolveOutletBySubSubdomain(outletSubdomainHeader, organization.id)
     }
 
-    // 3. Path-prefix (ej: tugranhotel.com/restaurante-1/menu)
+    // 3. Prefijo reescrito por el middleware (/sede-norte/checkout → /checkout).
+    //    Mismo criterio que el prefijo de ruta: sede publicada de ESTA organización.
+    if (!outlet && outletPathHeader) {
+      const result = await resolveOutletFromPath(organization.id, [outletPathHeader])
+      if (result.outlet) {
+        outlet = result.outlet
+        sedePorPrefijo = true
+      }
+    }
+
+    // 4. Path-prefix (ej: tugranhotel.com/restaurante-1/menu)
     //    Solo si no se resolvió por headers (sub-subdomain / custom-domain).
     if (!outlet && pathFirstSegment) {
       const result = await resolveOutletFromPath(organization.id, [pathFirstSegment])
       if (result.outlet) {
         outlet = result.outlet
         pathPrefixConsumed = true
+        sedePorPrefijo = true
       }
     }
   } catch {
@@ -212,11 +238,30 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     ? { ...organization, website_settings: effectiveSettings }
     : organization
 
+  // SEO local y enlaces de la sede (contratos de lib/outlet/rutaSitio.ts y lib/seo/sede.ts).
+  const prefijoSede = calcularPrefijoSede(outlet, sedePorPrefijo)
+  const { urlBase, urlBasePrincipal } = urlsSitio({
+    organization,
+    outlet,
+    porPrefijo: sedePorPrefijo,
+    hostSede: outlet && !sedePorPrefijo
+      ? customOutletDomainHeader || headersList.get('host')
+      : null,
+  })
+
   return {
     organization: organizationWithSettings,
     outlet,
     branchId,
     pathPrefixConsumed,
+    /** La sede se sirve por prefijo de ruta: pásalo a `rutaSitio(path, outlet, sedePorPrefijo)`. */
+    sedePorPrefijo,
+    /** `''` o `'/<slug>'`. */
+    prefijoSede,
+    /** Base pública del sitio que se sirve (con la sede), para canonical y JSON-LD. */
+    urlBase,
+    /** Base pública del sitio principal de la organización. */
+    urlBasePrincipal,
     effectiveSettings: settings,
     primaryColor,
     template,
