@@ -64,6 +64,8 @@ export interface MenuItem {
   soldOut: boolean
   /** Padre con variantes: se elige en el detalle, no se agrega desde la carta. */
   hasVariants: boolean
+  /** Destacado en el constructor de la carta (`content.carta_platos.destacados`). */
+  featured?: boolean
 }
 
 export interface MenuCategoryGroup {

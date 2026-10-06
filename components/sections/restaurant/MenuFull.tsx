@@ -18,6 +18,7 @@
 
 import type { OrganizationWithDetails } from '@/types/database'
 import { parseSchedules, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'
+import { leerCartaPlatos } from '@/lib/menu/cartaPlatos'
 import { MenuFullView, type MenuFullVariant } from './MenuFullView'
 import type { MenuItemSize } from './MenuItemRow'
 
@@ -33,6 +34,8 @@ export const CONTENT_KEYS = [
   'selected_category_ids',
   'pdf_url',
   'menus',
+  // Orden, ocultos, destacados y textos propios del constructor de la carta del ERP.
+  'carta_platos',
 ] as const
 
 const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial']
@@ -97,6 +100,7 @@ export function MenuFull({ content, organization, data, sectionVariant, sectionI
       products={products}
       categories={categories}
       selectedCategoryIds={selectedIds}
+      cartaPlatos={leerCartaPlatos(content)}
       schedules={parseSchedules(content.menus)}
       eyebrow={'eyebrow' in content ? str(content.eyebrow) : defaultEyebrow}
       title={'title' in content ? str(content.title) : defaultTitle}

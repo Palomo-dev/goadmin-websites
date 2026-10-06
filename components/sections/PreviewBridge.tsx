@@ -32,7 +32,8 @@ import type { AvisoLienzo } from './SeccionVaciaLienzo';
  * `{ type: 'goadmin:accion', sectionId, accion: 'quitar' }`; «Ir a …» es un enlace normal.
  *
  * Enlaces de las zonas globales: el clic envía además `href` y `texto` del enlace, para que
- * el editor abra el menú con ese ítem.
+ * el editor abra el menú con ese ítem. Un plato de la carta (`data-goadmin-producto`) envía
+ * además `productoId`: el editor abre el constructor de la carta con ese plato.
  *
  * Seguridad: valida `origin` contra una lista de orígenes permitidos (ERP +
  * localhost para desarrollo). Si el origen no es válido, ignora el mensaje.
@@ -248,9 +249,14 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
           e.stopPropagation();
           setActiveSectionId(sectionId);
           marcarZonaActiva(null);
+          // Plato de la carta (`data-goadmin-producto`, solo en preview): el editor abre el
+          // constructor de la carta con ese plato.
+          const plato = Number(
+            (e.target as HTMLElement).closest('[data-goadmin-producto]')?.getAttribute('data-goadmin-producto'),
+          );
           try {
             window.parent?.postMessage(
-              { type: 'goadmin:select', sectionId },
+              { type: 'goadmin:select', sectionId, ...(Number.isInteger(plato) && plato > 0 ? { productoId: plato } : {}) },
               editorOrigin.current || '*',
             );
           } catch { /* noop */ }

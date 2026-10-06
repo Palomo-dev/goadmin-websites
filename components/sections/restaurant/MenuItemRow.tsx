@@ -20,6 +20,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Check, Clock, ImageIcon } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'
+import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
+import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
 import type { MenuItem } from '@/lib/menu/menuFull'
 
@@ -110,11 +112,16 @@ export function MenuItemRow({
 }: MenuItemRowProps) {
   const muted = state !== 'default'
   const addDisabled = state !== 'default'
+  // Lienzo del editor: el plato lleva su id para abrir el constructor de la carta.
+  const enLienzo = useIsPreviewMode()
   const compact = size === 'compact'
   const auto = size === 'auto'
 
   return (
-    <div className="flex w-full items-start gap-4 border-b border-border py-4">
+    <div
+      className="flex w-full items-start gap-4 border-b border-border py-4"
+      data-goadmin-producto={enLienzo ? item.id : undefined}
+    >
       {layout === 'photo' && (
         <div
           className={cn(
@@ -123,7 +130,15 @@ export function MenuItemRow({
           )}
         >
           {item.imageUrl ? (
-            <Image src={item.imageUrl} alt={item.name} fill sizes="72px" className="object-cover" />
+            <Image
+              src={item.imageUrl}
+              alt={item.name}
+              fill
+              sizes="72px"
+              className="object-cover"
+              // Foto propia de la carta: puede venir de otro dominio (no optimizable).
+              unoptimized={!isOptimizableImage(item.imageUrl)}
+            />
           ) : (
             <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           )}
@@ -142,6 +157,14 @@ export function MenuItemRow({
           >
             {item.name}
           </h3>
+          {item.featured && (
+            <span
+              className="shrink-0 self-center rounded-full px-2 py-0.5 text-xs font-medium leading-4 text-white"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Destacado
+            </span>
+          )}
           <span
             aria-hidden="true"
             className={cn(

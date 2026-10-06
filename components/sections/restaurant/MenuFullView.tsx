@@ -38,6 +38,9 @@ import {
   type MenuSourceProduct,
 } from '@/lib/menu/menuFull'
 import { MenuItemRow, type MenuItemLayout, type MenuItemSize } from './MenuItemRow'
+import { aplicarCambiosSedeVivos, aplicarCartaPlatos, type CartaPlatos } from '@/lib/menu/cartaPlatos'
+import { useCartaSedeViva } from '@/components/sections/useCartaSedeViva'
+import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 
 export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category' | 'editorial'
 
@@ -46,6 +49,8 @@ export interface MenuFullViewProps {
   products: MenuSourceProduct[]
   categories: MenuSourceCategory[]
   selectedCategoryIds: number[] | null
+  /** Orden, ocultos, destacados y textos del constructor de la carta. */
+  cartaPlatos?: CartaPlatos
   schedules: MenuSchedule[]
   eyebrow: string | null
   title: string | null
@@ -161,11 +166,14 @@ function prefersReducedMotion(): boolean {
 // ---------------------------------------------------------------------------
 
 export function MenuFullView(props: MenuFullViewProps) {
-  const { products, categories, selectedCategoryIds, organizationSubdomain, branchId } = props
-  const groups = useMemo(
-    () => buildMenuGroups(products, categories, selectedCategoryIds),
-    [products, categories, selectedCategoryIds],
-  )
+  const { products, categories, selectedCategoryIds, organizationSubdomain, branchId, cartaPlatos } = props
+  // Solo en el lienzo del editor (?preview=1): cambios de la sede aún sin guardar. Fuera, vacío.
+  const cambiosSede = useCartaSedeViva(branchId)
+  const groups = useMemo(() => {
+    const base = buildMenuGroups(products, categories, selectedCategoryIds)
+    const conCarta = cartaPlatos ? aplicarCartaPlatos(base, cartaPlatos, selectedCategoryIds) : base
+    return aplicarCambiosSedeVivos(conCarta, cambiosSede)
+  }, [products, categories, selectedCategoryIds, cartaPlatos, cambiosSede])
 
   const handleAdd = useCallback(
     (item: MenuItem) => {
@@ -578,6 +586,8 @@ function EditorialMenu(props: VariantProps) {
   const { groups } = props
   const floatRef = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<MenuItem | null>(null)
+  // Lienzo del editor: cada plato lleva su id para abrir el constructor de la carta.
+  const enLienzo = useIsPreviewMode()
 
   const onMove = (e: MouseEvent<HTMLElement>) => {
     const el = floatRef.current
@@ -609,7 +619,7 @@ function EditorialMenu(props: VariantProps) {
           {/* Puntero con hover */}
           <ul className="hidden flex-col [@media(hover:hover)]:flex" onMouseMove={onMove} onMouseLeave={() => setPreview(null)}>
             {g.items.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} data-goadmin-producto={enLienzo ? item.id : undefined}>
                 <Link
                   href={`/productos/${item.uuid}`}
                   onMouseEnter={() => setPreview(item.imageUrl ? item : null)}
