@@ -67,3 +67,29 @@ export async function avisarErpRondaMesa(webOrderId: string): Promise<ResultadoR
     clearTimeout(timeout)
   }
 }
+
+/**
+ * Comensal de cada línea («¿Para quién es?», lámina 03) → `web_order_items.diner_label`
+ * (migración 20261007090400 del ERP). `indice` es la posición de la línea en el carrito del
+ * cliente (LineaResuelta.indice). Sin mesa: las filas tal cual.
+ */
+export function filasConComensal<F extends Record<string, unknown>>(
+  filas: F[],
+  indices: number[],
+  itemsCliente: { diner?: unknown }[],
+  conMesa: boolean,
+): (F & { diner_label?: string })[] {
+  if (!conMesa) return filas
+  return filas.map((f, i) => {
+    const comensal = sanearComensal(itemsCliente[indices[i]]?.diner)
+    return comensal ? { ...f, diner_label: comensal } : f
+  })
+}
+
+/** Las mismas filas sin el comensal (la base aún no tiene la columna). */
+export function filasSinComensal<F extends Record<string, unknown>>(filas: F[]): F[] {
+  return filas.map((f) => {
+    const { diner_label: _sin, ...resto } = f as F & { diner_label?: unknown }
+    return resto as F
+  })
+}

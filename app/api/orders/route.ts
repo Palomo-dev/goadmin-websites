@@ -28,7 +28,7 @@ import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
-import { avisarErpRondaMesa, comensalDeRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
+import { avisarErpRondaMesa, comensalDeRonda, filasConComensal, filasSinComensal, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
 
@@ -628,14 +628,24 @@ export async function POST(request: NextRequest) {
     // puede responder `success` ni llegar a /api/checkout/init. Si fallan, el pedido se cancela y
     // se responde con error. Así quedaron 2 pedidos sin líneas, uno de ellos pagado.
     // Crear web_order_items con el precio unitario real (base + extras, una sola vez)
-    const orderItems = construirFilasPedido(lineas, webOrder.id, impuesto.porLinea)
+    // Carta QR: el comensal de cada línea («¿Para quién es?»). Sin mesa, las filas de siempre.
+    const orderItems = filasConComensal(
+      construirFilasPedido(lineas, webOrder.id, impuesto.porLinea) as unknown as Record<string, unknown>[],
+      lineas.map((l) => l.indice), itemsCliente as { diner?: unknown }[], !!mesaPedido,
+    )
     let itemsError: unknown = null
     try {
       // Las filas van tipadas (`WebOrderItemInsert`, columnas verificadas por MCP) desde
       // construirFilasPedido; el cliente genérico sigue sin inferir tablas de types/database.ts.
-      const { error } = await (supabase as any)
+      let { error } = await (supabase as any)
         .from('web_order_items')
         .insert(orderItems)
+      if (error && rechazaComensal(error)) {
+        // La base aún no tiene web_order_items.diner_label: las líneas sin el comensal.
+        ;({ error } = await (supabase as any).from('web_order_items').insert(filasSinComensal(orderItems)))
+      } else {
+        // Insert de siempre: su resultado es el definitivo.
+      }
       itemsError = error
     } catch (err) {
       itemsError = err
