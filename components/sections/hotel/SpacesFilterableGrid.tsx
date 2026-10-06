@@ -7,6 +7,7 @@ import {
   Calendar, Users, MapPin, Bed, Filter, X, ChevronDown,
   Search, Moon, SlidersHorizontal, ArrowUpDown
 } from 'lucide-react'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 interface SpacesFilterableGridProps {
   spaces: any[]
@@ -345,7 +346,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
   const baseRate = Number(useSpaces ? (st?.base_rate || 0) : (item.base_rate || 0))
   const typeName = useSpaces ? st?.name : null
   const floorZone = useSpaces ? item.floor_zone : null
-  const description = item.description
+  const description = textoPlano(item.description)
   const services = useSpaces ? (item.services || []) : []
 
   return (

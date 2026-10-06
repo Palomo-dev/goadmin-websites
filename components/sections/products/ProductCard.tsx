@@ -56,6 +56,7 @@ import {
   BADGE_CORNER_CLASS,
   type BadgeConfig,
 } from '@/lib/sectionStyle'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -867,8 +868,8 @@ export function ProductCard({
         <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
           <div>
             <h3 className="font-semibold text-sm truncate">{product.name}</h3>
-            {showDesc && product.description && (
-              <p className="text-xs text-gray-500 line-clamp-1">{product.description}</p>
+            {showDesc && textoPlano(product.description) && (
+              <p className="text-xs text-gray-500 line-clamp-1">{textoPlano(product.description)}</p>
             )}
             {price != null && (
               <p className="text-sm font-bold mt-1" style={{ color: primaryColor }}>
@@ -939,8 +940,8 @@ export function ProductCard({
                 <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
               </div>
             )}
-            {showDesc && product.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{product.description}</p>
+            {showDesc && textoPlano(product.description) && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{textoPlano(product.description)}</p>
             )}
             {(product.sales_count ?? 0) > 0 && (
               <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
@@ -1106,8 +1107,8 @@ export function ProductCard({
               <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
             </div>
           )}
-          {showDesc && product.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1">{product.description}</p>
+          {showDesc && textoPlano(product.description) && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1">{textoPlano(product.description)}</p>
           )}
           <div className="flex flex-col gap-2 mt-1">
             <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}`}>

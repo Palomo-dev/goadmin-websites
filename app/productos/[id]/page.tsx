@@ -29,6 +29,7 @@ import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { textoPlanoONulo } from '@/lib/texto/textoPlano'
 
 export const dynamic = 'force-dynamic'
 
@@ -178,7 +179,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const product = await getProduct(id, ctx.organization.id, ctx.branchId)
   return {
     title: product ? `${product.name} | ${ctx.organization.name}` : `Producto | ${ctx.organization.name}`,
-    description: product?.description || undefined
+    description: textoPlanoONulo(product?.description) ?? undefined
   }
 }
 
@@ -292,7 +293,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     '@context': 'https://schema.org/',
     '@type': 'Product',
     name: product.name,
-    description: product.description || undefined,
+    description: textoPlanoONulo(product.description) ?? undefined,
     sku: product.sku || undefined,
     image: imageUrl || undefined,
   }

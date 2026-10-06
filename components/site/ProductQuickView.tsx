@@ -9,6 +9,7 @@ import { getProductPrice, getProductComparePrice, getProductImageUrl, getProduct
 import { isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 interface ProductQuickViewProps {
   product: any
@@ -141,8 +142,8 @@ export function ProductQuickView({
               </div>
             )}
 
-            {product.description && (
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 line-clamp-5">{product.description}</p>
+            {textoPlano(product.description) && (
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 line-clamp-5">{textoPlano(product.description)}</p>
             )}
 
             {/* Precio */}

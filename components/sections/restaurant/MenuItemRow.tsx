@@ -28,6 +28,7 @@ import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { soldOutReturnLabel, type MenuItem } from '@/lib/menu/menuFull'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 export type MenuItemLayout = 'list' | 'photo'
 export type MenuItemSize = 'regular' | 'compact' | 'auto'
@@ -226,14 +227,14 @@ export function MenuItemRow({
           </span>
         </div>
 
-        {showDescription && item.description && (
+        {showDescription && textoPlano(item.description) && (
           <p
             className={cn(
               'text-sm leading-5',
               muted ? 'text-muted-foreground/70' : 'text-muted-foreground',
             )}
           >
-            {item.description}
+            {textoPlano(item.description)}
           </p>
         )}
 

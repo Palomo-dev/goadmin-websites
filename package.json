@@ -17,7 +17,8 @@
     "verify:copias": "node scripts/verify-copias-erp.mjs",
     "verify:estilo": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-sitio.mjs",
     "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs",
-    "verify:ajustes": "node --disable-warning=ExperimentalWarning scripts/verify-ajustes-sitio.mjs"
+    "verify:ajustes": "node --disable-warning=ExperimentalWarning scripts/verify-ajustes-sitio.mjs",
+    "verify:texto": "node --disable-warning=ExperimentalWarning scripts/verify-texto-plano.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

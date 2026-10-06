@@ -23,6 +23,7 @@ import { SiteImage } from './SiteImage'
 import { SectionHeading } from './SectionHeading'
 import { prefersReducedMotion, useReducedMotion, useSectionMotion } from './useSectionMotion'
 import m from './motion.module.css'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 export type SignatureDishesVariant = 'carousel' | 'scrollytelling'
 
@@ -171,8 +172,8 @@ function Carousel(props: SignatureDishesViewProps) {
                 </div>
               </div>
               <h3 className="text-xl font-bold leading-7 text-foreground [font-family:var(--font-heading)] md:text-2xl md:leading-8">{dish.name}</h3>
-              {(dish.story || dish.description) && (
-                <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{dish.story || dish.description}</p>
+              {textoPlano(dish.story || dish.description) && (
+                <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{textoPlano(dish.story || dish.description)}</p>
               )}
               {(props.showPrice || dish.soldOut) && (
                 <div className="flex items-center gap-3">
@@ -289,8 +290,8 @@ function Scrollytelling(props: SignatureDishesViewProps) {
                     dish.name
                   )}
                 </h3>
-                {(dish.story || dish.description) && (
-                  <p className="text-base leading-6 text-muted-foreground md:text-lg md:leading-7">{dish.story || dish.description}</p>
+                {textoPlano(dish.story || dish.description) && (
+                  <p className="text-base leading-6 text-muted-foreground md:text-lg md:leading-7">{textoPlano(dish.story || dish.description)}</p>
                 )}
                 {(props.showPrice || dish.soldOut) && (
                   <div className="flex items-center gap-3">

@@ -22,6 +22,7 @@ import { aplicarCartaPlatos } from '@/lib/menu/cartaPlatos'
 import { cartasParaSeccion, categoriasDeCarta, platosDeCarta } from '@/lib/menu/cartasPublicas'
 import { MenuFull } from './MenuFull'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 interface MenuPreviewTabsProps {
   content: {
@@ -111,8 +112,8 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
                     )}
                     <div className="min-w-0 flex-1">
                       <h4 className="truncate font-medium text-gray-900 dark:text-white">{item.name}</h4>
-                      {item.description && (
-                        <p className="line-clamp-1 text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+                      {textoPlano(item.description) && (
+                        <p className="line-clamp-1 text-sm text-gray-500 dark:text-gray-400">{textoPlano(item.description)}</p>
                       )}
                       {item.soldOut && (
                         <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Agotado</span>

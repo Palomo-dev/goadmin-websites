@@ -56,6 +56,7 @@ import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { PlatoSheet } from './PlatoSheet'
 import { BannerMesa, BarraPedidoMesa } from './BannerMesa'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 /** Sede de la carta para la hoja del plato y el banner de cerrado (sale de getSedesRestaurante). */
 export interface SedeDeCarta {
@@ -710,7 +711,7 @@ function PerCategoryMenu(props: VariantProps) {
         >
           {current.name}
         </h2>
-        {current.description && <p className="text-base leading-6 text-muted-foreground">{current.description}</p>}
+        {textoPlano(current.description) && <p className="text-base leading-6 text-muted-foreground">{textoPlano(current.description)}</p>}
         <ItemsGrid items={current.items} columns={props.columns} render={rowRenderer(props, null)} />
       </section>
 
