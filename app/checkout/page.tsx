@@ -6,16 +6,14 @@ import { CurrencySelector } from '@/components/site/CurrencySelector'
 import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
 import { horarioSedeObligatorio, MENSAJE_PEDIDO_EN_LINEA_APAGADO, pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
 import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
 import { rutaSitio } from '@/lib/outlet/rutaSitio'
 import { horarioDeSede, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
-import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
-import MetaPixel from '@/components/site/MetaPixel'
-import CustomScripts from '@/components/site/CustomScripts'
-import GoogleAnalytics from '@/components/site/GoogleAnalytics'
+import { PixelesSitio } from '@/components/site/PixelesSitio'
 import { CartEventTracker } from '@/components/site/CartEventTracker'
 
 export const dynamic = 'force-dynamic'
@@ -92,7 +90,7 @@ export default async function CheckoutPage() {
 
   const { organization, primaryColor, branchId, outlet, sedePorPrefijo } = ctx
   const isRestaurant = organization.type_id === 1
-  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede] = await Promise.all([
+  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede, pixeles] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
@@ -101,6 +99,8 @@ export default async function CheckoutPage() {
     // Sedes para «Cambiar sede» (SelectorSede de C, con el href de cada sede ya calculado) y el
     // aviso del carrito de otra sede. Mismas lecturas cacheadas que el layout de las demás páginas.
     isRestaurant ? getDatosSedeLayout(organization, outlet, (organization.website_settings as any) ?? null) : Promise.resolve(null),
+    // Píxeles tipados de Analítica: de la fila del principal ya cacheada (sin consulta nueva).
+    getPixelesSitio(organization.id),
   ])
   // Enlaces internos con el prefijo de la sede servida por ruta (contrato de C, rutaSitio).
   const ruta = (r: string) => rutaSitio(r, outlet, sedePorPrefijo)
@@ -246,10 +246,15 @@ export default async function CheckoutPage() {
           que repetir aquí lo que ese layout inyecta: sin `custom_scripts` las
           tiendas cuyo pixel vive ahí (y no en la integración Meta) no tenían
           pixel en /checkout y InitiateCheckout nunca se registraba. */}
-      {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
-      {wsRow?.custom_scripts && <CustomScripts scripts={wsRow.custom_scripts} />}
-      {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
-      {wsRow?.analytics_id && <GoogleAnalytics measurementId={wsRow.analytics_id} />}
+      {/* Misma regla que el layout (lib/seo/reglaPixeles.ts): InitiateCheckout va al mismo píxel
+          que la página del producto. Sin píxeles tipados, lo de antes: integración, scripts
+          propios, Google Ads y GA4. */}
+      <PixelesSitio
+        pixeles={pixeles}
+        integracion={{ metaPixelId, googleAds: googleAdsConfig }}
+        customScripts={wsRow?.custom_scripts ?? null}
+        analyticsId={wsRow?.analytics_id ?? null}
+      />
       <CartEventTracker organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
     </div>
     </CurrencyProvider>
