@@ -105,6 +105,8 @@ export interface EstadoMesaQR {
   /** Abono recién pagado (vuelta de la pasarela con ?ref=CQR-…). */
   abonoPagado: { reference: string; total: number | null; id: string | null; email: string | null } | null
   seleccionPago: SeleccionPago | null
+  /** Instancia de <AvisosMesa /> que pinta los avisos y la hoja del mesero. */
+  avisosDuenio: string | null
 }
 
 const inicial: EstadoMesaQR = {
@@ -131,6 +133,7 @@ const inicial: EstadoMesaQR = {
   hayServicio: false,
   abonoPagado: null,
   seleccionPago: null,
+  avisosDuenio: null,
 }
 
 let estado: EstadoMesaQR = inicial

@@ -15,8 +15,19 @@ import { cancelarLlamado, irA, llamarMesero, setMesaQR, useMesaQRStore } from '@
 import { BotonPrimario, HojaInferior } from './comun'
 import { C, TITULO } from './estilo'
 
-let duenio: string | null = null
+/**
+ * Quién pinta los avisos: el primero montado. Si se desmonta (una sección cambia de rama), el
+ * siguiente toma el relevo y se entera por el almacén (re-render), no por una variable suelta.
+ */
 const candidatos: string[] = []
+let duenioActual: string | null = null
+function elegirDuenio() {
+  const nuevo = candidatos[0] ?? null
+  if (nuevo !== duenioActual) {
+    duenioActual = nuevo
+    setMesaQR({ avisosDuenio: nuevo })
+  }
+}
 
 /** El texto y los motivos de la hoja salen de la sección «Servicio de mesa» si la hay. */
 let configServicio: ServicioMesa = DEFAULT_SERVICIO_MESA
@@ -34,18 +45,17 @@ const ICONOS = {
 
 export function AvisosMesa() {
   const id = useId()
-  const [soyDuenio, setSoyDuenio] = useState(false)
+  const duenio = useMesaQRStore((e) => e.avisosDuenio)
   useEffect(() => {
     candidatos.push(id)
-    if (duenio === null) duenio = id
-    setSoyDuenio(duenio === id)
+    elegirDuenio()
     return () => {
       const i = candidatos.indexOf(id)
       if (i >= 0) candidatos.splice(i, 1)
-      if (duenio === id) duenio = candidatos[0] ?? null
+      elegirDuenio()
     }
   }, [id])
-  if (!soyDuenio) return null
+  if (duenio !== id) return null
   return (
     <>
       <Aviso />
