@@ -28,6 +28,7 @@ import {
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
+import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion } from '@/lib/website/datosSecciones'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { ContactSection } from '@/components/site/sections/ContactSection'
@@ -272,6 +273,22 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         data.testimonials = await getOrganizationTestimonials(organization.id, { limit: 200 })
       }
     }
+    // Gym y transporte: secciones que antes salían siempre vacías porque nadie
+    // cargaba su `data`. Una consulta cacheada cada una (lib/website/datosSecciones.ts)
+    // y solo si la página tiene la sección (o en la vista previa del editor).
+    const sedeDeLaPagina = typeof branchId === 'number' ? branchId : null
+    const tiene = (tipo: string) => esVistaPrevia || sectionTypes.includes(tipo)
+    const [clases, rutas, flota, planes] = await Promise.all([
+      tiene('class_schedule') ? getClasesDeSeccion(organization.id, sedeDeLaPagina) : null,
+      tiene('routes') ? getRutasDeSeccion(organization.id) : null,
+      tiene('fleet_showcase') ? getFlotaDeSeccion(organization.id, sedeDeLaPagina) : null,
+      tiene('membership_plans') ? getPlanesDeSeccion(organization.id) : null,
+    ])
+    if (clases) data.classes = clases
+    if (rutas) data.routes = rutas
+    if (flota) data.vehicles = flota
+    if (planes) data.membershipPlans = planes
+
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {
       const [rates, passTypes, availability, zones] = await Promise.all([
         sectionTypes.includes('parking_pricing') ? getParkingRates(organization.id) : Promise.resolve([]),

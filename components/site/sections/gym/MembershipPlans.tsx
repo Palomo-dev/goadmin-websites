@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, Star, Zap, Clock } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
+import { formatDuracionPlan, formatPeriodo } from '@/lib/memberships/periodo'
 
 interface MembershipPlan {
   id: number
@@ -44,53 +45,6 @@ const defaultPlans: MembershipPlan[] = [
   { id: 2, name: 'Plan Premium', description: 'El más popular', price: 89900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)'], classes_included: true } },
   { id: 3, name: 'Plan VIP', description: 'Experiencia completa', price: 149900, duration_days: 30, frequency: 'monthly', access_rules: { features: ['Acceso ilimitado al gimnasio', 'Equipos de última generación', 'Vestuarios con duchas', 'WiFi gratuito', 'Clases grupales incluidas', 'Entrenador personal (2 sesiones/mes)', 'Acceso a spa y sauna', 'Estacionamiento gratuito'], classes_included: true } },
 ]
-
-const UNIDADES: Record<string, [string, string]> = {
-  day: ['día', 'días'],
-  week: ['semana', 'semanas'],
-  month: ['mes', 'meses'],
-  year: ['año', 'años'],
-}
-
-/** Sufijo del precio a partir de la duración del plan (`duration_unit`/`duration_value`). */
-function formatPeriodo(plan: MembershipPlan): string {
-  const unidad = plan.duration_unit ? UNIDADES[plan.duration_unit] : undefined
-  const valor = plan.duration_value ?? null
-  if (unidad && valor && valor > 0) {
-    return valor === 1 ? `/${unidad[0]}` : `/${valor} ${unidad[1]}`
-  }
-  return formatFrequency(plan.frequency ?? undefined)
-}
-
-function formatFrequency(frequency?: string): string {
-  switch (frequency) {
-    case 'monthly': return '/mes'
-    case 'quarterly': return '/trimestre'
-    case 'semiannual': return '/semestre'
-    case 'biannual': return '/semestre'
-    case 'annual': return '/año'
-    case 'daily': return '/día'
-    case 'weekly': return '/semana'
-    default: return '/mes'
-  }
-}
-
-function formatDuration(days: number): string {
-  if (days === 1) return '1 día'
-  if (days === 7) return '1 semana'
-  if (days === 30 || days === 31) return '1 mes'
-  if (days === 90) return '3 meses'
-  if (days === 180) return '6 meses'
-  if (days === 365 || days === 366) return '1 año'
-  return `${days} días`
-}
-
-function formatDuracionPlan(plan: MembershipPlan): string {
-  const unidad = plan.duration_unit ? UNIDADES[plan.duration_unit] : undefined
-  const valor = plan.duration_value ?? null
-  if (unidad && valor && valor > 0) return `${valor} ${valor === 1 ? unidad[0] : unidad[1]}`
-  return formatDuration(plan.duration_days)
-}
 
 export function MembershipPlans({ plans: propPlans, primaryColor, organizationSubdomain, branchId }: MembershipPlansProps) {
   const router = useRouter()

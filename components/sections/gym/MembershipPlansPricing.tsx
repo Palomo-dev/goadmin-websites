@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import type { MembershipPlanPublic } from '@/lib/supabase/queries'
+import { formatPeriodo } from '@/lib/memberships/periodo'
 
 interface MembershipPlansPricingProps {
   content: {
@@ -8,11 +10,19 @@ interface MembershipPlansPricingProps {
     cta_url?: string
   }
   primaryColor?: string
-  data?: { products?: any[] }
+  /**
+   * `data.membershipPlans`: los planes activos con el precio vigente de su
+   * producto (`getMembershipPlans`, el mismo de /membresias), cargados por
+   * app/[[...slug]]/page.tsx. Antes leía `data.products`, que es el catálogo
+   * de productos y ni siquiera se cargaba con esta sección: salía vacía.
+   */
+  data?: { membershipPlans?: MembershipPlanPublic[] }
 }
 
 export function MembershipPlansPricing({ content, primaryColor, data }: MembershipPlansPricingProps) {
-  const plans = data?.products || []
+  const plans = data?.membershipPlans || []
+  // La compra es el producto del plan en un pedido web: se hace en /membresias.
+  const ctaUrl = content.cta_url || '/membresias'
 
   return (
     <div>
@@ -24,7 +34,7 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
       )}
       {plans.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((plan: any, i: number) => (
+          {plans.map((plan, i) => (
             <div
               key={plan.id || i}
               className={`rounded-2xl border-2 p-6 text-center transition-shadow hover:shadow-lg dark:bg-gray-800/50 dark:border-gray-600 ${i === 1 ? 'scale-105 shadow-lg' : ''}`}
@@ -38,13 +48,19 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
               <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{plan.name}</h3>
               {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.description}</p>}
               <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: primaryColor }}>
-                  ${plan.price != null ? Number(plan.price).toLocaleString('es-CO') : '---'}
-                </span>
-                <span className="text-gray-500 dark:text-gray-400">/mes</span>
+                {plan.price !== null ? (
+                  <>
+                    <span className="text-4xl font-bold" style={{ color: primaryColor }}>
+                      ${Number(plan.price).toLocaleString('es-CO')}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">{formatPeriodo(plan)}</span>
+                  </>
+                ) : (
+                  <span className="text-lg font-medium text-gray-500 dark:text-gray-400">Consulta el precio en recepción</span>
+                )}
               </div>
               <Link
-                href={content.cta_url || '/checkout'}
+                href={ctaUrl}
                 className="block w-full px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
                 style={{
                   backgroundColor: i === 1 ? primaryColor : 'transparent',

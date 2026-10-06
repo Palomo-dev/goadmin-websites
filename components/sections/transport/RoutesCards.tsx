@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { RutaSeccion } from '@/lib/website/datosSecciones'
 
 interface RoutesCardsProps {
   content: {
@@ -8,7 +9,8 @@ interface RoutesCardsProps {
     cta_url?: string
   }
   primaryColor?: string
-  data?: { routes?: any[] }
+  /** `data.routes`: lo carga app/[[...slug]]/page.tsx (lib/website/datosSecciones.ts). */
+  data?: { routes?: RutaSeccion[] }
 }
 
 export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
@@ -24,7 +26,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
       )}
       {routes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {routes.map((route: any, i: number) => (
+          {routes.map((route, i) => (
             <div key={route.id || i} className="border dark:border-gray-700 rounded-xl p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl">🚌</span>
@@ -42,7 +44,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
                   {route.origin_name} → {route.destination_name}
                 </p>
               )}
-              {route.base_fare && (
+              {route.base_fare !== null && route.base_fare > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Desde</span>
                   <span className="font-bold text-lg" style={{ color: primaryColor }}>

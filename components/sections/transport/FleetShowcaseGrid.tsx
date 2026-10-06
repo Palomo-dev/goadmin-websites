@@ -1,10 +1,13 @@
+import type { VehiculoSeccion } from '@/lib/website/datosSecciones'
+
 interface FleetShowcaseGridProps {
   content: {
     title?: string
     subtitle?: string
   }
   primaryColor?: string
-  data?: { vehicles?: any[] }
+  /** `data.vehicles`: lo carga app/[[...slug]]/page.tsx (lib/website/datosSecciones.ts). */
+  data?: { vehicles?: VehiculoSeccion[] }
 }
 
 export function FleetShowcaseGrid({ content, primaryColor, data }: FleetShowcaseGridProps) {
@@ -20,15 +23,15 @@ export function FleetShowcaseGrid({ content, primaryColor, data }: FleetShowcase
       )}
       {vehicles.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vehicles.map((v: any, i: number) => (
+          {vehicles.map((v, i) => (
             <div key={v.id || i} className="rounded-xl border dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
               {v.image_url ? (
-                <img src={v.image_url} alt={`${v.brand} ${v.model}`} className="w-full h-48 object-cover" loading="lazy" />
+                <img src={v.image_url} alt={[v.brand, v.model].filter(Boolean).join(' ')} className="w-full h-48 object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-5xl">🚌</div>
               )}
               <div className="p-4">
-                <h3 className="font-bold text-lg text-gray-900 dark:text-white">{v.brand} {v.model}</h3>
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">{[v.brand, v.model].filter(Boolean).join(' ') || 'Vehículo'}</h3>
                 {v.year && <p className="text-gray-500 dark:text-gray-400 text-sm">Año {v.year}</p>}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {v.passenger_capacity && (
