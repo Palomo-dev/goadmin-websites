@@ -11,9 +11,10 @@
  * ReservationCtaForm antes de la extracción.
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { parseCotizacion, parseDepositoCreado, SIN_DEPOSITO, type CotizacionDeposito, type DepositoCreado } from './deposito-modelo'
 
-export type EstadoReserva = 'idle' | 'checking' | 'submitting' | 'success' | 'error' | 'no_availability'
+export type EstadoReserva = 'idle' | 'checking' | 'submitting' | 'paying' | 'success' | 'error' | 'no_availability'
 
 export interface FranjaDisponible {
   time: string
@@ -31,6 +32,8 @@ export interface ReservaCreada {
   partySize: number
   /** Ruta de gestión por token (`/reserva/mesa/<token>`), si la base ya emite tokens (migración D2). */
   manageUrl?: string
+  /** Depósito por pagar (migración D7): la reserva queda «pendiente de pago». */
+  deposito?: DepositoCreado | null
 }
 
 export interface DatosReserva {
@@ -62,6 +65,49 @@ interface Opciones {
 
 function esReservaCreada(v: unknown): v is ReservaCreada {
   return typeof v === 'object' && v !== null && 'code' in v && 'date' in v
+}
+
+/**
+ * ¿La sede pide depósito? Una consulta por sede (la ruta resuelve la
+ * organización por el host). Mientras carga, o si falla, sin depósito: la
+ * base vuelve a decidir al crear la reserva.
+ */
+export function useCotizacionDeposito(organizationId: number | null | undefined, branchId: number | null): CotizacionDeposito {
+  const [cotizacion, setCotizacion] = useState<CotizacionDeposito>(SIN_DEPOSITO)
+  useEffect(() => {
+    if (!organizationId) return
+    let vivo = true
+    const params = new URLSearchParams({ organizationId: String(organizationId), partySize: '1' })
+    if (branchId) params.set('branchId', String(branchId))
+    fetch(`/api/restaurant-reservations/deposito?${params}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => vivo && setCotizacion(parseCotizacion(d)))
+      .catch(() => vivo && setCotizacion(SIN_DEPOSITO))
+    return () => {
+      vivo = false
+    }
+  }, [organizationId, branchId])
+  return cotizacion
+}
+
+/**
+ * Cobro del depósito con la pasarela de la organización: el MISMO
+ * `/api/checkout/init` de los pedidos (fuente `restaurant_reservation`). Al
+ * volver de la pasarela, el cliente llega a la página de su reserva, que dice
+ * si el pago ya se confirmó.
+ */
+async function urlDePagoDeposito(reserva: ReservaCreada, pago: { source: string; sourceId: string; gateway: string }): Promise<string> {
+  const retorno = reserva.manageUrl ? `${window.location.origin}${reserva.manageUrl}` : window.location.href.split('?')[0]
+  const res = await fetch('/api/checkout/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gateway: pago.gateway, returnUrl: retorno, source: pago.source, sourceId: pago.sourceId }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || typeof data.checkoutUrl !== 'string') {
+    throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo abrir el pago.')
+  }
+  return data.checkoutUrl
 }
 
 export function useReservaMesa({ organizationId, branchId, slotInterval, errorMessage, origen = 'ReservationCtaForm', limpiarFranjas = false }: Opciones) {
@@ -171,8 +217,25 @@ export function useReservaMesa({ organizationId, branchId, slotInterval, errorMe
           return
         }
 
-        setReservationResult(esReservaCreada(data.data) ? data.data : null)
-        setStatus('success')
+        const creada: ReservaCreada | null = esReservaCreada(data.data)
+          ? { ...data.data, deposito: parseDepositoCreado(data.data.deposito) }
+          : null
+        setReservationResult(creada)
+        const pago = data.data?.pago
+        if (creada?.deposito && pago && typeof pago.sourceId === 'string' && typeof pago.gateway === 'string') {
+          // Con depósito: directo a la pasarela. Si no abre, la reserva queda
+          // pendiente de pago (se libera sola) y se ofrece reintentar.
+          setStatus('paying')
+          try {
+            window.location.assign(await urlDePagoDeposito(creada, pago))
+          } catch (e) {
+            setStatus('success')
+            setErrorMsg(e instanceof Error ? e.message : 'No se pudo abrir el pago.')
+          }
+          return
+        } else {
+          setStatus('success')
+        }
       } catch (err) {
         console.error(`[${origen}] Submit error:`, err)
         setStatus('error')
@@ -181,6 +244,22 @@ export function useReservaMesa({ organizationId, branchId, slotInterval, errorMe
     },
     [organizationId, branchId, honeypot, errorMessage, fallar, origen],
   )
+
+  /** Reintentar el pago del depósito de la reserva ya creada. */
+  const pagarDeposito = useCallback(async () => {
+    const r = reservationResult
+    if (!r?.deposito) return
+    setStatus('paying')
+    setErrorMsg('')
+    try {
+      window.location.assign(
+        await urlDePagoDeposito(r, { source: 'restaurant_reservation', sourceId: r.id, gateway: r.deposito.pasarela }),
+      )
+    } catch (e) {
+      setStatus('success')
+      setErrorMsg(e instanceof Error ? e.message : 'No se pudo abrir el pago.')
+    }
+  }, [reservationResult])
 
   const reiniciar = useCallback(() => {
     setStatus('idle')
@@ -204,6 +283,7 @@ export function useReservaMesa({ organizationId, branchId, slotInterval, errorMe
     fallar,
     checkAvailability,
     submit,
+    pagarDeposito,
     reiniciar,
   }
 }

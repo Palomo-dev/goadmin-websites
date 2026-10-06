@@ -12,6 +12,7 @@ import { fechaLarga, horaEnZona, hoyEnZona } from '@/lib/restaurant/horario'
 import { tokenValido } from '@/lib/restaurant/reservas-errores'
 import { leerReservaPorToken } from '@/lib/restaurant/reservas-servidor'
 import { CancelarReservaMesa } from './CancelarReservaMesa'
+import { formatoMonto } from '@/lib/restaurant/deposito-modelo'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,13 +71,36 @@ export default async function ReservaMesaPage({ params }: { params: Promise<{ to
     getMetaPixelId(org.id),
   ])
 
-  const estado = reserva ? ETIQUETAS[reserva.status] ?? { texto: reserva.status, clase: 'bg-muted' } : null
+  const estado = reserva
+    ? reserva.deposito?.estado === 'pending' && reserva.status === 'pending'
+      ? { texto: 'Pendiente de pago', clase: ETIQUETAS.pending.clase }
+      : ETIQUETAS[reserva.status] ?? { texto: reserva.status, clase: 'bg-muted' }
+    : null
   const limite = reserva ? new Date(reserva.cancelableHasta) : null
   const limiteTexto =
     reserva && limite
       ? `${fechaLarga(hoyEnZona(reserva.zonaHoraria, limite))} a las ${horaEnZona(limite, reserva.zonaHoraria) ?? ''}`
       : null
   const telefono = reserva?.sede?.telefono ?? null
+  // Depósito (D7): al volver de la pasarela el webhook puede tardar unos segundos.
+  const dep = reserva?.deposito ?? null
+  const depositoTexto = dep
+    ? dep.estado === 'pending'
+      ? `Estamos esperando la confirmación del pago del depósito de ${formatoMonto(dep.monto, dep.moneda)}. Si ya pagaste, recarga esta página en unos segundos.`
+      : dep.estado === 'paid'
+        ? `Depósito pagado: ${formatoMonto(dep.monto, dep.moneda)}.${
+            dep.reembolsableHasta
+              ? ` Se devuelve si cancelas antes del ${fechaLarga(hoyEnZona(reserva!.zonaHoraria, new Date(dep.reembolsableHasta)))} a las ${horaEnZona(new Date(dep.reembolsableHasta), reserva!.zonaHoraria) ?? ''}.`
+              : ' No es reembolsable.'
+          }`
+        : dep.estado === 'failed'
+          ? 'El pago del depósito fue rechazado y la mesa se liberó. Puedes hacer una reserva nueva.'
+          : dep.estado === 'expired'
+            ? 'El depósito no se pagó a tiempo y la mesa se liberó. Puedes hacer una reserva nueva.'
+            : dep.estado === 'refunded'
+              ? `Depósito reembolsado: ${formatoMonto(dep.monto, dep.moneda)}.`
+              : 'Recibimos el pago del depósito después de liberar la mesa: el restaurante te contactará para devolverlo.'
+    : null
   const whatsapp = enlaceWhatsApp(telefono)
 
   return (
@@ -141,6 +165,19 @@ export default async function ReservaMesaPage({ params }: { params: Promise<{ to
                 </div>
               )}
             </dl>
+
+            {depositoTexto && (
+              <p
+                role="status"
+                className={`rounded-lg border p-3 text-sm ${
+                  dep?.estado === 'pending'
+                    ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200'
+                    : 'border-border bg-background'
+                }`}
+              >
+                {depositoTexto}
+              </p>
+            )}
 
             {reserva.status === 'cancelled' ? (
               <p className="text-center text-sm text-muted-foreground">Esta reserva está cancelada.</p>
