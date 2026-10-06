@@ -24,6 +24,11 @@ interface OrderConfirmationProps {
   /** Restaurante: «Seguir pidiendo» lleva a la carta. */
   isRestaurant?: boolean
   resumen?: ResumenPedidoConfirmado | null
+  /**
+   * Carta o catálogo de la sede del pedido, con su prefijo si la sede se sirve por ruta
+   * (`rutaSitio`, lo calcula app/checkout/page.tsx). Sin él: `/menu` o `/productos`, como antes.
+   */
+  rutaSeguirPidiendo?: string
 }
 
 /**
@@ -34,7 +39,8 @@ interface OrderConfirmationProps {
  * pedido» al seguimiento con su token, y «Seguir pidiendo» a la carta en restaurante. Dice
  * «recibido», no «confirmado»: el restaurante aún no lo ha aceptado.
  */
-export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, isRestaurant = false, resumen = null }: OrderConfirmationProps) {
+export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, isRestaurant = false, resumen = null, rutaSeguirPidiendo }: OrderConfirmationProps) {
+  const rutaSeguir = rutaSeguirPidiendo || (isRestaurant ? '/menu' : '/productos')
   if (!resumen) {
     return (
       <div className="max-w-lg mx-auto text-center py-12">
@@ -57,7 +63,7 @@ export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, is
           <Link href="/">
             <Button variant="outline">Volver al inicio</Button>
           </Link>
-          <Link href="/productos">
+          <Link href={rutaSeguir}>
             <Button style={{ backgroundColor: primaryColor }}>
               Seguir comprando
             </Button>
@@ -113,7 +119,7 @@ export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, is
             </Button>
           </Link>
         )}
-        <Link href={isRestaurant ? '/menu' : '/productos'} className="sm:flex-1">
+        <Link href={rutaSeguir} className="sm:flex-1">
           <Button variant="outline" className="w-full">
             {isRestaurant ? 'Seguir pidiendo' : 'Seguir comprando'}
           </Button>

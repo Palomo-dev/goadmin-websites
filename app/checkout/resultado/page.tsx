@@ -1,4 +1,5 @@
 import { getOrgContext } from '@/lib/get-org-context'
+import { rutaSitio } from '@/lib/outlet/rutaSitio'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -198,7 +199,7 @@ export default async function CheckoutResultadoPage({
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Sin referencia de orden</h1>
           <p className="text-gray-500 mb-8">No se proporcionó una referencia de pedido válida.</p>
           <Link
-            href="/"
+            href={rutaSitio('/', ctx.outlet, ctx.sedePorPrefijo)}
             className="inline-block px-6 py-3 rounded-lg text-white font-medium"
             style={{ backgroundColor: primaryColor }}
           >
@@ -233,7 +234,7 @@ export default async function CheckoutResultadoPage({
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Orden no encontrada</h1>
           <p className="text-gray-500 mb-8">No pudimos encontrar la orden <strong>{orderRef}</strong>.</p>
           <Link
-            href="/"
+            href={rutaSitio('/', ctx.outlet, ctx.sedePorPrefijo)}
             className="inline-block px-6 py-3 rounded-lg text-white font-medium"
             style={{ backgroundColor: primaryColor }}
           >
@@ -311,7 +312,7 @@ export default async function CheckoutResultadoPage({
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             {paymentStatus === 'failed' && (
               <Link
-                href="/checkout"
+                href={rutaSitio('/checkout', ctx.outlet, ctx.sedePorPrefijo)}
                 className="inline-block px-6 py-3 rounded-lg text-white font-medium"
                 style={{ backgroundColor: primaryColor }}
               >
@@ -330,7 +331,7 @@ export default async function CheckoutResultadoPage({
               </Link>
             )}
             <Link
-              href={organization.type_id === 1 ? '/menu' : '/productos'}
+              href={rutaSitio(organization.type_id === 1 ? '/menu' : '/productos', ctx.outlet, ctx.sedePorPrefijo)}
               className="inline-block px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
             >
               {organization.type_id === 1 ? 'Seguir pidiendo' : 'Seguir comprando'}

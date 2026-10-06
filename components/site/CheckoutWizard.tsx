@@ -14,6 +14,7 @@ import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
+import { SelectorSede, type SedeSelector } from '@/components/site/header/SelectorSede'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
@@ -106,12 +107,6 @@ export interface SedePedidoCheckout {
   zona: string
 }
 
-export interface SedePublicadaCheckout {
-  id: number
-  nombre: string
-  slug: string
-}
-
 interface CheckoutWizardProps {
   organizationId: number
   primaryColor: string
@@ -121,7 +116,14 @@ interface CheckoutWizardProps {
   organizationSubdomain?: string
   branchId?: number | null
   sedePedido?: SedePedidoCheckout | null
-  sedesPublicadas?: SedePublicadaCheckout[]
+  /** Sedes publicadas con su `href` base (lib/outlet/sedeLayout.ts): «Cambiar sede» y el aviso del carrito de otra sede. */
+  sedesSelector?: SedeSelector[]
+  /** Sede de la petición (`null` en el sitio principal): la del carrito que se está cobrando. */
+  sedeActualId?: number | null
+  /** `''` o `'/<slug>'` si la sede se sirve por prefijo de ruta (rutaSitio). */
+  prefijoSede?: string
+  /** Carta o catálogo de esta sede, con su prefijo: «Seguir pidiendo» de la confirmación. */
+  rutaSeguirPidiendo?: string
 }
 
 const METHOD_ICONS: Record<string, string> = {
@@ -162,7 +164,7 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingDescription: '',
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesPublicadas = [] }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
   const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
@@ -177,7 +179,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [resumenPedido, setResumenPedido] = useState<ResumenPedidoConfirmado | null>(null)
   // Sitio principal sin sede: carritos guardados en sitios de sede (el carrito es por sede).
-  const [carritosDeSede, setCarritosDeSede] = useState<{ sede: SedePublicadaCheckout; unidades: number }[]>([])
+  const [carritosDeSede, setCarritosDeSede] = useState<{ sede: SedeSelector; unidades: number }[]>([])
   // Urgencia: generar número pseudo-aleatorio estable por producto
   const getUrgencyNumber = (id: number | string) => {
     const seed = typeof id === 'string' ? id.charCodeAt(0) * 7 + id.length : Number(id) * 13
@@ -324,9 +326,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
       // Sitio principal (sin sede en la URL): ¿hay pedidos empezados en el sitio de alguna sede?
       // El checkout global no los ve (otra clave de carrito); se avisa en vez de cobrar otro.
-      if (typeof branchId !== 'number' && sedesPublicadas.length > 0) {
-        const conItems: { sede: SedePublicadaCheckout; unidades: number }[] = []
-        for (const sede of sedesPublicadas) {
+      if (typeof branchId !== 'number' && sedesSelector.length > 0) {
+        const conItems: { sede: SedeSelector; unidades: number }[] = []
+        // Solo sedes con sitio propio (href no vacío): el sitio principal es este mismo checkout.
+        for (const sede of sedesSelector.filter((s) => s.href !== '')) {
           try {
             const crudo = localStorage.getItem(getCartKey(subdomain, sede.id))
             const lista = crudo ? JSON.parse(crudo) : []
@@ -740,6 +743,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         primaryColor={primaryColor}
         isRestaurant={isRestaurant}
         resumen={resumenPedido}
+        rutaSeguirPidiendo={rutaSeguirPidiendo}
       />
     )
   }
@@ -754,8 +758,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         <ul className="space-y-3 text-left">
           {carritosDeSede.map(({ sede, unidades }) => (
             <li key={sede.id}>
-              <Link
-                href={`/${encodeURIComponent(sede.slug)}`}
+              <a
+                href={`${sede.href}/checkout`}
                 className="flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-sm"
               >
                 <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
@@ -763,7 +767,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   {sede.nombre}
                 </span>
                 <span className="text-xs text-gray-500">{unidades} {unidades === 1 ? 'producto' : 'productos'} →</span>
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
@@ -861,21 +865,16 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             <MapPin className="h-4 w-4 flex-shrink-0" aria-hidden="true" style={{ color: primaryColor }} />
             <span className="text-gray-700">Pides en <strong className="text-gray-900">{sedePedido.nombre}</strong></span>
             {sedePedido.direccion && <span className="text-gray-500">· {sedePedido.direccion}</span>}
-            {sedesPublicadas.length >= 2 && (
-              <details className="ml-auto">
-                <summary className="cursor-pointer select-none font-medium" style={{ color: primaryColor }}>
-                  Cambiar sede
-                </summary>
-                <div className="mt-2 space-y-1">
-                  <p className="text-xs text-gray-500">Cada sede tiene su carta y su carrito: tu pedido de esta sede queda guardado.</p>
-                  {sedesPublicadas.filter((s) => s.id !== sedePedido.id).map((s) => (
-                    <Link key={s.id} href={`/${encodeURIComponent(s.slug)}`} className="block text-sm text-gray-800 hover:underline">
-                      {s.nombre}
-                    </Link>
-                  ))}
-                </div>
-              </details>
-            )}
+            {/* «Cambiar sede»: el SelectorSede de C (avisa que el carrito de esta sede queda guardado). */}
+            <SelectorSede
+              sedes={sedesSelector}
+              actualId={sedeActualId}
+              subdomain={organizationSubdomain || ''}
+              primaryColor={primaryColor}
+              prefijoActual={prefijoSede}
+              apariencia="enlace"
+              className="ml-auto"
+            />
           </div>
         </div>
       )}

@@ -8,6 +8,8 @@ import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
 import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
 import { horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
+import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
+import { rutaSitio } from '@/lib/outlet/rutaSitio'
 import { horarioDeSede, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
 import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
@@ -88,15 +90,20 @@ export default async function CheckoutPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, branchId } = ctx
+  const { organization, primaryColor, branchId, outlet, sedePorPrefijo } = ctx
   const isRestaurant = organization.type_id === 1
-  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales] = await Promise.all([
+  const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede] = await Promise.all([
     getWebsitePaymentMethods(organization.id),
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
     // Lista cacheada (SETTINGS_TTL); solo restaurante la usa para el horario y la banda de sede.
     isRestaurant ? getOrganizationBranches(organization.id) : Promise.resolve([]),
+    // Sedes para «Cambiar sede» (SelectorSede de C, con el href de cada sede ya calculado) y el
+    // aviso del carrito de otra sede. Mismas lecturas cacheadas que el layout de las demás páginas.
+    isRestaurant ? getDatosSedeLayout(organization, outlet, (organization.website_settings as any) ?? null) : Promise.resolve(null),
   ])
+  // Enlaces internos con el prefijo de la sede servida por ruta (contrato de C, rutaSitio).
+  const ruta = (r: string) => rutaSitio(r, outlet, sedePorPrefijo)
 
   // Sede del pedido: la del sitio de sede o, en el sitio principal, la misma que elige
   // /api/orders (sedePorDefectoPedido). Su horario y su zona alimentan «¿Para cuándo?» con la
@@ -116,10 +123,6 @@ export default async function CheckoutPage() {
         zona: String(sedeFila.timezone || (organization as any).timezone || ZONA_POR_DEFECTO),
       }
     : null
-  // Sedes publicadas en la web (para «Cambiar sede» y el aviso del carrito de otra sede).
-  const sedesPublicadas = listaSedes
-    .filter((b) => b.is_web_published === true && b.slug)
-    .map((b) => ({ id: Number(b.id), nombre: String(b.name || ''), slug: String(b.slug) }))
 
   // Impuesto: solo si hay uno marcado como predeterminado (cacheado 300s)
   const defaultTax = await getDefaultTax(organization.id)
@@ -171,7 +174,7 @@ export default async function CheckoutPage() {
       {/* Mini header: logo + volver + moneda */}
       <header className="bg-white border-b py-2 md:py-3 px-4">
         <div className="container mx-auto flex items-center justify-between">
-          <a href="/" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-500 hover:text-gray-700 transition-colors">
+          <a href={ruta('/')} className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-500 hover:text-gray-700 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="md:w-4 md:h-4"><path d="m15 18-6-6 6-6"/></svg>
             Seguir comprando
           </a>
@@ -201,7 +204,10 @@ export default async function CheckoutPage() {
           organizationSubdomain={organization.subdomain || ''}
           branchId={branchId}
           sedePedido={sedePedido}
-          sedesPublicadas={sedesPublicadas}
+          sedesSelector={datosSede?.sedesSelector ?? []}
+          sedeActualId={datosSede?.sedeActualId ?? (typeof branchId === 'number' ? branchId : null)}
+          prefijoSede={datosSede?.prefijoSede ?? ctx.prefijoSede ?? ''}
+          rutaSeguirPidiendo={ruta(isRestaurant ? '/menu' : '/productos')}
         />
       </main>
 
