@@ -116,7 +116,7 @@ export async function GET(
           employments (
             id,
             organization_members (
-              id,
+              id, organization_id,
               profiles ( id, first_name, last_name, phone, avatar_url )
             )
           )
@@ -124,7 +124,8 @@ export async function GET(
         .eq('id', meta.driver_id)
         .maybeSingle()
 
-      if (driver) {
+      // Solo un conductor de esta misma organización.
+      if (driver && Number(driver.employments?.organization_members?.organization_id) === orgId) {
         const profile = driver.employments?.organization_members?.profiles
         result.driver = {
           id: driver.id,
@@ -140,7 +141,7 @@ export async function GET(
     if (meta.vehicle_id) {
       const { data: vehicle } = await (supabase as any)
         .from('vehicles')
-        .select('id, plate_number, vehicle_type, brand, model, color, year')
+        .select('id, plate, vehicle_type, brand, model, color, year')
         .eq('id', meta.vehicle_id)
         .eq('organization_id', orgId)
         .maybeSingle()
@@ -148,7 +149,7 @@ export async function GET(
       if (vehicle) {
         result.vehicle = {
           id: vehicle.id,
-          plateNumber: vehicle.plate_number,
+          plateNumber: vehicle.plate,
           vehicleType: vehicle.vehicle_type,
           brand: vehicle.brand,
           model: vehicle.model,
