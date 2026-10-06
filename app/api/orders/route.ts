@@ -8,6 +8,7 @@ import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { esSede, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
+import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 import {
   desfasesDePrecio,
   productIdDeLinea,
@@ -406,7 +407,6 @@ export async function POST(request: NextRequest) {
 
     // Subtotal e impuesto con precios del servidor
     const calculatedSubtotal = subtotalDeLineas(lineas)
-    const taxTotal = taxRate > 0 ? Math.round(calculatedSubtotal * taxRate / 100) : 0
 
     // ── Cupón: misma regla que /api/coupons/validate, sobre el subtotal del servidor ──
     // Antes se cobraba el `couponDiscount` que mandaba el cliente.
@@ -461,8 +461,17 @@ export async function POST(request: NextRequest) {
       })
     }
     const totalDiscountAmount = resolvedCouponDiscount + resolvedPromoDiscount
-    // Si el impuesto está incluido en el precio, no sumarlo al total
-    const taxForTotal = taxIncluded ? 0 : taxTotal
+    // Impuesto sobre la base con descuento (cupón + promociones prorrateados por línea), con la
+    // regla del POS (lib/orders/impuestoPedido.ts). Antes iba sobre el subtotal bruto. Si el
+    // impuesto está incluido en el precio, no se suma al total.
+    const impuesto = calcularImpuestoPedido({
+      brutos: lineas.map((l) => redondear2(l.precioUnitario * l.cantidad)),
+      descuento: totalDiscountAmount,
+      tasa: taxRate,
+      incluido: taxIncluded,
+    })
+    const taxTotal = impuesto.total
+    const taxForTotal = impuesto.sumaAlTotal
     // PENDIENTE (envío): el costo sigue viniendo del cliente. El checkout elige la tarifa de
     // /api/shipping/calculate o la tarifa plana de los ajustes del sitio, pero no envía el id de
     // la tarifa, así que el servidor no puede recalcularlo sin cambiar el contrato del checkout
@@ -551,9 +560,11 @@ export async function POST(request: NextRequest) {
     // puede responder `success` ni llegar a /api/checkout/init. Si fallan, el pedido se cancela y
     // se responde con error. Así quedaron 2 pedidos sin líneas, uno de ellos pagado.
     // Crear web_order_items con el precio unitario real (base + extras, una sola vez)
-    const orderItems = construirFilasPedido(lineas, webOrder.id, taxRate)
+    const orderItems = construirFilasPedido(lineas, webOrder.id, impuesto.porLinea)
     let itemsError: unknown = null
     try {
+      // Las filas van tipadas (`WebOrderItemInsert`, columnas verificadas por MCP) desde
+      // construirFilasPedido; el cliente genérico sigue sin inferir tablas de types/database.ts.
       const { error } = await (supabase as any)
         .from('web_order_items')
         .insert(orderItems)

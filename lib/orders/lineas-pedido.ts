@@ -12,17 +12,24 @@
  */
 
 import type { LineaResuelta } from '@/lib/products/precio-servidor'
+import type { Json, WebOrderItemInsert } from '@/types/database'
 
 const redondear2 = (n: number): number => Math.round(n * 100) / 100
 
+/**
+ * `impuestosPorLinea`: impuesto de cada línea, en el mismo orden, calculado por
+ * `calcularImpuestoPedido` (lib/orders/impuestoPedido.ts) sobre la base con el descuento del pedido
+ * prorrateado. Así `Σ tax_amount` = `web_orders.tax_total`, que es lo que el ERP suma al facturar
+ * (`webOrderTotals.ts`) cuando el impuesto no va incluido.
+ */
 export function construirFilasPedido(
   lineas: LineaResuelta[],
   webOrderId: string,
-  taxRate: number,
-): Record<string, unknown>[] {
-  return lineas.map((l) => {
+  impuestosPorLinea: number[],
+): WebOrderItemInsert[] {
+  return lineas.map((l, i) => {
     const itemTotal = redondear2(l.precioUnitario * l.cantidad)
-    const itemTax = taxRate > 0 ? Math.round(itemTotal * taxRate / 100) : 0
+    const itemTax = impuestosPorLinea[i] ?? 0
     // Mismo contenido que antes en `modifiers`: los antiguos (sin precio) y los de grupos, estos
     // con nombre y precio tomados de la base.
     const allModifiers = [...l.modificadoresSinPrecio, ...l.modificadores]
@@ -35,7 +42,7 @@ export function construirFilasPedido(
       unit_price: l.precioUnitario,
       tax_amount: itemTax,
       total: itemTotal,
-      ...(allModifiers.length > 0 && { modifiers: allModifiers }),
+      ...(allModifiers.length > 0 && { modifiers: allModifiers as unknown as Json }),
       ...(l.notas && { notes: l.notas }),
     }
   })
