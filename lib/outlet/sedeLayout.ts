@@ -20,7 +20,7 @@ import { CABECERA_SEDE_RUTA } from '@/lib/get-org-context'
 import { conPrefijo, prefijoSede } from './rutaSitio'
 import { getSedesWeb, getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { direccionCompleta, sedeAceptaReservas } from '@/lib/restaurant/sedes-modelo'
-import { horarioRevisado, parseHorario, type HorarioSemana } from '@/lib/restaurant/horario'
+import { horarioDeSede, horarioRevisado, type HorarioSemana } from '@/lib/restaurant/horario'
 import { urlBasePrincipal } from '@/lib/seo/sede'
 import { urlComoLlegar } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
@@ -88,7 +88,7 @@ export async function getDatosSedeLayout(
         id: s.id,
         nombre: s.nombre,
         href,
-        horario: parseHorario(s.horarioJson),
+        horario: horarioDeSede(s.horarioJson),
         zonaHoraria: s.zonaHoraria ?? organization.timezone ?? 'America/Bogota',
       }]
     })
@@ -98,7 +98,7 @@ export async function getDatosSedeLayout(
     let horarioPie: HorarioSemana | null = null
 
     const sedeWebActual = sedeActualId !== null ? sedesWeb.find((s) => s.id === sedeActualId) ?? null : null
-    if (sedeWebActual) horarioPie = horarioRevisado(parseHorario(sedeWebActual.horarioJson))
+    if (sedeWebActual) horarioPie = horarioDeSede(sedeWebActual.horarioJson)
 
     if (esRestaurante) {
       const [datos, paginas] = await Promise.all([

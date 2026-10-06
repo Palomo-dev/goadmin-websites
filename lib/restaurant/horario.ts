@@ -181,6 +181,19 @@ export function horarioRevisado(horario: HorarioSemana | null): HorarioSemana | 
   return horario && !esHorarioPorDefecto(horario) ? horario : null
 }
 
+/**
+ * Horario con el que se CALCULA algo (estado «Abierto/Cerrado», banner de la carta, franjas,
+ * validación del pedido) a partir de `branches.opening_hours`: `null` si no hay horario
+ * utilizable o si es el por defecto del ERP (sin revisar). Con `null`, cada consumidor conserva
+ * su comportamiento sin horario: no se pinta cerrado y no se rechaza ningún pedido por hora.
+ *
+ * Única regla para la carta (`MenuFull`), el checkout, `/api/orders`, el pie y el selector.
+ * Para PINTAR la tabla de horario (con aviso de «sin revisar» en el editor) se usa `parseHorario`.
+ */
+export function horarioDeSede(json: unknown): HorarioSemana | null {
+  return horarioRevisado(parseHorario(json))
+}
+
 const DIA_ES: Record<string, Dia> = {
   lunes: 'monday',
   martes: 'tuesday',
