@@ -201,9 +201,14 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
     // `signature_dishes` elige platos de la misma lista que la carta. En la
     // vista previa también se precargan (ver `esVistaPrevia`).
+    // La carta (`menu_full`, y `menu_preview` en /menu) no usa `data.products`: lee
+    // `data.menuProducts` (abajo). Cargar también los 500 duplicaba el catálogo en /menu.
+    // `menu_preview` fuera de /menu es un avance y sí sigue con `data.products`.
     const needsProducts = esVistaPrevia || sectionTypes.some(t =>
-      ['products_grid', 'featured_products', 'menu_preview', 'menu_full', 'specialties', 'signature_dishes'].includes(t)
+      ['products_grid', 'featured_products', 'specialties', 'signature_dishes'].includes(t) ||
+      (t === 'menu_preview' && currentSlug !== 'menu')
     )
+    const needsCategories = needsProducts || sectionTypes.some((t) => t === 'menu_full' || t === 'menu_preview')
     if (needsProducts) {
       data.products = await getOrganizationProducts(organization.id, 500, branchId)
     }
@@ -273,7 +278,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         )
       }
     }
-    if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsProducts) {
+    if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsCategories) {
       data.categories = await getOrganizationCategories(organization.id, branchId)
     }
     if (sectionTypes.includes('offers')) {
