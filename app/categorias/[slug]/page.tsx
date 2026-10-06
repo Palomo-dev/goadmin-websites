@@ -5,6 +5,7 @@ import { getPlantillaPublica } from '@/lib/website/v2/lectorPublico'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CategoryDetailRenderer } from '@/components/sections/category-detail/CategoryDetailRenderer'
+import { JsonLd } from '@/components/site/JsonLd'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -16,8 +17,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const category = await getCategoryBySlug(ctx.organization.id, slug, ctx.branchId)
   if (!category) return { title: 'Categoría no encontrada' }
   return {
-    title: `${category.meta_title || category.name} | ${ctx.organization.name}`,
-    description: category.meta_description || category.description || `Productos de ${category.name}`
+    title: `${category.meta_title || category.name}${ctx.outlet ? ` · ${ctx.outlet.branchName}` : ''} | ${ctx.organization.name}`,
+    description: category.meta_description || category.description || `Productos de ${category.name}`,
+    // SEO local: la categoría de una sede tiene su propia URL (host de la sede o /<sede>).
+    alternates: { canonical: `${ctx.urlBase}/categorias/${encodeURIComponent(slug)}` },
   }
 }
 
@@ -80,10 +83,8 @@ export default async function CategoriaSlugPage({
   const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
     () => getWebsitePageByType(organization.id, 'category_detail'))
 
-  // F9.5 — JSON-LD ItemList para categoría
-  const baseUrl = organization.custom_domain
-    ? `https://${organization.custom_domain}`
-    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  // F9.5 — JSON-LD ItemList para categoría (URLs de la sede si la página es de una sede)
+  const baseUrl = ctx.urlBase
   const itemListJsonLd: Record<string, any> = {
     '@context': 'https://schema.org/',
     '@type': 'ItemList',
@@ -101,10 +102,7 @@ export default async function CategoriaSlugPage({
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId}>
       {/* F9.5 — JSON-LD ItemList */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
-      />
+      <JsonLd data={itemListJsonLd} />
       <CategoryDetailRenderer
         organization={organization}
         primaryColor={primaryColor}
