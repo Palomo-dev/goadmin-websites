@@ -13,6 +13,7 @@ import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/si
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
@@ -1050,7 +1051,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   >
                     <span aria-hidden="true">🍽️</span>
                     <span>
-                      Pides en la <strong>Mesa {mesa.nombre || ''}</strong>
+                      Pides en la <strong>{etiquetaMesa(mesa.nombre)}</strong>
                       {mesa.zona ? ` · ${mesa.zona}` : ''}
                       {mesa.nombreSede ? ` · ${mesa.nombreSede}` : ''}
                     </span>
@@ -1088,12 +1089,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           id="checkout-mesa"
                           value={mesaManual}
                           onChange={(e) => setMesaManual(e.target.value)}
-                          placeholder="Ej.: 4"
+                          placeholder="Ej.: 4 o Mesa 4"
                           maxLength={20}
                           aria-describedby="checkout-mesa-ayuda"
                         />
                         <p id="checkout-mesa-ayuda" className="text-xs text-gray-500 mt-1">
-                          Está en la mesa o en el código QR. Lo confirmamos antes de enviarlo a cocina.
+                          El número que ves en tu mesa. Lo confirmamos antes de enviarlo a cocina.
                         </p>
                       </div>
                     )}
