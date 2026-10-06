@@ -16,7 +16,8 @@
     "verify:reservas": "node --disable-warning=ExperimentalWarning scripts/verify-reservas.mjs",
     "verify:copias": "node scripts/verify-copias-erp.mjs",
     "verify:estilo": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-sitio.mjs",
-    "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs"
+    "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs",
+    "verify:ajustes": "node --disable-warning=ExperimentalWarning scripts/verify-ajustes-sitio.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
