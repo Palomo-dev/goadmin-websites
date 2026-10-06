@@ -33,6 +33,7 @@ import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion } from '@/lib/website/datosSecciones'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
+import { pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
 import { ContactSection } from '@/components/site/sections/ContactSection'
 import { getBusinessTypeConfig } from '@/types/organization'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -521,6 +522,8 @@ async function renderSlugFallback(
             initialFavorites={initialFavorites}
             branchId={branchId}
             timeZone={organization.timezone ?? null}
+            // Misma regla que el 403 de /api/orders, sobre los ajustes efectivos de la sede.
+            canOrder={!pedidoEnLineaApagado(organization.type_id === 1, (organization.website_settings as any)?.enable_online_ordering)}
           />
         </Layout>
       )

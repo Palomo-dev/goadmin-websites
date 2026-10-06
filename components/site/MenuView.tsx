@@ -1,5 +1,6 @@
 'use client'
 
+import { MENSAJE_PEDIDO_EN_LINEA_APAGADO } from '@/lib/orders/disponibilidadPedido'
 import { useState, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -104,6 +105,12 @@ interface MenuViewProps {
   branchId?: number | null
   /** Zona de la organización: «Agotado hoy · vuelve mañana» en su hora. */
   timeZone?: string | null
+  /**
+   * Se puede pedir desde la carta. `false` con el pedido en línea apagado en un restaurante
+   * (`pedidoEnLineaApagado`, la misma regla del 403 de /api/orders): la carta se ve, sin «Agregar».
+   * Por defecto `true`, como antes.
+   */
+  canOrder?: boolean
 }
 
 const SIN_GRUPOS = new Map<number, ModifierGroup[]>()
@@ -126,7 +133,7 @@ function getProductImageUrl(product: MenuProduct): string | null {
 export function MenuView({
   products, categories, tags, modifierTypes, variantRelations, modifierGroupsMap,
   primaryColor, organizationSubdomain, organizationName,
-  customerId, organizationId, initialFavorites = [], branchId, timeZone
+  customerId, organizationId, initialFavorites = [], branchId, timeZone, canOrder = true
 }: MenuViewProps) {
   const { ruta } = useRutaSitio()
   const zona = timeZone || 'America/Bogota'
@@ -233,7 +240,8 @@ export function MenuView({
   }
 
   const openProductDetail = (product: MenuProduct) => {
-    if (getProductModifiers(product.id).length === 0) {
+    // Sin pedido en línea, la hoja del plato (que respeta canOrder) en vez del selector antiguo.
+    if (!canOrder || getProductModifiers(product.id).length === 0) {
       setPlatoAbierto({
         ...toMenuItem(product as unknown as MenuSourceProduct, tagsPorId),
         requiresChoice: exigeEleccion(gruposDe(product)),
@@ -458,6 +466,11 @@ export function MenuView({
           </div>
         ) : (
           <div className="space-y-10">
+            {!canOrder && (
+              <p className="rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-700" role="status">
+                {MENSAJE_PEDIDO_EN_LINEA_APAGADO}
+              </p>
+            )}
             {groupedProducts.map((group, gi) => (
               <div key={gi}>
                 {group.category && (
@@ -530,7 +543,7 @@ export function MenuView({
                                   ${Number(price.price).toLocaleString('es-CO')}
                                 </span>
                               )}
-                              {outOfStock ? (
+                              {!canOrder ? null : outOfStock ? (
                                 <span className="text-xs text-red-500 font-medium">
                                   {product.carta_sede?.agotado ? 'Agotado hoy' : 'Agotado'}
                                   {vuelve ? <span className="block font-normal text-gray-500">{vuelve}</span> : null}
@@ -755,7 +768,7 @@ export function MenuView({
       <PlatoSheet
         item={platoAbierto}
         onClose={() => setPlatoAbierto(null)}
-        canOrder
+        canOrder={canOrder}
         organizationSubdomain={organizationSubdomain}
         branchId={branchId ?? null}
       />
