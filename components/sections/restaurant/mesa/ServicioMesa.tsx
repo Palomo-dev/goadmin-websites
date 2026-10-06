@@ -14,7 +14,7 @@
  * abre la hoja de la cuenta. Sin QR de mesa, la sección no pinta nada (salvo en el editor).
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BellRing, ReceiptText, Search, WifiOff } from 'lucide-react'
 import { normalizarServicioMesa, varianteSeccionMesa } from '@/lib/website/v2/contrato/seccionesMesa'
 import { irA, mostrarAviso, pedirCuenta, refrescarMesa, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
@@ -33,21 +33,27 @@ export function ServicioMesa(props: PropsSeccionMesa) {
     fijarConfigServicio(c)
   })
   // La barra queda fija arriba al pasar por ella (cada sección vive en su propio contenedor, así
-  // que `sticky` no la sostendría): un centinela marca cuándo salió de la pantalla.
-  const centinela = useRef<HTMLDivElement>(null)
+  // que `sticky` no la sostendría): un centinela marca cuándo salió de la pantalla. El centinela
+  // llega por callback ref (la barra no existe mientras la mesa se resuelve) y se mide en cada
+  // scroll: con IntersectionObserver el umbral no se notificaba al salir por arriba.
+  const [centinela, setCentinela] = useState<HTMLDivElement | null>(null)
   const [fija, setFija] = useState(false)
   const [alto, setAlto] = useState(0)
   useEffect(() => {
-    const el = centinela.current
-    if (!el || preview || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(([e]) => setFija(!e.isIntersecting && e.boundingClientRect.top < 0))
-    io.observe(el)
-    return () => io.disconnect()
-  }, [preview, mesa])
+    if (!centinela || preview) return
+    const medir = () => setFija(centinela.getBoundingClientRect().top < 0)
+    medir()
+    window.addEventListener('scroll', medir, { passive: true })
+    window.addEventListener('resize', medir)
+    return () => {
+      window.removeEventListener('scroll', medir)
+      window.removeEventListener('resize', medir)
+    }
+  }, [centinela, preview])
   // Alto de la barra: la carta fija sus categorías justo debajo (--barra-mesa-h).
-  const barraRef = useRef<HTMLDivElement>(null)
+  const [barra, setBarra] = useState<HTMLDivElement | null>(null)
   useEffect(() => {
-    const el = barraRef.current
+    const el = barra
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => {
       setAlto(el.offsetHeight)
@@ -58,7 +64,7 @@ export function ServicioMesa(props: PropsSeccionMesa) {
       ro.disconnect()
       document.documentElement.style.removeProperty('--barra-mesa-h')
     }
-  }, [mesa, variante])
+  }, [barra])
 
   if (!mesa) return <AvisosMesa />
 
@@ -103,9 +109,9 @@ export function ServicioMesa(props: PropsSeccionMesa) {
 
   return (
     <div>
-    <div ref={centinela} aria-hidden="true" />
+    <div ref={setCentinela} aria-hidden="true" />
     <div style={fija ? { height: alto } : undefined}>
-    <div ref={barraRef} className={fija ? 'fixed inset-x-0 top-0 z-40' : ''} data-barra-mesa>
+    <div ref={setBarra} className={fija ? 'fixed inset-x-0 top-0 z-40' : ''} data-barra-mesa>
       <div className="flex items-center gap-3 border-b px-4 py-3 md:px-5" style={{ backgroundColor: C.fondo, borderColor: C.borde, color: C.texto }}>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold" style={{ ...TITULO, backgroundColor: C.oscuro, color: C.sobreOscuro }}>
           {inicial}

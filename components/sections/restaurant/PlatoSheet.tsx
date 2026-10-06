@@ -113,9 +113,16 @@ export function PlatoSheet({
   opcionesOcultas,
   mesaQr,
 }: PlatoSheetProps) {
+  // Carta QR: la ficha se monta dentro del árbol del sitio, donde viven las variables del tema
+  // (--primary-color, --background-color…); en <body> no existen. Fuera de la mesa, como siempre.
+  const [contenedor, setContenedor] = useState<HTMLElement | null>(null)
+  const anclar = useCallback((el: HTMLSpanElement | null) => {
+    if (el) setContenedor(el.parentElement)
+  }, [])
   return (
     <Dialog.Root open={item !== null} onOpenChange={(abierto) => !abierto && onClose()}>
-      <Dialog.Portal>
+      {mesaQr && <span hidden ref={anclar} />}
+      <Dialog.Portal container={mesaQr ? contenedor ?? undefined : undefined}>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <Dialog.Content
           className={cn(
