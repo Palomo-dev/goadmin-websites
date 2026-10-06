@@ -355,3 +355,18 @@ header a[data-categoria-activa][data-categoria-activa] {
   font-weight: 600;
   color: var(--text-color, #111827) !important;
 }
+
+/* Carta QR en la mesa (components/sections/restaurant/mesa/estilo.ts): superficie elevada y tonos
+   de estado sobre fondo OSCURO (tema V2 oscuro como Noir Omakase, o legacy en modo oscuro). La
+   tarjeta clara de siempre (fondo + 45 % de blanco) en un fondo casi negro salía gris medio, con
+   el texto claro del tema ilegible encima. Fondo claro: sin estas variables, los valores de
+   siempre (los `var(--mesa-…, <default>)` de estilo.ts). */
+[data-tema-fondo='oscuro'],
+.dark:not([data-tema-fondo='claro']) {
+  --mesa-superficie: color-mix(in srgb, var(--text-color, #f2ede4) 8%, var(--background-color, #0e0e0e));
+  --mesa-ok-fondo: #173a24;
+  --mesa-ok-texto: #9ad8a8;
+  --mesa-alerta-fondo: #3d3010;
+  --mesa-alerta-texto: #f2cb74;
+  --mesa-error-texto: #f4a28f;
+}

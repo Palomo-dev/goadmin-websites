@@ -31,6 +31,9 @@ import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
 import { ModoMesaProvider } from './ModoMesaContext'
+import { variablesColorMesa } from '@/lib/restaurant/modoMesa'
+import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { contraste } from '@/lib/website/v2/contrasteColor'
 import { EncabezadoMesa } from './header/EncabezadoMesa'
 import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
@@ -259,6 +262,9 @@ export function OrganizationLayoutCliente({
     '--text-color': isDark ? '#ffffff' : '#111827',
     // Estilo general del sitio V2 (Diseño › Estilo del sitio). Legacy: sin variables nuevas.
     ...temaVars.variables,
+    // Texto sobre el primario y primario legible como texto, para las secciones de la Carta QR.
+    // Sin consumidores fuera de ellas; con colores no hex no se emite nada.
+    ...variablesColorMesa(primaryColor, temaEfectivo, { sobre: textoSobreAcentoSiHex, contraste }),
     ...(opcionesShell.colorTextoEncabezado ? { '--encabezado-texto': opcionesShell.colorTextoEncabezado } : {}),
     ...(opcionesShell.pie.colorTexto ? { '--pie-texto': opcionesShell.pie.colorTexto } : {}),
   } as React.CSSProperties

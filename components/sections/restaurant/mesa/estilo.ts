@@ -12,12 +12,19 @@ import type { EstadoRonda } from '@/lib/restaurant/mesa-modelo'
 
 export const C = {
   fondo: 'var(--background-color, #F4EFE6)',
-  tarjeta: 'color-mix(in srgb, var(--background-color, #F4EFE6) 45%, #ffffff)',
+  // Superficie elevada (tarjetas, buscador): en fondo claro, el fondo con 45 % de blanco; en fondo
+  // oscuro, `--mesa-superficie` de app/globals.css (el fondo con 8 % del texto).
+  tarjeta: 'var(--mesa-superficie, color-mix(in srgb, var(--background-color, #F4EFE6) 45%, #ffffff))',
   borde: 'color-mix(in srgb, var(--text-color, #1f1a14) 13%, transparent)',
   texto: 'var(--text-color, #1f1a14)',
-  suave: 'color-mix(in srgb, var(--text-color, #1f1a14) 62%, transparent)',
+  // 66 %: AA (≥ 4,5:1) sobre el fondo y sobre la tarjeta en Marfil, Noir y Pop.
+  suave: 'color-mix(in srgb, var(--text-color, #1f1a14) 66%, transparent)',
   muySuave: 'color-mix(in srgb, var(--text-color, #1f1a14) 7%, var(--background-color, #F4EFE6))',
   primario: 'var(--primary-color, #8B2F1C)',
+  /** El primario como texto: el del tema si el primario no llega a AA sobre el fondo (Pop). */
+  primarioTexto: 'var(--primario-texto, var(--primary-color, #8B2F1C))',
+  /** Texto e iconos SOBRE el primario (botones, «+», barra del pedido): negro o blanco, el que se lea. */
+  sobrePrimario: 'var(--texto-sobre-primario, #ffffff)',
   primarioSuave: 'color-mix(in srgb, var(--primary-color, #8B2F1C) 13%, var(--background-color, #F4EFE6))',
   oscuro: 'var(--text-color, #1f1a14)',
   sobreOscuro: 'var(--background-color, #F4EFE6)',
@@ -32,20 +39,22 @@ export const TACTIL = 44
 export function estiloEstado(estado: EstadoRonda): CSSProperties {
   switch (estado) {
     case 'por_enviar':
-      return { backgroundColor: C.primarioSuave, color: C.primario }
+      return { backgroundColor: C.primarioSuave, color: C.primarioTexto }
     case 'por_confirmar':
     case 'enviada':
       return { backgroundColor: C.muySuave, color: C.texto }
     case 'en_preparacion':
-      return { backgroundColor: '#F6E7BE', color: '#7A5200' }
     case 'lista':
-      return { backgroundColor: '#F6E7BE', color: '#7A5200' }
+      return { backgroundColor: ALERTA.fondo, color: ALERTA.texto }
     case 'servida':
-      return { backgroundColor: '#DCEBDC', color: '#2E6B3A' }
+      return { backgroundColor: OK.fondo, color: OK.texto }
     case 'cancelada':
       return { backgroundColor: C.muySuave, color: C.suave }
   }
 }
 
-export const OK = { fondo: '#DCEBDC', texto: '#2E6B3A' }
-export const ALERTA = { fondo: '#F8EBC8', texto: '#7A5200' }
+/** Tonos de estado: los claros de siempre; en fondo oscuro, los de app/globals.css (`--mesa-…`). */
+export const OK = { fondo: 'var(--mesa-ok-fondo, #DCEBDC)', texto: 'var(--mesa-ok-texto, #2E6B3A)' }
+export const ALERTA = { fondo: 'var(--mesa-alerta-fondo, #F8EBC8)', texto: 'var(--mesa-alerta-texto, #7A5200)' }
+/** Rojo de «picante» y de los errores escritos sobre el fondo. */
+export const ERROR_TEXTO = 'var(--mesa-error-texto, #B5371F)'

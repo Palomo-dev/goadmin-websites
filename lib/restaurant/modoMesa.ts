@@ -35,3 +35,27 @@ export function esPaginaModoMesa(pagina: PaginaParaModoMesa | null | undefined):
   )
 }
 
+/**
+ * Colores derivados para las secciones de mesa (components/sections/restaurant/mesa/estilo.ts),
+ * que el CSS solo no puede calcular:
+ * - `--texto-sobre-primario`: negro o blanco sobre el color primario, el de más contraste (misma
+ *   regla que el botón del encabezado). Noir (#C8A97E) lleva texto oscuro; Marfil, blanco.
+ * - `--primario-texto`: el primario como TEXTO sobre el fondo del tema, solo si llega a AA
+ *   (4,5:1); si no (Pop: #E11D48 sobre #FFE94D da 3,8), el texto del tema.
+ * Sin colores hex válidos no emite nada y las secciones usan sus valores de siempre.
+ */
+export function variablesColorMesa(
+  primario: string | null | undefined,
+  tema: { fondo: string | null; texto: string | null } | null | undefined,
+  medir: { sobre: (hex: unknown) => string | null; contraste: (a: string, b: string) => number | null },
+): Record<string, string> {
+  const vars: Record<string, string> = {}
+  if (!primario) return vars
+  const sobre = medir.sobre(primario)
+  if (sobre) vars['--texto-sobre-primario'] = sobre
+  if (tema?.fondo && tema.texto) {
+    const razon = medir.contraste(primario, tema.fondo)
+    if (razon !== null && razon < 4.5) vars['--primario-texto'] = tema.texto
+  }
+  return vars
+}

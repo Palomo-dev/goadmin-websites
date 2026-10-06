@@ -13,7 +13,7 @@ import type { MesaGuardada } from '@/lib/restaurant/mesaQR'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { ETIQUETA_ESTADO_RONDA, type EstadoRonda } from '@/lib/restaurant/mesa-modelo'
 import { fijarMesa, irA, registrarSeccionMesa, useMesaQRStore } from '@/lib/restaurant/mesaStore'
-import { C, TITULO, estiloEstado } from './estilo'
+import { C, OK, TITULO, estiloEstado } from './estilo'
 import { MESA_MUESTRA } from './muestra'
 
 /** Lo mínimo de la organización que necesitan las secciones de mesa (viaja al navegador). */
@@ -87,8 +87,8 @@ export function BotonPrimario({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-      style={{ backgroundColor: C.primario, ...style }}
+      className={`inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      style={{ backgroundColor: C.primario, color: C.sobrePrimario, ...style }}
     >
       {children}
     </button>
@@ -140,7 +140,7 @@ export function EncabezadoPantalla({ titulo, subtitulo, subtituloOk = false, onA
       <div className="min-w-0">
         <h1 className="text-[26px] leading-8" style={TITULO}>{titulo}</h1>
         {subtitulo && (
-          <p className="text-sm" style={{ color: subtituloOk ? '#2E6B3A' : C.suave }}>{subtitulo}</p>
+          <p className="text-sm" style={{ color: subtituloOk ? OK.texto : C.suave }}>{subtitulo}</p>
         )}
       </div>
     </header>

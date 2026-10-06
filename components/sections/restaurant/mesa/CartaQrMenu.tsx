@@ -28,7 +28,7 @@ import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { textoPlano } from '@/lib/texto/textoPlano'
 import { setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
 import type { CartaQr } from '@/lib/website/v2/contrato/seccionesMesa'
-import { ALERTA, C, TACTIL, TITULO } from './estilo'
+import { ALERTA, C, ERROR_TEXTO, OK, TACTIL, TITULO } from './estilo'
 import { PanelPedidoMesa } from './PedidoMesa'
 
 interface Props {
@@ -54,15 +54,17 @@ function etiquetas(item: MenuItem): MenuTag[] {
 }
 
 function IconoEtiqueta({ tag }: { tag: MenuTag }) {
-  if (tag.kind === 'picante' || /picante/i.test(tag.name)) return <Flame className="h-4 w-4" style={{ color: '#B5371F' }} aria-hidden="true" />
-  if (tag.kind === 'dieta' && /veget|vegan/i.test(tag.name)) return <Leaf className="h-4 w-4" style={{ color: '#2E6B3A' }} aria-hidden="true" />
+  if (tag.kind === 'picante' || /picante/i.test(tag.name)) return <Flame className="h-4 w-4" style={{ color: ERROR_TEXTO }} aria-hidden="true" />
+  if (tag.kind === 'dieta' && /veget|vegan/i.test(tag.name)) return <Leaf className="h-4 w-4" style={{ color: OK.texto }} aria-hidden="true" />
   return null
 }
 
 function chipEtiqueta(tag: MenuTag) {
   const color = tag.color || (tag.kind === 'dieta' ? '#2E6B3A' : tag.kind === 'picante' ? '#B5371F' : null)
   return color
-    ? { backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color }
+    // El texto del chip se mezcla con el texto del tema: más oscuro en fondo claro, más claro en
+    // fondo oscuro (el rojo puro sobre Noir no llegaba a AA).
+    ? { backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color: `color-mix(in srgb, ${color} 55%, var(--text-color, #1f1a14))` }
     : { backgroundColor: C.muySuave, color: C.suave }
 }
 
@@ -171,7 +173,7 @@ export function CartaQrMenu(props: Props) {
           )}
           <div className="mt-auto flex items-end justify-between gap-2 pt-2">
             {agotado ? (
-              <p className="text-sm font-semibold" style={{ color: C.primario }}>{vuelve(it)}</p>
+              <p className="text-sm font-semibold" style={{ color: C.primarioTexto }}>{vuelve(it)}</p>
             ) : (
               it.price !== null && <Price value={it.price} className={`text-[18px] font-bold ${cerrada ? 'opacity-60' : ''}`} />
             )}
@@ -179,8 +181,8 @@ export function CartaQrMenu(props: Props) {
               <button
                 type="button"
                 onClick={() => agregar(it)}
-                className="flex shrink-0 items-center justify-center rounded-full text-white shadow-sm"
-                style={{ width: TACTIL, height: TACTIL, backgroundColor: C.primario }}
+                className="flex shrink-0 items-center justify-center rounded-full shadow-sm"
+                style={{ width: TACTIL, height: TACTIL, backgroundColor: C.primario, color: C.sobrePrimario }}
                 aria-label={`Agregar ${it.name}`}
               >
                 <Plus className="h-6 w-6" aria-hidden="true" />

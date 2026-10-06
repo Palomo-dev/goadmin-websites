@@ -19,8 +19,9 @@
  *    organización del abono; /api/orders solo crea ficha de cliente con correo.
  * 5. Si el ERP está al lado: cada RPC que llama el sitio existe en las migraciones con
  *    EXACTAMENTE esos parámetros; las migraciones son aditivas y tienen rollback.
- * 6. Modo mesa (lib/restaurant/modoMesa.ts): qué página lo activa y que el layout cambie
- *    encabezado, pie y barra móvil solo con él.
+ * 6. Modo mesa (lib/restaurant/modoMesa.ts): qué página lo activa, que el layout cambie
+ *    encabezado, pie y barra móvil solo con él, y contraste AA de las superficies de las secciones
+ *    de mesa (estilo.ts + app/globals.css) en Editorial Marfil, Noir Omakase y Pop Callejero.
  */
 import { readFile, writeFile, mkdtemp, mkdir, rm, access, readdir } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -44,10 +45,14 @@ const leer = (rel) => readFile(join(ROOT, rel), 'utf8')
 
 // Módulos TS puros → .mjs temporales dentro del repo.
 const tmp = await mkdtemp(join(ROOT, 'node_modules', '.verify-carta-qr-'))
-let contrato, modelo, ronda, modoMesa
+let contrato, modelo, ronda, modoMesa, contrasteMod, sobreMod
 try {
   await writeFile(join(tmp, 'modoMesa.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/modoMesa.ts'), { mode: 'strip' }))
   modoMesa = await import(pathToFileURL(join(tmp, 'modoMesa.mjs')).href)
+  await writeFile(join(tmp, 'contrasteColor.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/contrasteColor.ts'), { mode: 'strip' }).replace(/^import\s+type[^\n]*\n/gm, ''))
+  contrasteMod = await import(pathToFileURL(join(tmp, 'contrasteColor.mjs')).href)
+  await writeFile(join(tmp, 'textoSobreAcento.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/textoSobreAcento.ts'), { mode: 'strip' }).replace("from './contrasteColor'", "from './contrasteColor.mjs'"))
+  sobreMod = await import(pathToFileURL(join(tmp, 'textoSobreAcento.mjs')).href)
   await writeFile(join(tmp, 'contrato.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/contrato/seccionesMesa.ts'), { mode: 'strip' }))
   await writeFile(join(tmp, 'modelo.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/mesa-modelo.ts'), { mode: 'strip' }))
   contrato = await import(pathToFileURL(join(tmp, 'contrato.mjs')).href)
@@ -211,9 +216,9 @@ if (await existe(dirMig)) {
   notas.push(`Sin el ERP en ${ERP}: no se cruzan los parámetros con las migraciones (ERP_REPO=…).`)
 }
 
-// ─── 6. Modo mesa ────────────────────────────────────────────────────────────
+// ─── 6. Modo mesa y colores de las secciones de mesa ─────────────────────────
 {
-  const { esPaginaModoMesa: es } = modoMesa
+  const { esPaginaModoMesa: es, variablesColorMesa } = modoMesa
   const sec = (t, v = 'default') => ({ section_type: t, section_variant: v })
   check(es({ slug: 'carta-qr', page_type: 'carta_qr', website_page_sections: [sec('menu_full', 'anchors')] }), 'modo mesa: página de tipo carta_qr (aunque solo tenga la carta)')
   check(es({ slug: 'mi-carta', page_type: 'carta_qr', website_page_sections: [] }), 'modo mesa: el tipo manda sobre el slug')
@@ -222,6 +227,61 @@ if (await existe(dirMig)) {
   check(!es({ slug: 'carta-qr', page_type: 'custom', website_page_sections: [sec('menu_full', 'qr')] }), 'modo mesa: /carta-qr sin secciones de mesa → layout de siempre')
   check(!es({ slug: 'menu', page_type: 'builtin', website_page_sections: [sec('menu_full', 'qr'), sec('table_order')] }), 'modo mesa: otra página, aunque tenga secciones de mesa → layout de siempre')
   check(!es(null) && !es({ slug: 'home', page_type: 'builtin', website_page_sections: [] }), 'modo mesa: inicio y página nula → layout de siempre')
+
+  const medir = { sobre: sobreMod.textoSobreAcentoSiHex, contraste: contrasteMod.contraste }
+  const PLANTILLAS = {
+    'Editorial Marfil': { fondo: '#F6F1E7', texto: '#1F1B16', primario: '#8C2F1B' },
+    'Noir Omakase': { fondo: '#0E0E0E', texto: '#F2EDE4', primario: '#C8A97E' },
+    'Pop Callejero': { fondo: '#FFE94D', texto: '#111111', primario: '#E11D48' },
+  }
+  const vNoir = variablesColorMesa('#C8A97E', PLANTILLAS['Noir Omakase'], medir)
+  check(vNoir['--texto-sobre-primario'] === '#111111' && !vNoir['--primario-texto'], 'colores: Noir → texto oscuro sobre el dorado y el dorado sirve como texto')
+  check(variablesColorMesa('#8C2F1B', PLANTILLAS['Editorial Marfil'], medir)['--texto-sobre-primario'] === '#FFFFFF', 'colores: Marfil → texto blanco sobre el primario')
+  check(variablesColorMesa('#E11D48', PLANTILLAS['Pop Callejero'], medir)['--primario-texto'] === '#111111', 'colores: Pop → el rosa no llega a AA como texto sobre el amarillo, se usa el texto del tema')
+  check(Object.keys(variablesColorMesa('rgb(1,2,3)', null, medir)).length === 0 && Object.keys(variablesColorMesa(null, null, medir)).length === 0, 'colores: sin hex no se emite nada')
+
+  // Los valores se leen del fuente (estilo.ts y app/globals.css): si alguien los cambia, se mide de nuevo.
+  const estilo = await leer('components/sections/restaurant/mesa/estilo.ts')
+  const css = await leer('app/globals.css')
+  const num = (re, txt, msg) => { const m = re.exec(txt); check(!!m, msg); return m ? Number(m[1]) : NaN }
+  const pctTarjetaClara = num(/tarjeta: 'var\(--mesa-superficie, color-mix\(in srgb, var\(--background-color[^)]*\) (\d+)%, #ffffff\)\)'/, estilo, 'estilo.ts: la tarjeta clara cambió de forma (actualiza este verify)')
+  const pctSuave = num(/suave: 'color-mix\(in srgb, var\(--text-color[^)]*\) (\d+)%, transparent\)'/, estilo, 'estilo.ts: el texto suave cambió de forma')
+  const bloqueOscuro = /\[data-tema-fondo='oscuro'\],\s*\.dark:not\(\[data-tema-fondo='claro'\]\) \{([^}]*)\}/.exec(css)?.[1] ?? ''
+  check(bloqueOscuro.length > 0, "app/globals.css: falta el bloque de la Carta QR para fondo oscuro ([data-tema-fondo='oscuro'])")
+  const pctSupOscura = num(/--mesa-superficie: color-mix\(in srgb, var\(--text-color[^)]*\) (\d+)%/, bloqueOscuro, 'globals.css: --mesa-superficie cambió de forma')
+  const varCss = (n) => new RegExp(`--${n}: (#[0-9a-fA-F]{6});`).exec(bloqueOscuro)?.[1]
+  const fallback = (n) => new RegExp(`var\\(--${n}, (#[0-9A-Fa-f]{6})\\)`).exec(estilo)?.[1]
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+  const aHex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')
+  const mezcla = (a, b, p) => aHex(hex(a).map((v, i) => v * p + hex(b)[i] * (1 - p)))
+  const cr = (a, b) => contrasteMod.contraste(a, b) ?? 0
+  for (const [nombre, t] of Object.entries(PLANTILLAS)) {
+    const oscuro = sobreMod.fondoOscuro(t.fondo)
+    const sup = oscuro ? mezcla(t.texto, t.fondo, pctSupOscura / 100) : mezcla(t.fondo, '#FFFFFF', pctTarjetaClara / 100)
+    const v = variablesColorMesa(t.primario, t, medir)
+    const sobre = v['--texto-sobre-primario'] ?? '#FFFFFF'
+    const primTexto = v['--primario-texto'] ?? t.primario
+    const ok = oscuro ? [varCss('mesa-ok-fondo'), varCss('mesa-ok-texto')] : [fallback('mesa-ok-fondo'), fallback('mesa-ok-texto')]
+    const alerta = oscuro ? [varCss('mesa-alerta-fondo'), varCss('mesa-alerta-texto')] : [fallback('mesa-alerta-fondo'), fallback('mesa-alerta-texto')]
+    const error = oscuro ? varCss('mesa-error-texto') : fallback('mesa-error-texto')
+    const pares = [
+      ['texto sobre la tarjeta', t.texto, sup],
+      ['texto suave sobre el fondo', mezcla(t.texto, t.fondo, pctSuave / 100), t.fondo],
+      ['texto suave sobre la tarjeta', mezcla(t.texto, sup, pctSuave / 100), sup],
+      ['texto sobre el primario (botones, «+», barra del pedido)', sobre, t.primario],
+      ['primario como texto sobre el fondo', primTexto, t.fondo],
+      ['primario como texto sobre la tarjeta', primTexto, sup],
+      ['estado OK', ok[1], ok[0]],
+      ['estado alerta', alerta[1], alerta[0]],
+      ['error sobre el fondo', error, t.fondo],
+      ['chip «picante» sobre la tarjeta', mezcla('#B5371F', t.texto, 0.55), mezcla('#B5371F', sup, 0.14)],
+      ['chip «vegetariano» sobre la tarjeta', mezcla('#2E6B3A', t.texto, 0.55), mezcla('#2E6B3A', sup, 0.14)],
+    ]
+    for (const [que, a, b] of pares) {
+      const razon = a && b ? cr(a, b) : 0
+      check(razon >= 4.5, `contraste AA en ${nombre}: ${que} = ${razon.toFixed(2)}:1 (${a} sobre ${b})`)
+    }
+  }
 
   // Quién aplica el modo mesa (se lee el fuente): sin él, el layout de siempre.
   const layout = await leer('components/site/OrganizationLayoutCliente.tsx')
@@ -233,6 +293,10 @@ if (await existe(dirMig)) {
   check(/const modoMesa = esPaginaModoMesa\(page\)/.test(pagina) && /modoMesa=\{modoMesa\}/.test(pagina), 'page.tsx: la página del constructor pasa modoMesa al layout')
   const vista = await leer('components/sections/restaurant/MenuFullView.tsx')
   check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
+  for (const f of ['CartaQrMenu', 'PedidoMesa', 'CuentaMesa', 'comun', 'ServicioMesa', 'ValorarVisita']) {
+    const src = await leer(`components/sections/restaurant/mesa/${f}.tsx`)
+    check(!/\btext-white\b/.test(src) && !/\bbg-white\b/.test(src), `${f}.tsx: blanco fijo (text-white / bg-white): usa C.sobrePrimario o las superficies del tema`)
+  }
 }
 
 for (const n of notas) console.log(`· ${n}`)

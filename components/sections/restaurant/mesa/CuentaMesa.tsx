@@ -48,7 +48,7 @@ import {
 } from '@/lib/restaurant/mesaStore'
 import { AvisosMesa } from './AvisosMesa'
 import { BotonPrimario, BotonSecundario, EncabezadoPantalla, PantallaMesa, nombreMesa, useSeccionMesa, type PropsSeccionMesa } from './comun'
-import { C, OK, TITULO } from './estilo'
+import { C, ERROR_TEXTO, OK, TITULO } from './estilo'
 import { CUENTA_MUESTRA } from './muestra'
 
 const fmt = (n: number) => `$ ${Math.round(n).toLocaleString('es-CO')}`
@@ -363,7 +363,7 @@ function PantallaPagar({ c, cuenta, mesaNombre }: { c: ConfigCuenta; cuenta: Dat
   const sub = [mesaNombre, sel.modo === 'iguales' ? `parte ${progreso.pagadas + 1} de ${sel.partes}` : null].filter(Boolean).join(' · ')
   const pie = (
     <>
-      {error && <p className="mb-2 text-center text-sm font-semibold" style={{ color: C.primario }} role="alert">{error}</p>}
+      {error && <p className="mb-2 text-center text-sm font-semibold" style={{ color: ERROR_TEXTO }} role="alert">{error}</p>}
       <BotonPrimario onClick={() => void pagar()} disabled={pagando}>
         <Lock className="h-5 w-5" aria-hidden="true" />
         {pagando ? 'Abriendo la pasarela…' : <>Pagar&nbsp;<Price value={total} /></>}
@@ -388,7 +388,7 @@ function PantallaPagar({ c, cuenta, mesaNombre }: { c: ConfigCuenta; cuenta: Dat
             <div className="mt-2 flex gap-1.5" aria-hidden="true">
               {Array.from({ length: sel.partes }).map((_, i) => (
                 <span key={i} className="h-2 flex-1 rounded-full"
-                  style={{ backgroundColor: i < progreso.pagadas ? '#2E6B3A' : i === progreso.pagadas ? C.primario : C.borde }} />
+                  style={{ backgroundColor: i < progreso.pagadas ? OK.texto : i === progreso.pagadas ? C.primario : C.borde }} />
               ))}
             </div>
             <p className="mt-2 text-sm" style={{ color: C.suave }}>
@@ -425,7 +425,7 @@ function PantallaPagar({ c, cuenta, mesaNombre }: { c: ConfigCuenta; cuenta: Dat
         <label className="mt-4 flex cursor-pointer items-center gap-3">
           <span className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors" style={{ backgroundColor: factura ? C.primario : C.borde }}>
             <input type="checkbox" className="peer sr-only" checked={factura} onChange={(e) => setFactura(e.target.checked)} />
-            <span className={`absolute h-6 w-6 rounded-full bg-white shadow transition-transform ${factura ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+            <span className={`absolute h-6 w-6 rounded-full shadow transition-transform ${factura ? 'translate-x-[22px]' : 'translate-x-0.5'}`} style={{ backgroundColor: factura ? C.sobrePrimario : C.fondo }} />
           </span>
           <span className="text-[15px]">Factura electrónica a mi nombre (opcional)</span>
         </label>

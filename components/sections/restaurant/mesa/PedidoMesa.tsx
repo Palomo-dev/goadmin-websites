@@ -55,7 +55,7 @@ import {
   useSeccionMesa,
   type PropsSeccionMesa,
 } from './comun'
-import { C, OK, TITULO } from './estilo'
+import { ALERTA, C, OK, TITULO } from './estilo'
 import { PEDIDO_MUESTRA, RONDA_MUESTRA } from './muestra'
 
 function hora(iso: string | null): string {
@@ -112,12 +112,12 @@ function BarraVerPedido({ ronda, pedido }: { ronda: LineaRonda[]; pedido: DatosP
       <button
         type="button"
         onClick={() => irA('pedido')}
-        className="pointer-events-auto flex min-h-[56px] w-full max-w-md items-center justify-between gap-3 rounded-xl px-4 text-[17px] font-semibold text-white shadow-lg"
-        style={{ backgroundColor: C.primario }}
+        className="pointer-events-auto flex min-h-[56px] w-full max-w-md items-center justify-between gap-3 rounded-xl px-4 text-[17px] font-semibold shadow-lg"
+        style={{ backgroundColor: C.primario, color: C.sobrePrimario }}
       >
         <span className="flex items-center gap-3 whitespace-nowrap">
           {unidades > 0 && (
-            <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-sm font-bold" style={{ color: C.primario }}>
+            <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-bold" style={{ backgroundColor: C.sobrePrimario, color: C.primario }}>
               {unidades}
             </span>
           )}
@@ -155,7 +155,7 @@ function LineaPedido({ nombre, cantidad, total, detalle, comensal, accion }: {
       <div className="flex shrink-0 flex-col items-end gap-1">
         <Price value={total} className="text-[16px] font-semibold" />
         {accion && (
-          <button type="button" onClick={accion.onClick} className="text-sm font-semibold" style={{ color: C.primario }}>
+          <button type="button" onClick={accion.onClick} className="text-sm font-semibold" style={{ color: C.primarioTexto }}>
             {accion.texto}
           </button>
         )}
@@ -492,7 +492,7 @@ function PantallaEstado({ c, pedido, mesaNombre, zona, sede }: { c: ConfigPedido
                     Ronda {r.numero} · {r.items.map((l) => (l.cantidad > 1 ? `${l.nombre} ×${l.cantidad}` : l.nombre)).join(', ')}
                   </p>
                   {c.showLiveStatus && r.estado !== 'lista' && eta !== null && actual < 2 && (
-                    <span className="shrink-0 text-sm font-semibold" style={{ color: '#7A5200' }}>≈ {eta} min</span>
+                    <span className="shrink-0 text-sm font-semibold" style={{ color: ALERTA.texto }}>≈ {eta} min</span>
                   )}
                 </div>
                 {r.estado === 'por_confirmar' && <p className="mt-1 text-sm" style={{ color: C.suave }}>{c.pendingText}</p>}

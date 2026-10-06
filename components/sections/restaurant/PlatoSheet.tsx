@@ -499,8 +499,8 @@ function ContenidoPlato({
             type="button"
             onClick={agregar}
             disabled={!puedePedir}
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-lg px-4 text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ backgroundColor: PRIMARY }}
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-lg px-4 text-[17px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: PRIMARY, color: 'var(--texto-sobre-primario, #ffffff)' }}
           >
             Agregar{unitario !== null && <>&nbsp;·&nbsp;<Price value={unitario * cantidad} /></>}
           </button>
