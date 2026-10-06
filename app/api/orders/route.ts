@@ -20,7 +20,7 @@ import {
 import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
 import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, sedePorDefectoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
-import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
+import { evaluarDisponibilidadPedido, horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
 import { hoyEnZona, parseHorario } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
@@ -248,7 +248,11 @@ export async function POST(request: NextRequest) {
       zona: contexto.zona,
       programadoPara: isScheduled && scheduledAt ? String(scheduledAt) : null,
     })
-    if (!disponibilidad.ok) {
+    // El horario de la sede va detrás de ORDERS_ENFORCE_BRANCH_HOURS (horarioSedeObligatorio): sin
+    // él, un rechazo por horario solo se registra y el pedido sigue con la hora del cliente. El 403
+    // de pedido en línea apagado se aplica siempre.
+    const rechazoSoloObservado = !disponibilidad.ok && disponibilidad.status === 422 && !horarioSedeObligatorio()
+    if (!disponibilidad.ok && !rechazoSoloObservado) {
       console.warn('[Orders] Pedido rechazado por disponibilidad', {
         organizationId: contextOrgId, branchId: resolvedBranchId, code: disponibilidad.code,
       })
@@ -256,9 +260,19 @@ export async function POST(request: NextRequest) {
         { error: disponibilidad.error, code: disponibilidad.code, proximaApertura: disponibilidad.proximaApertura },
         { status: disponibilidad.status }
       )
+    } else if (rechazoSoloObservado) {
+      console.warn('[Orders] OBSERVACIÓN horario de sede: se habría rechazado (no se aplica)', {
+        organizationId: contextOrgId, branchId: resolvedBranchId, code: disponibilidad.ok ? null : disponibilidad.code,
+      })
     } else {
       // Disponible: sigue el flujo de siempre.
     }
+    // Hora programada que se guarda: la validada (ISO) o, en observación, la del cliente normalizada.
+    const programadoParaGuardado: string | null = disponibilidad.ok
+      ? disponibilidad.programadoPara
+      : (isScheduled && scheduledAt && !Number.isNaN(new Date(String(scheduledAt)).getTime())
+          ? new Date(String(scheduledAt)).toISOString()
+          : null)
 
     // ── B0: Productos, precios y modificadores del servidor ──
     // Falla cerrado: sin poder leer precios no se puede cobrar.
@@ -566,7 +580,7 @@ export async function POST(request: NextRequest) {
         customer_notes: customer.notes || null,
         ...(resolvedTip > 0 && { tip_amount: resolvedTip }),
         // Hora programada ya validada y normalizada a ISO (UTC) por evaluarDisponibilidadPedido.
-        ...(isScheduled && disponibilidad.programadoPara && { is_scheduled: true, scheduled_at: disponibilidad.programadoPara }),
+        ...(isScheduled && programadoParaGuardado && { is_scheduled: true, scheduled_at: programadoParaGuardado }),
         // Mesa validada (respaldo legible para el ERP y la cocina: «[Comer aquí] Mesa: 4 (Terraza)»).
         ...(mesaPedido && { internal_notes: notaMesa(mesaPedido) }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
@@ -746,7 +760,7 @@ export async function POST(request: NextRequest) {
           trackingUrl: `${origin}${rutaSeguimiento(contextOrgId, webOrder)}`,
           paymentStatus: 'pending',
           tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · Mesa ${mesaPedido.name}` : ''}`,
-          programadoPara: isScheduled && disponibilidad.programadoPara ? momentoPedido(disponibilidad.programadoPara, contexto.zona) : null,
+          programadoPara: isScheduled && programadoParaGuardado ? momentoPedido(programadoParaGuardado, contexto.zona) : null,
         }).catch(err => console.error('[Orders] Email error:', err))
       } else {
         // Wompi: el correo sale del webhook al confirmarse el pago.

@@ -58,3 +58,18 @@ export function evaluarDisponibilidadPedido(e: EntradaDisponibilidad): Disponibi
   const t = e.programadoPara ? new Date(e.programadoPara) : null
   return { ok: true, programadoPara: t && !Number.isNaN(t.getTime()) ? t.toISOString() : null }
 }
+
+/**
+ * Interruptor de despliegue del horario de la sede (servidor): `ORDERS_ENFORCE_BRANCH_HOURS=true`
+ * rechaza con 422 y el checkout muestra las franjas de la sede; en cualquier otro valor (por
+ * defecto) /api/orders solo REGISTRA lo que habría rechazado y el checkout sigue como antes.
+ *
+ * Por qué no va activo de entrada (MCP 2026-10-06): el único restaurante con pedidos web en 60
+ * días (org 120) tiene en su sede el horario por defecto del formulario del ERP (09:00–18:00) y
+ * sus 3 pedidos entraron a las 19:59, 20:10 y 23:21: todos habrían sido rechazados. Se activa
+ * cuando las sedes tengan su horario real (detección de horario por defecto: paquete C) y los
+ * registros de observación no muestren rechazos legítimos.
+ */
+export function horarioSedeObligatorio(): boolean {
+  return process.env.ORDERS_ENFORCE_BRANCH_HOURS === 'true'
+}
