@@ -4,6 +4,8 @@
  * organización del contexto, nunca la del body.
  */
 
+import { ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
+
 type ClienteSupabase = { from: (tabla: string) => any }
 
 /** Tipo de entrega que se guarda en `web_orders.delivery_type` a partir del que manda el checkout. */
@@ -105,4 +107,77 @@ export async function guardarDireccionPrincipal(
     .from('customers')
     .update({ address: customer.address, city: customer.city || null })
     .eq('id', customerId)
+}
+
+// ---------------------------------------------------------------------------
+// Contexto del pedido: organización, ajustes de venta y horario de la sede
+// ---------------------------------------------------------------------------
+
+export interface AjustesVentaWeb {
+  pedidoEnLinea: boolean | null
+  enableShipping: boolean
+  tarifaPlana: number
+  umbralGratis: number
+  tiposEntrega: string[] | null
+}
+
+export interface ContextoPedido {
+  esRestaurante: boolean
+  nombreOrganizacion: string
+  /** Zona efectiva de la sede: `branches.timezone` → `organizations.timezone` → America/Bogota. */
+  zona: string
+  /** `branches.opening_hours` de la sede del pedido (sin parsear). */
+  horarioSede: unknown
+  nombreSede: string | null
+  /** `null` si no hay fila de `website_settings` de la organización. */
+  ajustes: AjustesVentaWeb | null
+}
+
+const COLUMNAS_AJUSTES_VENTA = 'branch_id, enable_online_ordering, enable_shipping, shipping_flat_rate, free_shipping_threshold, available_delivery_types'
+
+/**
+ * Tres lecturas en paralelo, todas filtradas por la organización del contexto: la organización,
+ * sus ajustes del sitio (fila global y, si hay sede explícita, la de la sede, que gana campo a
+ * campo como en `getEffectiveSettings`) y la sede del pedido.
+ */
+export async function leerContextoPedido(
+  supabase: ClienteSupabase,
+  organizationId: number,
+  branchId: number | null,
+  sedeExplicita: number | null,
+): Promise<ContextoPedido> {
+  const [org, ajustes, sede] = await Promise.all([
+    supabase.from('organizations').select('type_id, name, timezone').eq('id', organizationId).maybeSingle(),
+    supabase.from('website_settings').select(COLUMNAS_AJUSTES_VENTA).eq('organization_id', organizationId),
+    branchId
+      ? supabase.from('branches').select('name, opening_hours, timezone').eq('id', branchId).eq('organization_id', organizationId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+  if (org.error) console.error('[Orders] No se pudo leer la organización', { organizationId, error: org.error })
+  if (ajustes.error) console.error('[Orders] No se pudieron leer los ajustes del sitio', { organizationId, error: ajustes.error })
+  if (sede.error) console.error('[Orders] No se pudo leer la sede', { organizationId, branchId, error: sede.error })
+
+  const filas: any[] = Array.isArray(ajustes.data) ? ajustes.data : []
+  const global = filas.find((f) => f.branch_id === null) ?? null
+  const propia = sedeExplicita !== null ? filas.find((f) => f.branch_id === sedeExplicita) ?? null : null
+  const valor = (campo: string) => (propia && propia[campo] !== null && propia[campo] !== undefined ? propia[campo] : global?.[campo])
+  const base = global || propia
+  const zona = (sede.data as any)?.timezone || (org.data as any)?.timezone || ZONA_POR_DEFECTO
+
+  return {
+    esRestaurante: Number((org.data as any)?.type_id) === 1,
+    nombreOrganizacion: String((org.data as any)?.name || ''),
+    zona,
+    horarioSede: (sede.data as any)?.opening_hours ?? null,
+    nombreSede: (sede.data as any)?.name ?? null,
+    ajustes: base
+      ? {
+          pedidoEnLinea: typeof valor('enable_online_ordering') === 'boolean' ? valor('enable_online_ordering') : null,
+          enableShipping: valor('enable_shipping') !== false,
+          tarifaPlana: Number(valor('shipping_flat_rate') ?? 0) || 0,
+          umbralGratis: Number(valor('free_shipping_threshold') ?? 0) || 0,
+          tiposEntrega: Array.isArray(valor('available_delivery_types')) ? valor('available_delivery_types') : null,
+        }
+      : null,
+  }
 }

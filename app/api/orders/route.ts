@@ -17,7 +17,8 @@ import {
 } from '@/lib/products/precio-servidor'
 import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
-import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
+import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
+import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
 
 export const dynamic = 'force-dynamic'
 
@@ -162,6 +163,34 @@ export async function POST(request: NextRequest) {
         list.find((b: any) => b.is_web_stock_source)?.id ??
         list.find((b: any) => b.is_main)?.id ??
         list[0]?.id
+    }
+
+    // ── Contexto del pedido: organización, ajustes de venta y sede (filtrados por la org del host) ──
+    const sedeExplicita: number | null = Number.isFinite(branchId) ? Number(branchId) : null
+    const contexto = await leerContextoPedido(
+      supabase as any, contextOrgId, Number.isFinite(resolvedBranchId) ? Number(resolvedBranchId) : null, sedeExplicita,
+    )
+
+    // ── Disponibilidad: pedido en línea apagado (403) ──
+    // Solo restaurante (lib/orders/disponibilidadPedido.ts). Sin fila de ajustes, o en otras
+    // verticales, se acepta exactamente como antes.
+    const disponibilidad = evaluarDisponibilidadPedido({
+      esRestaurante: contexto.esRestaurante,
+      pedidoEnLinea: contexto.ajustes?.pedidoEnLinea ?? null,
+      horario: null,
+      zona: contexto.zona,
+      programadoPara: isScheduled && scheduledAt ? String(scheduledAt) : null,
+    })
+    if (!disponibilidad.ok) {
+      console.warn('[Orders] Pedido rechazado por disponibilidad', {
+        organizationId: contextOrgId, branchId: resolvedBranchId, code: disponibilidad.code,
+      })
+      return NextResponse.json(
+        { error: disponibilidad.error, code: disponibilidad.code, proximaApertura: disponibilidad.proximaApertura },
+        { status: disponibilidad.status }
+      )
+    } else {
+      // Disponible: sigue el flujo de siempre.
     }
 
     // ── B0: Productos, precios y modificadores del servidor ──
