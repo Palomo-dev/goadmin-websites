@@ -15,8 +15,10 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado } from '@/lib/supabase/queries'
-import { aplicarCartaSede } from '@/lib/products/carta-sede'
+import { getProductVariants, getProductModifierGroups, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches } from '@/lib/supabase/queries'
+import { aplicarCartaSede, resolverSedeCarta } from '@/lib/products/carta-sede'
+import { exigeEleccion } from '@/lib/products/modificadores'
+import { soldOutReturnLabel } from '@/lib/menu/menuFull'
 import { getPlantillaPublica } from '@/lib/website/v2/lectorPublico'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { filterStockByBranches } from '@/lib/stock'
@@ -212,8 +214,35 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     variants = await getProductVariants(product.id, organization.id, branchId)
   }
 
-  // Obtener grupos de modificadores del producto (nuevo sistema ERP)
-  const modifierGroups = await getProductModifierGroups(product.id)
+  // Obtener grupos de modificadores del producto (nuevo sistema ERP). Una variante sin grupos
+  // propios usa los de su padre: es la regla del cobro (lib/products/modificadores.ts).
+  const propios = await getProductModifierGroups(product.id, organization.id)
+  const modifierGroups = propios.length === 0 && product.parent_product_id
+    ? await getProductModifierGroups(Number(product.parent_product_id), organization.id)
+    : propios
+
+  // Modo restaurante (type_id = 1, el criterio de las plantillas): ficha de plato, no de
+  // e-commerce. El pedido en línea apagado oculta la compra, como en la carta.
+  const esRestaurante = organization.type_id === 1
+  const puedePedir = !esRestaurante || organization.website_settings?.enable_online_ordering === true
+  let restaurante: { textoAgotado: string | null } | null = null
+  if (esRestaurante) {
+    let textoAgotado: string | null = null
+    if (product.carta_sede?.agotado) {
+      const [sedeCarta, sedes] = await Promise.all([
+        resolverSedeCarta(organization.id, branchId),
+        getOrganizationBranches(organization.id),
+      ])
+      const sede = (sedes as { id: number; name: string | null }[]).find((b) => Number(b.id) === sedeCarta)
+      const vuelve = soldOutReturnLabel(product.carta_sede.agotado_hasta, organization.timezone || 'America/Bogota')
+      textoAgotado = [`Agotado hoy${sede?.name ? ` en ${sede.name}` : ''}`, vuelve ? vuelve.charAt(0).toLowerCase() + vuelve.slice(1) : null]
+        .filter(Boolean)
+        .join(' · ')
+    }
+    restaurante = { textoAgotado }
+  }
+  // La barra fija del celular agrega sin opciones: no se ofrece si hay un grupo obligatorio.
+  const stickyPermitido = puedePedir && !exigeEleccion(modifierGroups)
 
   // Obtener productos relacionados por categoría, tag y aleatorio
   const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId)
@@ -280,7 +309,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Inicio', item: baseUrl },
-      { '@type': 'ListItem', position: 2, name: 'Productos', item: `${baseUrl}/productos` },
+      esRestaurante
+        ? { '@type': 'ListItem', position: 2, name: 'Carta', item: `${baseUrl}/menu` }
+        : { '@type': 'ListItem', position: 2, name: 'Productos', item: `${baseUrl}/productos` },
       { '@type': 'ListItem', position: 3, name: product.name, item: `${baseUrl}/productos/${id}` },
     ],
   }
@@ -319,17 +350,20 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           price={price}
           comparePrice={comparePrice}
           isParent={isParent}
+          branchId={branchId}
+          restaurante={restaurante}
+          puedePedir={puedePedir}
         />
       ) : (
       <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link 
-            href="/productos"
+            href={esRestaurante ? '/menu' : '/productos'}
             className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a productos
+            {esRestaurante ? 'Volver a la carta' : 'Volver a productos'}
           </Link>
         </div>
         
@@ -403,10 +437,13 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 trackStock={product.track_stock}
                 stockLevels={product.stock_levels}
                 branchId={branchId}
+                restaurante={restaurante}
+                puedePedir={puedePedir}
               />
             </div>
             
-            {/* Beneficios */}
+            {/* Beneficios de e-commerce (envío, garantía, empaque): no aplican a un plato. */}
+            {!esRestaurante && (
             <div className="grid grid-cols-2 gap-4 pt-6 border-t dark:border-gray-700">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -448,6 +485,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
 
@@ -474,7 +512,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
       )}
 
       {/* Sticky Add to Cart (mobile) */}
-      {price && (
+      {price && stickyPermitido && (
         <StickyAddToCart
           productId={product.id}
           productName={product.name}

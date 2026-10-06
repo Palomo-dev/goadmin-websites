@@ -40,6 +40,10 @@ interface ProductDetailRendererProps {
   price: any
   comparePrice: number | null
   isParent: boolean
+  branchId?: number | null
+  /** Modo restaurante (type_id = 1): ficha de plato, sin beneficios de e-commerce por defecto. */
+  restaurante?: { textoAgotado: string | null } | null
+  puedePedir?: boolean
 }
 
 export function ProductDetailRenderer({
@@ -55,7 +59,11 @@ export function ProductDetailRenderer({
   price,
   comparePrice,
   isParent,
+  branchId = null,
+  restaurante = null,
+  puedePedir = true,
 }: ProductDetailRendererProps) {
+  const volver = restaurante ? { href: '/menu', texto: 'Volver a la carta' } : { href: '/productos', texto: 'Volver a productos' }
   const hasSections = templatePage && templatePage.website_page_sections.length > 0
 
   const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? null
@@ -99,6 +107,9 @@ export function ProductDetailRenderer({
     stockLevels: product.stock_levels,
     reviewsConfig,
     productStats,
+    branchId,
+    restaurante,
+    puedePedir,
   }
 
   // ---- Modo plantilla: renderizar secciones respetando page_settings.columns ----
@@ -137,11 +148,11 @@ export function ProductDetailRenderer({
         {showBreadcrumb && (
           <div className="mb-8">
             <Link
-              href="/productos"
+              href={volver.href}
               className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a productos
+              {volver.texto}
             </Link>
           </div>
         )}
@@ -237,12 +248,16 @@ export function ProductDetailRenderer({
         trackStock={product.track_stock}
         stockLevels={product.stock_levels}
         buttonsLayout={buttonsLayout}
+        branchId={branchId}
+        restaurante={restaurante}
+        puedePedir={puedePedir}
       />
     </div>
   )
 
   // Beneficios
-  const benefitsBlock = showBenefits && (
+  // Restaurante: los beneficios por defecto (envío 24-48 h, garantía…) no aplican a un plato.
+  const benefitsBlock = showBenefits && !restaurante && (
     <div className="grid grid-cols-2 gap-4 pt-6 border-t dark:border-gray-700">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -290,11 +305,11 @@ export function ProductDetailRenderer({
   const breadcrumbBlock = showBreadcrumb && (
     <div className="mb-8">
       <Link
-        href="/productos"
+        href={volver.href}
         className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver a productos
+        {volver.texto}
       </Link>
     </div>
   )

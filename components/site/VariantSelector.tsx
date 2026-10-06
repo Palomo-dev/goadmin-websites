@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { getAvailableStock } from '@/lib/stock'
+import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 
 interface VariantProduct {
   id: number
@@ -28,8 +29,14 @@ interface VariantSelectorProps {
   parentName: string
   variants: VariantProduct[]
   primaryColor: string
-  onSelect: (variant: VariantProduct, quantity?: number) => void
-  onBuyNow?: (variant: VariantProduct, quantity?: number) => void
+  /** `modifiers`: opciones elegidas de los grupos (vacío si no hay grupos). */
+  onSelect: (variant: VariantProduct, quantity?: number, modifiers?: SelectedModifier[]) => void
+  onBuyNow?: (variant: VariantProduct, quantity?: number, modifiers?: SelectedModifier[]) => void
+  /**
+   * Grupos de modificadores del padre (acompañante, adiciones). Las variantes sin grupos propios
+   * los heredan en el cobro (lib/products/modificadores.ts): tamaño + acompañante en una hoja.
+   */
+  modifierGroups?: ModifierGroup[]
   /** «Comprar ahora» ya está navegando al checkout. */
   buyNowPending?: boolean
   onClose?: () => void
@@ -54,8 +61,12 @@ export function VariantSelector({
   onBuyNow,
   buyNowPending = false,
   onClose,
-  mode = 'dialog'
+  mode = 'dialog',
+  modifierGroups = [],
 }: VariantSelectorProps) {
+  const modifierRef = useRef<ProductModifierSelectorRef>(null)
+  const [mods, setMods] = useState<SelectedModifier[]>([])
+  const extras = mods.reduce((t, m) => t + (m.extraPrice || 0), 0)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantProduct | null>(null)
   const [added, setAdded] = useState(false)
@@ -103,12 +114,15 @@ export function VariantSelector({
 
   const handleAddToCart = () => {
     if (!selectedVariant) return
-    onSelect(selectedVariant, quantity)
+    if (modifierRef.current && !modifierRef.current.validate()) return
+    onSelect(selectedVariant, quantity, mods)
     setAdded(true)
     setTimeout(() => { setAdded(false); setQuantity(1) }, 1500)
   }
 
-  const price = selectedVariant?.product_prices?.[0]?.price
+  const precioVariante = selectedVariant?.product_prices?.[0]?.price
+  // Con extras elegidos, el precio que se muestra y se agrega es variante + extras.
+  const price = precioVariante !== undefined && precioVariante !== null ? Number(precioVariante) + extras : precioVariante
   const variantComparePrice = selectedVariant?.product_prices?.[0]?.compare_price
   const stock = selectedVariant ? getAvailableStock(selectedVariant) : null
   const outOfStock = stock !== null && stock <= 0
@@ -260,6 +274,11 @@ export function VariantSelector({
         </div>
       )}
 
+      {/* Grupos de modificadores del padre (obligatorios con la misma regla que el servidor) */}
+      {modifierGroups.length > 0 && (
+        <ProductModifierSelector ref={modifierRef} groups={modifierGroups} primaryColor={primaryColor} onChange={setMods} />
+      )}
+
       {/* Selector de cantidad */}
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-gray-700">Cantidad:</span>
@@ -314,7 +333,11 @@ export function VariantSelector({
           style={{ borderColor: primaryColor, color: primaryColor }}
           disabled={!selectedVariant || !price || outOfStock || buyNowPending}
           aria-busy={buyNowPending}
-          onClick={() => selectedVariant && onBuyNow(selectedVariant, quantity)}
+          onClick={() => {
+            if (!selectedVariant) return
+            if (modifierRef.current && !modifierRef.current.validate()) return
+            onBuyNow(selectedVariant, quantity, mods)
+          }}
         >
           {buyNowPending ? (
             <>

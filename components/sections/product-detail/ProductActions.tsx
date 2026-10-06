@@ -20,6 +20,9 @@ interface ProductActionsProps {
     modifierGroups?: any[]
     trackStock?: boolean
     stockLevels?: any[]
+    branchId?: number | null
+    restaurante?: { textoAgotado: string | null } | null
+    puedePedir?: boolean
   }
 }
 
@@ -41,6 +44,9 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
         modifierGroups={data?.modifierGroups || []}
         trackStock={data?.trackStock}
         stockLevels={data?.stockLevels}
+        branchId={data?.branchId ?? null}
+        restaurante={data?.restaurante ?? null}
+        puedePedir={data?.puedePedir ?? true}
       />
     </div>
   )

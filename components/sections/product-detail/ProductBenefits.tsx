@@ -26,9 +26,13 @@ interface ProductBenefitsProps {
     gap?: number
   }
   primaryColor?: string
+  data?: { restaurante?: unknown }
 }
 
-export function ProductBenefits({ content }: ProductBenefitsProps) {
+export function ProductBenefits({ content, data }: ProductBenefitsProps) {
+  // Restaurante sin beneficios propios: los de e-commerce («Envío rápido 24-48 horas»,
+  // «Garantía 30 días») no aplican a un plato. Con ítems configurados, se pintan.
+  if (data?.restaurante && !content.items?.length) return null
   const items = content.items?.length ? content.items : DEFAULT_BENEFITS
   const columns = content.columns ?? 2
   const gap = content.gap ?? 16

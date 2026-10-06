@@ -10,7 +10,9 @@ import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
 import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
-import { isParentProduct } from '@/components/sections/products/ProductCard'
+import { isParentProduct, requiereElegir } from '@/components/sections/products/ProductCard'
+import { agregarPlatoAlCarrito } from '@/lib/cart'
+import type { ModifierGroup, SelectedModifier } from './ProductModifierSelector'
 
 interface ProductImage {
   id: number
@@ -86,6 +88,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [variantParent, setVariantParent] = useState<Product | null>(null)
   const [variantChildren, setVariantChildren] = useState<any[]>([])
+  const [variantGroups, setVariantGroups] = useState<ModifierGroup[]>([])
   const [loadingVariants, setLoadingVariants] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
@@ -118,9 +121,12 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
       const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}${sedeParam}`)
       const data = await res.json()
       setVariantChildren(data.variants || [])
+      // Grupos del padre (acompañante…): las variantes los heredan en el cobro.
+      setVariantGroups(Array.isArray(data.modifierGroups) ? data.modifierGroups : [])
     } catch (err) {
       console.error('Error loading variants:', err)
       setVariantChildren([])
+      setVariantGroups([])
     } finally {
       setLoadingVariants(false)
     }
@@ -305,8 +311,23 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
                       const stock = getAvailableStock(product)
                       const outOfStock = stock !== null && stock <= 0
                       const isParent = isParentProduct(product)
+                      // Grupo obligatorio sin variantes: se elige en el detalle del producto.
+                      const soloElegir = !isParent && requiereElegir(product)
                       return outOfStock && !isParent ? (
                         <span className="text-xs text-red-500 font-medium">Sin stock</span>
+                      ) : soloElegir ? (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            router.push(`/productos/${product.uuid}`)
+                          }}
+                          className="w-full text-xs sm:text-sm"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          <Layers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                          Elegir
+                        </Button>
                       ) : isParent ? (
                         <Button 
                           size="sm"
@@ -428,11 +449,25 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
           variants={variantChildren}
           primaryColor={primaryColor}
           mode="dialog"
-          onClose={() => { setVariantParent(null); setVariantChildren([]) }}
-          onSelect={(variant) => {
-            addToCart(variant as any)
+          modifierGroups={variantGroups}
+          onClose={() => { setVariantParent(null); setVariantChildren([]); setVariantGroups([]) }}
+          onSelect={(variant, qty = 1, mods: SelectedModifier[] = []) => {
+            const v = variant as any
+            const base = Number(v.product_prices?.[0]?.price ?? variantParent.product_prices?.[0]?.price ?? 0)
+            agregarPlatoAlCarrito(organizationSubdomain, branchId, {
+              productId: Number(v.id),
+              name: v.name,
+              sku: v.sku ?? null,
+              unitPrice: base + mods.reduce((t, m) => t + (m.extraPrice || 0), 0),
+              quantity: qty,
+              imageUrl: getProductImageUrl(v),
+              comparePrice: mods.length === 0 && v.product_prices?.[0]?.compare_price ? Number(v.product_prices[0].compare_price) : null,
+              modifiers: mods,
+              variantAttributes: v.variant_data ?? null,
+            })
             setVariantParent(null)
             setVariantChildren([])
+            setVariantGroups([])
           }}
         />
       )}

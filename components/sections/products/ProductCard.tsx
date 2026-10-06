@@ -116,6 +116,15 @@ export function isParentProduct(product: any): boolean {
   return n === undefined || n === null ? true : Number(n) > 0
 }
 
+/**
+ * ¿La card debe mandar a elegir en vez de «Agregar»? Padre con variantes, o plato con un grupo
+ * de modificadores obligatorio (`requires_choice`, calculado por el listado con la regla de
+ * lib/products/modificadores.ts). Agregarlo directo deja un pedido que el servidor rechaza.
+ */
+export function requiereElegir(product: any): boolean {
+  return isParentProduct(product) || product?.requires_choice === true
+}
+
 // ---------------------------------------------------------------------------
 // Defaults que reproducen el aspecto legacy
 // ---------------------------------------------------------------------------
@@ -478,7 +487,8 @@ function CardButtonRenderer({
   const router = useRouter()
   const price = getProductPrice(product)
   const outOfStock = isOutOfStock(product)
-  const isParent = isParentProduct(product)
+  // Padre con variantes o grupo obligatorio: «Elegir» → detalle.
+  const isParent = requiereElegir(product)
 
   const variant = button.variant || 'solid'
   const size = button.size || 'md'
@@ -721,7 +731,8 @@ export function ProductCard({
   const discount = getProductDiscount(product)
   const imgUrl = imageUrl || getProductImageUrl(product)
   const outOfStock = isOutOfStock(product)
-  const isParent = isParentProduct(product)
+  // Padre con variantes o grupo obligatorio: «Elegir» → detalle.
+  const isParent = requiereElegir(product)
 
   // Carrito interno (fallback cuando no se pasa onAddToCart)
   const internalAddToCart = (p: any) => {
@@ -1104,7 +1115,7 @@ export function ProductCard({
                 <Price value={price} className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }} />
               )}
             </div>
-            {outOfStock && !isParent ? (
+            {outOfStock && !isParentProduct(product) ? (
               <span className="text-xs text-red-500 font-medium">Sin stock</span>
             ) : (
               <>

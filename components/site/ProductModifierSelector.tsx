@@ -2,6 +2,8 @@
 
 import { useState, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { Check, AlertCircle } from 'lucide-react'
+import { useCurrency } from '@/components/site/CurrencyProvider'
+import { gruposVisibles, mensajeObligatorio, minimoExigido } from '@/lib/products/modificadores'
 
 export interface ModifierGroup {
   id: number
@@ -42,18 +44,42 @@ interface ProductModifierSelectorProps {
   onChange: (selected: SelectedModifier[]) => void
 }
 
+/** «obligatorio, elige 1» / «opcional, hasta 3» (Figma, hoja del plato). */
+function reglaDelGrupo(group: ModifierGroup): string {
+  const minimo = minimoExigido(group)
+  if (minimo > 0) {
+    if (group.selection_mode === 'single') return 'obligatorio, elige 1'
+    return group.max_selections && group.max_selections > minimo
+      ? `obligatorio, elige de ${minimo} a ${group.max_selections}`
+      : `obligatorio, elige ${minimo}`
+  }
+  if (group.selection_mode === 'single') return 'opcional, elige 1'
+  return group.max_selections ? `opcional, hasta ${group.max_selections}` : 'opcional'
+}
+
 export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, ProductModifierSelectorProps>(
-  function ProductModifierSelector({ groups, primaryColor, onChange }, ref) {
+  function ProductModifierSelector({ groups: gruposEntrada, primaryColor, onChange }, ref) {
+  // Solo grupos con opciones activas: uno vacío y obligatorio bloquearía el plato para siempre.
+  const groups = useMemo(
+    () =>
+      gruposVisibles(
+        gruposEntrada.map((g) => ({ ...g, product_modifiers: (g.product_modifiers || []).filter((m) => m.is_active !== false) })),
+      ),
+    [gruposEntrada],
+  )
+  const { formatPrice } = useCurrency()
   const [selectedByGroup, setSelectedByGroup] = useState<Record<number, Set<number>>>({})
   const [error, setError] = useState<string | null>(null)
+  const [grupoConError, setGrupoConError] = useState<number | null>(null)
 
   const toggleModifier = (group: ModifierGroup, modifierId: number) => {
     setError(null)
+    setGrupoConError(null)
     setSelectedByGroup((prev) => {
       const current = new Set(prev[group.id] || [])
       if (group.selection_mode === 'single') {
         if (current.has(modifierId)) {
-          if (!group.required) current.clear()
+          if (minimoExigido(group) === 0) current.clear()
         } else {
           current.clear()
           current.add(modifierId)
@@ -93,16 +119,15 @@ export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, Pr
     onChange(result)
   }
 
+  // Misma regla y mismo texto que el servidor (lib/products/modificadores.ts).
   const validate = (): boolean => {
     for (const group of groups) {
       const count = (selectedByGroup[group.id] || new Set()).size
-      const minRequired = group.required ? Math.max(group.min_selections, 1) : group.min_selections
-      if (count < minRequired) {
-        setError(
-          minRequired > 1
-            ? `Selecciona al menos ${minRequired} opciones en "${group.name}"`
-            : `Selecciona una opción en "${group.name}"`
-        )
+      const minimo = minimoExigido(group)
+      if (count < minimo) {
+        setError(mensajeObligatorio(group, minimo))
+        setGrupoConError(group.id)
+        document.getElementById(`grupo-mod-${group.id}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
         return false
       }
     }
@@ -153,24 +178,28 @@ export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, Pr
     <div className="space-y-4">
       {groups.map((group) => {
         const selectedIds = selectedByGroup[group.id] || new Set()
+        const conError = grupoConError === group.id
         return (
-          <div key={group.id} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-gray-900 dark:text-white">
-                {group.name}
-                {group.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {group.selection_mode === 'single' ? 'Elige 1' : group.max_selections ? `Máx. ${group.max_selections}` : 'Múltiple'}
-              </span>
-            </div>
-            <div className="space-y-1.5">
+          <fieldset
+            key={group.id}
+            id={`grupo-mod-${group.id}`}
+            className="space-y-2"
+            aria-invalid={conError || undefined}
+            aria-describedby={conError ? `grupo-mod-${group.id}-error` : undefined}
+          >
+            <legend className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {group.name}
+              <span className="font-normal text-gray-500 dark:text-gray-400"> · {reglaDelGrupo(group)}</span>
+            </legend>
+            <div className="space-y-1.5" role={group.selection_mode === 'single' ? 'radiogroup' : 'group'} aria-label={group.name}>
               {group.product_modifiers.map((opt) => {
                 const isSelected = selectedIds.has(opt.id)
                 return (
                   <button
                     key={opt.id}
                     type="button"
+                    role={group.selection_mode === 'single' ? 'radio' : 'checkbox'}
+                    aria-checked={isSelected}
                     onClick={() => toggleModifier(group, opt.id)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-left ${
                       isSelected
@@ -190,29 +219,26 @@ export const ProductModifierSelector = forwardRef<ProductModifierSelectorRef, Pr
                       </div>
                       <span className="text-sm text-gray-900 dark:text-gray-100">{opt.name}</span>
                     </div>
-                    {Number(opt.extra_price) > 0 && (
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        +${Number(opt.extra_price).toLocaleString('es-CO')}
-                      </span>
-                    )}
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {Number(opt.extra_price) > 0 ? `+ ${formatPrice(Number(opt.extra_price))}` : 'incluido'}
+                    </span>
                   </button>
                 )
               })}
             </div>
-          </div>
+            {conError && error && (
+              <p id={`grupo-mod-${group.id}-error`} role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{error}</span>
+              </p>
+            )}
+          </fieldset>
         )
       })}
 
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
       {extraTotal > 0 && (
         <div className="text-sm font-medium text-gray-600 dark:text-gray-400 pt-1 border-t dark:border-gray-700">
-          Extras: <span style={{ color: primaryColor }}>+${extraTotal.toLocaleString('es-CO')}</span>
+          Extras: <span style={{ color: primaryColor }}>+ {formatPrice(extraTotal)}</span>
         </div>
       )}
 
