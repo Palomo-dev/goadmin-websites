@@ -508,23 +508,10 @@ export async function POST(request: NextRequest) {
     // Post-procesamiento: propina, cupones, promociones, email
     // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
     try {
-      // Registrar propina en tabla tips
-      if (resolvedTip > 0) {
-        await (supabase as any)
-          .from('tips')
-          .insert({
-            organization_id: contextOrgId,
-            branch_id: resolvedBranchId,
-            sale_id: null,
-            payment_id: null,
-            server_id: '00000000-0000-0000-0000-000000000000',
-            amount: resolvedTip,
-            tip_type: 'online',
-            is_distributed: false,
-            notes: `Propina online - Pedido #${orderNumber}`,
-          })
-          .catch((err: any) => console.error('[Orders] Tip insert error:', err))
-      }
+      // La propina NO se inserta aquí en `tips`: viaja en `web_orders.tip_amount` y el ERP crea la
+      // fila al confirmar el pedido (webOrderConfirmationService). El insert de antes violaba la FK
+      // de `server_id` y, con `.catch` sobre un builder sin ese método, lanzaba un TypeError que
+      // saltaba la reserva de stock, el cupón y el correo de todo pedido con propina.
 
       // Registrar redención de cupón. El trigger `trg_coupon_redemption_increment`
       // de `coupon_redemptions` ya suma 1 a `coupons.usage_count`; aquí NO se
