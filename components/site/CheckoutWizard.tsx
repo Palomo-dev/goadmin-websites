@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
+import { OrderConfirmation } from '@/components/site/OrderConfirmation'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
@@ -644,33 +645,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
   if (orderComplete) {
     return (
-      <div className="max-w-lg mx-auto text-center py-12">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: `${primaryColor}20` }}
-        >
-          <Check className="h-10 w-10" style={{ color: primaryColor }} />
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">¡Pedido Realizado!</h1>
-        <p className="text-gray-600 mb-2">
-          Tu pedido <strong>{orderNumber}</strong> ha sido recibido exitosamente.
-        </p>
-        <p className="text-gray-500 mb-8 text-sm">
-          Te enviaremos un correo de confirmación a <strong>{customerData.email}</strong> con los detalles de tu compra.
-        </p>
-
-        <div className="flex gap-4 justify-center">
-          <Link href="/">
-            <Button variant="outline">Volver al inicio</Button>
-          </Link>
-          <Link href="/productos">
-            <Button style={{ backgroundColor: primaryColor }}>
-              Seguir comprando
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <OrderConfirmation
+        orderNumber={orderNumber}
+        customerEmail={customerData.email}
+        primaryColor={primaryColor}
+      />
     )
   }
 
