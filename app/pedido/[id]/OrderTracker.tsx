@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import { Loader2, RefreshCw, MapPin, Phone, Clock, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeliveryInfo } from '@/components/site/DeliveryInfo'
@@ -89,7 +89,48 @@ interface OrderTrackerProps {
 
 const POLL_INTERVAL = 15000 // 15 segundos
 
-export function OrderTracker({ orderIdentifier, primaryColor, token, rutaSeguirPidiendo = '/' }: OrderTrackerProps) {
+/**
+ * El token de seguimiento no se queda en la barra de direcciones: la página carga el píxel de Meta
+ * y los scripts del negocio, que leen `location.href` (el PageView manda la URL completa). Al
+ * montar, el token del enlace se guarda en sessionStorage de este pedido y `?t=` se quita con
+ * history.replaceState ANTES de que corran esos scripts (efecto de layout, antes de los efectos
+ * de next/script y de CustomScripts). Recargar la pestaña conserva el acceso; otra pestaña o
+ * dispositivo necesita el enlace del correo.
+ */
+const useEfectoDeLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
+function claveToken(pedido: string): string {
+  return `seguimiento_pedido_${pedido}`
+}
+
+function leerTokenGuardado(pedido: string): string | null {
+  try {
+    const t = window.sessionStorage.getItem(claveToken(pedido))
+    return t && /^[A-Za-z0-9_-]{16,64}$/.test(t) ? t : null
+  } catch {
+    return null
+  }
+}
+
+export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/' }: OrderTrackerProps) {
+  // En el servidor, el del enlace; en el navegador, además, el guardado de esta pestaña.
+  const [token] = useState<string | null>(() =>
+    tokenDelEnlace ?? (typeof window !== 'undefined' ? leerTokenGuardado(orderIdentifier) : null),
+  )
+  useEfectoDeLayout(() => {
+    if (tokenDelEnlace) {
+      try {
+        window.sessionStorage.setItem(claveToken(orderIdentifier), tokenDelEnlace)
+      } catch {
+        /* almacenamiento bloqueado: el acceso dura lo que dure la página */
+      }
+    }
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('t')) {
+      url.searchParams.delete('t')
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+    }
+  }, [tokenDelEnlace, orderIdentifier])
   const consulta = token ? `?t=${encodeURIComponent(token)}` : ''
   const [data, setData] = useState<TrackingData | null>(null)
   const [loading, setLoading] = useState(true)
