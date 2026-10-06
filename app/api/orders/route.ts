@@ -17,6 +17,7 @@ import {
 } from '@/lib/products/precio-servidor'
 import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
+import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 
 export const dynamic = 'force-dynamic'
 
@@ -300,66 +301,12 @@ export async function POST(request: NextRequest) {
     // ── Buscar o crear customer ──
     let customerId = authCustomerId || null
     if (!customerId) {
-      const { data: existingCustomer } = await (supabase as any)
-        .from('customers')
-        .select('id')
-        .eq('organization_id', contextOrgId)
-        .eq('email', customer.email)
-        .single()
-
-      if (existingCustomer) {
-        customerId = existingCustomer.id
-      } else {
-        const { data: newCustomer } = await (supabase as any)
-          .from('customers')
-          .insert({
-            organization_id: contextOrgId,
-            branch_id: Number.isFinite(branchId) ? branchId : null,
-            email: customer.email,
-            first_name: customer.firstName,
-            last_name: customer.lastName,
-            // full_name es GENERATED ALWAYS AS (CASE ...), no se puede insertar.
-            phone: customer.phone,
-            address: customer.address,
-            city: customer.city,
-            is_registered: false
-          })
-          .select('id')
-          .single()
-
-        if (newCustomer) {
-          customerId = newCustomer.id
-        }
-      }
+      customerId = await buscarOCrearCliente(supabase as any, contextOrgId, Number.isFinite(branchId) ? branchId : null, customer)
     }
 
     // ── Auto-guardar dirección como principal si no tiene ninguna ──
     if (customerId && customer.address) {
-      const { data: existingAddresses } = await (supabase as any)
-        .from('customer_addresses')
-        .select('id')
-        .eq('customer_id', customerId)
-        .limit(1)
-
-      if (!existingAddresses || existingAddresses.length === 0) {
-        await (supabase as any)
-          .from('customer_addresses')
-          .insert({
-            customer_id: customerId,
-            label: 'Principal',
-            address_line1: customer.address,
-            city: customer.city || null,
-            country_code: customer.countryCode || null,
-            department: customer.department || null,
-            is_default: true,
-            is_active: true,
-          })
-        // Actualizar dirección en el customer también
-        await (supabase as any)
-          .from('customers')
-          .update({ address: customer.address, city: customer.city || null })
-          .eq('id', customerId)
-      }
+      await guardarDireccionPrincipal(supabase as any, customerId, customer)
     }
 
     // Subtotal e impuesto con precios del servidor
@@ -458,7 +405,7 @@ export async function POST(request: NextRequest) {
         tax_total: taxTotal,
         delivery_fee: resolvedShipping,
         total: calculatedTotal,
-        delivery_type: deliveryType === 'delivery' ? 'delivery_own' : (deliveryType || (resolvedShipping > 0 ? 'delivery_own' : 'pickup')),
+        delivery_type: tipoEntregaCliente(deliveryType, resolvedShipping),
         delivery_address: deliveryAddress || {
           address: customer.address,
           city: customer.city,
@@ -536,14 +483,7 @@ export async function POST(request: NextRequest) {
         if (reserveError || !reserveResult?.ok) {
           // La reserva atómica falló: cancelar la orden y devolver 409
           console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
-          await (supabase as any)
-            .from('web_orders')
-            .update({
-              status: 'cancelled',
-              cancelled_at: new Date().toISOString(),
-              cancellation_reason: 'Stock insuficiente al reservar',
-            })
-            .eq('id', webOrder.id)
+          await cancelarPedidoWeb(supabase as any, webOrder.id, 'Stock insuficiente al reservar')
 
           const shortages = reserveResult?.shortages || []
           const outOfStock = shortages.map((s: any) =>
