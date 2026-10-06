@@ -3,6 +3,8 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getOrder, organizacionDelPedido } from '@/lib/checkout/pedido-web'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { getInvoice, getParkingPass, getReservation, getTripTicket } from '@/lib/checkout/fuentes-cobro'
+import { reservaConDepositoPorCobrar } from '@/lib/restaurant/deposito-servidor'
+import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
@@ -537,8 +539,23 @@ export async function POST(request: NextRequest) {
     const isTripTicket = source === 'trip_ticket' && sourceId
     const isParkingPass = source === 'parking_pass' && sourceId
     const isInvoice = source === 'invoice' && sourceId
+    // Depósito de una reserva de mesa (ERP D7): se lee por id Y por la organización del host.
+    const isDepositoMesa = source === FUENTE_COBRO_DEPOSITO && typeof sourceId === 'string'
 
-    if (isInvoice) {
+    if (isDepositoMesa) {
+      const reserva = await reservaConDepositoPorCobrar(supabase, sourceId, hostOrgId)
+      if (reserva && reserva.gateway && reserva.gateway !== gateway) {
+        // Solo la pasarela con la que se creó el cobro sabe confirmarlo (su webhook).
+        return NextResponse.json({ error: 'Este depósito se paga con otra pasarela', code: 'PASARELA_DISTINTA' }, { status: 400 })
+      } else if (reserva && reserva.vencida) {
+        return NextResponse.json(
+          { error: 'El plazo para pagar el depósito terminó o la reserva ya no lo espera. Haz una reserva nueva.', code: 'DEPOSITO_NO_PENDIENTE' },
+          { status: 409 }
+        )
+      } else {
+        order = reserva
+      }
+    } else if (isInvoice) {
       order = await getInvoice(supabase, sourceId)
     } else if (isParkingPass) {
       order = await getParkingPass(supabase, sourceId)
@@ -574,7 +591,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      const label = isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
+      const label = isDepositoMesa ? 'Reserva' : isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
       return NextResponse.json(
         { error: `${label} no encontrado` },
         { status: 404 }
@@ -672,7 +689,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Actualizar orden/reservación/membresía/ticket/pase con el gateway seleccionado
-    if (isParkingPass) {
+    if (isDepositoMesa) {
+      // Depósito de mesa: la referencia y la pasarela ya quedaron en la reserva
+      // (`fn_reserva_mesa_crear_web`). No se escribe nada aquí.
+    } else if (isParkingPass) {
       await (supabase as any)
         .from('parking_passes')
         .update({
@@ -719,7 +739,7 @@ export async function POST(request: NextRequest) {
         .eq('id', order.id)
     }
 
-    const resolvedSource = isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
+    const resolvedSource = isDepositoMesa ? FUENTE_COBRO_DEPOSITO : isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
 
     return NextResponse.json({
       success: true,
@@ -727,7 +747,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       orderNumber: order.order_number,
       source: resolvedSource,
-      sourceId: isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
+      sourceId: isDepositoMesa ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)
