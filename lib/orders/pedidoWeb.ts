@@ -51,7 +51,7 @@ export async function buscarOCrearCliente(
     .select('id')
     .eq('organization_id', organizationId)
     .eq('email', customer.email)
-    .single()
+    .maybeSingle()
 
   if (existingCustomer) return existingCustomer.id
 
@@ -78,6 +78,7 @@ export async function buscarOCrearCliente(
 /** Guarda la dirección del pedido como principal si el cliente aún no tiene ninguna. */
 export async function guardarDireccionPrincipal(
   supabase: ClienteSupabase,
+  organizationId: number,
   customerId: string,
   customer: DatosClientePedido,
 ): Promise<void> {
@@ -107,6 +108,8 @@ export async function guardarDireccionPrincipal(
     .from('customers')
     .update({ address: customer.address, city: customer.city || null })
     .eq('id', customerId)
+    // Nunca escribir la ficha de un cliente de otra organización, aunque el id viniera mal.
+    .eq('organization_id', organizationId)
 }
 
 // ---------------------------------------------------------------------------

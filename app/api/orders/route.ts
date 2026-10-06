@@ -5,6 +5,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { esSede, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
 import {
@@ -381,15 +382,26 @@ export async function POST(request: NextRequest) {
       taxIncluded = defaultTax.taxIncluded === true
     }
 
-    // ── Buscar o crear customer ──
-    let customerId = authCustomerId || null
+    // ── Cliente: el de la sesión, nunca el `customerId` del body ──
+    // getAuthCustomer filtra por la organización del host y el user_id de la cookie de sesión. El
+    // id del body solo se compara para registrar un desfase (sin datos personales).
+    const authCustomer = await getAuthCustomer(contextOrgId)
+    if (authCustomerId && String(authCustomerId) !== String(authCustomer?.id ?? '')) {
+      console.warn('[Orders] customerId del body distinto al de la sesión; se ignora', {
+        organizationId: contextOrgId, conSesion: !!authCustomer,
+      })
+    }
+    let customerId: string | null = authCustomer?.id ?? null
     if (!customerId) {
+      // Invitado: búsqueda o alta por correo, como antes.
       customerId = await buscarOCrearCliente(supabase as any, contextOrgId, Number.isFinite(branchId) ? branchId : null, customer)
+    } else {
+      // Con sesión: el pedido queda ligado a su ficha.
     }
 
     // ── Auto-guardar dirección como principal si no tiene ninguna ──
     if (customerId && customer.address) {
-      await guardarDireccionPrincipal(supabase as any, customerId, customer)
+      await guardarDireccionPrincipal(supabase as any, contextOrgId, customerId, customer)
     }
 
     // Subtotal e impuesto con precios del servidor
