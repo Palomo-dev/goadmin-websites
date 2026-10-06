@@ -42,12 +42,37 @@ import type { AvisoLienzo } from './SeccionVaciaLienzo';
  * sigue funcionando con la recarga por `refreshKey` del editor.
  */
 
-export const ALLOWED_EDITOR_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'https://erp.goadmin.io',
-  'https://go-admin-erp.vercel.app',
-];
+/** Origen de `NEXT_PUBLIC_APP_URL` (la URL del ERP de este despliegue), o `null`. */
+function origenErpDelEntorno(): string | null {
+  try {
+    const url = process.env.NEXT_PUBLIC_APP_URL;
+    if (!url) return null;
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Orígenes del editor. `https://app.goadmin.io` es el ERP de producción: faltaba, y el sitio
+ * descartaba en silencio TODOS los mensajes del editor (ni selección, ni scroll, ni cambios en
+ * vivo). Se añade además el origen de `NEXT_PUBLIC_APP_URL` para no volver a depender de una
+ * lista escrita a mano si el ERP cambia de dominio.
+ */
+export const ALLOWED_EDITOR_ORIGINS: readonly string[] = Array.from(
+  new Set(
+    [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'https://app.goadmin.io',
+      'https://erp.goadmin.io',
+      'https://go-admin-erp.vercel.app',
+      origenErpDelEntorno(),
+    ].filter((o): o is string => !!o),
+  ),
+);
 
 interface PreviewSection {
   id: string;
@@ -141,7 +166,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
 
   // Scroll a sección
   const scrollToSection = useCallback((sectionId: string) => {
-    const el = document.querySelector(`[data-section-id="${sectionId}"]`);
+    const el = document.querySelector(`[data-section-id="${CSS.escape(sectionId)}"]`);
     if (el) {
       // Las zonas globales son `display: contents` (sin caja): se desplaza a
       // su primer hijo.
@@ -150,14 +175,19 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
     }
   }, []);
 
-  // Marca la zona global seleccionada (encabezado o pie); las secciones no
-  // cambian: su selección no se pinta en el lienzo.
+  // Marca lo seleccionado: la zona global (encabezado o pie) o la sección. La sección lleva
+  // `data-goadmin-activa` y `ESTILOS_SECCION_ACTIVA` le pinta el borde azul (Figma A/05a).
   const marcarZonaActiva = useCallback((sectionId: string | null) => {
-    document.querySelectorAll('[data-goadmin-zona]').forEach((zona) => {
-      if (zona.getAttribute('data-section-id') === sectionId) zona.setAttribute('data-goadmin-activa', '');
-      else zona.removeAttribute('data-goadmin-activa');
+    document.querySelectorAll('[data-section-id]').forEach((el) => {
+      if (sectionId !== null && el.getAttribute('data-section-id') === sectionId) el.setAttribute('data-goadmin-activa', '');
+      else el.removeAttribute('data-goadmin-activa');
     });
   }, []);
+
+  // Las secciones se vuelven a pintar con cada `goadmin:preview`: se vuelve a marcar la activa.
+  useEffect(() => {
+    marcarZonaActiva(activeSectionId);
+  }, [liveSections, activeSectionId, marcarZonaActiva]);
 
   useEffect(() => {
     // Avisar al editor que el bridge está listo
@@ -167,7 +197,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
 
     const handler = (e: MessageEvent) => {
       // Validar origen
-      if (e.origin && !ALLOWED_EDITOR_ORIGINS.includes(e.origin)) return;
+      if (!esOrigenEditor(e.origin)) return;
       if (!e.data || typeof e.data !== 'object') return;
 
       editorOrigin.current = e.origin || null;
@@ -248,7 +278,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
           e.preventDefault();
           e.stopPropagation();
           setActiveSectionId(sectionId);
-          marcarZonaActiva(null);
+          marcarZonaActiva(sectionId);
           // Plato de la carta (`data-goadmin-producto`, solo en preview): el editor abre el
           // constructor de la carta con ese plato.
           const plato = Number(
@@ -267,8 +297,30 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
     return () => document.removeEventListener('click', handleClick, true);
   }, [marcarZonaActiva]);
 
-  return <>{children(liveSections, activeSectionId, avisos)}</>;
+  return (
+    <>
+      <style>{ESTILOS_SECCION_ACTIVA}</style>
+      {children(liveSections, activeSectionId, avisos)}
+    </>
+  );
 }
+
+/**
+ * Borde azul de la sección seleccionada en el lienzo (mismo azul que las zonas globales). Solo
+ * existe en modo preview: el `<style>` lo monta el bridge. `outline` no mueve el diseño.
+ */
+const ESTILOS_SECCION_ACTIVA = `
+section[data-section-id][data-goadmin-activa] {
+  outline: 2px solid #4361ee;
+  outline-offset: -2px;
+  scroll-margin-top: 96px;
+}
+section[data-section-id]:not([data-goadmin-activa]):hover {
+  outline: 1px dashed rgba(67, 97, 238, 0.6);
+  outline-offset: -1px;
+  cursor: pointer;
+}
+`;
 
 /**
  * Hook para saber si estamos en modo preview (URL lleva ?preview=1).
