@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import * as LucideIcons from 'lucide-react'
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from '@/lib/website/botonSitio'
 
 // ============================================================
 // HeroButtons — renderiza botones del repeater `buttons` (F3.2)
@@ -121,6 +122,9 @@ function HeroButton({
     ...buttonStyle(variant, primaryColor, btn.bg_color, btn.text_color),
   }
 
+  // Diseño › Botones: el sólido es la acción principal; contorno, fantasma y enlace, secundarias.
+  const marca = variant === 'solid' ? BOTON_PRIMARIO : BOTON_SECUNDARIO
+
   const content = (
     <>
       {Icon && iconPos === 'left' && <Icon size={iconSize} />}
@@ -135,6 +139,7 @@ function HeroButton({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
+        {...marca}
         className={baseClass}
         style={style}
       >
@@ -144,7 +149,7 @@ function HeroButton({
   }
 
   return (
-    <Link href={url} className={baseClass} style={style}>
+    <Link href={url} {...marca} className={baseClass} style={style}>
       {content}
     </Link>
   )

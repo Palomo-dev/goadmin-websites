@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 
 interface CtaBannerProps {
   content: {
@@ -18,6 +19,7 @@ export function CtaBanner({ content, primaryColor }: CtaBannerProps) {
       {content.cta_text && (
         <Link
           href={content.cta_url || '#'}
+          {...BOTON_PRIMARIO}
           className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"
           style={{ backgroundColor: primaryColor || '#8B6914' }}
         >

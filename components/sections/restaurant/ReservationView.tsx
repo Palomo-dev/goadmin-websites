@@ -23,6 +23,7 @@ import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { useReservaMesa, type FranjaDisponible, type ReservaCreada } from '@/lib/restaurant/useReservaMesa'
 import { fechaCorta, fechaLarga, hoyEnZona, instanteEnZona, sumarDias } from '@/lib/restaurant/horario'
 import { AJUSTES_RESERVA_POR_DEFECTO, type AjustesReserva, limitesPersonas } from '@/lib/restaurant/sedes-modelo'
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from '@/lib/website/botonSitio'
 
 export type ReservationVariant = 'stepper' | 'form_image' | 'band' | 'hero_widget' | 'external'
 
@@ -531,7 +532,7 @@ function FormularioCompleto({ flujo, base, ctaText, showNotes }: { flujo: Flujo;
       </div>
       <CamposContacto flujo={flujo} base={base} mostrarNotas={showNotes} />
       <Mensajes flujo={flujo} />
-      <button type="submit" disabled={enviando} className={cn(primaryButtonClass, 'w-full')} style={{ backgroundColor: PRIMARY }}>
+      <button type="submit" disabled={enviando} {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'w-full')} style={{ backgroundColor: PRIMARY }}>
         {enviando ? 'Enviando…' : ctaText}
       </button>
     </form>
@@ -847,14 +848,14 @@ function Stepper({ flujo, props, base }: { flujo: Flujo; props: ReservationViewP
 
         <div className="flex gap-3">
           {paso > 0 && (
-            <button type="button" className={cn(outlineButtonClass, 'flex-1')} style={{ borderColor: ACCENT, color: ACCENT }} onClick={() => setPaso(paso - 1)}>
+            <button type="button" {...BOTON_SECUNDARIO} className={cn(outlineButtonClass, 'flex-1')} style={{ borderColor: ACCENT, color: ACCENT }} onClick={() => setPaso(paso - 1)}>
               Atrás
             </button>
           )}
           <button
             type="submit"
             disabled={!puedeSeguir || reserva.status === 'submitting'}
-            className={cn(primaryButtonClass, 'flex-1 px-4 py-2')}
+            {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'flex-1 px-4 py-2')}
             style={{ backgroundColor: PRIMARY }}
           >
             {paso < 3 ? 'Continuar' : reserva.status === 'submitting' ? 'Enviando…' : props.ctaText || 'Confirmar reserva'}
@@ -903,7 +904,7 @@ export function ReservationView(props: ReservationViewProps) {
             href={props.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={primaryButtonClass}
+            {...BOTON_PRIMARIO} className={primaryButtonClass}
             style={{ backgroundColor: PRIMARY }}
           >
             {props.externalButtonText || 'Reservar en el sitio del proveedor'}
@@ -984,13 +985,13 @@ export function ReservationView(props: ReservationViewProps) {
   // ── Banda ──
   if (variant === 'band') {
     const boton = props.ctaUrl ? (
-      <Link href={props.ctaUrl} className={cn(primaryButtonClass, 'shrink-0')} style={{ backgroundColor: PRIMARY }}>
+      <Link href={props.ctaUrl} {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'shrink-0')} style={{ backgroundColor: PRIMARY }}>
         {props.ctaText || 'Reservar mesa'}
       </Link>
     ) : (
       <button
         type="button"
-        className={cn(primaryButtonClass, 'shrink-0')}
+        {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'shrink-0')}
         style={{ backgroundColor: PRIMARY }}
         aria-expanded={abierto}
         aria-controls={`${base}-panel`}
@@ -1065,7 +1066,7 @@ export function ReservationView(props: ReservationViewProps) {
                 <SelectDia flujo={flujo} id={`${base}-dia`} />
                 <SelectHora flujo={flujo} id={`${base}-hora`} />
                 {!widgetDatos && (
-                  <button type="submit" className={cn(primaryButtonClass, 'shrink-0')} style={{ backgroundColor: PRIMARY }}>
+                  <button type="submit" {...BOTON_PRIMARIO} className={cn(primaryButtonClass, 'shrink-0')} style={{ backgroundColor: PRIMARY }}>
                     {props.ctaText || 'Buscar mesa'}
                   </button>
                 )}
@@ -1073,7 +1074,7 @@ export function ReservationView(props: ReservationViewProps) {
               {widgetDatos && (
                 <div className={cn('flex flex-col gap-4', fadeUp)}>
                   <CamposContacto flujo={flujo} base={base} mostrarNotas={props.showNotes} />
-                  <button type="submit" disabled={enviando} className={primaryButtonClass} style={{ backgroundColor: PRIMARY }}>
+                  <button type="submit" disabled={enviando} {...BOTON_PRIMARIO} className={primaryButtonClass} style={{ backgroundColor: PRIMARY }}>
                     {enviando ? 'Enviando…' : 'Confirmar reserva'}
                   </button>
                 </div>

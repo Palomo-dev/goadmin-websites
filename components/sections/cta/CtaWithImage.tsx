@@ -1,5 +1,7 @@
 'use client'
 
+import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
+
 interface CtaWithImageProps {
   content: Record<string, any>
   primaryColor?: string
@@ -18,7 +20,7 @@ export function CtaWithImage({ content, primaryColor = '#3B82F6' }: CtaWithImage
         {title && <h2 className="text-3xl md:text-4xl font-bold mb-4">{title}</h2>}
         {subtitle && <p className="text-lg mb-8 opacity-90">{subtitle}</p>}
         {cta_text && cta_url && (
-          <a href={cta_url} className="inline-block px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
+          <a href={cta_url} {...BOTON_PRIMARIO} className="inline-block px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
             {cta_text}
           </a>
         )}

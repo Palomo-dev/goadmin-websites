@@ -12,6 +12,8 @@
  * 3. Una sección SIN estilo sale idéntica: mismo content, ningún atributo, ninguna variable.
  * 4. Tema V2: herencia de sede con resolverCampo, tokens inválidos descartados, legacy → nada.
  * 5. Las reglas de app/globals.css existen para cada atributo que emiten los módulos.
+ * 6. Las reglas de botón alcanzan los botones (marcados con data-boton, o con relleno horizontal y
+ *    sin imagen) y NO tarjetas, filas con foto ni puntos de carrusel.
  */
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -191,6 +193,96 @@ const { validarDocumentoSitio } = m.documentoSitio
   }
   const motion = await readFile(join(ROOT, 'components/sections/restaurant/useSectionMotion.ts'), 'utf8')
   check(motion.includes('[data-movimiento="ninguno"]'), 'prefersReducedMotion respeta «Movimiento: Ninguno»')
+}
+
+// ─── 6. A QUÉ elementos alcanzan las reglas de botón ─────────────────────────────────────────
+// No basta con que las reglas existan: se evalúa cada selector de botón de app/globals.css contra
+// elementos de muestra sacados de las secciones reales (tarjeta de FeaturedProductsHero, punto de
+// TeamCarousel, CTA marcado con data-boton…). Motor mínimo sobre postcss-selector-parser.
+{
+  const { default: parser } = await import('postcss-selector-parser')
+  const css = await readFile(join(ROOT, 'app/globals.css'), 'utf8')
+  const reglas = [...css.matchAll(/^(\[data-(?:radio|estilo)-boton[^{]*)\{([^}]*)\}/gm)].map((m) => ({ selector: m[1].trim(), cuerpo: m[2] }))
+  check(reglas.length >= 4, 'globals.css: no se encontraron las reglas de botón')
+
+  const attr = (el, nodo) => {
+    const v = el.attrs[nodo.attribute]
+    if (v === undefined) return false
+    if (!nodo.operator) return true
+    const buscado = nodo.value
+    if (nodo.operator === '=') return v === buscado
+    if (nodo.operator === '*=') return v.includes(buscado)
+    throw new Error(`operador no soportado en el motor de prueba: ${nodo.operator}`)
+  }
+  const compuesto = (el, nodos) => nodos.every((n) => {
+    if (n.type === 'tag') return el.tag === n.value
+    if (n.type === 'attribute') return attr(el, n)
+    if (n.type === 'pseudo') {
+      const internos = n.nodes.map((sel) => sel.nodes)
+      if (n.value === ':is') return internos.some((c) => compuesto(el, c))
+      if (n.value === ':not') return !internos.some((c) => compuesto(el, c))
+      if (n.value === ':has') return internos.some((c) => (el.hijos || []).some((h) => compuesto(h, c)))
+    }
+    throw new Error(`nodo no soportado en el motor de prueba: ${n.type} ${n.value}`)
+  })
+  /** ¿La regla alcanza a `el` dentro de <raíz {tema}><section data-section-id>…? */
+  const alcanza = (regla, raiz, el) => {
+    const ast = parser().astSync(regla.selector)
+    return ast.nodes.some((sel) => {
+      const partes = [[]]
+      for (const n of sel.nodes) {
+        if (n.type === 'combinator') partes.push([])
+        else partes[partes.length - 1].push(n)
+      }
+      if (partes.length !== 3) throw new Error(`selector inesperado: ${regla.selector}`)
+      return compuesto(raiz, partes[0]) && compuesto({ tag: 'section', attrs: { 'data-section-id': 'x' } }, partes[1]) && compuesto(el, partes[2])
+    })
+  }
+  const el = (tag, clase, extra = {}) => ({ tag, attrs: { class: clase, ...(extra.attrs || {}) }, hijos: (extra.hijos || []).map((t) => ({ tag: t, attrs: {} })) })
+  const tema = (estilo) => ({ tag: 'div', attrs: { 'data-radio-boton': 'propio', ...(estilo ? { 'data-estilo-boton': estilo } : {}) } })
+  const deRadio = reglas.filter((r) => r.cuerpo.includes('--radio-boton') && !r.selector.includes('input'))
+  const deEstilo = (e) => reglas.filter((r) => r.selector.includes(`[data-estilo-boton='${e}']`))
+  const radio = (x) => deRadio.some((r) => alcanza(r, tema(null), x))
+  const estilo = (e, x) => deEstilo(e).some((r) => alcanza(r, tema(e), x))
+  check(deEstilo('contorno').length > 0 && deEstilo('sombra_dura').length > 0, 'faltan las reglas de contorno o sombra dura')
+
+  const tarjeta = el('a', 'group block bg-white rounded-xl overflow-hidden shadow-sm', { attrs: { style: 'background-color: #fff' }, hijos: ['img'] })
+  const tarjetaSinOverflow = el('a', 'flex items-center gap-4 rounded-lg px-3 py-3', { hijos: ['img'] })
+  const punto = el('button', 'h-2 w-2 rounded-full transition-all', { attrs: { style: 'background-color: rgb(0,0,0)' } })
+  const ctaMarcado = el('a', 'inline-flex items-center rounded-lg px-6 py-3 text-white', { attrs: { 'data-boton': 'primario', style: 'background-color: var(--primary-color)' } })
+  const ctaSecundario = el('a', 'inline-flex rounded-lg border px-6 py-3', { attrs: { 'data-boton': 'secundario' } })
+  const ctaSinMarca = el('a', 'inline-block px-8 py-3 rounded-lg text-white', { attrs: { style: 'background-color: red' } })
+  const chipSinMarca = el('button', 'shrink-0 rounded-lg px-4 py-2 text-white', { attrs: { style: 'background-color: red' } })
+  const fichaTarjeta = el('a', 'relative flex h-[140px] overflow-hidden rounded-xl border p-5', { attrs: { style: 'background: #fff' } })
+
+  check(!radio(tarjeta), 'el redondeo de botón NO alcanza la tarjeta de producto (overflow-hidden + img)')
+  check(!radio(tarjetaSinOverflow), 'el redondeo de botón NO alcanza una fila con foto')
+  check(!radio(fichaTarjeta), 'el redondeo de botón NO alcanza las tarjetas del hero (overflow-hidden)')
+  check(!radio(punto), 'el redondeo de botón NO alcanza los puntos del carrusel (rounded-full)')
+  check(radio(ctaMarcado) && radio(ctaSecundario), 'el redondeo alcanza los botones marcados')
+  check(radio(ctaSinMarca), 'el redondeo alcanza un botón sin marca (relleno horizontal, sin imagen)')
+  for (const e of ['contorno', 'sombra_dura']) {
+    check(estilo(e, ctaMarcado), `«${e}» alcanza la acción principal marcada`)
+    check(!estilo(e, ctaSecundario), `«${e}» no toca la acción secundaria`)
+    check(!estilo(e, punto), `«${e}» NO alcanza los puntos del carrusel`)
+    check(!estilo(e, tarjeta), `«${e}» NO alcanza las tarjetas`)
+    check(!estilo(e, chipSinMarca), `«${e}» NO alcanza chips ni botones sin marca`)
+  }
+  check(!radio({ ...ctaMarcado }) || deRadio.every((r) => !alcanza(r, { tag: 'div', attrs: {} }, ctaMarcado)), 'sin tema propio (sin data-radio-boton) nada cambia')
+
+  // Los CTA principales de las secciones llevan la marca.
+  for (const [ruta, marca] of [
+    ['components/sections/hero/HeroButtons.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/restaurant/RestaurantHeroView.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/restaurant/ReservationView.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/cta/CtaBanner.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/cta/CtaCentered.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/cta/CtaSplit.tsx', 'BOTON_PRIMARIO'],
+    ['components/sections/cta/CtaWithImage.tsx', 'BOTON_PRIMARIO'],
+  ]) {
+    const fuente = await readFile(join(ROOT, ruta), 'utf8')
+    check(new RegExp(`\\{\\.\\.\\.\\(?[^}]*${marca}`).test(fuente) || fuente.includes('{...marca}'), `${ruta}: el CTA principal no lleva data-boton`)
+  }
 }
 
 if (problemas.length > 0) {

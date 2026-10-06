@@ -1,5 +1,7 @@
 'use client'
 
+import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
+
 interface CtaSplitProps {
   content: Record<string, any>
   primaryColor?: string
@@ -16,7 +18,7 @@ export function CtaSplit({ content, primaryColor = '#3B82F6' }: CtaSplitProps) {
           {subtitle && <p className="text-gray-600 dark:text-gray-300">{subtitle}</p>}
         </div>
         {cta_text && cta_url && (
-          <a href={cta_url} className="flex-shrink-0 px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
+          <a href={cta_url} {...BOTON_PRIMARIO} className="flex-shrink-0 px-8 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor }}>
             {cta_text}
           </a>
         )}

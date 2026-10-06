@@ -24,6 +24,7 @@ import { OpenStatusBadge, useEstadosEnVivo, type SedeConHorario } from './Estado
 import { SiteImage } from './SiteImage'
 import { useParallax, useSectionMotion } from './useSectionMotion'
 import m from './motion.module.css'
+import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from '@/lib/website/botonSitio'
 
 export type RestaurantHeroVariant = 'typographic' | 'split_bento'
 
@@ -62,6 +63,7 @@ export function CtaLink({ cta, kind }: { cta: Cta; kind: 'primary' | 'outline' }
   return (
     <Link
       href={cta.url}
+      {...(kind === 'primary' ? BOTON_PRIMARIO : BOTON_SECUNDARIO)}
       className={kind === 'primary' ? PRIMARY_BTN : OUTLINE_BTN}
       style={
         kind === 'primary'
@@ -186,6 +188,7 @@ function SplitBento(props: RestaurantHeroViewProps) {
               {props.secondaryCta && (
                 <Link
                   href={props.secondaryCta.url}
+                  {...BOTON_SECUNDARIO}
                   className="inline-flex items-center justify-center rounded-lg border border-white px-6 py-3 text-base font-medium leading-6 text-white transition-colors hover:bg-white/10"
                 >
                   {props.secondaryCta.text}

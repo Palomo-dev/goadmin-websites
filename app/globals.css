@@ -210,19 +210,27 @@
 }
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
-/* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian). */
-[data-radio-boton] section[data-section-id] :is(a, button)[class*='rounded']:not([class*='rounded-full']):not([class*='rounded-none']) {
+/* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian).
+   1) Botones marcados con data-boton (lib/website/botonSitio.ts): la regla exacta.
+   2) Sin marca, solo lo que es un botón de verdad: relleno horizontal (px-), nunca un círculo
+      (rounded-full: puntos de carrusel), nunca una tarjeta (overflow-hidden o con imagen dentro).
+      Va en reglas aparte: un navegador sin :has() descarta solo esa regla, no la de las marcas.
+   «Contorno» y «Sombra dura» solo alcanzan la acción principal marcada (data-boton=primario). */
+[data-radio-boton] section[data-section-id] [data-boton] {
+  border-radius: var(--radio-boton);
+}
+[data-radio-boton] section[data-section-id] :is(a, button):not([data-boton])[class*='rounded'][class*='px-']:not([class*='rounded-full']):not([class*='rounded-none']):not([class*='overflow-hidden']):not(:has(img, picture, video)) {
   border-radius: var(--radio-boton);
 }
 [data-radio-boton] section[data-section-id] :is(input, select, textarea)[class*='rounded'] {
   border-radius: min(var(--radio-boton), 12px);
 }
-[data-estilo-boton='contorno'] section[data-section-id] :is(a, button)[style*='background'] {
+[data-estilo-boton='contorno'] section[data-section-id] [data-boton='primario'] {
   background: transparent !important;
   border: 2px solid var(--primary-color);
   color: var(--primary-color) !important;
 }
-[data-estilo-boton='sombra_dura'] section[data-section-id] :is(a, button)[style*='background'] {
+[data-estilo-boton='sombra_dura'] section[data-section-id] [data-boton='primario'] {
   border: 2px solid var(--text-color, #111827);
   box-shadow: 4px 4px 0 0 var(--text-color, #111827);
 }
