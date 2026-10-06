@@ -175,6 +175,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [resumenPedido, setResumenPedido] = useState<ResumenPedidoConfirmado | null>(null)
+  // Sitio principal sin sede: carritos guardados en sitios de sede (el carrito es por sede).
+  const [carritosDeSede, setCarritosDeSede] = useState<{ sede: SedePublicadaCheckout; unidades: number }[]>([])
   // Urgencia: generar número pseudo-aleatorio estable por producto
   const getUrgencyNumber = (id: number | string) => {
     const seed = typeof id === 'string' ? id.charCodeAt(0) * 7 + id.length : Number(id) * 13
@@ -317,6 +319,21 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       if (cartParam || customerParam) {
         const cleanUrl = window.location.pathname
         window.history.replaceState({}, '', cleanUrl)
+      }
+
+      // Sitio principal (sin sede en la URL): ¿hay pedidos empezados en el sitio de alguna sede?
+      // El checkout global no los ve (otra clave de carrito); se avisa en vez de cobrar otro.
+      if (typeof branchId !== 'number' && sedesPublicadas.length > 0) {
+        const conItems: { sede: SedePublicadaCheckout; unidades: number }[] = []
+        for (const sede of sedesPublicadas) {
+          try {
+            const crudo = localStorage.getItem(getCartKey(subdomain, sede.id))
+            const lista = crudo ? JSON.parse(crudo) : []
+            const unidades = Array.isArray(lista) ? lista.reduce((n: number, i: any) => n + (Number(i?.quantity) || 0), 0) : 0
+            if (unidades > 0) conItems.push({ sede, unidades })
+          } catch { /* carrito ilegible: se ignora */ }
+        }
+        setCarritosDeSede(conItems)
       }
 
       // QR de mesa: vigente y de la sede de este checkout (leerMesaGuardada borra la clave antigua
@@ -726,6 +743,33 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
     )
   }
 
+  if (cartItems.length === 0 && carritosDeSede.length > 0) {
+    // Carrito global vacío, pero hay pedidos empezados en sitios de sede: se ofrecen, no se mezclan.
+    return (
+      <div className="max-w-lg mx-auto text-center py-12 px-4">
+        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-6" aria-hidden="true" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Tu pedido está en una sede</h1>
+        <p className="text-gray-600 mb-6">Cada sede tiene su carta y su carrito. Continúa en la sede donde empezaste:</p>
+        <ul className="space-y-3 text-left">
+          {carritosDeSede.map(({ sede, unidades }) => (
+            <li key={sede.id}>
+              <Link
+                href={`/${encodeURIComponent(sede.slug)}`}
+                className="flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-sm"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <MapPin className="h-4 w-4" aria-hidden="true" style={{ color: primaryColor }} />
+                  {sede.nombre}
+                </span>
+                <span className="text-xs text-gray-500">{unidades} {unidades === 1 ? 'producto' : 'productos'} →</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
   if (cartItems.length === 0) {
     return (
       <div className="max-w-lg mx-auto text-center py-12">
@@ -806,6 +850,32 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             primaryColor={primaryColor}
             variant="inline"
           />
+        </div>
+      )}
+
+      {/* Sede del pedido (restaurante): «Pides en Sede Norte · Cambiar sede» */}
+      {isRestaurant && sedePedido && (
+        <div className="mb-6 rounded-xl border bg-white px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <MapPin className="h-4 w-4 flex-shrink-0" aria-hidden="true" style={{ color: primaryColor }} />
+            <span className="text-gray-700">Pides en <strong className="text-gray-900">{sedePedido.nombre}</strong></span>
+            {sedePedido.direccion && <span className="text-gray-500">· {sedePedido.direccion}</span>}
+            {sedesPublicadas.length >= 2 && (
+              <details className="ml-auto">
+                <summary className="cursor-pointer select-none font-medium" style={{ color: primaryColor }}>
+                  Cambiar sede
+                </summary>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-gray-500">Cada sede tiene su carta y su carrito: tu pedido de esta sede queda guardado.</p>
+                  {sedesPublicadas.filter((s) => s.id !== sedePedido.id).map((s) => (
+                    <Link key={s.id} href={`/${encodeURIComponent(s.slug)}`} className="block text-sm text-gray-800 hover:underline">
+                      {s.nombre}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
         </div>
       )}
 
