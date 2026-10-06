@@ -20,6 +20,17 @@ interface OrderEmailData {
   total: number
   organizationName: string
   trackingUrl: string
+  /**
+   * `pending`: el pedido se recibió y el pago está pendiente (efectivo, contraentrega, transferencia)
+   * → «Recibimos tu pedido». `paid`: lo envía el webhook de la pasarela al confirmarse el pago →
+   * «Pago confirmado». Sin valor se trata como `pending`: nunca se anuncia «confirmado» antes de
+   * que nadie lo confirme.
+   */
+  paymentStatus?: 'pending' | 'paid'
+  /** «🛵 Domicilio», «🏪 Recoger en el local», «🍽️ Comer aquí · Mesa 4». */
+  tipoEntrega?: string | null
+  /** Hora programada ya formateada en la zona de la sede («Hoy · 7:30 p. m.»). */
+  programadoPara?: string | null
 }
 
 // Los nombres de promoción/cupón los escribe el comercio en el ERP; se escapan
@@ -40,10 +51,16 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
   }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io'
+  const pagado = data.paymentStatus === 'paid'
+  const titulo = pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
+  const mensaje = pagado
+    ? `Recibimos el pago de tu pedido <strong>${escapeHtml(data.orderNumber)}</strong>. Ya lo estamos preparando.`
+    : `Tu pedido <strong>${escapeHtml(data.orderNumber)}</strong> llegó al restaurante. Te avisaremos cuando lo confirmen.`
+  const negocio = data.organizationName ? escapeHtml(data.organizationName) : ''
 
   const itemsHtml = data.items.map(item => `
     <tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.name}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(item.name)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.unitPrice.toLocaleString('es-CO')}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.total.toLocaleString('es-CO')}</td>
@@ -53,17 +70,21 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
       <div style="background:#f8f9fa;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
-        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">¡Pedido confirmado!</h1>
-        <p style="margin:8px 0 0;color:#666;font-size:14px;">${data.organizationName}</p>
+        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">${titulo}</h1>
+        ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:14px;">${negocio}</p>` : ''}
       </div>
       
       <div style="padding:24px;">
         <p style="color:#333;font-size:16px;">
-          Hola <strong>${data.customerName}</strong>,
+          Hola <strong>${escapeHtml(data.customerName)}</strong>,
         </p>
         <p style="color:#666;font-size:14px;">
-          Tu pedido <strong>${data.orderNumber}</strong> ha sido recibido exitosamente.
+          ${mensaje}
         </p>
+        ${data.tipoEntrega || data.programadoPara ? `
+        <p style="color:#333;font-size:14px;margin:12px 0;padding:10px 12px;background:#f8f9fa;border-radius:6px;">
+          ${data.tipoEntrega ? escapeHtml(data.tipoEntrega) : ''}${data.tipoEntrega && data.programadoPara ? ' · ' : ''}${data.programadoPara ? `Para: ${escapeHtml(data.programadoPara)}` : ''}
+        </p>` : ''}
         
         <table style="width:100%;border-collapse:collapse;margin:20px 0;">
           <thead>
@@ -115,13 +136,13 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         </div>
         
         <div style="text-align:center;margin-top:24px;">
-          <a href="${data.trackingUrl}" style="display:inline-block;background:#3B82F6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-            Ver estado de mi pedido
+          <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:#3B82F6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+            Seguir mi pedido
           </a>
         </div>
         
         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
-          Si tienes alguna pregunta sobre tu pedido, responde a este correo.
+          Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.
         </p>
       </div>
     </div>
@@ -137,7 +158,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
       body: JSON.stringify({
         from: fromEmail,
         to: [data.customerEmail],
-        subject: `Pedido ${data.orderNumber} confirmado — ${data.organizationName}`,
+        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${data.organizationName ? ` — ${data.organizationName}` : ''}`,
         html,
       }),
     })

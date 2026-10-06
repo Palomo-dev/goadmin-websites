@@ -22,7 +22,8 @@ const STATUS_CONFIG: Record<string, { emoji: string; title: string; message: str
     message: 'Tu pedido está listo para ser recogido o será despachado pronto.',
     color: '#10B981',
   },
-  shipped: {
+  // `web_orders.status` no tiene `shipped`: el estado real es `in_delivery` (lib/orders/estados-pedido.ts).
+  in_delivery: {
     emoji: '🛵',
     title: 'Tu pedido va en camino',
     message: 'Un repartidor está llevando tu pedido a la dirección indicada.',
@@ -38,6 +39,12 @@ const STATUS_CONFIG: Record<string, { emoji: string; title: string; message: str
     emoji: '❌',
     title: 'Pedido cancelado',
     message: 'Lamentamos informarte que tu pedido ha sido cancelado.',
+    color: '#EF4444',
+  },
+  rejected: {
+    emoji: '⛔',
+    title: 'No pudimos aceptar tu pedido',
+    message: 'El restaurante no pudo aceptar tu pedido. Si ya pagaste, te devolveremos el dinero.',
     color: '#EF4444',
   },
 }
