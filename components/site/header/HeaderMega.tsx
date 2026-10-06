@@ -21,6 +21,7 @@ import {
   accentColor,
 } from '../header/HeaderShared';
 import MegaMenuDropdown from './MegaMenuDropdown';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 /**
  * HeaderMega
@@ -49,6 +50,7 @@ export default function HeaderMega({
   const ctaHref = settings?.header_cta_url ?? undefined;
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
   const [megaOpen, setMegaOpen] = useState(false);
+  const { ruta } = useRutaSitio();
 
   // Construir nav items desde el árbol de páginas
   const navItems: NavItem[] = buildNavItems(navTree);
@@ -137,7 +139,7 @@ export default function HeaderMega({
                   onMouseLeave={() => setMegaOpen(false)}
                 >
                   <Link
-                    href="/categorias"
+                    href={ruta('/categorias')}
                     className="relative text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors whitespace-nowrap flex items-center gap-1"
                   >
                     <span>Categorías</span>

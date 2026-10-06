@@ -14,6 +14,7 @@ import {
   type HeaderVariantProps,
   type NavItem,
 } from '../HeaderShared';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 /**
  * MobileTabs
@@ -30,10 +31,12 @@ export default function MobileTabs({
   showCart,
   onCartClick,
   menuCategories,
+  branchId,
 }: HeaderVariantProps) {
   const [showCategories, setShowCategories] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const navItems = buildNavItems(navTree);
+  const { ruta } = useRutaSitio();
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
 
@@ -61,6 +64,7 @@ export default function MobileTabs({
                 organizationSubdomain={organization.subdomain || ''}
                 showSearchIcon={searchStyle === 'icon'}
                 isMobile={true}
+                branchId={branchId}
               />
             </div>
           </div>
@@ -85,7 +89,7 @@ export default function MobileTabs({
       {/* Barra inferior fija */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-5 h-14">
-          <TabButton href="/" icon={<Home className="h-5 w-5" />} label="Inicio" />
+          <TabButton href={ruta('/')} icon={<Home className="h-5 w-5" />} label="Inicio" />
           <TabButton
             onClick={() => setShowCategories(true)}
             icon={<LayoutGrid className="h-5 w-5" />}
@@ -129,7 +133,7 @@ export default function MobileTabs({
                 ? menuCategories.map((cat) => (
                     <Link
                       key={cat.id}
-                      href={`/categoria/${cat.slug}`}
+                      href={ruta(`/categorias/${cat.slug}`)}
                       className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                       onClick={() => setShowCategories(false)}
                     >

@@ -12,6 +12,7 @@ import { CurrencySelector } from '../CurrencySelector';
 import { useCurrency } from '../CurrencyProvider';
 import { createClient } from '@/lib/supabase/client';
 import NavDropdown from './NavDropdown';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 // ============================================================
 // SHARED TYPES
@@ -204,9 +205,12 @@ export function HeaderLogo({
   primaryColor: string;
   height?: number;
 }) {
+  // Sitio de una sede por prefijo de ruta: el logo lleva a la portada de la sede.
+  const { ruta } = useRutaSitio();
+  const inicio = ruta('/');
   if (organization.logo_url) {
     return (
-      <Link href="/" className="flex-shrink-0 flex items-center space-x-3">
+      <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
         <Image
           src={organization.logo_url}
           alt={organization.name}
@@ -223,7 +227,7 @@ export function HeaderLogo({
   const logoSize = Math.max(40, Math.min(56, height * 0.8));
 
   return (
-    <Link href="/" className="flex-shrink-0 flex items-center space-x-3">
+    <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
       <div
         className="rounded-xl flex items-center justify-center text-white font-bold text-lg"
         style={{ backgroundColor: primaryColor, width: logoSize, height: logoSize }}

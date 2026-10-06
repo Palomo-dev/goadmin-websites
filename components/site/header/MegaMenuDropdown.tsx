@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
 import type { MenuCategory, NavItem } from './HeaderShared';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 interface MegaMenuDropdownProps {
   categories?: MenuCategory[];
@@ -18,6 +19,8 @@ interface MegaMenuDropdownProps {
  * sub-categorías listadas verticalmente debajo.
  */
 export function MegaMenuDropdown({ categories, items, columns, primaryColor }: MegaMenuDropdownProps) {
+  // Sitio de una sede por prefijo de ruta: las categorías de la sede.
+  const { ruta } = useRutaSitio();
   const colCount = Math.min(Math.max(columns || 4, 2), 6);
 
   // Si hay items nombrados (sistema nuevo), renderizarlos
@@ -121,7 +124,7 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
             <div key={category.id} className="flex flex-col">
               {/* Header de columna */}
               <Link
-                href={`/categorias/${category.slug}`}
+                href={ruta(`/categorias/${category.slug}`)}
                 className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800 group"
               >
                 {category.image_url ? (
@@ -153,7 +156,7 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
                 {visibleChildren.map((child) => (
                   <li key={child.id}>
                     <Link
-                      href={`/categorias/${child.slug}`}
+                      href={ruta(`/categorias/${child.slug}`)}
                       className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors py-0.5"
                     >
                       {child.name}
@@ -165,7 +168,7 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
               {/* Ver todo */}
               {hasMore && (
                 <Link
-                  href={`/categorias/${category.slug}`}
+                  href={ruta(`/categorias/${category.slug}`)}
                   className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   Ver todo
@@ -180,7 +183,7 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
       {/* Footer del panel */}
       <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-center">
         <Link
-          href="/categorias"
+          href={ruta('/categorias')}
           className="inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ color: primaryColor }}
         >
