@@ -52,6 +52,9 @@ export interface PrivateEventsViewProps {
   cardStyle: React.CSSProperties
   timeZone: string
   sectionKey: string
+  /** Sedes elegibles (más de una → selector). Vacío: sin sede o la de la página. */
+  sedes?: { id: number; nombre: string }[]
+  sedeInicial?: number | null
 }
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
@@ -131,6 +134,7 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
     venue: UNDECIDED,
     budget: UNDECIDED,
   })
+  const [sedeId, setSedeId] = useState<number | null>(props.sedeInicial ?? null)
   const [fieldError, setFieldError] = useState<string | null>(null)
   const setEvent = (key: keyof EventFields, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -163,11 +167,29 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
     [fields, budgetOptions.length],
   )
 
+  // Datos estructurados para la ficha del lead (migración D6): sede y detalles
+  // del evento. El texto de `composeMessage` se sigue enviando igual.
+  const extraPayload = useCallback(() => {
+    const guests = Number(fields.guests)
+    const details: Record<string, unknown> = {
+      event_type: fields.eventType || undefined,
+      event_date: fields.date || undefined,
+      guests: Number.isInteger(guests) && guests > 0 ? guests : undefined,
+      venue: fields.venue && fields.venue !== UNDECIDED ? fields.venue : undefined,
+    }
+    const presupuesto = Number(String(fields.budget).replace(/[^\d]/g, ''))
+    if (fields.budget !== UNDECIDED && /^\$?\s*[\d.,]+$/.test(fields.budget.trim()) && presupuesto > 0) {
+      details.budget_per_person = presupuesto
+    }
+    return { branchId: sedeId, details }
+  }, [fields, sedeId])
+
   const form = useContactForm({
     organizationId: props.organizationId,
     sourceForm: 'private_events',
     requireMessage: false,
     composeMessage,
+    extraPayload,
   })
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -248,6 +270,29 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
           </h3>
         )}
         <input {...HONEYPOT_FIELD_PROPS} value={form.values.website} onChange={(e) => form.setField('website', e.target.value)} />
+
+        {(props.sedes?.length ?? 0) > 1 && (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label htmlFor={id('sede')} className={LABEL}>
+              Sede
+            </label>
+            <div className="relative">
+              <select
+                id={id('sede')}
+                value={sedeId ?? ''}
+                onChange={(e) => setSedeId(Number(e.target.value) || null)}
+                className={cn(FIELD, 'appearance-none pr-10')}
+              >
+                {props.sedes!.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-3">
           <SelectField id={id('tipo')} label="Tipo de evento" value={fields.eventType} options={props.eventTypes} onChange={(v) => setEvent('eventType', v)} />

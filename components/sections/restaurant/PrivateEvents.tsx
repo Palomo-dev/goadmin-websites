@@ -16,6 +16,7 @@
 import type { OrganizationWithDetails } from '@/types/database'
 import { cardVisual, items, lines, str, strOr, type Content } from '@/lib/restaurant/secciones'
 import { PrivateEventsView, type PrivatePackage } from './PrivateEventsView'
+import type { SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 
 export const CONTENT_KEYS = [
   'eyebrow',
@@ -35,10 +36,23 @@ const DEFAULT_EVENT_TYPES = ['Cumpleaños', 'Cena de empresa', 'Matrimonio', 'An
 interface PrivateEventsProps {
   content: Content
   organization: OrganizationWithDetails
+  data?: Record<string, unknown>
   sectionId?: string
 }
 
-export function PrivateEvents({ content, organization, sectionId }: PrivateEventsProps) {
+function esSedesRestaurante(v: unknown): v is SedesRestaurante {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
+}
+
+export function PrivateEvents({ content, organization, data, sectionId }: PrivateEventsProps) {
+  // Sede del lead: la de la página de sede (outlet) o, si la página precarga
+  // las sedes (`data.sedesRestaurante`), un selector cuando hay más de una.
+  const sedePagina = typeof data?.branchId === 'number' ? data.branchId : null
+  const datosSedes = esSedesRestaurante(data?.sedesRestaurante) ? data.sedesRestaurante : null
+  const sedes = (datosSedes?.sedes ?? [])
+    .filter((s) => (sedePagina !== null ? s.id === sedePagina : true))
+    .map((s) => ({ id: s.id, nombre: s.nombre }))
+
   const packages: PrivatePackage[] = items(content.packages)
     .map((p) => ({ name: str(p.name), detail: str(p.detail), price: str(p.price_text) }))
     .filter((p): p is PrivatePackage => p.name !== null)
@@ -65,6 +79,8 @@ export function PrivateEvents({ content, organization, sectionId }: PrivateEvent
       organizationId={organization.id}
       cardStyle={cardVisual(content).card}
       timeZone={organization.timezone || 'America/Bogota'}
+      sedes={sedes}
+      sedeInicial={sedePagina ?? sedes[0]?.id ?? null}
       sectionKey={(sectionId || 'eventos-privados').slice(0, 8)}
     />
   )

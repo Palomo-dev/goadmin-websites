@@ -57,10 +57,33 @@ const RPC_ERRORS: Record<string, { status: number; message: string }> = {
   organization_not_found: { status: 404, message: 'Organización no encontrada.' },
   organization_inactive: { status: 403, message: 'Este sitio no está recibiendo mensajes.' },
   organization_without_site: { status: 403, message: 'Este sitio no está publicado.' },
+  invalid_branch: { status: 403, message: 'La sede no pertenece a este sitio.' },
 }
 
 function str(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+/**
+ * Detalles estructurados del formulario (p. ej. evento privado): solo las
+ * claves y tipos de la lista blanca, acotados. La RPC (migración D6) vuelve a
+ * sanearlos. `null` si no queda nada.
+ */
+function detallesSaneados(valor: unknown): Record<string, string | number> | null {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return null
+  const v = valor as Record<string, unknown>
+  const out: Record<string, string | number> = {}
+  const tipo = str(v.event_type).slice(0, 60)
+  if (tipo) out.event_type = tipo
+  const fecha = str(v.event_date)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) out.event_date = fecha
+  const invitados = Number(v.guests)
+  if (Number.isInteger(invitados) && invitados >= 1 && invitados <= 5000) out.guests = invitados
+  const lugar = str(v.venue).slice(0, 120)
+  if (lugar) out.venue = lugar
+  const presupuesto = Number(v.budget_per_person)
+  if (Number.isFinite(presupuesto) && presupuesto >= 0 && presupuesto < 1e9) out.budget_per_person = presupuesto
+  return Object.keys(out).length > 0 ? out : null
 }
 
 export async function POST(request: NextRequest) {
@@ -163,7 +186,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data, error } = await (supabase as any).rpc('web_capture_lead', {
+    const argsLead = {
       p_organization_id: organization.id,
       p_name: name,
       p_email: email,
@@ -172,7 +195,41 @@ export async function POST(request: NextRequest) {
       p_company: company || null,
       p_subject: subject || null,
       p_source_form: sourceForm || null,
-    })
+    }
+
+    // Sede y detalles estructurados (eventos privados, migración D6). La sede
+    // se valida contra la organización del HOST: nunca se confía en el body.
+    const branchPedida = (body as any).branchId
+    let branchId: number | null = null
+    if (branchPedida !== undefined && branchPedida !== null && branchPedida !== '') {
+      const n = Number(branchPedida)
+      const { data: sede } = Number.isInteger(n) && n > 0
+        ? await (supabase as any).from('branches').select('id').eq('id', n).eq('organization_id', organization.id).maybeSingle()
+        : { data: null }
+      if (!sede) {
+        console.warn(`[contact] sede ${String(branchPedida).slice(0, 20)} ajena a la org ${organization.id}`)
+        return NextResponse.json({ error: 'La sede no pertenece a este sitio.' }, { status: 403 })
+      }
+      branchId = n
+    }
+    const detalles = detallesSaneados((body as any).details)
+
+    let respuesta: { data: any; error: any }
+    if (branchId !== null || detalles !== null) {
+      respuesta = await (supabase as any).rpc('web_capture_lead', {
+        ...argsLead,
+        p_branch_id: branchId,
+        p_details: detalles,
+      })
+      if (respuesta.error?.code === 'PGRST202') {
+        // Sobrecarga de D6 aún no aplicada: la captura de siempre (el texto
+        // del mensaje ya lleva los datos del evento).
+        respuesta = await (supabase as any).rpc('web_capture_lead', argsLead)
+      }
+    } else {
+      respuesta = await (supabase as any).rpc('web_capture_lead', argsLead)
+    }
+    const { data, error } = respuesta
 
     if (error) {
       const mapped = RPC_ERRORS[error.message?.trim() ?? '']

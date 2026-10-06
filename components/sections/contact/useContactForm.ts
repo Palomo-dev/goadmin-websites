@@ -61,6 +61,12 @@ interface UseContactFormOptions {
    * esos campos. Sin esta opción se envían `subject` y `message` tal cual.
    */
   composeMessage?: (values: ContactFormValues) => { subject?: string; message: string }
+  /**
+   * Datos estructurados opcionales que viajan además del texto (p. ej. la sede
+   * y los detalles del evento privado). El servidor valida la sede contra la
+   * organización del host y sanea `details` con una lista blanca.
+   */
+  extraPayload?: (values: ContactFormValues) => { branchId?: number | null; details?: Record<string, unknown> } | undefined
 }
 
 export function useContactForm({
@@ -69,6 +75,7 @@ export function useContactForm({
   requireMessage = true,
   initialValues,
   composeMessage,
+  extraPayload,
 }: UseContactFormOptions) {
   // Sin dependencias reactivas a propósito: los valores de partida son fijos.
   const [baseValues] = useState<ContactFormValues>(() => ({ ...EMPTY, ...initialValues }))
@@ -122,6 +129,8 @@ export function useContactForm({
       setStatus('submitting')
       setErrorMessage('')
 
+      const extra = extraPayload?.(values)
+
       try {
         const res = await fetch('/api/contact', {
           method: 'POST',
@@ -135,6 +144,8 @@ export function useContactForm({
             company: values.company.trim() || undefined,
             message,
             sourceForm,
+            ...(extra?.branchId ? { branchId: extra.branchId } : {}),
+            ...(extra?.details ? { details: extra.details } : {}),
             website: values.website, // honeypot
           }),
         })
@@ -157,7 +168,7 @@ export function useContactForm({
         setErrorMessage('No hay conexión con el servidor. Inténtalo de nuevo.')
       }
     },
-    [baseValues, composeMessage, organizationId, requireMessage, sourceForm, status, values]
+    [baseValues, composeMessage, extraPayload, organizationId, requireMessage, sourceForm, status, values]
   )
 
   return {
