@@ -42,12 +42,15 @@ const leer = (rel) => readFile(join(ROOT, rel), 'utf8')
 
 // Módulos TS puros → .mjs temporales dentro del repo.
 const tmp = await mkdtemp(join(ROOT, 'node_modules', '.verify-carta-qr-'))
-let contrato, modelo
+let contrato, modelo, ronda
 try {
   await writeFile(join(tmp, 'contrato.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/contrato/seccionesMesa.ts'), { mode: 'strip' }))
   await writeFile(join(tmp, 'modelo.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/mesa-modelo.ts'), { mode: 'strip' }))
   contrato = await import(pathToFileURL(join(tmp, 'contrato.mjs')).href)
   modelo = await import(pathToFileURL(join(tmp, 'modelo.mjs')).href)
+  const rondaTs = (await leer('lib/orders/rondaMesa.ts')).replace("'@/lib/restaurant/mesa-modelo'", "'./modelo.mjs'")
+  await writeFile(join(tmp, 'ronda.mjs'), stripTypeScriptTypes(rondaTs, { mode: 'strip' }))
+  ronda = await import(pathToFileURL(join(tmp, 'ronda.mjs')).href)
 } finally {
   await rm(tmp, { recursive: true, force: true })
 }
@@ -131,6 +134,25 @@ check(/procesarCobroFirmadoWompi/.test(abonoHook) && /verdict !== 'match'[\s\S]{
 check(/\.from\('table_online_payments'\)[\s\S]{0,120}\.eq\('reference', reference\)/.test(abonoHook) && /p_organization_id: abono\.organizationId/.test(abonoHook), 'webhook del abono: la organización sale del abono')
 const ordenes = await leer('app/api/orders/route.ts')
 check(/if \(!customerId && mesaPedido && !tieneCorreo\(customer\.email\)\) \{[\s\S]{0,300}\} else if \(!customerId\)/.test(ordenes), '/api/orders: sin correo en la mesa no crea ficha de cliente (y conserva lo de siempre)')
+// Un pedido que NO es de la Carta QR (domicilio, recoger, cualquier organización) sale igual:
+const filas = [{ web_order_id: 'w', product_id: 1, quantity: 1 }, { web_order_id: 'w', product_id: 2, quantity: 2 }]
+check(ronda.filasConComensal(filas, [0, 1], [{ diner: 'Ana' }, { diner: 'Luis' }], false) === filas, 'sin mesa: las líneas del pedido son exactamente las de siempre (sin diner_label)')
+check(ronda.comensalDeRonda('Ana', false) === null, 'sin mesa: el pedido no lleva comensal')
+check(JSON.stringify(ronda.filasConComensal(filas, [0, 1], [{ diner: 'Ana' }, {}], true).map((f) => f.diner_label ?? null)) === JSON.stringify(['Ana', null]), 'con mesa: comensal por línea')
+check(ronda.rechazaComensal({ code: 'PGRST204', message: "Could not find the 'diner_label' column" }) && !ronda.rechazaComensal({ code: '23514', message: 'delivery_type' }), 'solo el error de la columna nueva reintenta sin comensal')
+check(ronda.tieneCorreo('a@b.co') && !ronda.tieneCorreo('') && !ronda.tieneCorreo(undefined), 'correo plausible')
+// Cada if nuevo en los archivos sensibles conserva el camino de siempre en su else.
+check(/if \(!customerId && mesaPedido && !tieneCorreo\(customer\.email\)\) \{[\s\S]{0,300}\} else if \(!customerId\) \{\s*\/\/ Invitado: búsqueda o alta por correo, como antes\.\s*customerId = await buscarOCrearCliente/.test(ordenes), '/api/orders: invitado con correo → buscarOCrearCliente como antes')
+check(/\} else if \(orderError && rechazaComensal\(orderError\)\) \{[\s\S]{0,500}\} else \{\s*\/\/ Sin mesa, o la base aceptó dine_in/.test(ordenes), '/api/orders: insert del pedido con su else de siempre')
+check(/if \(error && rechazaComensal\(error\)\) \{[\s\S]{0,300}\} else \{\s*\/\/ Insert de siempre/.test(ordenes), '/api/orders: insert de líneas con su else de siempre')
+check(/if \(mesaPedido && !tieneCorreo\(customer\.email\)\) \{[\s\S]{0,200}\} else if \(!PASARELAS_CON_CORREO_AL_PAGAR\.has/.test(ordenes), '/api/orders: el correo del pedido sale como antes fuera de la mesa')
+check(/if \(mesaPedido\) \{\s*rondaMesa = await avisarErpRondaMesa\(webOrder\.id\)\s*\} else \{/.test(ordenes), '/api/orders: solo las rondas de mesa avisan al ERP')
+check(/checkRateLimit\(`orders:ip:\$\{ip\}`/.test(ordenes) && /checkRateLimit\(`orders:email:\$\{correo\}`/.test(ordenes), '/api/orders: límite por IP y por correo')
+check(/checkRateLimit\(`checkout-init:ip:\$\{ip\}`/.test(init) && /checkRateLimit\(`checkout-init:email:\$\{correo\}`/.test(init), '/api/checkout/init: límite por IP y por correo')
+check(/if \(esReferenciaAbonoMesa\(reference\)\) \{[\s\S]{0,200}\} else \{\s*\/\/ Cualquier otra referencia: el flujo de siempre\./.test(hook), 'webhook: el ramal CQR- con su else de siempre')
+check(/'pedir-cuenta': \{ ip: \[\d+, [^\]]+\], mesa: \[3, 60_000\] \}/.test(servidor), 'pedir la cuenta: límite por mesa')
+check(/const org = await organizacionDePeticion\(organizacionCliente, 'Carta QR'\)/.test(servidor) && /organizationId: org\.organizationId/.test(servidor), '/api/mesa: la organización es la del host (el valor del cliente solo se compara: 403)')
+
 const store = await leer('lib/restaurant/mesaStore.ts')
 check(/deliveryType: 'dine_in'/.test(store) && /tableRef: mesa\.mesa/.test(store) && /email: ''/.test(store), 'la ronda va como «Comer aquí» con la mesa del QR y sin correo')
 check(/source: 'table_bill'/.test(store), 'el pago en línea usa la fuente table_bill')
