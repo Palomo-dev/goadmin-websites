@@ -21,6 +21,8 @@ import {
   validateSignature,
   type SignatureVerdict,
 } from '@/lib/payments/wompi-firma'
+import { esReferenciaDeposito } from '@/lib/restaurant/deposito-modelo'
+import { procesarDepositoWompi } from '@/lib/restaurant/deposito-webhook'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,6 +95,14 @@ export async function POST(request: NextRequest) {
     console.log(
       `[Wompi Webhook] event=${event} ref=${reference} status=${wompiStatus} amount=${amountInCents} env=${environment}`
     )
+
+    // ── Depósito de una reserva de mesa (MESA-…): firma obligatoria, idempotente ──
+    if (esReferenciaDeposito(reference)) {
+      const r = await procesarDepositoWompi(supabase, body)
+      return NextResponse.json(r.body, { status: r.status })
+    } else {
+      // Cualquier otra referencia: el flujo de siempre (reservación, membresía, …, pedido web).
+    }
 
     // ── Verificar si es pago de reservación ──
     if (isReservationReference(reference)) {
