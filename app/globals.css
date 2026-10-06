@@ -208,6 +208,36 @@
   background-color: var(--background-color, #ffffff);
   color: var(--text-color, #111827);
 }
+/* Encabezado y pie con los colores del tema V2 (2026-10-06). Sin tema, el encabezado usaba blanco o
+   gray-900 fijos (`headerBgStyle` de components/site/header/HeaderShared.tsx) y el pie gray-900:
+   con «Noir Omakase» (fondo #0E0E0E) salían azul marino sobre un cuerpo negro. Solo aplica bajo
+   [data-tema-colores] (sitio V2 cuyo tema define fondo o texto); los sitios legacy no llevan el
+   atributo y se pintan igual que antes. Un color elegido a mano en el editor (`header_bg_color`,
+   `footer_background` 'primary' o 'custom') llega como estilo en línea o sin estas clases y sigue
+   mandando. Las variables con !important ganan a las que `headerBgStyle` pone en línea. */
+[data-tema-colores] header [class*='--header-bg-light'] {
+  --header-bg-light: color-mix(in srgb, var(--background-color) 95%, transparent) !important;
+  --header-bg-dark: color-mix(in srgb, var(--background-color) 95%, transparent) !important;
+  color: var(--text-color);
+}
+/* Encabezados móviles (components/site/header/mobile/*): barra, menú lateral y hojas. */
+[data-tema-colores] header :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']) {
+  background-color: var(--background-color) !important;
+  color: var(--text-color);
+}
+[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) {
+  background-color: color-mix(in srgb, var(--text-color) 6%, var(--background-color)) !important;
+  color: var(--text-color) !important;
+}
+[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) :is(h2, h3, h4, summary, [class~='text-white']):not([style*='background']) {
+  color: var(--text-color) !important;
+}
+[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) [class*='text-gray-']:not([style*='background']) {
+  color: color-mix(in srgb, var(--text-color) 72%, var(--background-color)) !important;
+}
+[data-tema-colores] footer:is([class*='bg-gray-900'], [class*='bg-gray-100']) [class*='border-gray-'] {
+  border-color: color-mix(in srgb, var(--text-color) 14%, var(--background-color)) !important;
+}
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 /* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian).
