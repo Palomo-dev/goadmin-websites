@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
+import { ahoraEnLaZona, fechaValida, organizacionDeLaReserva, sedeDeLaReserva } from '@/lib/restaurant/reservas-contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +11,10 @@ export const dynamic = 'force-dynamic'
  * Usa la RPC `get_restaurant_availability` que lee los horarios
  * desde `restaurant_booking_settings` (o defaults si no hay configuración).
  *
- * Query params: organizationId, date (YYYY-MM-DD), time? (HH:MM), partySize, zone?
+ * Query params: organizationId, date (YYYY-MM-DD), time? (HH:MM), partySize, zone?, branchId?
+ *
+ * `branchId` sólo fija la zona horaria con la que se decide si la fecha ya pasó
+ * (la RPC aún no filtra mesas por sede). Debe ser una sede de la organización.
  *
  * Si se pasa `time`, devuelve disponibilidad para esa hora exacta.
  * Si NO se pasa `time`, devuelve la lista de slots disponibles del día.
@@ -41,11 +44,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'partySize inválido' }, { status: 400 })
     }
 
-    // Validar que la fecha no sea pasada
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const requestDate = new Date(date + 'T00:00:00')
-    if (requestDate < today) {
+    if (!fechaValida(date)) {
+      return NextResponse.json({ error: 'Fecha no válida' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient() || createPublicClient()
+
+    // Validar que la fecha no sea pasada EN LA ZONA DE LA SEDE. Antes se
+    // comparaba con la medianoche del servidor (UTC): desde las 19:00 de
+    // Colombia el día en curso salía como «pasado» y no había horas.
+    const sede = await sedeDeLaReserva(supabase, contexto.orgId, searchParams.get('branchId'))
+    if ('respuesta' in sede) return sede.respuesta
+    const ahora = await ahoraEnLaZona(supabase, contexto.orgId, sede.branchId)
+    if (date < ahora.fecha) {
       return NextResponse.json({
         available: false,
         availableTables: 0,
@@ -54,8 +65,6 @@ export async function GET(request: NextRequest) {
         error: 'La fecha no puede ser en el pasado',
       })
     }
-
-    const supabase = createAdminClient() || createPublicClient()
 
     // ── Llamar RPC get_restaurant_availability ──
     const { data: availResult, error: rpcError } = await (supabase as any)

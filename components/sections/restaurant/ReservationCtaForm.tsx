@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useReservaMesa } from '@/lib/restaurant/useReservaMesa'
 
 interface ReservationCtaFormProps {
   content: {
@@ -29,14 +30,6 @@ interface ReservationCtaFormProps {
   data?: Record<string, any>
 }
 
-type FormStatus = 'idle' | 'checking' | 'submitting' | 'success' | 'error' | 'no_availability'
-
-interface AvailableSlot {
-  time: string
-  available: boolean
-  remaining: number
-}
-
 export function ReservationCtaForm({ content, primaryColor, organization, data: datosPagina }: ReservationCtaFormProps) {
   // ── Configuración con defaults (compatibilidad hacia atrás) ──
   const minGuests = content.min_guests || 1
@@ -53,9 +46,6 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
     ? content.form_fields.map(f => f.name)
     : ['name', 'phone', 'date', 'time', 'guests']
 
-  // ── Honeypot (campo oculto anti-bot) ──
-  const [honeypot, setHoneypot] = useState('')
-
   // ── Estado del formulario ──
   const [formData, setFormData] = useState({
     name: '',
@@ -65,14 +55,27 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
     time: '',
     guests: minGuests,
   })
-  const [status, setStatus] = useState<FormStatus>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-  const [suggestedTimes, setSuggestedTimes] = useState<string[]>([])
-  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([])
-  const [availabilityLoading, setAvailabilityLoading] = useState(false)
-  const [reservationResult, setReservationResult] = useState<any>(null)
 
-  const organizationId = organization?.id
+  // Disponibilidad, envío y honeypot: compartidos con la sección `reservation`.
+  const {
+    honeypot,
+    setHoneypot,
+    status,
+    errorMsg,
+    suggestedTimes,
+    availableSlots,
+    availabilityLoading,
+    reservationResult,
+    fallar,
+    checkAvailability,
+    submit,
+    reiniciar,
+  } = useReservaMesa({
+    organizationId: organization?.id,
+    branchId: datosPagina?.branchId ?? null,
+    slotInterval,
+    errorMessage,
+  })
 
   // ── Fecha mínima (hoy) para bloquear fechas pasadas ──
   const todayStr = useMemo(() => {
@@ -85,43 +88,6 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
 
   const inputClass =
     'w-full px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:[color-scheme:dark] focus:ring-2 focus:outline-none'
-
-  // ── Consultar disponibilidad al cambiar fecha/hora/personas ──
-  const checkAvailability = useCallback(async (date: string, time: string, guests: number) => {
-    if (!organizationId || !date) return
-    setAvailabilityLoading(true)
-    setErrorMsg('')
-    setSuggestedTimes([])
-
-    try {
-      const params = new URLSearchParams({
-        organizationId: String(organizationId),
-        date,
-        partySize: String(guests),
-        slotInterval,
-      })
-      if (time) params.set('time', time)
-
-      const res = await fetch(`/api/restaurant-reservations/availability?${params}`)
-      const data = await res.json()
-
-      if (data.slots) {
-        setAvailableSlots(data.slots)
-      }
-
-      if (time) {
-        // Modo hora específica
-        if (!data.available) {
-          setSuggestedTimes(data.suggestedTimes || [])
-        }
-      }
-    } catch (e) {
-      // Error silencioso: no bloquea el formulario
-      console.error('[ReservationCtaForm] Availability check error:', e)
-    } finally {
-      setAvailabilityLoading(false)
-    }
-  }, [organizationId, slotInterval])
 
   const handleFieldChange = (field: string, value: string | number) => {
     const newFormData = { ...formData, [field]: value }
@@ -138,81 +104,41 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
   // ── Enviar reserva ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!organizationId) {
-      setErrorMsg('No se pudo identificar el restaurante.')
-      setStatus('error')
+    if (!organization?.id) {
+      fallar('No se pudo identificar el restaurante.')
       return
     }
 
     // Validaciones de campos requeridos
     if (!formData.name.trim()) {
-      setErrorMsg('Por favor ingresa tu nombre.')
-      setStatus('error')
+      fallar('Por favor ingresa tu nombre.')
       return
     }
     if (requirePhone && !formData.phone.trim()) {
-      setErrorMsg('El teléfono es obligatorio.')
-      setStatus('error')
+      fallar('El teléfono es obligatorio.')
       return
     }
     if (requireEmail && !formData.email.trim()) {
-      setErrorMsg('El email es obligatorio.')
-      setStatus('error')
+      fallar('El email es obligatorio.')
       return
     }
     if (!formData.date || !formData.time) {
-      setErrorMsg('Selecciona fecha y hora.')
-      setStatus('error')
+      fallar('Selecciona fecha y hora.')
       return
     }
     if (!formData.phone.trim() && !formData.email.trim()) {
-      setErrorMsg('Se requiere al menos un teléfono o email de contacto.')
-      setStatus('error')
+      fallar('Se requiere al menos un teléfono o email de contacto.')
       return
     }
 
-    setStatus('submitting')
-    setErrorMsg('')
-
-    try {
-      const res = await fetch('/api/restaurant-reservations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId,
-          // `organizations` no tiene `branch_id`: la sede llegaba siempre vacía.
-          branchId: datosPagina?.branchId ?? null,
-          date: formData.date,
-          time: formData.time,
-          partySize: formData.guests,
-          name: formData.name,
-          phone: formData.phone,
-          email: formData.email,
-          website: honeypot, // honeypot — debe estar vacío
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        if (data.suggestedTimes && data.suggestedTimes.length > 0) {
-          setSuggestedTimes(data.suggestedTimes)
-          setStatus('no_availability')
-          setErrorMsg(data.error || 'No hay disponibilidad para esa hora.')
-        } else {
-          setStatus('error')
-          setErrorMsg(data.error || errorMessage)
-        }
-        return
-      }
-
-      setReservationResult(data.data)
-      setStatus('success')
-    } catch (err) {
-      console.error('[ReservationCtaForm] Submit error:', err)
-      setStatus('error')
-      setErrorMsg(errorMessage)
-    }
+    await submit({
+      date: formData.date,
+      time: formData.time,
+      guests: formData.guests,
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+    })
   }
 
   // ── Pantalla de éxito ──
@@ -248,8 +174,7 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
           <button
             type="button"
             onClick={() => {
-              setStatus('idle')
-              setReservationResult(null)
+              reiniciar()
               setFormData({ name: '', phone: '', email: '', date: '', time: '', guests: minGuests })
             }}
             className="mt-6 text-sm underline hover:opacity-70"
