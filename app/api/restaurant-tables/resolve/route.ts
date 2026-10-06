@@ -5,6 +5,7 @@ import { getOrganizationBranches } from '@/lib/supabase/queries'
 import { resolverSedeCarta } from '@/lib/products/carta-sede'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
+import { buscarMesaDeOrganizacion, type MesaPedido } from '@/lib/orders/mesaPedido'
 
 /**
  * GET /api/restaurant-tables/resolve?ref=<uuid|código>&branchId=<sede de la página>
@@ -31,14 +32,6 @@ import { getSedesWeb } from '@/lib/restaurant/sedes'
  * Respuesta: `{ ok: true, mesa, redirigir? }` o `{ ok: false }` (404), sin detalles.
  */
 
-interface FilaMesaRestaurante {
-  id: string
-  name: string
-  zone: string | null
-  branch_id: number
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SIN_CACHE = { 'Cache-Control': 'no-store' }
 
 function noEncontrada() {
@@ -64,35 +57,18 @@ export async function GET(request: NextRequest) {
   if (sedePagina === 'invalida') return noEncontrada()
   const sedeEsperada = await resolverSedeCarta(org.organizationId, sedePagina)
 
-  const base = () =>
-    db
-      .from('restaurant_tables')
-      .select('id, name, zone, branch_id')
-      .eq('organization_id', org.organizationId)
-
-  let fila: FilaMesaRestaurante | null = null
-  if (UUID_RE.test(ref)) {
-    const { data, error } = await base().eq('id', ref).maybeSingle()
-    if (error) {
-      console.error('[Mesa QR] Error leyendo restaurant_tables', { organizationId: org.organizationId, error: error.message })
-      return NextResponse.json({ ok: false }, { status: 503, headers: SIN_CACHE })
-    }
-    fila = data as FilaMesaRestaurante | null
-  } else {
-    // QR antiguos con el nombre de la mesa («MESA-5»): coincidencia exacta del nombre, sin
-    // comodines. Si el nombre se repite en varias sedes, se prefiere la de la página.
-    const { data, error } = await base().eq('name', ref).limit(10)
-    if (error) {
-      console.error('[Mesa QR] Error leyendo restaurant_tables', { organizationId: org.organizationId, error: error.message })
-      return NextResponse.json({ ok: false }, { status: 503, headers: SIN_CACHE })
-    }
-    const filas = (data || []) as FilaMesaRestaurante[]
-    fila = filas.find((f) => f.branch_id === sedeEsperada) ?? (filas.length === 1 ? filas[0] : null)
+  // Misma búsqueda que /api/orders (lib/orders/mesaPedido.ts): uuid o nombre normalizado.
+  const resultado = await buscarMesaDeOrganizacion(db, org.organizationId, ref, sedeEsperada)
+  if (!resultado.ok && resultado.motivo !== 'otra_sede') {
+    return resultado.motivo === 'error'
+      ? NextResponse.json({ ok: false }, { status: 503, headers: SIN_CACHE })
+      : noEncontrada()
   }
+  const fila: MesaPedido = resultado.mesa
 
-  if (!fila) return noEncontrada()
   let redirigir: string | null = null
-  if (sedeEsperada !== null && fila.branch_id !== sedeEsperada) {
+  if (!resultado.ok) {
+    // Mesa de otra sede que la de la carta.
     if (sedePagina !== null) {
       // Página de una sede y mesa de otra: sin banner (y sin «comer aquí») en esta página.
       return noEncontrada()
@@ -104,7 +80,7 @@ export async function GET(request: NextRequest) {
   }
 
   const sedes = (await getOrganizationBranches(org.organizationId)) as { id: number; name: string | null }[]
-  const nombreSede = sedes.find((s) => Number(s.id) === fila!.branch_id)?.name ?? null
+  const nombreSede = sedes.find((s) => Number(s.id) === fila.branch_id)?.name ?? null
 
   return NextResponse.json(
     {
