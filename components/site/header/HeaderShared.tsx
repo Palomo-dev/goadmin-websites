@@ -13,6 +13,8 @@ import { useCurrency } from '../CurrencyProvider';
 import { createClient } from '@/lib/supabase/client';
 import NavDropdown from './NavDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
+import { useTemaColores } from '../TemaColoresContext';
+import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 
 // ============================================================
 // SHARED TYPES
@@ -353,6 +355,7 @@ export function HeaderCTA({
   primaryColor: string;
   settings?: HeaderVariantProps['settings'];
 }) {
+  const temaColores = useTemaColores();
   if (!text) return null;
   const linkHref = href || '#';
 
@@ -365,7 +368,11 @@ export function HeaderCTA({
   const fullWidth = settings?.cta_full_width ?? false;
   const shadow = settings?.cta_shadow ?? 'none';
   const bgColor = settings?.cta_bg_color ?? primaryColor;
-  const textColor = settings?.cta_text_color ?? '#ffffff';
+  // Sitio V2 con tema: negro o blanco según el contraste con el fondo del botón (misma regla que
+  // el ERP, textoSobreAcento); con acentos claros (#C8A97E, #D4AF37…) el blanco no se leía.
+  // Un cta_text_color elegido a mano sigue mandando; legacy, blanco como siempre.
+  const textColor = settings?.cta_text_color
+    ?? (temaColores ? textoSobreAcentoSiHex(bgColor) ?? '#ffffff' : '#ffffff');
   const marginTop = settings?.cta_margin_top ?? 0;
   const marginBottom = settings?.cta_margin_bottom ?? 0;
 

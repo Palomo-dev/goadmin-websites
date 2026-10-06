@@ -27,6 +27,7 @@ import { SelectorSede } from './header/SelectorSede'
 import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
 import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
+import { TemaColoresProvider } from './TemaColoresContext'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -196,6 +197,7 @@ export function OrganizationLayoutCliente({
   return (
     <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
+    <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -226,9 +228,11 @@ export function OrganizationLayoutCliente({
           franja propia bajo el encabezado, a la derecha, igual en las 6 variantes de encabezado y en
           móvil. El Figma dibuja el chip como componente suelto, sin fijar su sitio dentro de cada
           variante; meterlo dentro de los 6 encabezados queda como decisión de producto.
-          Solo con 2 o más sedes publicadas (hoy ninguna organización las tiene). */}
+          Solo con 2 o más sedes publicadas (hoy ninguna organización las tiene).
+          data-franja-sede: en un sitio V2 con tema, app/globals.css le pone el borde y el fondo del
+          tema; sin tema el atributo no tiene regla y la franja queda como siempre. */}
       {!frozenReason && sedesSelector.length >= 2 && (
-        <div className="border-b border-gray-100 dark:border-gray-800">
+        <div className="border-b border-gray-100 dark:border-gray-800" data-franja-sede="">
           <div className="container mx-auto flex justify-end px-4 py-2">
             <SelectorSede
               sedes={sedesSelector}
@@ -336,6 +340,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </TemaColoresProvider>
     </RutaSitioProvider>
     </CurrencyProvider>
   )

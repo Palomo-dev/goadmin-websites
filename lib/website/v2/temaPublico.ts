@@ -17,6 +17,7 @@
  * Código puro: sin React, Next ni Supabase.
  */
 import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
+import { fondoOscuro } from './textoSobreAcento'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -143,6 +144,9 @@ export function atributosTema(t: TemaPublico | null): AtributosTema {
   if (t.fuenteTitulos) variables['--font-heading'] = `'${t.fuenteTitulos}'`
   if (t.fuenteCuerpo) variables['--font-body'] = `'${t.fuenteCuerpo}'`
   if (t.fondo || t.texto) datos['data-tema-colores'] = 'propio'
+  // Fondo oscuro o claro (misma regla que el texto sobre el acento): el pie de las plantillas
+  // oscuras va un 40 % más oscuro que el fondo; el de las claras, un 5 % hacia el texto.
+  if (t.fondo) datos['data-tema-fondo'] = fondoOscuro(t.fondo) ? 'oscuro' : 'claro'
   if (t.fuenteCuerpo) datos['data-tema-fuente'] = 'propia'
   if (t.radio !== null) variables['--radio-sitio'] = `${t.radio}px`
   const radioBoton = radioBotonPx(t)

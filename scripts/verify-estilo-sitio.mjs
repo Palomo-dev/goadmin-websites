@@ -28,6 +28,8 @@ const MODULOS = {
   colorMarca: 'lib/website/v2/colorMarca.ts',
   fuenteTema: 'lib/website/v2/fuenteTema.ts',
   estiloSeccion: 'lib/website/v2/estiloSeccion.ts',
+  contrasteColor: 'lib/website/v2/contrasteColor.ts',
+  textoSobreAcento: 'lib/website/v2/textoSobreAcento.ts',
   temaPublico: 'lib/website/v2/temaPublico.ts',
   estiloSeccionPublico: 'lib/website/v2/estiloSeccionPublico.ts',
 }
@@ -181,6 +183,15 @@ const { validarDocumentoSitio } = m.documentoSitio
   check(inyectada && inyectada.fuenteTitulos === null, 'lienzo: familia inyectada no llega al CSS')
 
   igual(atributosTema(null), { variables: {}, datos: {} }, 'legacy: ni variables ni atributos')
+  igual(a.datos['data-tema-fondo'], 'claro', 'fondo #FAF7F2 → claro')
+  igual(atributosTema({ ...t, fondo: '#0E0E0E', texto: '#F2EDE4' }).datos['data-tema-fondo'], 'oscuro', 'fondo #0E0E0E → oscuro')
+  check(!('data-tema-fondo' in atributosTema({ ...t, fondo: null }).datos), 'sin fondo propio no se marca el modo')
+
+  // Texto del botón sobre el acento (copia literal de textoSobreAcento del ERP).
+  const { textoSobreAcento, textoSobreAcentoSiHex } = m.textoSobreAcento
+  for (const claro of ['#C8A97E', '#D4AF37', '#B8975A', '#F2EDE4']) igual(textoSobreAcento(claro), '#111111', `acento claro ${claro} → texto negro`)
+  for (const oscuro of ['#8C2F1B', '#1E40AF', '#111111']) igual(textoSobreAcento(oscuro), '#FFFFFF', `acento oscuro ${oscuro} → texto blanco`)
+  check(textoSobreAcentoSiHex('rgb(0,0,0)') === null && textoSobreAcentoSiHex(undefined) === null, 'un color que no es hex no se mide')
   check(urlGoogleFonts([]) === null, 'sin familias no hay hoja')
   check(urlGoogleFonts(['Playfair Display', 'Lato', 'Lato']).includes('family=Playfair+Display:wght@400;500;600;700&family=Lato'), 'hoja de Google Fonts')
   check(familiaSegura('a;b') === null, 'familia con ; rechazada')
@@ -194,7 +205,7 @@ const { validarDocumentoSitio } = m.documentoSitio
     'data-seccion-fuente-titulo', 'data-seccion-fuente-texto', 'data-seccion-tamano-titulo', 'data-seccion-tamano-texto',
     'data-seccion-grosor-titulo', 'data-seccion-grosor-texto', 'data-seccion-interlineado-titulo', 'data-seccion-interlineado-texto',
     'data-seccion-mayusculas-titulo', 'data-seccion-mayusculas-texto', 'data-seccion-color-texto', 'data-seccion-color-borde',
-    'data-tema-colores', 'data-tema-fuente', 'data-radio-boton', 'data-estilo-boton', 'data-movimiento',
+    'data-tema-colores', 'data-tema-fondo', 'data-tema-fuente', 'data-radio-boton', 'data-estilo-boton', 'data-movimiento',
   ]
   for (const a of atributos) {
     // data-movimiento lo lee prefersReducedMotion (JS), no una regla CSS.
