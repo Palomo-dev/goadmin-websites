@@ -9,17 +9,28 @@ import { getGoogleAdsConfig, getMetaPixelId } from '@/lib/supabase/queries'
 import GoogleAdsConversion from '@/components/site/GoogleAdsConversion'
 import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
+import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
+import { etiquetaPago } from '@/lib/orders/estados-pedido'
+
+/** «j***@dominio.com»: la página se abre con solo el número de pedido. */
+function correoEnmascarado(correo: string): string {
+  const [usuario, dominio] = correo.split('@')
+  if (!dominio) return '***'
+  return `${usuario.slice(0, 1)}***@${dominio}`
+}
 
 export const dynamic = 'force-dynamic'
 
-async function getOrderByRef(orderNumber: string, transactionId?: string) {
+async function getOrderByRef(organizationId: number, orderNumber: string, transactionId?: string) {
   const supabase = createAdminClient() || createPublicClient()
 
+  // Solo pedidos de la organización del host: con el número de otro sitio, «no encontrado».
   const { data, error } = await (supabase as any)
     .from('web_orders')
     .select('id, order_number, total, payment_status, status, payment_method, customer_email, customer_name, organization_id, created_at')
+    .eq('organization_id', organizationId)
     .eq('order_number', orderNumber)
-    .single()
+    .maybeSingle()
 
   if (error || !data) return null
 
@@ -91,20 +102,27 @@ async function checkWompiTransactionStatus(supabase: any, order: any, transactio
 
   if (newStatus === 'pending') return null // Sin cambio
 
-  // Actualizar la orden
-  await supabase.from('web_orders').update({
+  // Actualizar la orden, solo si sigue pendiente: si el webhook ya la pasó a pagada, no se repite
+  // nada (ni el aviso al ERP ni el correo).
+  const { data: actualizadas } = await supabase.from('web_orders').update({
     payment_status: newStatus,
     payment_reference: String(tx.id),
     updated_at: new Date().toISOString(),
     ...(newStatus === 'paid' && { status: 'confirmed', confirmed_at: new Date().toISOString() }),
     ...(newStatus === 'failed' && { status: 'cancelled', cancelled_at: new Date().toISOString() }),
-  }).eq('id', order.id)
+  }).eq('id', order.id).eq('payment_status', 'pending').select('id')
 
-  // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío
-  if (newStatus === 'paid') {
+  // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío, y mandar al
+  // cliente «Pago confirmado» (el mismo correo que envía el webhook en la transición pending → paid).
+  if (newStatus === 'paid' && Array.isArray(actualizadas) && actualizadas.length > 0) {
     notifyErpAutoConfirm(order.id).catch(err =>
       console.error('[Resultado] ERP auto-confirm error:', err)
     )
+    enviarCorreoPedidoPagado(order.id).catch(err =>
+      console.error('[Resultado] Correo de pago confirmado:', err)
+    )
+  } else {
+    // Ya no estaba pendiente (lo actualizó el webhook) o no quedó pagada: sin avisos repetidos.
   }
 
   return { ...order, payment_status: newStatus, status: newStatus === 'paid' ? 'confirmed' : order.status }
@@ -191,7 +209,7 @@ export default async function CheckoutResultadoPage({
     )
   }
 
-  const order = await getOrderByRef(orderRef, transactionId)
+  const order = await getOrderByRef(organization.id, orderRef, transactionId)
 
   // Líneas del pedido para `contents`/`content_ids` del Purchase (SKU =
   // retailer_id del catálogo de Meta; si no hay SKU, el id del producto).
@@ -277,16 +295,13 @@ export default async function CheckoutResultadoPage({
               <div className="flex justify-between">
                 <span className="text-gray-500">Estado del pago</span>
                 <span className={`font-medium ${config.color}`}>
-                  {paymentStatus === 'paid' ? 'Pagado' :
-                   paymentStatus === 'pending' ? 'Pendiente' :
-                   paymentStatus === 'failed' ? 'Fallido' :
-                   paymentStatus === 'refunded' ? 'Reembolsado' : paymentStatus}
+                  {etiquetaPago(paymentStatus).etiqueta}
                 </span>
               </div>
               {order.customer_email && (
                 <div className="flex justify-between">
                   <span className="text-gray-500">Email</span>
-                  <span className="text-gray-900">{order.customer_email}</span>
+                  <span className="text-gray-900">{correoEnmascarado(order.customer_email)}</span>
                 </div>
               )}
             </div>
@@ -303,18 +318,22 @@ export default async function CheckoutResultadoPage({
                 Intentar de nuevo
               </Link>
             )}
+            {paymentStatus !== 'failed' && (
+              // Sin token: esta página se abre con solo el número de pedido. El enlace con los
+              // datos de entrega llega en el correo.
+              <Link
+                href={`/pedido/${encodeURIComponent(order.order_number)}`}
+                className="inline-block px-6 py-3 rounded-lg text-white font-medium"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Seguir mi pedido
+              </Link>
+            )}
             <Link
-              href="/mi-cuenta/pedidos"
+              href={organization.type_id === 1 ? '/menu' : '/productos'}
               className="inline-block px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
             >
-              Mis pedidos
-            </Link>
-            <Link
-              href="/productos"
-              className="inline-block px-6 py-3 rounded-lg font-medium text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Seguir comprando
+              {organization.type_id === 1 ? 'Seguir pidiendo' : 'Seguir comprando'}
             </Link>
           </div>
         </div>
