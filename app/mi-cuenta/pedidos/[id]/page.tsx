@@ -8,6 +8,9 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { ReorderButton } from '@/components/site/ReorderButton'
 import { DeliveryInfo } from '@/components/site/DeliveryInfo'
+import { ESTADOS_SIN_ENTREGA, esDomicilio, esEstadoFinal, estiloEstado, etiquetaEntregaFinal, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
+import { fechaHoraPedido, momentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,36 +22,28 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string; icon: string }> = {
-  pending: { label: 'Pendiente', color: '#F59E0B', icon: '⏳' },
-  confirmed: { label: 'Confirmado', color: '#3B82F6', icon: '✅' },
-  preparing: { label: 'Preparando', color: '#8B5CF6', icon: '👨‍🍳' },
-  ready: { label: 'Listo', color: '#10B981', icon: '🔔' },
-  shipped: { label: 'En camino', color: '#3B82F6', icon: '🛵' },
-  delivered: { label: 'Entregado', color: '#059669', icon: '🎉' },
-  completed: { label: 'Completado', color: '#059669', icon: '🎉' },
-  cancelled: { label: 'Cancelado', color: '#EF4444', icon: '❌' },
-}
-
-const DELIVERY_LABELS: Record<string, string> = {
-  delivery: '🛵 Domicilio',
-  pickup: '🏪 Recoger en local',
-  dine_in: '🍽️ Comer aquí',
-}
-
-function buildSimpleTimeline(order: any) {
+/**
+ * Mini línea de tiempo con los estados reales (lib/orders/estados-pedido.ts): «En camino» solo en
+ * domicilio (`delivery_own`/`delivery_third_party`, nunca 'delivery') y un paso terminal para
+ * cancelado, rechazado, reembolsado o expirado.
+ */
+function buildSimpleTimeline(order: any, esRestaurante: boolean) {
+  const orden = ['pending', 'confirmed', 'preparing', 'ready', 'in_delivery', 'delivered']
+  const paso = orden.indexOf(order.status)
+  const alcanzo = (e: string) => paso >= orden.indexOf(e)
   const steps = [
     { key: 'received', label: 'Recibido', ts: order.created_at, icon: '📋' },
-    { key: 'confirmed', label: 'Confirmado', ts: order.confirmed_at, icon: '✅' },
-    { key: 'preparing', label: 'Preparando', ts: ['preparing','ready','shipped','delivered','completed'].includes(order.status) ? (order.confirmed_at || order.created_at) : null, icon: '👨‍🍳' },
-    { key: 'ready', label: 'Listo', ts: order.ready_at, icon: '🔔' },
+    { key: 'confirmed', label: 'Confirmado', ts: order.confirmed_at || (alcanzo('confirmed') ? order.created_at : null), icon: '✅' },
+    { key: 'preparing', label: 'Preparando', ts: alcanzo('preparing') ? (order.confirmed_at || order.created_at) : null, icon: '👨‍🍳' },
+    { key: 'ready', label: 'Listo', ts: order.ready_at || (alcanzo('ready') ? order.updated_at : null), icon: '🔔' },
   ]
-  if (order.delivery_type === 'delivery') {
-    steps.push({ key: 'shipped', label: 'En camino', ts: order.shipment?.dispatched_at || null, icon: '🛵' })
+  if (esDomicilio(order.delivery_type)) {
+    steps.push({ key: 'in_delivery', label: 'En camino', ts: order.shipment?.dispatched_at || (alcanzo('in_delivery') ? order.updated_at : null), icon: '🛵' })
   }
-  steps.push({ key: 'delivered', label: order.delivery_type === 'delivery' ? 'Entregado' : order.delivery_type === 'dine_in' ? 'Servido' : 'Recogido', ts: order.delivered_at, icon: '🎉' })
-  if (order.status === 'cancelled') {
-    steps.push({ key: 'cancelled', label: 'Cancelado', ts: order.cancelled_at, icon: '❌' })
+  steps.push({ key: 'delivered', label: etiquetaEntregaFinal(order.delivery_type, esRestaurante, order.internal_notes), ts: order.delivered_at || (alcanzo('delivered') ? order.updated_at : null), icon: '🎉' })
+  if (ESTADOS_SIN_ENTREGA.has(order.status)) {
+    const estilo = estiloEstado(order.status)
+    steps.push({ key: order.status, label: estilo.etiqueta, ts: order.cancelled_at || order.updated_at, icon: estilo.icono })
   }
 
   let reachedCurrent = false
@@ -89,9 +84,15 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
     )
   }
 
-  const st = STATUS_MAP[order.status] || { label: order.status, color: '#6B7280', icon: '📦' }
-  const timeline = buildSimpleTimeline(order)
-  const isFinal = ['delivered', 'completed', 'cancelled'].includes(order.status)
+  const estilo = estiloEstado(order.status)
+  const st = { label: estilo.etiqueta, color: estilo.color, icon: estilo.icono }
+  const esRestaurante = organization.type_id === 1
+  const zona = (organization as any).timezone as string | null
+  const timeline = buildSimpleTimeline(order, esRestaurante)
+  const isFinal = esEstadoFinal(order.status)
+  // Cliente con sesión y dueño del pedido (getCustomerOrderDetail filtra por su customer_id): el
+  // enlace lleva el token de seguimiento.
+  const token = tokenSeguimiento(organization.id, order.id)
 
   return (
     <div className="space-y-6">
@@ -103,7 +104,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
           </Link>
           <h1 className="text-2xl font-bold">Pedido {order.order_number}</h1>
           <p className="text-gray-500 text-sm">
-            {new Date(order.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            {fechaHoraPedido(order.created_at, zona)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +125,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
           )}
           {!isFinal && (
             <a
-              href={`/pedido/${order.order_number}`}
+              href={rutaSeguimiento(organization.id, order)}
               className="text-sm font-medium px-4 py-2 rounded-lg"
               style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
             >
@@ -145,14 +146,14 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
               <span style={{ color: st.color }}>{st.label}</span>
             </p>
             {order.delivery_type && (
-              <p className="text-gray-500 text-sm">{DELIVERY_LABELS[order.delivery_type] || order.delivery_type}</p>
+              <p className="text-gray-500 text-sm">{etiquetaTipoEntrega(order.delivery_type, esRestaurante, order.internal_notes)}</p>
             )}
           </div>
           {order.is_scheduled && order.scheduled_at && (
             <div className="text-right text-sm">
               <p className="text-gray-400">Programado</p>
               <p className="font-medium" style={{ color: primaryColor }}>
-                {new Date(order.scheduled_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                {momentoPedido(order.scheduled_at, zona)}
               </p>
             </div>
           )}
@@ -281,8 +282,8 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
       )}
 
       {/* Conductor + Vehículo + POD */}
-      {order.delivery_type === 'delivery' && (
-        <DeliveryInfo orderIdentifier={order.order_number} primaryColor={primaryColor} />
+      {esDomicilio(order.delivery_type) && (
+        <DeliveryInfo orderIdentifier={order.order_number} primaryColor={primaryColor} token={token} />
       )}
 
       {/* Delivery attempts */}
@@ -301,7 +302,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
                   <p className="font-medium">{a.status === 'delivered' ? 'Entregado' : 'Fallido'}</p>
                   {a.failure_reason_text && <p className="text-xs text-gray-500">{a.failure_reason_text}</p>}
                   <p className="text-xs text-gray-400">
-                    {new Date(a.attempted_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {fechaHoraPedido(a.attempted_at, zona)}
                   </p>
                 </div>
               </div>

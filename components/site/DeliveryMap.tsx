@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface DeliveryMapProps {
   orderIdentifier: string
+  /** Token de seguimiento (`?t=`): sin él la API no devuelve la posición del repartidor. */
+  token?: string | null
   destinationLat?: number
   destinationLng?: number
   destinationAddress?: string
@@ -30,6 +32,7 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
 export function DeliveryMap({
   orderIdentifier,
+  token,
   destinationLat,
   destinationLng,
   destinationAddress,
@@ -69,7 +72,7 @@ export function DeliveryMap({
   // Polling posición del conductor
   const fetchDriverPosition = useCallback(async () => {
     try {
-      const res = await fetch(`/api/orders/${orderIdentifier}/delivery`)
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderIdentifier)}/delivery${token ? `?t=${encodeURIComponent(token)}` : ''}`, { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
       if (data.lastEvent?.latitude && data.lastEvent?.longitude) {
@@ -81,7 +84,7 @@ export function DeliveryMap({
         })
       }
     } catch { /* silent */ }
-  }, [orderIdentifier])
+  }, [orderIdentifier, token])
 
   useEffect(() => {
     fetchDriverPosition()

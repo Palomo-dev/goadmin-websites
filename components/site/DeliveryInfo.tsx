@@ -74,11 +74,13 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 interface DeliveryInfoProps {
   orderIdentifier: string
+  /** Token de seguimiento (`?t=`): sin él la API solo devuelve el estado del envío. */
+  token?: string | null
   primaryColor?: string
   pollingInterval?: number
 }
 
-export function DeliveryInfo({ orderIdentifier, primaryColor = '#3B82F6', pollingInterval = 15000 }: DeliveryInfoProps) {
+export function DeliveryInfo({ orderIdentifier, token, primaryColor = '#3B82F6', pollingInterval = 15000 }: DeliveryInfoProps) {
   const [data, setData] = useState<DeliveryData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -87,7 +89,7 @@ export function DeliveryInfo({ orderIdentifier, primaryColor = '#3B82F6', pollin
 
     async function fetchDelivery() {
       try {
-        const res = await fetch(`/api/orders/${orderIdentifier}/delivery`)
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderIdentifier)}/delivery${token ? `?t=${encodeURIComponent(token)}` : ''}`, { cache: 'no-store' })
         if (res.ok && active) {
           const json = await res.json()
           setData(json)
@@ -112,7 +114,7 @@ export function DeliveryInfo({ orderIdentifier, primaryColor = '#3B82F6', pollin
       active = false
       clearInterval(interval)
     }
-  }, [orderIdentifier, pollingInterval, data?.shipment?.status])
+  }, [orderIdentifier, token, pollingInterval, data?.shipment?.status])
 
   if (loading || !data?.hasDelivery) return null
 

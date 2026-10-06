@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { DeliveryInfo } from '@/components/site/DeliveryInfo'
 import { EstimatedTime } from '@/components/site/EstimatedTime'
 import { DeliveryMap } from '@/components/site/DeliveryMap'
+import { esDomicilio, esEstadoFinal, estiloEstado, etiquetaPago, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
+import { fechaHoraPedido, horaPedido, momentoPedido } from '@/lib/restaurant/ventanaPedido'
 
 interface TimelineEvent {
   key: string
@@ -18,11 +20,19 @@ interface TimelineEvent {
 
 interface TrackingData {
   orgTypeId: number
+  /** Zona de la sede: todas las horas se pintan en ella, no en la del navegador. */
+  zona: string
+  /** El enlace trae el token de seguimiento: hay dirección, conductor y entrega. */
+  verificado: boolean
   order: {
     id: string
     orderNumber: string
     status: string
+    paymentStatus: string | null
     deliveryType: string
+    mesa: string | null
+    sede: string | null
+    cancellationReason: string | null
     deliveryAddress: any
     isScheduled: boolean
     scheduledAt: string | null
@@ -70,40 +80,23 @@ interface TrackingData {
 interface OrderTrackerProps {
   orderIdentifier: string
   primaryColor: string
-}
-
-const DELIVERY_TYPE_LABELS_RESTAURANT: Record<string, string> = {
-  delivery: '🛵 Domicilio',
-  pickup: '🏪 Recoger en local',
-  dine_in: '🍽️ Comer en el restaurante',
-}
-
-const DELIVERY_TYPE_LABELS_RETAIL: Record<string, string> = {
-  delivery: '🚚 Envío a domicilio',
-  pickup: '🏪 Recoger en tienda',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  confirmed: 'Confirmado',
-  preparing: 'En preparación',
-  ready: 'Listo',
-  shipped: 'En camino',
-  delivered: 'Entregado',
-  completed: 'Completado',
-  cancelled: 'Cancelado',
+  /** Token de seguimiento del enlace (`?t=`): sin él no se muestran datos personales. */
+  token?: string | null
+  /** Ruta de la carta / catálogo para «Seguir pidiendo». */
+  rutaSeguirPidiendo?: string
 }
 
 const POLL_INTERVAL = 15000 // 15 segundos
 
-export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProps) {
+export function OrderTracker({ orderIdentifier, primaryColor, token, rutaSeguirPidiendo = '/' }: OrderTrackerProps) {
+  const consulta = token ? `?t=${encodeURIComponent(token)}` : ''
   const [data, setData] = useState<TrackingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchTracking = useCallback(async () => {
     try {
-      const res = await fetch(`/api/orders/${orderIdentifier}/tracking`)
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderIdentifier)}/tracking${consulta}`, { cache: 'no-store' })
       if (!res.ok) {
         if (res.status === 404) {
           setError('Pedido no encontrado')
@@ -120,13 +113,13 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
     } finally {
       setLoading(false)
     }
-  }, [orderIdentifier])
+  }, [orderIdentifier, consulta])
 
   useEffect(() => {
     fetchTracking()
     // Polling: refrescar cada 15s si el pedido no está finalizado
     const interval = setInterval(() => {
-      if (data && ['delivered', 'completed', 'cancelled'].includes(data.order.status)) return
+      if (data && esEstadoFinal(data.order.status)) return
       fetchTracking()
     }, POLL_INTERVAL)
     return () => clearInterval(interval)
@@ -153,10 +146,12 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
     )
   }
 
-  const { order, shipment, deliveryAttempts, timeline, orgTypeId } = data
-  const isFinal = ['delivered', 'completed', 'cancelled'].includes(order.status)
+  const { order, shipment, deliveryAttempts, timeline, orgTypeId, zona } = data
+  const isFinal = esEstadoFinal(order.status)
   const isRetail = orgTypeId === 3
-  const deliveryLabels = isRetail ? DELIVERY_TYPE_LABELS_RETAIL : DELIVERY_TYPE_LABELS_RESTAURANT
+  const domicilio = esDomicilio(order.deliveryType)
+  const estilo = estiloEstado(order.status)
+  const pago = etiquetaPago(order.paymentStatus)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -166,17 +161,17 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
           Pedido #{order.orderNumber}
         </h1>
         <p className="text-gray-500 text-sm">
-          {new Date(order.createdAt).toLocaleDateString('es-CO', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-          })}
+          {fechaHoraPedido(order.createdAt, zona)}
+          {order.sede && <> · {order.sede}</>}
         </p>
         <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
           style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
         >
-          {deliveryLabels[order.deliveryType] || order.deliveryType}
+          {etiquetaTipoEntrega(order.deliveryType, orgTypeId === 1)}
+          {order.mesa && <span>· Mesa {order.mesa}</span>}
           {order.isScheduled && order.scheduledAt && (
             <span className="text-gray-500">
-              · {new Date(order.scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+              · {momentoPedido(order.scheduledAt, zona)}
             </span>
           )}
         </div>
@@ -184,21 +179,22 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
 
       {/* Estado actual destacado */}
       <div className="bg-white rounded-2xl border p-6 mb-6 text-center">
-        <div className="text-4xl mb-3">
-          {order.status === 'cancelled' ? '❌' :
-           order.status === 'delivered' || order.status === 'completed' ? '🎉' :
-           order.status === 'preparing' ? (isRetail ? '📦' : '👨‍🍳') :
-           order.status === 'ready' ? (isRetail ? '�' : '�🔔') :
-           order.status === 'shipped' ? '�' :
-           order.status === 'confirmed' ? '✅' : '⏳'}
+        <div className="text-4xl mb-3" aria-hidden="true">
+          {estilo.icono}
         </div>
         <h2 className="text-xl font-bold" style={{ color: primaryColor }}>
-          {STATUS_LABELS[order.status] || order.status}
+          {estilo.etiqueta}
         </h2>
+        {order.cancellationReason && (
+          <p className="text-gray-500 text-sm mt-1">{order.cancellationReason}</p>
+        )}
+        {order.paymentStatus && (
+          <p className="text-xs mt-1" style={{ color: pago.color }}>{pago.etiqueta}</p>
+        )}
         {order.estimatedReadyAt && !isFinal && (
           <p className="text-gray-500 text-sm mt-1 flex items-center justify-center gap-1">
             <Clock className="h-3.5 w-3.5" />
-            Listo aprox. {new Date(order.estimatedReadyAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+            Listo aprox. {horaPedido(order.estimatedReadyAt, zona)}
           </p>
         )}
         {!isFinal && (
@@ -262,7 +258,7 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
                   )}
                   {event.timestamp && (
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(event.timestamp).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      {horaPedido(event.timestamp, zona)}
                     </p>
                   )}
                 </div>
@@ -304,17 +300,18 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
         </div>
       )}
 
-      {/* Conductor + Vehículo (delivery propio) */}
-      {order.deliveryType === 'delivery' && !isFinal && (
+      {/* Conductor + Vehículo (domicilio, con el enlace verificado) */}
+      {domicilio && data.verificado && !isFinal && (
         <div className="mb-6">
-          <DeliveryInfo orderIdentifier={orderIdentifier} primaryColor={primaryColor} />
+          <DeliveryInfo orderIdentifier={orderIdentifier} primaryColor={primaryColor} token={token} />
         </div>
       )}
 
       {/* Mapa en vivo (solo cuando está en camino) */}
-      {order.deliveryType === 'delivery' && order.status === 'shipped' && (
+      {domicilio && data.verificado && order.status === 'in_delivery' && (
         <DeliveryMap
           orderIdentifier={orderIdentifier}
+          token={token}
           destinationLat={shipment?.latitude || undefined}
           destinationLng={shipment?.longitude || undefined}
           destinationAddress={
@@ -345,7 +342,7 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
                   {attempt.failureReason && <p className="text-xs text-gray-500">{attempt.failureReason}</p>}
                   {attempt.driverNotes && <p className="text-xs text-gray-400 italic">{attempt.driverNotes}</p>}
                   <p className="text-xs text-gray-400">
-                    {new Date(attempt.attemptedAt).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {fechaHoraPedido(attempt.attemptedAt, zona)}
                   </p>
                 </div>
               </div>
@@ -354,8 +351,8 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
         </div>
       )}
 
-      {/* Dirección de entrega */}
-      {order.deliveryType === 'delivery' && order.deliveryAddress && (
+      {/* Dirección de entrega (solo con el enlace verificado) */}
+      {domicilio && order.deliveryAddress && (
         <div className="bg-white rounded-2xl border p-6 mb-6">
           <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
             <MapPin className="h-4 w-4" /> Dirección de entrega
@@ -405,6 +402,22 @@ export function OrderTracker({ orderIdentifier, primaryColor }: OrderTrackerProp
             <span style={{ color: primaryColor }}>${Number(order.total || 0).toLocaleString('es-CO')}</span>
           </div>
         </div>
+      </div>
+
+      {!data.verificado && (
+        <p className="text-xs text-gray-500 text-center mt-4">
+          Para ver la dirección y los datos del repartidor, abre el enlace de tu correo de confirmación.
+        </p>
+      )}
+
+      <div className="text-center mt-6">
+        <a
+          href={rutaSeguirPidiendo}
+          className="inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white"
+          style={{ backgroundColor: primaryColor }}
+        >
+          Seguir pidiendo
+        </a>
       </div>
 
       {/* Botón refrescar manual */}
