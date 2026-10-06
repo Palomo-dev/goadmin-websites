@@ -4,6 +4,7 @@ import { getOrder, organizacionDelPedido } from '@/lib/checkout/pedido-web'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { getInvoice, getParkingPass, getReservation, getTripTicket } from '@/lib/checkout/fuentes-cobro'
 import { reservaConDepositoPorCobrar } from '@/lib/restaurant/deposito-servidor'
+import { FUENTE_COBRO_MESA, abonoMesaPorCobrar } from '@/lib/restaurant/mesa-servidor'
 import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
@@ -541,6 +542,8 @@ export async function POST(request: NextRequest) {
     const isInvoice = source === 'invoice' && sourceId
     // Depósito de una reserva de mesa (ERP D7): se lee por id Y por la organización del host.
     const isDepositoMesa = source === FUENTE_COBRO_DEPOSITO && typeof sourceId === 'string'
+    // Abono en línea a la cuenta de una mesa (Carta QR): se lee por id Y por la organización del host.
+    const isAbonoMesa = source === FUENTE_COBRO_MESA && typeof sourceId === 'string'
 
     if (isDepositoMesa) {
       const reserva = await reservaConDepositoPorCobrar(supabase, sourceId, hostOrgId)
@@ -554,6 +557,19 @@ export async function POST(request: NextRequest) {
         )
       } else {
         order = reserva
+      }
+    } else if (isAbonoMesa) {
+      const abono = await abonoMesaPorCobrar(supabase, sourceId, hostOrgId)
+      if (abono && abono.gateway !== (GATEWAY_CODE_MAP[gateway] || gateway)) {
+        // Solo la pasarela con la que la base dejó el abono sabe confirmarlo (su webhook).
+        return NextResponse.json({ error: 'Este pago se hace con otra pasarela', code: 'PASARELA_DISTINTA' }, { status: 400 })
+      } else if (abono && abono.vencido) {
+        return NextResponse.json(
+          { error: 'Este intento de pago ya no está vigente. Vuelve a la cuenta de la mesa e inténtalo de nuevo.', code: 'ABONO_NO_PENDIENTE' },
+          { status: 409 }
+        )
+      } else {
+        order = abono
       }
     } else if (isInvoice) {
       order = await getInvoice(supabase, sourceId)
@@ -591,7 +607,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      const label = isDepositoMesa ? 'Reserva' : isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
+      const label = isDepositoMesa ? 'Reserva' : isAbonoMesa ? 'Pago de la mesa' : isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
       return NextResponse.json(
         { error: `${label} no encontrado` },
         { status: 404 }
@@ -692,6 +708,9 @@ export async function POST(request: NextRequest) {
     if (isDepositoMesa) {
       // Depósito de mesa: la referencia y la pasarela ya quedaron en la reserva
       // (`fn_reserva_mesa_crear_web`). No se escribe nada aquí.
+    } else if (isAbonoMesa) {
+      // Abono de la mesa: la referencia, el monto y la pasarela ya quedaron en
+      // table_online_payments (`fn_mesa_abono_iniciar`). No se escribe nada aquí.
     } else if (isParkingPass) {
       await (supabase as any)
         .from('parking_passes')
@@ -739,7 +758,7 @@ export async function POST(request: NextRequest) {
         .eq('id', order.id)
     }
 
-    const resolvedSource = isDepositoMesa ? FUENTE_COBRO_DEPOSITO : isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
+    const resolvedSource = isDepositoMesa ? FUENTE_COBRO_DEPOSITO : isAbonoMesa ? FUENTE_COBRO_MESA : isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
 
     return NextResponse.json({
       success: true,
@@ -747,7 +766,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       orderNumber: order.order_number,
       source: resolvedSource,
-      sourceId: isDepositoMesa ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
+      sourceId: isDepositoMesa || isAbonoMesa ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)

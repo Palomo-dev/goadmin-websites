@@ -109,7 +109,7 @@ check(/status: 'received'/.test(hook) && /'processed' \| 'error'/.test(hook) && 
 check(/\.eq\('deposit_reference', reference\)/.test(hook) && /p_organization_id: reserva\.organizationId/.test(hook), 'la organización sale de la reserva, no del payload')
 
 const init = await leer('app/api/checkout/init/route.ts')
-check(/isDepositoMesa\)? \{[\s\S]{0,300}\} else if \(isParkingPass\)/.test(init) || /if \(isDepositoMesa\) \{[\s\S]{0,300}\} else if \(isParkingPass\)/.test(init), 'checkout/init: la escritura de la fuente nueva no toca web_orders')
+check(/isDepositoMesa\)? \{[\s\S]{0,300}\} else if \(isParkingPass\)/.test(init) || /if \(isDepositoMesa\) \{[\s\S]{0,300}\} else if \((isAbonoMesa|isParkingPass)\)/.test(init), 'checkout/init: la escritura de la fuente nueva no toca web_orders')
 check(/reservaConDepositoPorCobrar\(supabase, sourceId, hostOrgId\)/.test(init), 'checkout/init lee la reserva con la organización del host')
 
 const llamadas = {}

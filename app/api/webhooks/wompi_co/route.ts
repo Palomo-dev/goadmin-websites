@@ -23,6 +23,8 @@ import {
 } from '@/lib/payments/wompi-firma'
 import { esReferenciaDeposito } from '@/lib/restaurant/deposito-modelo'
 import { procesarDepositoWompi } from '@/lib/restaurant/deposito-webhook'
+import { esReferenciaAbonoMesa } from '@/lib/restaurant/mesa-servidor'
+import { procesarAbonoMesaWompi } from '@/lib/restaurant/abono-mesa-webhook'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,6 +104,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(r.body, { status: r.status })
     } else {
       // Cualquier otra referencia: el flujo de siempre (reservación, membresía, …, pedido web).
+    }
+
+    // ── Abono en línea a la cuenta de una mesa desde la Carta QR (CQR-…): firma obligatoria ──
+    if (esReferenciaAbonoMesa(reference)) {
+      const r = await procesarAbonoMesaWompi(supabase, body)
+      return NextResponse.json(r.body, { status: r.status })
+    } else {
+      // Cualquier otra referencia: el flujo de siempre.
     }
 
     // ── Verificar si es pago de reservación ──
