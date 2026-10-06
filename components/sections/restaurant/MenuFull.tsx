@@ -9,17 +9,21 @@
  * MenuFullView (cliente), así que nada de aquí llama a código de cliente si
  * algún renderer de servidor llegara a pintar la sección.
  *
- * Datos: `data.products` y `data.categories` los precarga
- * `app/[[...slug]]/page.tsx` con `getOrganizationProducts` /
- * `getOrganizationCategories` — los mismos de `menu_preview`, filtrados por el
- * organization_id del contexto y por la sede de la página. No hay consultas
- * nuevas por render.
+ * Datos: `data.menuProducts` (carta completa paginada, `getMenuCatalogProducts`;
+ * si falta, `data.products`), `data.categories`, `data.productTags` y
+ * `data.sedesRestaurante`, precargados por `app/[[...slug]]/page.tsx` y
+ * filtrados por el organization_id del contexto y la sede de la página. No hay
+ * consultas por render en la sección.
+ *
+ * También pinta `menu_preview` (SectionRenderer): las páginas /menu que
+ * quedaron con esa sección muestran la carta completa y dejan pedir.
  */
 
 import type { OrganizationWithDetails } from '@/types/database'
-import { parseSchedules, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'
+import { parseSchedules, type MenuSourceCategory, type MenuSourceProduct, type MenuTagSource } from '@/lib/menu/menuFull'
 import { leerCartaPlatos } from '@/lib/menu/cartaPlatos'
-import { MenuFullView, type MenuFullVariant } from './MenuFullView'
+import { MenuFullView, type MenuFullVariant, type SedeDeCarta } from './MenuFullView'
+import { sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import type { MenuItemSize } from './MenuItemRow'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
@@ -67,12 +71,36 @@ function safeUrl(value: unknown): string | null {
   return /^(https?:\/\/|\/)/i.test(url) ? url : null
 }
 
+function esSedes(v: unknown): v is SedesRestaurante {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { sedes?: unknown }).sedes)
+}
+
+/**
+ * Sede de la carta: la de la página o, en el sitio principal, la principal (misma regla que
+ * `resolverSedeCarta`). Nombre solo con varias sedes; reservar solo si la sede las acepta.
+ */
+function sedeDeCarta(datos: unknown, branchId: number | null, reservarUrl: string | null): SedeDeCarta | null {
+  if (!esSedes(datos) || datos.sedes.length === 0) return null
+  const sede = branchId !== null ? datos.sedes.find((s) => s.id === branchId) : datos.sedes.find((s) => s.esPrincipal) ?? datos.sedes[0]
+  if (!sede) return null
+  return {
+    nombre: datos.sedes.length > 1 ? sede.nombre : null,
+    horario: sede.horario,
+    zonaHoraria: sede.zonaHoraria,
+    reservarHref: reservarUrl && sedeAceptaReservas(sede, datos) ? reservarUrl : null,
+  }
+}
+
 export function MenuFull({ content, organization, data, sectionVariant, sectionId }: MenuFullProps) {
   const variant: MenuFullVariant = VARIANTS.includes(sectionVariant as MenuFullVariant)
     ? (sectionVariant as MenuFullVariant)
     : 'anchors'
 
-  const products = (Array.isArray(data?.products) ? data.products : []) as MenuSourceProduct[]
+  // Carta completa sin el corte de 500 del listado general; si la página no la cargó, el listado.
+  const fuente = Array.isArray(data?.menuProducts) ? data.menuProducts : Array.isArray(data?.products) ? data.products : []
+  const products = fuente as MenuSourceProduct[]
+  const tags = (Array.isArray(data?.productTags) ? data.productTags : []) as MenuTagSource[]
+  const horaSimulada = typeof data?.horaSimulada === 'number' ? data.horaSimulada : null
   const categories = (Array.isArray(data?.categories) ? data.categories : []) as MenuSourceCategory[]
   const selectedIds = Array.isArray(content.selected_category_ids)
     ? content.selected_category_ids.map(Number).filter((n) => Number.isFinite(n))
@@ -115,6 +143,9 @@ export function MenuFull({ content, organization, data, sectionVariant, sectionI
       organizationSubdomain={organization.subdomain || ''}
       branchId={branchId}
       sectionKey={(sectionId || 'menu').slice(0, 8)}
+      tags={tags}
+      sede={sedeDeCarta(data?.sedesRestaurante, branchId, typeof data?.reservarUrl === 'string' ? data.reservarUrl : null)}
+      horaSimulada={horaSimulada}
     />
   )
 }

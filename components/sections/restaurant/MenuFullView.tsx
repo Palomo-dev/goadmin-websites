@@ -14,33 +14,57 @@
  *                    cursor (solo con @media (hover:hover)); en pantallas
  *                    táctiles, cada plato con su miniatura fija (MenuItemRow).
  *
- * Todo sale de props ya precargadas por la página: aquí no hay consultas.
+ * Todo sale de props ya precargadas por la página: aquí no hay consultas,
+ * salvo al abrir la hoja de un plato (variantes y grupos, PlatoSheet) y al
+ * validar la mesa de un QR (useMesaQR).
+ *
+ * Restaurante (Figma F-flujos 1-2-3): la foto o el nombre abren la hoja del
+ * plato; «Elegir» en platos con variantes o grupo obligatorio; etiquetas;
+ * «Agotado · Vuelve…»; carta fuera de horario con «Disponible mañana desde…»;
+ * banner «Cerrado ahora · abre…» con la sede cerrada; banner de mesa y barra
+ * «Ver pedido (n) · total» con QR de mesa.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowRight, ArrowUpRight, FileText, ImageIcon } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Clock, FileText, ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import { Price } from '@/components/site/CurrencyProvider'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
-import { ahoraEnZona } from '@/lib/restaurant/horario'
+import { ahoraEnZona, estadoApertura, type Apertura, type HorarioSemana } from '@/lib/restaurant/horario'
+import { useMesaQR } from '@/lib/restaurant/useMesaQR'
 import { cn } from '@/lib/utils'
 import { addProductToCart } from '@/lib/cart'
 import {
   buildMenuGroups,
   isScheduleOpen,
+  mapaDeTags,
   scheduleLabel,
+  unavailableLabel,
   type MenuCategoryGroup,
   type MenuItem,
   type MenuSchedule,
   type MenuSourceCategory,
   type MenuSourceProduct,
+  type MenuTagSource,
 } from '@/lib/menu/menuFull'
 import { MenuItemRow, type MenuItemLayout, type MenuItemSize } from './MenuItemRow'
 import { aplicarCambiosSedeVivos, aplicarCartaPlatos, type CartaPlatos } from '@/lib/menu/cartaPlatos'
 import { useCartaSedeViva } from '@/components/sections/useCartaSedeViva'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
+import { PlatoSheet } from './PlatoSheet'
+import { BannerMesa, BarraPedidoMesa } from './BannerMesa'
+
+/** Sede de la carta para la hoja del plato y el banner de cerrado (sale de getSedesRestaurante). */
+export interface SedeDeCarta {
+  /** Nombre para «Precio de …» (solo si la organización tiene varias sedes). */
+  nombre: string | null
+  horario: HorarioSemana | null
+  zonaHoraria: string
+  /** Enlace a reservar mesa, solo si la sede acepta reservas web. */
+  reservarHref: string | null
+}
 
 export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category' | 'editorial'
 
@@ -65,6 +89,12 @@ export interface MenuFullViewProps {
   organizationSubdomain: string
   branchId: number | null
   sectionKey: string
+  /** Etiquetas de la organización (product_tags). */
+  tags?: MenuTagSource[]
+  /** Sede de la carta (horario, nombre, reservas). `null` sin datos de sedes. */
+  sede?: SedeDeCarta | null
+  /** «Ver como» del editor: minutos simulados (solo vista previa). */
+  horaSimulada?: number | null
 }
 
 const PRIMARY = 'var(--primary-color)'
@@ -166,14 +196,20 @@ function prefersReducedMotion(): boolean {
 // ---------------------------------------------------------------------------
 
 export function MenuFullView(props: MenuFullViewProps) {
-  const { products, categories, selectedCategoryIds, organizationSubdomain, branchId, cartaPlatos } = props
+  const { products, categories, selectedCategoryIds, organizationSubdomain, branchId, cartaPlatos, tags } = props
   // Solo en el lienzo del editor (?preview=1): cambios de la sede aún sin guardar. Fuera, vacío.
   const cambiosSede = useCartaSedeViva(branchId)
+  const tagsPorId = useMemo(() => mapaDeTags(tags), [tags])
   const groups = useMemo(() => {
-    const base = buildMenuGroups(products, categories, selectedCategoryIds)
+    const base = buildMenuGroups(products, categories, selectedCategoryIds, tagsPorId)
     const conCarta = cartaPlatos ? aplicarCartaPlatos(base, cartaPlatos, selectedCategoryIds) : base
     return aplicarCambiosSedeVivos(conCarta, cambiosSede)
-  }, [products, categories, selectedCategoryIds, cartaPlatos, cambiosSede])
+  }, [products, categories, selectedCategoryIds, cartaPlatos, cambiosSede, tagsPorId])
+
+  const [platoAbierto, setPlatoAbierto] = useState<MenuItem | null>(null)
+  const { mesa, limpiar: salirDeLaMesa } = useMesaQR(organizationSubdomain, branchId)
+  const nowMinutes = useNowMinutes(props.timeZone, props.horaSimulada ?? null)
+  const apertura = useAperturaSede(props.sede ?? null, props.horaSimulada ?? null)
 
   const handleAdd = useCallback(
     (item: MenuItem) => {
@@ -200,26 +236,106 @@ export function MenuFullView(props: MenuFullViewProps) {
     )
   }
 
-  const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd }
-  if (props.variant === 'tabs') return <TabsMenu {...variantProps} />
-  if (props.variant === 'per_category') return <PerCategoryMenu {...variantProps} />
-  if (props.variant === 'editorial') return <EditorialMenu {...variantProps} />
-  return <AnchorsMenu {...variantProps} />
+  const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd, onOpen: setPlatoAbierto, nowMinutes }
+  const cuerpo =
+    props.variant === 'tabs' ? <TabsMenu {...variantProps} />
+      : props.variant === 'per_category' ? <PerCategoryMenu {...variantProps} />
+        : props.variant === 'editorial' ? <EditorialMenu {...variantProps} />
+          : <AnchorsMenu {...variantProps} />
+
+  return (
+    <>
+      {(mesa || apertura?.estado === 'closed') && (
+        <div className="mb-6 flex flex-col gap-3">
+          <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />
+          {apertura?.estado === 'closed' && <BannerCerrado apertura={apertura} reservarHref={props.sede?.reservarHref ?? null} canOrder={props.canOrder} />}
+        </div>
+      )}
+      {cuerpo}
+      <PlatoSheet
+        item={platoAbierto}
+        onClose={() => setPlatoAbierto(null)}
+        canOrder={props.canOrder}
+        organizationSubdomain={organizationSubdomain}
+        branchId={branchId}
+        sedeNombre={props.sede?.nombre ?? null}
+        reservarHref={props.sede?.reservarHref ?? null}
+      />
+      <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />
+    </>
+  )
 }
 
-type VariantProps = MenuFullViewProps & { groups: MenuCategoryGroup[]; onAdd: (item: MenuItem) => void }
+/** «Cerrado ahora · abre mañana a las 07:00» (Figma «Sede cerrada ahora»). */
+function BannerCerrado({ apertura, reservarHref, canOrder }: { apertura: Apertura; reservarHref: string | null; canOrder: boolean }) {
+  const titulo = apertura.texto.replace(/^Cerrado · Abre/, 'Cerrado ahora · abre')
+  return (
+    <div role="status" className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-2">
+        <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold">{titulo}</p>
+          <p className="text-sm">
+            {canOrder
+              ? 'Puedes ver la carta y programar tu pedido al pagar' + (reservarHref ? ', o reservar mesa.' : '.')
+              : 'Puedes ver la carta' + (reservarHref ? ' o reservar mesa.' : '.')}
+          </p>
+        </div>
+      </div>
+      {reservarHref && (
+        <Link
+          href={reservarHref}
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-white/60 dark:hover:bg-black/20"
+          style={{ borderColor: 'var(--accent-color, var(--primary-color))', color: 'var(--accent-color, var(--primary-color))' }}
+        >
+          Reservar mesa
+        </Link>
+      )}
+    </div>
+  )
+}
 
-function rowRenderer(props: VariantProps, unavailableFrom: string | null) {
+/** Estado de la sede (horario en su zona), recalculado cada minuto; con hora simulada, fijo. */
+function useAperturaSede(sede: SedeDeCarta | null, horaSimulada: number | null): Apertura | null {
+  const [apertura, setApertura] = useState<Apertura | null>(null)
+  useEffect(() => {
+    if (!sede?.horario) {
+      setApertura(null)
+      return
+    }
+    const calcular = () => {
+      const ahora = ahoraEnZona(sede.zonaHoraria)
+      setApertura(estadoApertura(sede.horario, horaSimulada === null ? ahora : { ...ahora, minutos: horaSimulada }))
+    }
+    calcular()
+    if (horaSimulada !== null) return
+    const id = window.setInterval(calcular, 60_000)
+    return () => window.clearInterval(id)
+  }, [sede, horaSimulada])
+  return apertura
+}
+
+type VariantProps = MenuFullViewProps & {
+  groups: MenuCategoryGroup[]
+  onAdd: (item: MenuItem) => void
+  onOpen: (item: MenuItem) => void
+  /** Minutos «ahora» en la zona de la organización (o simulados); null hasta montar. */
+  nowMinutes: number | null
+}
+
+function rowRenderer(props: VariantProps, unavailable: string | null) {
   return (item: MenuItem) => (
     <MenuItemRow
       item={item}
       layout={props.layout}
       size={props.size}
-      state={unavailableFrom ? 'unavailable' : item.soldOut ? 'sold_out' : 'default'}
-      availableFrom={unavailableFrom}
+      state={unavailable ? 'unavailable' : item.soldOut ? 'sold_out' : 'default'}
+      availableLabel={unavailable}
       showDescription={props.showDescription}
       canOrder={props.canOrder}
       onAdd={props.onAdd}
+      onOpen={props.onOpen}
+      timeZone={props.timeZone}
     />
   )
 }
@@ -347,21 +463,27 @@ function CategoryHeading({ id, name, count }: { id?: string; name: string; count
 // tabs — cartas con horario + sub-filtro por categoría
 // ---------------------------------------------------------------------------
 
-/** Minutos actuales en la zona de la organización; null hasta montar (evita desajuste de hidratación). */
-function useNowMinutes(timeZone: string): number | null {
+/**
+ * Minutos actuales en la zona de la organización; null hasta montar (evita desajuste de
+ * hidratación). Con hora simulada («Ver como» del editor), esa hora fija.
+ */
+function useNowMinutes(timeZone: string, horaSimulada: number | null): number | null {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
+    if (horaSimulada !== null) {
+      setNow(horaSimulada)
+      return
+    }
     const tick = () => setNow(ahoraEnZona(timeZone).minutos)
     tick()
     const id = window.setInterval(tick, 60_000)
     return () => window.clearInterval(id)
-  }, [timeZone])
+  }, [timeZone, horaSimulada])
   return now
 }
 
 function TabsMenu(props: VariantProps) {
-  const { groups, schedules, sectionKey } = props
-  const nowMinutes = useNowMinutes(props.timeZone)
+  const { groups, schedules, sectionKey, nowMinutes } = props
 
   // Sin cartas configuradas: una sola carta implícita con todas las categorías.
   const cartas: MenuSchedule[] = schedules.length > 0 ? schedules : [{ name: 'Carta' }]
@@ -387,7 +509,8 @@ function TabsMenu(props: VariantProps) {
 
   const visibleGroups = categoryId === null ? cartaGroups : cartaGroups.filter((g) => g.id === categoryId)
   const closed = nowMinutes !== null && schedules.length > 0 && !isScheduleOpen(carta, nowMinutes)
-  const unavailableFrom = closed ? (carta.start_time?.trim() || null) : null
+  // «Disponible desde las 12:00» si abre hoy más tarde; «Disponible mañana desde…» si ya pasó.
+  const unavailableFrom = closed && nowMinutes !== null ? unavailableLabel(carta, nowMinutes) : null
 
   const selectCarta = (idx: number) => {
     setCartaIdx(idx)

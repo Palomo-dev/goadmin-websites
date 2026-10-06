@@ -4,9 +4,12 @@
  * Plato de la carta completa (Figma MenuItemRow 132:272).
  *
  * - layout: `list` (sin foto) | `photo` (miniatura de 72 px).
- * - state:  `default` | `sold_out` (stock de la sede) | `unavailable` (carta
- *   fuera de horario). `featured` (destacado del chef) no se implementa: el
- *   dato no existe en la base.
+ * - state:  `default` | `sold_out` (stock o carta de la sede; «Vuelve a las
+ *   HH:MM» si la sede fijó hasta cuándo) | `unavailable` (carta fuera de
+ *   horario: «Disponible desde…» / «Disponible mañana desde…»).
+ * - Etiquetas del ERP (product_tags) como chips con su color, máx. 3.
+ * - La foto y el nombre abren la hoja del plato (`onOpen`); un plato con
+ *   variantes o con grupo obligatorio dice «Elegir» y también abre la hoja.
  * - size:   `regular` («Agregar» a la derecha) | `compact` (el nombre se ajusta
  *   y «Agregar» va debajo) | `auto` (compact en móvil, regular desde md).
  *
@@ -23,7 +26,7 @@ import { Price } from '@/components/site/CurrencyProvider'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
-import type { MenuItem } from '@/lib/menu/menuFull'
+import { soldOutReturnLabel, type MenuItem } from '@/lib/menu/menuFull'
 
 export type MenuItemLayout = 'list' | 'photo'
 export type MenuItemSize = 'regular' | 'compact' | 'auto'
@@ -34,12 +37,16 @@ interface MenuItemRowProps {
   layout: MenuItemLayout
   size: MenuItemSize
   state: MenuItemState
-  /** «Disponible desde las HH:MM» cuando state = unavailable. */
-  availableFrom?: string | null
+  /** Texto completo cuando state = unavailable («Disponible desde las 12:00»). */
+  availableLabel?: string | null
   showDescription: boolean
   /** Pedido en línea activo en el sitio: solo entonces hay «Agregar». */
   canOrder: boolean
   onAdd: (item: MenuItem) => void
+  /** Abre la hoja del plato. Sin él, «Elegir» enlaza al detalle como antes. */
+  onOpen?: (item: MenuItem) => void
+  /** Zona de la organización para «Vuelve a las HH:MM». */
+  timeZone?: string
 }
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
@@ -48,20 +55,39 @@ function AddButton({
   item,
   disabled,
   onAdd,
+  onOpen,
   className,
 }: {
   item: MenuItem
   disabled: boolean
   onAdd: (item: MenuItem) => void
+  onOpen?: (item: MenuItem) => void
   className?: string
 }) {
   const [added, setAdded] = useState(false)
   const base =
     'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm leading-5 transition-colors'
 
-  // Padre con variantes: se elige talla/presentación en el detalle, igual que
-  // en las tarjetas de producto (agregar un padre deja pedidos sin variante).
-  if (item.hasVariants) {
+  // Padre con variantes o plato con grupo obligatorio: se elige en la hoja del
+  // plato (o en el detalle). Agregarlo directo deja pedidos sin variante o sin
+  // acompañante, que el servidor rechaza.
+  const elegir = item.hasVariants || item.requiresChoice
+  if (elegir && onOpen) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onOpen(item)}
+        className={cn(base, 'hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50', className)}
+        style={{ borderColor: ACCENT, color: ACCENT }}
+        aria-label={`Elegir opciones de ${item.name}`}
+        aria-haspopup="dialog"
+      >
+        Elegir
+      </button>
+    )
+  }
+  if (elegir) {
     return (
       <Link
         href={`/productos/${item.uuid}`}
@@ -105,10 +131,12 @@ export function MenuItemRow({
   layout,
   size,
   state,
-  availableFrom,
+  availableLabel,
   showDescription,
   canOrder,
   onAdd,
+  onOpen,
+  timeZone,
 }: MenuItemRowProps) {
   const muted = state !== 'default'
   const addDisabled = state !== 'default'
@@ -116,6 +144,8 @@ export function MenuItemRow({
   const enLienzo = useIsPreviewMode()
   const compact = size === 'compact'
   const auto = size === 'auto'
+  const vuelve = state === 'sold_out' ? soldOutReturnLabel(item.soldOutUntil, timeZone || 'America/Bogota') : null
+  const abrir = onOpen ? () => onOpen(item) : undefined
 
   return (
     <div
@@ -127,7 +157,10 @@ export function MenuItemRow({
           className={cn(
             'relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted',
             muted && 'opacity-50',
+            abrir && 'cursor-pointer',
           )}
+          onClick={abrir}
+          aria-hidden={abrir ? 'true' : undefined}
         >
           {item.imageUrl ? (
             <Image
@@ -155,7 +188,18 @@ export function MenuItemRow({
               compact ? 'min-w-0 flex-1' : auto ? 'min-w-0 flex-1 md:flex-none md:truncate' : 'min-w-0 truncate',
             )}
           >
-            {item.name}
+            {abrir ? (
+              <button
+                type="button"
+                onClick={abrir}
+                aria-haspopup="dialog"
+                className="text-left hover:underline focus-visible:underline focus-visible:outline-none [text-decoration-color:var(--accent-color,var(--primary-color))]"
+              >
+                {item.name}
+              </button>
+            ) : (
+              item.name
+            )}
           </h3>
           {item.featured && (
             <span
@@ -191,28 +235,48 @@ export function MenuItemRow({
           </p>
         )}
 
+        {item.tags.length > 0 && (
+          <ul className="flex flex-wrap items-center gap-1.5" aria-label="Etiquetas">
+            {item.tags.map((t) => (
+              <li
+                key={t.id}
+                className={cn(
+                  'rounded-full border px-2 py-0.5 text-xs font-medium leading-4',
+                  !t.color && 'border-border bg-muted text-muted-foreground',
+                  muted && 'opacity-70',
+                )}
+                // Color del ERP como borde y texto sobre fondo neutro: legible en claro y oscuro.
+                style={t.color ? { borderColor: t.color, color: t.color } : undefined}
+              >
+                {t.name}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {state === 'sold_out' && (
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium leading-4 text-muted-foreground">
               Agotado
             </span>
+            {vuelve && <span className="text-xs leading-4 text-muted-foreground">{vuelve}</span>}
           </div>
         )}
 
-        {state === 'unavailable' && availableFrom && (
+        {state === 'unavailable' && availableLabel && (
           <div className="flex items-center gap-2 text-xs font-medium leading-4 text-amber-700 dark:text-amber-400">
             <Clock className="h-4 w-4" aria-hidden="true" />
-            Disponible desde las {availableFrom}
+            {availableLabel}
           </div>
         )}
 
         {canOrder && (compact || auto) && (
-          <AddButton item={item} disabled={addDisabled} onAdd={onAdd} className={auto ? 'md:hidden' : undefined} />
+          <AddButton item={item} disabled={addDisabled} onAdd={onAdd} onOpen={onOpen} className={auto ? 'md:hidden' : undefined} />
         )}
       </div>
 
       {canOrder && !compact && (
-        <AddButton item={item} disabled={addDisabled} onAdd={onAdd} className={auto ? 'hidden md:inline-flex' : undefined} />
+        <AddButton item={item} disabled={addDisabled} onAdd={onAdd} onOpen={onOpen} className={auto ? 'hidden md:inline-flex' : undefined} />
       )}
     </div>
   )

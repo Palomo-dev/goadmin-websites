@@ -1,106 +1,125 @@
+/**
+ * Sección `menu_preview` (variante `tabs`).
+ *
+ * - En la página de la carta (`/menu`) es la carta completa: delega en `MenuFull` con pestañas,
+ *   que ya trae «Agregar» condicionado al pedido en línea, hoja del plato, agotado, etiquetas y
+ *   mesa del QR. Antes enseñaba como máximo 4 categorías y no dejaba pedir (8 sitios en vivo).
+ * - En cualquier otra página (la home) es un avance: primero las categorías que tienen platos,
+ *   después el límite (`content.max_categories`, 4 por defecto) y `max_items` por categoría,
+ *   con el precio en la moneda del sitio y el agotado marcado.
+ *
+ * Sin directiva de cliente (como MenuFull). No declara CONTENT_KEYS para no cambiar el contrato
+ * editor ↔ sitio: `max_categories` es opcional y el editor aún no lo ofrece.
+ */
+
 import Link from 'next/link'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
-
-function getImageUrl(product: any): string | null {
-  if (!product.product_images || product.product_images.length === 0) return null
-  const primary = product.product_images.find((img: any) => img.is_primary)
-  const image = primary || product.product_images[0]
-  const path = image.storage_path || image.shared_images?.storage_path
-  if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
-}
-
-function getPrice(product: any): number | null {
-  if (product.product_prices && product.product_prices.length > 0) {
-    return Number(product.product_prices[0].price)
-  }
-  return null
-}
+import type { OrganizationWithDetails } from '@/types/database'
+import { Price } from '@/components/site/CurrencyProvider'
+import { buildMenuGroups, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'
+import { MenuFull } from './MenuFull'
 
 interface MenuPreviewTabsProps {
   content: {
     title?: string
     subtitle?: string
     max_items?: number
+    max_categories?: number
     cta_text?: string
     cta_url?: string
   }
+  organization: OrganizationWithDetails
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[] }
+  data?: Record<string, unknown>
+  sectionVariant?: string
+  sectionId?: string
 }
 
-export function MenuPreviewTabs({ content, primaryColor, data }: MenuPreviewTabsProps) {
-  const categories = data?.categories || []
-  const products = data?.products || []
-  const maxItems = content.max_items || 6
+function entero(valor: unknown, porDefecto: number): number {
+  const n = Number(valor)
+  return Number.isInteger(n) && n > 0 ? n : porDefecto
+}
+
+/** Solo rutas del sitio o http(s) para el botón. */
+function enlaceSeguro(valor: unknown): string | null {
+  return typeof valor === 'string' && /^(https?:\/\/|\/|#)/i.test(valor.trim()) ? valor.trim() : null
+}
+
+export function MenuPreviewTabs({ content, organization, primaryColor, data, sectionId }: MenuPreviewTabsProps) {
+  if (data?.pageSlug === 'menu') {
+    return (
+      <MenuFull
+        content={content as Record<string, unknown>}
+        organization={organization}
+        data={data}
+        sectionVariant="tabs"
+        sectionId={sectionId}
+      />
+    )
+  }
+
+  const products = (Array.isArray(data?.products) ? data.products : []) as MenuSourceProduct[]
+  const categories = (Array.isArray(data?.categories) ? data.categories : []) as MenuSourceCategory[]
+  const maxItems = entero(content.max_items, 6)
+  const maxCategories = entero(content.max_categories, 4)
+  // buildMenuGroups ya descarta categorías sin platos con precio: el límite va después.
+  const grupos = buildMenuGroups(products, categories).slice(0, maxCategories)
+  const cta = enlaceSeguro(content.cta_url)
 
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="mb-3 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{content.title}</h2>
       )}
-      {content.subtitle && (
-        <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
-      )}
+      {content.subtitle && <p className="mb-8 text-center text-gray-600 dark:text-gray-300">{content.subtitle}</p>}
 
-      {categories.length > 0 ? (
+      {grupos.length > 0 ? (
         <div className="space-y-10">
-          {categories.slice(0, 4).map((cat: any) => {
-            const catProducts = products.filter((p: any) => p.category_id === cat.id).slice(0, maxItems)
-            if (catProducts.length === 0) return null
-            return (
-              <div key={cat.id}>
-                <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-gray-900 dark:text-white dark:border-gray-600" style={{ borderColor: primaryColor }}>
-                  {cat.name}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {catProducts.map((product: any) => (
-                    <Link
-                      key={product.id}
-                      href={`/productos/${product.uuid}`}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      {(() => { const imgUrl = getImageUrl(product); return imgUrl ? (
-                        <img
-                          src={imgUrl}
-                          alt={product.name}
-                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                          loading="lazy"
-                        />
-                      ) : null })()}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h4>
-                        {product.description && (
-                          <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-1">{product.description}</p>
-                        )}
-                      </div>
-                      {(() => { const price = getPrice(product); return price !== null ? (
-                        <span className="font-bold whitespace-nowrap" style={{ color: primaryColor }}>
-                          ${price.toLocaleString('es-CO')}
-                        </span>
-                      ) : null })()}
-                    </Link>
-                  ))}
-                </div>
+          {grupos.map((g) => (
+            <div key={g.id}>
+              <h3
+                className="mb-4 border-b pb-2 text-xl font-semibold text-gray-900 dark:border-gray-600 dark:text-white"
+                style={{ borderColor: primaryColor }}
+              >
+                {g.name}
+              </h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {g.items.slice(0, maxItems).map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/productos/${item.uuid}`}
+                    className={`flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${item.soldOut ? 'opacity-60' : ''}`}
+                  >
+                    {item.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element -- miniatura de 64 px, como antes
+                      <img src={item.imageUrl} alt={item.name} className="h-16 w-16 flex-shrink-0 rounded-lg object-cover" loading="lazy" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="truncate font-medium text-gray-900 dark:text-white">{item.name}</h4>
+                      {item.description && (
+                        <p className="line-clamp-1 text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+                      )}
+                      {item.soldOut && (
+                        <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Agotado</span>
+                      )}
+                    </div>
+                    {item.price !== null && (
+                      <Price value={item.price} className="whitespace-nowrap font-bold" style={{ color: primaryColor }} />
+                    )}
+                  </Link>
+                ))}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
-          <p className="text-4xl mb-3">🍽️</p>
+        <div className="rounded-lg border-2 border-dashed py-12 text-center text-gray-400 dark:border-gray-700">
           <p>Menú no disponible aún</p>
         </div>
       )}
 
-      {content.cta_text && content.cta_url && (
-        <div className="text-center mt-8">
-          <Link
-            href={content.cta_url}
-            className="inline-block px-6 py-3 rounded-lg text-white font-medium"
-            style={{ backgroundColor: primaryColor }}
-          >
+      {content.cta_text && cta && (
+        <div className="mt-8 text-center">
+          <Link href={cta} className="inline-block rounded-lg px-6 py-3 font-medium text-white" style={{ backgroundColor: primaryColor }}>
             {content.cta_text}
           </Link>
         </div>

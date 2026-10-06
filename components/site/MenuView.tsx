@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,9 @@ import {
 } from 'lucide-react'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from './ProductModifierSelector'
 import { getAvailableStock } from '@/lib/stock'
-import { getCartKey } from '@/lib/utils'
+import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
+import { useMesaQR } from '@/lib/restaurant/useMesaQR'
+import { BannerMesa, BarraPedidoMesa } from '@/components/sections/restaurant/BannerMesa'
 
 // ── Types ──
 
@@ -118,18 +120,9 @@ export function MenuView({
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set())
   const [favorites, setFavorites] = useState<Set<number>>(new Set(initialFavorites))
 
-  // QR dine-in: detectar mesa desde query param ?table=MESA-5
-  const [tableName, setTableName] = useState<string | null>(null)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const table = params.get('table')
-    if (table) {
-      setTableName(table)
-      // Persistir mesa en localStorage para que checkout lo envíe
-      localStorage.setItem(`dine_in_table_${organizationSubdomain}`, table)
-    }
-  }, [organizationSubdomain])
+  // QR de mesa (?mesa= / ?table=): validada en el servidor contra restaurant_tables y guardada
+  // en sessionStorage con caducidad (lib/restaurant/useMesaQR.ts). Id inválido → sin mesa.
+  const { mesa, limpiar: salirDeLaMesa } = useMesaQR(organizationSubdomain, branchId)
 
   // Modal de detalle de producto con modificadores
   const [selectedProduct, setSelectedProduct] = useState<MenuProduct | null>(null)
@@ -240,40 +233,18 @@ export function MenuView({
   const addToCart = (product: MenuProduct, quantity: number, notes: string, modifiers: CartModifier[], newModifiers: SelectedModifier[]) => {
     const basePrice = product.product_prices?.[0]?.price || 0
     const extraTotal = newModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
-    const effectivePrice = Number(basePrice) + extraTotal
-    // F5: carrito separado por outlet cuando hay branchId (backward compat sin outlet).
-    const cartKey = getCartKey(organizationSubdomain, branchId)
-    const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-    const imgUrl = getProductImageUrl(product)
-
-    // Crear key única incluyendo modificadores de ambos sistemas
-    const oldModKey = modifiers.map(m => `${m.valueId}`).sort().join('-')
-    const newModKey = newModifiers.map(m => m.modifierId).sort().join('-')
-    const modKey = [oldModKey, newModKey].filter(Boolean).join('_')
-    const cartItemId = modKey ? `${product.id}_${modKey}` : product.id
-
-    const existingIndex = existingCart.findIndex((item: any) => item.id === cartItemId)
-
-    if (existingIndex >= 0) {
-      existingCart[existingIndex].quantity += quantity
-      if (notes) existingCart[existingIndex].notes = notes
-    } else {
-      existingCart.push({
-        id: cartItemId,
-        productId: product.id,
-        name: product.name,
-        price: effectivePrice,
-        quantity,
-        ...(typeof branchId === 'number' ? { branchId } : {}),
-        ...(imgUrl ? { imageUrl: imgUrl } : {}),
-        ...(notes ? { notes } : {}),
-        ...(modifiers.length > 0 ? { modifiers } : {}),
-        ...(newModifiers.length > 0 ? { newModifiers } : {})
-      })
-    }
-
-    localStorage.setItem(cartKey, JSON.stringify(existingCart))
-    window.dispatchEvent(new CustomEvent('cart-updated'))
+    // Misma escritura que la carta V2 y la ficha (lib/cart.ts): clave por sede, id de línea con
+    // opciones y nota, `newModifiers` con precio y `modifiers` antiguos sin precio.
+    agregarPlatoAlCarrito(organizationSubdomain || window.location.hostname.split('.')[0], branchId, {
+      productId: product.id,
+      name: product.name,
+      unitPrice: Number(basePrice) + extraTotal,
+      quantity,
+      imageUrl: getProductImageUrl(product),
+      notes,
+      modifiers: newModifiers,
+      legacyModifiers: modifiers,
+    })
 
     // Feedback visual
     const feedbackKey = `${product.id}_${Date.now()}`
@@ -326,10 +297,10 @@ export function MenuView({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Banner dine-in QR */}
-      {tableName && (
-        <div className="text-center py-2 text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>
-          🍽️ Pidiendo desde <strong>{tableName}</strong>
+      {/* Banner de la mesa del QR (validada en el servidor) */}
+      {mesa && (
+        <div className="container mx-auto px-4 pt-3">
+          <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />
         </div>
       )}
 
@@ -580,7 +551,9 @@ export function MenuView({
         )}
       </div>
 
-      {/* CTA flotante para ir al checkout */}
+      {/* Con mesa: «Ver pedido (n) · total». Sin mesa: el botón de siempre. */}
+      <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />
+      {!mesa && (
       <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
         <a
           href="/checkout"
@@ -592,6 +565,7 @@ export function MenuView({
           <ChevronRight className="h-4 w-4" />
         </a>
       </div>
+      )}
 
       {/* Modal detalle de producto + modificadores */}
       {selectedProduct && (
@@ -682,15 +656,17 @@ export function MenuView({
                 ) : null
               })()}
 
-              {/* Notas */}
+              {/* Nota para la cocina (web_order_items.notes, máx. 500 como en /api/orders) */}
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Notas especiales (opcional)
+                <label htmlFor="menu-nota-cocina" className="text-sm font-medium text-gray-700 mb-1 block">
+                  Nota para la cocina (opcional)
                 </label>
                 <Input
-                  placeholder="Ej: Sin cebolla, extra picante..."
+                  id="menu-nota-cocina"
+                  placeholder="Ej.: sin cilantro, por favor"
                   value={itemNotes}
-                  onChange={(e) => setItemNotes(e.target.value)}
+                  maxLength={MAX_NOTA_COCINA}
+                  onChange={(e) => setItemNotes(e.target.value.slice(0, MAX_NOTA_COCINA))}
                 />
               </div>
 
