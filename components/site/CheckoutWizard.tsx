@@ -599,6 +599,20 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         } else if (esCuponNoValido(orderRes.status, orderData)) {
           removeCoupon()
           setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
+        } else if (orderData?.code === 'SEDE_CERRADA' || orderData?.code === 'HORA_PROGRAMADA_INVALIDA') {
+          // El servidor rechazó el momento (la sede cerró mientras se pagaba, o la hora ya no vale):
+          // se pasa a «Programar» y se vuelve al paso donde se elige la hora.
+          setIsScheduled(true)
+          setScheduledAt(null)
+          if (!isOnePage) setStep(1)
+          setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
+        } else if (orderData?.code === 'MESA_INVALIDA') {
+          // La mesa guardada ya no vale (otra sede, borrada): se olvida y el cliente elige de nuevo.
+          limpiarMesa(organizationSubdomain || '')
+          setMesa(null)
+          setMesaManual('')
+          if (!isOnePage) setStep(1)
+          setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
         } else {
           setPaymentError(mensajeErrorPedido(orderRes.status, orderData))
         }
@@ -1040,6 +1054,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                       zona={sedePedido?.zona}
                       verbo={orderType === 'delivery' ? 'recibes' : orderType === 'pickup' ? 'recoges' : 'quieres'}
                     />
+                  </div>
+                )}
+
+                {!isOnePage && paymentError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm whitespace-pre-line" role="alert">
+                    {paymentError}
                   </div>
                 )}
 
