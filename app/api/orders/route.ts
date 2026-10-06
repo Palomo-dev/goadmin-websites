@@ -643,14 +643,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Reservar stock atómicamente via RPC (FOR UPDATE evita overselling)
-    // Van TODAS las líneas, no solo las de productos con track_stock: el núcleo
+    // Restaurante: van TODAS las líneas, no solo las de productos con track_stock. El núcleo
     // (fn_inv_int_expandir_items) expande la receta de cada plato y se queda solo con lo que
-    // rastrea inventario. Un producto simple sin rastreo desaparece; un plato con receta reserva
-    // sus insumos en la sede, que antes se vendían aunque faltaran. La validación previa (B1)
+    // rastrea inventario: un plato con receta reserva sus insumos en la sede, que antes se vendían
+    // aunque faltaran; un producto simple sin rastreo no reserva nada. La validación previa (B1)
     // sigue para los productos rastreados directos; la RPC es el todo o nada.
-    const cantidadPorProducto = new Map<number, number>()
-    for (const l of lineas) {
-      cantidadPorProducto.set(l.productId, (cantidadPorProducto.get(l.productId) || 0) + l.cantidad)
+    // Otras verticales: solo las líneas con track_stock, exactamente como antes. Una tienda con
+    // recetas (MCP 2026-10-06: org 144, type_id 3, 27 productos con receta) no empieza a rechazar
+    // pedidos por insumos sin existencias por un cambio pensado para la carta del restaurante.
+    let cantidadPorProducto: Map<number, number>
+    if (contexto.esRestaurante) {
+      cantidadPorProducto = new Map<number, number>()
+      for (const l of lineas) {
+        cantidadPorProducto.set(l.productId, (cantidadPorProducto.get(l.productId) || 0) + l.cantidad)
+      }
+    } else {
+      cantidadPorProducto = requestedMap
     }
     if (resolvedBranchId && cantidadPorProducto.size > 0) {
       const rpcItems = Array.from(cantidadPorProducto.entries()).map(([pid, qty]) => ({
@@ -675,9 +683,20 @@ export async function POST(request: NextRequest) {
         reserveError = err
       }
 
-      if (reserveError || !reserveResult?.ok) {
-        // La reserva atómica falló: cancelar la orden y devolver 409
-        console.error('[Orders] Reserva atómica falló:', reserveError || reserveResult?.shortages)
+      if (reserveError) {
+        // La RPC falló (red, timeout, error de la base): no es falta de stock. Se cancela igual
+        // (sin reserva no hay pedido) y se responde 503 con un mensaje genérico, sin detalles.
+        console.error('[Orders] La reserva de stock falló por un error, no por faltantes', {
+          organizationId: contextOrgId, webOrderId: webOrder.id, error: reserveError,
+        })
+        await cancelarPedidoWeb(supabase as any, webOrder.id, 'Error al reservar el stock')
+        return NextResponse.json(
+          { error: 'No pudimos registrar tu pedido. No se hizo ningún cobro; intenta de nuevo en un momento.', code: 'RESERVA_NO_DISPONIBLE' },
+          { status: 503 }
+        )
+      } else if (!reserveResult?.ok) {
+        // Faltante real: cancelar la orden y devolver 409, como siempre.
+        console.error('[Orders] Reserva atómica sin stock:', reserveResult?.shortages)
         await cancelarPedidoWeb(supabase as any, webOrder.id, 'Stock insuficiente al reservar')
 
         const shortages: { product_id: number; available: number; requested: number }[] = reserveResult?.shortages || []
