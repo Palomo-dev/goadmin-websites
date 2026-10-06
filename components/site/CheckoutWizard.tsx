@@ -15,6 +15,7 @@ import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPed
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { SelectorSede, type SedeSelector } from '@/components/site/header/SelectorSede'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import PhoneCountryInput from './PhoneCountryInput'
@@ -781,7 +782,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         <ShoppingBag className="h-20 w-20 mx-auto text-gray-300 mb-6" />
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Tu carrito está vacío</h1>
         <p className="text-gray-600 mb-8">Agrega productos para comenzar tu compra</p>
-        <Link href="/productos">
+        <Link href={conPrefijo('/productos', prefijoSede)}>
           <Button style={{ backgroundColor: primaryColor }}>
             Ver productos
           </Button>

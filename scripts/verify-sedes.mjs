@@ -267,9 +267,6 @@ function igual(a, b, msg) {
   const EXCEPCIONES = [
     // Valor por defecto de la prop; el componente lo pinta con href={ruta(href)}.
     ['components/sections/restaurant/BannerMesa.tsx', "href = '/checkout',"],
-    // PENDIENTE (paquete A): «Tu carrito está vacío» → /productos. CheckoutWizard es archivo
-    // sensible con trabajo en curso de A; el cambio va en su propio commit de A.
-    ['components/site/CheckoutWizard.tsx', '<Link href="/productos">'],
   ]
   const pendientes = []
   const usadas = new Set()
