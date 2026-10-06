@@ -179,6 +179,20 @@ async function sedeDelPrefijo(
   return coincide ? { slug: primero.toLowerCase(), resto: `/${resto.join('/')}` } : null
 }
 
+// Cabeceras de sede que SOLO este middleware puede poner. Las que traiga la petición se
+// descartan: si no, `curl -H 'x-outlet-path: <slug>' /checkout` hacía que getOrgContext
+// resolviera esa sede (y el branchId del pedido) sin que estuviera en la URL, y una CDN que
+// cachea por URL podía guardar la versión «de sede» de /checkout o de la home.
+// (En localhost la simulación con x-outlet-subdomain sigue: se lee de la petición original
+// y se vuelve a poner en la respuesta más abajo.)
+const CABECERAS_SEDE = ['x-outlet-path', 'x-outlet-subdomain', 'x-custom-outlet-domain'] as const
+
+function cabecerasSinSede(request: NextRequest): Headers {
+  const cabeceras = new Headers(request.headers)
+  for (const nombre of CABECERAS_SEDE) cabeceras.delete(nombre)
+  return cabeceras
+}
+
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host') || ''
@@ -196,7 +210,8 @@ export async function middleware(request: NextRequest) {
 
   // --- Refresco de sesión Supabase Auth ---
   // Esto mantiene las cookies de sesión JWT válidas entre requests
-  let supabaseResponse = NextResponse.next({ request })
+  // Se reenvían las cabeceras de la petición sin las de sede (cabecerasSinSede).
+  let supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinSede(request) } })
 
   // Usar service role key si disponible (la anon key falla en runtime de Vercel)
   // Sin service role, la resolución de dominios de sucursal no encuentra filas
@@ -219,7 +234,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinSede(request) } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -322,7 +337,7 @@ export async function middleware(request: NextRequest) {
     if (sede) {
       const destino = request.nextUrl.clone()
       destino.pathname = sede.resto
-      respuesta = NextResponse.rewrite(destino, { request })
+      respuesta = NextResponse.rewrite(destino, { request: { headers: cabecerasSinSede(request) } })
       // Conservar las cookies de sesión que refrescó Supabase y las cabeceras ya puestas.
       supabaseResponse.cookies.getAll().forEach((cookie) => respuesta.cookies.set(cookie))
       supabaseResponse.headers.forEach((valor, clave) => {
