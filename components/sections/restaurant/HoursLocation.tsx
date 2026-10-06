@@ -13,6 +13,8 @@
 import type { OrganizationWithDetails } from '@/types/database'
 import { direccionCompleta, sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import { HoursLocationView, type HoursLocationVariant, type SedeVista } from './HoursLocationView'
+import { urlComoLlegar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
 export const CONTENT_KEYS = [
@@ -103,11 +105,11 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
     .filter((s) => elegidas.length === 0 || elegidas.includes(s.id))
     .map((s) => {
       const direccion = direccionCompleta(s)
-      const destino = s.lat !== null && s.lng !== null ? `${s.lat},${s.lng}` : direccion
+      const lugar = { lat: s.lat, lng: s.lng, direccion }
       const pedir =
         showOrder
           ? /^\//.test(orderUrl) && !orderUrlConfigurada && s.publicada && s.slug
-            ? `/${s.slug}${orderUrl}`
+            ? conPrefijo(orderUrl, `/${s.slug}`)
             : orderUrl
           : null
       return {
@@ -116,11 +118,8 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
         direccion,
         telefono: s.telefono,
         telHref: showCall && s.telefono ? telHref(s.telefono) : null,
-        comoLlegar:
-          showDirections && destino
-            ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}`
-            : null,
-        mapaEmbed: destino ? `https://maps.google.com/maps?q=${encodeURIComponent(destino)}&output=embed` : null,
+        comoLlegar: showDirections ? urlComoLlegar(lugar) : null,
+        mapaEmbed: urlMapaEmbebido(lugar),
         horario: s.horario,
         zonaHoraria: s.zonaHoraria,
         foto: s.foto,
