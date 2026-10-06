@@ -33,6 +33,7 @@ import { getAvailableStock } from '@/lib/stock'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { cn } from '@/lib/utils'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
+import { filtrarOpcionesDePlato } from '@/lib/menu/cartasPublicas'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { MenuItem } from '@/lib/menu/menuFull'
 
@@ -64,6 +65,8 @@ export interface PlatoSheetProps {
   reservarHref?: string | null
   /** Plato añadido (para el aviso de la barra «Ver pedido»). */
   onAdded?: () => void
+  /** Variantes y grupos de extras que la carta del ERP no muestra («Variantes y extras»). */
+  opcionesOcultas?: { variantes: number[]; extras: number[] } | null
 }
 
 function imagenVariante(v: VarianteApi): string | null {
@@ -140,6 +143,7 @@ function ContenidoPlato({
   sedeNombre,
   reservarHref,
   onAdded,
+  opcionesOcultas,
 }: PlatoSheetProps & { item: MenuItem }) {
   const [cargando, setCargando] = useState(true)
   const [fallo, setFallo] = useState(false)
@@ -152,6 +156,9 @@ function ContenidoPlato({
   const [nota, setNota] = useState('')
   const [cantidad, setCantidad] = useState(1)
   const selectorRef = useRef<ProductModifierSelectorRef>(null)
+  // En ref: cambia con el plato, que ya es dependencia de la carga; no dispara otra petición.
+  const ocultasRef = useRef(opcionesOcultas ?? null)
+  ocultasRef.current = opcionesOcultas ?? null
 
   useEffect(() => {
     let vivo = true
@@ -162,11 +169,17 @@ function ContenidoPlato({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: { variants?: VarianteApi[]; modifierGroups?: ModifierGroup[]; variantModifierGroups?: Record<string, ModifierGroup[]> }) => {
         if (!vivo) return
-        const lista = Array.isArray(d.variants) ? d.variants : []
+        // «Variantes y extras» de la carta: sin ocultas, la lista y los grupos de siempre.
+        const visibles = filtrarOpcionesDePlato(
+          Array.isArray(d.variants) ? d.variants : [],
+          mapaGruposDeVariantes(item.id, d.modifierGroups, d.variantModifierGroups),
+          ocultasRef.current,
+        )
+        const lista = visibles.variantes
         setVariantes(lista)
         // Una sola opción: elegida de entrada.
         if (lista.length === 1) setVarianteId(lista[0].id)
-        setGruposPorProducto(mapaGruposDeVariantes(item.id, d.modifierGroups, d.variantModifierGroups))
+        setGruposPorProducto(visibles.grupos)
       })
       .catch(() => vivo && setFallo(true))
       .finally(() => vivo && setCargando(false))

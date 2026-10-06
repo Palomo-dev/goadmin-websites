@@ -25,6 +25,7 @@
 
 import type { Category, Product, ProductImage, ProductPrice, SharedImage, StockLevelRow } from '@/types/database'
 import { isOutOfStock } from '@/lib/stock'
+import type { CartaPlatos } from './cartaPlatos'
 import { ahoraEnZona, horaDeMinutos, hoyEnZona, sumarDias, fechaCorta } from '@/lib/restaurant/horario'
 import {
   getProductComparePrice,
@@ -145,6 +146,15 @@ export interface MenuSchedule {
   end_time?: string | null
   /** Categorías de esta carta. Vacío = todas. */
   category_ids?: number[] | null
+  /**
+   * Solo cartas del ERP (lib/menu/cartasPublicas.ts): franjas de HOY «HH:MM» (incluida la de
+   * ayer que cruza la medianoche). Presente = manda sobre start/end; vacía = hoy no abre.
+   */
+  franjas?: { from: string; to: string }[]
+  /** Primer inicio de mañana («Disponible mañana desde…»). */
+  inicioManana?: string | null
+  /** Orden, ocultos y destacados propios de esta carta (pestañas con excepciones distintas). */
+  carta?: CartaPlatos
 }
 
 const UNCATEGORIZED_ID = -1
@@ -251,6 +261,17 @@ export function parseTimeOfDay(value: string | null | undefined): number | null 
  * Sin hora de fin = hasta medianoche. Fin menor que inicio = cruza medianoche.
  */
 export function isScheduleOpen(schedule: MenuSchedule, nowMinutes: number): boolean {
+  if (schedule.franjas) {
+    // Misma regla que fn_carta_vigente: from <= h < to; to <= from cruza la medianoche.
+    return schedule.franjas.some((f) => {
+      const desde = parseTimeOfDay(f.from)
+      const hasta = parseTimeOfDay(f.to)
+      if (desde === null || hasta === null) return false
+      return hasta > desde ? nowMinutes >= desde && nowMinutes < hasta : nowMinutes >= desde
+    })
+  } else {
+    // Carta del contenido de la sección: lógica de siempre (abajo).
+  }
   const start = parseTimeOfDay(schedule.start_time)
   if (start === null) return true
   const end = parseTimeOfDay(schedule.end_time)
@@ -280,6 +301,16 @@ export function scheduleOpensIn(schedule: MenuSchedule, nowMinutes: number): num
  * «Disponible mañana desde las 7:00» si su horario de hoy ya pasó.
  */
 export function unavailableLabel(schedule: MenuSchedule, nowMinutes: number): string | null {
+  if (schedule.franjas) {
+    const siguiente = schedule.franjas
+      .map((f) => f.from)
+      .filter((h) => (parseTimeOfDay(h) ?? -1) > nowMinutes)
+      .sort()[0]
+    if (siguiente) return `Disponible desde las ${siguiente}`
+    return schedule.inicioManana ? `Disponible mañana desde las ${schedule.inicioManana}` : 'Hoy no está disponible'
+  } else {
+    // Carta del contenido de la sección: lógica de siempre (abajo).
+  }
   const start = parseTimeOfDay(schedule.start_time)
   if (start === null) return null
   const hora = schedule.start_time!.trim()

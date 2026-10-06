@@ -26,6 +26,16 @@ import { MenuFullView, type MenuFullVariant, type SedeDeCarta } from './MenuFull
 import { sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import { horarioRevisado } from '@/lib/restaurant/horario'
 import type { MenuItemSize } from './MenuItemRow'
+import {
+  cartaDeSeccion,
+  categoriasDeCarta,
+  opcionesOcultasDeCarta,
+  pestanaDeCarta,
+  platosDeCarta,
+  type CartasPublicas,
+} from '@/lib/menu/cartasPublicas'
+import type { CartaPlatos } from '@/lib/menu/cartaPlatos'
+import type { MenuSchedule } from '@/lib/menu/menuFull'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
 export const CONTENT_KEYS = [
@@ -41,6 +51,8 @@ export const CONTENT_KEYS = [
   'menus',
   // Orden, ocultos, destacados y textos propios del constructor de la carta del ERP.
   'carta_platos',
+  // Carta fija del editor (uuid de restaurant_menus); sin ella, las cartas por horario.
+  'carta_id',
 ] as const
 
 const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial', 'qr']
@@ -93,6 +105,59 @@ function sedeDeCarta(datos: unknown, branchId: number | null, reservarUrl: strin
   }
 }
 
+function esCartas(v: unknown): v is CartasPublicas {
+  return typeof v === 'object' && v !== null && Array.isArray((v as { cartas?: unknown }).cartas)
+}
+
+interface CartaResuelta {
+  selectedIds: number[] | null
+  cartaPlatos: CartaPlatos
+  schedules: MenuSchedule[]
+  pdfUrl: string | null
+  opcionesOcultas: Record<number, { variantes: number[]; extras: number[] }> | null
+}
+
+/**
+ * Cartas por horario del ERP (`data.cartasPublicas`, lib/menu/cartasPublicas.ts). `null` =
+ * la página no las trae (sin RPC o sin cartas): la sección sigue con su contenido.
+ * - Carta fija (`content.carta_id`) o cualquier variante sin pestañas: una sola carta (la fija,
+ *   la vigente o la primera).
+ * - Pestañas sin carta fija y con varias cartas: una pestaña por carta con su horario de hoy y
+ *   sus propias excepciones.
+ */
+function resolverCartaErp(
+  cartas: unknown,
+  content: Record<string, unknown>,
+  variant: MenuFullVariant,
+  products: MenuSourceProduct[],
+): CartaResuelta | null {
+  if (!esCartas(cartas) || cartas.cartas.length === 0) return null
+  const catalogo = products.map((p) => ({ id: p.id, category_id: p.category_id ?? null }))
+  const fija = typeof content.carta_id === 'string' ? content.carta_id : null
+  const unaSola = cartaDeSeccion(cartas, fija)
+  if (!unaSola) return null
+  const fijaEncontrada = fija !== null && unaSola.id === fija
+  if (variant === 'tabs' && !fijaEncontrada && cartas.cartas.length > 1) {
+    const union: number[] = []
+    for (const c of cartas.cartas) for (const id of categoriasDeCarta(c)) if (!union.includes(id)) union.push(id)
+    return {
+      selectedIds: union,
+      cartaPlatos: { orden: {}, ocultos: [], destacados: [], textos: {} },
+      schedules: cartas.cartas.map((c) => pestanaDeCarta(c, cartas.dia, platosDeCarta(c, catalogo))),
+      pdfUrl: unaSola.pdfUrl,
+      // La hoja del plato usa las opciones de la carta vigente (o la primera).
+      opcionesOcultas: opcionesOcultasDeCarta(unaSola),
+    }
+  }
+  return {
+    selectedIds: categoriasDeCarta(unaSola),
+    cartaPlatos: platosDeCarta(unaSola, catalogo),
+    schedules: [],
+    pdfUrl: unaSola.pdfUrl,
+    opcionesOcultas: opcionesOcultasDeCarta(unaSola),
+  }
+}
+
 export function MenuFull({ content, organization, data, sectionVariant, sectionId }: MenuFullProps) {
   const variant: MenuFullVariant = VARIANTS.includes(sectionVariant as MenuFullVariant)
     ? (sectionVariant as MenuFullVariant)
@@ -124,18 +189,22 @@ export function MenuFull({ content, organization, data, sectionVariant, sectionI
 
   const branchId = typeof data?.branchId === 'number' ? data.branchId : null
 
+  // Cartas por horario del ERP; sin ellas, el contenido de la sección (vía actual, sin cambios).
+  const erp = resolverCartaErp(data?.cartasPublicas, content, variant, products)
+
   return (
     <MenuFullView
       variant={variant}
       products={products}
       categories={categories}
-      selectedCategoryIds={selectedIds}
-      cartaPlatos={leerCartaPlatos(content)}
-      schedules={parseSchedules(content.menus)}
+      selectedCategoryIds={erp ? erp.selectedIds : selectedIds}
+      cartaPlatos={erp ? erp.cartaPlatos : leerCartaPlatos(content)}
+      schedules={erp ? erp.schedules : parseSchedules(content.menus)}
+      opcionesOcultas={erp?.opcionesOcultas ?? null}
       eyebrow={'eyebrow' in content ? str(content.eyebrow) : defaultEyebrow}
       title={'title' in content ? str(content.title) : defaultTitle}
       subtitle={str(content.subtitle)}
-      pdfUrl={safeUrl(content.pdf_url)}
+      pdfUrl={(erp ? safeUrl(erp.pdfUrl) : null) ?? safeUrl(content.pdf_url)}
       layout={showPhotos ? 'photo' : 'list'}
       size={size}
       columns={columns}

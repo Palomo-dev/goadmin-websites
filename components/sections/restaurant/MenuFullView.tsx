@@ -102,6 +102,8 @@ export interface MenuFullViewProps {
   sede?: SedeDeCarta | null
   /** «Ver como» del editor: minutos simulados (solo vista previa). */
   horaSimulada?: number | null
+  /** Variantes y extras que la carta del ERP no muestra, por plato (lib/menu/cartasPublicas). */
+  opcionesOcultas?: Record<number, { variantes: number[]; extras: number[] }> | null
 }
 
 const PRIMARY = 'var(--primary-color)'
@@ -275,6 +277,7 @@ export function MenuFullView(props: MenuFullViewProps) {
         branchId={branchId}
         sedeNombre={props.sede?.nombre ?? null}
         reservarHref={props.sede?.reservarHref ?? null}
+        opcionesOcultas={platoAbierto ? props.opcionesOcultas?.[platoAbierto.id] ?? null : null}
       />
       <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />
     </>
@@ -517,9 +520,9 @@ function TabsMenu(props: VariantProps) {
   const carta = cartas[Math.min(cartaIdx, cartas.length - 1)]
   const cartaGroups = useMemo(() => {
     const ids = carta.category_ids
-    if (!ids || ids.length === 0) return groups
-    const set = new Set(ids)
-    return groups.filter((g) => set.has(g.id))
+    const deLaCarta = !ids || ids.length === 0 ? groups : groups.filter((g) => new Set(ids).has(g.id))
+    // Cartas del ERP: cada pestaña con su orden, ocultos y destacados (lib/menu/cartasPublicas).
+    return carta.carta ? aplicarCartaPlatos(deLaCarta, carta.carta, ids ?? null) : deLaCarta
   }, [carta, groups])
 
   const visibleGroups = categoryId === null ? cartaGroups : cartaGroups.filter((g) => g.id === categoryId)

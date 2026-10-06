@@ -15,7 +15,8 @@
     "verify:sedes": "TZ=UTC node --disable-warning=ExperimentalWarning scripts/verify-sedes.mjs && TZ=America/Bogota node --disable-warning=ExperimentalWarning scripts/verify-sedes.mjs",
     "verify:reservas": "node --disable-warning=ExperimentalWarning scripts/verify-reservas.mjs",
     "verify:copias": "node scripts/verify-copias-erp.mjs",
-    "verify:estilo": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-sitio.mjs"
+    "verify:estilo": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-sitio.mjs",
+    "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

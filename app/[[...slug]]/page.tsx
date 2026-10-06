@@ -29,6 +29,7 @@ import {
 import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion } from '@/lib/website/datosSecciones'
@@ -235,6 +236,16 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         const lista = Array.isArray(ids) ? ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : []
         if (lista.length === 0) todas = true
         else lista.forEach((n) => union.add(n))
+      }
+      // Cartas por horario del ERP (get_public_menu, cacheada). Sin la RPC o sin cartas: null y
+      // la sección sigue con su contenido (vía actual). Con cartas, ellas eligen las categorías:
+      // se carga el catálogo completo, como cuando la sección no limita categorías.
+      const cartasPublicas = await getCartasPublicas(organization.id, branchId ?? null)
+      if (cartasPublicas) {
+        data.cartasPublicas = cartasPublicas
+        todas = true
+      } else {
+        // Sin cartas del ERP: igual que antes.
       }
       const [menuProducts, etiquetas] = await Promise.all([
         getMenuCatalogProducts(organization.id, branchId, todas ? null : Array.from(union).sort((a, b) => a - b)),
