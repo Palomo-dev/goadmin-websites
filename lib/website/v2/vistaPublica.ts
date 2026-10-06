@@ -111,6 +111,22 @@ export function ajustesPublicosDesdeDocumento(
   return ajustes as unknown as WebsiteSettings
 }
 
+/**
+ * Logo del sitio V2 (Diseño › Logo y favicon escribe `identidad.logoUrl`). No es una columna de
+ * `website_settings` (no está en CAMPOS_HEREDABLES): sustituye a `organizations.logo_url` solo
+ * en sitios V2, con la misma herencia de sede. Solo URLs https o del propio sitio.
+ */
+export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal: BaseHerencia | null): string | null {
+  const propio = documento.identidad.logoUrl
+  const valor = principal
+    ? resolverCampo<string>(
+        principal.documento?.identidad.logoUrl?.mode === 'value' ? principal.documento.identidad.logoUrl.value : null,
+        propio,
+      )
+    : propio?.mode === 'value' ? propio.value : null
+  return typeof valor === 'string' && /^(https:\/\/|\/)/i.test(valor.trim()) ? valor.trim() : null
+}
+
 // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────
 
 export interface ContextoPublico {

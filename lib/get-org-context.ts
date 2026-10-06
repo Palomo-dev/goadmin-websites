@@ -18,6 +18,7 @@ import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorP
 import {
   ajustesPublicosDesdeDocumento,
   idsCategoriasDeMenus,
+  logoPublicoDesdeDocumento,
   menusPublicosDesdeDocumento,
   type MenusPublicos,
 } from '@/lib/website/v2/vistaPublica'
@@ -140,17 +141,16 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   // fila legacy. Cualquier fallo → legacy exactamente como antes, con el error registrado.
   let effectiveSettings = legacySettings
   let menusV2: MenusPublicos | null = null
+  let logoV2: string | null = null
   const sitioV2 = await getSitioPublicoV2(organization.id, branchId)
   if (sitioV2) {
     try {
       const principalLegacy = sitioV2.principal && !sitioV2.principal.documento
         ? await getOrgSettings(organization.id)
         : null
-      const ajustesV2 = ajustesPublicosDesdeDocumento(
-        sitioV2.documento,
-        legacySettings,
-        sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
-      )
+      const baseHerencia = sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
+      const ajustesV2 = ajustesPublicosDesdeDocumento(sitioV2.documento, legacySettings, baseHerencia)
+      logoV2 = logoPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
       menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
       effectiveSettings = ajustesV2
@@ -161,6 +161,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       })
       effectiveSettings = legacySettings
       menusV2 = null
+      logoV2 = null
     }
   } else {
     // Sitio legacy: sin cambios.
@@ -234,9 +235,11 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   // cualquier componente hijo que lea organization.website_settings vea el
   // theme del outlet). Preserva el shape: si settings es null, mantiene el
   // select anidado original (backward compat).
+  // Sitio V2 con logo propio (Diseño › Logo): sustituye al de la organización. Legacy: igual.
+  const organizacionBase = logoV2 ? { ...organization, logo_url: logoV2 } : organization
   const organizationWithSettings = effectiveSettings
-    ? { ...organization, website_settings: effectiveSettings }
-    : organization
+    ? { ...organizacionBase, website_settings: effectiveSettings }
+    : organizacionBase
 
   // SEO local y enlaces de la sede (contratos de lib/outlet/rutaSitio.ts y lib/seo/sede.ts).
   const prefijoSede = calcularPrefijoSede(outlet, sedePorPrefijo)
