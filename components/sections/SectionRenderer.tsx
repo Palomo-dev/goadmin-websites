@@ -96,6 +96,14 @@ import { DeliveryCtaBanner } from './restaurant/DeliveryCtaBanner'
 import { ChefSectionProfile } from './restaurant/ChefSectionProfile'
 // Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358)
 import { RestaurantHero } from './restaurant/RestaurantHero'
+// Carta QR en la mesa (Figma 2032:75742): variante «mesa» de la portada y cuatro tipos nuevos.
+import {
+  SeccionCuentaMesa,
+  SeccionPedidoMesa,
+  SeccionPortadaMesa,
+  SeccionServicioMesa,
+  SeccionValorarVisita,
+} from './restaurant/mesa/secciones'
 import { Marquee } from './restaurant/Marquee'
 import { SignatureDishes } from './restaurant/SignatureDishes'
 import { Events } from './restaurant/Events'
@@ -284,6 +292,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     tabs: MenuFull,
     per_category: MenuFull,
     editorial: MenuFull,
+    // Carta para el celular en la mesa (Carta QR): buscador, dieta y alérgenos, «+» de 44 px.
+    qr: MenuFull,
   },
   specialties: {
     featured: SpecialtiesFeatured,
@@ -316,6 +326,22 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   restaurant_hero: {
     typographic: RestaurantHero,
     split_bento: RestaurantHero,
+    // Bienvenida de la mesa (Carta QR, lámina 01).
+    mesa: SeccionPortadaMesa,
+  },
+  // Carta QR en la mesa (lib/website/v2/contrato/seccionesMesa.ts).
+  table_service: {
+    barra: SeccionServicioMesa,
+    botones: SeccionServicioMesa,
+  },
+  table_order: {
+    rondas: SeccionPedidoMesa,
+  },
+  table_bill: {
+    hoja: SeccionCuentaMesa,
+  },
+  visit_feedback: {
+    tarjeta: SeccionValorarVisita,
   },
   marquee: {
     text: Marquee,
