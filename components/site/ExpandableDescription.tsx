@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 interface ExpandableDescriptionProps {
   text: string
@@ -136,7 +137,9 @@ function renderRichText(text: string): React.ReactNode {
   return <>{blocks}</>
 }
 
-export function ExpandableDescription({ text, maxLength = 200 }: ExpandableDescriptionProps) {
+export function ExpandableDescription({ text: textoOriginal, maxLength = 200 }: ExpandableDescriptionProps) {
+  // Descripciones pegadas desde un editor llegan con HTML: se pinta su texto, nunca el HTML.
+  const text = useMemo(() => textoPlano(textoOriginal), [textoOriginal])
   const [expanded, setExpanded] = useState(false)
   const shouldTruncate = text.length > maxLength
 

@@ -36,6 +36,7 @@ import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modifica
 import { filtrarOpcionesDePlato } from '@/lib/menu/cartasPublicas'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { MenuItem } from '@/lib/menu/menuFull'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
 const PRIMARY = 'var(--primary-color)'
@@ -238,6 +239,7 @@ function ContenidoPlato({
   }, [puedePedir, unitario, conVariantes, variante, item, organizationSubdomain, branchId, cantidad, mods, nota, onAdded, onClose])
 
   const foto = (variante && imagenVariante(variante)) || item.imageUrl
+  const descripcion = textoPlano(item.description)
 
   return (
     <>
@@ -258,14 +260,14 @@ function ContenidoPlato({
 
       <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4">
         <Dialog.Title className="pr-10 text-2xl font-bold leading-tight [font-family:var(--font-heading)]">{item.name}</Dialog.Title>
-        {(item.description || sedeNombre) && (
+        {(descripcion || sedeNombre) && (
           <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            {item.description}
-            {item.description && sedeNombre ? ' ' : ''}
+            {descripcion}
+            {descripcion && sedeNombre ? ' ' : ''}
             {sedeNombre ? `Precio de ${sedeNombre}.` : ''}
           </p>
         )}
-        {!foto && !item.description && (
+        {!foto && !descripcion && (
           <div className="mt-3 flex h-20 items-center justify-center rounded-xl bg-muted" aria-hidden="true">
             <ImageIcon className="h-6 w-6 text-muted-foreground" />
           </div>

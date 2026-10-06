@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { Package } from 'lucide-react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -66,7 +67,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
           </div>
           <div className="p-6">
             <h3 className="font-bold text-xl mb-2 text-gray-900 dark:text-white">{hero.name}</h3>
-            {hero.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{hero.description}</p>}
+            {textoPlano(hero.description) && <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{textoPlano(hero.description)}</p>}
             {heroPrice !== null && (
               <span className="font-bold text-2xl" style={{ color: primaryColor }}>${heroPrice.toLocaleString('es-CO')}</span>
             )}

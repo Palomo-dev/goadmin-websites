@@ -5,6 +5,7 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { FavoriteProductCard } from './FavoriteProductCard'
+import { textoPlanoONulo } from '@/lib/texto/textoPlano'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,7 +77,7 @@ export default async function FavoritosPage() {
                 key={product.id}
                 productId={product.id}
                 name={product.name}
-                description={product.description}
+                description={textoPlanoONulo(product.description) ?? undefined}
                 price={price?.price}
                 imagePath={imagePath}
                 customerId={customer.id}

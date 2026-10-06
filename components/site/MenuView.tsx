@@ -19,6 +19,7 @@ import { isParentProduct } from '@/components/sections/products/ProductCard'
 import { exigeEleccion, gruposDeProducto } from '@/lib/products/modificadores'
 import { mapaDeTags, soldOutReturnLabel, toMenuItem, type MenuItem, type MenuSourceProduct } from '@/lib/menu/menuFull'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { textoPlano } from '@/lib/texto/textoPlano'
 
 // ── Types ──
 
@@ -479,8 +480,8 @@ export function MenuView({
                       {group.category.icon && <span className="mr-2">{group.category.icon}</span>}
                       {group.category.name}
                     </h2>
-                    {group.category.description && (
-                      <p className="text-gray-500 text-sm mt-1">{group.category.description}</p>
+                    {textoPlano(group.category.description) && (
+                      <p className="text-gray-500 text-sm mt-1">{textoPlano(group.category.description)}</p>
                     )}
                   </div>
                 )}
@@ -515,9 +516,9 @@ export function MenuView({
                               <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
                                 {product.name}
                               </h3>
-                              {product.description && (
+                              {textoPlano(product.description) && (
                                 <p className="text-sm text-gray-500 line-clamp-2 mb-2">
-                                  {product.description}
+                                  {textoPlano(product.description)}
                                 </p>
                               )}
                               {productTags.length > 0 && (
@@ -652,8 +653,8 @@ export function MenuView({
 
             <div className="p-5">
               <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedProduct.name}</h2>
-              {selectedProduct.description && (
-                <p className="text-gray-500 text-sm mb-3">{selectedProduct.description}</p>
+              {textoPlano(selectedProduct.description) && (
+                <p className="text-gray-500 text-sm mb-3">{textoPlano(selectedProduct.description)}</p>
               )}
               {selectedProduct.product_prices?.[0] && (
                 <p className="text-2xl font-bold mb-4" style={{ color: primaryColor }}>
