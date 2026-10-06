@@ -8,6 +8,7 @@ import { EstimatedTime } from '@/components/site/EstimatedTime'
 import { DeliveryMap } from '@/components/site/DeliveryMap'
 import { esDomicilio, esEstadoFinal, estiloEstado, etiquetaPago, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { fechaHoraPedido, horaPedido, momentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 
 interface TimelineEvent {
   key: string
@@ -168,7 +169,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token, rutaSeguirP
           style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
         >
           {etiquetaTipoEntrega(order.deliveryType, orgTypeId === 1)}
-          {order.mesa && <span>· Mesa {order.mesa}</span>}
+          {order.mesa && <span>· {etiquetaMesa(order.mesa)}</span>}
           {order.isScheduled && order.scheduledAt && (
             <span className="text-gray-500">
               · {momentoPedido(order.scheduledAt, zona)}

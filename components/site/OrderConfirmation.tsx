@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 
 /** Copia de lo que el cliente pidió, guardada antes de vaciar el carrito y el formulario. */
 export interface ResumenPedidoConfirmado {
@@ -72,7 +73,7 @@ export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, is
 
   const filas: { etiqueta: string; valor: string }[] = [
     { etiqueta: 'Número de pedido', valor: orderNumber || '—' },
-    { etiqueta: 'Tipo', valor: resumen.mesa ? `${resumen.tipo} · Mesa ${resumen.mesa}` : resumen.tipo },
+    { etiqueta: 'Tipo', valor: resumen.mesa ? `${resumen.tipo} · ${etiquetaMesa(resumen.mesa)}` : resumen.tipo },
     ...(resumen.sede ? [{ etiqueta: 'Sede', valor: resumen.sede }] : []),
     ...(resumen.programadoPara ? [{ etiqueta: 'Para', valor: momentoPedido(resumen.programadoPara, resumen.zona) }] : []),
     { etiqueta: 'Estado', valor: 'Recibido · por confirmar' },
