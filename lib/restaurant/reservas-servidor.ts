@@ -6,8 +6,9 @@
  *
  * Todo lo que depende de las migraciones pendientes del ERP funciona antes y
  * después de aplicarlas:
- * - `p_validar_reglas` (D1) solo se manda en modo observación y, si la
- *   sobrecarga aún no existe (PGRST202), se repite la llamada de siempre;
+ * - `p_validar_reglas` (D1) va siempre explícito (true solo con
+ *   RESERVAS_ENFORCE_REGLAS=true) y, si la sobrecarga aún no existe
+ *   (PGRST202), se repite la llamada de siempre;
  * - `manage_token` (D2) es opcional en la respuesta de la RPC.
  */
 
@@ -28,40 +29,44 @@ export interface ArgsReservaWeb {
 }
 
 /**
- * `RESERVAS_ENFORCE_REGLAS=false` → modo observación: la RPC crea la reserva
- * aunque incumpla las reglas de la sede y devuelve `regla_incumplida`, que se
- * registra. Cualquier otro valor (o sin definir) → las reglas bloquean.
- * Hoy hay 0 reservas de mesa en la base (2026-10-07): ninguna reserva
- * histórica queda fuera de las reglas al activarlas.
+ * Interruptor de las reglas de la sede, con el mismo patrón que
+ * `WOMPI_WEBHOOK_ENFORCE_SIGNATURE`: SOLO `RESERVAS_ENFORCE_REGLAS=true`
+ * bloquea. Sin la variable (o con cualquier otro valor) es modo observación:
+ * la RPC crea la reserva aunque incumpla las reglas y devuelve
+ * `regla_incumplida`, que se registra para medir antes de bloquear.
+ *
+ * Motivo (revisión 2026-10-07): `restaurant_booking_settings` tiene 0 filas y
+ * hay 8 restaurantes con `reservation_cta` (16 secciones). Bloquear por
+ * defecto los pasaría a los turnos de la base (inicios 12:00–13:30 y
+ * 18:00–21:00) y perderían en silencio las reservas de desayuno o de después
+ * de las 21:00.
  */
 export function reglasEnObservacion(): boolean {
-  return process.env.RESERVAS_ENFORCE_REGLAS === 'false'
+  return process.env.RESERVAS_ENFORCE_REGLAS !== 'true'
 }
 
 export async function crearReservaWeb(supabase: any, args: ArgsReservaWeb): Promise<{ data: any; error: any }> {
-  if (reglasEnObservacion()) {
-    const observando = await supabase.rpc('create_restaurant_reservation', {
-      ...args,
-      p_table_id: null,
-      p_customer_id: null,
-      p_duration_minutes: null,
-      p_validar_reglas: false,
-    })
-    if (observando.error?.code !== 'PGRST202') {
-      if (observando.data?.regla_incumplida) {
-        console.warn('[Restaurant Reservations] regla incumplida (observación)', {
-          orgId: args.p_organization_id,
-          branchId: args.p_branch_id,
-          regla: String(observando.data.regla_incumplida).split(':')[0],
-        })
-      }
-      return observando
-    } else {
-      // Sobrecarga de D1 aún no aplicada: la llamada de siempre.
-      return supabase.rpc('create_restaurant_reservation', args)
+  const bloquear = !reglasEnObservacion()
+  const nueva = await supabase.rpc('create_restaurant_reservation', {
+    ...args,
+    p_table_id: null,
+    p_customer_id: null,
+    p_duration_minutes: null,
+    p_validar_reglas: bloquear,
+  })
+  if (nueva.error?.code === 'PGRST202') {
+    // Sobrecarga de D1 aún no aplicada: la llamada de siempre (sin reglas).
+    return supabase.rpc('create_restaurant_reservation', args)
+  } else {
+    if (nueva.data?.regla_incumplida) {
+      console.warn('[Restaurant Reservations] regla incumplida (observación)', {
+        orgId: args.p_organization_id,
+        branchId: args.p_branch_id,
+        regla: String(nueva.data.regla_incumplida).split(':')[0],
+      })
     }
+    return nueva
   }
-  return supabase.rpc('create_restaurant_reservation', args)
 }
 
 export interface ContextoCorreoReserva {

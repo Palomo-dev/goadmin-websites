@@ -122,8 +122,9 @@ export async function POST(request: NextRequest) {
 
     // ── Llamar RPC transaccional create_restaurant_reservation ──
     // Con la migración D1 la RPC valida además horario, anticipación, franja,
-    // zona, aforo y contacto de la sede (errores con prefijo). Modo observación
-    // con RESERVAS_ENFORCE_REGLAS=false (ver lib/restaurant/reservas-servidor.ts).
+    // zona, aforo y contacto de la sede (errores con prefijo). Solo bloquea con
+    // RESERVAS_ENFORCE_REGLAS=true; sin la variable observa y registra
+    // (ver lib/restaurant/reservas-servidor.ts).
     const { data: rpcResult, error: rpcError } = await crearReservaWeb(supabase, {
       p_organization_id: orgId,
       p_reservation_date: date,
