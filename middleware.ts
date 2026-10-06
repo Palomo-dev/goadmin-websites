@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { esSlugReservado } from '@/lib/outlet/rutaSitio'
 
 // Dominios del sistema donde se sirven los sitios de organizaciones.
 // Se comparan contra el host completo (no por número de etiquetas) para
@@ -92,15 +93,103 @@ function setBranchDomainCacheEntry(
   branchDomainCache.set(host, entry)
 }
 
+// --- Sede por prefijo de ruta (/sede-norte/checkout → /checkout + x-outlet-path) ---
+// Sin la reescritura, /<sede>/checkout, /<sede>/productos/1, /<sede>/carrito… caían en el
+// catch-all con otro slug o en la ruta global, leían el carrito global y cobraban como sitio
+// principal. Se reescribe SOLO si el primer segmento es el slug de una sede publicada de la
+// organización del host; getOrgContext lo valida otra vez contra la BD.
+//
+// Coste: UNA consulta global (todas las sedes publicadas con slug; 0 filas el 2026-10-06)
+// cada SEDES_RUTA_TTL_MS por instancia. Solo si el segmento coincide con alguna sede y el
+// host es un dominio propio se consulta además organization_domains (cacheado igual).
+const SEDES_RUTA_TTL_MS = Number(process.env.SEDES_RUTA_CACHE_TTL_MS) || 60 * 1000
+type SedeRuta = { organizationId: number; subdomain: string | null }
+let sedesRutaCache: { expira: number; porSlug: Map<string, SedeRuta[]> } | null = null
+const orgPorDominioCache = new Map<string, { organizationId: number | null; expira: number }>()
+
+async function sedesPublicadasPorSlug(
+  supabase: ReturnType<typeof createServerClient>,
+): Promise<Map<string, SedeRuta[]>> {
+  if (sedesRutaCache && Date.now() < sedesRutaCache.expira) return sedesRutaCache.porSlug
+  const { data, error } = await supabase
+    .from('branches')
+    .select('slug, organization_id, organizations!branches_organization_id_fkey(subdomain)')
+    .eq('is_web_published', true)
+    .not('slug', 'is', null)
+  if (error) {
+    // Fallo de BD: no se reescribe (comportamiento anterior) y se reintenta en la próxima petición.
+    console.error('[middleware] No se pudieron leer las sedes publicadas', error.message)
+    return sedesRutaCache?.porSlug ?? new Map()
+  }
+  const porSlug = new Map<string, SedeRuta[]>()
+  for (const fila of (data ?? []) as { slug: string | null; organization_id: number; organizations: { subdomain: string | null } | { subdomain: string | null }[] | null }[]) {
+    if (!fila.slug) continue
+    const org = Array.isArray(fila.organizations) ? fila.organizations[0] : fila.organizations
+    const clave = fila.slug.toLowerCase()
+    porSlug.set(clave, [...(porSlug.get(clave) ?? []), {
+      organizationId: fila.organization_id,
+      subdomain: org?.subdomain?.toLowerCase() ?? null,
+    }])
+  }
+  sedesRutaCache = { expira: Date.now() + SEDES_RUTA_TTL_MS, porSlug }
+  return porSlug
+}
+
+async function orgDeDominio(
+  supabase: ReturnType<typeof createServerClient>,
+  host: string,
+): Promise<number | null> {
+  const cacheado = orgPorDominioCache.get(host)
+  if (cacheado && Date.now() < cacheado.expira) return cacheado.organizationId
+  const { data, error } = await supabase
+    .from('organization_domains')
+    .select('organization_id')
+    .eq('host', host)
+    .eq('is_active', true)
+    .eq('status', 'verified')
+    .maybeSingle()
+  if (error) return null
+  const organizationId = (data as { organization_id: number } | null)?.organization_id ?? null
+  if (orgPorDominioCache.size >= BRANCH_DOMAIN_CACHE_MAX) orgPorDominioCache.clear()
+  orgPorDominioCache.set(host, { organizationId, expira: Date.now() + SEDES_RUTA_TTL_MS })
+  return organizationId
+}
+
+/**
+ * Slug de sede del primer segmento de la ruta, si es una sede publicada de la organización
+ * del host. `null` en cualquier otro caso (y entonces nada cambia).
+ */
+async function sedeDelPrefijo(
+  supabase: ReturnType<typeof createServerClient>,
+  pathname: string,
+  tenant: { subdomain: string | null; customDomainHost: string | null },
+): Promise<{ slug: string; resto: string } | null> {
+  const [, primero = '', ...resto] = pathname.split('/')
+  if (!primero || esSlugReservado(primero) || !/^[a-z0-9-]+$/i.test(primero)) return null
+  const candidatas = (await sedesPublicadasPorSlug(supabase)).get(primero.toLowerCase())
+  if (!candidatas || candidatas.length === 0) return null
+  let coincide = false
+  if (tenant.customDomainHost) {
+    const organizationId = await orgDeDominio(supabase, tenant.customDomainHost)
+    coincide = organizationId !== null && candidatas.some((c) => c.organizationId === organizationId)
+  } else if (tenant.subdomain) {
+    const sub = tenant.subdomain.toLowerCase()
+    coincide = candidatas.some((c) => c.subdomain === sub)
+  }
+  return coincide ? { slug: primero.toLowerCase(), resto: `/${resto.join('/')}` } : null
+}
+
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host') || ''
   
-  // Ignorar rutas de assets estáticos (pero NO /api, para que auth funcione)
+  // Ignorar rutas de assets estáticos (pero NO /api, para que auth funcione).
+  // /sitemap.xml y /robots.txt sí pasan: son por organización y necesitan las cabeceras del host.
+  const esArchivoPorHost = url.pathname === '/sitemap.xml' || url.pathname === '/robots.txt'
   if (
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/static') ||
-    url.pathname.includes('.') // archivos con extensión
+    (url.pathname.includes('.') && !esArchivoPorHost) // archivos con extensión
   ) {
     return NextResponse.next()
   }
@@ -222,27 +311,51 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Agregar headers con información del tenant al response de Supabase
+  // Sede por prefijo de ruta: solo en el host del sitio principal (con la sede ya resuelta
+  // por host —sub-subdominio o dominio propio de sede— el primer segmento es una página).
+  let respuesta: NextResponse = supabaseResponse
+  if (!outletSubdomain && !isCustomOutletDomain && !esArchivoPorHost) {
+    const sede = await sedeDelPrefijo(supabase, url.pathname, {
+      subdomain: isCustomDomain ? null : subdomain,
+      customDomainHost: isCustomDomain ? effectiveHost : null,
+    })
+    if (sede) {
+      const destino = request.nextUrl.clone()
+      destino.pathname = sede.resto
+      respuesta = NextResponse.rewrite(destino, { request })
+      // Conservar las cookies de sesión que refrescó Supabase y las cabeceras ya puestas.
+      supabaseResponse.cookies.getAll().forEach((cookie) => respuesta.cookies.set(cookie))
+      supabaseResponse.headers.forEach((valor, clave) => {
+        if (clave.startsWith('x-middleware-') || clave === 'set-cookie') return
+        respuesta.headers.set(clave, valor)
+      })
+      respuesta.headers.set('x-outlet-path', sede.slug)
+    } else {
+      // Sin sede en la ruta: exactamente como antes.
+    }
+  }
+
+  // Agregar headers con información del tenant al response
   if (subdomain) {
-    supabaseResponse.headers.set('x-subdomain', subdomain)
+    respuesta.headers.set('x-subdomain', subdomain)
   }
 
   if (outletSubdomain) {
-    supabaseResponse.headers.set('x-outlet-subdomain', outletSubdomain)
+    respuesta.headers.set('x-outlet-subdomain', outletSubdomain)
   }
 
   if (isCustomOutletDomain) {
     // Dominio custom de BRANCH: x-custom-domain lleva el identificador de la org
     // (resuelto vía lookup), NO el hostname del branch. El hostname del branch va
     // en x-custom-outlet-domain para que getOrgContext lo valide contra branches.custom_domain.
-    supabaseResponse.headers.set('x-custom-domain', subdomain!)
-    supabaseResponse.headers.set('x-custom-outlet-domain', effectiveHost)
+    respuesta.headers.set('x-custom-domain', subdomain!)
+    respuesta.headers.set('x-custom-outlet-domain', effectiveHost)
   } else if (isCustomDomain) {
     // Dominio custom de ORG: x-custom-domain lleva el hostname (sin www).
-    supabaseResponse.headers.set('x-custom-domain', effectiveHost)
+    respuesta.headers.set('x-custom-domain', effectiveHost)
   }
 
-  return supabaseResponse
+  return respuesta
 }
 
 export const config = {

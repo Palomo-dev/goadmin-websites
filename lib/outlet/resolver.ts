@@ -1,4 +1,5 @@
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { esSlugReservado } from './rutaSitio'
 
 /**
  * Outlet (branch) resuelto para el request actual.
@@ -21,16 +22,9 @@ export interface OutletPathPrefix {
 }
 
 /**
- * Slugs reservados del sitio global que NUNCA son outlets.
- * Si el primer segmento del path es uno de estos, no se intenta resolver outlet.
+ * Slugs reservados del sitio global que NUNCA son outlets: `SLUGS_RESERVADOS` de
+ * ./rutaSitio (una sola lista, la comparten el middleware y este resolver).
  */
-const RESERVED_SLUGS = [
-  'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
-  'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
-  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
-  'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api',
-  'contacto', 'nosotros',
-]
 
 /**
  * Extrae un posible path-prefix de outlet del primer segmento del path.
@@ -41,7 +35,7 @@ export function parseOutletPathPrefix(pathSegments: string[]): OutletPathPrefix 
   if (!pathSegments || pathSegments.length === 0) return null
   const first = pathSegments[0]
   if (!first) return null
-  if (RESERVED_SLUGS.includes(first.toLowerCase())) return null
+  if (esSlugReservado(first)) return null
   return {
     prefix: first,
     remainingPath: pathSegments.slice(1).join('/') || 'home',

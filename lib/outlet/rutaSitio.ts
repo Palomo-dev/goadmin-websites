@@ -15,6 +15,26 @@
  * ya trae el prefijo de la petición.
  */
 
+/**
+ * Primeros segmentos que NUNCA son una sede: rutas propias del sitio (app/*) y páginas
+ * fijas. Una sede con uno de estos slugs no se alcanza por ruta. La lista del ERP
+ * (`RESERVED_SLUGS` de go-admin-erp/src/lib/utils/webIdentityValidation.ts) debe
+ * contenerla: lo comprueba `scripts/verify-sedes.mjs`.
+ *
+ * Aquí (puro) y no en resolver.ts para que el middleware (Edge) la use sin importar Supabase.
+ */
+export const SLUGS_RESERVADOS: readonly string[] = [
+  'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
+  'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
+  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
+  'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api',
+  'contacto', 'nosotros', 'vista-previa',
+]
+
+export function esSlugReservado(slug: string): boolean {
+  return SLUGS_RESERVADOS.includes(slug.toLowerCase())
+}
+
 /** Lo mínimo de `ResolvedOutlet` que hace falta. */
 export interface SedeRuta {
   branchSlug: string
