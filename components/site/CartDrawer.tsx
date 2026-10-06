@@ -8,6 +8,7 @@ import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { Price, useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 
 interface CartModifier {
   modifierId: number
@@ -115,13 +116,20 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   }
   
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const tax = taxSettings && taxSettings.rate > 0 && !taxSettings.taxIncluded
-    ? Math.round(subtotal * taxSettings.rate / 100)
+  // Impuesto con la regla que cobra /api/orders (lib/orders/impuestoPedido.ts): sobre la base con
+  // las promociones; solo se suma al total si no va incluido en el precio.
+  const tax = taxSettings
+    ? calcularImpuestoPedido({
+        brutos: items.map((item) => item.price * item.quantity),
+        descuento: promoDiscount,
+        tasa: taxSettings.rate,
+        incluido: taxSettings.taxIncluded,
+      }).sumaAlTotal
     : 0
   const shippingCost = shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold
     ? shippingSettings.shippingFlatRate
     : 0
-  // Mismo orden que el checkout: impuesto sobre el subtotal, descuento al final.
+  // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
   const total = Math.max(0, subtotal + tax + shippingCost - promoDiscount)
 
   if (!isOpen) return null

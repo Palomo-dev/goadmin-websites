@@ -12,6 +12,7 @@ import {
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { isParentProduct } from '@/components/sections/products/ProductCard'
+import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -148,13 +149,18 @@ export function CartPageClient({
   // Cálculos
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
-  const tax = cartSettings.taxRate > 0 && !cartSettings.taxIncluded
-    ? Math.round(subtotal * cartSettings.taxRate / 100)
-    : 0
+  // Impuesto con la regla que cobra /api/orders (lib/orders/impuestoPedido.ts): sobre la base con
+  // las promociones; solo se suma al total si no va incluido en el precio.
+  const tax = calcularImpuestoPedido({
+    brutos: items.map((item) => item.price * item.quantity),
+    descuento: promoDiscount,
+    tasa: cartSettings.taxRate,
+    incluido: cartSettings.taxIncluded,
+  }).sumaAlTotal
   const shipping = cartSettings.enableShipping
     ? (cartSettings.freeShippingThreshold > 0 && subtotal >= cartSettings.freeShippingThreshold ? 0 : cartSettings.shippingFlatRate)
     : 0
-  // Mismo orden que el checkout: impuesto sobre el subtotal, descuento al final.
+  // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
   const total = Math.max(0, subtotal + tax + shipping - promoDiscount)
 
   // Progreso para envío gratis
