@@ -17,10 +17,13 @@ import { headers } from 'next/headers'
 import type { OrganizationWithDetails, WebsiteSettings } from '@/types/database'
 import type { ResolvedOutlet } from './resolver'
 import { CABECERA_SEDE_RUTA } from '@/lib/get-org-context'
-import { prefijoSede } from './rutaSitio'
+import { conPrefijo, prefijoSede } from './rutaSitio'
 import { getSedesWeb, getSedesRestaurante } from '@/lib/restaurant/sedes'
+import { direccionCompleta, sedeAceptaReservas } from '@/lib/restaurant/sedes-modelo'
 import { horarioRevisado, parseHorario, type HorarioSemana } from '@/lib/restaurant/horario'
 import { urlBasePrincipal } from '@/lib/seo/sede'
+import { urlComoLlegar } from '@/lib/maps/comoLlegar'
+import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import type { SedeSelector } from '@/components/site/header/SelectorSede'
 
 export interface AccionesBarraMovil {
@@ -77,20 +80,41 @@ export async function getDatosSedeLayout(
     })
 
     const esRestaurante = organization.type_id === 1
-    const barraMovil: AccionesBarraMovil | null = null
+    let barraMovil: AccionesBarraMovil | null = null
     let horarioPie: HorarioSemana | null = null
 
     const sedeWebActual = outlet ? sedesWeb.find((s) => s.id === outlet.branchId) ?? null : null
     if (sedeWebActual) horarioPie = horarioRevisado(parseHorario(sedeWebActual.horarioJson))
 
-    if (esRestaurante && !horarioPie) {
-      const datos = await getSedesRestaurante(organization.id)
+    if (esRestaurante) {
+      const [datos, paginas] = await Promise.all([
+        getSedesRestaurante(organization.id),
+        getPaginasPublicas(organization.id, outlet?.branchId ?? null),
+      ])
       const sedes = datos?.sedes ?? []
       const sedeActual = (outlet ? sedes.find((s) => s.id === outlet.branchId) : null)
         ?? sedes.find((s) => s.esPrincipal)
         ?? sedes[0]
         ?? null
-      if (sedeActual) horarioPie = horarioRevisado(sedeActual.horario)
+      if (!horarioPie && sedeActual) horarioPie = horarioRevisado(sedeActual.horario)
+
+      const carta = rutaDePaginaCon(paginas, ['menu_full', 'menu_preview']) ?? '/menu'
+      const paginaReserva = rutaDePaginaCon(paginas, ['reservation', 'reservation_cta'])
+      const candidatas = outlet ? sedes.filter((s) => s.id === outlet.branchId) : sedes
+      const aceptaReservas = !!datos && (
+        candidatas.some((s) => sedeAceptaReservas(s, datos)) || (!outlet && datos.mesasSinSede > 0)
+      )
+      const comoLlegar = urlComoLlegar(
+        sedeActual
+          ? { lat: sedeActual.lat, lng: sedeActual.lng, direccion: direccionCompleta(sedeActual) }
+          : { direccion: [organization.address, organization.city].filter(Boolean).join(', ') || null },
+      )
+      const acciones: AccionesBarraMovil = {
+        pedir: settings?.enable_online_ordering === true ? conPrefijo(carta, prefijo) : null,
+        reservar: paginaReserva && aceptaReservas ? conPrefijo(paginaReserva, prefijo) : null,
+        comoLlegar,
+      }
+      barraMovil = acciones.pedir || acciones.reservar || acciones.comoLlegar ? acciones : null
     }
 
     return { prefijoSede: prefijo, sedesSelector, barraMovil, horarioPie }

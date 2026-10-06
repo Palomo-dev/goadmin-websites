@@ -22,9 +22,11 @@ import type { TemplateConfig, NavItem } from '@/lib/templates'
 import type { MenuCategory } from './header/HeaderShared'
 import type { ResolvedOutlet } from '@/lib/outlet/resolver'
 import type { DatosSedeLayout } from '@/lib/outlet/sedeLayout'
-import { prefijarArbolNav, prefijarItemsNav } from '@/lib/outlet/rutaSitio'
+import { prefijarArbolNav, prefijarItemsNav, quitarPrefijo } from '@/lib/outlet/rutaSitio'
 import { RutaSitioProvider } from '@/lib/outlet/RutaSitioContext'
 import { SelectorSede } from './header/SelectorSede'
+import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
+import { usePathname } from 'next/navigation'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -116,6 +118,13 @@ export function OrganizationLayoutCliente({
   const navPie = prefijarArbolNav(footerNav, prefijo)
   const arbolPie = prefijarArbolNav(footerNavTree, prefijo)
   const sedesSelector = datosSede?.sedesSelector ?? []
+  const pathname = usePathname() ?? '/'
+  // Barra «Reservar · Cómo llegar · Pedir»: no con la barra de pestañas del encabezado móvil
+  // (ocupa el mismo sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
+  const barraMovil = !frozenReason && datosSede?.barraMovil && settings?.mobile_menu_style !== 'tabs'
+    && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
+    ? datosSede.barraMovil
+    : null
 
   // Medir la altura real del header y exponerla como --header-h
   // para que los heros con overlap_header puedan solaparlo correctamente
@@ -290,6 +299,9 @@ export function OrganizationLayoutCliente({
         <style dangerouslySetInnerHTML={{ __html: settings.custom_css }} />
       )}
       
+      {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
+      {barraMovil && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
+
       {/* Chat Widget (oculto si la cuenta está congelada) */}
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
         <ChatWidget publicKey={settings.chat_widget_public_key} />
