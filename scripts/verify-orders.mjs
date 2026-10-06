@@ -21,6 +21,9 @@
  *    etiqueta. La lista de valores es la de `pg_get_constraintdef` leída por MCP el 2026-10-06
  *    (consulta al pie); si el CHECK cambia, se actualiza aquí y el script obliga a etiquetarlo.
  * 4. Disponibilidad (lib/orders/disponibilidadPedido.ts) y envío (lib/shipping/resolveShipping.ts).
+ * 5. Mesa escrita a mano (lib/orders/nombreMesa.ts y lib/orders/mesaPedido.ts): «4» encuentra
+ *    «Mesa 4», la etiqueta no repite «Mesa» y una mesa de otra sede se distingue. Con un cliente
+ *    falso que filtra como PostgREST; los nombres reales son «Mesa N» / «Mesa A1» (MCP 2026-10-06).
  */
 
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
@@ -38,6 +41,9 @@ const MODULOS = {
   'estados-pedido': 'lib/orders/estados-pedido.ts',
   disponibilidadPedido: 'lib/orders/disponibilidadPedido.ts',
   resolveShipping: 'lib/shipping/resolveShipping.ts',
+  nombreMesa: 'lib/orders/nombreMesa.ts',
+  mesaQR: 'lib/restaurant/mesaQR.ts',
+  mesaPedido: 'lib/orders/mesaPedido.ts',
 }
 
 function aMjs(ts) {
@@ -202,6 +208,54 @@ const tarifas = [
 igual(tarifasParaDestino(tarifas, 'bogotá', null, '2026-10-06').map((t) => t.id), ['a'], 'tarifa por ciudad (la genérica venció)')
 igual(calcularTarifas([tarifas[0]], null, 60000).rates[0].cost, 0, 'envío gratis por umbral de la tarifa')
 igual(calcularTarifas([tarifas[0]], null, 30000).rates[0].cost, 8000, 'tarifa bajo el umbral')
+
+// ─── 5. Mesa escrita a mano ─────────────────────────────────────────────────────────────────
+const { claveNombreMesa, etiquetaMesa } = m.nombreMesa
+for (const [entrada, clave] of [['4', '4'], ['Mesa 4', '4'], ['mesa-04', '4'], ['MESA 4', '4'], ['Mesa4', '4'], ['Mesa A1', 'a1'], ['a1', 'a1'], ['Mesa', ''], ['Terraza 2', 'terraza2'], ['10', '10']]) {
+  igual(claveNombreMesa(entrada), clave, `claveNombreMesa(${JSON.stringify(entrada)})`)
+}
+igual(etiquetaMesa('Mesa 4'), 'Mesa 4', 'etiqueta sin duplicar «Mesa»')
+igual(etiquetaMesa('Mesa4'), 'Mesa4', 'etiqueta «Mesa4» tal cual')
+igual(etiquetaMesa('4'), 'Mesa 4', 'etiqueta con «Mesa» si el nombre no la trae')
+igual(etiquetaMesa('Mesana'), 'Mesa Mesana', '«Mesana» no empieza por la palabra «Mesa»')
+
+const MESAS = [
+  { id: '11111111-1111-4111-8111-111111111111', organization_id: 140, name: 'Mesa 4', zone: 'Terraza', branch_id: 1 },
+  { id: '22222222-2222-4222-8222-222222222222', organization_id: 140, name: 'Mesa 4', zone: null, branch_id: 2 },
+  { id: '33333333-3333-4333-8333-333333333333', organization_id: 140, name: 'Mesa 7', zone: null, branch_id: 2 },
+  { id: '44444444-4444-4444-8444-444444444444', organization_id: 999, name: 'Mesa 9', zone: null, branch_id: 5 },
+]
+function clienteFalso(filas) {
+  return {
+    from() {
+      const filtros = []
+      const q = {
+        select() { return q },
+        eq(col, val) { filtros.push((f) => f[col] === val); return q },
+        order() { return q },
+        limit(n) { return Promise.resolve({ data: filas.filter((f) => filtros.every((p) => p(f))).slice(0, n), error: null }) },
+        maybeSingle() { return Promise.resolve({ data: filas.find((f) => filtros.every((p) => p(f))) ?? null, error: null }) },
+      }
+      return q
+    },
+  }
+}
+const { buscarMesaDeOrganizacion } = m.mesaPedido
+const db = clienteFalso(MESAS)
+const r4 = await buscarMesaDeOrganizacion(db, 140, '4', 1)
+igual(r4.ok ? r4.mesa.id : r4.motivo, MESAS[0].id, '«4» en la sede 1 → Mesa 4 de la sede 1')
+const r4b = await buscarMesaDeOrganizacion(db, 140, 'mesa 4', 2)
+igual(r4b.ok ? r4b.mesa.id : r4b.motivo, MESAS[1].id, '«mesa 4» en la sede 2 → Mesa 4 de la sede 2')
+const r7 = await buscarMesaDeOrganizacion(db, 140, '7', 1)
+igual(r7.ok ? 'ok' : [r7.motivo, r7.mesa?.id], ['otra_sede', MESAS[2].id], '«7» en la sede 1 → mesa de otra sede (con la mesa, para redirigir)')
+const r9 = await buscarMesaDeOrganizacion(db, 140, '9', null)
+igual(r9.ok ? 'ok' : r9.motivo, 'invalida', 'mesa de otra organización → inválida')
+const rAmb = await buscarMesaDeOrganizacion(db, 140, '4', null)
+igual(rAmb.ok ? 'ok' : rAmb.motivo, 'invalida', '«4» sin sede y repetida en dos sedes → inválida (sin adivinar)')
+const rUuid = await buscarMesaDeOrganizacion(db, 140, MESAS[2].id.toUpperCase(), 2)
+igual(rUuid.ok ? rUuid.mesa.name : rUuid.motivo, 'Mesa 7', 'uuid del QR')
+const rVacia = await buscarMesaDeOrganizacion(db, 140, 'Mesa', 1)
+igual(rVacia.ok ? 'ok' : rVacia.motivo, 'invalida', '«Mesa» sola → inválida')
 
 // ─── Resultado ──────────────────────────────────────────────────────────────────────────────
 const tz = process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone
