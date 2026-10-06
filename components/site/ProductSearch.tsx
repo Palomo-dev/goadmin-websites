@@ -6,10 +6,10 @@ import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
 
 interface ProductSearchProps {
   primaryColor: string
-  organizationId?: number
   icon?: any
 }
 
@@ -29,7 +29,7 @@ const popularSearches = [
   'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
-export function ProductSearch({ primaryColor, organizationId, icon: SearchIconComp = Search }: ProductSearchProps) {
+export function ProductSearch({ primaryColor, icon: SearchIconComp = Search }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -80,10 +80,7 @@ export function ProductSearch({ primaryColor, organizationId, icon: SearchIconCo
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const url = organizationId
-          ? `/api/products/search?q=${encodeURIComponent(query)}&organizationId=${organizationId}`
-          : `/api/products/search?q=${encodeURIComponent(query)}`
-        const res = await fetch(url)
+        const res = await fetch(urlBusquedaProductos(query))
         if (res.ok) {
           const data = await res.json()
           setResults(data.products || [])

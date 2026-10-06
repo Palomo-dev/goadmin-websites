@@ -5,10 +5,10 @@ import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
+import { urlBusquedaProductos } from '@/lib/products/urlBusqueda';
 
 interface SearchBarInputProps {
   primaryColor: string;
-  organizationId?: number;
   className?: string;
   placeholder?: string;
   /** Tamaño del input: 'sm' (móvil), 'md' (desktop normal), 'lg' (marketplace grande) */
@@ -50,7 +50,6 @@ const sizeConfig = {
 
 export function SearchBarInput({
   primaryColor,
-  organizationId,
   className = '',
   placeholder = 'Buscar productos...',
   size = 'md',
@@ -93,10 +92,7 @@ export function SearchBarInput({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = organizationId
-          ? `/api/products/search?q=${encodeURIComponent(query)}&organizationId=${organizationId}`
-          : `/api/products/search?q=${encodeURIComponent(query)}`;
-        const res = await fetch(url);
+        const res = await fetch(urlBusquedaProductos(query));
         if (res.ok) {
           const data = await res.json();
           setResults(data.products || []);
@@ -107,7 +103,7 @@ export function SearchBarInput({
       setLoading(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, organizationId]);
+  }, [query]);
 
   const saveRecentSearch = (term: string) => {
     try {

@@ -308,7 +308,7 @@ export function HeaderActions({
   // Construir elementos de acción según el orden
   const actionElements: Record<string, React.ReactNode | null> = {
     search: showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} organizationId={organizationId} icon={SearchIconComp} />
+      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} />
     ) : null,
     currency: !isMobile && !hideCurrency ? (
       <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} />
@@ -628,13 +628,13 @@ export function NavList({
 
 export function SearchBarInline({
   primaryColor,
-  organizationId,
   className = '',
   size = 'md',
   icon,
 }: {
   primaryColor: string;
-  organizationId: number;
+  /** Ya no se usa: el buscador resuelve la organización por el host. Se acepta por compatibilidad. */
+  organizationId?: number;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   icon?: any;
@@ -643,7 +643,6 @@ export function SearchBarInline({
     <div className={className}>
       <SearchBarInput
         primaryColor={primaryColor}
-        organizationId={organizationId}
         size={size}
         className="w-full"
         icon={icon}
