@@ -21,7 +21,7 @@ import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
 import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, sedePorDefectoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido, horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
-import { hoyEnZona, parseHorario } from '@/lib/restaurant/horario'
+import { horarioDeSede, hoyEnZona } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
@@ -244,8 +244,10 @@ export async function POST(request: NextRequest) {
       esRestaurante: contexto.esRestaurante,
       pedidoEnLinea: contexto.ajustes?.pedidoEnLinea ?? null,
       // En la mesa el cliente ya está en el local: no se le pide programar aunque el horario guardado
-      // diga otra cosa (los horarios por defecto del ERP no siempre son los reales).
-      horario: mesaPedido ? null : parseHorario(contexto.horarioSede),
+      // diga otra cosa (los horarios por defecto del ERP no siempre son los reales). Fuera de la mesa,
+      // horarioDeSede: el horario por defecto del ERP (sin revisar) cuenta como «sin horario» y no
+      // rechaza nada, la misma regla que el checkout (app/checkout/page.tsx).
+      horario: mesaPedido ? null : horarioDeSede(contexto.horarioSede),
       zona: contexto.zona,
       programadoPara: isScheduled && scheduledAt ? String(scheduledAt) : null,
     })
