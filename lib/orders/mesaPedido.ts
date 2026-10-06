@@ -11,7 +11,7 @@
  * name, zone (NULL-able). Service role: el filtro por `organization_id` es la única barrera.
  */
 
-import { refMesaDeUrl } from '@/lib/restaurant/useMesaQR'
+import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
 import type { RestaurantTable } from '@/types/database'
 import { MARCA_COMER_AQUI } from '@/lib/orders/estados-pedido'
 
