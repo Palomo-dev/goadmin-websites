@@ -98,7 +98,9 @@ export function OrderConfirmation({ orderNumber, customerEmail, primaryColor, is
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Recibimos tu pedido!</h1>
         <p className="text-gray-600 mb-6">
-          Te avisaremos por correo a <strong>{customerEmail}</strong> cuando lo confirmen.
+          {/* Solo lo que pasa de verdad hoy: el resumen sale por correo al crear el pedido, y el aviso
+              de cada cambio de estado depende del ERP (paquete E), aún sin desplegar. */}
+          Te enviamos el resumen a <strong>{customerEmail}</strong>. Sigue el estado del pedido en «Seguir mi pedido».
         </p>
       </div>
 
