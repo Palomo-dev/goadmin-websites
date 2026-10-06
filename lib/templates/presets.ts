@@ -8,6 +8,18 @@
  * 
  * Se usa cuando una organización selecciona un template desde el admin.
  * El sistema crea/actualiza las tablas correspondientes.
+ *
+ * FUENTE QUE MANDA (2026-10-06): este archivo. Hay dos copias en el ERP
+ * (go-admin-erp) que deben decir lo mismo:
+ * - `TEMPLATE_PRESETS` (src/lib/services/websiteSettingsService.ts): id, nombre,
+ *   tipo de negocio, colores, fuentes y estilos de header/footer. No tiene páginas.
+ * - `create_default_pages(org, type_id)` en la base (disparador al crear la
+ *   organización): las páginas y secciones con las que nace un sitio. Para
+ *   restaurante (type_id 1) son las de `restaurant_modern`, el preset por defecto.
+ * El test de contrato del ERP
+ * (src/lib/services/website/__tests__/plantillasContrato.test.ts) lee este
+ * archivo y falla si alguna de las dos copias diverge, o si una sección o
+ * variante de aquí no existe en el catálogo del editor.
  */
 
 export interface NavItem {
@@ -164,6 +176,44 @@ const restaurantNav: NavItem[] = [
   { name: 'Nosotros', href: '/nosotros' },
   { name: 'Contacto', href: '/contacto' },
 ]
+
+// Restaurantes con carta y reserva de mesa propias (moderno, elegante, rústico).
+// `/reservas` es la ruta fija del asistente de HABITACIONES (app/reservas) y
+// tapa cualquier página con ese slug: la reserva de mesa vive en
+// `/reservas-mesa`, y la carta completa en `/menu`.
+const restaurantCartaNav: NavItem[] = [
+  { name: 'Inicio', href: '/' },
+  { name: 'Menú', href: '/menu' },
+  { name: 'Reservar', href: '/reservas-mesa' },
+  { name: 'Nosotros', href: '/nosotros' },
+  { name: 'Contacto', href: '/contacto' },
+]
+
+/** Página de reserva de mesa. `slug` fijo: ver `restaurantCartaNav`. */
+function reservasMesaPage(headerOrder: number, sections: SectionPreset[]): PagePreset {
+  return {
+    slug: 'reservas-mesa',
+    title: 'Reservar Mesa',
+    show_in_header: true,
+    show_in_footer: true,
+    header_order: headerOrder,
+    footer_order: headerOrder,
+    sections: [{ section_type: 'hero', section_variant: 'minimal' }, ...sections],
+  }
+}
+
+/** Agenda y eventos privados (cotización por formulario → lead en el ERP). */
+function eventosPage(headerOrder: number, sections: SectionPreset[]): PagePreset {
+  return {
+    slug: 'eventos',
+    title: 'Eventos',
+    show_in_header: true,
+    show_in_footer: true,
+    header_order: headerOrder,
+    footer_order: headerOrder,
+    sections: [{ section_type: 'hero', section_variant: 'minimal' }, ...sections],
+  }
+}
 
 const hotelNav: NavItem[] = [
   { name: 'Inicio', href: '/' },
@@ -508,7 +558,7 @@ const restaurant_modern: TemplatePreset = {
   header_style: 'default',
   footer_style: 'three_columns',
   header_cta_text: 'Reservar Mesa',
-  header_cta_url: '/reservas',
+  header_cta_url: '/reservas-mesa',
   menu_position: 'inline',
   search_style: 'icon',
   show_header_cart: true,
@@ -521,26 +571,28 @@ const restaurant_modern: TemplatePreset = {
   mobile_show_topbar: false,
   mobile_sticky_header: true,
   mobile_breakpoint: 768,
-  navigation: restaurantNav,
+  navigation: restaurantCartaNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
       sections: [
-        { section_type: 'hero', section_variant: 'fullscreen' },
-        { section_type: 'specialties', section_variant: 'featured' },
+        // Bistró: foto protagonista con accesos (bento) y estado «Abierto ahora».
+        { section_type: 'restaurant_hero', section_variant: 'split_bento' },
+        { section_type: 'signature_dishes', section_variant: 'carousel' },
         { section_type: 'menu_preview', section_variant: 'tabs' },
         { section_type: 'delivery_cta', section_variant: 'banner' },
-        { section_type: 'gallery', section_variant: 'grid' },
+        { section_type: 'gallery_bento', section_variant: 'default' },
         { section_type: 'testimonials', section_variant: 'carousel' },
-        { section_type: 'reservation_cta', section_variant: 'with_form' },
-        { section_type: 'map', section_variant: 'embedded' },
+        { section_type: 'reservation', section_variant: 'band' },
+        { section_type: 'hours_location', section_variant: 'hours_map' },
       ],
     },
     {
       slug: 'menu', title: 'Menú', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
-        { section_type: 'menu_preview', section_variant: 'tabs' },
+        // Página de carta: carta completa con anclas (la home conserva menu_preview).
+        { section_type: 'menu_full', section_variant: 'anchors' },
         { section_type: 'cta', section_variant: 'centered' },
       ],
     },
@@ -551,15 +603,12 @@ const restaurant_modern: TemplatePreset = {
         { section_type: 'products_grid', section_variant: 'grid' },
       ],
     },
-    {
-      slug: 'reservas-mesa', title: 'Reservar Mesa', show_in_header: true, show_in_footer: true, header_order: 3, footer_order: 3,
-      sections: [
-        { section_type: 'hero', section_variant: 'minimal' },
-        { section_type: 'reservation_cta', section_variant: 'with_form' },
-        { section_type: 'faq', section_variant: 'accordion' },
-      ],
-    },
-    nosotrosPage('split', 'two_columns'),
+    reservasMesaPage(3, [
+      { section_type: 'reservation', section_variant: 'stepper' },
+      { section_type: 'private_events', section_variant: 'default' },
+      { section_type: 'faq', section_variant: 'accordion' },
+    ]),
+    nosotrosPage('split', 'two_columns', [{ section_type: 'chef_team', section_variant: 'chef' }]),
     contactoPage('minimal', 'split', 'embedded'),
     galeriaPage('masonry'),
   ],
@@ -580,7 +629,7 @@ const restaurant_elegant: TemplatePreset = {
   header_style: 'transparent',
   footer_style: 'centered',
   header_cta_text: 'Reservar',
-  header_cta_url: '/reservas',
+  header_cta_url: '/reservas-mesa',
   logo_position: 'center',
   menu_position: 'inline',
   search_style: 'icon',
@@ -594,28 +643,37 @@ const restaurant_elegant: TemplatePreset = {
   mobile_show_topbar: false,
   mobile_sticky_header: true,
   mobile_breakpoint: 768,
-  navigation: restaurantNav,
+  navigation: restaurantCartaNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
       sections: [
-        { section_type: 'hero', section_variant: 'video' },
-        { section_type: 'chef_section', section_variant: 'profile' },
-        { section_type: 'specialties', section_variant: 'featured' },
+        // Fine dining: titular tipográfico, el chef y los platos contados uno a uno.
+        { section_type: 'restaurant_hero', section_variant: 'typographic' },
+        { section_type: 'marquee', section_variant: 'text' },
+        { section_type: 'chef_team', section_variant: 'chef' },
+        { section_type: 'signature_dishes', section_variant: 'scrollytelling' },
         { section_type: 'menu_preview', section_variant: 'tabs' },
-        { section_type: 'gallery', section_variant: 'fullscreen' },
+        { section_type: 'gallery_bento', section_variant: 'default' },
         { section_type: 'testimonials', section_variant: 'quotes' },
-        { section_type: 'reservation_cta', section_variant: 'simple' },
+        { section_type: 'reservation', section_variant: 'form_image' },
+        { section_type: 'hours_location', section_variant: 'hours_map' },
       ],
     },
     {
       slug: 'menu', title: 'Menú', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
-        { section_type: 'menu_preview', section_variant: 'tabs' },
+        // Página de carta: carta completa con anclas (la home conserva menu_preview).
+        { section_type: 'menu_full', section_variant: 'anchors' },
       ],
     },
-    nosotrosPage('fullscreen', 'centered'),
+    reservasMesaPage(2, [{ section_type: 'reservation', section_variant: 'stepper' }]),
+    eventosPage(3, [
+      { section_type: 'events', section_variant: 'list' },
+      { section_type: 'private_events', section_variant: 'default' },
+    ]),
+    nosotrosPage('fullscreen', 'centered', [{ section_type: 'chef_team', section_variant: 'team' }]),
     contactoPage('minimal', 'split', 'with_directions'),
     galeriaPage('fullscreen'),
   ],
@@ -710,29 +768,37 @@ const restaurant_rustic: TemplatePreset = {
   mobile_show_topbar: false,
   mobile_sticky_header: true,
   mobile_breakpoint: 768,
-  navigation: restaurantNav,
+  navigation: restaurantCartaNav,
   pages: [
     {
       slug: 'home', title: 'Inicio', show_in_header: true, show_in_footer: false, header_order: 0, footer_order: 0,
       sections: [
-        { section_type: 'hero', section_variant: 'fullscreen' },
+        // De la finca a la mesa: foto con accesos, la historia, franja de fotos del lugar.
+        { section_type: 'restaurant_hero', section_variant: 'split_bento' },
         { section_type: 'image_text', section_variant: 'image_right' },
-        { section_type: 'specialties', section_variant: 'featured' },
+        { section_type: 'marquee', section_variant: 'photos' },
+        { section_type: 'signature_dishes', section_variant: 'carousel' },
         { section_type: 'menu_preview', section_variant: 'tabs' },
-        { section_type: 'gallery', section_variant: 'masonry' },
-        { section_type: 'stats', section_variant: 'counters' },
+        { section_type: 'gallery_bento', section_variant: 'default' },
         { section_type: 'testimonials', section_variant: 'minimal' },
-        { section_type: 'reservation_cta', section_variant: 'simple' },
+        { section_type: 'reservation', section_variant: 'band' },
+        { section_type: 'hours_location', section_variant: 'cards' },
       ],
     },
     {
       slug: 'menu', title: 'Menú', show_in_header: true, show_in_footer: true, header_order: 1, footer_order: 1,
       sections: [
         { section_type: 'hero', section_variant: 'minimal' },
-        { section_type: 'menu_preview', section_variant: 'tabs' },
+        // Página de carta: carta completa con anclas (la home conserva menu_preview).
+        { section_type: 'menu_full', section_variant: 'anchors' },
       ],
     },
-    nosotrosPage('fullscreen', 'two_columns'),
+    reservasMesaPage(2, [{ section_type: 'reservation', section_variant: 'form_image' }]),
+    eventosPage(3, [
+      { section_type: 'private_events', section_variant: 'default' },
+      { section_type: 'events', section_variant: 'list' },
+    ]),
+    nosotrosPage('fullscreen', 'two_columns', [{ section_type: 'chef_team', section_variant: 'team' }]),
     contactoPage('minimal', 'split', 'with_directions'),
     galeriaPage('masonry'),
   ],
