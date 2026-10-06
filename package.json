@@ -20,7 +20,8 @@
     "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs",
     "verify:ajustes": "node --disable-warning=ExperimentalWarning scripts/verify-ajustes-sitio.mjs",
     "verify:texto": "node --disable-warning=ExperimentalWarning scripts/verify-texto-plano.mjs",
-    "verify:busqueda": "node --disable-warning=ExperimentalWarning scripts/verify-busqueda-org.mjs"
+    "verify:busqueda": "node --disable-warning=ExperimentalWarning scripts/verify-busqueda-org.mjs",
+    "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
