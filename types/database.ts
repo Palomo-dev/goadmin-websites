@@ -120,6 +120,20 @@ export interface Database {
           business_hours: Json
           custom_css: string | null
           custom_scripts: string | null
+          // Ajustes de Sitio web › Configuración y › Ventas en línea del ERP (migraciones
+          // 20261006122511 y 20261006122435). Verificados por MCP el 2026-10-06; se leen con
+          // lib/website/ajustesSitio.ts. Opcionales: un caché anterior a la migración no los trae.
+          maintenance_mode?: boolean
+          maintenance_message?: string | null
+          site_locale?: string
+          custom_code?: Json
+          contact_email?: string | null
+          contact_phone?: string | null
+          whatsapp_number?: string | null
+          whatsapp_greeting?: string | null
+          checkout_guest_enabled?: boolean
+          checkout_min_order_amount?: number | string | null
+          multi_outlet_mode?: string
           analytics_id: string | null
           gallery_images: Json
           testimonials: Json
