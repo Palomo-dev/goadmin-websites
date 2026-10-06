@@ -29,6 +29,8 @@ export interface ReservaCreada {
   date: string
   time: string
   partySize: number
+  /** Ruta de gestión por token (`/reserva/mesa/<token>`), si la base ya emite tokens (migración D2). */
+  manageUrl?: string
 }
 
 export interface DatosReserva {

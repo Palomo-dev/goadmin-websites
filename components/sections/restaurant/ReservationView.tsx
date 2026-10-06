@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { useReservaMesa, type FranjaDisponible, type ReservaCreada } from '@/lib/restaurant/useReservaMesa'
 import { fechaCorta, fechaLarga, hoyEnZona, instanteEnZona, sumarDias } from '@/lib/restaurant/horario'
-import type { AjustesReserva } from '@/lib/restaurant/sedes-modelo'
+import { AJUSTES_RESERVA_POR_DEFECTO, type AjustesReserva } from '@/lib/restaurant/sedes-modelo'
 
 export type ReservationVariant = 'stepper' | 'form_image' | 'band' | 'hero_widget' | 'external'
 
@@ -30,6 +30,8 @@ export interface SedeReserva {
   id: number
   nombre: string
   direccion: string | null
+  /** Teléfono de la sede: «Contáctanos» de los grupos grandes. */
+  telefono?: string | null
   zonaHoraria: string
   ajustes: AjustesReserva | null
 }
@@ -150,9 +152,13 @@ function useFlujoReserva(props: ReservationViewProps) {
   const ajustes = sede ? sede.ajustes : sinSede?.ajustes ?? null
   const zona = sede?.zonaHoraria ?? sinSede?.zonaHoraria ?? 'America/Bogota'
 
-  const minPersonas = Math.max(ajustes?.minPersonas ?? 1, props.minGuests ?? 1)
-  const maxPersonas = Math.max(minPersonas, Math.min(ajustes?.maxPersonas ?? 8, props.maxGuests ?? ajustes?.maxPersonas ?? 8))
-  const diasMax = Math.max(0, Math.min(ajustes?.maxDiasAnticipacion ?? 30, props.maxDays ?? 30))
+  // La sección solo puede RESTRINGIR lo que fija la sede; sin ajustes, los
+  // valores de la base (AJUSTES_RESERVA_POR_DEFECTO), no unos propios del sitio.
+  const base = ajustes ?? AJUSTES_RESERVA_POR_DEFECTO
+  const minPersonas = Math.max(base.minPersonas, props.minGuests ?? base.minPersonas)
+  const maxPersonas = Math.max(minPersonas, Math.min(base.maxPersonas, props.maxGuests ?? base.maxPersonas))
+  const diasMax = Math.max(0, Math.min(base.maxDiasAnticipacion, props.maxDays ?? base.maxDiasAnticipacion))
+  const grupoGrande = ajustes?.grupoGrande ?? null
 
   // «Hoy» en la zona de la sede. Se calcula en el cliente para no congelarlo en caché.
   const [hoy, setHoy] = useState<string | null>(null)
@@ -185,7 +191,7 @@ function useFlujoReserva(props: ReservationViewProps) {
   const reserva = useReservaMesa({
     organizationId,
     branchId: sede?.id ?? null,
-    slotInterval: String(ajustes?.intervaloMinutos ?? 30),
+    slotInterval: String(base.intervaloMinutos),
     errorMessage: 'No se pudo completar la reserva. Inténtalo de nuevo.',
     origen: 'ReservationView',
     limpiarFranjas: true,
@@ -203,7 +209,11 @@ function useFlujoReserva(props: ReservationViewProps) {
   const politica = ajustes?.politica ?? props.policyText
 
   /** Valida y envía. Devuelve false si falta algo (el mensaje queda en `reserva.errorMsg`). */
+  /** Más personas que el umbral de la sede: no se reserva en línea, se contacta. */
+  const esGrupoGrande = grupoGrande !== null && personas > grupoGrande
+
   const enviar = useCallback(async () => {
+    if (esGrupoGrande) return reserva.fallar(`Para grupos de más de ${grupoGrande} personas, escríbenos y organizamos tu mesa.`)
     if (!fecha || !hora) return reserva.fallar('Selecciona día y hora.')
     if (!nombre.trim()) return reserva.fallar('Por favor ingresa tu nombre.')
     if (requiereTelefono && !telefono.trim()) return reserva.fallar('El celular es obligatorio.')
@@ -220,7 +230,7 @@ function useFlujoReserva(props: ReservationViewProps) {
       notes: notas.trim() || undefined,
       zone: zonaMesa,
     })
-  }, [fecha, hora, nombre, telefono, email, notas, acepta, personas, zonaMesa, requiereTelefono, requiereEmail, politica, reserva])
+  }, [esGrupoGrande, grupoGrande, fecha, hora, nombre, telefono, email, notas, acepta, personas, zonaMesa, requiereTelefono, requiereEmail, politica, reserva])
 
   const reiniciar = () => {
     reserva.reiniciar()
@@ -261,6 +271,8 @@ function useFlujoReserva(props: ReservationViewProps) {
     requiereTelefono,
     requiereEmail,
     politica,
+    grupoGrande,
+    esGrupoGrande,
     reserva,
     enviar,
     reiniciar,
@@ -432,10 +444,44 @@ function Honeypot({ flujo, base }: { flujo: Flujo; base: string }) {
   )
 }
 
+function enlaceWhatsApp(telefono: string | null | undefined): string | null {
+  const digitos = (telefono ?? '').replace(/\D/g, '')
+  if (digitos.length < 7) return null
+  return `https://wa.me/${digitos.length === 10 ? `57${digitos}` : digitos}`
+}
+
+/** «Contáctanos» de los grupos grandes (más personas que `large_party_threshold` de la sede). */
+function AvisoGrupoGrande({ flujo }: { flujo: Flujo }) {
+  if (!flujo.esGrupoGrande) return null
+  const telefono = flujo.sede?.telefono ?? null
+  const whatsapp = enlaceWhatsApp(telefono)
+  return (
+    <div className="rounded-lg border border-border bg-muted p-4 text-left text-sm">
+      <p className="font-medium">Para grupos de más de {flujo.grupoGrande} personas, contáctanos.</p>
+      <p className="mt-1 text-muted-foreground">Organizamos tu mesa y te confirmamos por teléfono o WhatsApp.</p>
+      {(whatsapp || telefono) && (
+        <div className="mt-2 flex flex-wrap gap-3">
+          {whatsapp && (
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-4" style={{ color: ACCENT }}>
+              Escribir por WhatsApp
+            </a>
+          )}
+          {telefono && (
+            <a href={`tel:${telefono.replace(/[^\d+]/g, '')}`} className="font-medium underline underline-offset-4" style={{ color: ACCENT }}>
+              Llamar
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Mensajes({ flujo }: { flujo: Flujo }) {
   const { reserva } = flujo
   return (
     <div aria-live="polite">
+      <AvisoGrupoGrande flujo={flujo} />
       {reserva.status === 'no_availability' && reserva.suggestedTimes.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-left text-sm dark:border-amber-800 dark:bg-amber-900/20">
           <p className="mb-2 font-medium text-amber-800 dark:text-amber-200">{reserva.errorMsg || 'No hay disponibilidad para esa hora.'}</p>
@@ -577,6 +623,11 @@ function Confirmacion({ flujo, props }: { flujo: Flujo; props: ReservationViewPr
           </div>
         ))}
       </dl>
+      {r.manageUrl && (
+        <Link href={r.manageUrl} className="text-sm font-medium underline underline-offset-4" style={{ color: ACCENT }}>
+          Consultar o cancelar tu reserva
+        </Link>
+      )}
       <div className="flex flex-wrap justify-center gap-3 text-sm">
         <a href={cal.google} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline" style={{ color: ACCENT }}>
           Añadir a Google Calendar

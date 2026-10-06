@@ -107,6 +107,7 @@ export function Reservation({ content, organization, data, sectionVariant, secti
         id: s.id,
         nombre: s.nombre,
         direccion: direccionCompleta(s),
+        telefono: s.telefono,
         zonaHoraria: s.zonaHoraria,
         ajustes: ajustesDeSede(s, datos),
       }))
