@@ -24,12 +24,12 @@ import { ArrowRight, ArrowUpRight, FileText, ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import { Price } from '@/components/site/CurrencyProvider'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
+import { ahoraEnZona } from '@/lib/restaurant/horario'
 import { cn } from '@/lib/utils'
 import { addProductToCart } from '@/lib/cart'
 import {
   buildMenuGroups,
   isScheduleOpen,
-  minutesInTimeZone,
   scheduleLabel,
   type MenuCategoryGroup,
   type MenuItem,
@@ -351,7 +351,7 @@ function CategoryHeading({ id, name, count }: { id?: string; name: string; count
 function useNowMinutes(timeZone: string): number | null {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
-    const tick = () => setNow(minutesInTimeZone(new Date(), timeZone))
+    const tick = () => setNow(ahoraEnZona(timeZone).minutos)
     tick()
     const id = window.setInterval(tick, 60_000)
     return () => window.clearInterval(id)

@@ -17,7 +17,8 @@
 import { useCallback, useId, useMemo, useState } from 'react'
 import { ChevronDown, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatPlainDate, parsePlainDate, wallClockIn } from '@/lib/restaurant/secciones'
+import { formatPlainDate, parsePlainDate } from '@/lib/restaurant/secciones'
+import { hoyEnZona } from '@/lib/restaurant/horario'
 import {
   CONTACT_MAX_LENGTHS,
   HONEYPOT_FIELD_PROPS,
@@ -68,10 +69,6 @@ interface EventFields {
 
 const UNDECIDED = 'Aún no lo sé'
 
-function todayIn(timeZone: string): string {
-  const wc = wallClockIn(new Date(), timeZone)
-  return `${wc.year}-${String(wc.month).padStart(2, '0')}-${String(wc.day).padStart(2, '0')}`
-}
 
 function SelectField({
   id,
@@ -126,7 +123,7 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
     () => (props.budgetOptions.length > 0 ? [UNDECIDED, ...props.budgetOptions] : []),
     [props.budgetOptions],
   )
-  const [minDate] = useState(() => todayIn(props.timeZone))
+  const [minDate] = useState(() => hoyEnZona(props.timeZone))
   const [fields, setFields] = useState<EventFields>({
     eventType: props.eventTypes[0] ?? '',
     date: '',

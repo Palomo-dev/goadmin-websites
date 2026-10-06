@@ -1,7 +1,8 @@
 /**
  * Utilidades compartidas por las secciones nuevas de restaurante (Figma
  * «Secciones nuevas» 167:5358): normalizar el contenido libre del editor y
- * fechas de eventos en la zona de la organización.
+ * fechas de eventos en la zona de la organización (la conversión de zona es la
+ * de lib/restaurant/horario.ts).
  *
  * El horario de las sedes («Abierto ahora») NO vive aquí: es de
  * lib/restaurant/horario.ts (secciones `hours_location` / `reservation`).
@@ -12,6 +13,7 @@
  */
 
 import type { CSSProperties } from 'react'
+import { instanteEnZona } from './horario'
 
 // ---------------------------------------------------------------------------
 // Contenido del editor (JSON libre) → valores tipados
@@ -73,71 +75,6 @@ export function oneOf<T extends string>(value: unknown, allowed: readonly T[], f
 }
 
 // ---------------------------------------------------------------------------
-// Zona horaria
-// ---------------------------------------------------------------------------
-
-export const FALLBACK_TZ = 'America/Bogota'
-
-function safeTz(timeZone: string | null | undefined): string {
-  if (!timeZone) return FALLBACK_TZ
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone })
-    return timeZone
-  } catch {
-    return FALLBACK_TZ
-  }
-}
-
-interface WallClock {
-  year: number
-  month: number
-  day: number
-  hour: number
-  minute: number
-  weekday: number // 0 = domingo
-}
-
-/** Fecha y hora de pared de `instant` en la zona indicada. */
-export function wallClockIn(instant: Date, timeZone: string | null | undefined): WallClock {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: safeTz(timeZone),
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    weekday: 'short',
-    hourCycle: 'h23',
-  }).formatToParts(instant)
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return {
-    year: Number(get('year')),
-    month: Number(get('month')),
-    day: Number(get('day')),
-    hour: Number(get('hour')),
-    minute: Number(get('minute')),
-    weekday: Math.max(0, weekdays.indexOf(get('weekday'))),
-  }
-}
-
-/**
- * Instante UTC de una hora de pared («2026-10-24 19:30») en la zona dada.
- * Dos pasadas: corrige el desfase y el posible cambio de horario.
- */
-export function zonedToInstant(date: PlainDate, time: string | null, timeZone: string | null | undefined): Date {
-  const [h, m] = parseHm(time) ?? [0, 0]
-  const asUtc = Date.UTC(date.year, date.month - 1, date.day, h, m)
-  let guess = asUtc
-  for (let i = 0; i < 2; i++) {
-    const wc = wallClockIn(new Date(guess), timeZone)
-    const wcUtc = Date.UTC(wc.year, wc.month - 1, wc.day, wc.hour, wc.minute)
-    guess += asUtc - wcUtc
-  }
-  return new Date(guess)
-}
-
-// ---------------------------------------------------------------------------
 // Fechas planas (columna `date` o campo de fecha del editor: sin zona)
 // ---------------------------------------------------------------------------
 
@@ -166,6 +103,11 @@ export function parseHm(value: unknown): [number, number] | null {
   if (!s) return null
   const m = HM_RE.exec(s)
   return m ? [Number(m[1]), Number(m[2])] : null
+}
+
+/** «YYYY-MM-DD» de una fecha plana. */
+export function plainDateIso(d: PlainDate): string {
+  return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`
 }
 
 /** Formatea una fecha plana sin convertir zona (es una fecha de calendario). */
@@ -224,11 +166,12 @@ export function parseEvents(raw: unknown, timeZone: string | null | undefined): 
     if (!title || !date) return
     const startTime = parseHm(e.start_time) ? str(e.start_time) : null
     const endTime = parseHm(e.end_time) ? str(e.end_time) : null
-    const startsAt = zonedToInstant(date, startTime, timeZone).getTime()
+    const dia = plainDateIso(date)
+    const startsAt = instanteEnZona(dia, startTime ?? '00:00', timeZone).getTime()
     // Sin hora de fin: el evento sigue visible hasta que termina su día.
     let endsAt = endTime
-      ? zonedToInstant(date, endTime, timeZone).getTime()
-      : zonedToInstant(date, '23:59', timeZone).getTime() + 59_999
+      ? instanteEnZona(dia, endTime, timeZone).getTime()
+      : instanteEnZona(dia, '23:59', timeZone).getTime() + 59_999
     // Fin antes del inicio = cruza medianoche.
     if (endTime && endsAt <= startsAt) endsAt += 24 * 60 * 60 * 1000
     let slug = str(e.slug) ? slugify(String(e.slug)) : slugify(title)

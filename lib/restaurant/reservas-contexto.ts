@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { ahoraEnZona, horaDeMinutos } from './horario'
 
 /**
  * Contexto común de `/api/restaurant-reservations/**`.
@@ -70,23 +71,13 @@ export async function ahoraEnLaZona(
   orgId: number,
   branchId: number | null,
 ): Promise<{ fecha: string; hora: string }> {
-  let zona = 'America/Bogota'
   const { data } = await supabase.rpc('fn_timezone_for', {
     p_organization_id: orgId,
     p_branch_id: branchId,
   })
-  if (typeof data === 'string' && data) zona = data
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zona,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? '00'
-  return { fecha: `${v('year')}-${v('month')}-${v('day')}`, hora: `${v('hour')}:${v('minute')}` }
+  // Misma conversión que el resto del sitio (lib/restaurant/horario.ts).
+  const ahora = ahoraEnZona(typeof data === 'string' && data ? data : null)
+  return { fecha: ahora.fecha, hora: horaDeMinutos(ahora.minutos) }
 }
 
 interface ArgsDisponibilidad {

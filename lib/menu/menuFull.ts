@@ -169,6 +169,7 @@ export function buildMenuGroups(
 
 // ---------------------------------------------------------------------------
 // Horario de cartas (zona horaria de la organización)
+// Los minutos «ahora» en la zona salen de `ahoraEnZona` (lib/restaurant/horario.ts).
 // ---------------------------------------------------------------------------
 
 const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/
@@ -179,22 +180,6 @@ export function parseTimeOfDay(value: string | null | undefined): number | null 
   const m = TIME_RE.exec(value.trim())
   if (!m) return null
   return Number(m[1]) * 60 + Number(m[2])
-}
-
-/** Minutos desde medianoche de `now` en la zona IANA indicada. */
-export function minutesInTimeZone(now: Date, timeZone: string): number {
-  const fmt = (tz: string) =>
-    new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-  let parts: Intl.DateTimeFormatPart[]
-  try {
-    parts = fmt(timeZone).formatToParts(now)
-  } catch {
-    // Zona inválida en la base: fallback documentado en reglas-fechas-timezone.
-    parts = fmt('America/Bogota').formatToParts(now)
-  }
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0)
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0)
-  return hour * 60 + minute
 }
 
 /**

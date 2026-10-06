@@ -6,6 +6,12 @@
  * (`branches.timezone` → `organizations.timezone`, el mismo orden que
  * `fn_timezone_for`), nunca con la hora local del navegador ni del servidor.
  *
+ * Es la ÚNICA conversión de zona del sitio de restaurante: `ahoraEnZona`
+ * (hora de pared ahora), `hoyEnZona` (día) e `instanteEnZona` (hora de pared →
+ * instante UTC). Eventos (`secciones.ts`), carta con horario (`MenuFullView`),
+ * eventos privados, reservas y el estado «Abierto ahora» del hero las usan;
+ * no se escribe otra con `Intl`.
+ *
  * Formato real de `branches.opening_hours` (verificado por MCP el 2026-10-05,
  * 80 sedes): `{ monday: { open: 'HH:MM', close: 'HH:MM', closed?: boolean }, … }`;
  * un día cerrado puede venir sólo como `{ closed: true }`.
@@ -96,9 +102,13 @@ export interface AhoraEnZona {
   fecha: string
 }
 
+/** Zona por defecto (regla 6 de docs/reglas-fechas-timezone.md del ERP: solo como respaldo). */
+export const ZONA_POR_DEFECTO = 'America/Bogota'
+
 const formateadores = new Map<string, Intl.DateTimeFormat>()
 
-function partesEnZona(zona: string, instante: Date) {
+function partesEnZona(zonaPedida: string | null | undefined, instante: Date) {
+  const zona = zonaPedida || ZONA_POR_DEFECTO
   let f = formateadores.get(zona)
   if (!f) {
     try {
@@ -130,7 +140,7 @@ function partesEnZona(zona: string, instante: Date) {
 
 function partesFallback() {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Bogota',
+    timeZone: ZONA_POR_DEFECTO,
     weekday: 'long',
     year: 'numeric',
     month: '2-digit',
@@ -141,14 +151,14 @@ function partesFallback() {
   })
 }
 
-export function ahoraEnZona(zona: string, instante: Date = new Date()): AhoraEnZona {
+export function ahoraEnZona(zona: string | null | undefined, instante: Date = new Date()): AhoraEnZona {
   const p = partesEnZona(zona, instante)
   const dia = (DIAS as readonly string[]).includes(p.weekday) ? (p.weekday as Dia) : 'monday'
   return { dia, minutos: p.hora * 60 + p.minuto, fecha: p.fecha }
 }
 
 /** Fecha de hoy (YYYY-MM-DD) en la zona. */
-export function hoyEnZona(zona: string, instante: Date = new Date()): string {
+export function hoyEnZona(zona: string | null | undefined, instante: Date = new Date()): string {
   return partesEnZona(zona, instante).fecha
 }
 
@@ -300,11 +310,17 @@ export function fechaLarga(fecha: string): string {
   return capitalizar(fmtLarga.format(comoUtc(fecha)).replace(/,/g, ''))
 }
 
+/** «HH:MM» de unos minutos del día (0 – 1439). */
+export function horaDeMinutos(minutos: number): string {
+  return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`
+}
+
 /**
- * Instante UTC de una hora de pared en una zona (para «Añadir al calendario»).
- * Dos pasadas bastan para zonas con cambio de horario.
+ * Instante UTC de una hora de pared («2026-10-24», «19:30») en una zona
+ * (eventos, «Añadir al calendario»). Dos pasadas bastan para zonas con cambio
+ * de horario.
  */
-export function instanteEnZona(fecha: string, hora: string, zona: string): Date {
+export function instanteEnZona(fecha: string, hora: string, zona: string | null | undefined): Date {
   const [y, m, d] = partesFecha(fecha)
   const [h, min] = hora.split(':').map(Number)
   const objetivo = Date.UTC(y, m - 1, d, h, min)
