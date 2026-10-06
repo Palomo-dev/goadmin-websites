@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
+import { reglaDeError, respuestaDeRegla } from '@/lib/restaurant/reservas-errores'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,8 +54,10 @@ export async function POST(
       if (typeof body?.token !== 'string' || body.token !== conToken.data.manage_token) {
         return NextResponse.json({ error: 'Usa el enlace de tu correo para cancelar la reserva.' }, { status: 403 })
       }
-    } else {
-      // Sin la columna (D2 sin aplicar): comportamiento anterior.
+    } else if (conToken.error.code === '42703') {
+      // Sin la columna (D2 sin aplicar): comportamiento anterior. SOLO por la
+      // columna inexistente: cualquier otro error (red, timeout, 5xx) no abre
+      // la cancelación sin token.
       const { data: propia } = await (supabase as any)
         .from('restaurant_reservations')
         .select('id')
@@ -64,6 +67,9 @@ export async function POST(
       if (!propia) {
         return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
       }
+    } else {
+      console.error('[Restaurant Reservations] Cancel: lectura de la reserva', conToken.error.code)
+      return NextResponse.json({ error: 'Servicio no disponible. Inténtalo de nuevo.' }, { status: 503 })
     }
 
     const { data: result, error } = await (supabase as any)
@@ -74,6 +80,17 @@ export async function POST(
 
     if (error || !result || !result.success) {
       const errMsg = error?.message || 'Error al cancelar la reserva'
+
+      // Tras D1: reserva ya pasada (PASADA:) o fuera de plazo (ANTICIPACION:),
+      // igual que la ruta por token. Antes de D1 no hay prefijo y sigue el mapeo anterior.
+      const regla = reglaDeError(errMsg)
+      if (regla) {
+        const { status, mensaje: legible } = respuestaDeRegla(regla)
+        return NextResponse.json({ error: legible, code: regla.codigo }, { status: status === 400 ? 422 : status })
+      }
+      if (/no se presento|no se presentó/i.test(errMsg)) {
+        return NextResponse.json({ error: 'Esta reserva ya no se puede cancelar.' }, { status: 409 })
+      }
 
       if (errMsg.includes('no encontrada')) {
         return NextResponse.json({ error: errMsg }, { status: 404 })
