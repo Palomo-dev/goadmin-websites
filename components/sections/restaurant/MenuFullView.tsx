@@ -60,6 +60,7 @@ import { textoPlano } from '@/lib/texto/textoPlano'
 import { CartaQrMenu } from './mesa/CartaQrMenu'
 import { DEFAULT_CARTA_QR, DEFAULT_PEDIDO_MESA, type CartaQr } from '@/lib/website/v2/contrato/seccionesMesa'
 import { useMesaQRStore } from '@/lib/restaurant/mesaStore'
+import { useModoMesa } from '@/components/site/ModoMesaContext'
 
 /** Sede de la carta para la hoja del plato y el banner de cerrado (sale de getSedesRestaurante). */
 export interface SedeDeCarta {
@@ -251,6 +252,7 @@ export function MenuFullView(props: MenuFullViewProps) {
   // Página Carta QR: su barra de mesa y su barra del pedido reemplazan al aviso de mesa y a
   // «Ver pedido (n)» de la carta. Sin esas secciones, como siempre.
   const hayServicioMesa = useMesaQRStore((e) => e.hayServicio)
+  const modoMesa = useModoMesa()
   const hayPedidoMesa = useMesaQRStore((e) => e.hayPedido)
   const enLienzo = useIsPreviewMode()
   const nowMinutes = useNowMinutes(props.timeZone, props.horaSimulada ?? null)
@@ -307,14 +309,15 @@ export function MenuFullView(props: MenuFullViewProps) {
 
   return (
     <>
-      {modoQr && mesa && !hayServicioMesa && (
+      {modoQr && mesa && !hayServicioMesa && !modoMesa && (
         <div className="sticky top-0 z-30 -mx-4 mb-4 bg-background/95 px-4 py-2 backdrop-blur md:mx-0 md:px-0">
           <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />
         </div>
       )}
-      {((!modoQr && mesa) || (apertura?.estado === 'closed' && !modoQr)) && (
+      {((!modoQr && mesa && !modoMesa) || (apertura?.estado === 'closed' && !modoQr)) && (
         <div className="mb-6 flex flex-col gap-3">
-          {!modoQr && <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />}
+          {/* Modo mesa (Carta QR): sin la franja «Pides en Mesa N»; la mesa ya va en su barra. */}
+          {!modoQr && !modoMesa && <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />}
           {apertura?.estado === 'closed' && <BannerCerrado apertura={apertura} reservarHref={props.sede?.reservarHref ?? null} canOrder={props.canOrder} />}
         </div>
       )}

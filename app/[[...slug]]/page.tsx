@@ -46,6 +46,7 @@ import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { redirect } from 'next/navigation'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
+import { esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 
 export const dynamic = 'force-dynamic'
@@ -438,8 +439,12 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       }
     }
 
+    // Carta QR (tipo `carta_qr`, o /carta-qr con secciones de mesa): el layout en «modo mesa»,
+    // también en el lienzo del editor. Cualquier otra página: `false`, el layout de siempre.
+    const modoMesa = esPaginaModoMesa(page)
+
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition} modoMesa={modoMesa}>
         <JsonLd data={[
           buildOrganizationJsonLd({
             name: organization.name,

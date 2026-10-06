@@ -30,6 +30,9 @@ import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v
 import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
+import { ModoMesaProvider } from './ModoMesaContext'
+import { EncabezadoMesa } from './header/EncabezadoMesa'
+import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
@@ -92,6 +95,11 @@ export interface OrganizationLayoutProps {
   codigoPropio?: BloqueCodigo[] | null
   /** Datos de las opciones nuevas del encabezado y del pie (OrganizationLayout). Ausentes = lo de hoy. */
   extrasShell?: ExtrasEncabezadoPie | null
+  /**
+   * Página Carta QR (lib/restaurant/modoMesa.ts): encabezado mínimo, sin barra móvil del sitio y
+   * con el pie reducido a «Carta con tecnología GO Admin». Ausente o `false` = el layout de siempre.
+   */
+  modoMesa?: boolean
 }
 
 export function OrganizationLayoutCliente({
@@ -120,6 +128,7 @@ export function OrganizationLayoutCliente({
   pixeles,
   codigoPropio,
   extrasShell,
+  modoMesa = false,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -167,7 +176,8 @@ export function OrganizationLayoutCliente({
   }
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
-  const rutaAdmiteBarra = !frozenReason && settings?.mobile_menu_style !== 'tabs'
+  // En modo mesa la barra del sitio (Reservar / Pedir) no va: la mesa tiene su propia barra.
+  const rutaAdmiteBarra = !frozenReason && !modoMesa && settings?.mobile_menu_style !== 'tabs'
     && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
   // `auto` (default): la de hoy, «Reservar · Llamar · Cómo llegar · Pedir» del restaurante.
   const barraMovil = rutaAdmiteBarra && opcionesShell.barraMovil === 'auto' && datosSede?.barraMovil
@@ -203,6 +213,7 @@ export function OrganizationLayoutCliente({
   if (!opcionesShell.fijo) atributosShell['data-encabezado-no-fijo'] = ''
   if (opcionesShell.pie.colorTexto) atributosShell['data-pie-texto'] = ''
   if (!opcionesShell.pie.separadores) atributosShell['data-pie-sin-separadores'] = ''
+  if (modoMesa) atributosShell['data-modo-mesa'] = ''
 
   // Theme mode: light | dark | auto
   const themeMode: string = settings?.theme_mode || 'light'
@@ -257,6 +268,7 @@ export function OrganizationLayoutCliente({
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
     <EncabezadoPieProvider value={valorEncabezadoPie}>
+    <ModoMesaProvider value={modoMesa}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -267,7 +279,11 @@ export function OrganizationLayoutCliente({
     >
       {hojaFuentesTema && <link rel="stylesheet" href={hojaFuentesTema} />}
       {/* Header específico según tipo (oculto si la cuenta está congelada) */}
-      {!frozenReason && (
+      {!frozenReason && modoMesa ? (
+        <ZonaGlobalPreview zona="header">
+          <EncabezadoMesa organization={organizacionEncabezado as OrganizationWithDetails} primaryColor={primaryColor} />
+        </ZonaGlobalPreview>
+      ) : !frozenReason ? (
         <ZonaGlobalPreview zona="header">
         <SiteHeader
           organization={organizacionEncabezado as OrganizationWithDetails}
@@ -282,7 +298,7 @@ export function OrganizationLayoutCliente({
           branchId={branchId}
         />
         </ZonaGlobalPreview>
-      )}
+      ) : null}
 
       {/* Sede (Figma 02-componentes 27:214, chip «Sede X ▾» con «Ver todas las sedes y horarios»):
           franja propia bajo el encabezado, a la derecha, igual en las 6 variantes de encabezado y en
@@ -291,7 +307,7 @@ export function OrganizationLayoutCliente({
           Solo con 2 o más sedes publicadas (hoy ninguna organización las tiene).
           data-franja-sede: en un sitio V2 con tema, app/globals.css le pone el borde y el fondo del
           tema; sin tema el atributo no tiene regla y la franja queda como siempre. */}
-      {!frozenReason && sedesSelector.length >= 2 && !selectorEnEncabezado && (
+      {!frozenReason && !modoMesa && sedesSelector.length >= 2 && !selectorEnEncabezado && (
         <div className="border-b border-gray-100 dark:border-gray-800" data-franja-sede="">
           <div className="container mx-auto flex justify-end px-4 py-2">
             <SelectorSede
@@ -307,7 +323,7 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Countdown Banner (debajo del header, oculto si está congelada) */}
-      {!frozenReason && settings?.countdown_enabled && settings?.countdown_show_in_header && (
+      {!frozenReason && !modoMesa && settings?.countdown_enabled && settings?.countdown_show_in_header && (
         <CountdownBanner
           config={settings}
           primaryColor={primaryColor}
@@ -331,7 +347,11 @@ export function OrganizationLayoutCliente({
       </main>
       
       {/* Footer (oculto si la cuenta está congelada) */}
-      {!frozenReason && (
+      {!frozenReason && modoMesa ? (
+        <ZonaGlobalPreview zona="footer">
+          <PieMesa mostrarMarca={settings?.show_powered_by !== false} />
+        </ZonaGlobalPreview>
+      ) : !frozenReason ? (
         <ZonaGlobalPreview zona="footer">
         <SiteFooter
           organization={organization}
@@ -345,7 +365,7 @@ export function OrganizationLayoutCliente({
           horarioSede={datosSede?.horarioPie ?? null}
         />
         </ZonaGlobalPreview>
-      )}
+      ) : null}
       
       {/* Cart Drawer (oculto si la cuenta está congelada) */}
       {!frozenReason && showCart && (
@@ -402,6 +422,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </ModoMesaProvider>
     </EncabezadoPieProvider>
     </TemaColoresProvider>
     </RutaSitioProvider>

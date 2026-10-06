@@ -19,6 +19,8 @@
  *    organización del abono; /api/orders solo crea ficha de cliente con correo.
  * 5. Si el ERP está al lado: cada RPC que llama el sitio existe en las migraciones con
  *    EXACTAMENTE esos parámetros; las migraciones son aditivas y tienen rollback.
+ * 6. Modo mesa (lib/restaurant/modoMesa.ts): qué página lo activa y que el layout cambie
+ *    encabezado, pie y barra móvil solo con él.
  */
 import { readFile, writeFile, mkdtemp, mkdir, rm, access, readdir } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -42,8 +44,10 @@ const leer = (rel) => readFile(join(ROOT, rel), 'utf8')
 
 // Módulos TS puros → .mjs temporales dentro del repo.
 const tmp = await mkdtemp(join(ROOT, 'node_modules', '.verify-carta-qr-'))
-let contrato, modelo, ronda
+let contrato, modelo, ronda, modoMesa
 try {
+  await writeFile(join(tmp, 'modoMesa.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/modoMesa.ts'), { mode: 'strip' }))
+  modoMesa = await import(pathToFileURL(join(tmp, 'modoMesa.mjs')).href)
   await writeFile(join(tmp, 'contrato.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/contrato/seccionesMesa.ts'), { mode: 'strip' }))
   await writeFile(join(tmp, 'modelo.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/mesa-modelo.ts'), { mode: 'strip' }))
   contrato = await import(pathToFileURL(join(tmp, 'contrato.mjs')).href)
@@ -205,6 +209,30 @@ if (await existe(dirMig)) {
   }
 } else {
   notas.push(`Sin el ERP en ${ERP}: no se cruzan los parámetros con las migraciones (ERP_REPO=…).`)
+}
+
+// ─── 6. Modo mesa ────────────────────────────────────────────────────────────
+{
+  const { esPaginaModoMesa: es } = modoMesa
+  const sec = (t, v = 'default') => ({ section_type: t, section_variant: v })
+  check(es({ slug: 'carta-qr', page_type: 'carta_qr', website_page_sections: [sec('menu_full', 'anchors')] }), 'modo mesa: página de tipo carta_qr (aunque solo tenga la carta)')
+  check(es({ slug: 'mi-carta', page_type: 'carta_qr', website_page_sections: [] }), 'modo mesa: el tipo manda sobre el slug')
+  check(es({ slug: 'carta-qr', page_type: 'custom', website_page_sections: [sec('table_order')] }), 'modo mesa: /carta-qr con «Pedido de la mesa»')
+  check(es({ slug: 'carta-qr', page_type: 'custom', website_page_sections: [sec('restaurant_hero', 'mesa')] }), 'modo mesa: /carta-qr con la portada «mesa»')
+  check(!es({ slug: 'carta-qr', page_type: 'custom', website_page_sections: [sec('menu_full', 'qr')] }), 'modo mesa: /carta-qr sin secciones de mesa → layout de siempre')
+  check(!es({ slug: 'menu', page_type: 'builtin', website_page_sections: [sec('menu_full', 'qr'), sec('table_order')] }), 'modo mesa: otra página, aunque tenga secciones de mesa → layout de siempre')
+  check(!es(null) && !es({ slug: 'home', page_type: 'builtin', website_page_sections: [] }), 'modo mesa: inicio y página nula → layout de siempre')
+
+  // Quién aplica el modo mesa (se lee el fuente): sin él, el layout de siempre.
+  const layout = await leer('components/site/OrganizationLayoutCliente.tsx')
+  check(/!frozenReason && modoMesa \? \(\s*<ZonaGlobalPreview zona="header">\s*<EncabezadoMesa/.test(layout), 'layout: en modo mesa el encabezado es EncabezadoMesa (y si no, SiteHeader)')
+  check(/!frozenReason && modoMesa \? \(\s*<ZonaGlobalPreview zona="footer">\s*<PieMesa/.test(layout), 'layout: en modo mesa el pie es PieMesa (y si no, SiteFooter)')
+  check(/const rutaAdmiteBarra = !frozenReason && !modoMesa &&/.test(layout), 'layout: en modo mesa no va la barra móvil del sitio')
+  check(/modoMesa = false,/.test(layout), 'layout: modoMesa es opcional y por defecto false (las ~25 rutas no cambian)')
+  const pagina = await leer('app/[[...slug]]/page.tsx')
+  check(/const modoMesa = esPaginaModoMesa\(page\)/.test(pagina) && /modoMesa=\{modoMesa\}/.test(pagina), 'page.tsx: la página del constructor pasa modoMesa al layout')
+  const vista = await leer('components/sections/restaurant/MenuFullView.tsx')
+  check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
 }
 
 for (const n of notas) console.log(`· ${n}`)
