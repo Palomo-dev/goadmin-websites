@@ -8,6 +8,7 @@ import {
   HeaderLogo,
   HeaderActions,
   HeaderTopbar,
+  HeaderCTAMovil,
   SearchBarInline,
   buildNavItems,
   MobileCurrencyChips,
@@ -88,6 +89,7 @@ export default function MobileDrawer({
                 showSearchIcon={searchStyle === 'icon'}
                 isMobile={true}
               />
+              <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               <button
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"

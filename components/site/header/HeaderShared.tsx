@@ -213,6 +213,10 @@ export function HeaderLogo({
   // Sitio de una sede por prefijo de ruta: el logo lleva a la portada de la sede.
   const { ruta } = useRutaSitio();
   const inicio = ruta('/');
+  // Sitio V2 con tema (láminas de Figma): monograma con las iniciales de las palabras («TM»), el
+  // redondeo del tema, el nombre con la fuente de títulos y visible también en el celular.
+  // Legacy (sin tema): exactamente como siempre.
+  const temaColores = useTemaColores();
   if (organization.logo_url) {
     return (
       <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
@@ -230,6 +234,33 @@ export function HeaderLogo({
   }
 
   const logoSize = Math.max(40, Math.min(56, height * 0.8));
+
+  if (temaColores) {
+    const iniciales = organization.name.split(/\s+/).filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+      || organization.name.substring(0, 2).toUpperCase();
+    const lado = Math.round(logoSize * 0.85);
+    return (
+      <Link href={inicio} className="flex-shrink-0 flex items-center gap-2.5" data-logo-tema="">
+        <div
+          className="flex items-center justify-center font-semibold"
+          style={{
+            backgroundColor: primaryColor,
+            color: textoSobreAcentoSiHex(primaryColor) ?? '#ffffff',
+            width: lado,
+            height: lado,
+            borderRadius: 'min(var(--radio-sitio, 8px), 8px)',
+            fontFamily: 'var(--font-heading)',
+            fontSize: Math.round(lado * 0.4),
+          }}
+        >
+          {iniciales}
+        </div>
+        <span className="text-xl sm:text-2xl font-medium text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+          {organization.name}
+        </span>
+      </Link>
+    );
+  }
 
   return (
     <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
@@ -419,6 +450,35 @@ export function HeaderCTA({
       }}
     >
       {text}
+    </Link>
+  );
+}
+
+/**
+ * Botón principal en la barra del celular (láminas de Figma: «Tu marca · Reservar · ☰»). Solo en
+ * sitios V2 con tema y con texto de botón; legacy, el celular sigue sin botón como siempre.
+ */
+export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVariantProps['settings']; primaryColor: string }) {
+  const temaColores = useTemaColores();
+  const { extras } = useEncabezadoPie();
+  const texto = settings?.header_cta_text ?? '';
+  if (!temaColores || !texto) return null;
+  const crudo = settings?.header_cta_url ?? '';
+  const href = crudo === 'whatsapp' || crudo === 'maps' ? hrefBoton(crudo, extras.enlaces) : crudo || '#';
+  if (!href) return null;
+  const fondo = settings?.cta_bg_color ?? primaryColor;
+  return (
+    <Link
+      href={href}
+      {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className="md:hidden inline-flex items-center whitespace-nowrap px-3 py-1.5 text-[13px] font-medium"
+      style={{
+        backgroundColor: fondo,
+        color: settings?.cta_text_color ?? textoSobreAcentoSiHex(fondo) ?? '#ffffff',
+        borderRadius: `${settings?.cta_border_radius ?? 6}px`,
+      }}
+    >
+      {texto}
     </Link>
   );
 }

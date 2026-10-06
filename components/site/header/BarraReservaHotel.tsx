@@ -52,7 +52,7 @@ export function BarraReservaHotel({ primaryColor }: { primaryColor: string }) {
     borderColor: 'color-mix(in srgb, var(--text-color, #111827) 13%, var(--background-color, #ffffff))',
   };
   const etiqueta = 'block text-[11px] font-medium leading-tight opacity-60';
-  const valor = 'block w-full bg-transparent text-sm font-semibold leading-tight outline-none';
+  const valor = 'block w-full bg-transparent text-sm font-medium leading-tight outline-none';
 
   return (
     <div
@@ -95,7 +95,7 @@ export function BarraReservaHotel({ primaryColor }: { primaryColor: string }) {
         </label>
         <button
           type="submit"
-          className="flex-shrink-0 rounded-md px-5 text-sm font-semibold transition-opacity hover:opacity-90"
+          className="flex-shrink-0 rounded-md px-5 text-sm font-medium transition-opacity hover:opacity-90"
           style={{ backgroundColor: primaryColor, color: textoBoton }}
         >
           Ver disponibilidad
@@ -110,7 +110,7 @@ export function BarraReservaHotel({ primaryColor }: { primaryColor: string }) {
         <button
           type="button"
           onClick={() => enviar()}
-          className="flex-shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold"
+          className="flex-shrink-0 rounded-md px-3 py-1.5 text-xs font-medium"
           style={{ backgroundColor: primaryColor, color: textoBoton }}
         >
           Buscar
