@@ -129,9 +129,24 @@ function leerRevision(organizationId: number, siteStateId: string, revisionId: s
 }
 
 /**
+ * Estado que se sirve para una sede (puro). Una sede cuyo sitio propio aún no está activo en la
+ * web (borrador recién creado con la plantilla de su tipo, sin publicar ni activar) sigue
+ * mostrando lo mismo que antes de tener fila: el sitio principal. Crear o editar el borrador de
+ * una sede nunca cambia lo que ve el público; solo publicar y activar el de la sede.
+ */
+export function elegirEstadoPublico<E extends { branch_id: number | null; v2_adopted: boolean }>(
+  estados: readonly E[],
+  sede: number | null
+): E | null {
+  const principal = estados.find((e) => e.branch_id === null) ?? null
+  const propio = sede !== null ? estados.find((e) => e.branch_id === sede) ?? null : null
+  return propio?.v2_adopted ? propio : principal
+}
+
+/**
  * Sitio V2 que debe servirse para la organización y la sede, o `null` para servir legacy.
- * - Con sede y fila propia de la sede: manda esa fila (adoptada → V2; no adoptada → legacy).
- * - Con sede sin fila propia: fallback al sitio principal.
+ * - Con sede y sitio propio ACTIVO (adoptado): manda ese sitio.
+ * - Con sede sin sitio propio, o con uno en borrador sin activar: el sitio principal.
  */
 export const getSitioPublicoV2 = cache(
   async (organizationId: number, branchId?: number | null): Promise<SitioPublicoV2 | null> => {
@@ -143,8 +158,7 @@ export const getSitioPublicoV2 = cache(
       const estados = await leerEstados(organizationId, sede)
       if (estados.length === 0) return null // ningún sitio V2: legacy, igual que hoy
       const principal = estados.find((e) => e.branch_id === null) ?? null
-      const propio = sede !== null ? estados.find((e) => e.branch_id === sede) ?? null : null
-      const elegido = propio ?? principal
+      const elegido = elegirEstadoPublico(estados, sede)
       if (!elegido || !elegido.v2_adopted) return null
       if (!elegido.published_revision_id) {
         console.error('[sitio-v2] Sitio adoptado sin revisión publicada; se sirve legacy', {
