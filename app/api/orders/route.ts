@@ -19,6 +19,7 @@ import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
 import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido } from '@/lib/orders/disponibilidadPedido'
+import { parseHorario } from '@/lib/restaurant/horario'
 
 export const dynamic = 'force-dynamic'
 
@@ -171,13 +172,15 @@ export async function POST(request: NextRequest) {
       supabase as any, contextOrgId, Number.isFinite(resolvedBranchId) ? Number(resolvedBranchId) : null, sedeExplicita,
     )
 
-    // ── Disponibilidad: pedido en línea apagado (403) ──
-    // Solo restaurante (lib/orders/disponibilidadPedido.ts). Sin fila de ajustes, o en otras
-    // verticales, se acepta exactamente como antes.
+    // ── Disponibilidad: pedido en línea apagado (403) y horario de la sede (422) ──
+    // Solo restaurante (lib/orders/disponibilidadPedido.ts): «lo antes posible» con la sede cerrada
+    // → 422 SEDE_CERRADA con la próxima apertura; hora programada ilegible, pasada, fuera del
+    // horario de la sede (en su zona) o a más de 2 días → 422 HORA_PROGRAMADA_INVALIDA. Sin fila de
+    // ajustes, sede sin horario u otras verticales: se acepta exactamente como antes.
     const disponibilidad = evaluarDisponibilidadPedido({
       esRestaurante: contexto.esRestaurante,
       pedidoEnLinea: contexto.ajustes?.pedidoEnLinea ?? null,
-      horario: null,
+      horario: parseHorario(contexto.horarioSede),
       zona: contexto.zona,
       programadoPara: isScheduled && scheduledAt ? String(scheduledAt) : null,
     })
@@ -449,7 +452,8 @@ export async function POST(request: NextRequest) {
         customer_phone: customer.phone,
         customer_notes: customer.notes || null,
         ...(resolvedTip > 0 && { tip_amount: resolvedTip }),
-        ...(isScheduled && scheduledAt && { is_scheduled: true, scheduled_at: scheduledAt }),
+        // Hora programada ya validada y normalizada a ISO (UTC) por evaluarDisponibilidadPedido.
+        ...(isScheduled && disponibilidad.programadoPara && { is_scheduled: true, scheduled_at: disponibilidad.programadoPara }),
         ...(tableName && { internal_notes: `Mesa: ${tableName}` }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
