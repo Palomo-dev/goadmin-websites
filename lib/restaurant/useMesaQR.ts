@@ -28,6 +28,15 @@ export * from './mesaQR'
 interface RespuestaResolver {
   ok: boolean
   mesa?: { id: string; nombre: string; zona: string | null; sede: number; nombreSede: string | null }
+  /** QR de una mesa de otra sede leído en el sitio principal: carta de esa sede con la mesa. */
+  redirigir?: string
+}
+
+/** Solo rutas del mismo sitio (`/sede/menu?…`) o `https://` (dominio propio de la sede). */
+function destinoSeguro(url: unknown): string | null {
+  if (typeof url !== 'string') return null
+  if (url.startsWith('/') && !url.startsWith('//')) return url
+  return /^https:\/\/[a-z0-9.-]+\/menu\?mesa=/i.test(url) ? url : null
 }
 
 /**
@@ -69,6 +78,16 @@ export function useMesaQR(subdomain: string, branchId?: number | null): {
       .then((res) => {
         if (!vivo) return
         if (!res.ok || !res.mesa) {
+          limpiar(sub)
+          setMesa(null)
+          return
+        }
+        const destino = destinoSeguro(res.redirigir)
+        if (destino) {
+          // La mesa es de otra sede: su carta, su carrito y su precio. Allí se vuelve a validar.
+          window.location.replace(destino)
+          return
+        } else if (res.redirigir) {
           limpiar(sub)
           setMesa(null)
           return

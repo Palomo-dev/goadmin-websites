@@ -4,6 +4,7 @@ import { organizacionDePeticion, sedeDeOrganizacion } from '@/lib/api/organizaci
 import { getOrganizationBranches } from '@/lib/supabase/queries'
 import { resolverSedeCarta } from '@/lib/products/carta-sede'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
+import { getSedesWeb } from '@/lib/restaurant/sedes'
 
 /**
  * GET /api/restaurant-tables/resolve?ref=<uuid|código>&branchId=<sede de la página>
@@ -18,9 +19,16 @@ import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
  * Columnas verificadas por MCP el 2026-10-06: id (uuid), organization_id, branch_id (NOT NULL),
  * name, zone (NULL-able), state ('free' | 'occupied' | 'reserved').
  *
- * Una mesa de otra sede que la de la página no se acepta: el pedido saldría con el carrito y el
- * precio de una sede y la mesa de otra. En el sitio principal, la sede es la de su carta (la
- * principal). Respuesta: `{ ok: true, mesa }` o `{ ok: false }` (404), sin detalles.
+ * Regla de sede (la misma que aplica `/api/orders` con MESA_INVALIDA, paquete A): la mesa del
+ * pedido debe ser de la sede de la carta, porque el carrito, la carta y el precio son por sede.
+ * - En la página de una sede, una mesa de otra sede no se acepta (404).
+ * - En el sitio principal, el ERP imprime el QR sin prefijo de sede
+ *   (`https://<host>/menu?mesa=<uuid>`, go-admin-erp/src/lib/pos/mesas/qrMesa.ts). Una mesa de
+ *   la sede principal se acepta como siempre. Una mesa de OTRA sede publicada no se rechaza: la
+ *   respuesta trae `redirigir` (la carta de esa sede con la misma mesa) y la carta navega allí,
+ *   donde el carrito y el pedido ya son de la sede de la mesa. Si esa sede no tiene sitio
+ *   publicado, no hay carta donde pedir para ella: 404, como antes.
+ * Respuesta: `{ ok: true, mesa, redirigir? }` o `{ ok: false }` (404), sin detalles.
  */
 
 interface FilaMesaRestaurante {
@@ -83,9 +91,16 @@ export async function GET(request: NextRequest) {
   }
 
   if (!fila) return noEncontrada()
+  let redirigir: string | null = null
   if (sedeEsperada !== null && fila.branch_id !== sedeEsperada) {
-    // Mesa de otra sede: sin banner (y sin «comer aquí») en esta página.
-    return noEncontrada()
+    if (sedePagina !== null) {
+      // Página de una sede y mesa de otra: sin banner (y sin «comer aquí») en esta página.
+      return noEncontrada()
+    } else {
+      // Sitio principal y mesa de otra sede: se manda a la carta de esa sede, si está publicada.
+      redirigir = await cartaDeSede(org.organizationId, fila.branch_id, fila.id)
+      if (!redirigir) return noEncontrada()
+    }
   }
 
   const sedes = (await getOrganizationBranches(org.organizationId)) as { id: number; name: string | null }[]
@@ -95,7 +110,24 @@ export async function GET(request: NextRequest) {
     {
       ok: true,
       mesa: { id: fila.id, nombre: fila.name, zona: fila.zone, sede: fila.branch_id, nombreSede },
+      ...(redirigir ? { redirigir } : {}),
     },
     { headers: SIN_CACHE },
   )
+}
+
+/**
+ * Carta de una sede publicada con la mesa del QR: dominio propio → `https://<dominio>/menu?mesa=`;
+ * si no, `/<slug>/menu?mesa=` bajo el sitio principal (el mismo `href` del selector de sedes,
+ * lib/outlet/sedeLayout.ts). `null` si la sede no tiene sitio publicado.
+ */
+async function cartaDeSede(organizationId: number, branchId: number, mesaId: string): Promise<string | null> {
+  const sede = (await getSedesWeb(organizationId)).find((s) => s.id === branchId)
+  if (!sede) return null
+  const base = sede.customDomain
+    ? `https://${sede.customDomain}`
+    : sede.slug
+      ? `/${encodeURIComponent(sede.slug)}`
+      : null
+  return base === null ? null : `${base}/menu?mesa=${encodeURIComponent(mesaId)}`
 }
