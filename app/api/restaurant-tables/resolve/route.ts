@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { organizacionDePeticion, sedeDeOrganizacion } from '@/lib/api/organizacion-peticion'
 import { getOrganizationBranches } from '@/lib/supabase/queries'
 import { resolverSedeCarta } from '@/lib/products/carta-sede'
-import { refMesaDeUrl } from '@/lib/restaurant/useMesaQR'
+import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
 
 /**
  * GET /api/restaurant-tables/resolve?ref=<uuid|código>&branchId=<sede de la página>
