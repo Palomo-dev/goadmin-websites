@@ -29,6 +29,7 @@ import { ContactFormFeedback } from '@/components/sections/contact/ContactFormFe
 import { SectionHeading } from './SectionHeading'
 import { useSectionMotion } from './useSectionMotion'
 import m from './motion.module.css'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 export interface PrivatePackage {
   name: string
@@ -340,7 +341,7 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
             <label htmlFor={id('celular')} className={LABEL}>
               Celular
             </label>
-            <input id={id('celular')} type="tel" autoComplete="tel" maxLength={CONTACT_MAX_LENGTHS.phone} value={form.values.phone} onChange={(e) => form.setField('phone', e.target.value)} className={FIELD} />
+            <TelefonoPais id={id('celular')} value={form.values.phone} onChange={(v) => form.setField('phone', v)} className="rounded-lg border border-border bg-background text-foreground" />
           </div>
         </div>
 

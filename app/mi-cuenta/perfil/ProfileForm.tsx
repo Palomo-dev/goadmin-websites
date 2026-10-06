@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { AuthCustomer } from '@/lib/get-auth-customer'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ProfileFormProps {
   customer: AuthCustomer
@@ -94,10 +95,12 @@ export function ProfileForm({ customer, primaryColor, organizationId }: ProfileF
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-          <input
-            type="tel" name="phone" value={form.phone} onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none"
-            placeholder="+57 300 123 4567"
+          <TelefonoPais
+            name="phone"
+            value={form.phone}
+            onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+            className="rounded-lg border"
+            aria-label="Teléfono"
           />
         </div>
 

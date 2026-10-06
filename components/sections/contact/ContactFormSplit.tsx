@@ -2,6 +2,7 @@
 
 import { ContactFormFeedback } from './ContactFormFeedback'
 import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ContactFormSplitProps {
   content: {
@@ -60,15 +61,12 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
             disabled={isSubmitting}
             className={inputClass}
           />
-          <input
-            type="tel"
-            placeholder="Teléfono"
+          <TelefonoPais
             aria-label="Teléfono"
-            maxLength={CONTACT_MAX_LENGTHS.phone}
             value={values.phone}
-            onChange={(e) => setField('phone', e.target.value)}
+            onChange={(v) => setField('phone', v)}
             disabled={isSubmitting}
-            className={inputClass}
+            className="rounded-lg border border-border bg-background text-foreground"
           />
           <textarea
             placeholder="Mensaje"

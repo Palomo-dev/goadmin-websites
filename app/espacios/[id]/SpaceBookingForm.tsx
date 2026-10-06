@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Users, Check, AlertCircle, CreditCard, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface Gateway {
   code: string
@@ -448,7 +449,7 @@ export function SpaceBookingForm({ organizationId, spaceId, spaceTypeName, capac
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono *</label>
-              <Input type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+57 300 123 4567" />
+              <TelefonoPais required className="rounded-md border border-input bg-background text-sm [&_input]:h-9" value={formData.phone} onChange={(v) => setFormData({ ...formData, phone: v })} aria-label="Teléfono" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas adicionales</label>

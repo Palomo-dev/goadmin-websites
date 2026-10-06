@@ -31,6 +31,9 @@ export const COPIAS = [
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
   // Contraste WCAG: lo usa textoSobreAcento (texto del botón del encabezado y modo del fondo).
   ['lib/website/v2/contrasteColor.ts', 'src/lib/utils/contrasteColor.ts'],
+  // Teléfono con país: parseo, validación por país y E.164 (los usa components/site/TelefonoPais.tsx).
+  ['lib/utils/telefono.ts', 'src/lib/utils/telefono.ts'],
+  ['lib/data/countryPhoneCodes.ts', 'src/lib/data/countryPhoneCodes.ts'],
 ]
 
 /**
