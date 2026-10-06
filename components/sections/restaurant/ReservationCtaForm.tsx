@@ -19,6 +19,8 @@ interface ReservationCtaFormProps {
     max_guests?: number
     time_slot_interval?: '30' | '60' | '90'
     success_message?: string
+    /** Texto cuando la reserva queda pendiente de confirmación del equipo. */
+    pending_message?: string
     error_message?: string
     show_available_times?: boolean
     bg_color?: string
@@ -143,14 +145,21 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
 
   // ── Pantalla de éxito ──
   if (status === 'success' && reservationResult) {
+    // Si la sede exige confirmación, la reserva nace `pending`: no se anuncia
+    // como confirmada (mismo criterio que ReservationView y el correo).
+    const pendiente = reservationResult.status === 'pending'
     return (
       <div className="text-center" style={content.bg_color ? { backgroundColor: content.bg_color } : undefined}>
         <div className="max-w-2xl mx-auto py-8">
-          <div className="mb-6 text-5xl">✅</div>
+          <div className="mb-6 text-5xl">{pendiente ? '⏳' : '✅'}</div>
           <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: content.text_color || undefined }}>
-            {content.title || '¡Reserva Confirmada!'}
+            {pendiente ? 'Solicitud recibida' : content.title || '¡Reserva Confirmada!'}
           </h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{successMessage}</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            {pendiente
+              ? content.pending_message || 'El equipo revisará tu solicitud y te avisará cuando la confirme.'
+              : successMessage}
+          </p>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 text-left max-w-md mx-auto">
             <div className="space-y-2">
               <div className="flex justify-between">
