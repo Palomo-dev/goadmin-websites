@@ -21,7 +21,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { getBranchesByOrg, getOrganizationCategories } from '@/lib/supabase/queries'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
-import { horarioDeSede, parseHorario, normalizarDias } from '@/lib/restaurant/horario'
+import { DIAS, horarioDeSede, horarioRevisado, parseHorario, normalizarDias, turnosDe, type HorarioSemana, type Tramo } from '@/lib/restaurant/horario'
 import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
@@ -37,6 +37,35 @@ import {
   type ItemMenuCarta,
 } from './encabezadoPie'
 import type { DatosSedeLayout } from '@/lib/outlet/sedeLayout'
+
+const DIA_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'] as const
+
+/** «18–23 h», «12:30–15 h · 19–23 h». */
+function horasCompactas(t: Tramo): string {
+  const h = (x: string) => (x.endsWith(':00') ? String(Number(x.slice(0, 2))) : `${Number(x.slice(0, 2))}:${x.slice(3, 5)}`)
+  return `${turnosDe(t).map((x) => `${h(x.abre)}–${h(x.cierra)}`).join(' · ')} h`
+}
+
+/**
+ * Horario compacto para el pie: días seguidos con el mismo horario en un tramo («mar–sáb 18–23 h
+ * · dom 13–22 h»). Los cerrados no salen. `null` sin horario.
+ */
+export function resumenHorario(horario: HorarioSemana | null): string | null {
+  if (!horario) return null
+  const grupos: { desde: number; hasta: number; horas: string }[] = []
+  DIAS.forEach((d, i) => {
+    const t = horario[d]
+    if (!t) return
+    const horas = horasCompactas(t)
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.hasta === i - 1 && ultimo.horas === horas) ultimo.hasta = i
+    else grupos.push({ desde: i, hasta: i, horas })
+  })
+  if (grupos.length === 0) return null
+  return grupos
+    .map((g) => `${g.desde === g.hasta ? DIA_CORTO[g.desde] : `${DIA_CORTO[g.desde]}–${DIA_CORTO[g.hasta]}`} ${g.horas}`)
+    .join(' · ')
+}
 
 const TIPO_RESTAURANTE = 1
 const TIPO_PARQUEADERO = 7
@@ -161,8 +190,19 @@ export const getExtrasEncabezadoPie = cache(async (
         .filter((a): a is AccionBarra => !!a.href)
     }
 
+    // Pie «Horario por sede»: una línea por sede publicada con horario revisado; si no hay sedes
+    // publicadas, el horario de la página (el de la sede o business_hours) sin nombre.
+    const conHorario = sedes
+      .map((s) => ({ nombre: s.nombre, resumen: resumenHorario(horarioRevisado(horarioDeSede(s.horarioJson))) }))
+      .filter((s): s is { nombre: string; resumen: string } => !!s.resumen)
+    const resumenPropio = resumenHorario(horario)
+    const horariosSedes = conHorario.length >= 2
+      ? conHorario
+      : resumenPropio ? [{ nombre: null, resumen: resumenPropio }] : []
+
     return {
       enlaces,
+      horariosSedes,
       sedeEstado: { id: sede?.id ?? 0, nombre: sede?.nombre ?? organization.name, direccion: lugar.direccion ?? null, horario, zonaHoraria: zona },
       mapaEmbebido: urlMapaEmbebido(lugar),
       envioGratisDesde: Number.isFinite(umbral) && umbral > 0 ? umbral : null,

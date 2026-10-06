@@ -172,6 +172,8 @@ export interface ExtrasEncabezadoPie {
   rutaReservas: string
   /** Barra móvil con lista de acciones: las que aplican, en el orden pedido. `null` = auto/ninguna. */
   barraMovil: AccionBarra[] | null
+  /** Pie: una línea por sede publicada con su horario compacto («mar–sáb 18–23 h»); con una sola, sin nombre. */
+  horariosSedes: { nombre: string | null; resumen: string }[]
 }
 
 export const EXTRAS_VACIOS: ExtrasEncabezadoPie = {
@@ -184,5 +186,6 @@ export const EXTRAS_VACIOS: ExtrasEncabezadoPie = {
   categoriasCarta: null,
   rutaReservas: '/reservas',
   barraMovil: null,
+  horariosSedes: [],
 }
 

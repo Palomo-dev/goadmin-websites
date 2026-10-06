@@ -38,6 +38,8 @@ const CLAVES_PERMITIDAS = new Set([
   'cart_icon', 'search_icon', 'auth_icon', 'currency_icon', 'minimal_menu_style', 'actions_order',
   'primary_color', 'secondary_color', 'background_color', 'text_color', 'theme_mode',
   'social_links', 'business_hours',
+  // Encabezado y pie por plantilla: idiomas del selector (el resto entra por los prefijos).
+  'site_locales',
 ])
 /** Nunca en vivo: cambian qué datos se cargan, eso sí necesita guardar. */
 const CLAVES_EXCLUIDAS = new Set(['header_menu_id', 'header_mega_menu_id'])

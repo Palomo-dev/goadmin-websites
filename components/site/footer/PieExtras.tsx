@@ -5,13 +5,11 @@
  * - «Escríbenos por WhatsApp» (footer_show_whatsapp) con el número del sitio;
  * - mapa de la sede con «Cómo llegar →» (footer_show_map);
  * - medios de pago visibles en la web (footer_show_payment_methods);
- * - columnas por menú con su nombre como encabezado (menús del pie del documento V2);
  * - íconos de TikTok y WhatsApp en las redes.
  *
  * Cada bloque devuelve `null` con su opción apagada (default), así que SiteFooter se pinta como
  * antes. Colores: heredan el del pie (`currentColor`), igual que el resto de sus enlaces.
  */
-import Link from 'next/link'
 import { MapPin, MessageCircle, Navigation } from 'lucide-react'
 import { useEncabezadoPie } from '../EncabezadoPieContext'
 
@@ -116,33 +114,5 @@ export function LogoPieTema({ nombre, color, textoSobreColor }: { nombre: string
       </span>
       <span className="text-xl font-medium" style={{ fontFamily: 'var(--font-heading)' }}>{nombre}</span>
     </span>
-  )
-}
-
-export interface ColumnaMenu {
-  titulo: string
-  items: { name: string; href: string }[]
-}
-
-/** Una columna por menú del pie, con el nombre del menú como encabezado (láminas: «Ayuda», «Legal»…). */
-export function ColumnasMenusPie({ columnas, claseTitulo }: { columnas: ColumnaMenu[]; claseTitulo: string }) {
-  if (columnas.length === 0) return null
-  return (
-    <>
-      {columnas.map((c) => (
-        <div key={c.titulo} data-pie-columna-menu="">
-          <h3 className={claseTitulo} style={{ fontFamily: 'var(--font-body)' }}>{c.titulo}</h3>
-          <ul className="space-y-2">
-            {c.items.map((it, i) => (
-              <li key={`${it.href}-${i}`}>
-                <Link href={it.href} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
-                  {it.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </>
   )
 }

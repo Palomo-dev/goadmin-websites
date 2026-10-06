@@ -12,8 +12,8 @@ import { prefijarItemsNav } from '@/lib/outlet/rutaSitio'
 import { filasHorario, normalizarDias, parseHorario, type HorarioSemana } from '@/lib/restaurant/horario'
 import { useEncabezadoPie } from './EncabezadoPieContext'
 import { useTemaColores } from './TemaColoresContext'
-import { BotonWhatsappPie, ColumnasMenusPie, IconoTikTok, LogoPieTema, MapaPie, MediosPagoPie, type ColumnaMenu } from './footer/PieExtras'
-import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { BotonWhatsappPie, IconoTikTok, MapaPie, MediosPagoPie } from './footer/PieExtras'
+import { PieTema } from './footer/PieTema'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -221,8 +221,8 @@ export function SiteFooter({
 }: SiteFooterProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const { prefijo, ruta } = useRutaSitio()
-  // Encabezado y pie por plantilla: WhatsApp, mapa, medios de pago (cada uno null con su opción
-  // apagada) y, en sitios V2 con tema, columnas por menú con su nombre. Legacy: igual que antes.
+  // Encabezado y pie por plantilla: WhatsApp, mapa y medios de pago (cada uno null con su opción
+  // apagada). Sitio V2 con tema: el pie de las láminas (PieTema). Legacy: igual que antes.
   const { opciones: opcionesShell } = useEncabezadoPie()
   const temaColores = useTemaColores()
   const socialLinks = (settings?.social_links || {}) as SocialLinks
@@ -297,17 +297,6 @@ export function SiteFooter({
     }
   }
   const hasFooterMenus = Object.keys(footerMenusByColumn).length > 0
-  // V2 con tema: una columna por menú del pie con su nombre («Ayuda», «Legal»), como las láminas.
-  const columnasMenu: ColumnaMenu[] = temaColores && menus
-    ? menus
-        .map((m) => ({ titulo: m.name, items: prefijarItemsNav(buildMenuGroupItems(m.items), prefijo) ?? [] }))
-        .filter((c) => c.titulo && c.items.length > 0)
-    : []
-  const tituloColumna = 'text-xs font-semibold uppercase tracking-wider mb-4 text-white'
-  // V2 con tema y sin imagen de logo: monograma «TM» como el encabezado. Si no, el de siempre.
-  const logoTema = temaColores && !organization.logo_url
-    ? <LogoPieTema nombre={organization.name} color={primaryColor} textoSobreColor={textoSobreAcentoSiHex(primaryColor) ?? '#ffffff'} />
-    : null
 
   // TikTok: ningún sitio lo tenía (se omitía). WhatsApp en redes: solo con footer_show_whatsapp,
   // para no cambiar los sitios que lo tienen en social_links y hoy no lo muestran.
@@ -321,6 +310,28 @@ export function SiteFooter({
     ...(opcionesShell.pie.whatsapp ? { whatsapp: MessageCircle } : {}),
   }
 
+  // ===== Sitio V2 con tema: el pie de las láminas de Figma (footer/PieTema.tsx) =====
+  // Legacy (sin tema) sigue por sus cinco composiciones de abajo, sin cambios.
+  if (temaColores) {
+    return (
+      <PieTema
+        organization={organization}
+        primaryColor={primaryColor}
+        composicion={footerStyle}
+        claseFondo={footerBgClass}
+        estiloFondo={footerBgStyle}
+        menus={menus}
+        redes={socialLinks as Record<string, string | undefined>}
+        textoPie={settings?.footer_text || ''}
+        mostrarHechoCon={showPoweredBy}
+        mostrarContacto={footerShowContact}
+        mostrarHorario={footerShowHours}
+        mostrarRedes={footerShowSocial}
+        logoHeight={logoHeight}
+      />
+    )
+  }
+
   // ===== Layout: minimal =====
   if (footerStyle === 'minimal') {
     return (
@@ -329,7 +340,7 @@ export function SiteFooter({
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Logo */}
             <div className="flex items-center space-x-3">
-              {logoTema ?? (organization.logo_url ? (
+              {organization.logo_url ? (
                 <Image
                   src={organization.logo_url}
                   alt={organization.name}
@@ -345,7 +356,7 @@ export function SiteFooter({
                 >
                   {organization.name.substring(0, 2).toUpperCase()}
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Nav inline */}
@@ -419,7 +430,7 @@ export function SiteFooter({
           {/* Logo + descripción centrados */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              {logoTema ?? (organization.logo_url ? (
+              {organization.logo_url ? (
                 <Image
                   src={organization.logo_url}
                   alt={organization.name}
@@ -438,15 +449,15 @@ export function SiteFooter({
                   </div>
                   <span className="text-xl font-bold">{organization.name}</span>
                 </>
-              ))}
+              )}
             </div>
             {organization.description && (
               <p className="text-current opacity-50 max-w-2xl mx-auto">{organization.description}</p>
             )}
           </div>
 
-          {/* Nav centrado (V2 con tema y columnas por menú: los enlaces van en sus columnas, como la lámina) */}
-          <nav className={`flex flex-wrap items-center justify-center gap-6 mb-8 ${temaColores && columnasMenu.length > 0 ? 'hidden' : ''}`}>
+          {/* Nav centrado */}
+          <nav className="flex flex-wrap items-center justify-center gap-6 mb-8">
             {navItems.slice(0, 8).map((item, i) => (
               <Link
                 key={i}
@@ -492,47 +503,6 @@ export function SiteFooter({
             <BotonWhatsappPie whatsappRedes={socialLinks.whatsapp} />
           </div>
 
-          {/* V2 con tema: horario, contacto y una columna por menú, centrados (lámina Noir). */}
-          {temaColores && (showHoursInFooter || footerShowContact || columnasMenu.length > 0) && (
-            <div className="flex flex-wrap justify-center gap-x-16 gap-y-8 mb-10 text-center" data-pie-columnas="">
-              {showHoursInFooter && (
-                <div>
-                  <h3 className={tituloColumna} style={{ fontFamily: 'var(--font-body)' }}>Horario</h3>
-                  <ul className="space-y-1.5 text-sm">
-                    {filasHorarioPie.map((fila) => (
-                      <li key={fila.etiqueta} className="flex items-center justify-center gap-2 text-current opacity-60">
-                        <Clock className="h-4 w-4" aria-hidden="true" />
-                        {fila.etiqueta} · {fila.horas ?? 'Cerrado'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {footerShowContact && (organization.address || organization.phone) && (
-                <div>
-                  <h3 className={tituloColumna} style={{ fontFamily: 'var(--font-body)' }}>Contacto</h3>
-                  <ul className="space-y-1.5 text-sm">
-                    {organization.address && (
-                      <li className="flex items-center justify-center gap-2 text-current opacity-60">
-                        <MapPin className="h-4 w-4" aria-hidden="true" />
-                        {organization.address}
-                      </li>
-                    )}
-                    {organization.phone && (
-                      <li>
-                        <a href={`tel:${organization.phone}`} className="inline-flex items-center gap-2 text-current opacity-60 hover:opacity-100">
-                          <Phone className="h-4 w-4" aria-hidden="true" />
-                          {organization.phone}
-                        </a>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              <ColumnasMenusPie columnas={columnasMenu} claseTitulo={tituloColumna} />
-            </div>
-          )}
-
           <MapaPie className="mb-8 mx-auto max-w-md" />
 
           {/* Bottom bar */}
@@ -569,7 +539,7 @@ export function SiteFooter({
             <div>
               <FooterSection title={organization.name}>
                 <div className="flex items-center space-x-3 mb-4">
-                  {logoTema ?? (organization.logo_url ? (
+                  {organization.logo_url ? (
                     <Image
                       src={organization.logo_url}
                       alt={organization.name}
@@ -585,7 +555,7 @@ export function SiteFooter({
                     >
                       {organization.name.substring(0, 2).toUpperCase()}
                     </div>
-                  ))}
+                  )}
                 </div>
                 {organization.description && (
                   <p className="text-current opacity-50 mb-4 text-sm">{organization.description}</p>
@@ -613,12 +583,7 @@ export function SiteFooter({
               </FooterSection>
             </div>
 
-            {/* Columna 2: V2 con tema y menús del pie → una columna por menú con su nombre; si no, Enlaces */}
-            {columnasMenu.length > 0 ? (
-              <div className="grid grid-cols-2 gap-6" data-pie-columnas="">
-                <ColumnasMenusPie columnas={columnasMenu} claseTitulo={tituloColumna} />
-              </div>
-            ) : (
+            {/* Columna 2: Enlaces jerárquicos */}
             <div>
               <FooterSection title="Enlaces">
                 <ul className="space-y-3">
@@ -632,7 +597,6 @@ export function SiteFooter({
                 </ul>
               </FooterSection>
             </div>
-            )}
 
             {/* Columna 3: Contacto */}
             {footerShowContact && (
@@ -709,7 +673,7 @@ export function SiteFooter({
             <div>
               <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
                 <div className="flex items-center space-x-3 mb-6">
-                  {logoTema ?? (organization.logo_url ? (
+                  {organization.logo_url ? (
                     <Image
                       src={organization.logo_url}
                       alt={organization.name}
@@ -728,7 +692,7 @@ export function SiteFooter({
                       </div>
                       <span className="text-xl font-bold">{organization.name}</span>
                     </>
-                  ))}
+                  )}
                 </div>
 
                 {organization.description && (
@@ -792,7 +756,6 @@ export function SiteFooter({
 
             {/* Columna derecha: Enlaces + categorías + newsletter en sub-grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <ColumnasMenusPie columnas={columnasMenu} claseTitulo={tituloColumna} />
               {/* Enlaces */}
               <div>
                 <FooterSection title="Enlaces" mobileStyle={mobileFooterStyle}>
@@ -895,7 +858,7 @@ export function SiteFooter({
           <div className="lg:col-span-1">
             <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
               <div className="flex items-center space-x-3 mb-6">
-                {logoTema ?? (organization.logo_url ? (
+                {organization.logo_url ? (
                   <Image
                     src={organization.logo_url}
                     alt={organization.name}
@@ -914,7 +877,7 @@ export function SiteFooter({
                     </div>
                     <span className="text-xl font-bold">{organization.name}</span>
                   </>
-                ))}
+                )}
               </div>
 
               {organization.description && (
@@ -1074,9 +1037,6 @@ export function SiteFooter({
             </FooterSection>
           </div>
 
-          {/* V2 con tema: una columna por menú con su nombre. */}
-          {columnasMenu.length > 0 && <ColumnasMenusPie columnas={columnasMenu} claseTitulo={tituloColumna} />}
-
           {/* Mapa con «Cómo llegar» (footer_show_map) */}
           {opcionesShell.pie.mapa && (
             <div>
@@ -1085,7 +1045,7 @@ export function SiteFooter({
           )}
 
           {/* Menús nombrados en columnas adicionales (sistema nuevo) */}
-          {hasFooterMenus && columnasMenu.length === 0 && Object.entries(footerMenusByColumn)
+          {hasFooterMenus && Object.entries(footerMenusByColumn)
             .sort(([a], [b]) => Number(a) - Number(b))
             .map(([col, items]) => (
               <div key={`menu-col-${col}`}>

@@ -171,6 +171,28 @@ export interface Database {
           topbar_show_phone: boolean
           topbar_announcement: string | null
           topbar_contact_position: string
+          // Encabezado y pie por plantilla (migraciones sitio_encabezado_pie_v2 y _panel, 2026-10-06,
+          // verificadas por MCP). Opcionales: antes de la migración no vienen; se leen siempre con
+          // opcionesEncabezadoPie (lib/website/encabezadoPie.ts), que da el default.
+          header_cta2_text?: string | null
+          header_cta2_url?: string | null
+          topbar_show_branch_status?: boolean
+          topbar_show_free_shipping?: boolean
+          topbar_show_availability?: boolean
+          header_show_branch_selector?: boolean
+          header_show_language?: boolean
+          site_locales?: string[]
+          header_booking_bar?: boolean
+          header_menu_source?: string
+          mobile_bottom_bar?: string
+          footer_show_whatsapp?: boolean
+          footer_show_map?: boolean
+          footer_show_payment_methods?: boolean
+          header_show_currency?: boolean
+          header_text_color?: string | null
+          header_sticky?: boolean
+          footer_text_color?: string | null
+          footer_show_dividers?: boolean
           logo_height: number | null
           favicon_height: number | null
           favicon_url: string | null
