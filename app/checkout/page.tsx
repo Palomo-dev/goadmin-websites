@@ -8,7 +8,7 @@ import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
 import { sedePorDefectoPedido } from '@/lib/orders/pedidoWeb'
 import { horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
-import { parseHorario, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
+import { horarioDeSede, ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
 import GoogleAdsTag from '@/components/site/GoogleAdsTag'
 import { MetaPixelInitiateCheckout } from '@/components/site/MetaPixelEvents'
 import MetaPixel from '@/components/site/MetaPixel'
@@ -110,8 +110,9 @@ export default async function CheckoutPage() {
         id: Number(sedeFila.id),
         nombre: String(sedeFila.name || ''),
         direccion: sedeFila.address ? String(sedeFila.address) : null,
-        // Solo con ORDERS_ENFORCE_BRANCH_HOURS: el checkout y /api/orders aplican el horario a la vez.
-        horario: horarioSedeObligatorio() ? parseHorario(sedeFila.opening_hours) : null,
+        // Solo con ORDERS_ENFORCE_BRANCH_HOURS: el checkout y /api/orders aplican el horario a la vez,
+        // y los dos con horarioDeSede (el horario por defecto del ERP no restringe nada).
+        horario: horarioSedeObligatorio() ? horarioDeSede(sedeFila.opening_hours) : null,
         zona: String(sedeFila.timezone || (organization as any).timezone || ZONA_POR_DEFECTO),
       }
     : null

@@ -24,6 +24,7 @@ import { parseSchedules, type MenuSourceCategory, type MenuSourceProduct, type M
 import { leerCartaPlatos } from '@/lib/menu/cartaPlatos'
 import { MenuFullView, type MenuFullVariant, type SedeDeCarta } from './MenuFullView'
 import { sedeAceptaReservas, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import { horarioRevisado } from '@/lib/restaurant/horario'
 import type { MenuItemSize } from './MenuItemRow'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
@@ -85,7 +86,8 @@ function sedeDeCarta(datos: unknown, branchId: number | null, reservarUrl: strin
   if (!sede) return null
   return {
     nombre: datos.sedes.length > 1 ? sede.nombre : null,
-    horario: sede.horario,
+    // Horario por defecto del ERP (sin revisar) → null: la carta no pinta «Cerrado ahora».
+    horario: horarioRevisado(sede.horario),
     zonaHoraria: sede.zonaHoraria,
     reservarHref: reservarUrl && sedeAceptaReservas(sede, datos) ? reservarUrl : null,
   }
