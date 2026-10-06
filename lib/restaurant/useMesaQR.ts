@@ -32,6 +32,22 @@ interface RespuestaResolver {
   redirigir?: string
 }
 
+/**
+ * Una sola consulta por referencia y página: la Carta QR monta varias secciones que leen la mesa
+ * (portada, servicio, carta, pedido, cuenta) y todas comparten la misma respuesta.
+ */
+const resolucionesEnCurso = new Map<string, Promise<RespuestaResolver>>()
+
+function resolverUnaVez(qs: string): Promise<RespuestaResolver> {
+  const previa = resolucionesEnCurso.get(qs)
+  if (previa) return previa
+  const nueva = fetch(`/api/restaurant-tables/resolve?${qs}`, { cache: 'no-store' })
+    .then((r): Promise<RespuestaResolver> | RespuestaResolver => (r.ok ? (r.json() as Promise<RespuestaResolver>) : { ok: false }))
+    .catch((): RespuestaResolver => ({ ok: false }))
+  resolucionesEnCurso.set(qs, nueva)
+  return nueva
+}
+
 /** Solo rutas del mismo sitio (`/sede/menu?…`) o `https://` (dominio propio de la sede). */
 function destinoSeguro(url: unknown): string | null {
   if (typeof url !== 'string') return null
@@ -72,9 +88,7 @@ export function useMesaQR(subdomain: string, branchId?: number | null): {
     }
     const qs = new URLSearchParams({ ref })
     if (typeof branchId === 'number') qs.set('branchId', String(branchId))
-    fetch(`/api/restaurant-tables/resolve?${qs.toString()}`, { cache: 'no-store' })
-      .then((r): Promise<RespuestaResolver> | RespuestaResolver => (r.ok ? (r.json() as Promise<RespuestaResolver>) : { ok: false }))
-      .catch((): RespuestaResolver => ({ ok: false }))
+    resolverUnaVez(qs.toString())
       .then((res) => {
         if (!vivo) return
         if (!res.ok || !res.mesa) {

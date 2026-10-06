@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ImageIcon, Loader2, Minus, Plus, X } from 'lucide-react'
+import { AlertTriangle, ImageIcon, Loader2, Minus, Plus, X } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'
 import {
   ProductModifierSelector,
@@ -37,6 +37,7 @@ import { filtrarOpcionesDePlato } from '@/lib/menu/cartasPublicas'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { MenuItem } from '@/lib/menu/menuFull'
 import { textoPlano } from '@/lib/texto/textoPlano'
+import { useMesaQRStore } from '@/lib/restaurant/mesaStore'
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
 const PRIMARY = 'var(--primary-color)'
@@ -68,6 +69,11 @@ export interface PlatoSheetProps {
   onAdded?: () => void
   /** Variantes y grupos de extras que la carta del ERP no muestra («Variantes y extras»). */
   opcionesOcultas?: { variantes: number[]; extras: number[] } | null
+  /**
+   * Carta QR en la mesa (lámina 03): aviso de alérgenos (etiquetas kind 'alergeno') y
+   * «¿Para quién es?» (comensal de la línea). `null` = la ficha de siempre.
+   */
+  mesaQr?: { askDiner: boolean; showAllergens: boolean } | null
 }
 
 function imagenVariante(v: VarianteApi): string | null {
@@ -104,6 +110,8 @@ export function PlatoSheet({
   sedeNombre,
   reservarHref,
   onAdded,
+  opcionesOcultas,
+  mesaQr,
 }: PlatoSheetProps) {
   return (
     <Dialog.Root open={item !== null} onOpenChange={(abierto) => !abierto && onClose()}>
@@ -127,6 +135,8 @@ export function PlatoSheet({
               sedeNombre={sedeNombre}
               reservarHref={reservarHref}
               onAdded={onAdded}
+              opcionesOcultas={opcionesOcultas}
+              mesaQr={mesaQr}
             />
           )}
         </Dialog.Content>
@@ -145,7 +155,12 @@ function ContenidoPlato({
   reservarHref,
   onAdded,
   opcionesOcultas,
+  mesaQr,
 }: PlatoSheetProps & { item: MenuItem }) {
+  const comensalActual = useMesaQRStore((e) => e.comensal)
+  const [comensal, setComensal] = useState<string>(comensalActual)
+  const comensalesConocidos = useMesaQRStore((e) => e.pedido)
+  const conComensal = !!mesaQr?.askDiner
   const [cargando, setCargando] = useState(true)
   const [fallo, setFallo] = useState(false)
   const [intento, setIntento] = useState(0)
@@ -233,10 +248,35 @@ function ContenidoPlato({
       modifiers: mods,
       notes: nota,
       variantAttributes: variante?.variant_data ?? null,
+      ...(conComensal ? { diner: comensal } : {}),
     })
     onAdded?.()
     onClose()
-  }, [puedePedir, unitario, conVariantes, variante, item, organizationSubdomain, branchId, cantidad, mods, nota, onAdded, onClose])
+  }, [puedePedir, unitario, conVariantes, variante, item, organizationSubdomain, branchId, cantidad, mods, nota, onAdded, onClose, conComensal, comensal])
+
+  // Alérgenos (lámina 03): «Contiene lácteos y mostaza. Sin gluten.»
+  const todas = item.todasLasEtiquetas ?? item.tags
+  const alergenos = mesaQr?.showAllergens ? todas.filter((t) => t.kind === 'alergeno').map((t) => t.name.toLowerCase()) : []
+  const sinAlergeno = mesaQr?.showAllergens ? todas.filter((t) => t.kind === 'dieta' && /^sin /i.test(t.name)).map((t) => t.name) : []
+  const avisoAlergenos = alergenos.length > 0 || sinAlergeno.length > 0
+    ? [
+        alergenos.length > 0 ? `Contiene ${alergenos.length > 1 ? `${alergenos.slice(0, -1).join(', ')} y ${alergenos[alergenos.length - 1]}` : alergenos[0]}.` : null,
+        sinAlergeno.length > 0 ? `${sinAlergeno.join(', ')}.` : null,
+      ].filter(Boolean).join(' ')
+    : null
+  // Comensales para «¿Para quién es?»: yo, los de las rondas de la mesa y los nuevos.
+  const [nuevos, setNuevos] = useState<string[]>([])
+  const [escribiendo, setEscribiendo] = useState(false)
+  const [nombreNuevo, setNombreNuevo] = useState('')
+  const nombres = useMemo(() => {
+    const lista = [comensalActual]
+    for (const r of comensalesConocidos?.rondas ?? []) for (const l of r.items) {
+      const n = l.comensal ?? r.comensal
+      if (n && !/^Comensal \d+$/.test(n) && !lista.includes(n)) lista.push(n)
+    }
+    for (const n of nuevos) if (!lista.includes(n)) lista.push(n)
+    return lista.slice(0, 12)
+  }, [comensalActual, comensalesConocidos, nuevos])
 
   const foto = (variante && imagenVariante(variante)) || item.imageUrl
   const descripcion = textoPlano(item.description)
@@ -272,7 +312,13 @@ function ContenidoPlato({
             <ImageIcon className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
-        {item.tags.length > 0 && (
+        {avisoAlergenos && (
+          <p className="mt-3 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm font-medium" style={{ backgroundColor: '#F8EBC8', color: '#7A5200' }} role="note">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            {avisoAlergenos}
+          </p>
+        )}
+        {item.tags.length > 0 && !mesaQr && (
           <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Etiquetas">
             {item.tags.map((t) => (
               <li
@@ -380,6 +426,39 @@ function ContenidoPlato({
             </div>
           )}
 
+          {conComensal && canOrder && !cargando && !fallo && (
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold">¿Para quién es?</legend>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="¿Para quién es?">
+                {nombres.map((n) => (
+                  <button key={n} type="button" role="radio" aria-checked={comensal === n} onClick={() => setComensal(n)}
+                    className="min-h-[40px] rounded-full border px-4 text-sm"
+                    style={comensal === n ? { backgroundColor: 'var(--text-color, #1f1a14)', color: 'var(--background-color, #fff)', borderColor: 'var(--text-color, #1f1a14)' } : undefined}>
+                    {n}
+                  </button>
+                ))}
+                {escribiendo ? (
+                  <form className="flex gap-2" onSubmit={(e) => {
+                    e.preventDefault()
+                    const n = nombreNuevo.trim().slice(0, 40)
+                    if (n) {
+                      setNuevos((l) => [...l, n])
+                      setComensal(n)
+                    }
+                    setNombreNuevo('')
+                    setEscribiendo(false)
+                  }}>
+                    <input autoFocus value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} maxLength={40} placeholder="Nombre"
+                      className="h-10 w-32 rounded-full border border-border bg-transparent px-3 text-sm" aria-label="Nombre del comensal" />
+                    <button type="submit" className="h-10 rounded-full border border-border px-3 text-sm font-semibold">Listo</button>
+                  </form>
+                ) : (
+                  <button type="button" onClick={() => setEscribiendo(true)} className="min-h-[40px] rounded-full border border-border px-4 text-sm">+ Nombre</button>
+                )}
+              </div>
+            </fieldset>
+          )}
+
           {!canOrder && (
             <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
               El pedido en línea no está disponible en este momento.
@@ -420,7 +499,7 @@ function ContenidoPlato({
             >
               {unitario !== null ? (
                 <>
-                  Agregar al pedido ·&nbsp;<Price value={unitario * cantidad} />
+                  {mesaQr ? 'Agregar' : 'Agregar al pedido'} ·&nbsp;<Price value={unitario * cantidad} />
                 </>
               ) : (
                 'Agregar al pedido'

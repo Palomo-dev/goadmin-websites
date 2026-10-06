@@ -57,6 +57,9 @@ import { PlatoSheet } from './PlatoSheet'
 import { BannerMesa, BarraPedidoMesa } from './BannerMesa'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { textoPlano } from '@/lib/texto/textoPlano'
+import { CartaQrMenu } from './mesa/CartaQrMenu'
+import { DEFAULT_CARTA_QR, DEFAULT_PEDIDO_MESA, type CartaQr } from '@/lib/website/v2/contrato/seccionesMesa'
+import { useMesaQRStore } from '@/lib/restaurant/mesaStore'
 
 /** Sede de la carta para la hoja del plato y el banner de cerrado (sale de getSedesRestaurante). */
 export interface SedeDeCarta {
@@ -105,6 +108,8 @@ export interface MenuFullViewProps {
   horaSimulada?: number | null
   /** Variantes y extras que la carta del ERP no muestra, por plato (lib/menu/cartasPublicas). */
   opcionesOcultas?: OpcionesOcultas | null
+  /** Campos de la variante «qr» (buscador, dieta, alérgenos, «¿Para quién es?»). */
+  cartaQr?: CartaQr
 }
 
 type OpcionesOcultas = Record<number, { variantes: number[]; extras: number[] }>
@@ -218,6 +223,22 @@ export function MenuFullView(props: MenuFullViewProps) {
     return aplicarCambiosSedeVivos(conCarta, cambiosSede)
   }, [products, categories, selectedCategoryIds, cartaPlatos, cambiosSede, tagsPorId])
 
+  // Menú del encabezado desde las categorías de la carta (header_menu_source = categorias_carta):
+  // enlaza a `#cat-<slug>`. Al llegar (o al cambiar el hash) se baja a esa categoría, sea cual sea
+  // la variante. Sin ese hash no hace nada.
+  useEffect(() => {
+    const irACategoria = () => {
+      const hash = decodeURIComponent(window.location.hash || '')
+      if (!hash.startsWith('#cat-')) return
+      const slug = hash.slice(5)
+      const destino = Array.from(document.querySelectorAll<HTMLElement>('[id^="carta-"]')).find((el) => el.id.endsWith(`-${slug}`))
+      destino?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+    }
+    irACategoria()
+    window.addEventListener('hashchange', irACategoria)
+    return () => window.removeEventListener('hashchange', irACategoria)
+  }, [groups])
+
   const [platoAbierto, setPlatoAbierto] = useState<MenuItem | null>(null)
   // Variantes y extras ocultos de la pestaña desde la que se abrió el plato (cartas del ERP en
   // pestañas); `null` = los de la sección.
@@ -227,6 +248,11 @@ export function MenuFullView(props: MenuFullViewProps) {
     setOcultasDePestana(ocultas ?? null)
   }, [])
   const { mesa, limpiar: salirDeLaMesa } = useMesaQR(organizationSubdomain, branchId)
+  // Página Carta QR: su barra de mesa y su barra del pedido reemplazan al aviso de mesa y a
+  // «Ver pedido (n)» de la carta. Sin esas secciones, como siempre.
+  const hayServicioMesa = useMesaQRStore((e) => e.hayServicio)
+  const hayPedidoMesa = useMesaQRStore((e) => e.hayPedido)
+  const enLienzo = useIsPreviewMode()
   const nowMinutes = useNowMinutes(props.timeZone, props.horaSimulada ?? null)
   const apertura = useAperturaSede(props.sede ?? null, props.horaSimulada ?? null)
 
@@ -258,8 +284,22 @@ export function MenuFullView(props: MenuFullViewProps) {
   const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd, onOpen: abrirPlato, nowMinutes }
   // Con una mesa del QR (validada en el servidor) la carta pasa a la variante `qr`.
   const modoQr = props.variant === 'qr' || mesa !== null
+  const cartaQr = props.cartaQr ?? DEFAULT_CARTA_QR
   const cuerpo =
-    modoQr ? <TabsMenu {...variantProps} columns={1} />
+    modoQr ? (
+      <CartaQrMenu
+        groups={groups}
+        config={cartaQr}
+        organizationSubdomain={organizationSubdomain}
+        branchId={branchId}
+        canOrder={props.canOrder}
+        cocinaCerrada={apertura?.estado === 'closed' ? { texto: apertura.texto.replace(/^Cerrado/, 'La cocina está cerrada') } : null}
+        kitchenClosedText={DEFAULT_PEDIDO_MESA.kitchenClosedText}
+        onOpen={(item) => abrirPlato(item)}
+        preview={enLienzo}
+        conMesa={mesa !== null || enLienzo}
+      />
+    )
     : props.variant === 'tabs' ? <TabsMenu {...variantProps} />
       : props.variant === 'per_category' ? <PerCategoryMenu {...variantProps} />
         : props.variant === 'editorial' ? <EditorialMenu {...variantProps} />
@@ -267,12 +307,12 @@ export function MenuFullView(props: MenuFullViewProps) {
 
   return (
     <>
-      {modoQr && mesa && (
+      {modoQr && mesa && !hayServicioMesa && (
         <div className="sticky top-0 z-30 -mx-4 mb-4 bg-background/95 px-4 py-2 backdrop-blur md:mx-0 md:px-0">
           <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />
         </div>
       )}
-      {((!modoQr && mesa) || apertura?.estado === 'closed') && (
+      {((!modoQr && mesa) || (apertura?.estado === 'closed' && !modoQr)) && (
         <div className="mb-6 flex flex-col gap-3">
           {!modoQr && <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />}
           {apertura?.estado === 'closed' && <BannerCerrado apertura={apertura} reservarHref={props.sede?.reservarHref ?? null} canOrder={props.canOrder} />}
@@ -288,8 +328,9 @@ export function MenuFullView(props: MenuFullViewProps) {
         sedeNombre={props.sede?.nombre ?? null}
         reservarHref={props.sede?.reservarHref ?? null}
         opcionesOcultas={platoAbierto ? (ocultasDePestana ?? props.opcionesOcultas)?.[platoAbierto.id] ?? null : null}
+        mesaQr={modoQr && mesa ? { askDiner: cartaQr.askDiner, showAllergens: cartaQr.showAllergens } : null}
       />
-      <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />
+      {!hayPedidoMesa && <BarraPedidoMesa mesa={mesa} subdomain={organizationSubdomain} branchId={branchId} />}
     </>
   )
 }

@@ -62,12 +62,19 @@ export interface MenuTagSource {
   id: number
   name: string
   color?: string | null
+  /** Convención de la carta: dieta | alergeno | picante | general (CHECK product_tags_kind_valido). */
+  kind?: string | null
+  /** Icono lucide opcional. */
+  icon?: string | null
 }
 
 export interface MenuTag {
   id: number
   name: string
   color: string | null
+  /** dieta | alergeno | picante | general; `null` = etiqueta sin tipo (se muestra como siempre). */
+  kind?: string | null
+  icon?: string | null
 }
 
 export type MenuSourceCategory = Pick<Category, 'id' | 'name' | 'slug' | 'description' | 'parent_id' | 'display_order' | 'rank'>
@@ -97,13 +104,19 @@ export interface MenuItem {
   tags: MenuTag[]
   /** Destacado en el constructor de la carta (`content.carta_platos.destacados`). */
   featured?: boolean
+  /** Todas las etiquetas del plato, sin el tope de 3 (filtros de dieta y alérgenos de la Carta QR). */
+  todasLasEtiquetas?: MenuTag[]
 }
 
 /** Máximo de etiquetas por plato en la carta (el diseño muestra 2-3 chips). */
 export const MAX_TAGS_POR_PLATO = 3
 
 /** Etiquetas del plato: `tag_id` + tabla puente, sin repetir, en el orden del mapa. */
-export function tagsDePlato(p: Pick<MenuSourceProduct, 'tag_id' | 'product_tag_relations'>, tagsPorId?: Map<number, MenuTag> | null): MenuTag[] {
+export function tagsDePlato(
+  p: Pick<MenuSourceProduct, 'tag_id' | 'product_tag_relations'>,
+  tagsPorId?: Map<number, MenuTag> | null,
+  tope: number = MAX_TAGS_POR_PLATO,
+): MenuTag[] {
   if (!tagsPorId || tagsPorId.size === 0) return []
   const ids: number[] = []
   if (p.tag_id != null) ids.push(Number(p.tag_id))
@@ -115,7 +128,7 @@ export function tagsDePlato(p: Pick<MenuSourceProduct, 'tag_id' | 'product_tag_r
     vistos.add(id)
     const t = tagsPorId.get(id)
     if (t) out.push(t)
-    if (out.length >= MAX_TAGS_POR_PLATO) break
+    if (out.length >= tope) break
   }
   return out
 }
@@ -124,7 +137,13 @@ export function mapaDeTags(tags: MenuTagSource[] | null | undefined): Map<number
   const m = new Map<number, MenuTag>()
   for (const t of tags || []) {
     if (!t || !Number.isInteger(Number(t.id)) || typeof t.name !== 'string') continue
-    m.set(Number(t.id), { id: Number(t.id), name: t.name, color: typeof t.color === 'string' && t.color ? t.color : null })
+    m.set(Number(t.id), {
+      id: Number(t.id),
+      name: t.name,
+      color: typeof t.color === 'string' && t.color ? t.color : null,
+      ...(typeof t.kind === 'string' && t.kind ? { kind: t.kind } : {}),
+      ...(typeof t.icon === 'string' && t.icon ? { icon: t.icon } : {}),
+    })
   }
   return m
 }
@@ -184,6 +203,7 @@ export function toMenuItem(p: MenuSourceProduct, tagsPorId?: Map<number, MenuTag
     requiresChoice: p.requires_choice === true,
     soldOutUntil: soldOut && p.carta_sede?.agotado ? (p.carta_sede.agotado_hasta ?? null) : null,
     tags: tagsDePlato(p, tagsPorId),
+    todasLasEtiquetas: tagsDePlato(p, tagsPorId, Infinity),
   }
 }
 

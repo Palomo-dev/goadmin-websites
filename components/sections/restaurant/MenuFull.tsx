@@ -36,6 +36,7 @@ import {
 } from '@/lib/menu/cartasPublicas'
 import type { CartaPlatos } from '@/lib/menu/cartaPlatos'
 import type { MenuSchedule } from '@/lib/menu/menuFull'
+import { CLAVES_CARTA_QR, normalizarCartaQr } from '@/lib/website/v2/contrato/seccionesMesa'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
 export const CONTENT_KEYS = [
@@ -53,6 +54,8 @@ export const CONTENT_KEYS = [
   'carta_platos',
   // Carta fija del editor (uuid de restaurant_menus); sin ella, las cartas por horario.
   'carta_id',
+  // Variante «qr» (Carta QR en la mesa): lib/website/v2/contrato/seccionesMesa.ts.
+  ...CLAVES_CARTA_QR,
 ] as const
 
 const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial', 'qr']
@@ -214,6 +217,7 @@ export function MenuFull({ content, organization, data, sectionVariant, sectionI
       tags={tags}
       sede={sedeDeCarta(data?.sedesRestaurante, branchId, typeof data?.reservarUrl === 'string' ? data.reservarUrl : null)}
       horaSimulada={horaSimulada}
+      cartaQr={normalizarCartaQr(content)}
     />
   )
 }

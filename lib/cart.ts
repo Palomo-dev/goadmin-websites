@@ -72,6 +72,8 @@ export interface LineaPlatoInput {
   /** Nota para la cocina (`web_order_items.notes`, máx. 500 en el servidor). */
   notes?: string | null
   variantAttributes?: Record<string, string> | null
+  /** Carta QR: comensal de la mesa para quien es la línea («¿Para quién es?»). */
+  diner?: string | null
 }
 
 /** Máximo de la nota (el mismo que `texto()` de /api/orders). */
@@ -110,11 +112,14 @@ export function agregarPlatoAlCarrito(
   const modifiers = linea.modifiers && linea.modifiers.length > 0 ? linea.modifiers : null
   const antiguos = linea.legacyModifiers && linea.legacyModifiers.length > 0 ? linea.legacyModifiers : null
   // Los antiguos van en la clave con su valueId (mismo criterio que MenuView).
-  const id = idLineaCarrito(
+  const diner = linea.diner?.trim().slice(0, 40) || null
+  const idBase = idLineaCarrito(
     linea.productId,
     [...(antiguos || []).map((m) => -Math.abs(m.valueId)), ...(modifiers || []).map((m) => m.modifierId)],
     notes,
   )
+  // Carta QR: el mismo plato para otro comensal es otra línea. Sin comensal, el id de siempre.
+  const id = diner ? `${idBase}_d${hashCorto(diner)}` : idBase
   const cantidad = Math.max(1, Math.trunc(linea.quantity) || 1)
   const cart = opciones.reemplazar ? [] : JSON.parse(localStorage.getItem(cartKey) || '[]')
   const idx = cart.findIndex((item: { id: number | string }) => item.id === id)
@@ -135,6 +140,9 @@ export function agregarPlatoAlCarrito(
       ...(modifiers && { newModifiers: modifiers }),
       ...(notes && { notes }),
       ...(linea.variantAttributes && { variantAttributes: linea.variantAttributes }),
+      ...(diner && { diner }),
+      // Con id compuesto por el comensal, el servidor lee el producto de `productId`.
+      ...(diner && typeof id === 'string' && { productId: linea.productId }),
     })
   }
   localStorage.setItem(cartKey, JSON.stringify(cart))
