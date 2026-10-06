@@ -6,7 +6,7 @@ import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
-import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
+import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede, type FilaCartaSede, type PrecioSedeCarta } from '@/lib/products/carta-sede'
 import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
 
@@ -23,7 +23,7 @@ const MAX_PRECIOS_SEDE = 1000
  * mínima de ids con precio de sede (hoy 0 filas en producción: es la única que se paga) y,
  * solo si hay, la RPC sobre esos productos y sus variantes (heredan el precio de sede del padre).
  */
-async function leerPreciosSedeListado(organizationId: number, branchId: number) {
+async function leerPreciosSedeListado(organizationId: number, branchId: number, opciones?: { lanzar?: boolean }) {
   const supabase = getSupabaseForPublicRead() as any
   const ahora = new Date().toISOString()
   const { data: filas, error } = await supabase
@@ -35,6 +35,7 @@ async function leerPreciosSedeListado(organizationId: number, branchId: number) 
     .or(`effective_to.is.null,effective_to.gt.${ahora}`)
     .limit(MAX_PRECIOS_SEDE)
   if (error) {
+    if (opciones?.lanzar) throw new Error(`product_branch_prices: ${error.message}`)
     console.error('[carta-sede] No se pudo leer product_branch_prices', { organizationId, branchId, error: error.message })
     return null
   }
@@ -49,14 +50,15 @@ async function leerPreciosSedeListado(organizationId: number, branchId: number) 
   const todos = [...ids, ...((hijos || []) as { id: number }[]).map((h) => Number(h.id))].slice(0, MAX_PRECIOS_SEDE)
   const r = await leerPreciosSede(supabase, organizationId, branchId, todos)
   if (!r.ok) {
+    if (opciones?.lanzar) throw new Error(`fn_precios_vigentes_lote: ${r.error}`)
     console.error('[carta-sede] fn_precios_vigentes_lote falló en el listado', { organizationId, branchId, error: r.error })
     return null
   }
   return r.precios
 }
 
-/** Carta de una sede, una sola lectura por petición (react.cache). */
-const getCartaSedeDePeticion = cache(async (organizationId: number, branchId: number): Promise<CartaSede | null> => {
+/** Carta de una sede leída en vivo (sin caché). Fail-safe: `null` si no se pudo leer. */
+async function leerCartaSedeListado(organizationId: number, branchId: number): Promise<CartaSede | null> {
   const [r, precios] = await Promise.all([
     leerCartaSede(getSupabaseForPublicRead(), organizationId, branchId),
     leerPreciosSedeListado(organizationId, branchId),
@@ -68,6 +70,53 @@ const getCartaSedeDePeticion = cache(async (organizationId: number, branchId: nu
     return null
   }
   return precios && precios.size > 0 ? { ...r.carta, precios } : r.carta
+}
+
+/** Forma serializable de `CartaSede` (unstable_cache guarda JSON: los `Map` no sobreviven). */
+interface CartaSedeEnCache {
+  branchId: number
+  filas: FilaCartaSede[]
+  precios: [number, PrecioSedeCarta][]
+}
+
+/**
+ * Carta de la sede entre peticiones (`cacheCatalog`: TTL corto y etiqueta `catalogo-<org>`, la que
+ * invalida el ERP al editar la carta). La pide cada ficha de producto y cada búsqueda de cualquier
+ * tienda con sede principal: sin esta caché eran 2 lecturas por petición (incidente 2026-09-14).
+ * Si algo falla se lanza, para que el error NO quede en caché: quien llama lee en vivo.
+ */
+const getCartaSedeCacheada = cacheCatalog(
+  'getCartaSedeListado',
+  async (organizationId: number, branchId: number): Promise<CartaSedeEnCache> => {
+    const r = await leerCartaSede(getSupabaseForPublicRead(), organizationId, branchId)
+    if (!r.ok) throw new Error(`website_branch_products: ${r.error}`)
+    const precios = await leerPreciosSedeListado(organizationId, branchId, { lanzar: true })
+    return {
+      branchId,
+      filas: Array.from(r.carta.filas.values()),
+      precios: precios ? Array.from(precios.entries()) : [],
+    }
+  },
+  (...args) => args[0],
+)
+
+/**
+ * Carta de una sede: una sola lectura por petición (react.cache) y cacheada entre peticiones.
+ * El cobro no pasa por aquí: `/api/orders` vuelve a leer la carta y los precios en vivo.
+ */
+const getCartaSedeDePeticion = cache(async (organizationId: number, branchId: number): Promise<CartaSede | null> => {
+  try {
+    const c = await getCartaSedeCacheada(organizationId, branchId)
+    const filas = new Map<number, FilaCartaSede>(c.filas.map((f) => [Number(f.product_id), f]))
+    return c.precios.length > 0
+      ? { branchId: c.branchId, filas, precios: new Map<number, PrecioSedeCarta>(c.precios) }
+      : { branchId: c.branchId, filas }
+  } catch (error) {
+    console.warn('[carta-sede] Caché de la carta no disponible; se lee en vivo', {
+      organizationId, branchId, error: error instanceof Error ? error.message : String(error),
+    })
+    return leerCartaSedeListado(organizationId, branchId)
+  }
 })
 
 /**
