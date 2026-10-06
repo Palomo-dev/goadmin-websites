@@ -10,7 +10,12 @@ export const dynamic = 'force-dynamic'
  * Cancela una reserva de mesa usando la RPC `cancel_restaurant_reservation`.
  * Respeta `cancellation_hours` de la configuración del restaurante.
  *
- * Body: { reason?: string }
+ * Paquete D: con la migración D2 aplicada (columna `manage_token`) exige el
+ * token del enlace del cliente; el id solo ya no basta. Antes de aplicarla
+ * conserva el comportamiento anterior. Lo normal es usar
+ * `/api/restaurant-reservations/token/[token]/cancel`.
+ *
+ * Body: { reason?: string, token?: string }
  */
 export async function POST(
   request: NextRequest,
@@ -34,14 +39,31 @@ export async function POST(
     const supabase = createAdminClient() || createPublicClient()
 
     // La RPC no comprueba la organización: solo se cancelan reservas de este sitio.
-    const { data: propia } = await (supabase as any)
+    const conToken = await (supabase as any)
       .from('restaurant_reservations')
-      .select('id')
+      .select('id, manage_token')
       .eq('id', id)
       .eq('organization_id', contexto.orgId)
       .maybeSingle()
-    if (!propia) {
-      return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
+    if (!conToken.error) {
+      // D2 aplicada: el id solo no basta, hace falta el token del enlace.
+      if (!conToken.data) {
+        return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
+      }
+      if (typeof body?.token !== 'string' || body.token !== conToken.data.manage_token) {
+        return NextResponse.json({ error: 'Usa el enlace de tu correo para cancelar la reserva.' }, { status: 403 })
+      }
+    } else {
+      // Sin la columna (D2 sin aplicar): comportamiento anterior.
+      const { data: propia } = await (supabase as any)
+        .from('restaurant_reservations')
+        .select('id')
+        .eq('id', id)
+        .eq('organization_id', contexto.orgId)
+        .maybeSingle()
+      if (!propia) {
+        return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
+      }
     }
 
     const { data: result, error } = await (supabase as any)

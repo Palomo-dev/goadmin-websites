@@ -82,7 +82,7 @@ export function respuestaDeRegla(regla: ReglaIncumplida): { status: number; mens
 
 /** Ruta de la página de gestión por token (la enlazan el correo, la confirmación y el recordatorio del ERP). */
 export function rutaGestionReserva(token: string): string {
-  return `/reserva-mesa/${encodeURIComponent(token)}`
+  return `/reserva/mesa/${encodeURIComponent(token)}`
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

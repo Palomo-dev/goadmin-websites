@@ -11,6 +11,8 @@
  * - `manage_token` (D2) es opcional en la respuesta de la RPC.
  */
 
+import { instanteEnZona } from './horario'
+
 export interface ArgsReservaWeb {
   p_organization_id: number
   p_reservation_date: string
@@ -119,4 +121,95 @@ export function urlEnElSitio(request: Request, ruta: string): string | null {
   if (!host || !/^[a-z0-9.-]+(:\d+)?$/i.test(host)) return null
   const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host) || host.endsWith('.localhost')
   return `${local ? 'http' : 'https'}://${host}${ruta}`
+}
+
+// ---------------------------------------------------------------------------
+// Gestión de la reserva por token (migración D2): página y API comparten esto.
+// ---------------------------------------------------------------------------
+
+export interface ReservaPorToken {
+  code: string
+  status: string
+  customerName: string
+  partySize: number
+  date: string
+  time: string
+  notes: string | null
+  cancellationReason: string | null
+  sede: { nombre: string; direccion: string | null; telefono: string | null } | null
+  zonaHoraria: string
+  /** Horas de antelación para cancelar (sede → organización → 4). */
+  horasCancelacion: number
+  /** Instante límite para cancelar desde el enlace (ISO). */
+  cancelableHasta: string
+  /** El cliente puede cancelar ya mismo (estado y plazo). La base vuelve a decidir. */
+  puedeCancelar: boolean
+}
+
+const ESTADOS_CANCELABLES = new Set(['pending', 'confirmed'])
+const HORAS_CANCELACION_POR_DEFECTO = 4
+
+/**
+ * Lee la reserva por `manage_token` + organización del host. `null` si no
+ * existe, si es de otra organización o si la columna aún no existe (antes de
+ * aplicar D2: no hay tokens emitidos).
+ */
+export async function leerReservaPorToken(
+  supabase: any,
+  orgId: number,
+  token: string,
+  ahora: Date = new Date(),
+): Promise<ReservaPorToken | null> {
+  const { data: r, error } = await supabase
+    .from('restaurant_reservations')
+    .select(
+      'id, branch_id, status, customer_name, party_size, reservation_date, reservation_time, notes, cancellation_reason, branches!restaurant_reservations_branch_id_fkey(name, address, city, phone)',
+    )
+    .eq('organization_id', orgId)
+    .eq('manage_token', token)
+    .maybeSingle()
+  if (error || !r) {
+    if (error && error.code !== '42703') console.error('[reserva/mesa] lectura por token', error.code)
+    return null
+  }
+
+  const [zona, ajustes] = await Promise.all([
+    supabase.rpc('fn_timezone_for', { p_organization_id: orgId, p_branch_id: r.branch_id }),
+    supabase
+      .from('restaurant_booking_settings')
+      .select('branch_id, cancellation_hours')
+      .eq('organization_id', orgId),
+  ])
+  const zonaHoraria = typeof zona.data === 'string' && zona.data ? zona.data : 'America/Bogota'
+  const filas: any[] = Array.isArray(ajustes.data) ? ajustes.data : []
+  const fila =
+    filas.find((f) => Number(f.branch_id) === Number(r.branch_id)) ?? filas.find((f) => f.branch_id === null)
+  const horas = Number.isFinite(Number(fila?.cancellation_hours)) ? Number(fila.cancellation_hours) : HORAS_CANCELACION_POR_DEFECTO
+
+  const hora = String(r.reservation_time).slice(0, 5)
+  const inicio = instanteEnZona(r.reservation_date, hora, zonaHoraria)
+  const limite = new Date(inicio.getTime() - horas * 3_600_000)
+  const sede = r.branches
+    ? {
+        nombre: r.branches.name || 'Sede',
+        direccion: [r.branches.address, r.branches.city].filter(Boolean).join(', ') || null,
+        telefono: r.branches.phone || null,
+      }
+    : null
+
+  return {
+    code: String(r.id).slice(0, 8).toUpperCase(),
+    status: r.status,
+    customerName: r.customer_name,
+    partySize: r.party_size,
+    date: r.reservation_date,
+    time: hora,
+    notes: r.notes ?? null,
+    cancellationReason: r.cancellation_reason ?? null,
+    sede,
+    zonaHoraria,
+    horasCancelacion: horas,
+    cancelableHasta: limite.toISOString(),
+    puedeCancelar: ESTADOS_CANCELABLES.has(r.status) && ahora.getTime() < limite.getTime(),
+  }
 }

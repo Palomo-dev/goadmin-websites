@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { organizacionDeLaReserva } from '@/lib/restaurant/reservas-contexto'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,12 +17,22 @@ export const dynamic = 'force-dynamic'
  * Solo busca reservas de la organización del host: antes buscaba en todas, y
  * con 8 caracteres devolvía nombre, teléfono y email de reservas de otros
  * restaurantes.
+ *
+ * Paquete D: el código corto se puede adivinar, así que la respuesta ya no
+ * lleva teléfono ni correo, y hay límite de 20 consultas/hora/IP. Para ver y
+ * cancelar la reserva completa está el enlace por token
+ * (`/api/restaurant-reservations/token/[token]`).
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limite = checkRateLimit(`reserva-codigo:${getClientIP(request)}`, 20, 60 * 60 * 1000)
+    if (!limite.allowed) {
+      return NextResponse.json({ error: 'Demasiadas consultas. Inténtalo más tarde.' }, { status: 429 })
+    }
+
     const { id } = await params
 
     if (!id) {
@@ -44,8 +55,6 @@ export async function GET(
       .select(`
         id,
         customer_name,
-        customer_phone,
-        customer_email,
         party_size,
         reservation_date,
         reservation_time,
@@ -97,8 +106,6 @@ export async function GET(
         id: reservation.id,
         code: reservation.id.substring(0, 8).toUpperCase(),
         customerName: reservation.customer_name,
-        customerPhone: reservation.customer_phone,
-        customerEmail: reservation.customer_email,
         partySize: reservation.party_size,
         date: reservation.reservation_date,
         time: reservation.reservation_time,
