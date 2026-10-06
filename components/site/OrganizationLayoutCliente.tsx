@@ -28,6 +28,9 @@ import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
 import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
 import { TemaColoresProvider } from './TemaColoresContext'
+import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
+import { BarraMovilGiro } from './BarraMovilGiro'
+import { EXTRAS_VACIOS, opcionesEncabezadoPie, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -76,6 +79,8 @@ export interface OrganizationLayoutProps {
   pixeles?: PixelesSitio | null
   /** Código a medida del ERP (OrganizationLayout). Ausente o vacío = nada nuevo. */
   codigoPropio?: BloqueCodigo[] | null
+  /** Datos de las opciones nuevas del encabezado y del pie (OrganizationLayout). Ausentes = lo de hoy. */
+  extrasShell?: ExtrasEncabezadoPie | null
 }
 
 export function OrganizationLayoutCliente({
@@ -103,6 +108,7 @@ export function OrganizationLayoutCliente({
   temaSitio,
   pixeles,
   codigoPropio,
+  extrasShell,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -129,11 +135,36 @@ export function OrganizationLayoutCliente({
   const arbolPie = prefijarArbolNav(footerNavTree, prefijo)
   const sedesSelector = datosSede?.sedesSelector ?? []
   const pathname = usePathname() ?? '/'
-  // Barra «Reservar · Cómo llegar · Pedir»: no con la barra de pestañas del encabezado móvil
-  // (ocupa el mismo sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
-  const barraMovil = !frozenReason && datosSede?.barraMovil && settings?.mobile_menu_style !== 'tabs'
+  // Encabezado y pie por plantilla (lib/website/encabezadoPie.ts): todo en su default = lo de hoy.
+  const opcionesShell = opcionesEncabezadoPie(settings)
+  const extras = extrasShell ?? EXTRAS_VACIOS
+  // Selector de sede: dentro del encabezado si el sitio lo pidió; si no, la franja de siempre.
+  const selectorEnEncabezado = opcionesShell.selectorSedeEnEncabezado && sedesSelector.length >= 2
+  const valorEncabezadoPie: ValorEncabezadoPie = {
+    opciones: opcionesShell,
+    extras,
+    selector: selectorEnEncabezado
+      ? {
+          sedes: sedesSelector,
+          actualId: datosSede?.sedeActualId ?? outlet?.branchId ?? null,
+          subdomain,
+          prefijoActual: prefijo,
+          hrefTodas: datosSede?.hrefTodasSedes ?? null,
+        }
+      : null,
+    tipo: organization.type_id ?? null,
+  }
+  // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
+  // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
+  const rutaAdmiteBarra = !frozenReason && settings?.mobile_menu_style !== 'tabs'
     && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
+  // `auto` (default): la de hoy, «Reservar · Llamar · Cómo llegar · Pedir» del restaurante.
+  const barraMovil = rutaAdmiteBarra && opcionesShell.barraMovil === 'auto' && datosSede?.barraMovil
     ? datosSede.barraMovil
+    : null
+  // Lista de acciones (cualquier giro); `ninguna` → sin barra.
+  const barraMovilGiro = rutaAdmiteBarra && Array.isArray(opcionesShell.barraMovil) && extras.barraMovil && extras.barraMovil.length > 0
+    ? extras.barraMovil
     : null
 
   // Medir la altura real del header y exponerla como --header-h
@@ -198,6 +229,7 @@ export function OrganizationLayoutCliente({
     <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
+    <EncabezadoPieProvider value={valorEncabezadoPie}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -231,7 +263,7 @@ export function OrganizationLayoutCliente({
           Solo con 2 o más sedes publicadas (hoy ninguna organización las tiene).
           data-franja-sede: en un sitio V2 con tema, app/globals.css le pone el borde y el fondo del
           tema; sin tema el atributo no tiene regla y la franja queda como siempre. */}
-      {!frozenReason && sedesSelector.length >= 2 && (
+      {!frozenReason && sedesSelector.length >= 2 && !selectorEnEncabezado && (
         <div className="border-b border-gray-100 dark:border-gray-800" data-franja-sede="">
           <div className="container mx-auto flex justify-end px-4 py-2">
             <SelectorSede
@@ -328,6 +360,8 @@ export function OrganizationLayoutCliente({
       
       {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
       {barraMovil && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
+      {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
+      {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} />}
 
       {/* Chat Widget (oculto si la cuenta está congelada) */}
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
@@ -340,6 +374,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </EncabezadoPieProvider>
     </TemaColoresProvider>
     </RutaSitioProvider>
     </CurrencyProvider>

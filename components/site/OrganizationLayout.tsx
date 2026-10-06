@@ -12,6 +12,7 @@ import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
 import { temaPublicoDesdeDocumento, type TemaPublico } from '@/lib/website/v2/temaPublico'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
+import { getExtrasEncabezadoPie } from '@/lib/website/extrasEncabezadoPie.server'
 import { OrganizationLayoutCliente, type OrganizationLayoutProps } from './OrganizationLayoutCliente'
 
 export type { OrganizationLayoutProps }
@@ -25,10 +26,13 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
     // Misma fila global ya cacheada que lee getOrgContext (react.cache + cacheStructural).
     getAjustesSitio(props.organization.id),
   ])
+  // Encabezado y pie por plantilla: con las opciones en su default no hace consultas nuevas.
+  const extrasShell = await getExtrasEncabezadoPie(props.organization, settings ?? null, datosSede, ajustes)
   return (
     <OrganizationLayoutCliente
       {...props}
       datosSede={datosSede}
+      extrasShell={extrasShell}
       temaSitio={temaSitio}
       pixeles={pixeles}
       codigoPropio={ajustes.codigoPropio}
