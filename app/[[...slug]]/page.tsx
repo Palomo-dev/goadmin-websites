@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
     }
   }
 
-  const { organization, branchId, effectiveSettings: settings, pathPrefixConsumed } = ctx
+  const { organization, branchId, outlet, effectiveSettings: settings, pathPrefixConsumed } = ctx
   const pathSegments = slug || []
   const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
   const currentSlug = effectivePath[0] || 'home'
@@ -76,27 +76,33 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
     || organization.description
     || `Bienvenido a ${organization.name}`
 
-  const baseUrl = organization.custom_domain
-    ? `https://${organization.custom_domain}`
-    : `https://${organization.subdomain?.toLowerCase()}.goadmin.io`
+  // SEO local por sede (lib/seo/sede.ts): canonical, Open Graph y base de la sede que se sirve
+  // (`ctx.urlBase`). Sin sede, `urlBase` es la del principal y todo queda como antes.
+  const seoSede = metadataSede({
+    urlBase: ctx.urlBase,
+    slugPagina: currentSlug,
+    marca: organization.name,
+    sede: outlet ? { branchName: outlet.branchName } : null,
+    tituloPagina: pageTitle ?? null,
+  })
+  // En una sede, «Página · Sede | Marca»; en el sitio principal, el título de siempre.
+  const tituloFinal: string = outlet && typeof seoSede.title === 'string' ? seoSede.title : title
 
   return {
-    title,
+    title: tituloFinal,
     description,
     keywords: settings?.meta_keywords || undefined,
     authors: [{ name: organization.name }],
     creator: organization.name,
     publisher: organization.name,
-    metadataBase: new URL(baseUrl),
-    alternates: {
-      canonical: currentSlug === 'home' ? baseUrl : `${baseUrl}/${currentSlug}`
-    },
+    metadataBase: seoSede.metadataBase,
+    alternates: seoSede.alternates,
     openGraph: {
       type: 'website',
       locale: 'es_CO',
-      url: currentSlug === 'home' ? baseUrl : `${baseUrl}/${currentSlug}`,
+      url: seoSede.openGraph.url,
       siteName: organization.name,
-      title,
+      title: tituloFinal,
       description,
       images: page?.og_image_url
         ? [{ url: page.og_image_url, width: 1200, height: 630 }]
@@ -108,7 +114,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: tituloFinal,
       description,
     },
     icons: {
@@ -364,6 +370,29 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       data.zones = availability.length > 0 ? availability : zones
     }
 
+    // Restaurant/LocalBusiness por sede (lib/seo/sede.ts): en la portada de una sede, la suya; en
+    // el sitio principal, una por sede cuando la página pinta «Horario y sedes». Sin datos de
+    // sedes (la página no los cargó), nada: las demás páginas no cambian.
+    const datosSedes = data.sedesRestaurante as import('@/lib/restaurant/sedes-modelo').SedesRestaurante | null | undefined
+    let jsonLdDeSedes: Record<string, unknown>[] = []
+    if (datosSedes && datosSedes.sedes.length > 0) {
+      const sedesLd = outlet
+        ? (currentSlug === 'home' ? datosSedes.sedes.filter((s) => s.id === outlet.branchId) : [])
+        : (sectionTypes.includes('hours_location') ? datosSedes.sedes : [])
+      if (sedesLd.length > 0) {
+        jsonLdDeSedes = jsonLdSedes({
+          sedes: sedesLd,
+          datos: datosSedes,
+          urlDe: (sede) => (outlet && sede.id === outlet.branchId
+            ? baseSitio
+            : (sede.publicada ? urlPublicaSede(organization, { slug: sede.slug }) : null) ?? baseUrl),
+          marca: organization.name,
+          esRestaurante: organization.type_id === 1,
+          logo: organization.logo_url ?? null,
+        })
+      }
+    }
+
     return (
       <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
         <JsonLd data={[
@@ -378,8 +407,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
             country: organization.country,
           }, baseUrl),
           currentSlug === 'home'
-            ? buildWebsiteJsonLd({ name: organization.name }, baseUrl)
-            : buildBreadcrumbJsonLd({ slug: currentSlug, title: page.title, meta_title: page.meta_title, meta_description: page.meta_description }, organization.name, baseUrl),
+            ? buildWebsiteJsonLd({ name: organization.name }, baseSitio)
+            : buildBreadcrumbJsonLd({ slug: currentSlug, title: page.title, meta_title: page.meta_title, meta_description: page.meta_description }, organization.name, baseSitio),
+          ...jsonLdDeSedes,
         ]} />
         <PreviewableSections
           sections={page.website_page_sections}
