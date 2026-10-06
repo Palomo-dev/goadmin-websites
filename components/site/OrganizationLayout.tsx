@@ -10,17 +10,19 @@
 import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
 import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
 import { temaPublicoDesdeDocumento, type TemaPublico } from '@/lib/website/v2/temaPublico'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { OrganizationLayoutCliente, type OrganizationLayoutProps } from './OrganizationLayoutCliente'
 
 export type { OrganizationLayoutProps }
 
 export async function OrganizationLayout(props: OrganizationLayoutProps) {
   const settings = (props.effectiveSettings ?? props.organization.website_settings ?? null) as OrganizationLayoutProps['effectiveSettings']
-  const [datosSede, temaSitio] = await Promise.all([
+  const [datosSede, temaSitio, pixeles] = await Promise.all([
     getDatosSedeLayout(props.organization, props.outlet ?? null, settings ?? null),
     getTemaSitio(props.organization.id, props.outlet?.branchId ?? undefined),
+    getPixelesSitio(props.organization.id),
   ])
-  return <OrganizationLayoutCliente {...props} datosSede={datosSede} temaSitio={temaSitio} />
+  return <OrganizationLayoutCliente {...props} datosSede={datosSede} temaSitio={temaSitio} pixeles={pixeles} />
 }
 
 /**

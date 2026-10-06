@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getOrgContext } from '@/lib/get-org-context'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
 import { conPrefijo, prefijoSede } from '@/lib/outlet/rutaSitio'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 
 /**
  * /robots.txt por host (el middleware deja pasar esta ruta para resolver la organización).
@@ -32,8 +33,14 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       for (const ruta of PRIVADAS) disallow.add(conPrefijo(ruta, prefijo))
     }
   }
-  return {
-    rules: { userAgent: '*', allow: '/', disallow: [...disallow] },
-    sitemap: `${raiz}/sitemap.xml`,
+  // «Ocultar de los buscadores»: se deja rastrear (si no, el buscador no ve el noindex de cada
+  // página y puede seguir listando las URL) pero sin anunciar el sitemap.
+  if ((await getPixelesSitio(ctx.organization.id)).noindex) {
+    return { rules: { userAgent: '*', allow: '/', disallow: [...disallow] } }
+  } else {
+    return {
+      rules: { userAgent: '*', allow: '/', disallow: [...disallow] },
+      sitemap: `${raiz}/sitemap.xml`,
+    }
   }
 }

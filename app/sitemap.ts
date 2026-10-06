@@ -3,6 +3,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getPaginasPublicas } from '@/lib/seo/paginasPublicas'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 
 /**
  * /sitemap.xml por host: las páginas publicadas del sitio que se sirve (V2 o legacy) y, en el
@@ -19,6 +20,8 @@ function indexable(slug: string): boolean {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const ctx = await getOrgContext()
   if (!ctx || ctx.effectiveSettings?.is_published === false) return []
+  // «Ocultar de los buscadores»: no se anuncian páginas (cada una responde noindex).
+  if ((await getPixelesSitio(ctx.organization.id)).noindex) return []
 
   const esRestaurante = ctx.organization.type_id === 1
   const raiz = ctx.sedePorPrefijo ? ctx.urlBasePrincipal : ctx.urlBase

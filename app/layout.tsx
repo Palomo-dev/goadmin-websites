@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import './globals.css'
 
 // Nota: custom_scripts se inyectan client-side vía CustomScripts en
@@ -20,9 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
   let faviconIcon: string | undefined
   let orgName: string | undefined
+  // «Ocultar de los buscadores» (Sitio web › SEO y redes): noindex en todas las páginas que no
+  // fijan su propio `robots`. Sin la columna (migración sin aplicar) es false: como hoy.
+  let noindex = false
   if (identifier) {
     const organization = await getOrganizationByHost(identifier)
     if (organization) {
+      noindex = (await getPixelesSitio(organization.id)).noindex
       orgName = organization.name || undefined
       const settings = organization.website_settings as any
       const faviconUrl = settings?.favicon_url || organization.logo_url
@@ -40,6 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: '%s'
     },
     description: 'Plataforma de sitios web para negocios',
+    ...(noindex ? { robots: { index: false, follow: false } } : {}),
     icons: faviconIcon ? {
       icon: faviconIcon,
       apple: faviconIcon,

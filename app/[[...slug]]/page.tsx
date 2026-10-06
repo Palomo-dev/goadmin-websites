@@ -28,6 +28,7 @@ import {
 } from '@/lib/supabase/queries'
 import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
+import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion } from '@/lib/website/datosSecciones'
@@ -62,6 +63,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
   const pathSegments = slug || []
   const effectivePath = pathPrefixConsumed ? pathSegments.slice(1) : pathSegments
   const currentSlug = effectivePath[0] || 'home'
+  // «Ocultar de los buscadores» (SEO y redes del ERP). Sin la columna: false, como hoy.
+  const { noindex } = await getPixelesSitio(organization.id)
 
   // Intentar obtener metadatos de la página del builder (V2 si el sitio lo adoptó)
   const page = await getPaginaPublica(organization.id, currentSlug, branchId,
@@ -123,8 +126,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
       apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
     },
     robots: {
-      index: settings?.is_published !== false,
-      follow: settings?.is_published !== false,
+      index: settings?.is_published !== false && !noindex,
+      follow: settings?.is_published !== false && !noindex,
     },
     verification: (settings as any)?.google_site_verification ? {
       google: (settings as any).google_site_verification

@@ -11,6 +11,9 @@ import MetaPixel from './MetaPixel'
 import { CartEventTracker } from './CartEventTracker'
 import GoogleAdsTag from './GoogleAdsTag'
 import GoogleAnalytics from './GoogleAnalytics'
+import GoogleTagManager from './GoogleTagManager'
+import TikTokPixel from './TikTokPixel'
+import type { PixelesSitio } from '@/lib/seo/pixelesSitio'
 import { ChatWidget } from './ChatWidget'
 import CustomScripts from './CustomScripts'
 import { VisitTracker } from './VisitTracker'
@@ -72,6 +75,8 @@ export interface OrganizationLayoutProps {
   datosSede?: DatosSedeLayout
   /** Estilo general del sitio V2 (OrganizationLayout). `null`/ausente = legacy, como siempre. */
   temaSitio?: TemaPublico | null
+  /** Píxeles tipados de Sitio web › Analítica (OrganizationLayout). Ausentes = los de hoy. */
+  pixeles?: PixelesSitio | null
 }
 
 export function OrganizationLayoutCliente({
@@ -97,6 +102,7 @@ export function OrganizationLayoutCliente({
   branchId,
   datosSede,
   temaSitio,
+  pixeles,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -166,6 +172,14 @@ export function OrganizationLayoutCliente({
   // El carrito está disponible para todos los tipos de organización
   const showCart = true
   
+  // Píxeles: el id tipado de Analítica (ERP) es el punto de verdad; sin él, el de la integración
+  // (lo de hoy). La etiqueta de conversión de Google Ads solo se conserva si es del mismo id.
+  const pixelMeta = pixeles?.metaPixelId ?? metaPixelId ?? null
+  const adsTipado = pixeles?.googleAdsId ?? null
+  const googleAds = adsTipado
+    ? { conversionId: adsTipado, conversionLabel: googleAdsConfig?.conversionId === adsTipado ? googleAdsConfig.conversionLabel : undefined }
+    : googleAdsConfig ?? null
+
   const temaVars = atributosTema(temaSitio ?? null)
   const hojaFuentesTema = temaSitio ? urlGoogleFonts([temaSitio.fuenteTitulos, temaSitio.fuenteCuerpo]) : null
 
@@ -299,7 +313,7 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Meta Pixel (Facebook) */}
-      {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
+      {pixelMeta && <MetaPixel pixelId={pixelMeta} />}
 
       {/* Custom Scripts (Meta Pixel, Google Analytics, chat widgets, etc.)
           Inyectados client-side vía useEffect para que el Event Setup Tool
@@ -308,7 +322,11 @@ export function OrganizationLayoutCliente({
       {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
       
       {/* Google Ads Tag (gtag.js) */}
-      {googleAdsConfig && <GoogleAdsTag conversionId={googleAdsConfig.conversionId} conversionLabel={googleAdsConfig.conversionLabel} />}
+      {googleAds && <GoogleAdsTag conversionId={googleAds.conversionId} conversionLabel={googleAds.conversionLabel} />}
+
+      {/* Google Tag Manager y TikTok Pixel (Sitio web › Analítica) */}
+      {pixeles?.gtmId && <GoogleTagManager containerId={pixeles.gtmId} />}
+      {pixeles?.tiktokPixelId && <TikTokPixel pixelId={pixeles.tiktokPixelId} />}
       
       {/* Google Analytics GA4 */}
       {settings?.analytics_id && <GoogleAnalytics measurementId={settings.analytics_id} />}
