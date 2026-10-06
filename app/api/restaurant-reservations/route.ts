@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendRestaurantTableConfirmationEmail } from '@/lib/email/send-restaurant-table-confirmation'
+import { sendRestaurantTeamNotice } from '@/lib/email/send-restaurant-team-notice'
+import { fechaLarga } from '@/lib/restaurant/horario'
+import { reglaDeError, respuestaDeRegla, rutaGestionReserva, tokenValido } from '@/lib/restaurant/reservas-errores'
+import { contextoCorreoReserva, crearReservaWeb, urlEnElSitio } from '@/lib/restaurant/reservas-servidor'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import {
   ahoraEnLaZona,
@@ -117,29 +121,39 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Llamar RPC transaccional create_restaurant_reservation ──
-    const { data: rpcResult, error: rpcError } = await (supabase as any)
-      .rpc('create_restaurant_reservation', {
-        p_organization_id: orgId,
-        p_reservation_date: date,
-        p_reservation_time: hora,
-        p_party_size: parseInt(partySize, 10),
-        p_customer_name: name,
-        p_branch_id: sede.branchId,
-        p_customer_phone: phone || null,
-        p_customer_email: email || null,
-        p_zone: zone || null,
-        p_notes: notes || null,
-        p_source: 'website',
-      })
+    // Con la migración D1 la RPC valida además horario, anticipación, franja,
+    // zona, aforo y contacto de la sede (errores con prefijo). Modo observación
+    // con RESERVAS_ENFORCE_REGLAS=false (ver lib/restaurant/reservas-servidor.ts).
+    const { data: rpcResult, error: rpcError } = await crearReservaWeb(supabase, {
+      p_organization_id: orgId,
+      p_reservation_date: date,
+      p_reservation_time: hora,
+      p_party_size: parseInt(partySize, 10),
+      p_customer_name: name,
+      p_branch_id: sede.branchId,
+      p_customer_phone: phone || null,
+      p_customer_email: email || null,
+      p_zone: zone || null,
+      p_notes: notes || null,
+      p_source: 'website',
+    })
 
     if (rpcError || !rpcResult || !rpcResult.success) {
       console.error('[Restaurant Reservations] RPC error:', rpcError)
 
       // Detectar errores específicos de la RPC
       const errMsg = rpcError?.message || rpcResult?.error || 'Error al crear la reserva'
+      const regla = reglaDeError(errMsg)
+
+      // Reglas de la sede (migración D1): 400 legible, salvo AFORO, que sigue
+      // al 409 con horas sugeridas de abajo.
+      if (regla && regla.codigo !== 'AFORO') {
+        const { status, mensaje } = respuestaDeRegla(regla)
+        return NextResponse.json({ error: mensaje, code: regla.codigo }, { status })
+      }
 
       // Errores de disponibilidad → 409 con sugerencias
-      if (errMsg.includes('No hay mesas disponibles')) {
+      if (regla?.codigo === 'AFORO' || errMsg.includes('No hay mesas disponibles')) {
         // Consultar disponibilidad para sugerir horarios alternativos
         // De la misma sede en la que se intentó reservar.
         const { data: availResult } = await disponibilidadDeLaSede(supabase, {
@@ -156,6 +170,7 @@ export async function POST(request: NextRequest) {
           {
             error: 'No hay mesas disponibles para la fecha y hora seleccionadas',
             suggestedTimes,
+            ...(regla ? { code: regla.codigo } : {}),
           },
           { status: 409 }
         )
@@ -179,28 +194,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ── Enviar el correo de la reserva (best-effort) ──
-    // El texto sigue `rpcResult.status`: `pending` no se anuncia como confirmada.
+    // ── Enlace de gestión por token (migración D2; sin ella no hay enlace) ──
+    const token = tokenValido(rpcResult.manage_token) ? rpcResult.manage_token : null
+    const manageUrl = token ? rutaGestionReserva(token) : null
+
+    // ── Correos (best-effort): al cliente y al equipo (notify_emails) ──
+    // El texto del cliente sigue `rpcResult.status`: `pending` no se anuncia como confirmada.
+    const personas = parseInt(partySize, 10)
+    let datosCorreo: Awaited<ReturnType<typeof contextoCorreoReserva>> | null = null
+    try {
+      datosCorreo = await contextoCorreoReserva(supabase, orgId, sede.branchId)
+    } catch (contextoError) {
+      console.error('[Restaurant Reservations] Error leyendo datos del correo:', contextoError)
+    }
+
     if (email) {
       try {
-        const { data: org } = await (supabase as any)
-          .from('organizations')
-          .select('name')
-          .eq('id', orgId)
-          .single()
-
         await sendRestaurantTableConfirmationEmail({
           reservationId: rpcResult.reservation_id,
           customerEmail: email,
           customerName: name,
           date,
           time,
-          partySize: parseInt(partySize, 10),
-          organizationName: org?.name || 'El restaurante',
+          partySize: personas,
+          organizationName: datosCorreo?.organizacion.nombre || 'El restaurante',
           status: rpcResult.status,
+          manageUrl: manageUrl ? urlEnElSitio(request, manageUrl) : null,
+          dateLabel: fechaLarga(date),
+          branchName: datosCorreo?.sede?.nombre ?? null,
+          branchAddress: datosCorreo?.sede?.direccion ?? null,
+          replyTo: datosCorreo?.sede?.email || datosCorreo?.organizacion.email || null,
         })
       } catch (emailError) {
         console.error('[Restaurant Reservations] Error sending email:', emailError)
+      }
+    }
+
+    if (datosCorreo && datosCorreo.correosEquipo.length > 0) {
+      try {
+        await sendRestaurantTeamNotice({
+          destinatarios: datosCorreo.correosEquipo,
+          organizacion: datosCorreo.organizacion.nombre,
+          sede: datosCorreo.sede?.nombre ?? null,
+          codigo: rpcResult.code,
+          cliente: name,
+          telefono: phone || null,
+          email: email || null,
+          personas,
+          fecha: fechaLarga(date),
+          hora,
+          estado: rpcResult.status,
+          notas: notes || null,
+        })
+      } catch (avisoError) {
+        console.error('[Restaurant Reservations] Error avisando al equipo:', avisoError)
       }
     }
 
@@ -214,6 +261,7 @@ export async function POST(request: NextRequest) {
         date,
         time,
         partySize: parseInt(partySize, 10),
+        ...(manageUrl ? { manageUrl } : {}),
       },
     })
   } catch (error) {

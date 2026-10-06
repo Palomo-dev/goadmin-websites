@@ -18,6 +18,15 @@ interface RestaurantTableEmailData {
   organizationName: string
   /** Estado devuelto por la RPC: `confirmed`, `pending`, … */
   status: string
+  /** Enlace «Consultar o cancelar» (página por token). Sin él, el pie de siempre. */
+  manageUrl?: string | null
+  /** Fecha ya legible en la zona de la sede («sábado 10 de octubre»). Sin ella, `date`. */
+  dateLabel?: string | null
+  /** Sede y dirección de la reserva. */
+  branchName?: string | null
+  branchAddress?: string | null
+  /** A quién responde el cliente: correo de la sede o de la organización (nunca la plataforma). */
+  replyTo?: string | null
 }
 
 interface TextosCorreo {
@@ -77,6 +86,15 @@ export async function sendRestaurantTableConfirmationEmail(
   const textos = textosCorreoReservaMesa(data.status)
   const nombre = escaparHtml(data.customerName)
   const organizacion = escaparHtml(data.organizationName)
+  const fecha = escaparHtml(data.dateLabel || data.date)
+  const lugar = [data.branchName, data.branchAddress].filter(Boolean).join(' · ')
+  let pie: string
+  if (data.manageUrl) {
+    pie =
+      `<a href="${escaparHtml(data.manageUrl)}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#111;color:#fff;text-decoration:none;font-size:14px;">Consultar o cancelar mi reserva</a>`
+  } else {
+    pie = textos.pie
+  }
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
@@ -97,7 +115,7 @@ export async function sendRestaurantTableConfirmationEmail(
           <table style="width:100%;border-collapse:collapse;">
             <tr>
               <td style="padding:6px 0;color:#666;font-size:13px;">Fecha</td>
-              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${data.date}</td>
+              <td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${fecha}</td>
             </tr>
             <tr>
               <td style="padding:6px 0;color:#666;font-size:13px;">Hora</td>
@@ -107,11 +125,19 @@ export async function sendRestaurantTableConfirmationEmail(
               <td style="padding:6px 0;color:#666;font-size:13px;">Personas</td>
               <td style="padding:6px 0;text-align:right;color:#333;">${data.partySize} ${data.partySize === 1 ? 'persona' : 'personas'}</td>
             </tr>
+            ${
+              lugar
+                ? `<tr>
+              <td style="padding:6px 0;color:#666;font-size:13px;">Lugar</td>
+              <td style="padding:6px 0;text-align:right;color:#333;">${escaparHtml(lugar)}</td>
+            </tr>`
+                : ''
+            }
           </table>
         </div>
 
         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
-          ${textos.pie}
+          ${pie}
         </p>
       </div>
     </div>
@@ -129,6 +155,7 @@ export async function sendRestaurantTableConfirmationEmail(
         to: [data.customerEmail],
         subject: textos.asunto(shortId, data.organizationName),
         html,
+        ...(data.replyTo ? { reply_to: data.replyTo } : {}),
       }),
     })
 
