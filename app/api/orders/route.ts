@@ -28,6 +28,7 @@ import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
+import { avisarErpRondaMesa, comensalDeRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount,
-      promoDiscount, promotionIds
+      promoDiscount, promotionIds, dinerLabel
     } = body
 
     // Límite de pedidos por IP y por correo (CLAUDE.md: /api/orders). Generoso por IP porque
@@ -422,7 +423,10 @@ export async function POST(request: NextRequest) {
       })
     }
     let customerId: string | null = authCustomer?.id ?? null
-    if (!customerId) {
+    if (!customerId && mesaPedido && !tieneCorreo(customer.email)) {
+      // Ronda de la Carta QR sin correo (en la mesa no se pide): sin ficha de cliente. Antes se
+      // habría buscado por correo vacío y creado una ficha vacía por ronda.
+    } else if (!customerId) {
       // Invitado: búsqueda o alta por correo, como antes.
       customerId = await buscarOCrearCliente(supabase as any, contextOrgId, Number.isFinite(branchId) ? branchId : null, customer)
     } else {
@@ -586,6 +590,8 @@ export async function POST(request: NextRequest) {
         ...(isScheduled && programadoParaGuardado && { is_scheduled: true, scheduled_at: programadoParaGuardado }),
         // Mesa validada (respaldo legible para el ERP y la cocina: «[Comer aquí] Mesa: 4 (Terraza)»).
         ...(mesaPedido && { internal_notes: notaMesa(mesaPedido) }),
+        // Carta QR: quién de la mesa pidió la ronda (migración 20261007090100 del ERP).
+        ...(comensalDeRonda(dinerLabel, !!mesaPedido) && { diner_label: comensalDeRonda(dinerLabel, !!mesaPedido) }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
     }
@@ -600,6 +606,11 @@ export async function POST(request: NextRequest) {
       })
       const { restaurant_table_id: _sinColumna, ...filaTemporal } = filaPedido
       ;({ data: webOrder, error: orderError } = await insertarPedido({ ...filaTemporal, delivery_type: 'pickup' }))
+    } else if (orderError && rechazaComensal(orderError)) {
+      // La base aún no tiene web_orders.diner_label: se guarda la ronda sin el comensal.
+      console.warn('[Orders] web_orders aún no admite diner_label; se guarda sin el comensal', { organizationId: contextOrgId })
+      const { diner_label: _sinComensal, ...filaSinComensal } = filaPedido
+      ;({ data: webOrder, error: orderError } = await insertarPedido(filaSinComensal))
     } else {
       // Sin mesa, o la base aceptó dine_in: el resultado del insert es el definitivo.
     }
@@ -754,7 +765,9 @@ export async function POST(request: NextRequest) {
       // transferencia…): «Recibimos tu pedido» ahora. Wompi: lo envía el webhook cuando el pago
       // pasa a `paid` («Pago confirmado»), así nadie recibe un «confirmado» de un pago que falló.
       // Las demás pasarelas aún no envían correo desde su webhook: siguen recibiéndolo aquí.
-      if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
+      if (mesaPedido && !tieneCorreo(customer.email)) {
+        // Ronda de la Carta QR sin correo: no hay a quién escribir. Sigue en la pantalla de la mesa.
+      } else if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
         const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
         sendOrderConfirmationEmail({
           orderNumber: webOrder.order_number,
@@ -781,9 +794,20 @@ export async function POST(request: NextRequest) {
       console.error('[Orders] Post-processing error (order already created):', postErr)
     }
 
+    // Carta QR: si la sede deja que las rondas entren solas y la mesa está abierta, el ERP la mete
+    // en la cuenta de la mesa y en cocina ya (reutiliza su confirmación). Sin eso, como hoy: la
+    // confirma el equipo en POS › Pedidos online.
+    let rondaMesa: ResultadoRondaMesa | null = null
+    if (mesaPedido) {
+      rondaMesa = await avisarErpRondaMesa(webOrder.id)
+    } else {
+      // Sin mesa: nada que avisar.
+    }
+
     return NextResponse.json({
       success: true,
       orderId: webOrder.id,
+      ...(rondaMesa ? { rondaMesa } : {}),
       orderNumber: webOrder.order_number,
       // Enlace de seguimiento con su token (lib/orders/tokenSeguimiento.ts): con él, /pedido/<n>
       // muestra también dirección, conductor y entrega. Sin secreto configurado, null.
