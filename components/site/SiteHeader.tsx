@@ -21,6 +21,8 @@ import HeaderSplit from './header/HeaderSplit'
 import HeaderMinimal from './header/HeaderMinimal'
 import HeaderMega from './header/HeaderMega'
 import HeaderTransparent from './header/HeaderTransparent'
+import { BarraReservaHotel } from './header/BarraReservaHotel'
+import { useEncabezadoPie } from './EncabezadoPieContext'
 import MobileDrawer from './header/mobile/MobileDrawer'
 import MobileBottomSheet from './header/mobile/MobileBottomSheet'
 import MobileFullscreen from './header/mobile/MobileFullscreen'
@@ -373,6 +375,7 @@ export default function SiteHeader({
   // así que se usa el menú móvil hasta llegar a lg.
   const mobileBreakpoint = settings?.mobile_breakpoint || 1024
   const isMobile = useMobileHeader(mobileBreakpoint)
+  const { opciones: opcionesShell } = useEncabezadoPie()
 
   // Props comunes para todas las variantes
   const variantProps = {
@@ -387,6 +390,20 @@ export default function SiteHeader({
     branchId,
   }
 
+  const variante = elegirVariante()
+  // Hotel: barra de reserva con fechas bajo el encabezado (header_booking_bar). Sin la opción,
+  // la variante sola, como siempre.
+  if (opcionesShell.barraReserva) {
+    return (
+      <>
+        {variante}
+        <BarraReservaHotel primaryColor={primaryColor} />
+      </>
+    )
+  }
+  return variante
+
+  function elegirVariante() {
   // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)
   if (isMobile) {
     // Renderizar variante móvil según mobile_menu_style
@@ -416,5 +433,6 @@ export default function SiteHeader({
       return <HeaderTransparent {...variantProps} />
     default:
       return <HeaderClassic {...variantProps} />
+  }
   }
 }

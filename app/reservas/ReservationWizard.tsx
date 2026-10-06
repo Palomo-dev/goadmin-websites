@@ -85,6 +85,19 @@ export function ReservationWizard({ organizationId, organizationName, spaceTypes
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [reservationId, setReservationId] = useState<string | null>(null)
+
+  // Fechas que trae la barra de reserva del encabezado (/reservas?checkin=…&checkout=…&huespedes=…).
+  // Sin parámetros (lo de siempre) no cambia nada; un valor mal formado se ignora.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const fecha = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
+    const entrada = fecha(p.get('checkin'))
+    const salida = fecha(p.get('checkout'))
+    const huespedes = Number(p.get('huespedes'))
+    if (entrada) setCheckin(entrada)
+    if (salida && (!entrada || salida > entrada)) setCheckout(salida)
+    if (Number.isInteger(huespedes) && huespedes >= 1 && huespedes <= 20) setGuests(huespedes)
+  }, [])
   const checkAvailabilityAndPricing = useCallback(async () => {
     const hasSelection = isMultiRoom ? selectedRooms.length > 0 : !!selectedSpaceType
     if (!hasSelection || !checkin || !checkout) {
