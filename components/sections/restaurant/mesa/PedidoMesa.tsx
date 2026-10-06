@@ -36,6 +36,7 @@ import {
 } from '@/lib/restaurant/mesaStore'
 import {
   ETIQUETA_ESTADO_RONDA,
+  impuestoDelPedido,
   lineasPorComensal,
   nombreComensal,
   pasoDeEstado,
@@ -63,10 +64,6 @@ function hora(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-function tasaImpuesto(total: number, impuesto: number): number | null {
-  if (!(impuesto > 0) || !(total > impuesto)) return null
-  return Math.round((impuesto / (total - impuesto)) * 100)
-}
 
 /** Datos de la pantalla: los del almacén, o la mesa de muestra en el lienzo del editor. */
 function useDatosPedido(preview: boolean) {
@@ -223,7 +220,7 @@ function PantallaPedido({ c, lienzo, pedido, ronda, mesaNombre, preview }: {
   const numero = (pedido?.rondas.length ?? 0) + 1
   const totalLocal = totalRonda(ronda)
   const total = (pedido?.total ?? 0) + totalLocal
-  const tasa = tasaImpuesto(pedido?.total ?? 0, pedido?.impuesto ?? 0)
+  const impuesto = impuestoDelPedido(pedido?.total ?? 0, pedido?.impuesto ?? 0, pedido?.impuestoIncluido === true, totalLocal)
   const rondas = useMemo(() => [...(pedido?.rondas ?? [])].sort((a, b) => b.numero - a.numero), [pedido])
   const personas = pedido?.sesion?.personas
   const sub = [personas ? `${personas} ${personas === 1 ? 'persona' : 'personas'}` : null, pedido?.sesion?.abiertaDesde ? `abierta desde las ${hora(pedido.sesion.abiertaDesde)}` : null]
@@ -339,9 +336,9 @@ function PantallaPedido({ c, lienzo, pedido, ronda, mesaNombre, preview }: {
           <span className="text-lg font-bold">Total de la mesa</span>
           <Price value={total} className="text-xl font-bold" />
         </div>
-        {tasa !== null && pedido?.impuestoIncluido && (
+        {impuesto && (
           <p className="mt-1 text-sm" style={{ color: C.suave }}>
-            Incluye impuesto al consumo ({tasa} %): <Price value={pedido.impuesto} />
+            {impuesto.soloEnviado ? 'Lo enviado incluye' : 'Incluye'} impuesto al consumo ({impuesto.tasa} %): <Price value={impuesto.valor} />
           </p>
         )}
       </div>

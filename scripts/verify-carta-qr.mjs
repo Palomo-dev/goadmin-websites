@@ -107,6 +107,17 @@ check(modelo.parteIgual(236000, 4, 236000, 1) === 59000, 'partes iguales: 236.00
 check(modelo.parteIgual(100000, 3, 100000, 1) === 33334, 'partes iguales: redondeo hacia arriba a la unidad (como la base)')
 check(modelo.parteIgual(236000, 4, 20000, 1) === 20000, 'partes iguales: tope en el saldo')
 check(modelo.propinaPorcentaje(59000, 10, 1) === 5900, 'propina 10 % de 59.000 = 5.900 (lámina 08)')
+// Impuesto del pedido (lámina 04): es el de la venta y cubre solo lo enviado. 150.000 con 11.111 de
+// impoconsumo da 8 %; la ronda local de 86.000 no tiene impuesto calculado y no se le imputa.
+{
+  const sinLocal = modelo.impuestoDelPedido(150000, 11111, true, 0)
+  check(sinLocal?.tasa === 8 && sinLocal?.valor === 11111 && sinLocal?.soloEnviado === false, 'impuesto: 11.111 sobre 150.000 enviados = 8 %')
+  const conLocal = modelo.impuestoDelPedido(150000, 11111, true, 86000)
+  check(conLocal?.valor === 11111 && conLocal?.soloEnviado === true, 'impuesto: con ronda local sin enviar, la línea dice «Lo enviado incluye» y no lo atribuye al total de 236.000')
+  const todo = modelo.impuestoDelPedido(236000, 17481, true, 0)
+  check(todo?.tasa === 8 && todo?.valor === 17481, 'impuesto: con las tres rondas en la venta, 17.481 sobre 236.000 (lámina)')
+  check(modelo.impuestoDelPedido(150000, 0, true, 0) === null && modelo.impuestoDelPedido(150000, 11111, false, 0) === null, 'impuesto: sin impuesto o no incluido, no hay línea')
+}
 const ped = modelo.parsePedidoMesa({ mesa: { id: 'm', nombre: 'Mesa 7' }, sesion: null, rondas: [{ clave: 'a', numero: 1, estado: 'raro', items: [{ id: 1, nombre: 'X', cantidad: '2', total: '10', comensal: 'Ana', estado: null }] }], total: '10' })
 check(ped && ped.sesion === null && ped.rondas[0].estado === 'enviada' && ped.rondas[0].items[0].cantidad === 2, 'pedido: lectura defensiva')
 check(modelo.parsePedidoMesa({}) === null, 'pedido: sin mesa = null')

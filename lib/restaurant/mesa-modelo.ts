@@ -310,6 +310,23 @@ export function propinaPorcentaje(base: number, porcentaje: number, tolerancia =
   return Math.round((base * porcentaje) / 100 / unidad) * unidad
 }
 
+/**
+ * Línea «Incluye impuesto al consumo (8 %): $X» del pedido de la mesa. El impuesto es el de la
+ * venta (`sales.tax_total`, sumado línea a línea por el POS) y solo cubre lo que ya está en la
+ * cuenta (`total`). La ronda que el comensal aún no envía no tiene impuesto calculado: no se le
+ * imputa la tasa de las demás (puede llevar productos con otra tarifa o exentos), así que si hay
+ * ronda local la línea aclara que el impuesto es de lo enviado.
+ */
+export function impuestoDelPedido(
+  total: number,
+  impuesto: number,
+  incluido: boolean,
+  totalLocal = 0,
+): { tasa: number; valor: number; soloEnviado: boolean } | null {
+  if (!incluido || !(impuesto > 0) || !(total > impuesto)) return null
+  return { tasa: Math.round((impuesto / (total - impuesto)) * 100), valor: impuesto, soloEnviado: totalLocal > 0 }
+}
+
 /** Monto de la parte según la forma de dividir (propuesta; la base decide). */
 export function montoDeParte(
   cuenta: Pick<CuentaMesaDatos, 'total' | 'saldo' | 'tolerancia' | 'porComensal' | 'propina'>,
