@@ -10,11 +10,15 @@
  *
  * Hasta el montaje no hay estado (`null`): el HTML del servidor puede venir de
  * caché y no debe mostrar un «Abierto» viejo.
+ *
+ * Horario sin revisar (el valor por defecto del formulario de Sucursales del ERP,
+ * 76 de 80 sedes el 2026-10-06): no hay estado. Pintar «Cerrado» a las 19:00 en un
+ * restaurante que abre hasta las 23:00 espanta al cliente; mejor no decir nada.
  */
 
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ahoraEnZona, estadoApertura, type Apertura, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
+import { ahoraEnZona, estadoApertura, horarioRevisado, type Apertura, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
 
 export interface SedeConHorario {
   id: number
@@ -35,7 +39,7 @@ export function useEstadosEnVivo(sedes: SedeConHorario[]): Map<number, EstadoSed
       const m = new Map<number, EstadoSede>()
       for (const s of sedes) {
         const ahora = ahoraEnZona(s.zonaHoraria)
-        m.set(s.id, { apertura: estadoApertura(s.horario, ahora), hoy: ahora.dia })
+        m.set(s.id, { apertura: estadoApertura(horarioRevisado(s.horario), ahora), hoy: ahora.dia })
       }
       setEstados(m)
     }

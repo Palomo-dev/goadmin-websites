@@ -20,7 +20,7 @@ import { ChevronRight, ImageIcon, MapPin, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildCardStyle, resolveImageFitClass, resolveImageRatioClass } from '@/lib/sectionStyle'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
-import { filasHorario, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
+import { esHorarioPorDefecto, filasHorario, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
 import { OpenStatusBadge, useEstadosEnVivo } from './EstadoApertura'
 
 export type HoursLocationVariant = 'hours_map' | 'cards' | 'list'
@@ -247,9 +247,21 @@ export function HoursLocationView(props: HoursLocationViewProps) {
   }
 
   const sinHorario = sedes.filter((s) => !s.horario).map((s) => s.nombre)
+  // Horario por defecto del ERP: se ve la tabla, pero no «Abierto/Cerrado» (EstadoApertura).
+  const sinRevisar = sedes.filter((s) => esHorarioPorDefecto(s.horario)).map((s) => s.nombre)
   const avisoHorario =
-    isPreview && sinHorario.length > 0 ? (
-      <AvisoEditor>Sin horario de atención: {sinHorario.join(', ')}. Configúralo en el ERP › Sedes para mostrar «Abierto ahora».</AvisoEditor>
+    isPreview && (sinHorario.length > 0 || sinRevisar.length > 0) ? (
+      <AvisoEditor>
+        {sinHorario.length > 0 && (
+          <>Sin horario de atención: {sinHorario.join(', ')}. Configúralo en el ERP › Sedes para mostrar «Abierto ahora». </>
+        )}
+        {sinRevisar.length > 0 && (
+          <>
+            Horario sin revisar (es el valor por defecto del ERP): {sinRevisar.join(', ')}. Confírmalo en el ERP › Sedes;
+            mientras tanto el sitio no muestra «Abierto ahora».
+          </>
+        )}
+      </AvisoEditor>
     ) : null
 
   // ── Horario + mapa (una sede) ──
