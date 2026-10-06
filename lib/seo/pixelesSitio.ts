@@ -16,6 +16,10 @@
  */
 import { cache } from 'react'
 import { getOrgSettings } from '@/lib/outlet/theme-merge'
+import { snippetConMeta } from './reglaPixeles'
+
+/** Organizaciones ya avisadas en este proceso (el aviso no se repite en cada visita). */
+const avisadas = new Set<number>()
 
 export interface PixelesSitio {
   metaPixelId: string | null
@@ -58,7 +62,15 @@ export function pixelesDesdeFila(fila: Record<string, unknown> | null | undefine
 /** Píxeles y noindex del sitio (de la fila ya cacheada del principal). */
 export const getPixelesSitio = cache(async (organizationId: number): Promise<PixelesSitio> => {
   try {
-    return pixelesDesdeFila((await getOrgSettings(organizationId)) as unknown as Record<string, unknown> | null)
+    const fila = (await getOrgSettings(organizationId)) as unknown as Record<string, unknown> | null
+    const pixeles = pixelesDesdeFila(fila)
+    // reglaPixeles no pinta el Meta tipado encima de un snippet propio que ya hace fbq('init'):
+    // se registra una vez para que soporte lo migre (Analítica del ERP lo avisa también).
+    if (pixeles.metaPixelId && snippetConMeta(fila?.custom_scripts) && !avisadas.has(organizationId)) {
+      avisadas.add(organizationId)
+      console.warn('[seo] Meta Pixel tipado sin pintar: custom_scripts ya inicializa un píxel de Meta', { organizationId })
+    }
+    return pixeles
   } catch (error) {
     console.error('[seo] No se pudieron leer los píxeles del sitio; se sigue sin ellos', {
       organizationId, error: error instanceof Error ? error.message : String(error),

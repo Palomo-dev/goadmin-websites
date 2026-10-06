@@ -7,15 +7,10 @@ import { ZonaGlobalPreview } from './ZonaGlobalPreview'
 import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPreview'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
-import MetaPixel from './MetaPixel'
 import { CartEventTracker } from './CartEventTracker'
-import GoogleAdsTag from './GoogleAdsTag'
-import GoogleAnalytics from './GoogleAnalytics'
-import GoogleTagManager from './GoogleTagManager'
-import TikTokPixel from './TikTokPixel'
+import { PixelesSitio as PixelesDelSitio } from './PixelesSitio'
 import type { PixelesSitio } from '@/lib/seo/pixelesSitio'
 import { ChatWidget } from './ChatWidget'
-import CustomScripts from './CustomScripts'
 import { VisitTracker } from './VisitTracker'
 import { CurrencyProvider } from './CurrencyProvider'
 import { FrozenAccountNotice } from './FrozenAccountNotice'
@@ -172,14 +167,6 @@ export function OrganizationLayoutCliente({
   // El carrito está disponible para todos los tipos de organización
   const showCart = true
   
-  // Píxeles: el id tipado de Analítica (ERP) es el punto de verdad; sin él, el de la integración
-  // (lo de hoy). La etiqueta de conversión de Google Ads solo se conserva si es del mismo id.
-  const pixelMeta = pixeles?.metaPixelId ?? metaPixelId ?? null
-  const adsTipado = pixeles?.googleAdsId ?? null
-  const googleAds = adsTipado
-    ? { conversionId: adsTipado, conversionLabel: googleAdsConfig?.conversionId === adsTipado ? googleAdsConfig.conversionLabel : undefined }
-    : googleAdsConfig ?? null
-
   const temaVars = atributosTema(temaSitio ?? null)
   const hojaFuentesTema = temaSitio ? urlGoogleFonts([temaSitio.fuenteTitulos, temaSitio.fuenteCuerpo]) : null
 
@@ -312,24 +299,14 @@ export function OrganizationLayoutCliente({
         />
       )}
       
-      {/* Meta Pixel (Facebook) */}
-      {pixelMeta && <MetaPixel pixelId={pixelMeta} />}
-
-      {/* Custom Scripts (Meta Pixel, Google Analytics, chat widgets, etc.)
-          Inyectados client-side vía useEffect para que el Event Setup Tool
-          de Meta pueda detectar los pixels (necesita que los scripts se
-          ejecuten DESPUÉS de que Meta instale su interceptor en el iframe). */}
-      {settings?.custom_scripts && <CustomScripts scripts={settings.custom_scripts} />}
-      
-      {/* Google Ads Tag (gtag.js) */}
-      {googleAds && <GoogleAdsTag conversionId={googleAds.conversionId} conversionLabel={googleAds.conversionLabel} />}
-
-      {/* Google Tag Manager y TikTok Pixel (Sitio web › Analítica) */}
-      {pixeles?.gtmId && <GoogleTagManager containerId={pixeles.gtmId} />}
-      {pixeles?.tiktokPixelId && <TikTokPixel pixelId={pixeles.tiktokPixelId} />}
-      
-      {/* Google Analytics GA4 */}
-      {settings?.analytics_id && <GoogleAnalytics measurementId={settings.analytics_id} />}
+      {/* Píxeles y scripts propios: misma regla que /checkout (lib/seo/reglaPixeles.ts). Los
+          scripts propios se inyectan client-side después de Meta, para el Event Setup Tool. */}
+      <PixelesDelSitio
+        pixeles={pixeles}
+        integracion={{ metaPixelId, googleAds: googleAdsConfig }}
+        customScripts={settings?.custom_scripts ?? null}
+        analyticsId={settings?.analytics_id ?? null}
+      />
       
       {/* CSS Personalizado */}
       {settings?.custom_css && (
