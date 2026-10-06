@@ -95,7 +95,9 @@ export function CartaQrMenu(props: Props) {
       if (t.kind === 'dieta' || t.kind === 'picante') dieta.set(t.id, t)
       if (t.kind === 'alergeno') alerg.set(t.id, t)
     }
-    return { filtrosDieta: Array.from(dieta.values()), alergenos: Array.from(alerg.values()) }
+    // Orden estable: el de las etiquetas en el ERP (id), no el de los platos.
+    const porId = (a: MenuTag, b: MenuTag) => a.id - b.id
+    return { filtrosDieta: Array.from(dieta.values()).sort(porId), alergenos: Array.from(alerg.values()).sort(porId) }
   }, [groups])
 
   const q = normalizar(busqueda.trim())
