@@ -7,6 +7,9 @@ import { Facebook, Twitter, Instagram, Linkedin, Youtube, MapPin, Phone, Mail, C
 import type { OrganizationWithDetails, WebsiteSettings, WebsitePage, WebsitePageWithChildren, WebsiteMenuWithItems, WebsiteMenuItemWithChildren, Json } from '@/types/database'
 import type { TemplateConfig } from '@/lib/templates'
 import type { MenuCategory } from './header/HeaderShared'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { prefijarItemsNav } from '@/lib/outlet/rutaSitio'
+import { filasHorario, normalizarDias, parseHorario, type HorarioSemana } from '@/lib/restaurant/horario'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -17,6 +20,11 @@ interface SiteFooterProps {
   footerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
   menus?: WebsiteMenuWithItems[]
+  /**
+   * Horario de la sede (`branches.opening_hours`, ya revisado: el por defecto del ERP no
+   * llega). Si es null se usa `website_settings.business_hours`.
+   */
+  horarioSede?: HorarioSemana | null
 }
 
 interface SocialLinks {
@@ -27,10 +35,6 @@ interface SocialLinks {
   youtube?: string
   tiktok?: string
   whatsapp?: string
-}
-
-interface BusinessHours {
-  [key: string]: { open: string; close: string; closed?: boolean }
 }
 
 interface FooterNavItem {
@@ -209,10 +213,15 @@ export function SiteFooter({
   footerNavTree,
   menuCategories,
   menus,
+  horarioSede = null,
 }: SiteFooterProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
+  const { prefijo, ruta } = useRutaSitio()
   const socialLinks = (settings?.social_links || {}) as SocialLinks
-  const businessHours = (settings?.business_hours || {}) as BusinessHours
+  // Horario legible: el de la sede si lo hay; si no, business_hours (se guarda con los días en
+  // español y sin tildes: «miercoles», «sabado»). Vacío o ilegible → no hay bloque «Horarios».
+  const horarioPie = horarioSede ?? parseHorario(normalizarDias(settings?.business_hours))
+  const filasHorarioPie = horarioPie ? filasHorario(horarioPie, null) : []
   const footerText = settings?.footer_text || `© ${new Date().getFullYear()} ${organization.name}. Todos los derechos reservados.`
   const showPoweredBy = settings?.show_powered_by !== false
   const logoHeight = settings?.logo_height || 48
@@ -246,8 +255,8 @@ export function SiteFooter({
   // Visibilidad de redes y horarios en móvil
   const showSocialInFooter = footerShowSocial && Object.keys(socialLinks).length > 0
   const showSocialInMobile = footerShowSocial && mobileFooterShowSocial && Object.keys(socialLinks).length > 0
-  const showHoursInFooter = footerShowHours && Object.keys(businessHours).length > 0
-  const showHoursInMobile = footerShowHours && mobileFooterShowHours && Object.keys(businessHours).length > 0
+  const showHoursInFooter = footerShowHours && filasHorarioPie.length > 0
+  const showHoursInMobile = footerShowHours && mobileFooterShowHours && filasHorarioPie.length > 0
 
   // Categorías en footer (nuevo flag o fallback al anterior)
   const showCategoriesInFooter =
@@ -265,10 +274,10 @@ export function SiteFooter({
           icon: p.menu_icon,
           badge: p.menu_badge,
         }))
-      : (template?.navigation || []).map((n) => ({ name: n.name, href: n.href }))
+      : prefijarItemsNav((template?.navigation || []).map((n) => ({ name: n.name, href: n.href })), prefijo) ?? []
 
-  // Items de categorías
-  const categoryItems = showCategoriesInFooter ? buildCategoryItems(menuCategories!) : []
+  // Items de categorías (con el prefijo de la sede si se sirve por ruta)
+  const categoryItems = showCategoriesInFooter ? prefijarItemsNav(buildCategoryItems(menuCategories!), prefijo) ?? [] : []
 
   // Menús nombrados agrupados por columna (sistema nuevo)
   const footerMenusByColumn: Record<number, FooterNavItem[]> = {}
@@ -276,7 +285,7 @@ export function SiteFooter({
     for (const menu of menus) {
       const col = menu.footer_column ?? 1
       if (!footerMenusByColumn[col]) footerMenusByColumn[col] = []
-      footerMenusByColumn[col].push(...buildMenuGroupItems(menu.items))
+      footerMenusByColumn[col].push(...(prefijarItemsNav(buildMenuGroupItems(menu.items), prefijo) ?? []))
     }
   }
   const hasFooterMenus = Object.keys(footerMenusByColumn).length > 0
@@ -288,8 +297,6 @@ export function SiteFooter({
     linkedin: Linkedin,
     youtube: Youtube,
   }
-
-  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
   // ===== Layout: minimal =====
   if (footerStyle === 'minimal') {
@@ -730,18 +737,12 @@ export function SiteFooter({
                 {showHoursInFooter && (
                   <FooterSection title="Horarios" mobileStyle={showHoursInMobile ? mobileFooterStyle : 'hidden'}>
                     <ul className="space-y-2">
-                      {daysOfWeek.map((day) => {
-                        const dayKey = day.toLowerCase()
-                        const hours = businessHours[dayKey]
-                        return (
-                          <li key={day} className="flex justify-between text-sm">
-                            <span className="text-current opacity-50">{day}</span>
-                            <span className="text-current opacity-70">
-                              {hours?.closed ? 'Cerrado' : hours ? `${hours.open} - ${hours.close}` : '-'}
-                            </span>
-                          </li>
-                        )
-                      })}
+                      {filasHorarioPie.map((fila) => (
+                        <li key={fila.etiqueta} className="flex justify-between gap-3 text-sm">
+                          <span className="text-current opacity-50">{fila.etiqueta}</span>
+                          <span className="text-current opacity-70 text-right">{fila.horas ?? 'Cerrado'}</span>
+                        </li>
+                      ))}
                     </ul>
                   </FooterSection>
                 )}
@@ -891,18 +892,12 @@ export function SiteFooter({
             <div>
               <FooterSection title="Horarios" mobileStyle={showHoursInMobile ? mobileFooterStyle : 'hidden'}>
                 <ul className="space-y-2">
-                  {daysOfWeek.map((day) => {
-                    const dayKey = day.toLowerCase()
-                    const hours = businessHours[dayKey]
-                    return (
-                      <li key={day} className="flex justify-between text-sm">
-                        <span className="text-current opacity-50">{day}</span>
-                        <span className="text-current opacity-70">
-                          {hours?.closed ? 'Cerrado' : hours ? `${hours.open} - ${hours.close}` : '-'}
-                        </span>
-                      </li>
-                    )
-                  })}
+                  {filasHorarioPie.map((fila) => (
+                    <li key={fila.etiqueta} className="flex justify-between gap-3 text-sm">
+                      <span className="text-current opacity-50">{fila.etiqueta}</span>
+                      <span className="text-current opacity-70 text-right">{fila.horas ?? 'Cerrado'}</span>
+                    </li>
+                  ))}
                 </ul>
               </FooterSection>
             </div>
@@ -919,22 +914,22 @@ export function SiteFooter({
                 ) : (
                   <>
                     <li>
-                      <Link href="/productos" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
+                      <Link href={ruta('/productos')} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Productos
                       </Link>
                     </li>
                     <li>
-                      <Link href="/servicios" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
+                      <Link href={ruta('/servicios')} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Servicios
                       </Link>
                     </li>
                     <li>
-                      <Link href="/nosotros" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
+                      <Link href={ruta('/nosotros')} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Nosotros
                       </Link>
                     </li>
                     <li>
-                      <Link href="/contacto" className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
+                      <Link href={ruta('/contacto')} className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm">
                         Contacto
                       </Link>
                     </li>
