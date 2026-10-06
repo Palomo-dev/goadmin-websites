@@ -67,7 +67,13 @@ export interface SedeDeCarta {
   reservarHref: string | null
 }
 
-export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category' | 'editorial'
+/**
+ * `qr`: carta para el celular en la mesa (Figma «Carta completa», variante QR de mesa): banda
+ * de la mesa fija arriba, pestañas por categoría en una columna y la barra «Ver pedido (n) ·
+ * total». Se usa sola cuando la carta se abre desde el QR de una mesa válida, sea cual sea la
+ * variante elegida en el editor; también se puede elegir como variante de la sección.
+ */
+export type MenuFullVariant = 'anchors' | 'tabs' | 'per_category' | 'editorial' | 'qr'
 
 export interface MenuFullViewProps {
   variant: MenuFullVariant
@@ -238,17 +244,25 @@ export function MenuFullView(props: MenuFullViewProps) {
   }
 
   const variantProps: VariantProps = { ...props, groups, onAdd: handleAdd, onOpen: setPlatoAbierto, nowMinutes }
+  // Con una mesa del QR (validada en el servidor) la carta pasa a la variante `qr`.
+  const modoQr = props.variant === 'qr' || mesa !== null
   const cuerpo =
-    props.variant === 'tabs' ? <TabsMenu {...variantProps} />
+    modoQr ? <TabsMenu {...variantProps} columns={1} />
+    : props.variant === 'tabs' ? <TabsMenu {...variantProps} />
       : props.variant === 'per_category' ? <PerCategoryMenu {...variantProps} />
         : props.variant === 'editorial' ? <EditorialMenu {...variantProps} />
           : <AnchorsMenu {...variantProps} />
 
   return (
     <>
-      {(mesa || apertura?.estado === 'closed') && (
-        <div className="mb-6 flex flex-col gap-3">
+      {modoQr && mesa && (
+        <div className="sticky top-0 z-30 -mx-4 mb-4 bg-background/95 px-4 py-2 backdrop-blur md:mx-0 md:px-0">
           <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />
+        </div>
+      )}
+      {((!modoQr && mesa) || apertura?.estado === 'closed') && (
+        <div className="mb-6 flex flex-col gap-3">
+          {!modoQr && <BannerMesa mesa={mesa} onSalir={salirDeLaMesa} />}
           {apertura?.estado === 'closed' && <BannerCerrado apertura={apertura} reservarHref={props.sede?.reservarHref ?? null} canOrder={props.canOrder} />}
         </div>
       )}

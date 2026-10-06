@@ -42,7 +42,7 @@ export const CONTENT_KEYS = [
   'carta_platos',
 ] as const
 
-const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial']
+const VARIANTS: readonly MenuFullVariant[] = ['anchors', 'tabs', 'per_category', 'editorial', 'qr']
 const SIZES: readonly MenuItemSize[] = ['regular', 'compact', 'auto']
 
 interface MenuFullProps {
@@ -110,7 +110,7 @@ export function MenuFull({ content, organization, data, sectionVariant, sectionI
   // columnas; por categoría con foto a una columna (pensada para Carta QR).
   const showPhotos = bool(content.show_photos, variant !== 'anchors')
   const columnsRaw = Number(content.columns)
-  const columns: 1 | 2 = columnsRaw === 1 || columnsRaw === 2 ? columnsRaw : variant === 'per_category' ? 1 : 2
+  const columns: 1 | 2 = columnsRaw === 1 || columnsRaw === 2 ? columnsRaw : variant === 'per_category' || variant === 'qr' ? 1 : 2
   const size: MenuItemSize = SIZES.includes(content.size as MenuItemSize) ? (content.size as MenuItemSize) : 'auto'
 
   const defaultTitle = variant === 'per_category' ? null : 'Nuestra carta'
