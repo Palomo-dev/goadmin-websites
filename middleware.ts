@@ -209,6 +209,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Vista previa privada del borrador (app/vista-previa/[token]): nunca se indexa ni se
+  // cachea en el borde. Solo esa ruta; el resto de respuestas no cambia.
+  if (url.pathname.startsWith('/vista-previa/')) {
+    supabaseResponse.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+    supabaseResponse.headers.set('Cache-Control', 'private, no-store, max-age=0')
+    supabaseResponse.headers.set('Referrer-Policy', 'no-referrer')
+  }
+
   // Si no hay subdominio ni dominio personalizado, salir
   if (!subdomain && !isCustomDomain) {
     return supabaseResponse

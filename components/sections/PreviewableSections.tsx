@@ -2,6 +2,7 @@
 
 import { PreviewBridge, useIsPreviewMode } from '@/components/sections/PreviewBridge';
 import { SectionRenderer } from '@/components/sections/SectionRenderer';
+import { SeccionVaciaLienzo } from '@/components/sections/SeccionVaciaLienzo';
 import type { WebsitePageSection } from '@/types/database';
 import type { OrganizationWithDetails } from '@/types/database';
 
@@ -43,17 +44,27 @@ export function PreviewableSections({
 
   return (
     <PreviewBridge initialSections={sections}>
-      {(liveSections) => (
+      {(liveSections, _activa, avisos) => (
         <>
-          {liveSections.map((section) => (
-            <SectionRenderer
-              key={section.id}
-              section={section}
-              organization={organization}
-              primaryColor={primaryColor}
-              data={data}
-            />
-          ))}
+          {liveSections.map((section) =>
+            // Faltan datos (lo decide el editor con los conteos del ERP): estado vacío del lienzo.
+            avisos[section.id] ? (
+              <SeccionVaciaLienzo
+                key={section.id}
+                sectionId={section.id}
+                sectionType={section.section_type}
+                aviso={avisos[section.id]}
+              />
+            ) : (
+              <SectionRenderer
+                key={section.id}
+                section={section}
+                organization={organization}
+                primaryColor={primaryColor}
+                data={data}
+              />
+            ),
+          )}
         </>
       )}
     </PreviewBridge>

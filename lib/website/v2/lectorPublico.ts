@@ -28,6 +28,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import type { WebsitePageWithSections } from '@/types/database'
 import { validarDocumentoSitio, VERSION_ESQUEMA_DOCUMENTO, type DocumentoSitio } from './contrato/documentoSitio'
+import { sitioVistaPreviaDe } from './vistaPreviaBorrador'
 import {
   paginaPublicaDesdeDocumento,
   plantillaPublicaDesdeDocumento,
@@ -135,6 +136,9 @@ function leerRevision(organizationId: number, siteStateId: string, revisionId: s
 export const getSitioPublicoV2 = cache(
   async (organizationId: number, branchId?: number | null): Promise<SitioPublicoV2 | null> => {
     const sede = sedeValida(branchId) ? branchId : null
+    // Vista previa privada del borrador (solo `app/vista-previa/[token]` la fija, con firma válida).
+    const vistaPrevia = sitioVistaPreviaDe(organizationId)
+    if (vistaPrevia) return vistaPrevia
     try {
       const estados = await leerEstados(organizationId, sede)
       if (estados.length === 0) return null // ningún sitio V2: legacy, igual que hoy
@@ -190,6 +194,84 @@ export const getSitioPublicoV2 = cache(
     }
   }
 )
+
+// ─── Vista previa privada del borrador ─────────────────────────────────────────────────────────
+
+export interface SitioBorradorV2 {
+  sitio: SitioPublicoV2
+  /** Sitios V2 de la organización (selector «Sede» de la barra de la vista previa). */
+  sitios: { id: string; branchId: number | null }[]
+}
+
+/**
+ * Borrador (`website_site_drafts`) de un sitio V2 para la vista previa privada. NUNCA se usa en
+ * la web pública: solo lo llama `app/vista-previa/[token]` tras verificar la firma del enlace y que
+ * la organización del token es la del host. Sin caché (el borrador cambia en cada guardado).
+ *
+ * Columnas verificadas por MCP el 2026-10-05: website_site_drafts.site_state_id,
+ * organization_id, schema_version, document. `null` si no existe o no cumple el contrato.
+ */
+export async function getSitioBorradorV2(organizationId: number, siteStateId: string): Promise<SitioBorradorV2 | null> {
+  const supabase = createAdminClient()
+  if (!supabase) {
+    console.error('[sitio-v2] Sin SUPABASE_SERVICE_ROLE_KEY: no se puede leer el borrador de la vista previa')
+    return null
+  }
+  try {
+    // Todos los sitios de la organización (principal y sedes): el elegido y el selector de sede.
+    const { data: filas, error: errorEstados } = await (supabase as any)
+      .from('website_site_states')
+      .select('id, branch_id, v2_adopted, published_revision_id')
+      .eq('organization_id', organizationId)
+    if (errorEstados) throw new Error(`website_site_states: ${errorEstados.message || errorEstados.code}`)
+    const estados = (filas || []) as FilaEstado[]
+    const elegido = estados.find((e) => e.id === siteStateId)
+    if (!elegido) return null
+
+    const { data: borrador, error } = await (supabase as any)
+      .from('website_site_drafts')
+      .select('schema_version, document')
+      .eq('site_state_id', siteStateId)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+    if (error) throw new Error(`website_site_drafts: ${error.message || error.code}`)
+    if (!borrador || borrador.schema_version !== VERSION_ESQUEMA_DOCUMENTO) return null
+    const validacion = validarDocumentoSitio(borrador.document)
+    if (!validacion.ok) {
+      console.error('[sitio-v2] Borrador ilegible para la vista previa', {
+        organizationId, siteStateId, errores: validacion.errores.slice(0, 10),
+      })
+      return null
+    }
+
+    let base: SitioPublicoV2['principal'] = null
+    if (elegido.branch_id !== null) {
+      const principal = estados.find((e) => e.branch_id === null) ?? null
+      if (principal?.published_revision_id) {
+        const rev = await leerRevision(organizationId, principal.id, principal.published_revision_id)
+        base = { documento: rev.ok ? rev.documento : null }
+      } else {
+        base = { documento: null }
+      }
+    }
+
+    return {
+      sitio: {
+        siteStateId: elegido.id,
+        revisionId: 'borrador',
+        branchId: elegido.branch_id,
+        documento: validacion.documento,
+        principal: base,
+      },
+      sitios: estados.map((e) => ({ id: e.id, branchId: e.branch_id })),
+    }
+  } catch (err) {
+    console.error('[sitio-v2] Error leyendo el borrador de la vista previa', {
+      organizationId, siteStateId, error: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
+}
 
 /** Categorías referenciadas por los menús V2 (una consulta, cacheada como el resto de la estructura). */
 const getCategoriasPorIdsSinCache = async (

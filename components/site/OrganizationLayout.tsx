@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { ZonaGlobalPreview } from './ZonaGlobalPreview'
+import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPreview'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
 import MetaPixel from './MetaPixel'
@@ -20,6 +21,24 @@ import type { OrganizationWithDetails, WebsitePage, WebsitePageWithChildren, Web
 import type { TemplateConfig, NavItem } from '@/lib/templates'
 import type { MenuCategory } from './header/HeaderShared'
 import type { ResolvedOutlet } from '@/lib/outlet/resolver'
+
+/** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
+function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
+  return items.map((item, i) => ({
+    id: item.id,
+    organization_id: organizationId,
+    slug: item.ruta.replace(/^\/+/, ''),
+    title: item.texto,
+    is_published: true,
+    show_in_header: true,
+    show_in_footer: false,
+    header_order: i,
+    footer_order: 0,
+    parent_page_id: null,
+    level: nivel,
+    children: arbolDesdeMenuVivo(item.hijos, organizationId, nivel + 1),
+  }) as unknown as WebsitePageWithChildren)
+}
 
 interface OrganizationLayoutProps {
   organization: OrganizationWithDetails
@@ -67,7 +86,15 @@ export function OrganizationLayout({
   branchId
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
-  const settings = (effectiveSettings ?? organization.website_settings) as any
+  // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
+  // Fuera del preview `vivos` es null y todo queda exactamente como antes.
+  const vivos = useAjustesVivosPreview()
+  const settingsGuardados = (effectiveSettings ?? organization.website_settings) as any
+  const settings = vivos ? { ...(settingsGuardados ?? {}), ...vivos.ajustes } : settingsGuardados
+  const organizacionEncabezado = vivos
+    ? { ...organization, website_settings: { ...((organization.website_settings as any) ?? {}), ...vivos.ajustes } }
+    : organization
+  const arbolVivo = vivos?.menuEncabezado ? arbolDesdeMenuVivo(vivos.menuEncabezado, organization.id) : null
   const subdomain = organization.subdomain || ''
   const effectiveShowCurrencyCode = showCurrencyCode ?? settings?.show_currency_code ?? false
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
@@ -131,13 +158,13 @@ export function OrganizationLayout({
       {!frozenReason && (
         <ZonaGlobalPreview zona="header">
         <SiteHeader
-          organization={organization}
+          organization={organizacionEncabezado as OrganizationWithDetails}
           primaryColor={primaryColor}
           template={template}
           showCart={showCart}
           onCartClick={() => setCartOpen(true)}
-          headerNav={headerNav}
-          headerNavTree={headerNavTree}
+          headerNav={arbolVivo ?? headerNav}
+          headerNavTree={arbolVivo ?? headerNavTree}
           menuCategories={menuCategories}
           megaMenuItems={megaMenuItems}
           branchId={branchId}

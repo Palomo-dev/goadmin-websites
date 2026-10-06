@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { WebsitePageSection } from '@/types/database';
+import type { AvisoLienzo } from './SeccionVaciaLienzo';
 
 /**
  * PreviewBridge (FASE 12.1)
@@ -25,6 +26,14 @@ import type { WebsitePageSection } from '@/types/database';
  * seleccionada (por clic o por `goadmin:select` del editor) lleva
  * `data-goadmin-activa`, que pinta el contorno y la etiqueta.
  *
+ * Estado vacío (Figma «SeccionVaciaLienzo»): una sección de `goadmin:preview` puede traer
+ * `aviso` (el ERP contó sus datos y no hay). Se pinta `SeccionVaciaLienzo` en su lugar, solo
+ * aquí. Su «Quitar sección» (`data-goadmin-accion="quitar"`) envía
+ * `{ type: 'goadmin:accion', sectionId, accion: 'quitar' }`; «Ir a …» es un enlace normal.
+ *
+ * Enlaces de las zonas globales: el clic envía además `href` y `texto` del enlace, para que
+ * el editor abra el menú con ese ítem.
+ *
  * Seguridad: valida `origin` contra una lista de orígenes permitidos (ERP +
  * localhost para desarrollo). Si el origen no es válido, ignora el mensaje.
  *
@@ -32,7 +41,7 @@ import type { WebsitePageSection } from '@/types/database';
  * sigue funcionando con la recarga por `refreshKey` del editor.
  */
 
-const ALLOWED_EDITOR_ORIGINS = [
+export const ALLOWED_EDITOR_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://erp.goadmin.io',
@@ -46,22 +55,51 @@ interface PreviewSection {
   content: Record<string, any>;
   settings?: Record<string, any>;
   is_visible?: boolean;
+  aviso?: unknown;
+}
+
+/** ¿El mensaje viene del editor? (orígenes del ERP y de desarrollo). */
+export function esOrigenEditor(origin: string): boolean {
+  return ALLOWED_EDITOR_ORIGINS.includes(origin);
+}
+
+/** Aviso bien formado del editor, o `undefined`. */
+function avisoValido(valor: unknown): AvisoLienzo | undefined {
+  if (!valor || typeof valor !== 'object') return undefined;
+  const v = valor as Record<string, unknown>;
+  if (typeof v.titulo !== 'string' || typeof v.descripcion !== 'string') return undefined;
+  const a = v.accion as Record<string, unknown> | null | undefined;
+  const accion = a && typeof a.texto === 'string' && typeof a.href === 'string'
+    ? { texto: a.texto.slice(0, 80), href: a.href.slice(0, 512) }
+    : null;
+  return { titulo: v.titulo.slice(0, 120), descripcion: v.descripcion.slice(0, 400), accion };
 }
 
 interface PreviewBridgeProps {
   /** Secciones originales renderizadas server-side. */
   initialSections: WebsitePageSection[];
   /** Renderiza las secciones con los datos en vivo. */
-  children: (sections: WebsitePageSection[], activeSectionId: string | null) => React.ReactNode;
+  children: (
+    sections: WebsitePageSection[],
+    activeSectionId: string | null,
+    avisos: Record<string, AvisoLienzo>,
+  ) => React.ReactNode;
 }
 
 export function PreviewBridge({ initialSections, children }: PreviewBridgeProps) {
   const [liveSections, setLiveSections] = useState<WebsitePageSection[]>(initialSections);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [avisos, setAvisos] = useState<Record<string, AvisoLienzo>>({});
   const editorOrigin = useRef<string | null>(null);
 
   // Aplicar secciones recibidas del editor
   const applySections = useCallback((sections: PreviewSection[]) => {
+    const nuevosAvisos: Record<string, AvisoLienzo> = {};
+    for (const s of sections) {
+      const aviso = avisoValido(s.aviso);
+      if (aviso && typeof s.id === 'string') nuevosAvisos[s.id] = aviso;
+    }
+    setAvisos(nuevosAvisos);
     setLiveSections((prev) => {
       // Merge: reemplazar por id, mantener orden del editor
       const map = new Map<string, WebsitePageSection>();
@@ -163,19 +201,45 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
   // Clic en una sección → avisar al editor
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      // Acciones del estado vacío del lienzo: «Ir a …» navega (otra pestaña); «Quitar» avisa.
+      const accion = (e.target as HTMLElement)?.closest('[data-goadmin-accion]') as HTMLElement | null;
+      if (accion) {
+        if (accion.getAttribute('data-goadmin-accion') === 'quitar') {
+          e.preventDefault();
+          e.stopPropagation();
+          const sectionId = accion.closest('[data-section-id]')?.getAttribute('data-section-id');
+          if (sectionId && editorOrigin.current) {
+            try {
+              window.parent?.postMessage({ type: 'goadmin:accion', sectionId, accion: 'quitar' }, editorOrigin.current);
+            } catch { /* noop */ }
+          }
+        }
+        return;
+      }
       const target = (e.target as HTMLElement)?.closest('[data-section-id]') as HTMLElement | null;
       if (target) {
         const sectionId = target.getAttribute('data-section-id');
         if (sectionId && target.hasAttribute('data-goadmin-zona')) {
           // Zona global: no se corta el clic (menú, acordeones); solo se
           // evita navegar si cayó en un enlace.
-          const enlace = !!(e.target as HTMLElement).closest('a[href]');
+          const ancla = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
+          const enlace = !!ancla;
           if (enlace) e.preventDefault();
           setActiveSectionId(sectionId);
           marcarZonaActiva(sectionId);
           try {
             window.parent?.postMessage(
-              { type: 'goadmin:select', sectionId, enlace },
+              {
+                type: 'goadmin:select',
+                sectionId,
+                enlace,
+                ...(ancla
+                  ? {
+                      href: (ancla.getAttribute('href') || '').slice(0, 512),
+                      texto: (ancla.textContent || '').trim().slice(0, 120),
+                    }
+                  : {}),
+              },
               editorOrigin.current || '*',
             );
           } catch { /* noop */ }
@@ -197,7 +261,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
     return () => document.removeEventListener('click', handleClick, true);
   }, [marcarZonaActiva]);
 
-  return <>{children(liveSections, activeSectionId)}</>;
+  return <>{children(liveSections, activeSectionId, avisos)}</>;
 }
 
 /**
