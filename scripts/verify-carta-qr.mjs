@@ -19,7 +19,8 @@
  *    organización del abono; /api/orders solo crea ficha de cliente con correo.
  * 5. Si el ERP está al lado: cada RPC que llama el sitio existe en las migraciones con
  *    EXACTAMENTE esos parámetros; las migraciones son aditivas y tienen rollback.
- * 6. Modo mesa (lib/restaurant/modoMesa.ts): qué página lo activa, que el layout cambie
+ * 6. Modo mesa (lib/restaurant/modoMesa.ts): qué página lo activa, cuándo el QR impreso
+ *    (/menu?mesa=…) se manda a /carta-qr (solo con «Pedido de la mesa» visible), que el layout cambie
  *    encabezado, pie y barra móvil solo con él, y contraste AA de las superficies de las secciones
  *    de mesa (estilo.ts + app/globals.css) en Editorial Marfil, Noir Omakase y Pop Callejero.
  */
@@ -228,6 +229,17 @@ if (await existe(dirMig)) {
   check(!es({ slug: 'menu', page_type: 'builtin', website_page_sections: [sec('menu_full', 'qr'), sec('table_order')] }), 'modo mesa: otra página, aunque tenga secciones de mesa → layout de siempre')
   check(!es(null) && !es({ slug: 'home', page_type: 'builtin', website_page_sections: [] }), 'modo mesa: inicio y página nula → layout de siempre')
 
+  // QR impreso /menu?mesa=…: va a /carta-qr solo si esa página tiene «Pedido de la mesa» visible.
+  const { cartaQrRecibeMesa: recibe } = modoMesa
+  const qr = (...secciones) => ({ slug: 'carta-qr', page_type: 'carta_qr', website_page_sections: secciones })
+  check(recibe(qr(sec('restaurant_hero', 'mesa'), sec('menu_full', 'qr'), sec('table_order', 'rondas'))), 'QR de mesa: /carta-qr con «Pedido de la mesa» visible → redirige')
+  check(!recibe(qr(sec('table_service', 'barra'), sec('menu_full', 'qr'))), 'QR de mesa: /carta-qr con solo «Servicio de mesa» → se queda en /menu')
+  check(!recibe(qr({ ...sec('table_order'), is_visible: false }, sec('table_service'))), 'QR de mesa: «Pedido de la mesa» oculto (ojo cerrado) → se queda en /menu')
+  check(!recibe(qr({ ...sec('table_order'), settings: { visibilidad: { computador: true, tableta: true, celular: false } } })), 'QR de mesa: «Pedido de la mesa» oculto en el celular → se queda en /menu')
+  check(recibe(qr({ ...sec('table_order'), is_visible: true, settings: { visibilidad: { computador: false, tableta: false, celular: true } } })), 'QR de mesa: «Pedido de la mesa» visible solo en el celular → redirige')
+  check(recibe(qr({ ...sec('table_order'), settings: { visibilidad: 'basura' } })), 'QR de mesa: visibilidad fina ilegible → manda el ojo (visible)')
+  check(!recibe(null) && !recibe(undefined) && !recibe(qr()) && !recibe({ slug: 'carta-qr' }), 'QR de mesa: sin página Carta QR o sin secciones → se queda en /menu')
+
   const medir = { sobre: sobreMod.textoSobreAcentoSiHex, contraste: contrasteMod.contraste }
   const PLANTILLAS = {
     'Editorial Marfil': { fondo: '#F6F1E7', texto: '#1F1B16', primario: '#8C2F1B' },
@@ -291,6 +303,8 @@ if (await existe(dirMig)) {
   check(/modoMesa = false,/.test(layout), 'layout: modoMesa es opcional y por defecto false (las ~25 rutas no cambian)')
   const pagina = await leer('app/[[...slug]]/page.tsx')
   check(/const modoMesa = esPaginaModoMesa\(page\)/.test(pagina) && /modoMesa=\{modoMesa\}/.test(pagina), 'page.tsx: la página del constructor pasa modoMesa al layout')
+  check(/if \(refQr && cartaQrRecibeMesa\(paginaQr\)\) \{\s*redirect\(conPrefijo\(`\/carta-qr\?mesa=/.test(pagina), 'page.tsx: /menu?mesa= redirige a /carta-qr solo con cartaQrRecibeMesa (pedido de la mesa visible)')
+  check(!/section_type === 'table_service'\)\) \{\s*redirect/.test(pagina), 'page.tsx: «Servicio de mesa» solo ya no basta para redirigir el QR a /carta-qr')
   const vista = await leer('components/sections/restaurant/MenuFullView.tsx')
   check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
   // Barra fija «Ver pedido de la mesa»: reserva su alto real al final de la página solo mientras se ve.

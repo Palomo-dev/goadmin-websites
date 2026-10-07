@@ -46,7 +46,7 @@ import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { redirect } from 'next/navigation'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
-import { esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
+import { cartaQrRecibeMesa, esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 
 export const dynamic = 'force-dynamic'
@@ -178,17 +178,18 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     (s) => s.section_type === 'menu_full' || s.section_type === 'menu_preview'
   )
   // Carta QR en la mesa: el QR impreso (/menu?mesa=<uuid>, src/lib/pos/mesas/qrMesa.ts del ERP)
-  // abre la página «carta-qr» si el sitio la tiene armada con sus secciones de mesa. Solo con
-  // `?mesa=` (una consulta más por escaneo, cacheada); sin esa página, como hoy.
+  // abre la página «carta-qr» solo si tiene «Pedido de la mesa» (`table_order`) visible: con solo
+  // «Servicio de mesa» no se podría pedir allí (lib/restaurant/modoMesa.ts). Solo con `?mesa=`
+  // (una consulta más por escaneo, cacheada); sin esa página o sin el pedido, como hoy.
   if (currentSlug === 'menu' && traeMesa) {
     const refQr = refMesaDeUrl(typeof sp?.mesa === 'string' ? sp.mesa : typeof sp?.table === 'string' ? sp.table : null)
     const paginaQr = refQr
       ? await getPaginaPublica(organization.id, 'carta-qr', branchId, () => getWebsitePageBySlug(organization.id, 'carta-qr', branchId))
       : null
-    if (refQr && paginaQr?.website_page_sections.some((s) => s.section_type === 'table_order' || s.section_type === 'table_service')) {
+    if (refQr && cartaQrRecibeMesa(paginaQr)) {
       redirect(conPrefijo(`/carta-qr?mesa=${encodeURIComponent(refQr)}`, prefijo))
     } else {
-      // Sin página Carta QR: la carta de siempre con la mesa.
+      // Sin página Carta QR, o sin «Pedido de la mesa» visible en ella: la carta de siempre con la mesa.
     }
   }
   if (currentSlug === 'menu' && traeMesa && paginaSinCarta) {

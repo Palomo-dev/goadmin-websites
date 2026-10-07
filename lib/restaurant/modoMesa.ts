@@ -23,7 +23,43 @@ export const SECCIONES_DE_MESA: readonly string[] = ['table_service', 'table_ord
 export interface PaginaParaModoMesa {
   slug?: string | null
   page_type?: string | null
-  website_page_sections?: ReadonlyArray<{ section_type: string; section_variant?: string | null }> | null
+  website_page_sections?: ReadonlyArray<{
+    section_type: string
+    section_variant?: string | null
+    is_visible?: boolean | null
+    settings?: unknown
+  }> | null
+}
+
+/** Sección que deja pedir desde la mesa: sin ella, /carta-qr no recibe el QR impreso. */
+export const SECCION_PEDIDO_MESA = 'table_order'
+
+/**
+ * ¿Se ve en el celular? Misma regla que `visibilidadDeSeccion` (lib/website/v2/estiloSeccion.ts):
+ * el ojo cerrado (`is_visible = false`) la oculta en todo; si no, manda la visibilidad fina
+ * `settings.visibilidad` {computador, tableta, celular} cuando trae los tres; sin ella, se ve.
+ * El celular porque es con lo que se escanea el QR de la mesa.
+ */
+function visibleEnCelular(s: { is_visible?: boolean | null; settings?: unknown }): boolean {
+  if (s.is_visible === false) return false
+  const ajustes = s.settings
+  const fina = ajustes && typeof ajustes === 'object' ? (ajustes as { visibilidad?: unknown }).visibilidad : null
+  if (fina && typeof fina === 'object') {
+    const v = fina as { computador?: unknown; tableta?: unknown; celular?: unknown }
+    if (typeof v.computador === 'boolean' && typeof v.tableta === 'boolean' && typeof v.celular === 'boolean') return v.celular
+  }
+  return true
+}
+
+/**
+ * QR impreso de la mesa (/menu?mesa=<uuid>): ¿se manda a /carta-qr? Solo si esa página tiene
+ * «Pedido de la mesa» (`table_order`) visible, que es lo que deja pedir desde la mesa. Con solo
+ * «Servicio de mesa», o con el pedido oculto, /carta-qr no deja pedir y el QR se queda en el /menu
+ * de siempre (la carta clásica, que sí deja pedir con la mesa).
+ */
+export function cartaQrRecibeMesa(paginaCartaQr: PaginaParaModoMesa | null | undefined): boolean {
+  if (!paginaCartaQr) return false
+  return (paginaCartaQr.website_page_sections ?? []).some((s) => s.section_type === SECCION_PEDIDO_MESA && visibleEnCelular(s))
 }
 
 export function esPaginaModoMesa(pagina: PaginaParaModoMesa | null | undefined): boolean {
