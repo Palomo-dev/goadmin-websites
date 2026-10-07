@@ -20,11 +20,18 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
   const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
     useContactForm({ organizationId: organization?.id, sourceForm: 'contact_form_split' })
 
+  // Interruptores «Mostrar teléfono / email / dirección» del inspector. Ausente = se muestra,
+  // como antes de leerlos. Con los tres apagados no queda nada que informar: se quita la columna.
+  const showPhone = content.show_phone !== false
+  const showEmail = content.show_email !== false
+  const showAddress = content.show_address !== false
+  const showInfo = showPhone || showEmail || showAddress
+
   const inputClass =
     'w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-60'
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div className={`grid grid-cols-1 ${showInfo ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto w-full'} gap-12`}>
       <div>
         {content.title && (
           <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{content.title}</h2>
@@ -88,9 +95,10 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
           </button>
         </form>
       </div>
+      {showInfo && (
       <div className="space-y-6">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">Información de Contacto</h3>
-        {organization.phone && (
+        {showPhone && organization.phone && (
           <div className="flex items-start gap-3">
             <span className="text-xl">📞</span>
             <div>
@@ -99,7 +107,7 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
             </div>
           </div>
         )}
-        {organization.email && (
+        {showEmail && organization.email && (
           <div className="flex items-start gap-3">
             <span className="text-xl">✉️</span>
             <div>
@@ -108,7 +116,7 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
             </div>
           </div>
         )}
-        {organization.address && (
+        {showAddress && organization.address && (
           <div className="flex items-start gap-3">
             <span className="text-xl">📍</span>
             <div>
@@ -119,6 +127,7 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

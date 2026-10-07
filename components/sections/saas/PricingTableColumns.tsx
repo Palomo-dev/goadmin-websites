@@ -9,17 +9,40 @@ interface PricingTableColumnsProps {
       price: number | string
       period?: string
       description?: string
-      features?: string[]
+      /** El editor guarda texto (una característica por línea); también se acepta una lista. */
+      features?: string[] | string
       cta_text?: string
       cta_url?: string
+      /** Lo que escribe el interruptor «Destacar» del editor. */
+      highlighted?: boolean
+      /** Clave anterior, respaldo para contenidos viejos. */
       is_popular?: boolean
     }>
+    show_description?: boolean
   }
   primaryColor?: string
 }
 
+/** «Destacar» del editor (`highlighted`), con respaldo a la clave vieja `is_popular`. */
+function planDestacado(plan: { highlighted?: boolean; is_popular?: boolean }): boolean {
+  return (plan.highlighted ?? plan.is_popular) === true
+}
+
+/** Características: el editor guarda un texto con una por línea; los contenidos viejos, una lista. */
+function caracteristicas(features: string[] | string | undefined): string[] {
+  if (Array.isArray(features)) return features.filter((f) => typeof f === 'string' && f.trim() !== '')
+  if (typeof features === 'string') return features.split('\n').map((f) => f.trim()).filter(Boolean)
+  return []
+}
+
 export function PricingTableColumns({ content, primaryColor }: PricingTableColumnsProps) {
-  const plans = content.plans || []
+  const plans = (content.plans || []).map((plan) => ({
+    ...plan,
+    is_popular: planDestacado(plan),
+    features: caracteristicas(plan.features),
+  }))
+  // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
+  const showDescription = content.show_description !== false
 
   return (
     <div>
@@ -43,7 +66,7 @@ export function PricingTableColumns({ content, primaryColor }: PricingTableColum
                 </span>
               )}
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-              {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{plan.description}</p>}
+              {showDescription && plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{plan.description}</p>}
               <div className="my-6">
                 <span className="text-4xl font-bold text-gray-900 dark:text-white" style={{ color: plan.is_popular ? primaryColor : undefined }}>
                   {typeof plan.price === 'number' ? `$${plan.price.toLocaleString('es-CO')}` : plan.price}

@@ -24,6 +24,11 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
   const rawOpacity = content.overlay_opacity
   const overlayOpacity = rawOpacity != null ? (rawOpacity > 1 ? rawOpacity / 100 : rawOpacity) : 0.6
   const overlayColor = content.overlay_color || '#000000'
+  // Interruptores del inspector (pestaña Contenido). Ausente = encendido, como antes de leerlos:
+  // un sitio que nunca tocó el interruptor se ve igual. `show_title` oculta título y subtítulo,
+  // igual que en las demás variantes del hero.
+  const showTitle = (content as any).show_title !== false
+  const showOverlay = (content as any).show_overlay !== false
   const showCta = (content as any).show_cta !== false
 
   return (
@@ -44,12 +49,14 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
       ) : (
         <div className="absolute inset-0 bg-gray-900" />
       )}
-      <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: overlayOpacity }} />
+      {showOverlay && (
+        <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: overlayOpacity }} />
+      )}
       <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4 sm:px-6">
-        {content.title && (
+        {showTitle && content.title && (
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold leading-tight mb-4">{content.title}</h1>
         )}
-        {content.subtitle && (
+        {showTitle && content.subtitle && (
           <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">{content.subtitle}</p>
         )}
         {((content as any).show_booking_widget ?? organization?.website_settings?.show_hero_booking ?? false) ? (
@@ -62,7 +69,7 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
             showCta={showCta}
             className="justify-center"
           />
-        ) : content.cta_text && content.cta_url ? (
+        ) : showCta && content.cta_text && content.cta_url ? (
           <Link
             href={content.cta_url}
             className="inline-block px-8 py-4 rounded-lg text-white font-medium text-lg hover:opacity-90 transition-opacity"

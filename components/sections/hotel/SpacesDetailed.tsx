@@ -7,6 +7,7 @@ interface SpacesDetailedProps {
     show_prices?: boolean
     show_amenities?: boolean
     show_capacity?: boolean
+    show_description?: boolean
   }
   primaryColor?: string
   data?: { spaces?: any[]; spaceTypes?: any[] }
@@ -27,6 +28,7 @@ export function SpacesDetailed({ content, primaryColor, data }: SpacesDetailedPr
           showPrices={content.show_prices !== false}
           showCapacity={content.show_capacity !== false}
           showAmenities={content.show_amenities !== false}
+          showDescription={content.show_description !== false}
         />
       </Suspense>
     </div>

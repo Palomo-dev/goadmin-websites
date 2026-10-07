@@ -17,6 +17,8 @@ interface SpacesFilterableGridProps {
   showPrices?: boolean
   showCapacity?: boolean
   showAmenities?: boolean
+  /** «Mostrar descripción» del inspector (solo la pinta el diseño detallado). */
+  showDescription?: boolean
 }
 
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'capacity_asc' | 'capacity_desc'
@@ -29,6 +31,7 @@ export function SpacesFilterableGrid({
   showPrices = true,
   showCapacity = true,
   showAmenities = true,
+  showDescription = true,
 }: SpacesFilterableGridProps) {
   const searchParams = useSearchParams()
 
@@ -309,7 +312,7 @@ export function SpacesFilterableGrid({
           <div className="space-y-6">
             {filteredItems.map((item: any) => (
               <DetailedCard key={item.id} item={item} useSpaces={useSpaces} primaryColor={primaryColor}
-                showPrices={showPrices} showCapacity={showCapacity} showAmenities={showAmenities}
+                showPrices={showPrices} showCapacity={showCapacity} showAmenities={showAmenities} showDescription={showDescription}
                 nights={nights} bookingQs={bookingQs} hasBookingParams={hasBookingParams} />
             ))}
           </div>
@@ -338,7 +341,7 @@ export function SpacesFilterableGrid({
 
 // --- Sub-components ---
 
-function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity, showAmenities, nights, bookingQs, hasBookingParams }: any) {
+function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity, showAmenities, showDescription = true, nights, bookingQs, hasBookingParams }: any) {
   const st = useSpaces ? item.space_types : null
   const label = useSpaces ? item.label : item.name
   const image = useSpaces ? item.primaryImage : item.image_url
@@ -374,7 +377,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
 
       <div className="p-6 flex flex-col justify-center">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{label}</h3>
-        {description && <p className="text-gray-500 dark:text-gray-400 mb-4 line-clamp-2 text-sm">{description}</p>}
+        {showDescription && description && <p className="text-gray-500 dark:text-gray-400 mb-4 line-clamp-2 text-sm">{description}</p>}
 
         <div className="flex flex-wrap gap-2 mb-4">
           {floorZone && (

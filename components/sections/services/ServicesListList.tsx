@@ -11,6 +11,8 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
   const title = content.title || 'Nuestros Servicios'
   const subtitle = content.subtitle
   const services = data?.services || []
+  // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
+  const showDescription = (content as { show_description?: unknown }).show_description !== false
 
   return (
     <div>
@@ -23,7 +25,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
               <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }} />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{service.name}</h3>
-                {service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
+                {showDescription && service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
               </div>
               {service.price && (
                 <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${service.price.toLocaleString('es-CO')}</p>

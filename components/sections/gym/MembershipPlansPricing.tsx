@@ -8,6 +8,7 @@ interface MembershipPlansPricingProps {
     subtitle?: string
     cta_text?: string
     cta_url?: string
+    show_description?: boolean
   }
   primaryColor?: string
   /**
@@ -23,6 +24,8 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
   const plans = data?.membershipPlans || []
   // La compra es el producto del plan en un pedido web: se hace en /membresias.
   const ctaUrl = content.cta_url || '/membresias'
+  // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
+  const showDescription = content.show_description !== false
 
   return (
     <div>
@@ -46,7 +49,7 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
                 </span>
               )}
               <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{plan.name}</h3>
-              {plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.description}</p>}
+              {showDescription && plan.description && <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.description}</p>}
               <div className="mb-6">
                 {plan.price !== null ? (
                   <>

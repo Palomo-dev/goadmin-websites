@@ -12,6 +12,8 @@ interface ContactFormWithMapProps {
 
 export function ContactFormWithMap({ content, organization, primaryColor = '#3B82F6' }: ContactFormWithMapProps) {
   const { title, subtitle, show_phone, show_email, show_address } = content
+  // «Mostrar mapa» del inspector. Ausente = se muestra: es la variante «Con mapa».
+  const showMap = content.show_map !== false
   const address = organization?.address || ''
   const query = encodeURIComponent(address)
 
@@ -26,7 +28,7 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
       <div className="max-w-6xl mx-auto">
         {title && <h2 className="text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
         {subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{subtitle}</p>}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className={`grid grid-cols-1 ${showMap ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto'} gap-8`}>
           <form
             className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4"
             onSubmit={submit}
@@ -91,14 +93,16 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
               {isSubmitting ? 'Enviando...' : 'Enviar mensaje'}
             </button>
           </form>
-          <div className="rounded-xl overflow-hidden min-h-[300px]">
-            <iframe
-              src={`https://maps.google.com/maps?q=${query}&output=embed`}
-              className="w-full h-full border-0 min-h-[300px]"
-              allowFullScreen
-              loading="lazy"
-            />
-          </div>
+          {showMap && (
+            <div className="rounded-xl overflow-hidden min-h-[300px]">
+              <iframe
+                src={`https://maps.google.com/maps?q=${query}&output=embed`}
+                className="w-full h-full border-0 min-h-[300px]"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          )}
         </div>
         {(show_phone || show_email || show_address) && (
           <div className="flex flex-wrap gap-8 justify-center mt-8 text-sm text-gray-600 dark:text-gray-400">

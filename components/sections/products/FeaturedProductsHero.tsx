@@ -34,6 +34,8 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
   const title = content.title || 'Productos Destacados'
   const allProducts = data?.products || []
   const maxItems = content.max_items || 5
+  // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
+  const showDescription = content.show_description !== false
   const products = allProducts.slice(0, maxItems)
   const hero = products[0]
   const rest = products.slice(1)
@@ -67,7 +69,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
           </div>
           <div className="p-6">
             <h3 className="font-bold text-xl mb-2 text-gray-900 dark:text-white">{hero.name}</h3>
-            {textoPlano(hero.description) && <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{textoPlano(hero.description)}</p>}
+            {showDescription && textoPlano(hero.description) && <p className="text-gray-500 dark:text-gray-400 text-sm mb-3 line-clamp-2">{textoPlano(hero.description)}</p>}
             {heroPrice !== null && (
               <span className="font-bold text-2xl" style={{ color: primaryColor }}>${heroPrice.toLocaleString('es-CO')}</span>
             )}
