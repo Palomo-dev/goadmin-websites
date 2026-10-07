@@ -12,7 +12,7 @@ import { useMesaQR } from '@/lib/restaurant/useMesaQR'
 import type { MesaGuardada } from '@/lib/restaurant/mesaQR'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { ETIQUETA_ESTADO_RONDA, type EstadoRonda } from '@/lib/restaurant/mesa-modelo'
-import { fijarMesa, irA, registrarSeccionMesa, useMesaQRStore } from '@/lib/restaurant/mesaStore'
+import { atrasMesa, fijarMesa, irA, registrarSeccionMesa, useMesaQRStore } from '@/lib/restaurant/mesaStore'
 import { C, OK, TITULO, estiloEstado } from './estilo'
 import { MESA_MUESTRA } from './muestra'
 
@@ -130,7 +130,8 @@ export function EncabezadoPantalla({ titulo, subtitulo, subtituloOk = false, onA
     <header className="sticky top-0 z-10 flex items-start gap-3 border-b px-4 pb-3 pt-4" style={{ backgroundColor: C.fondo, borderColor: C.borde }}>
       <button
         type="button"
-        onClick={onAtras ?? (() => history.length > 1 ? history.back() : irA(''))}
+        // Por pasos, ← va al paso anterior (lib/restaurant/pasosMesa.ts); sin pasos, como siempre.
+        onClick={onAtras ?? (() => atrasMesa(() => (history.length > 1 ? history.back() : irA(''))))}
         className="-ml-1 mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:opacity-80"
         aria-label="Volver"
         style={{ color: C.texto }}

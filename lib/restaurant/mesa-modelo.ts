@@ -22,7 +22,8 @@ export const ESTADOS_RONDA: readonly EstadoRonda[] = [
 export const ETIQUETA_ESTADO_RONDA: Record<EstadoRonda, string> = {
   por_enviar: 'Por enviar',
   por_confirmar: 'Por confirmar',
-  enviada: 'Enviada',
+  // El equipo la confirmó y está en la cocina (lámina 06: pasa en vivo de «por confirmar» a esto).
+  enviada: 'En cocina',
   en_preparacion: 'En preparación',
   lista: 'Lista',
   servida: 'Servida',
@@ -363,6 +364,113 @@ export function claveComensal(mesaId: string): string {
 }
 export function claveRondasEnviadas(mesaId: string): string {
   return `carta_qr_rondas_${mesaId}`
+}
+
+// ─── Rondas enviadas que el equipo aún no confirma ──────────────────────────────────────────
+
+/** Lo que ve el comensal mientras su ronda espera al equipo (POS › Pedidos online). */
+export const TEXTO_POR_CONFIRMAR = 'Enviada · esperando que el mesero la confirme'
+
+/** Cuánto se recuerda en este celular una ronda enviada (lo mismo que mira la base: 4 h). */
+export const VIGENCIA_RONDA_LOCAL_MS = 4 * 60 * 60 * 1000
+
+/**
+ * Ronda que este celular envió y la base aceptó (`web_orders`, status pending). Se muestra de
+ * inmediato como «por confirmar», con sus platos y su total, aunque la mesa no tenga sesión y
+ * aunque la lectura de la mesa aún no la traiga. `clave` = id del web_order: la misma clave con
+ * la que la devuelve fn_mesa_pedido_publico, así no se pinta dos veces.
+ */
+export interface RondaLocal {
+  clave: string
+  creada: string
+  comensal: string | null
+  items: LineaMesa[]
+  subtotal: number
+  /** Firma de los platos (firmaRonda): no se reenvían los mismos mientras esperan confirmación. */
+  firma: string
+}
+
+export function claveRondasLocales(mesaId: string): string {
+  return `carta_qr_rondas_pendientes_${mesaId}`
+}
+
+/** Clave de la ronda en vuelo (idempotencia: un reintento reusa la misma `roundKey`). */
+export function claveRondaEnVuelo(mesaId: string): string {
+  return `carta_qr_ronda_en_vuelo_${mesaId}`
+}
+
+/** Firma de una ronda: los mismos platos (producto, cantidad, opciones, nota y comensal) dan la misma. */
+export function firmaRonda(
+  lineas: ReadonlyArray<{ productId: number | string; cantidad: number; modificadores: string[]; nota: string | null; comensal: string | null }>,
+): string {
+  return lineas
+    .map((l) => [String(l.productId), String(l.cantidad), [...l.modificadores].sort().join('+'), l.nota ?? '', l.comensal ?? ''].join('|'))
+    .sort()
+    .join(';')
+}
+
+/** Lectura defensiva de las rondas locales guardadas en el navegador. */
+export function parseRondasLocales(v: unknown): RondaLocal[] {
+  if (!Array.isArray(v)) return []
+  const out: RondaLocal[] = []
+  for (const x of v) {
+    const o = obj(x)
+    const clave = txt(o?.clave)
+    const creada = txt(o?.creada)
+    if (!o || !clave || !creada || Number.isNaN(Date.parse(creada))) continue
+    const items = Array.isArray(o.items) ? o.items.map((l) => parseLinea(l, 'por_confirmar')).filter((l): l is LineaMesa => l !== null) : []
+    out.push({ clave, creada, comensal: sanearComensal(o.comensal), items, subtotal: num(o.subtotal), firma: typeof o.firma === 'string' ? o.firma : '' })
+  }
+  return out
+}
+
+/**
+ * Junta lo que devolvió la base con las rondas que este celular envió y la base aún no muestra
+ * (por ejemplo, mesa sin sesión antes de la migración 20261007170528, o la lectura en curso).
+ * - Una ronda local que la base ya devuelve (misma clave) no se repite.
+ * - Las locales siguen la numeración de la mesa, con estado «por confirmar».
+ * - Se olvidan a las 4 h, o cuando la base ya la tiene y dejó de estar por confirmar.
+ * Sin pedido de la base y sin mesa, no se inventa nada.
+ */
+export function fusionarRondasLocales<T extends PedidoMesa>(
+  pedido: T | null,
+  locales: readonly RondaLocal[],
+  mesa: MesaPublica | null,
+  ahora: number,
+): { pedido: T | PedidoMesa | null; locales: RondaLocal[] } {
+  const enBase = (clave: string) => pedido?.rondas.find((r) => r.clave === clave) ?? null
+  const vigentes = locales.filter((l) => {
+    if (ahora - Date.parse(l.creada) >= VIGENCIA_RONDA_LOCAL_MS) return false
+    const r = enBase(l.clave)
+    return !r || r.estado === 'por_confirmar'
+  })
+  const faltan = vigentes.filter((l) => !enBase(l.clave))
+  if (faltan.length === 0) return { pedido, locales: vigentes }
+  const base: T | PedidoMesa | null = pedido ?? (mesa
+    ? { mesa, sesion: null, rondas: [], total: 0, impuesto: 0, impuestoIncluido: false, solicitudes: [] }
+    : null)
+  if (!base) return { pedido, locales: vigentes }
+  const ultimo = base.rondas.reduce((m, r) => Math.max(m, r.numero), 0)
+  const extra: RondaMesa[] = faltan.map((l, i) => ({
+    clave: l.clave, numero: ultimo + i + 1, origen: 'web', creada: l.creada, comensal: l.comensal,
+    estado: 'por_confirmar', listaAt: null, items: l.items, subtotal: l.subtotal,
+  }))
+  return { pedido: { ...base, rondas: [...base.rondas, ...extra] }, locales: vigentes }
+}
+
+/** Ronda enviada con los mismos platos que aún espera confirmación (no se deja reenviar). */
+export function rondaPendienteIgual(firma: string, locales: readonly RondaLocal[], pedido: PedidoMesa | null): RondaLocal | null {
+  if (!firma) return null
+  return locales.find((l) => {
+    if (l.firma !== firma) return false
+    const r = pedido?.rondas.find((x) => x.clave === l.clave)
+    return !r || r.estado === 'por_confirmar'
+  }) ?? null
+}
+
+/** Lo que suman las rondas que el equipo aún no confirma (no están en la venta de la mesa). */
+export function totalPorConfirmar(pedido: PedidoMesa | null): number {
+  return (pedido?.rondas ?? []).filter((r) => r.estado === 'por_confirmar').reduce((s, r) => s + r.subtotal, 0)
 }
 
 /** Códigos de respuesta de `/api/mesa/...` con su texto para el comensal. */

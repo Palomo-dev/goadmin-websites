@@ -11,7 +11,7 @@ import { useEffect, useId, useState } from 'react'
 import { AlertCircle, Bell, CheckCircle2, CupSoda, ChefHat, HelpCircle, UtensilsCrossed } from 'lucide-react'
 import type { ServicioMesa } from '@/lib/website/v2/contrato/seccionesMesa'
 import { DEFAULT_SERVICIO_MESA } from '@/lib/website/v2/contrato/seccionesMesa'
-import { cancelarLlamado, irA, llamarMesero, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
+import { cancelarLlamado, getMesaQR, irA, llamarMesero, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
 import { BotonPrimario, HojaInferior } from './comun'
 import { C, TITULO } from './estilo'
 
@@ -89,6 +89,7 @@ function Aviso() {
               onClick={() => {
                 setMesaQR({ aviso: null })
                 if (aviso.accion?.ir !== undefined) irA(aviso.accion.ir)
+                else if (getMesaQR().pasos) irA('carta')
                 else document.getElementById('carta-qr-inicio')?.scrollIntoView({ behavior: 'smooth' })
               }}
             >

@@ -7,6 +7,8 @@ import type { OrganizationWithDetails } from '@/types/database'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { irA, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
 import { HojaInferior } from '@/components/sections/restaurant/mesa/comun'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
+import { pasoConEncabezado } from '@/lib/restaurant/pasosMesa'
 
 /**
  * Encabezado mínimo de la Carta QR en la mesa (Figma 2032:75742, lámina 01): ☰, logo y nombre
@@ -23,6 +25,9 @@ export function EncabezadoMesa({ organization, primaryColor }: { organization: O
   const hayCuenta = useMesaQRStore((e) => e.hayCuenta)
   const hayServicio = useMesaQRStore((e) => e.hayServicio)
   const hayValorar = useMesaQRStore((e) => e.hayValorar)
+  // Carta QR por pasos: ☰ ofrece solo los pasos que existen en la página.
+  const porPasos = usePasosMesa()
+  const hay = (paso: 'carta' | 'pedido' | 'cuenta' | 'valorar', sinPasos: boolean) => (porPasos.activo ? porPasos.pasos.includes(paso) : sinPasos)
   const iniciales = organization.name.split(/\s+/).filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase()
 
   const ir = (accion: () => void) => {
@@ -30,18 +35,26 @@ export function EncabezadoMesa({ organization, primaryColor }: { organization: O
     accion()
   }
   const verCarta = () => {
+    if (porPasos.activo) {
+      irA('carta')
+      return
+    }
     irA('')
     const carta = document.getElementById('carta-qr-inicio')
     if (carta) carta.scrollIntoView({ behavior: 'smooth' })
     else window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   const opciones = [
-    { texto: 'Ver la carta', icono: UtensilsCrossed, accion: verCarta, hay: true },
-    { texto: 'Pedido de la mesa', icono: ListOrdered, accion: () => irA('pedido'), hay: hayPedido },
-    { texto: 'Llamar al mesero', icono: BellRing, accion: () => setMesaQR({ servicioAbierto: true }), hay: hayServicio },
-    { texto: 'La cuenta', icono: ReceiptText, accion: () => irA('cuenta'), hay: hayCuenta },
-    { texto: 'Valorar la visita', icono: Star, accion: () => irA('valorar'), hay: hayValorar },
+    { texto: 'Ver la carta', icono: UtensilsCrossed, accion: verCarta, hay: hay('carta', true) },
+    { texto: 'Pedido de la mesa', icono: ListOrdered, accion: () => irA('pedido'), hay: hay('pedido', hayPedido) },
+    { texto: 'Llamar al mesero', icono: BellRing, accion: () => setMesaQR({ servicioAbierto: true }), hay: porPasos.activo ? porPasos.mesero : hayServicio },
+    { texto: 'La cuenta', icono: ReceiptText, accion: () => irA('cuenta'), hay: hay('cuenta', hayCuenta) },
+    { texto: 'Valorar la visita', icono: Star, accion: () => irA('valorar'), hay: hay('valorar', hayValorar) },
   ].filter((o) => o.hay)
+
+  // Por pasos: el encabezado va solo en el paso de inicio (lámina 01). La carta lleva arriba la
+  // barra de la mesa y las demás láminas son pantallas con su propia flecha atrás.
+  if (porPasos.activo && porPasos.paso && !pasoConEncabezado(porPasos.paso, porPasos.pasos)) return null
 
   return (
     <header

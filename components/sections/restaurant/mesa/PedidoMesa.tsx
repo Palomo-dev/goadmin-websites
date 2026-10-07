@@ -25,8 +25,10 @@ import {
   reemplazarMarcadores,
   type PedidoMesa as ConfigPedido,
 } from '@/lib/website/v2/contrato/seccionesMesa'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import {
   enviarRonda,
+  firmaRondaActual,
   irA,
   quitarDeRonda,
   setMesaQR,
@@ -40,6 +42,9 @@ import {
   lineasPorComensal,
   nombreComensal,
   pasoDeEstado,
+  rondaPendienteIgual,
+  TEXTO_POR_CONFIRMAR,
+  totalPorConfirmar,
   type PedidoMesa as DatosPedido,
   type RondaMesa,
 } from '@/lib/restaurant/mesa-modelo'
@@ -81,10 +86,15 @@ export function PedidoMesa(props: PropsSeccionMesa) {
   const { mesa, preview } = useSeccionMesa(props, 'pedido')
   const pantalla = useMesaQRStore((e) => e.pantalla)
   const { pedido, ronda } = useDatosPedido(preview)
+  const { activo: porPasos, paso } = usePasosMesa()
   if (!mesa) return <AvisosMesa />
 
   // Lienzo del editor: la pantalla del pedido en línea (lámina 17 la muestra como sección).
   if (preview && pantalla === '') {
+    if (porPasos && paso === 'carta') {
+      // Lienzo por pasos en la carta (lámina 02): solo su barra «Ver pedido de la mesa · $».
+      return <BarraVerPedido ronda={ronda} pedido={pedido} />
+    }
     return <PantallaPedido c={c} lienzo pedido={pedido} ronda={ronda} mesaNombre={nombreMesa(mesa)} preview />
   }
   return (
@@ -146,7 +156,7 @@ function BarraVerPedido({ ronda, pedido }: { ronda: LineaRonda[]; pedido: DatosP
   const unidades = ronda.reduce((s, l) => s + l.cantidad, 0)
   const totalLocal = totalRonda(ronda)
   if (unidades === 0 && (pedido?.rondas.length ?? 0) === 0) return null
-  const total = unidades > 0 ? totalLocal : pedido?.total ?? 0
+  const total = unidades > 0 ? totalLocal : (pedido?.total ?? 0) + totalPorConfirmar(pedido)
   return (
     // Fija: esconderla no mueve nada. Se desliza hacia abajo y se desvanece (200 ms; sin animación
     // con prefers-reduced-motion); `invisible` al terminar la saca del foco y del lector de pantalla.
@@ -243,9 +253,14 @@ function TarjetaRonda({ r, c }: { r: RondaMesa; c: ConfigPedido }) {
               />
             ))}
           </div>
-          <p className="text-sm" style={{ color: C.suave }}>
-            {r.estado === 'por_confirmar' ? c.pendingText : 'Ya está en cocina. Para cambiarla, llama al mesero.'}
-          </p>
+          {r.estado === 'por_confirmar' ? (
+            <>
+              <p className="text-sm font-semibold" style={{ color: ALERTA.texto }}>{TEXTO_POR_CONFIRMAR}</p>
+              {c.pendingText && <p className="text-sm" style={{ color: C.suave }}>{c.pendingText}</p>}
+            </>
+          ) : (
+            <p className="text-sm" style={{ color: C.suave }}>Ya está en cocina. Para cambiarla, llama al mesero.</p>
+          )}
           <div className="mt-2 flex items-center justify-between text-sm">
             <span style={{ color: C.suave }}>Subtotal</span>
             <Price value={r.subtotal} className="font-semibold" />
@@ -266,10 +281,15 @@ function PantallaPedido({ c, lienzo, pedido, ronda, mesaNombre, preview }: {
 }) {
   const [vista, setVista] = useState(c.defaultView)
   const enviando = useMesaQRStore((e) => e.enviando)
+  const locales = useMesaQRStore((e) => e.rondasLocales)
   const numero = (pedido?.rondas.length ?? 0) + 1
   const totalLocal = totalRonda(ronda)
-  const total = (pedido?.total ?? 0) + totalLocal
-  const impuesto = impuestoDelPedido(pedido?.total ?? 0, pedido?.impuesto ?? 0, pedido?.impuestoIncluido === true, totalLocal)
+  // Las rondas por confirmar aún no están en la venta de la mesa: se suman aparte.
+  const porConfirmar = totalPorConfirmar(pedido)
+  const total = (pedido?.total ?? 0) + porConfirmar + totalLocal
+  const impuesto = impuestoDelPedido(pedido?.total ?? 0, pedido?.impuesto ?? 0, pedido?.impuestoIncluido === true, totalLocal + porConfirmar)
+  // Los mismos platos ya enviados y sin confirmar: no se dejan reenviar (doble clic, reintento).
+  const repetida = !preview && ronda.length > 0 ? rondaPendienteIgual(firmaRondaActual(ronda), locales, pedido) : null
   const rondas = useMemo(() => [...(pedido?.rondas ?? [])].sort((a, b) => b.numero - a.numero), [pedido])
   const personas = pedido?.sesion?.personas
   const sub = [personas ? `${personas} ${personas === 1 ? 'persona' : 'personas'}` : null, pedido?.sesion?.abiertaDesde ? `abierta desde las ${hora(pedido.sesion.abiertaDesde)}` : null]
@@ -281,7 +301,16 @@ function PantallaPedido({ c, lienzo, pedido, ronda, mesaNombre, preview }: {
     else void enviarRonda()
   }
 
-  const pie = ronda.length > 0 ? (
+  const pie = repetida ? (
+    <>
+      <BotonPrimario onClick={() => irA('estado')}>
+        <Clock className="h-5 w-5" aria-hidden="true" /> Ver el estado de la ronda
+      </BotonPrimario>
+      <p className="mt-2 text-center text-sm" style={{ color: C.suave }} role="status">
+        Ya enviaste estos platos: {TEXTO_POR_CONFIRMAR.toLowerCase()}.
+      </p>
+    </>
+  ) : ronda.length > 0 ? (
     <>
       <BotonPrimario onClick={enviar} disabled={enviando}>
         <Send className="h-5 w-5" aria-hidden="true" />
@@ -481,8 +510,13 @@ function minutosEta(eta: string): number | null {
 
 function PantallaEstado({ c, pedido, mesaNombre, zona, sede }: { c: ConfigPedido; pedido: DatosPedido | null; mesaNombre: string; zona: string | null; sede: string | null }) {
   const ultima = useMesaQRStore((e) => e.ultimaRonda)
+  // Por pasos, «Mesero» solo si la página tiene «Servicio de mesa»; sin pasos, como siempre.
+  const porPasos = usePasosMesa()
+  const verMesero = porPasos.activo ? porPasos.mesero : true
   const vivas = (pedido?.rondas ?? []).filter((r) => r.estado !== 'servida' && r.estado !== 'cancelada').sort((a, b) => b.numero - a.numero)
   const eta = minutosEta(c.etaText)
+  // El aviso de la ronda recién enviada también cambia en vivo cuando el equipo la confirma.
+  const enCocina = ultima !== null && (ultima.auto || !vivas.some((r) => r.estado === 'por_confirmar'))
   useEffect(() => {
     // Al volver a esta pantalla, el aviso de la ronda enviada se queda solo un rato.
     if (!ultima) return
@@ -502,9 +536,11 @@ function PantallaEstado({ c, pedido, mesaNombre, zona, sede }: { c: ConfigPedido
           <p className="truncate text-[17px] font-semibold">{[mesaNombre, zona].filter(Boolean).join(' · ')}</p>
           {sede && <p className="truncate text-sm" style={{ color: C.suave }}>{sede}</p>}
         </div>
-        <button type="button" onClick={() => setMesaQR({ servicioAbierto: true })} className="flex w-14 flex-col items-center gap-0.5 text-xs">
-          <BellRing className="h-6 w-6" aria-hidden="true" /> Mesero
-        </button>
+        {verMesero && (
+          <button type="button" onClick={() => setMesaQR({ servicioAbierto: true })} className="flex w-14 flex-col items-center gap-0.5 text-xs">
+            <BellRing className="h-6 w-6" aria-hidden="true" /> Mesero
+          </button>
+        )}
       </div>
       <div className="px-4 pb-6 pt-4">
         {ultima && (
@@ -512,10 +548,10 @@ function PantallaEstado({ c, pedido, mesaNombre, zona, sede }: { c: ConfigPedido
             <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
             <div>
               <p className="text-[17px] font-semibold">
-                Ronda {ultima.numero} {ultima.auto ? 'enviada a cocina' : 'enviada'}
+                Ronda {ultima.numero} {enCocina ? 'enviada a cocina' : 'enviada'}
               </p>
               <p className="text-sm">
-                {ultima.hora} · {ultima.platos} {ultima.platos === 1 ? 'plato' : 'platos'} · {ultima.auto ? 'la cocina ya la tiene' : 'el equipo la confirma'}
+                {ultima.hora} · {ultima.platos} {ultima.platos === 1 ? 'plato' : 'platos'} · {ultima.auto ? 'la cocina ya la tiene' : enCocina ? 'el mesero la confirmó: está en cocina' : 'esperando que el mesero la confirme'}
               </p>
             </div>
           </div>
@@ -544,7 +580,26 @@ function PantallaEstado({ c, pedido, mesaNombre, zona, sede }: { c: ConfigPedido
                     <span className="shrink-0 text-sm font-semibold" style={{ color: ALERTA.texto }}>≈ {eta} min</span>
                   )}
                 </div>
-                {r.estado === 'por_confirmar' && <p className="mt-1 text-sm" style={{ color: C.suave }}>{c.pendingText}</p>}
+                {r.estado === 'por_confirmar' ? (
+                  <p className="mt-1 text-sm font-semibold" style={{ color: ALERTA.texto }} data-ronda-por-confirmar="">{TEXTO_POR_CONFIRMAR}</p>
+                ) : r.estado === 'enviada' ? (
+                  // El equipo la confirmó: pasa en vivo a «En cocina» (sondeo de 8 s del almacén).
+                  <p className="mt-1 text-sm font-semibold" style={{ color: OK.texto }}>{ETIQUETA_ESTADO_RONDA.enviada}</p>
+                ) : null}
+                {r.estado === 'por_confirmar' && r.items.length > 0 && (
+                  <div className="mt-2 border-t pt-2 text-sm" style={{ borderColor: C.borde }}>
+                    {r.items.map((l) => (
+                      <div key={l.id} className="flex items-center justify-between gap-2 py-0.5">
+                        <span className="min-w-0 truncate">{l.cantidad}× {l.nombre}{l.comensal ? ` · ${l.comensal}` : ''}</span>
+                        <Price value={l.total} />
+                      </div>
+                    ))}
+                    <div className="mt-1 flex items-center justify-between font-semibold">
+                      <span>Total de la ronda</span>
+                      <Price value={r.subtotal} />
+                    </div>
+                  </div>
+                )}
                 {c.showLiveStatus && (
                   <div className="mt-3 flex items-start">
                     {PASOS.map((_, i) => <Paso key={i} i={i} actual={actual} />)}
@@ -569,7 +624,7 @@ export function PanelPedidoMesa({ preview }: { preview: boolean }) {
   const { pedido, ronda } = useDatosPedido(preview)
   const enviando = useMesaQRStore((e) => e.enviando)
   const numero = (pedido?.rondas.length ?? 0) + 1
-  const total = (pedido?.total ?? 0) + totalRonda(ronda)
+  const total = (pedido?.total ?? 0) + totalPorConfirmar(pedido) + totalRonda(ronda)
   const rondas = [...(pedido?.rondas ?? [])].sort((a, b) => b.numero - a.numero)
   return (
     <aside className="flex h-full flex-col border-l px-5 py-5" style={{ borderColor: C.borde, backgroundColor: C.tarjeta }} aria-label="Pedido de la mesa">

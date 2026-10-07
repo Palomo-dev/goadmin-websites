@@ -17,13 +17,14 @@
 
 import { useEffect, useLayoutEffect, useState } from 'react'
 import Image from 'next/image'
-import { BellRing, CheckCircle2, Clock, Info, ReceiptText } from 'lucide-react'
+import { BellRing, CheckCircle2, ChevronRight, Clock, Info, MapPin, ReceiptText } from 'lucide-react'
 import { normalizarPortadaMesa, reemplazarMarcadores } from '@/lib/website/v2/contrato/seccionesMesa'
 import { isOptimizableImage } from '@/lib/restaurant/secciones'
 import { horarioRevisado } from '@/lib/restaurant/horario'
 import type { SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
 import { irA, mostrarAviso, pedirCuenta, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
 import { useEstadosEnVivo, type SedeConHorario } from '../EstadoApertura'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import { BotonPrimario, nombreMesa, useSeccionMesa, type PropsSeccionMesa } from './comun'
 import { ALERTA, C, OK, TITULO } from './estilo'
 
@@ -77,7 +78,21 @@ export function PortadaMesa(props: PropsSeccionMesa) {
   const apertura = sede ? estados?.get(sede.id)?.apertura ?? null : null
   const sinSesion = !preview && mesa !== null && pedido !== null && pedido.sesion === null
   const [botones, setBotones] = useState<HTMLDivElement | null>(null)
-  useBotonesALaVista(botones, !preview && mesa !== null)
+  // Carta QR por pasos: la bienvenida es su propio paso y la barra «Ver pedido» no se pinta en
+  // ella; los botones solo existen si existe su paso (o la hoja del mesero).
+  const porPasos = usePasosMesa()
+  useBotonesALaVista(botones, !preview && mesa !== null && !porPasos.activo)
+  const verCarta = porPasos.activo ? porPasos.pasos.includes('carta') : true
+  const verMesero = c.showWaiterButton && (porPasos.activo ? porPasos.mesero : true)
+  const verCuenta = c.showBillButton && (porPasos.activo ? porPasos.pasos.includes('cuenta') : true)
+  const verHorario = porPasos.activo && porPasos.pasos.includes('horario')
+  const irALaCarta = () => {
+    if (porPasos.activo) {
+      irA('carta')
+    } else {
+      document.getElementById('carta-qr-inicio')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   const valores = { mesa: nombreMesa(mesa), zona: mesa?.zona ?? null, sede: mesa?.nombreSede ?? sede?.nombre ?? null }
   const lugar = [mesa?.zona, [mesa?.nombreSede ?? sede?.nombre, sede?.direccion].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
@@ -150,12 +165,14 @@ export function PortadaMesa(props: PropsSeccionMesa) {
         )}
 
         <div ref={setBotones} className="mt-5 flex flex-col gap-3" data-botones-portada-mesa="">
-          <BotonPrimario onClick={() => document.getElementById('carta-qr-inicio')?.scrollIntoView({ behavior: 'smooth' })}>
-            {c.primaryCtaText}
-          </BotonPrimario>
-          {mesa && (c.showWaiterButton || c.showBillButton) && (
-            <div className="grid grid-cols-2 gap-3">
-              {c.showWaiterButton && (
+          {verCarta && (
+            <BotonPrimario onClick={irALaCarta}>
+              {c.primaryCtaText}
+            </BotonPrimario>
+          )}
+          {mesa && (verMesero || verCuenta) && (
+            <div className={`grid gap-3 ${verMesero && verCuenta ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {verMesero && (
                 <button
                   type="button"
                   onClick={llamar}
@@ -166,7 +183,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
                   Llamar al mesero
                 </button>
               )}
-              {c.showBillButton && (
+              {verCuenta && (
                 <button
                   type="button"
                   onClick={pedirLaCuenta}
@@ -180,6 +197,20 @@ export function PortadaMesa(props: PropsSeccionMesa) {
             </div>
           )}
         </div>
+
+        {verHorario && (
+          // «Horario y sedes» no es una lámina del flujo de Figma: va como enlace a su propio paso.
+          <button
+            type="button"
+            onClick={() => irA('horario')}
+            className="mt-4 flex min-h-[44px] w-full items-center gap-2 text-left text-[15px] font-semibold"
+            style={{ color: C.texto }}
+          >
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="flex-1">Horario y sedes</span>
+            <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+          </button>
+        )}
 
         {mesa && c.allergyNote && (
           <p className="mt-4 flex items-center gap-2 text-sm" style={{ color: C.suave }}>

@@ -37,6 +37,7 @@ import {
   type ModoDivision,
 } from '@/lib/restaurant/mesa-modelo'
 import {
+  atrasMesa,
   irA,
   mostrarAviso,
   pagarEnLinea,
@@ -46,6 +47,7 @@ import {
   useMesaQRStore,
   type SeleccionPago,
 } from '@/lib/restaurant/mesaStore'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import { AvisosMesa } from './AvisosMesa'
 import { BotonPrimario, BotonSecundario, EncabezadoPantalla, PantallaMesa, nombreMesa, useSeccionMesa, type PropsSeccionMesa } from './comun'
 import { C, ERROR_TEXTO, OK, TITULO } from './estilo'
@@ -104,6 +106,9 @@ function PantallaCuenta({ c, cuenta, mesaNombre, lienzo, preview }: {
   preview: boolean
 }) {
   const comensalPropio = useMesaQRStore((e) => e.comensal)
+  // «Valorar la visita» solo si ese paso existe (por pasos); sin pasos, como siempre.
+  const porPasos = usePasosMesa()
+  const hayValorar = porPasos.activo ? porPasos.pasos.includes('valorar') : true
   const guardada = useMesaQRStore((e) => e.seleccionPago)
   const [sel, setSel] = useState<SeleccionPago>(() => guardada ?? seleccionInicial(c, cuenta, comensalPropio))
   const [avisando, setAvisando] = useState(false)
@@ -137,7 +142,12 @@ function PantallaCuenta({ c, cuenta, mesaNombre, lienzo, preview }: {
   }
 
   const pie = pagada ? (
-    <BotonPrimario onClick={() => irA('valorar')}>Valorar la visita</BotonPrimario>
+    hayValorar ? (
+      <BotonPrimario onClick={() => irA('valorar')}>Valorar la visita</BotonPrimario>
+    ) : (
+      // Por pasos sin «Valorar la visita» en la página: ese paso no existe, se vuelve a la carta.
+      <BotonPrimario onClick={() => irA('')}>Volver a la carta</BotonPrimario>
+    )
   ) : (
     <div className="flex flex-col gap-3">
       {online && (
@@ -331,7 +341,8 @@ function PantallaPagar({ c, cuenta, mesaNombre }: { c: ConfigCuenta; cuenta: Dat
   const datos = cuenta?.cuenta ?? null
 
   useEffect(() => {
-    if (!sel) irA('cuenta')
+    // Recarga en «pagar» sin nada elegido: a la cuenta, sin apilar historial.
+    if (!sel) irA('cuenta', { reemplazar: true })
   }, [sel])
   if (!sel || !datos) return null
 
@@ -374,7 +385,7 @@ function PantallaPagar({ c, cuenta, mesaNombre }: { c: ConfigCuenta; cuenta: Dat
 
   return (
     <PantallaMesa lienzo={false} pie={pie}>
-      <EncabezadoPantalla titulo="Pagar mi parte" subtitulo={sub} onAtras={() => irA('cuenta')} />
+      <EncabezadoPantalla titulo="Pagar mi parte" subtitulo={sub} onAtras={() => atrasMesa(() => irA('cuenta'))} />
       <div className="px-4 pb-6 pt-4">
         <section className="rounded-xl border px-4 py-5 text-center" style={{ borderColor: C.borde, backgroundColor: C.tarjeta }}>
           <p className="text-sm" style={{ color: C.suave }}>Total a pagar</p>

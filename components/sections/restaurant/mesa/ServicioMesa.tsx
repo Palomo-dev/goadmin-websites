@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react'
 import { BellRing, ReceiptText, Search, WifiOff } from 'lucide-react'
 import { normalizarServicioMesa, varianteSeccionMesa } from '@/lib/website/v2/contrato/seccionesMesa'
 import { irA, mostrarAviso, pedirCuenta, refrescarMesa, setMesaQR, useMesaQRStore } from '@/lib/restaurant/mesaStore'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import { AvisosMesa, fijarConfigServicio } from './AvisosMesa'
 import { nombreMesa, useSeccionMesa, type PropsSeccionMesa } from './comun'
 import { ALERTA, C, TITULO } from './estilo'
@@ -29,6 +30,9 @@ export function ServicioMesa(props: PropsSeccionMesa) {
   const pedido = useMesaQRStore((e) => e.pedido)
   const sinConexion = useMesaQRStore((e) => e.sinConexion)
   const busqueda = useMesaQRStore((e) => e.busqueda)
+  // Por pasos, «Cuenta» solo si la página tiene «Cuenta de la mesa»; sin pasos, como siempre.
+  const porPasos = usePasosMesa()
+  const verCuenta = c.showBillButton && (porPasos.activo ? porPasos.pasos.includes('cuenta') : true)
   useEffect(() => {
     fijarConfigServicio(c)
   })
@@ -97,7 +101,7 @@ export function ServicioMesa(props: PropsSeccionMesa) {
         <button type="button" onClick={abrirServicio} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border px-2 font-semibold" style={{ borderColor: C.texto, color: C.texto }}>
           <BellRing className="h-5 w-5" aria-hidden="true" /> {c.buttonText}
         </button>
-        {c.showBillButton && (
+        {verCuenta && (
           <button type="button" onClick={() => void abrirCuenta()} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border px-2 font-semibold" style={{ borderColor: C.texto, color: C.texto }}>
             <ReceiptText className="h-5 w-5" aria-hidden="true" /> Pedir la cuenta
           </button>
@@ -137,7 +141,7 @@ export function ServicioMesa(props: PropsSeccionMesa) {
           <BellRing className="h-6 w-6" aria-hidden="true" />
           Mesero
         </button>
-        {c.showBillButton && (
+        {verCuenta && (
           <button type="button" onClick={() => void abrirCuenta()} className="flex w-14 flex-col items-center gap-0.5 text-xs md:hidden" aria-label="Pedir la cuenta">
             <ReceiptText className="h-6 w-6" aria-hidden="true" />
             Cuenta
@@ -147,7 +151,7 @@ export function ServicioMesa(props: PropsSeccionMesa) {
         <button type="button" onClick={abrirServicio} className="hidden h-11 items-center gap-2 rounded-lg border px-4 text-[15px] font-semibold md:inline-flex" style={{ borderColor: C.texto }}>
           <BellRing className="h-4 w-4" aria-hidden="true" /> {c.buttonText}
         </button>
-        {c.showBillButton && (
+        {verCuenta && (
           <button type="button" onClick={() => void abrirCuenta()} className="hidden h-11 items-center gap-2 rounded-lg border px-4 text-[15px] font-semibold md:inline-flex" style={{ borderColor: C.texto }}>
             <ReceiptText className="h-4 w-4" aria-hidden="true" /> Pedir la cuenta
           </button>

@@ -23,6 +23,12 @@
  *    (/menu?mesa=…) se manda a /carta-qr (solo con «Pedido de la mesa» visible), que el layout cambie
  *    encabezado, pie y barra móvil solo con él, y contraste AA de las superficies de las secciones
  *    de mesa (estilo.ts + app/globals.css) en Editorial Marfil, Noir Omakase y Pop Callejero.
+ * 7. Carta QR por pasos (lib/restaurant/pasosMesa.ts): mapa sección↔paso, pasos que existen según
+ *    las secciones visibles, transiciones permitidas, «paso inexistente → bienvenida», la entrada
+ *    por el QR (/menu?mesa=… → bienvenida SOLA) y que fuera del modo mesa todo siga como siempre.
+ * 8. Ronda por confirmar e idempotencia: la ronda enviada se ve de inmediato «por confirmar» aunque
+ *    la mesa no tenga sesión, no se dejan reenviar los mismos platos, /api/orders reconoce la
+ *    `roundKey` (y conserva su else de siempre) y la migración del ERP quita el corte sin sesión.
  */
 import { readFile, writeFile, mkdtemp, mkdir, rm, access, readdir } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -46,8 +52,10 @@ const leer = (rel) => readFile(join(ROOT, rel), 'utf8')
 
 // Módulos TS puros → .mjs temporales dentro del repo.
 const tmp = await mkdtemp(join(ROOT, 'node_modules', '.verify-carta-qr-'))
-let contrato, modelo, ronda, modoMesa, contrasteMod, sobreMod
+let contrato, modelo, ronda, modoMesa, contrasteMod, sobreMod, pasos
 try {
+  await writeFile(join(tmp, 'pasosMesa.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/pasosMesa.ts'), { mode: 'strip' }))
+  pasos = await import(pathToFileURL(join(tmp, 'pasosMesa.mjs')).href)
   await writeFile(join(tmp, 'modoMesa.mjs'), stripTypeScriptTypes(await leer('lib/restaurant/modoMesa.ts'), { mode: 'strip' }))
   modoMesa = await import(pathToFileURL(join(tmp, 'modoMesa.mjs')).href)
   await writeFile(join(tmp, 'contrasteColor.mjs'), stripTypeScriptTypes(await leer('lib/website/v2/contrasteColor.ts'), { mode: 'strip' }).replace(/^import\s+type[^\n]*\n/gm, ''))
@@ -303,7 +311,7 @@ if (await existe(dirMig)) {
   check(/modoMesa = false,/.test(layout), 'layout: modoMesa es opcional y por defecto false (las ~25 rutas no cambian)')
   const pagina = await leer('app/[[...slug]]/page.tsx')
   check(/const modoMesa = esPaginaModoMesa\(page\)/.test(pagina) && /modoMesa=\{modoMesa\}/.test(pagina), 'page.tsx: la página del constructor pasa modoMesa al layout')
-  check(/if \(refQr && cartaQrRecibeMesa\(paginaQr\)\) \{\s*redirect\(conPrefijo\(`\/carta-qr\?mesa=/.test(pagina), 'page.tsx: /menu?mesa= redirige a /carta-qr solo con cartaQrRecibeMesa (pedido de la mesa visible)')
+  check(/if \(refQr && cartaQrRecibeMesa\(paginaQr\)\) \{\s*(?:\/\/[^\n]*\n\s*)?redirect\(conPrefijo\(`\/carta-qr\?mesa=/.test(pagina), 'page.tsx: /menu?mesa= redirige a /carta-qr solo con cartaQrRecibeMesa (pedido de la mesa visible)')
   check(!/section_type === 'table_service'\)\) \{\s*redirect/.test(pagina), 'page.tsx: «Servicio de mesa» solo ya no basta para redirigir el QR a /carta-qr')
   const vista = await leer('components/sections/restaurant/MenuFullView.tsx')
   check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
@@ -318,6 +326,147 @@ if (await existe(dirMig)) {
   for (const f of ['CartaQrMenu', 'PedidoMesa', 'CuentaMesa', 'comun', 'ServicioMesa', 'ValorarVisita']) {
     const src = await leer(`components/sections/restaurant/mesa/${f}.tsx`)
     check(!/\btext-white\b/.test(src) && !/\bbg-white\b/.test(src), `${f}.tsx: blanco fijo (text-white / bg-white): usa C.sobrePrimario o las superficies del tema`)
+  }
+}
+
+// ─── 7. Carta QR por pasos ───────────────────────────────────────────────────
+{
+  const P = pasos
+  const sec = (t, v = 'default', extra = {}) => ({ section_type: t, section_variant: v, ...extra })
+  // Mapa sección → paso (lo que pide el lienzo del editor al seleccionarla).
+  const mapa = [
+    [['restaurant_hero', 'mesa'], 'bienvenida'], [['table_service', 'barra'], 'carta'], [['menu_full', 'qr'], 'carta'],
+    [['table_order', 'rondas'], 'pedido'], [['table_bill', 'hoja'], 'cuenta'], [['visit_feedback', 'tarjeta'], 'valorar'],
+    [['hours_location', 'cards'], 'horario'], [['header'], 'bienvenida'], [['footer'], 'bienvenida'], [['marquee', 'text'], 'carta'],
+  ]
+  for (const [[t, v], paso] of mapa) check(P.pasoDeSeccion(t, v) === paso, `pasos: ${t}${v ? '.' + v : ''} → ${paso}`)
+  check(P.pasoDeSeccion('table_bill', 'hoja') === 'cuenta', 'pasos: «Cuenta de la mesa» seleccionada → el lienzo muestra la cuenta (lámina 17)')
+  check(JSON.stringify(P.pasosDeSeccion('table_order', 'rondas')) === JSON.stringify(['carta', 'pedido', 'estado']), 'pasos: «Pedido de la mesa» se pinta en la carta (su barra) y en pedido/estado')
+  check(JSON.stringify(P.pasosDeSeccion('table_bill', 'hoja')) === JSON.stringify(['cuenta', 'pagar']), 'pasos: «Cuenta de la mesa» se pinta en cuenta y pagar')
+  // Entrada por el QR: la bienvenida va SOLA. Nada de la carta, la barra de la mesa ni «Ver pedido».
+  for (const [t, v] of [['menu_full', 'qr'], ['table_service', 'barra'], ['table_order', 'rondas'], ['table_bill', 'hoja'], ['visit_feedback', 'tarjeta'], ['hours_location', 'cards']]) {
+    check(!P.pasosDeSeccion(t, v).includes('bienvenida'), `QR → bienvenida: ${t} no se pinta debajo de la bienvenida`)
+  }
+  check(JSON.stringify(P.pasosDeSeccion('restaurant_hero', 'mesa')) === JSON.stringify(['bienvenida']), 'QR → bienvenida: la portada solo se pinta en la bienvenida')
+
+  const completa = [sec('restaurant_hero', 'mesa'), sec('table_service', 'barra'), sec('menu_full', 'qr'), sec('table_order', 'rondas'), sec('table_bill', 'hoja'), sec('visit_feedback', 'tarjeta'), sec('hours_location', 'cards')]
+  const d = P.pasosDisponibles(completa)
+  check(JSON.stringify(d.pasos) === JSON.stringify(['bienvenida', 'carta', 'pedido', 'estado', 'cuenta', 'pagar', 'valorar', 'horario']) && d.mesero, 'pasos: la plantilla Carta QR tiene los 8 pasos y la hoja del mesero')
+  const sinCuenta = P.pasosDisponibles([sec('restaurant_hero', 'mesa'), sec('menu_full', 'qr'), sec('table_bill', 'hoja', { is_visible: false }), sec('table_service', 'barra', { settings: { visibilidad: { computador: true, tableta: true, celular: false } } })])
+  check(!sinCuenta.pasos.includes('cuenta') && !sinCuenta.pasos.includes('pagar'), 'pasos: «Cuenta de la mesa» oculta (ojo) → no existen cuenta ni pagar (ni su botón)')
+  check(sinCuenta.mesero === false, 'pasos: «Servicio de mesa» oculto en el celular → sin hoja del mesero (ni su botón)')
+  check(!P.pasosDisponibles([sec('restaurant_hero', 'mesa'), sec('menu_full', 'qr')]).pasos.includes('pedido'), 'pasos: sin «Pedido de la mesa» no hay paso de pedido')
+
+  // Paso de la URL: existe → ese; inexistente o basura → bienvenida (o la carta si no hay bienvenida).
+  check(P.resolverPaso('cuenta', d.pasos) === 'cuenta', 'URL: ?paso=cuenta → cuenta')
+  check(P.resolverPaso('bienvenida', d.pasos) === 'bienvenida', 'URL: ?paso=bienvenida (redirección del QR) → bienvenida')
+  check(P.resolverPaso('cuenta', sinCuenta.pasos) === 'bienvenida', 'URL: paso inexistente en la página → bienvenida')
+  check(P.resolverPaso('<script>', d.pasos) === 'bienvenida' && P.resolverPaso(undefined, d.pasos) === 'bienvenida' && P.resolverPaso(['carta'], d.pasos) === 'bienvenida', 'URL: paso basura o ausente → bienvenida')
+  check(P.resolverPaso('nada', ['carta', 'pedido', 'estado']) === 'carta', 'URL: sin bienvenida en la página, el inicio es la carta')
+
+  // Transiciones permitidas (botones de cada lámina).
+  const permitidas = [
+    ['bienvenida', 'carta'], ['bienvenida', 'cuenta'], ['bienvenida', 'horario'], ['carta', 'pedido'], ['carta', 'cuenta'],
+    ['carta', 'bienvenida'], ['pedido', 'estado'], ['pedido', 'carta'], ['estado', 'carta'], ['estado', 'pedido'],
+    ['cuenta', 'pagar'], ['cuenta', 'valorar'], ['cuenta', 'carta'], ['pagar', 'cuenta'], ['pagar', 'valorar'], ['valorar', 'carta'], ['horario', 'bienvenida'],
+  ]
+  for (const [a, b] of permitidas) check(P.puedeIrAPaso(a, b, d.pasos), `transición permitida: ${a} → ${b}`)
+  for (const [a, b] of [['bienvenida', 'pagar'], ['bienvenida', 'estado'], ['carta', 'pagar'], ['carta', 'valorar'], ['pedido', 'cuenta'], ['valorar', 'pagar']]) {
+    check(!P.puedeIrAPaso(a, b, d.pasos), `transición NO permitida: ${a} → ${b}`)
+  }
+  check(!P.puedeIrAPaso('carta', 'cuenta', sinCuenta.pasos), 'transición: a un paso que no existe en la página, no')
+  for (const [paso, antes] of [['pedido', 'carta'], ['estado', 'carta'], ['cuenta', 'carta'], ['pagar', 'cuenta'], ['horario', 'bienvenida'], ['carta', 'bienvenida']]) {
+    check(P.pasoAnterior(paso, d.pasos) === antes && P.puedeIrAPaso(paso, antes, d.pasos), `← atrás: ${paso} → ${antes}`)
+  }
+  check(P.pasoConEncabezado('bienvenida', d.pasos) && !P.pasoConEncabezado('carta', d.pasos) && !P.pasoConEncabezado('cuenta', d.pasos), 'encabezado y pie del sitio solo en la bienvenida (lámina 01); carta y pantallas sin él (02, 04, 08)')
+  check(P.pantallaDePaso('carta') === '' && P.pantallaDePaso('pagar') === 'pagar', 'pantalla del almacén de cada paso')
+
+  // Fuente: quién usa los pasos y que fuera del modo mesa todo siga igual.
+  const pagina = await leer('app/[[...slug]]/page.tsx')
+  check(/redirect\(conPrefijo\(`\/carta-qr\?mesa=\$\{encodeURIComponent\(refQr\)\}&paso=bienvenida`/.test(pagina), 'QR impreso: /menu?mesa=… redirige a /carta-qr?mesa=…&paso=bienvenida')
+  check(/const pasosMesa = disponiblesMesa\s*\?[\s\S]{0,200}resolverPaso\(sp\?\.paso, disponiblesMesa\.pasos\)[\s\S]{0,200}: null/.test(pagina) && /pasosMesa=\{pasosMesa\}/.test(pagina), 'page.tsx: el servidor resuelve ?paso= (sin modo mesa, null)')
+  const layoutSrc = await leer('components/site/OrganizationLayoutCliente.tsx')
+  check(/<PasosMesaProvider value=\{modoMesa \? pasosMesa : null\}>/.test(layoutSrc), 'layout: los pasos solo con modoMesa')
+  const prev = await leer('components/sections/PreviewableSections.tsx')
+  check(/if \(porPasos\) \{\s*return \(\s*<PasosMesa/.test(prev) && /\/\/ Cualquier otra página: todas las secciones apiladas, como siempre\./.test(prev), 'PreviewableSections: por pasos solo en modo mesa; si no, apiladas como siempre')
+  check(/porPasos \? \([\s\S]{0,200}<PasosMesa[\s\S]{0,200}\) : \(\s*<>\{liveSections\.map/.test(prev), 'lienzo: por pasos solo en modo mesa; si no, como siempre')
+  const pasosSrc = await leer('components/sections/restaurant/mesa/PasosMesa.tsx')
+  check(/hidden=\{!activa\}/.test(pasosSrc), 'PasosMesa: las secciones de otros pasos se ocultan sin desmontarse (el almacén no recarga)')
+  check(/prefers-reduced-motion: reduce/.test(pasosSrc) && /window\.scrollTo\(\{ top: 0 \}\)/.test(pasosSrc) && /\{ opacity: 0 \}, \{ opacity: 1 \}/.test(pasosSrc), 'PasosMesa: cada paso arranca arriba, fundido corto y sin animación con prefers-reduced-motion')
+  check(/^\s*<AvisosMesa \/>/m.test(pasosSrc), 'PasosMesa: avisos y hoja del mesero en cualquier paso')
+  const storeSrc = await leer('lib/restaurant/mesaStore.ts')
+  check(/if \(estado\.pasos && estado\.paso\) \{\s*\/\/ Carta QR por pasos[\s\S]{0,200}irAPaso\([\s\S]{0,400}\} else if \(pantalla === 'bienvenida'[\s\S]{0,800}if \(window\.location\.hash !== `#\$\{pantalla\}`\) window\.location\.hash = pantalla/.test(storeSrc), 'irA: por pasos usa ?paso=; sin pasos, el hash de siempre')
+  check(/history\.pushState\(st, '', urlConPaso\(destino\)\)/.test(storeSrc) && /addEventListener\('popstate'/.test(storeSrc), 'pasos: entrada en el historial (atrás del celular) y popstate')
+  check(/if \(estado\.pasos\) \{\s*\/\/ Carta QR por pasos: la pantalla la da `\?paso=`/.test(storeSrc), 'pasos: el hash no pisa el paso')
+  const bridge = await leer('components/sections/PreviewBridge.tsx')
+  check(/case 'goadmin:paso':[\s\S]{0,300}EVENTO_PASO_LIENZO/.test(bridge), 'puente: goadmin:paso del editor → paso de la sección')
+  const portadaSrc = await leer('components/sections/restaurant/mesa/PortadaMesa.tsx')
+  check(/const verCarta = porPasos\.activo \? porPasos\.pasos\.includes\('carta'\) : true/.test(portadaSrc) && /const verCuenta = c\.showBillButton && \(porPasos\.activo \? porPasos\.pasos\.includes\('cuenta'\) : true\)/.test(portadaSrc) && /const verMesero = c\.showWaiterButton && \(porPasos\.activo \? porPasos\.mesero : true\)/.test(portadaSrc), 'bienvenida: cada botón solo si existe su paso (sin pasos, como siempre)')
+}
+
+// ─── 8. Ronda por confirmar e idempotencia ───────────────────────────────────
+{
+  const linea = (id, nombre, total, comensal) => ({ id, nombre, cantidad: 1, total, modificadores: [], nota: null, comensal, estado: 'por_confirmar', pagada: false })
+  const ahora = Date.parse('2026-10-07T17:00:00Z')
+  const local = { clave: 'wo-1', creada: '2026-10-07T16:51:00Z', comensal: 'Yo', items: [linea('a', 'Lomo al carbón', 72000, 'Yo'), linea('b', 'Limonada de coco', 14000, 'Ana')], subtotal: 86000, firma: 'f1' }
+  const mesaPub = { id: 'm3', nombre: 'Mesa 3', zona: null, sedeId: 1, sede: null }
+  // Mesa SIN sesión: la base devuelve la mesa sin rondas (antes de la migración) → la ronda se ve igual.
+  const sinSesion = { mesa: mesaPub, sesion: null, rondas: [], total: 0, impuesto: 0, impuestoIncluido: false, solicitudes: [] }
+  const f = modelo.fusionarRondasLocales(sinSesion, [local], mesaPub, ahora)
+  check(f.pedido.rondas.length === 1 && f.pedido.rondas[0].estado === 'por_confirmar' && f.pedido.rondas[0].items.length === 2 && f.pedido.rondas[0].subtotal === 86000, 'ronda enviada sin sesión: se ve «por confirmar» con sus platos y su total')
+  check(modelo.TEXTO_POR_CONFIRMAR === 'Enviada · esperando que el mesero la confirme', 'texto: «Enviada · esperando que el mesero la confirme»')
+  check(modelo.totalPorConfirmar(f.pedido) === 86000, 'total de la mesa: suma lo por confirmar')
+  check(modelo.fusionarRondasLocales(null, [local], mesaPub, ahora).pedido?.rondas.length === 1, 'sin lectura de la base aún: la ronda enviada se ve igual')
+  // La base ya la devuelve (misma clave): no se repite.
+  const conBase = { ...sinSesion, rondas: [{ clave: 'wo-1', numero: 1, origen: 'web', creada: local.creada, comensal: 'Yo', estado: 'por_confirmar', listaAt: null, items: local.items, subtotal: 86000 }] }
+  const g = modelo.fusionarRondasLocales(conBase, [local], mesaPub, ahora)
+  check(g.pedido.rondas.length === 1 && g.locales.length === 1, 'la base ya la devuelve: no se pinta dos veces (y se recuerda mientras esté por confirmar)')
+  // El equipo la confirma en el POS: pasa en vivo a «En cocina».
+  const confirmada = { ...conBase, sesion: { estado: 'active', abiertaDesde: null, personas: null, mesero: null }, rondas: [{ ...conBase.rondas[0], estado: 'enviada' }] }
+  const h = modelo.fusionarRondasLocales(confirmada, [local], mesaPub, ahora)
+  check(h.pedido.rondas[0].estado === 'enviada' && modelo.ETIQUETA_ESTADO_RONDA.enviada === 'En cocina' && h.locales.length === 0, 'confirmada en el POS: «En cocina» (lámina 06) y se olvida la copia local')
+  check(modelo.fusionarRondasLocales(sinSesion, [local], mesaPub, ahora + modelo.VIGENCIA_RONDA_LOCAL_MS).pedido.rondas.length === 0, 'la copia local se olvida a las 4 h')
+  // No reenviar los mismos platos mientras esperan.
+  const firma = modelo.firmaRonda([{ productId: 2001, cantidad: 1, modificadores: ['Término medio'], nota: null, comensal: 'Yo' }, { productId: 5001, cantidad: 1, modificadores: [], nota: 'Sin hielo', comensal: 'Ana' }])
+  const firmaOtroOrden = modelo.firmaRonda([{ productId: 5001, cantidad: 1, modificadores: [], nota: 'Sin hielo', comensal: 'Ana' }, { productId: 2001, cantidad: 1, modificadores: ['Término medio'], nota: null, comensal: 'Yo' }])
+  check(firma === firmaOtroOrden, 'firma de la ronda: no depende del orden de las líneas')
+  const loc2 = { ...local, firma }
+  check(modelo.rondaPendienteIgual(firma, [loc2], f.pedido) !== null, 'mismos platos por confirmar: no se reenvían')
+  check(modelo.rondaPendienteIgual(firma + 'x', [loc2], f.pedido) === null, 'otros platos: se pueden enviar')
+  check(modelo.rondaPendienteIgual(firma, [loc2], { ...confirmada, rondas: [{ ...confirmada.rondas[0], clave: 'wo-1' }] }) === null, 'ya confirmada: se puede pedir otra igual')
+  check(modelo.parseRondasLocales([{ clave: 'x' }, 'basura', { clave: 'y', creada: 'no', items: [] }]).length === 0, 'rondas locales: lectura defensiva')
+
+  // Idempotencia en /api/orders.
+  check(ronda.claveRondaValida('3f2a-9c1b-77aa', true) === '3f2a-9c1b-77aa' && ronda.claveRondaValida('3f2a-9c1b-77aa', false) === null && ronda.claveRondaValida('x', true) === null && ronda.claveRondaValida("a'; drop--", true) === null, 'roundKey: solo con mesa y con forma segura')
+  check(ronda.esRondaDuplicada({ code: '23505', message: 'duplicate key value violates unique constraint "idx_web_orders_round_key"' }) && !ronda.esRondaDuplicada({ code: '23505', message: 'web_orders_order_number_key' }), 'roundKey: 23505 del índice de la ronda = duplicado')
+  check(ronda.rechazaClaveRonda({ code: 'PGRST204', message: "Could not find the 'round_key' column" }) && !ronda.rechazaClaveRonda({ code: 'PGRST204', message: 'diner_label' }), 'roundKey: columna ausente → se reintenta sin la clave')
+  const ordenes = await leer('app/api/orders/route.ts')
+  check(/const claveRonda = claveRondaValida\(roundKey, !!mesaPedido\)\s*if \(mesaPedido && claveRonda\) \{\s*const previa = await buscarRondaPorClave\(supabase as any, contextOrgId, mesaPedido\.id, claveRonda\)\s*if \(previa\) \{[\s\S]{0,500}\} else \{[\s\S]{0,120}\}\s*\} else \{\s*\/\/ Sin mesa o sin clave: exactamente como antes\./.test(ordenes), '/api/orders: misma roundKey en la mesa → devuelve la ronda ya creada (con su else de siempre)')
+  check(/\.\.\.\(claveRonda && \{ round_key: claveRonda \}\)/.test(ordenes), '/api/orders: la ronda guarda su round_key')
+  check(/\} else if \(orderError && rechazaClaveRonda\(orderError\)\) \{[\s\S]{0,500}\} else if \(orderError && rechazaComensal\(orderError\)\)/.test(ordenes), '/api/orders: sin la columna, reintento sin la clave')
+  check(/if \(orderError && mesaPedido && claveRonda && esRondaDuplicada\(orderError\)\) \{[\s\S]{0,700}\} else \{\s*\/\/ Sin choque de la clave de ronda: el error \(o el éxito\) de siempre\./.test(ordenes), '/api/orders: choque simultáneo (23505) → la ronda de la otra petición, con su else de siempre')
+  const rondaSrc = await leer('lib/orders/rondaMesa.ts')
+  check(/\.eq\('organization_id', organizationId\)\s*\.eq\('restaurant_table_id', mesaId\)\s*\.eq\('round_key', roundKey\)/.test(rondaSrc), 'buscarRondaPorClave: filtra por la organización del contexto y la mesa validada')
+  const storeSrc = await leer('lib/restaurant/mesaStore.ts')
+  check(/if \(rondaPendienteIgual\(firma, estado\.rondasLocales, estado\.pedido\)\) \{/.test(storeSrc) && storeSrc.indexOf('rondaPendienteIgual(firma, estado.rondasLocales') < storeSrc.indexOf("fetch('/api/orders'"), 'enviarRonda: los mismos platos por confirmar no llegan a /api/orders')
+  check(/roundKey,\s*\}\),/.test(storeSrc) && /claveIdempotencia\(mesa\.mesa, firma\)/.test(storeSrc), 'enviarRonda: manda roundKey (la misma en cada reintento)')
+  check(/if \(enCurso\) \{\s*repetir = true/.test(storeSrc), 'refrescarMesa: una lectura pedida durante otra no se pierde (tras enviar, el estado trae la ronda)')
+  const pedidoSrc = await leer('components/sections/restaurant/mesa/PedidoMesa.tsx')
+  check(/const pie = repetida \?/.test(pedidoSrc) && /data-ronda-por-confirmar=""/.test(pedidoSrc), 'pedido/estado: botón sin reenvío y ronda «por confirmar» a la vista')
+
+  // Migración del ERP: sin el corte «sin sesión → rondas: []» y con el índice de la ronda.
+  const dirMig = join(ERP, 'supabase/migrations')
+  if (await existe(dirMig)) {
+    const archivos = (await readdir(dirMig)).filter((f) => /carta_qr/.test(f)).sort()
+    const sql = (await Promise.all(archivos.map((f) => readFile(join(dirMig, f), 'utf8')))).join('\n')
+    const defs = [...sql.matchAll(/create or replace function public\.fn_mesa_pedido_publico\([\s\S]*?\n\$f\$;/gi)]
+    const ultima = defs.length ? defs[defs.length - 1][0] : ''
+    check(ultima !== '' && !/if c\.session_id is null then\s*return/.test(ultima), 'fn_mesa_pedido_publico: sin sesión ya no corta antes de las rondas por confirmar')
+    check(/'sesion', case when c\.session_id is null then null/.test(ultima), 'fn_mesa_pedido_publico: sin sesión, sesion = null')
+    check(!/wo\.created_at >= coalesce\(c\.opened_at/.test(ultima), 'fn_mesa_pedido_publico: la ronda enviada antes de abrir la sesión no queda fuera')
+    check(/create unique index if not exists idx_web_orders_round_key[\s\S]{0,200}where round_key is not null and status not in \('cancelled', 'rejected', 'expired'\)/.test(sql), 'migración: índice único de la ronda entre pedidos vivos')
+  } else {
+    notas.push(`Sin el ERP en ${ERP}: no se revisa la migración de la ronda por confirmar.`)
   }
 }
 

@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import type { WebsitePageSection } from '@/types/database';
 import type { AvisoLienzo } from './SeccionVaciaLienzo';
 
+/** Evento del navegador con el que el bridge pide un paso a la Carta QR (PasosMesa lo escucha). */
+export const EVENTO_PASO_LIENZO = 'goadmin:paso-mesa';
+
 /**
  * PreviewBridge (FASE 12.1)
  *
@@ -14,6 +17,8 @@ import type { AvisoLienzo } from './SeccionVaciaLienzo';
  * Protocolo:
  *   Editor → sitio:  { type: 'goadmin:preview', sections: [...] }
  *   Editor → sitio:  { type: 'goadmin:scroll', sectionId }
+ *   Editor → sitio:  { type: 'goadmin:paso', sectionId }  (Carta QR por pasos: muestra el paso
+ *                    de esa sección; encabezado y pie, la bienvenida. Otras páginas lo ignoran)
  *   Sitio → editor:  { type: 'goadmin:select', sectionId }   (clic en sección)
  *   Sitio → editor:  { type: 'goadmin:ready' }               (al montar)
  *
@@ -211,6 +216,12 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
         case 'goadmin:scroll':
           if (typeof e.data.sectionId === 'string') {
             scrollToSection(e.data.sectionId);
+          }
+          break;
+        case 'goadmin:paso':
+          // Lo resuelve PasosMesa (solo existe en la Carta QR en modo mesa): sin él, nadie escucha.
+          if (typeof e.data.sectionId === 'string') {
+            window.dispatchEvent(new CustomEvent(EVENTO_PASO_LIENZO, { detail: { sectionId: e.data.sectionId.slice(0, 128) } }));
           }
           break;
         case 'goadmin:select':

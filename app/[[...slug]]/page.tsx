@@ -47,6 +47,7 @@ import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { redirect } from 'next/navigation'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
 import { cartaQrRecibeMesa, esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
+import { pasosDisponibles, resolverPaso } from '@/lib/restaurant/pasosMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 
 export const dynamic = 'force-dynamic'
@@ -187,7 +188,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       ? await getPaginaPublica(organization.id, 'carta-qr', branchId, () => getWebsitePageBySlug(organization.id, 'carta-qr', branchId))
       : null
     if (refQr && cartaQrRecibeMesa(paginaQr)) {
-      redirect(conPrefijo(`/carta-qr?mesa=${encodeURIComponent(refQr)}`, prefijo))
+      // Entra por la bienvenida SOLA (Carta QR por pasos): nada de la carta ni de las barras debajo.
+      redirect(conPrefijo(`/carta-qr?mesa=${encodeURIComponent(refQr)}&paso=bienvenida`, prefijo))
     } else {
       // Sin página Carta QR, o sin «Pedido de la mesa» visible en ella: la carta de siempre con la mesa.
     }
@@ -443,9 +445,15 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // Carta QR (tipo `carta_qr`, o /carta-qr con secciones de mesa): el layout en «modo mesa»,
     // también en el lienzo del editor. Cualquier otra página: `false`, el layout de siempre.
     const modoMesa = esPaginaModoMesa(page)
+    // Carta QR por pasos (lib/restaurant/pasosMesa.ts): un paso a la vez, el de `?paso=` si existe
+    // en la página (si no, la bienvenida). Lo resuelve el servidor para pintar ya un solo paso.
+    const disponiblesMesa = modoMesa ? pasosDisponibles(page.website_page_sections) : null
+    const pasosMesa = disponiblesMesa
+      ? { inicial: resolverPaso(sp?.paso, disponiblesMesa.pasos), pasos: disponiblesMesa.pasos, mesero: disponiblesMesa.mesero }
+      : null
 
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition} modoMesa={modoMesa}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition} modoMesa={modoMesa} pasosMesa={pasosMesa}>
         <JsonLd data={[
           buildOrganizationJsonLd({
             name: organization.name,

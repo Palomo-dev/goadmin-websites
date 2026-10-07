@@ -15,6 +15,9 @@
  * - La ronda por enviar: el carrito del sitio de esa sede (lib/cart.ts), con el comensal de
  *   cada línea. Se envía con POST /api/orders («Comer aquí» con la mesa y el comensal).
  * - Pantalla: el hash (#pedido, #estado, #cuenta, #pagar, #valorar), así «atrás» funciona.
+ *   En la Carta QR por pasos (modo mesa, lib/restaurant/pasosMesa.ts) manda `?paso=` en su lugar:
+ *   un paso a la vez, con su entrada en el historial. Cambiar de paso no recarga datos: el
+ *   almacén es el mismo en todos.
  * - Comensal propio: localStorage por mesa («Yo» por defecto).
  */
 
@@ -24,14 +27,31 @@ import { getCartKey } from '@/lib/utils'
 import {
   MENSAJES_MESA,
   claveComensal,
+  claveRondaEnVuelo,
   claveRondasEnviadas,
+  claveRondasLocales,
+  firmaRonda,
+  fusionarRondasLocales,
   parseCuentaMesa,
   parsePedidoMesa,
+  parseRondasLocales,
+  rondaPendienteIgual,
   sanearComensal,
+  TEXTO_POR_CONFIRMAR,
   type CuentaMesa,
+  type LineaMesa,
+  type RondaLocal,
   type ModoDivision,
   type PedidoMesa,
 } from '@/lib/restaurant/mesa-modelo'
+import {
+  pantallaDePaso,
+  pasoAnterior,
+  puedeIrAPaso,
+  resolverPaso,
+  type PasoMesa,
+  type PasosDisponibles,
+} from '@/lib/restaurant/pasosMesa'
 
 export type PantallaMesa = '' | 'pedido' | 'estado' | 'cuenta' | 'pagar' | 'valorar'
 const PANTALLAS: readonly PantallaMesa[] = ['pedido', 'estado', 'cuenta', 'pagar', 'valorar']
@@ -112,6 +132,17 @@ export interface EstadoMesaQR {
    * vista: la barra «Ver pedido de la mesa» se esconde (lámina 01, sin barra en la bienvenida).
    */
   botonesPortadaALaVista: boolean
+  /**
+   * Rondas que este celular envió y el equipo aún no confirma: se ven de inmediato como «por
+   * confirmar» (también con la mesa sin sesión) y no dejan reenviar los mismos platos.
+   */
+  rondasLocales: RondaLocal[]
+  /** Carta QR por pasos: el paso actual (`null` = página de siempre, todas las secciones apiladas). */
+  paso: PasoMesa | null
+  /** Pasos que existen en la página (según sus secciones visibles). `null` fuera de los pasos. */
+  pasos: PasosDisponibles | null
+  /** Lienzo del editor: el paso lo pide el editor y las secciones se pintan en línea. */
+  pasosEnLienzo: boolean
 }
 
 const inicial: EstadoMesaQR = {
@@ -140,6 +171,10 @@ const inicial: EstadoMesaQR = {
   seleccionPago: null,
   avisosDuenio: null,
   botonesPortadaALaVista: false,
+  rondasLocales: [],
+  paso: null,
+  pasos: null,
+  pasosEnLienzo: false,
 }
 
 let estado: EstadoMesaQR = inicial
@@ -199,6 +234,10 @@ export function registrarSeccionMesa(opciones: {
   vigilando = true
 
   const leerHash = () => {
+    if (estado.pasos) {
+      // Carta QR por pasos: la pantalla la da `?paso=` (iniciarPasosMesa), no el hash.
+      return
+    }
     const h = window.location.hash.replace(/^#/, '') as PantallaMesa
     setMesaQR({ pantalla: (PANTALLAS as readonly string[]).includes(h) ? h : '' })
   }
@@ -252,7 +291,12 @@ export function fijarMesa(mesa: MesaGuardada | null) {
       comensal = 'Yo'
     }
   }
-  setMesaQR({ mesa, comensal, pedido: mesa ? estado.pedido : null, cuenta: mesa ? estado.cuenta : null })
+  setMesaQR({ mesa, comensal, pedido: mesa ? estado.pedido : null, cuenta: mesa ? estado.cuenta : null, rondasLocales: mesa ? leerRondasLocales(mesa.mesa) : [] })
+  if (!mesa) {
+    servidor = { pedido: null, cuenta: null }
+  } else {
+    // Otra mesa o la misma: lo de la base se vuelve a leer abajo.
+  }
   if (mesa) {
     void refrescarMesa()
     if (!temporizador) {
@@ -280,8 +324,104 @@ export function fijarComensal(nombre: string) {
 
 // ─── Navegación ──────────────────────────────────────────────────────────────────────────────
 
-export function irA(pantalla: PantallaMesa) {
+/** Estado del historial de un paso: de dónde se vino, para que ← vuelva con history.back(). */
+interface EstadoHistorialPaso {
+  pasoMesa?: PasoMesa
+  pasoMesaDesde?: PasoMesa
+}
+
+function urlConPaso(paso: PasoMesa): string {
+  const url = new URL(window.location.href)
+  url.searchParams.set('paso', paso)
+  url.hash = ''
+  return url.pathname + url.search
+}
+
+/**
+ * Arranca la Carta QR por pasos (la llama PasosMesa al montarse y cada vez que cambian las
+ * secciones). El paso sale de `?paso=` (o del hash de una pantalla, enlaces viejos); uno que no
+ * existe en la página cae en el de inicio y la URL se corrige sin entrada nueva en el historial.
+ */
+export function iniciarPasosMesa(disponibles: PasosDisponibles, lienzo: boolean) {
   if (typeof window === 'undefined') return
+  const primera = estado.pasos === null
+  const params = new URLSearchParams(window.location.search)
+  const hash = window.location.hash.replace(/^#/, '')
+  const pedido = primera
+    ? params.get('paso') ?? ((PANTALLAS as readonly string[]).includes(hash) ? hash : null) ?? (estado.pantalla || null)
+    : estado.paso
+  const paso = resolverPaso(pedido, disponibles.pasos)
+  setMesaQR({ pasos: disponibles, paso, pasosEnLienzo: lienzo, pantalla: lienzo ? '' : pantallaDePaso(paso) })
+  if (!primera || lienzo) return
+  if (params.get('paso') !== paso || window.location.hash) {
+    history.replaceState({ ...(history.state ?? {}), pasoMesa: paso }, '', urlConPaso(paso))
+  }
+  window.addEventListener('popstate', () => {
+    if (!estado.pasos || estado.pasosEnLienzo) return
+    const p = resolverPaso(new URLSearchParams(window.location.search).get('paso'), estado.pasos.pasos)
+    if (p !== estado.paso) setMesaQR({ paso: p, pantalla: pantallaDePaso(p), confirmarAbierto: false, servicioAbierto: false })
+  })
+}
+
+/** El lienzo del editor pide un paso (PreviewBridge → PasosMesa): sin historial ni URL. */
+export function fijarPasoLienzo(paso: PasoMesa) {
+  if (!estado.pasos) return
+  setMesaQR({ paso: resolverPaso(paso, estado.pasos.pasos), pantalla: '' })
+}
+
+/**
+ * Va a un paso de la Carta QR. Solo si existe en la página y la transición está permitida
+ * (TRANSICIONES_MESA): si no, no hace nada y lo dice. Devuelve si fue.
+ */
+export function irAPaso(destino: PasoMesa, opciones: { reemplazar?: boolean } = {}): boolean {
+  if (typeof window === 'undefined' || !estado.pasos || !estado.paso) return false
+  const desde = estado.paso
+  if (!puedeIrAPaso(desde, destino, estado.pasos.pasos)) {
+    console.warn('[Carta QR] paso no permitido', { desde, destino })
+    return false
+  }
+  if (estado.pasosEnLienzo) {
+    setMesaQR({ paso: destino, pantalla: '' })
+    return true
+  }
+  if (destino !== desde) {
+    const st: EstadoHistorialPaso = { ...(history.state ?? {}), pasoMesa: destino, pasoMesaDesde: desde }
+    if (opciones.reemplazar) history.replaceState(st, '', urlConPaso(destino))
+    else history.pushState(st, '', urlConPaso(destino))
+  } else {
+    // Ya está en ese paso: nada que apilar en el historial.
+  }
+  setMesaQR({ paso: destino, pantalla: pantallaDePaso(destino) })
+  return true
+}
+
+/**
+ * ← atrás de una pantalla de la mesa. Por pasos: si se llegó desde el paso anterior, history.back()
+ * (el botón atrás del celular y la flecha hacen lo mismo); si se entró directo (recarga, enlace),
+ * se reemplaza por el paso anterior sin salir del sitio. Sin pasos, `sinPasos()`: lo de siempre.
+ */
+export function atrasMesa(sinPasos: () => void) {
+  if (estado.pasos && estado.paso && !estado.pasosEnLienzo) {
+    const destino = pasoAnterior(estado.paso, estado.pasos.pasos)
+    const st = (history.state ?? {}) as EstadoHistorialPaso
+    if (st.pasoMesaDesde === destino) history.back()
+    else irAPaso(destino, { reemplazar: true })
+  } else {
+    sinPasos()
+  }
+}
+
+export function irA(pantalla: PantallaMesa | PasoMesa, opciones: { reemplazar?: boolean } = {}) {
+  if (typeof window === 'undefined') return
+  if (estado.pasos && estado.paso) {
+    // Carta QR por pasos: «''» (seguir pidiendo, volver a la carta) es el paso de la carta.
+    irAPaso(pantalla === '' ? 'carta' : pantalla, opciones)
+    return
+  } else if (pantalla === 'bienvenida' || pantalla === 'carta' || pantalla === 'horario') {
+    // Sin pasos no hay pantalla para esto: la carta y la portada están en la misma página.
+    irA('')
+    return
+  }
   if (pantalla === '') {
     if (window.location.hash) {
       history.pushState(null, '', window.location.pathname + window.location.search)
@@ -331,11 +471,79 @@ export function mensajeMesa(motivo: unknown): string {
   return (typeof motivo === 'string' && MENSAJES_MESA[motivo]) || MENSAJES_MESA.ERROR
 }
 
-let refrescando = false
-export async function refrescarMesa(conCuenta = false) {
+// ─── Lo que devolvió la base + las rondas de este celular ────────────────────────────────────
+
+/** Último pedido y cuenta tal como los devolvió la base (sin las rondas locales encima). */
+let servidor: { pedido: PedidoMesa | null; cuenta: CuentaMesa | null } = { pedido: null, cuenta: null }
+
+function leerRondasLocales(mesaId: string): RondaLocal[] {
+  try {
+    return parseRondasLocales(JSON.parse(window.localStorage.getItem(claveRondasLocales(mesaId)) || '[]'))
+  } catch {
+    return []
+  }
+}
+
+function guardarRondasLocales(locales: RondaLocal[]) {
+  if (!estado.mesa) return
+  try {
+    window.localStorage.setItem(claveRondasLocales(estado.mesa.mesa), JSON.stringify(locales))
+  } catch {
+    /* sin almacenamiento: valen mientras la pestaña siga abierta */
+  }
+}
+
+/** Publica pedido y cuenta con las rondas locales que la base aún no muestra. */
+function recomponer(locales: RondaLocal[] = estado.rondasLocales) {
+  const ahora = Date.now()
+  const mesaPublica = servidor.pedido?.mesa ?? (estado.mesa
+    ? { id: estado.mesa.mesa, nombre: estado.mesa.nombre || 'Tu mesa', zona: estado.mesa.zona ?? null, sedeId: estado.mesa.sede ?? null, sede: estado.mesa.nombreSede ?? null }
+    : null)
+  const p = fusionarRondasLocales(servidor.pedido, locales, mesaPublica, ahora)
+  const c = servidor.cuenta ? fusionarRondasLocales(servidor.cuenta, locales, null, ahora) : null
+  const vigentes = p.locales
+  if (vigentes.length !== estado.rondasLocales.length || vigentes.some((l, i) => l !== estado.rondasLocales[i])) guardarRondasLocales(vigentes)
+  setMesaQR({
+    pedido: p.pedido,
+    rondasLocales: vigentes,
+    ...(c ? { cuenta: c.pedido as CuentaMesa } : {}),
+  })
+}
+
+let enCurso: Promise<void> | null = null
+let repetir = false
+let repetirConCuenta = false
+
+/**
+ * Lee el pedido (o la cuenta) de la mesa. Si ya hay una lectura en curso, no se pierde la nueva:
+ * se repite al terminar (tras enviar una ronda, el estado tiene que traerla, no la de hace 8 s).
+ */
+export function refrescarMesa(conCuenta = false): Promise<void> {
+  if (!estado.mesa) return Promise.resolve()
+  if (enCurso) {
+    repetir = true
+    repetirConCuenta = repetirConCuenta || conCuenta
+    return enCurso
+  }
+  enCurso = (async () => {
+    let cuenta = conCuenta
+    try {
+      do {
+        repetir = false
+        await leerMesaUnaVez(cuenta)
+        cuenta = repetirConCuenta
+        repetirConCuenta = false
+      } while (repetir)
+    } finally {
+      enCurso = null
+    }
+  })()
+  return enCurso
+}
+
+async function leerMesaUnaVez(conCuenta: boolean) {
   const mesa = estado.mesa
-  if (!mesa || refrescando) return
-  refrescando = true
+  if (!mesa) return
   try {
     const quiereCuenta = conCuenta || estado.pantalla === 'cuenta' || estado.pantalla === 'pagar' || estado.pantalla === 'valorar'
     const res = await fetch(urlMesa(quiereCuenta ? 'cuenta' : 'pedido')!, { cache: 'no-store' })
@@ -343,18 +551,24 @@ export async function refrescarMesa(conCuenta = false) {
       const data = await res.json()
       if (quiereCuenta) {
         const cuenta = parseCuentaMesa(data)
-        if (cuenta) setMesaQR({ cuenta, pedido: cuenta, sinConexion: false })
+        if (cuenta) {
+          servidor = { pedido: cuenta, cuenta }
+          setMesaQR({ sinConexion: false })
+          recomponer()
+        }
       } else {
         const pedido = parsePedidoMesa(data)
-        if (pedido) setMesaQR({ pedido, sinConexion: false })
+        if (pedido) {
+          servidor = { ...servidor, pedido }
+          setMesaQR({ sinConexion: false })
+          recomponer()
+        }
       }
     } else {
       // 404 (mesa que ya no existe), 429 o 503: se conserva lo último que se vio.
     }
   } catch {
     setMesaQR({ sinConexion: typeof navigator !== 'undefined' && navigator.onLine === false })
-  } finally {
-    refrescando = false
   }
 }
 
@@ -388,8 +602,11 @@ export function leerRonda() {
   } catch {
     lineas = []
   }
-  setMesaQR({
-    ronda: lineas.map((l) => ({
+  setMesaQR({ ronda: aRonda(lineas) })
+}
+
+function aRonda(lineas: LineaCarritoGuardada[]): LineaRonda[] {
+  return lineas.map((l) => ({
       id: l.id,
       productId: Number(l.productId ?? l.id),
       nombre: String(l.name ?? 'Producto'),
@@ -402,8 +619,7 @@ export function leerRonda() {
       nota: l.notes || null,
       comensal: sanearComensal(l.diner) ?? 'Yo',
       imagen: l.imageUrl || null,
-    })),
-  })
+    }))
 }
 
 function escribirCarrito(lineas: LineaCarritoGuardada[]) {
@@ -437,19 +653,66 @@ export function totalRonda(ronda: LineaRonda[]): number {
   return ronda.reduce((s, l) => s + l.precio * l.cantidad, 0)
 }
 
+/** Firma de la ronda por enviar (los platos del carrito con su comensal). */
+export function firmaRondaActual(ronda: LineaRonda[] = estado.ronda): string {
+  return firmaRonda(ronda)
+}
+
+/**
+ * Clave de idempotencia de la ronda (`roundKey`): la misma mientras la ronda sea la misma y no se
+ * haya confirmado su envío. Si la respuesta se pierde y el comensal reintenta, /api/orders
+ * reconoce la clave y devuelve el pedido ya creado en vez de crear otro.
+ */
+function claveIdempotencia(mesaId: string, firma: string): string {
+  const nueva = (): string =>
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 14)}`
+  try {
+    const guardada = JSON.parse(window.localStorage.getItem(claveRondaEnVuelo(mesaId)) || 'null') as { firma?: unknown; key?: unknown; creada?: unknown } | null
+    if (guardada && guardada.firma === firma && typeof guardada.key === 'string' && typeof guardada.creada === 'number' && Date.now() - guardada.creada < 30 * 60 * 1000) {
+      return guardada.key
+    }
+    const key = nueva()
+    window.localStorage.setItem(claveRondaEnVuelo(mesaId), JSON.stringify({ firma, key, creada: Date.now() }))
+    return key
+  } catch {
+    return nueva()
+  }
+}
+
+function olvidarClaveIdempotencia(mesaId: string) {
+  try {
+    window.localStorage.removeItem(claveRondaEnVuelo(mesaId))
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 /**
  * Envía la ronda por enviar a la mesa: POST /api/orders con «Comer aquí», la mesa del QR, el
- * comensal de cada línea y sin correo. El servidor recalcula precios, impuestos y stock.
+ * comensal de cada línea, sin correo y con su `roundKey`. El servidor recalcula precios,
+ * impuestos y stock. Si esos mismos platos ya se enviaron y esperan confirmación, no se reenvían.
  */
 export async function enviarRonda(): Promise<void> {
   const mesa = estado.mesa
   const crudo = leerCarritoCrudo()
   if (!mesa || crudo.length === 0 || estado.enviando) return
+  const lineasRonda = aRonda(crudo)
+  const firma = firmaRonda(lineasRonda)
+  if (rondaPendienteIgual(firma, estado.rondasLocales, estado.pedido)) {
+    // Doble envío de lo mismo: la ronda ya está con el equipo, se muestra su estado.
+    setMesaQR({ confirmarAbierto: false })
+    mostrarAviso({ tipo: 'info', titulo: 'Esa ronda ya la enviaste', texto: TEXTO_POR_CONFIRMAR })
+    irA('estado')
+    return
+  }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     setMesaQR({ sinConexion: true, confirmarAbierto: false, errorEnvio: true })
     return
   }
   setMesaQR({ enviando: true, errorEnvio: false })
+  const roundKey = claveIdempotencia(mesa.mesa, firma)
   const numero = (estado.pedido?.rondas.length ?? 0) + 1
   try {
     const res = await fetch('/api/orders', {
@@ -477,6 +740,7 @@ export async function enviarRonda(): Promise<void> {
         deliveryType: 'dine_in',
         tableRef: mesa.mesa,
         dinerLabel: estado.comensal,
+        roundKey,
       }),
     })
     const data = (await res.json().catch(() => ({}))) as Record<string, any>
@@ -507,8 +771,22 @@ export async function enviarRonda(): Promise<void> {
     } catch {
       /* sin almacenamiento */
     }
+    olvidarClaveIdempotencia(mesa.mesa)
     escribirCarrito([])
     const ahora = new Date()
+    // Se ve ya, con sus platos y su total, aunque la mesa no tenga sesión (lámina 06).
+    if (typeof data.orderId === 'string' && !estado.rondasLocales.some((l) => l.clave === data.orderId)) {
+      const items: LineaMesa[] = lineasRonda.map((l) => ({
+        id: String(l.id), nombre: l.nombre, cantidad: l.cantidad, total: l.precio * l.cantidad,
+        modificadores: l.modificadores, nota: l.nota, comensal: l.comensal, estado: 'por_confirmar', pagada: false,
+      }))
+      recomponer([...estado.rondasLocales, {
+        clave: data.orderId, creada: ahora.toISOString(), comensal: estado.comensal, items,
+        subtotal: items.reduce((s, l) => s + l.total, 0), firma,
+      }])
+    } else {
+      // Reintento que /api/orders reconoció (misma roundKey): la ronda ya estaba registrada.
+    }
     setMesaQR({
       enviando: false,
       confirmarAbierto: false,

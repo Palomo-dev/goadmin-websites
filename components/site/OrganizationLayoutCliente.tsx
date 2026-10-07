@@ -31,6 +31,7 @@ import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
 import { ModoMesaProvider } from './ModoMesaContext'
+import { PasosMesaProvider, type PasosMesaServidor } from './PasosMesaContext'
 import { variablesColorMesa } from '@/lib/restaurant/modoMesa'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { contraste } from '@/lib/website/v2/contrasteColor'
@@ -103,6 +104,11 @@ export interface OrganizationLayoutProps {
    * con el pie reducido a «Carta con tecnología GO Admin». Ausente o `false` = el layout de siempre.
    */
   modoMesa?: boolean
+  /**
+   * Carta QR por pasos (lib/restaurant/pasosMesa.ts): el paso que pidió la URL y los que existen.
+   * Solo con `modoMesa`. Ausente = sin pasos (todas las secciones apiladas, como siempre).
+   */
+  pasosMesa?: PasosMesaServidor | null
 }
 
 export function OrganizationLayoutCliente({
@@ -132,6 +138,7 @@ export function OrganizationLayoutCliente({
   codigoPropio,
   extrasShell,
   modoMesa = false,
+  pasosMesa = null,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
@@ -275,6 +282,7 @@ export function OrganizationLayoutCliente({
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
     <EncabezadoPieProvider value={valorEncabezadoPie}>
     <ModoMesaProvider value={modoMesa}>
+    <PasosMesaProvider value={modoMesa ? pasosMesa : null}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -431,6 +439,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </PasosMesaProvider>
     </ModoMesaProvider>
     </EncabezadoPieProvider>
     </TemaColoresProvider>
