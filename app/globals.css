@@ -122,6 +122,19 @@
   }
 }
 
+/* Barra fija «Ver pedido de la mesa» de la Carta QR (components/sections/restaurant/mesa/PedidoMesa.tsx):
+   mientras se ve, publica su alto real (botón + área segura de iOS) en --barra-pedido-mesa-h y
+   marca el body; la raíz del sitio reserva ese alto al final de la página (con su fondo, no el del
+   body) para que ningún contenido quede debajo. Sin la barra (sin rondas ni platos, o de md en
+   adelante, donde no se pinta) no se reserva nada. El pie de la mesa no suma entonces su propia
+   área segura: la reserva de la barra ya la incluye. */
+body[data-barra-pedido-mesa] [data-raiz-sitio] {
+  padding-bottom: var(--barra-pedido-mesa-h, 0px);
+}
+body[data-barra-pedido-mesa] [data-pie-mesa] {
+  padding-bottom: 2rem;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────────────────────
    Estilo del editor del ERP (Diseño › Estilo del sitio y estilo por sección).
    Todas las reglas cuelgan de un atributo `data-*` que solo se pone cuando el sitio o la sección

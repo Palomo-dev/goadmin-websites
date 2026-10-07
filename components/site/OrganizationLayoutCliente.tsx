@@ -281,6 +281,9 @@ export function OrganizationLayoutCliente({
       style={cssVariables}
       {...temaVars.datos}
       {...atributosShell}
+      // Raíz del sitio: aquí se reserva el alto de la barra «Ver pedido de la mesa» con el fondo
+      // del sitio (app/globals.css, `body[data-barra-pedido-mesa] [data-raiz-sitio]`).
+      data-raiz-sitio=""
       suppressHydrationWarning
     >
       {hojaFuentesTema && <link rel="stylesheet" href={hojaFuentesTema} />}

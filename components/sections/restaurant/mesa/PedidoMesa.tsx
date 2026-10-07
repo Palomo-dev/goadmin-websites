@@ -102,13 +102,50 @@ export function PedidoMesa(props: PropsSeccionMesa) {
 
 // ─── Barra «Ver pedido de la mesa» (lámina 02) ───────────────────────────────────────────────
 
+/**
+ * Reserva al final de la página el alto real de la barra fija mientras se ve: lo publica en
+ * `--barra-pedido-mesa-h` y marca el body (`data-barra-pedido-mesa`); app/globals.css pone ese
+ * alto como padding inferior de la raíz del sitio. El alto medido es el del contenedor fijo: el
+ * botón más su margen inferior, que ya es `max(1rem, env(safe-area-inset-bottom))`. De md en
+ * adelante la barra no se pinta (alto 0) y no se reserva nada; al desaparecer, se quita la reserva.
+ */
+function useReservaAlFinal(el: HTMLElement | null) {
+  useEffect(() => {
+    if (!el) return
+    const raiz = document.documentElement
+    const cuerpo = document.body
+    const quitar = () => {
+      cuerpo.removeAttribute('data-barra-pedido-mesa')
+      raiz.style.removeProperty('--barra-pedido-mesa-h')
+    }
+    const medir = () => {
+      const alto = Math.ceil(el.getBoundingClientRect().height)
+      if (alto > 0) {
+        raiz.style.setProperty('--barra-pedido-mesa-h', `${alto}px`)
+        cuerpo.setAttribute('data-barra-pedido-mesa', '')
+      } else {
+        quitar()
+      }
+    }
+    medir()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(medir)
+    ro?.observe(el)
+    return () => {
+      ro?.disconnect()
+      quitar()
+    }
+  }, [el])
+}
+
 function BarraVerPedido({ ronda, pedido }: { ronda: LineaRonda[]; pedido: DatosPedido | null }) {
+  const [barra, setBarra] = useState<HTMLDivElement | null>(null)
+  useReservaAlFinal(barra)
   const unidades = ronda.reduce((s, l) => s + l.cantidad, 0)
   const totalLocal = totalRonda(ronda)
   if (unidades === 0 && (pedido?.rondas.length ?? 0) === 0) return null
   const total = unidades > 0 ? totalLocal : pedido?.total ?? 0
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+    <div ref={setBarra} data-barra-ver-pedido="" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
       <button
         type="button"
         onClick={() => irA('pedido')}

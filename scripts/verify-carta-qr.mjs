@@ -293,6 +293,10 @@ if (await existe(dirMig)) {
   check(/const modoMesa = esPaginaModoMesa\(page\)/.test(pagina) && /modoMesa=\{modoMesa\}/.test(pagina), 'page.tsx: la página del constructor pasa modoMesa al layout')
   const vista = await leer('components/sections/restaurant/MenuFullView.tsx')
   check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
+  // Barra fija «Ver pedido de la mesa»: reserva su alto real al final de la página solo mientras se ve.
+  const pedidoSrc = await leer('components/sections/restaurant/mesa/PedidoMesa.tsx')
+  check(/useReservaAlFinal\(barra\)/.test(pedidoSrc) && /<div ref=\{setBarra\} data-barra-ver-pedido=""/.test(pedidoSrc), 'barra del pedido: mide su contenedor fijo (useReservaAlFinal) para reservar su alto')
+  check(/body\[data-barra-pedido-mesa\] \[data-raiz-sitio\] \{\s*padding-bottom: var\(--barra-pedido-mesa-h, 0px\);/.test(css) && /data-raiz-sitio=""/.test(layout), 'barra del pedido: la raíz del sitio reserva --barra-pedido-mesa-h solo con la barra visible')
   for (const f of ['CartaQrMenu', 'PedidoMesa', 'CuentaMesa', 'comun', 'ServicioMesa', 'ValorarVisita']) {
     const src = await leer(`components/sections/restaurant/mesa/${f}.tsx`)
     check(!/\btext-white\b/.test(src) && !/\bbg-white\b/.test(src), `${f}.tsx: blanco fijo (text-white / bg-white): usa C.sobrePrimario o las superficies del tema`)
