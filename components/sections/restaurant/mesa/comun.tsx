@@ -13,6 +13,7 @@ import type { MesaGuardada } from '@/lib/restaurant/mesaQR'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { ETIQUETA_ESTADO_RONDA, type EstadoRonda } from '@/lib/restaurant/mesa-modelo'
 import { atrasMesa, fijarMesa, irA, registrarSeccionMesa, useMesaQRStore } from '@/lib/restaurant/mesaStore'
+import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import { C, OK, TITULO, estiloEstado } from './estilo'
 import { MESA_MUESTRA } from './muestra'
 
@@ -158,6 +159,7 @@ export function PantallaMesa({ lienzo, children, pie, ancho = 'max-w-md' }: {
   pie?: ReactNode
   ancho?: string
 }) {
+  const { activo: porPasos } = usePasosMesa()
   if (lienzo) {
     return (
       <div className={`mx-auto flex w-full ${ancho} flex-col overflow-hidden rounded-xl border`} style={{ backgroundColor: C.fondo, borderColor: C.borde, color: C.texto }}>
@@ -166,6 +168,27 @@ export function PantallaMesa({ lienzo, children, pie, ancho = 'max-w-md' }: {
       </div>
     )
   }
+  if (porPasos) {
+    // Carta QR por pasos: la pantalla ES la página (no hay nada debajo). Va en el flujo del
+    // documento, con encabezado y pie `sticky`. Como capa `fixed` encima de una página que se
+    // acababa de encoger (la carta oculta), iOS Safari la pintaba corrida hacia abajo y recibía
+    // los toques en otro sitio: la pantalla quedaba muerta hasta recargar (org 140, Mesa 1).
+    return (
+      <div
+        className="flex min-h-screen flex-col"
+        style={{ backgroundColor: C.fondo, color: C.texto, minHeight: '100dvh' }}
+        data-pantalla-mesa="flujo"
+      >
+        <div className={`mx-auto w-full flex-1 ${ancho}`} data-entrada-paso="">{children}</div>
+        {pie && (
+          <div className="sticky bottom-0 z-10 border-t px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3" style={{ borderColor: C.borde, backgroundColor: C.fondo }}>
+            <div className={`mx-auto w-full ${ancho}`}>{pie}</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+  // Sin pasos (la página de siempre, con las secciones apiladas): capa a pantalla completa.
   return (
     <div className="fixed inset-0 z-[60] flex flex-col" style={{ backgroundColor: C.fondo, color: C.texto }} role="dialog" aria-modal="true">
       <div className="flex-1 overflow-y-auto">

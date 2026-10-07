@@ -11,11 +11,13 @@
  * instancia propia de <AvisosMesa />, montada antes que las secciones, para que existan en
  * cualquier paso (también en la bienvenida, que no tiene la barra de la mesa).
  *
- * Cada paso arranca arriba, con un fundido corto (sin animación con prefers-reduced-motion).
+ * Cada paso arranca arriba, con un fundido corto del contenido (sin él con prefers-reduced-motion).
+ * Las pantallas (pedido, estado, cuenta, pagar, valorar) van en el flujo del documento: ver
+ * PantallaMesa en comun.tsx.
  * En el lienzo del editor, el paso lo pide el editor (`goadmin:paso`, PreviewBridge).
  */
 
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { EVENTO_PASO_LIENZO, useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { usePasosMesa } from '@/components/site/PasosMesaContext'
 import { atrasMesa, fijarPasoLienzo, iniciarPasosMesa } from '@/lib/restaurant/mesaStore'
@@ -46,7 +48,14 @@ function pegada(s: SeccionPaso, lado: 'padding_top' | 'padding_bottom'): boolean
   if (s.section_type === 'menu_full' && lado === 'padding_bottom') return false
   return PEGADAS.has(s.section_type) || PEGADAS.has(`${s.section_type}:${s.section_variant ?? ''}`)
 }
+// En el navegador, antes de pintar; en el servidor, sin el aviso de useLayoutEffect.
+const useAntesDePintar = typeof window === 'undefined' ? useEffect : useLayoutEffect
+
 const ESTILO_PEGADAS = `
+@keyframes paso-mesa-entra { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  [data-pasos-mesa] [data-entrada-paso] { animation: paso-mesa-entra 160ms ease-out; }
+}
 [data-pasos-mesa] > [data-sin-relleno-arriba] > section[data-section-id] { padding-top: 0; }
 [data-pasos-mesa] > [data-sin-relleno-abajo] > section[data-section-id] { padding-bottom: 0; }
 `
@@ -56,24 +65,20 @@ export function PasosMesa<S extends SeccionPaso>({ sections, render }: { section
   const disponibles = useMemo(() => pasosDisponibles(sections), [sections])
   const { paso: pasoActual } = usePasosMesa()
   const paso: PasoMesa = pasoActual ?? 'bienvenida'
-  const raiz = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     iniciarPasosMesa(disponibles, preview)
   }, [disponibles, preview])
 
-  // Cada paso arranca arriba, con un fundido corto (solo opacidad: un `transform` en un ancestro
-  // rompería las pantallas `fixed` de la mesa).
+  // Cada paso arranca arriba, ANTES de pintar (sin un cuadro con el desplazamiento del paso
+  // anterior). El fundido es CSS (ESTILO_PEGADAS) sobre el contenido de cada pantalla, nunca sobre
+  // este contenedor: animar la opacidad de un ancestro de capas `fixed` (barra de la mesa, hojas,
+  // avisos) descuadra su pintado y sus toques en iOS Safari.
   const anterior = useRef(paso)
-  useEffect(() => {
+  useAntesDePintar(() => {
     if (anterior.current === paso) return
     anterior.current = paso
-    window.scrollTo({ top: 0 })
-    const el = raiz.current
-    const reducido = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (el && !reducido && typeof el.animate === 'function') {
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' })
-    }
+    window.scrollTo(0, 0)
   }, [paso])
 
   // Lienzo del editor: «muéstrame el paso de esta sección» (encabezado y pie: la bienvenida).
@@ -96,7 +101,7 @@ export function PasosMesa<S extends SeccionPaso>({ sections, render }: { section
   }, [preview, sections])
 
   return (
-    <div ref={raiz} data-pasos-mesa="" data-paso-mesa={paso}>
+    <div data-pasos-mesa="" data-paso-mesa={paso}>
       {/* CSS constante (sin datos de nadie): como HTML para que el `>` no se escape distinto en el servidor. */}
       <style dangerouslySetInnerHTML={{ __html: ESTILO_PEGADAS }} />
       <AvisosMesa />

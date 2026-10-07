@@ -16,7 +16,7 @@
  * restaurante que abre hasta las 23:00 espanta al cliente; mejor no decir nada.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ahoraEnZona, estadoApertura, horarioRevisado, type Apertura, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
 
@@ -31,22 +31,40 @@ export interface EstadoSede {
   hoy: Dia
 }
 
+/**
+ * Firma del contenido de las sedes (id, zona y horario). El efecto depende de ESTO y no de la
+ * identidad del arreglo: quien llama con `[sede]` armado en cada render (la bienvenida de la
+ * Carta QR) provocaba un bucle sin fin (efecto → setEstados → render → arreglo nuevo → efecto),
+ * miles de renders por segundo que en un iPhone dejaban la Carta QR sin responder.
+ */
+export function firmaSedesConHorario(sedes: readonly SedeConHorario[]): string {
+  return sedes.map((s) => `${s.id}|${s.zonaHoraria}|${JSON.stringify(s.horario ?? null)}`).join(';')
+}
+
 /** Estado de cada sede, recalculado cada minuto. `null` antes del montaje. */
 export function useEstadosEnVivo(sedes: SedeConHorario[]): Map<number, EstadoSede> | null {
   const [estados, setEstados] = useState<Map<number, EstadoSede> | null>(null)
+  const firma = firmaSedesConHorario(sedes)
+  const sedesRef = useRef(sedes)
+  sedesRef.current = sedes
   useEffect(() => {
+    let previa = ''
     const calcular = () => {
       const m = new Map<number, EstadoSede>()
-      for (const s of sedes) {
+      for (const s of sedesRef.current) {
         const ahora = ahoraEnZona(s.zonaHoraria)
         m.set(s.id, { apertura: estadoApertura(horarioRevisado(s.horario), ahora), hoy: ahora.dia })
       }
+      // Cada minuto solo hay render si el estado cambió («Abierto» → «Cierra pronto»…).
+      const serie = JSON.stringify([...m])
+      if (serie === previa) return
+      previa = serie
       setEstados(m)
     }
     calcular()
     const id = window.setInterval(calcular, 60_000)
     return () => window.clearInterval(id)
-  }, [sedes])
+  }, [firma])
   return estados
 }
 

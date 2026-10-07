@@ -97,9 +97,12 @@ export function PedidoMesa(props: PropsSeccionMesa) {
     }
     return <PantallaPedido c={c} lienzo pedido={pedido} ronda={ronda} mesaNombre={nombreMesa(mesa)} preview />
   }
+  // Por pasos, la barra «Ver pedido de la mesa» es de la carta (lámina 02): en pedido y estado
+  // la pantalla va en el flujo del documento y la barra fija quedaría encima de su pie.
+  const conBarra = porPasos ? paso === 'carta' : true
   return (
     <>
-      <BarraVerPedido ronda={ronda} pedido={pedido} />
+      {conBarra && <BarraVerPedido ronda={ronda} pedido={pedido} />}
       {pantalla === 'pedido' && <PantallaPedido c={c} lienzo={false} pedido={pedido} ronda={ronda} mesaNombre={nombreMesa(mesa)} preview={preview} />}
       {pantalla === 'estado' && <PantallaEstado c={c} pedido={pedido} mesaNombre={nombreMesa(mesa)} zona={mesa.zona ?? null} sede={mesa.nombreSede ?? null} />}
       <HojaConfirmar c={c} ronda={ronda} numero={(pedido?.rondas.length ?? 0) + 1} />

@@ -117,7 +117,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
   }
 
   return (
-    <div style={{ backgroundColor: C.fondo, color: C.texto }}>
+    <div style={{ backgroundColor: C.fondo, color: C.texto }} data-entrada-paso="">
       <div className="relative h-[230px] w-full overflow-hidden md:h-[320px] md:rounded-xl" style={{ backgroundColor: C.muySuave }}>
         {c.imageUrl ? (
           <Image src={c.imageUrl} alt={c.imageAlt} fill sizes="(min-width: 768px) 960px, 100vw" className="object-cover" unoptimized={!isOptimizableImage(c.imageUrl)} priority />

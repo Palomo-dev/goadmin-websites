@@ -392,7 +392,26 @@ if (await existe(dirMig)) {
   check(/porPasos \? \([\s\S]{0,200}<PasosMesa[\s\S]{0,200}\) : \(\s*<>\{liveSections\.map/.test(prev), 'lienzo: por pasos solo en modo mesa; si no, como siempre')
   const pasosSrc = await leer('components/sections/restaurant/mesa/PasosMesa.tsx')
   check(/hidden=\{!activa\}/.test(pasosSrc), 'PasosMesa: las secciones de otros pasos se ocultan sin desmontarse (el almacén no recarga)')
-  check(/prefers-reduced-motion: reduce/.test(pasosSrc) && /window\.scrollTo\(\{ top: 0 \}\)/.test(pasosSrc) && /\{ opacity: 0 \}, \{ opacity: 1 \}/.test(pasosSrc), 'PasosMesa: cada paso arranca arriba, fundido corto y sin animación con prefers-reduced-motion')
+  check(/@media \(prefers-reduced-motion: no-preference\) \{\s*\[data-pasos-mesa\] \[data-entrada-paso\] \{ animation: paso-mesa-entra 160ms/.test(pasosSrc), 'PasosMesa: fundido corto del contenido, sin él con prefers-reduced-motion')
+
+  // ── Bug de producción (org 140, Mesa 1, iPhone): tras enviar la ronda la pantalla quedó muerta
+  // (≈400 px vacíos arriba, ni la ← respondía) hasta recargar. Tres causas; cada una con su check.
+  // a) Pantallas como capa `fixed` sobre una página que se acababa de encoger (la carta oculta):
+  //    iOS Safari las pintaba corridas y recibía los toques en otro sitio. Por pasos van en el flujo.
+  const comunSrc = await leer('components/sections/restaurant/mesa/comun.tsx')
+  const ramaPasos = /if \(porPasos\) \{([\s\S]*?)\n  \}\n  \/\/ Sin pasos/.exec(comunSrc)?.[1] ?? ''
+  check(ramaPasos !== '' && /data-pantalla-mesa="flujo"/.test(ramaPasos) && !/className="[^"]*\bfixed\b/.test(ramaPasos) && /sticky bottom-0/.test(ramaPasos), 'pantallas por pasos en el flujo del documento (sin capa fixed), pie sticky')
+  check(/\/\/ Sin pasos \(la página de siempre[^\n]*\n\s*return \(\s*<div className="fixed inset-0 z-\[60\]/.test(comunSrc), 'pantallas sin pasos: la capa fixed de siempre')
+  // b) Animar la opacidad del contenedor de los pasos (ancestro de la barra, hojas y avisos fixed).
+  check(!/\.animate\(/.test(pasosSrc) && /useAntesDePintar\(\(\) => \{[\s\S]{0,160}window\.scrollTo\(0, 0\)/.test(pasosSrc), 'PasosMesa: arriba antes de pintar y sin animar el ancestro de capas fixed')
+  const pedidoPasos = await leer('components/sections/restaurant/mesa/PedidoMesa.tsx')
+  check(/const conBarra = porPasos \? paso === 'carta' : true/.test(pedidoPasos) && /\{conBarra && <BarraVerPedido/.test(pedidoPasos), 'por pasos, la barra «Ver pedido» solo en la carta (sin pasos, como siempre)')
+  // c) Bucle de renders: la bienvenida llamaba useEstadosEnVivo([sede]) con un arreglo nuevo en cada
+  //    render y el efecto dependía de su identidad: miles de renders por segundo, sin fin.
+  const apertura = await leer('components/sections/restaurant/EstadoApertura.tsx')
+  const hook = /export function useEstadosEnVivo[\s\S]*?\n\}/.exec(apertura)?.[0] ?? ''
+  check(/\}, \[firma\]\)/.test(hook) && !/\}, \[sedes\]\)/.test(hook) && /const firma = firmaSedesConHorario\(sedes\)/.test(hook), 'useEstadosEnVivo depende del contenido de las sedes (firma), no de la identidad del arreglo')
+  check(/if \(serie === previa\) return/.test(hook), 'useEstadosEnVivo: sin render si el estado no cambió')
   check(/^\s*<AvisosMesa \/>/m.test(pasosSrc), 'PasosMesa: avisos y hoja del mesero en cualquier paso')
   const storeSrc = await leer('lib/restaurant/mesaStore.ts')
   check(/if \(estado\.pasos && estado\.paso\) \{\s*\/\/ Carta QR por pasos[\s\S]{0,200}irAPaso\([\s\S]{0,400}\} else if \(pantalla === 'bienvenida'[\s\S]{0,800}if \(window\.location\.hash !== `#\$\{pantalla\}`\) window\.location\.hash = pantalla/.test(storeSrc), 'irA: por pasos usa ?paso=; sin pasos, el hash de siempre')
