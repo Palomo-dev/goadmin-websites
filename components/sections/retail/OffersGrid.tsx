@@ -35,6 +35,13 @@ interface OffersGridProps {
     selected_category_ids?: number[]
     show_filters?: boolean
     show_search?: boolean
+    // PRODUCT_CARD_INTERACTION_FIELDS (los mismos que lee ProductsGrid)
+    badges?: any[]
+    card_buttons?: any[]
+    buttons_position?: string
+    buttons_layout?: string
+    buttons_full_width?: boolean
+    icon_only?: boolean
     offers?: Array<{
       title: string
       description?: string
@@ -210,6 +217,14 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                     primaryColor={primaryColor}
                     variant="grid"
                     cardStyle={content}
+                    // Botones e insignias del editor, como en products_grid y featured_products.
+                    // Ausentes: la tarjeta usa sus botones e insignias por defecto, como antes.
+                    badges={content.badges}
+                    cardButtons={content.card_buttons}
+                    buttonsPosition={content.buttons_position}
+                    buttonsLayout={content.buttons_layout}
+                    buttonsFullWidth={content.buttons_full_width !== false}
+                    iconOnly={content.icon_only}
                     showBuyNow={showBuyNow}
                     onAddToCart={addToCart}
                     onBuyNow={buyNow}

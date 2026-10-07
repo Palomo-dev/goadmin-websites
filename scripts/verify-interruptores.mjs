@@ -495,6 +495,22 @@ try {
     interruptor({ nombre: `services_list/${v} (datos reales)`, Comp, props: { content: { title: 'S' }, organization: org, data: datosServicios }, clave: 'show_description', marcas: ['DESC-SV'] })
     contiene(`services_list/${v}: sin compare_price mayor, nada tachado`, pintar(Comp, { content: { show_compare_price: true }, organization: org, data: { services: [{ ...servicioSV, compare_price: 85000 }] } }), ['85.000'], ['data-precio-anterior'])
   }
+
+  // ---------------------------------------------------------------- offers: botones e insignias de tarjeta
+  // OffersGrid no pasaba `card_buttons` ni `badges` a la tarjeta: los botones guardados en el
+  // editor no salían. Ahora los pasa como ProductsGrid; sin ellos, los botones por defecto.
+  {
+    const conBotones = { ...propsOfertas, content: { card_buttons: [
+      { action: 'add_to_cart', label: 'AGREGAR-OFERTA', icon: 'Plus', variant: 'solid', size: 'sm', full_width: true },
+      { action: 'buy_now', label: 'COMPRAR-OFERTA', icon: 'ShoppingBag', variant: 'outline', size: 'sm', full_width: true },
+    ] } }
+    contiene('offers/grid: card_buttons del editor', pintar(OffersGrid, conBotones), ['AGREGAR-OFERTA', 'COMPRAR-OFERTA'], ['Comprar ahora'])
+    contiene('offers/grid: sin card_buttons = botones por defecto, como antes', pintar(OffersGrid, propsOfertas), ['>Agregar<', 'Comprar ahora'], ['AGREGAR-OFERTA'])
+    contiene('offers/grid: badges del editor', pintar(OffersGrid, { ...propsOfertas, content: { badges: [{ type: 'custom', label: 'INSIGNIA-OFERTA' }] } }), ['INSIGNIA-OFERTA'])
+    const conBoton = (b) => ({ ...propsOfertas, content: { card_buttons: [b] } })
+    contiene('offers/grid: card_buttons[].open_new_tab', pintar(OffersGrid, conBoton({ action: 'view_detail', open_new_tab: true })), ['data-nueva-pestana'])
+    contiene('offers/grid: card_buttons[].full_width_mobile', pintar(OffersGrid, conBoton({ action: 'view_detail', full_width: false, full_width_mobile: true })), ['w-full sm:w-auto'])
+  }
 } finally {
   await rm(TMP, { recursive: true, force: true })
 }
