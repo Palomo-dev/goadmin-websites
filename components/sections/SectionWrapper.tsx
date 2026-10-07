@@ -49,6 +49,15 @@ const PADDING_X_MAP: Record<string, string> = {
   xl: 'px-8 md:px-16 lg:px-24',
 }
 
+/**
+ * Clase de un mapa de espaciado. `none` vale '' (sin relleno), y '' es falsy: con
+ * `map[k] || fallback` el «Ninguno» del editor caía al relleno por defecto (lg).
+ * Solo se usa el fallback cuando la clave no existe en el mapa.
+ */
+export function claseDe(map: Record<string, string>, clave: string, fallback: string): string {
+  return Object.prototype.hasOwnProperty.call(map, clave) ? map[clave] : fallback
+}
+
 const MARGIN_MAP: Record<string, string> = {
   none: '',
   xs: '2',
@@ -113,9 +122,9 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   // incluso con overlap (sobreescribe el comportamiento automático).
   const pt = overlapHeader
     ? (content?.padding_top && content?.padding_top !== 'lg' ? (ptMap[paddingTop] || '') : '')
-    : (ptMap[paddingTop] || ptMap.lg)
-  const pb = pbMap[paddingBottom] || pbMap.lg
-  const px = PADDING_X_MAP[paddingX] || PADDING_X_MAP.md
+    : claseDe(ptMap, paddingTop, ptMap.lg)
+  const pb = claseDe(pbMap, paddingBottom, pbMap.lg)
+  const px = claseDe(PADDING_X_MAP, paddingX, PADDING_X_MAP.md)
   const mt = overlapHeader
     ? (content?.margin_top && content?.margin_top !== 'none' ? (mtMap[marginTop] || '') : '')
     : (mtMap[marginTop] || '')

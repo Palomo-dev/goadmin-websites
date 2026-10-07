@@ -306,6 +306,23 @@ const { validarDocumentoSitio } = m.documentoSitio
   }
 }
 
+// Relleno «Ninguno» (none = '') no cae al relleno por defecto (bug: `map[k] || lg`).
+{
+  const fuente = await readFile(join(ROOT, 'components/sections/SectionWrapper.tsx'), 'utf8')
+  const m = fuente.match(/export function claseDe\(([^)]*)\)[^{]*\{([\s\S]*?)\n\}/)
+  check(!!m, 'SectionWrapper: falta claseDe')
+  if (m) {
+    const claseDe = new Function('map', 'clave', 'fallback', m[2])
+    const pt = { none: '', lg: 'pt-12 md:pt-16' }
+    check(claseDe(pt, 'none', pt.lg) === '', 'relleno «none» queda sin clase (no cae a lg)')
+    check(claseDe(pt, 'lg', '') === pt.lg, 'relleno «lg» se respeta')
+    check(claseDe(pt, 'raro', pt.lg) === pt.lg, 'un valor desconocido usa el relleno por defecto')
+  }
+  for (const t of ['ptMap[paddingTop] || ptMap.lg', 'pbMap[paddingBottom] || pbMap.lg', 'PADDING_X_MAP[paddingX] || PADDING_X_MAP.md']) {
+    check(!fuente.includes(t), `SectionWrapper: vuelve el patrón que convierte «none» en el defecto: ${t}`)
+  }
+}
+
 if (problemas.length > 0) {
   console.error(`✗ verify-estilo-sitio: ${problemas.length} de ${casos} comprobaciones fallan`)
   for (const p of problemas) console.error(`  - ${p}`)
