@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { MembershipPlanPublic } from '@/lib/supabase/queries'
 import { formatPeriodo } from '@/lib/memberships/periodo'
+import { PrecioAnterior } from '@/components/site/PrecioAnterior'
+import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 
 interface MembershipPlansPricingProps {
   content: {
@@ -9,6 +11,7 @@ interface MembershipPlansPricingProps {
     cta_text?: string
     cta_url?: string
     show_description?: boolean
+    show_compare_price?: boolean
   }
   primaryColor?: string
   /**
@@ -26,6 +29,9 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
   const ctaUrl = content.cta_url || '/membresias'
   // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
   const showDescription = content.show_description !== false
+  // «Mostrar precio tachado»: el `compare_price` del precio vigente del producto del plan.
+  // Ausente = sin precio anterior, como antes de leerlo.
+  const showCompare = mostrarPrecioAnterior(content)
 
   return (
     <div>
@@ -53,6 +59,11 @@ export function MembershipPlansPricing({ content, primaryColor, data }: Membersh
               <div className="mb-6">
                 {plan.price !== null ? (
                   <>
+                    {showCompare && precioAnteriorValido(plan.compare_price, plan.price) !== null && (
+                      <PrecioAnterior className="block text-lg mb-1">
+                        ${Number(plan.compare_price).toLocaleString('es-CO')}
+                      </PrecioAnterior>
+                    )}
                     <span className="text-4xl font-bold" style={{ color: primaryColor }}>
                       ${Number(plan.price).toLocaleString('es-CO')}
                     </span>

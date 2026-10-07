@@ -23,6 +23,8 @@ import { cartasParaSeccion, categoriasDeCarta, platosDeCarta } from '@/lib/menu/
 import { MenuFull } from './MenuFull'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { textoPlano } from '@/lib/texto/textoPlano'
+import { PrecioAnterior } from '@/components/site/PrecioAnterior'
+import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 
 interface MenuPreviewTabsProps {
   content: {
@@ -32,6 +34,7 @@ interface MenuPreviewTabsProps {
     max_categories?: number
     cta_text?: string
     cta_url?: string
+    show_compare_price?: boolean
   }
   organization: OrganizationWithDetails
   primaryColor?: string
@@ -79,6 +82,9 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
     : buildMenuGroups(products, categories)
   ).slice(0, maxCategories)
   const cta = enlaceSeguro(content.cta_url)
+  // «Mostrar precio tachado» (solo el avance; la carta en /menu es MenuFull). Ausente = sin
+  // precio anterior, como antes de leerlo.
+  const showCompare = mostrarPrecioAnterior(content)
   // Sede servida por prefijo de ruta (`data.prefijoSede`, lo pone page.tsx): enlaces de la sede.
   const prefijo = typeof data?.prefijoSede === 'string' ? data.prefijoSede : ''
 
@@ -119,6 +125,11 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
                         <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Agotado</span>
                       )}
                     </div>
+                    {item.price !== null && showCompare && precioAnteriorValido(item.comparePrice, item.price) !== null && (
+                      <PrecioAnterior className="whitespace-nowrap text-sm">
+                        <Price value={item.comparePrice as number} />
+                      </PrecioAnterior>
+                    )}
                     {item.price !== null && (
                       <Price value={item.price} className="whitespace-nowrap font-bold" style={{ color: primaryColor }} />
                     )}

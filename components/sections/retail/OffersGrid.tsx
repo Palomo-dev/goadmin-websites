@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
+import { coincideBusqueda } from '@/lib/products/filtrosProductos'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 const ITEMS_PER_PAGE = 12
@@ -31,6 +33,8 @@ interface OffersGridProps {
     title?: string
     subtitle?: string
     selected_category_ids?: number[]
+    show_filters?: boolean
+    show_search?: boolean
     offers?: Array<{
       title: string
       description?: string
@@ -57,6 +61,11 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<'sales' | 'discount' | 'price_asc' | 'price_desc'>('sales')
+  const [busqueda, setBusqueda] = useState('')
+  // «Mostrar filtros»: esta sección siempre los pintó (ausente = se muestran). «Mostrar buscador»:
+  // ausente = sin buscador, como antes de leerlo. Ambos trabajan sobre las ofertas ya cargadas.
+  const showFilters = content.show_filters !== false
+  const showSearch = content.show_search === true
 
   const categories = useMemo(() => {
     const catMap = new Map<number, string>()
@@ -77,12 +86,13 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
       ? products.filter((p: any) => selectedIds.includes(p.category_id))
       : products
     let result = selectedCategory ? baseProducts.filter((p: any) => p.category_id === selectedCategory) : [...baseProducts]
+    if (busqueda.trim()) result = result.filter((p: any) => coincideBusqueda(p, busqueda))
     if (sortBy === 'sales') result.sort((a: any, b: any) => (b.sales_count || 0) - (a.sales_count || 0))
     else if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
     else if (sortBy === 'price_asc') result.sort((a: any, b: any) => Number(a.product_prices?.[0]?.price || 0) - Number(b.product_prices?.[0]?.price || 0))
     else if (sortBy === 'price_desc') result.sort((a: any, b: any) => Number(b.product_prices?.[0]?.price || 0) - Number(a.product_prices?.[0]?.price || 0))
     return result
-  }, [products, selectedCategory, sortBy, content.selected_category_ids])
+  }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids])
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
@@ -145,8 +155,15 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
       {products.length > 0 && (
         <>
           {/* Filtros */}
+          {(showFilters || showSearch) && (
           <div className="mb-6 space-y-3">
-            {categories.length > 0 && (
+            {showSearch && (
+              <div className="flex items-center gap-3">
+                <BuscadorProductos valor={busqueda} onChange={(v) => { setBusqueda(v); resetPage() }} placeholder="Buscar ofertas…" />
+                {!showFilters && <span className="text-xs text-gray-400 ml-auto" aria-live="polite">{filteredProducts.length} ofertas</span>}
+              </div>
+            )}
+            {showFilters && categories.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
                 <button
                   onClick={() => { setSelectedCategory(null); resetPage() }}
@@ -163,6 +180,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                 ))}
               </div>
             )}
+            {showFilters && (
             <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={sortBy}
@@ -176,7 +194,9 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
               </select>
               <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} ofertas</span>
             </div>
+            )}
           </div>
+          )}
 
           {/* Grid */}
           {paginatedProducts.length > 0 ? (
@@ -204,7 +224,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
             <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
               <p className="text-4xl mb-3">📦</p>
               <p>No hay ofertas con estos filtros</p>
-              <button onClick={() => { setSelectedCategory(null); resetPage() }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
+              <button onClick={() => { setSelectedCategory(null); setBusqueda(''); resetPage() }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
             </div>
           )}
 

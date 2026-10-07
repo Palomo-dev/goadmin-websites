@@ -6,11 +6,26 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
+import { desplazar } from '@/lib/carrusel/desplazamiento'
+import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
+
+/**
+ * Lo que hacía el carrusel antes de leer los interruptores «Reproducción automática», «Bucle
+ * infinito» y «Deslizar con el dedo»: quieto, se detiene en los bordes y se desliza con el dedo
+ * (desplazamiento nativo). Con la clave ausente se mantiene.
+ */
+const HOY = { autoplay: false, intervaloMs: 5000, bucle: false, pausarAlPasar: true, flechas: true, puntos: true, deslizar: true }
+
+/** Las flechas aparecen al pasar el puntero; con el teclado, al recibir el foco. */
+const FOCO_FLECHA = 'focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
 
 interface FeaturedProductsCarouselProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { products?: any[]; branchId?: number | null }
+  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: any }
 }
 
@@ -22,7 +37,9 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = data?.products || []
   const maxItems = content.max_items || 8
-  const products = allProducts.slice(0, maxItems)
+  // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
+  const filtros = useFiltrosProductos(allProducts)
+  const products = filtros.filtrados.slice(0, maxItems)
 
   // slides_per_view responsive: puede ser número o { desktop, tablet, mobile }
   const spv = content.slides_per_view
@@ -60,12 +77,18 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
     return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect() }
   }, [updateScrollState])
 
-  const scroll = (dir: 'left' | 'right') => {
-    const el = scrollRef.current
-    if (!el) return
-    const amount = el.clientWidth * 0.8
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
-  }
+  const o = leerOpcionesCarrusel(content, HOY)
+  const scroll = (dir: 'left' | 'right') => desplazar(scrollRef.current, dir === 'left' ? 'anterior' : 'siguiente', o.bucle, 0.8)
+  const autoplay = useAutoplayCarrusel({
+    activo: o.autoplay && products.length > 1,
+    intervaloMs: o.intervaloMs,
+    pausarAlPasar: o.pausarAlPasar,
+    avanzar: () => desplazar(scrollRef.current, 'siguiente', o.bucle, 0.8),
+  })
+  // Con bucle, la flecha sigue en el borde para dar la vuelta (si hay algo que desplazar).
+  const hayDesborde = canScrollLeft || canScrollRight
+  const flechaIzq = canScrollLeft || (o.bucle && hayDesborde)
+  const flechaDer = canScrollRight || (o.bucle && hayDesborde)
 
   const addToCart = (product: any) => {
     const price = getProductPrice(product)
@@ -104,22 +127,38 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
 
+      {/* «Mostrar filtros» y «Mostrar buscador»: ausentes = sin barra, como antes de leerlos. */}
+      {allProducts.length > 0 && (
+        <BarraFiltrosProductos
+          categorias={categoriasDisponibles(allProducts, data?.categories, content.selected_category_ids)}
+          estado={filtros.estado}
+          cambiar={filtros.cambiar}
+          total={filtros.filtrados.length}
+          primaryColor={primaryColor}
+          mostrarFiltros={content.show_filters === true}
+          mostrarBuscador={content.show_search === true}
+          mostrarCategorias={content.show_categories !== false}
+        />
+      )}
+
       {products.length > 0 ? (
-        <div className="relative group/carousel">
-          {canScrollLeft && (
+        <div className="relative group/carousel" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
+          {flechaIzq && (
             <button
+              type="button"
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110"
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
               style={{ color: primaryColor }}
               aria-label="Anterior"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
-          {canScrollRight && (
+          {flechaDer && (
             <button
+              type="button"
               onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110"
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
               style={{ color: primaryColor }}
               aria-label="Siguiente"
             >
@@ -129,7 +168,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
           <div
             ref={scrollRef}
             onScroll={updateScrollState}
-            className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth"
+            className={`flex gap-4 ${o.deslizar ? 'overflow-x-auto' : 'overflow-x-hidden touch-pan-y'} pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth`}
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {products.map((product: any) => {
@@ -177,6 +216,8 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
             </div>
           )}
         </div>
+      ) : filtros.activos ? (
+        <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">⭐</p>

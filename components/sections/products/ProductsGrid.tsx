@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
+import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
+import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
@@ -85,50 +87,26 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const categories = data?.categories || []
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
-  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
-  const [onlyOffers, setOnlyOffers] = useState(false)
-
   // Categorías únicas de los productos
-  const availableCategories = useMemo(() => {
-    const allCats = categories.length > 0
-      ? categories
-      : (() => {
-          const catMap = new Map<number, string>()
-          products.forEach((p: any) => {
-            if (p.category_id && p.categories?.name) catMap.set(p.category_id, p.categories.name)
-          })
-          return Array.from(catMap.entries()).map(([id, name]) => ({ id, name }))
-        })()
-    const selectedIds = content.selected_category_ids || []
-    if (selectedIds.length === 0) return allCats
-    return selectedIds
-      .map((id: number) => allCats.find((c: any) => c.id === id))
-      .filter(Boolean)
-  }, [products, categories, content.selected_category_ids])
+  const availableCategories = useMemo(
+    () => categoriasDisponibles(products, categories, content.selected_category_ids),
+    [products, categories, content.selected_category_ids],
+  )
 
-  // Filtrar y ordenar
-  const filteredProducts = useMemo(() => {
+  // Base: las categorías elegidas en la sección. Encima, filtros y buscador del visitante (en
+  // memoria, sobre lo ya cargado).
+  const baseProducts = useMemo(() => {
     const selectedIds = content.selected_category_ids || []
-    let result = selectedIds.length > 0
-      ? products.filter((p: any) => selectedIds.includes(p.category_id))
-      : [...products]
-    if (selectedCategory) result = result.filter((p: any) => p.category_id === selectedCategory)
-    if (onlyOffers) result = result.filter((p: any) => {
-      const cp = p.product_prices?.[0]?.compare_price
-      const pr = p.product_prices?.[0]?.price
-      return cp && pr && Number(cp) > Number(pr)
-    })
-    if (sortBy === 'price_asc') result.sort((a: any, b: any) => (getPrice(a) ?? 0) - (getPrice(b) ?? 0))
-    else if (sortBy === 'price_desc') result.sort((a: any, b: any) => (getPrice(b) ?? 0) - (getPrice(a) ?? 0))
-    else if (sortBy === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
-    return result
-  }, [products, selectedCategory, sortBy, onlyOffers, content.selected_category_ids])
+    return selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
+  }, [products, content.selected_category_ids])
+  const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
+  const filteredProducts = filtros.filtrados
+  const selectedCategory = filtros.estado.categoria
+  const onlyOffers = filtros.estado.soloOfertas
+  const busqueda = filtros.estado.busqueda.trim()
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-
-  const handleFilterChange = () => { setCurrentPage(1) }
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -180,59 +158,19 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{content.title}</h2>
       )}
 
-      {/* Filtros — respeta show_filters del editor (default: true para compatibilidad) */}
-      {products.length > 0 && content.show_filters !== false && (
-        <div className="mb-6 space-y-3">
-          {/* Categorías — respeta show_categories (default: true) */}
-          {availableCategories.length > 0 && content.show_categories !== false && (
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-              <button
-                onClick={() => { setSelectedCategory(null); handleFilterChange() }}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                  !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
-                }`}
-                style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
-              >
-                Todos
-              </button>
-              {availableCategories.map((cat: any) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(selectedCategory === cat.id ? null : cat.id); handleFilterChange() }}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                    selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
-                  }`}
-                  style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Ordenar + Ofertas */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => { setOnlyOffers(!onlyOffers); handleFilterChange() }}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                onlyOffers ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-              }`}
-              style={onlyOffers ? { backgroundColor: '#EF4444' } : {}}
-            >
-              <SlidersHorizontal className="h-3 w-3" /> Ofertas
-            </button>
-            <select
-              value={sortBy}
-              onChange={(e) => { setSortBy(e.target.value as any); handleFilterChange() }}
-              className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
-            >
-              <option value="default">Ordenar</option>
-              <option value="price_asc">Precio: menor a mayor</option>
-              <option value="price_desc">Precio: mayor a menor</option>
-              <option value="name">Nombre A-Z</option>
-            </select>
-            <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} productos</span>
-          </div>
-        </div>
+      {/* Filtros — respeta show_filters del editor (default: true para compatibilidad).
+          Buscador — show_search (default: false, como antes de leerlo). */}
+      {products.length > 0 && (
+        <BarraFiltrosProductos
+          categorias={availableCategories}
+          estado={filtros.estado}
+          cambiar={filtros.cambiar}
+          total={filteredProducts.length}
+          primaryColor={primaryColor}
+          mostrarFiltros={content.show_filters !== false}
+          mostrarBuscador={content.show_search === true}
+          mostrarCategorias={content.show_categories !== false}
+        />
       )}
 
       {paginatedProducts.length > 0 ? (
@@ -265,9 +203,9 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
-          <p>{selectedCategory || onlyOffers ? 'No hay productos con estos filtros' : 'No hay productos disponibles aún'}</p>
-          {(selectedCategory || onlyOffers) && (
-            <button onClick={() => { setSelectedCategory(null); setOnlyOffers(false); setSortBy('default'); setCurrentPage(1) }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
+          <p>{selectedCategory || onlyOffers || busqueda ? 'No hay productos con estos filtros' : 'No hay productos disponibles aún'}</p>
+          {(selectedCategory || onlyOffers || busqueda) && (
+            <button onClick={filtros.limpiar} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
           )}
         </div>
       )}

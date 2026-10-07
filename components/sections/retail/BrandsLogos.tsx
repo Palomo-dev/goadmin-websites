@@ -2,6 +2,10 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { atributosCarrusel, leerOpcionesCarrusel, type OpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
+import { desplazar } from '@/lib/carrusel/desplazamiento'
+import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
+import { PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
 
 interface BrandsLogosProps {
   content: {
@@ -16,6 +20,14 @@ interface BrandsLogosProps {
       logo_url?: string
       url?: string
     }>
+    // CAROUSEL_FIELDS: solo actúan con la distribución «Carrusel».
+    autoplay?: boolean
+    interval_ms?: number
+    loop?: boolean
+    pause_on_hover?: boolean
+    show_arrows?: boolean
+    show_dots?: boolean
+    enable_swipe?: boolean
   }
   primaryColor?: string
 }
@@ -26,7 +38,7 @@ const SIZE_CLASSES = {
   lg: 'h-14 md:h-20',
 }
 
-export function BrandsLogos({ content }: BrandsLogosProps) {
+export function BrandsLogos({ content, primaryColor }: BrandsLogosProps) {
   const items = content.items || []
   const layout = content.layout || 'flex'
   const logoSize = content.logo_size || 'md'
@@ -47,7 +59,7 @@ export function BrandsLogos({ content }: BrandsLogosProps) {
       )}
       {items.length > 0 ? (
         layout === 'carousel' ? (
-          <BrandsCarousel items={items} sizeClass={sizeClass} grayscaleClass={grayscaleClass} />
+          <BrandsCarousel items={items} sizeClass={sizeClass} grayscaleClass={grayscaleClass} opciones={leerOpcionesCarrusel(content as Record<string, unknown>, HOY_CARRUSEL)} primaryColor={primaryColor} />
         ) : layout === 'grid' ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 items-center justify-items-center">
             {items.map((item, i) => (
@@ -91,20 +103,36 @@ function BrandLogo({ item, sizeClass, grayscaleClass }: {
   )
 }
 
-function BrandsCarousel({ items, sizeClass, grayscaleClass }: {
+/**
+ * Lo que hacía la distribución «Carrusel» antes de leer los interruptores: fila con desplazamiento
+ * (se desliza con el dedo), flechas al pasar el puntero, sin avance automático, sin bucle y sin
+ * puntos. Con la clave ausente se mantiene.
+ */
+const HOY_CARRUSEL: OpcionesCarrusel = { autoplay: false, intervaloMs: 5000, bucle: false, pausarAlPasar: true, flechas: true, puntos: false, deslizar: true }
+
+const FOCO = 'focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
+
+function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, primaryColor }: {
   items: Array<{ id?: string; name: string; logo_url?: string; url?: string }>
   sizeClass: string
   grayscaleClass: string
+  opciones: OpcionesCarrusel
+  primaryColor?: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [pagina, setPagina] = useState(0)
+  const [paginas, setPaginas] = useState(1)
 
   const checkScroll = () => {
     const el = scrollRef.current
     if (!el) return
     setCanScrollLeft(el.scrollLeft > 0)
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
+    const total = el.clientWidth > 0 ? Math.max(1, Math.ceil(el.scrollWidth / el.clientWidth - 0.01)) : 1
+    setPaginas(total)
+    setPagina(Math.min(total - 1, Math.round((el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth)) * (total - 1))))
   }
 
   useEffect(() => {
@@ -114,26 +142,41 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass }: {
     return () => { if (el) el.removeEventListener('scroll', checkScroll) }
   }, [items])
 
-  const scroll = (dir: 'left' | 'right') => {
+  const scroll = (dir: 'left' | 'right') => desplazar(scrollRef.current, dir === 'left' ? 'anterior' : 'siguiente', o.bucle, 0.6)
+
+  const autoplay = useAutoplayCarrusel({
+    activo: o.autoplay && items.length > 1,
+    intervaloMs: o.intervaloMs,
+    pausarAlPasar: o.pausarAlPasar,
+    avanzar: () => desplazar(scrollRef.current, 'siguiente', o.bucle, 0.6),
+  })
+
+  const irAPagina = (i: number) => {
     const el = scrollRef.current
     if (!el) return
-    const amount = el.clientWidth * 0.6
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
+    el.scrollTo({ left: (i / Math.max(1, paginas - 1)) * (el.scrollWidth - el.clientWidth), behavior: 'smooth' })
   }
 
+  // Con bucle, la flecha sigue en el borde para dar la vuelta (si hay algo que desplazar).
+  const hayDesborde = canScrollLeft || canScrollRight
+  const flechaIzq = o.flechas && (canScrollLeft || (o.bucle && hayDesborde))
+  const flechaDer = o.flechas && (canScrollRight || (o.bucle && hayDesborde))
+
   return (
-    <div className="relative group">
-      {canScrollLeft && (
+    <div className="relative group" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
+      {flechaIzq && (
         <button
+          type="button"
+          aria-label="Marcas anteriores"
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity ${FOCO}`}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
       )}
       <div
         ref={scrollRef}
-        className="flex items-center gap-8 md:gap-12 overflow-x-auto scrollbar-hide py-4 px-2"
+        className={`flex items-center gap-8 md:gap-12 ${o.deslizar ? 'overflow-x-auto' : 'overflow-x-hidden touch-pan-y'} scrollbar-hide py-4 px-2`}
         style={{ scrollbarWidth: 'none' }}
       >
         {items.map((item, i) => (
@@ -142,13 +185,18 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass }: {
           </div>
         ))}
       </div>
-      {canScrollRight && (
+      {flechaDer && (
         <button
+          type="button"
+          aria-label="Más marcas"
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity ${FOCO}`}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </button>
+      )}
+      {o.puntos && (
+        <PuntosCarrusel total={paginas} actual={pagina} onSelect={irAPagina} color={primaryColor} etiqueta={(i) => `Ir a la página ${i + 1} de marcas`} className="mt-2" />
       )}
     </div>
   )

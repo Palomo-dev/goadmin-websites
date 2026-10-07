@@ -1,4 +1,6 @@
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { PrecioAnterior } from '@/components/site/PrecioAnterior'
+import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -23,6 +25,7 @@ interface SpecialtiesFeaturedProps {
     title?: string
     subtitle?: string
     max_items?: number
+    show_compare_price?: boolean
   }
   primaryColor?: string
   data?: { products?: any[] }
@@ -30,6 +33,8 @@ interface SpecialtiesFeaturedProps {
 
 export function SpecialtiesFeatured({ content, primaryColor, data }: SpecialtiesFeaturedProps) {
   const products = (data?.products || []).slice(0, content.max_items || 4)
+  // «Mostrar precio tachado». Ausente = sin precio anterior, como antes de leerlo.
+  const showCompare = mostrarPrecioAnterior(content)
 
   return (
     <div>
@@ -44,6 +49,7 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
           {products.map((product: any) => {
             const imgUrl = getImageUrl(product)
             const price = getPrice(product)
+            const compare = showCompare && price !== null ? precioAnteriorValido(product.product_prices?.[0]?.compare_price, price) : null
             return (
               <EnlaceSitio
                 key={product.id}
@@ -58,6 +64,9 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
                   )}
                 </div>
                 <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-white">{product.name}</h3>
+                {compare !== null && (
+                  <PrecioAnterior className="text-sm mr-2">${compare.toLocaleString('es-CO')}</PrecioAnterior>
+                )}
                 {price !== null && (
                   <span className="font-bold" style={{ color: primaryColor }}>${price.toLocaleString('es-CO')}</span>
                 )}

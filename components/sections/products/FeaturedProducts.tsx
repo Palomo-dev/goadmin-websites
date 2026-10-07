@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -51,6 +53,11 @@ interface FeaturedProductsProps {
     show_description?: boolean
     price_style?: string
     show_compare_price?: boolean
+    // Filtros y buscador del visitante (ausentes = sin barra)
+    show_filters?: boolean
+    show_search?: boolean
+    show_categories?: boolean
+    selected_category_ids?: number[]
     // Botones y badges (PRODUCT_CARD_INTERACTION_FIELDS)
     badges?: any[]
     card_buttons?: any[]
@@ -60,7 +67,7 @@ interface FeaturedProductsProps {
     icon_only?: boolean
   }
   primaryColor?: string
-  data?: { products?: any[]; branchId?: number | null }
+  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: { show_buy_now_button?: boolean } }
 }
 
@@ -71,7 +78,9 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
   const branchId = data?.branchId ?? null
   const allProducts = data?.products || []
   const maxItems = content.max_items || 8
-  const products = allProducts.slice(0, maxItems)
+  // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
+  const filtros = useFiltrosProductos(allProducts)
+  const products = filtros.filtrados.slice(0, maxItems)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
@@ -130,6 +139,20 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
+      {/* «Mostrar filtros» y «Mostrar buscador»: ausentes = sin barra, como antes de leerlos. */}
+      {allProducts.length > 0 && (
+        <BarraFiltrosProductos
+          categorias={categoriasDisponibles(allProducts, data?.categories, content.selected_category_ids)}
+          estado={filtros.estado}
+          cambiar={filtros.cambiar}
+          total={filtros.filtrados.length}
+          primaryColor={primaryColor}
+          mostrarFiltros={content.show_filters === true}
+          mostrarBuscador={content.show_search === true}
+          mostrarCategorias={content.show_categories !== false}
+        />
+      )}
+
       {products.length > 0 ? (
         <div className="relative group/carousel">
           {/* Flecha izquierda */}
@@ -199,6 +222,8 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
             </div>
           )}
         </div>
+      ) : filtros.activos ? (
+        <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">⭐</p>

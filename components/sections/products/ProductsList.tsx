@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -36,7 +38,9 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
   else if (sortOrder === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   else if (sortOrder === 'sales') sorted.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
 
-  const products = maxItems > 0 ? sorted.slice(0, maxItems) : sorted
+  // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
+  const filtros = useFiltrosProductos(sorted)
+  const products = maxItems > 0 ? filtros.filtrados.slice(0, maxItems) : filtros.filtrados
 
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
 
@@ -75,6 +79,20 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
+      )}
+
+      {/* «Mostrar filtros» y «Mostrar buscador»: ausentes = sin barra, como antes de leerlos. */}
+      {sorted.length > 0 && (
+        <BarraFiltrosProductos
+          categorias={categoriasDisponibles(sorted, data?.categories, content.selected_category_ids)}
+          estado={filtros.estado}
+          cambiar={filtros.cambiar}
+          total={filtros.filtrados.length}
+          primaryColor={primaryColor}
+          mostrarFiltros={content.show_filters === true}
+          mostrarBuscador={content.show_search === true}
+          mostrarCategorias={content.show_categories !== false}
+        />
       )}
 
       {products.length > 0 ? (
@@ -116,6 +134,8 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
             </div>
           )
         })()
+      ) : filtros.activos ? (
+        <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
