@@ -17,8 +17,10 @@ interface SpacesFilterableGridProps {
   showPrices?: boolean
   showCapacity?: boolean
   showAmenities?: boolean
-  /** «Mostrar descripción» del inspector (solo la pinta el diseño detallado). */
+  /** «Mostrar descripción» del inspector en el diseño detallado (ausente = se muestra). */
   showDescription?: boolean
+  /** «Mostrar descripción» en el diseño de tarjetas: no la pintaba, así que ausente = no. */
+  descripcionEnTarjeta?: boolean
 }
 
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'capacity_asc' | 'capacity_desc'
@@ -32,6 +34,7 @@ export function SpacesFilterableGrid({
   showCapacity = true,
   showAmenities = true,
   showDescription = true,
+  descripcionEnTarjeta = false,
 }: SpacesFilterableGridProps) {
   const searchParams = useSearchParams()
 
@@ -320,7 +323,7 @@ export function SpacesFilterableGrid({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItems.map((item: any) => (
               <CompactCard key={item.id} item={item} useSpaces={useSpaces} primaryColor={primaryColor}
-                showPrices={showPrices} showCapacity={showCapacity} showAmenities={showAmenities}
+                showPrices={showPrices} showCapacity={showCapacity} showAmenities={showAmenities} showDescription={descripcionEnTarjeta}
                 nights={nights} bookingQs={bookingQs} hasBookingParams={hasBookingParams} />
             ))}
           </div>
@@ -430,7 +433,7 @@ function DetailedCard({ item, useSpaces, primaryColor, showPrices, showCapacity,
   )
 }
 
-function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, showAmenities, nights, bookingQs, hasBookingParams }: any) {
+function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, showAmenities, showDescription = false, nights, bookingQs, hasBookingParams }: any) {
   const st = useSpaces ? item.space_types : null
   const label = useSpaces ? item.label : item.name
   const image = useSpaces ? item.primaryImage : item.image_url
@@ -439,6 +442,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
   const typeName = useSpaces ? st?.name : null
   const floorZone = useSpaces ? item.floor_zone : null
   const services = useSpaces ? (item.services || []) : []
+  const description = showDescription ? textoPlano(item.description) : ''
 
   return (
     <Link href={`/espacios/${item.id}${bookingQs}`}
@@ -468,6 +472,7 @@ function CompactCard({ item, useSpaces, primaryColor, showPrices, showCapacity, 
           {floorZone && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {floorZone}</span>}
           {showCapacity && capacity && <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {capacity} pers.</span>}
         </div>
+        {description && <p className="text-gray-500 dark:text-gray-400 mb-3 line-clamp-2 text-sm">{description}</p>}
         {showAmenities && services.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {services.slice(0, 3).map((svc: any, i: number) => (

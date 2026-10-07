@@ -10,6 +10,8 @@ interface ServicesListIconsRowProps {
 export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }: ServicesListIconsRowProps) {
   const title = content.title || 'Nuestros Servicios'
   const services = data?.services || []
+  // «Mostrar descripción». Esta variante no la pintaba: ausente = sin descripción.
+  const showDescription = content.show_description === true
 
   return (
     <div>
@@ -25,6 +27,9 @@ export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }
                 {service.icon || service.name?.charAt(0) || '★'}
               </div>
               <span className="text-sm font-medium text-center leading-tight text-gray-900 dark:text-white">{service.name}</span>
+              {showDescription && service.description && (
+                <span className="text-xs text-center leading-snug text-gray-500 dark:text-gray-400 line-clamp-3">{service.description}</span>
+              )}
             </div>
           ))}
         </div>

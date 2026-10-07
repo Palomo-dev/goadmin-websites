@@ -6,6 +6,7 @@ interface SpacesCardsProps {
     title?: string
     subtitle?: string
     max_items?: number
+    show_description?: boolean
   }
   primaryColor?: string
   data?: { spaces?: any[]; spaceTypes?: any[] }
@@ -26,6 +27,7 @@ export function SpacesCards({ content, primaryColor, data }: SpacesCardsProps) {
           spaceTypes={data?.spaceTypes || []}
           primaryColor={primaryColor || '#8B6914'}
           layout="cards"
+          descripcionEnTarjeta={content.show_description === true}
         />
       </Suspense>
     </div>

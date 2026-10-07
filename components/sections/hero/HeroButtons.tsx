@@ -26,6 +26,10 @@ export interface HeroButtonItem {
   radius?: number
   full_width_mobile?: boolean
   open_new_tab?: boolean
+  /** «Ancho completo»: todo el ancho también en escritorio. Ausente = como antes (no). */
+  full_width?: boolean
+  /** «Solo icono»: oculta el texto (queda como nombre accesible). Sin icono, se ignora. */
+  icon_only?: boolean
 }
 
 interface HeroButtonsProps {
@@ -49,6 +53,14 @@ const SIZE_CLASSES: Record<string, string> = {
   md: 'px-6 py-3 text-base',
   lg: 'px-8 py-3 text-lg',
   xl: 'px-10 py-4 text-xl',
+}
+
+/** Relleno cuadrado del botón «solo icono», por tamaño. */
+const ICON_ONLY_CLASSES: Record<string, string> = {
+  sm: 'p-2',
+  md: 'p-3',
+  lg: 'p-3.5',
+  xl: 'p-4',
 }
 
 const ICON_SIZE: Record<string, number> = {
@@ -107,14 +119,15 @@ function HeroButton({
   const Icon = resolveIcon(btn.icon)
   const iconPos = btn.icon_position || 'left'
   const iconSize = ICON_SIZE[size] || 18
+  const soloIcono = btn.icon_only === true && Icon !== null
 
   const baseClass = [
     'inline-flex items-center justify-center gap-2 font-semibold transition-transform hover:scale-105',
-    SIZE_CLASSES[size] || SIZE_CLASSES.md,
+    soloIcono ? ICON_ONLY_CLASSES[size] || ICON_ONLY_CLASSES.md : SIZE_CLASSES[size] || SIZE_CLASSES.md,
     variant === 'outline' ? 'border-2 bg-transparent hover:bg-black/5' : '',
     variant === 'ghost' ? 'bg-white/10 backdrop-blur hover:bg-white/20' : '',
     variant === 'link' ? 'underline-offset-4 hover:underline' : '',
-    btn.full_width_mobile !== false ? 'w-full sm:w-auto' : '',
+    btn.full_width === true && !soloIcono ? 'w-full' : btn.full_width_mobile !== false && !soloIcono ? 'w-full sm:w-auto' : '',
   ].join(' ')
 
   const style: React.CSSProperties = {
@@ -125,7 +138,11 @@ function HeroButton({
   // Diseño › Botones: el sólido es la acción principal; contorno, fantasma y enlace, secundarias.
   const marca = variant === 'solid' ? BOTON_PRIMARIO : BOTON_SECUNDARIO
 
-  const content = (
+  const accesible = soloIcono ? { 'aria-label': label, title: label } : {}
+
+  const content = soloIcono && Icon ? (
+    <Icon size={iconSize} aria-hidden="true" />
+  ) : (
     <>
       {Icon && iconPos === 'left' && <Icon size={iconSize} />}
       {label}
@@ -140,6 +157,7 @@ function HeroButton({
         target="_blank"
         rel="noopener noreferrer"
         {...marca}
+        {...accesible}
         className={baseClass}
         style={style}
       >
@@ -149,7 +167,7 @@ function HeroButton({
   }
 
   return (
-    <Link href={url} {...marca} className={baseClass} style={style}>
+    <Link href={url} {...marca} {...accesible} className={baseClass} style={style}>
       {content}
     </Link>
   )

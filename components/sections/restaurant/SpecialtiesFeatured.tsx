@@ -1,4 +1,5 @@
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { textoPlano } from '@/lib/texto/textoPlano'
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 
@@ -26,6 +27,7 @@ interface SpecialtiesFeaturedProps {
     subtitle?: string
     max_items?: number
     show_compare_price?: boolean
+    show_description?: boolean
   }
   primaryColor?: string
   data?: { products?: any[] }
@@ -35,6 +37,8 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
   const products = (data?.products || []).slice(0, content.max_items || 4)
   // «Mostrar precio tachado». Ausente = sin precio anterior, como antes de leerlo.
   const showCompare = mostrarPrecioAnterior(content)
+  // «Mostrar descripción». Ausente = sin descripción, como antes de leerlo.
+  const showDescription = content.show_description === true
 
   return (
     <div>
@@ -64,6 +68,9 @@ export function SpecialtiesFeatured({ content, primaryColor, data }: Specialties
                   )}
                 </div>
                 <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-white">{product.name}</h3>
+                {showDescription && textoPlano(product.description) && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{textoPlano(product.description)}</p>
+                )}
                 {compare !== null && (
                   <PrecioAnterior className="text-sm mr-2">${compare.toLocaleString('es-CO')}</PrecioAnterior>
                 )}

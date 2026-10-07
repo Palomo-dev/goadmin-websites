@@ -1,5 +1,7 @@
+import { CuadriculaAmpliable, lightboxActivo } from './FotosAmpliables'
+
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
-export const CONTENT_KEYS = ['title', 'subtitle', 'images'] as const
+export const CONTENT_KEYS = ['title', 'subtitle', 'images', 'lightbox'] as const
 
 interface GalleryMasonryProps {
   content: {
@@ -8,6 +10,7 @@ interface GalleryMasonryProps {
     images?: { url: string; alt?: string }[]
     // F2.2: fallback legacy key (pre-migración)
     items?: { url: string; alt?: string }[]
+    lightbox?: boolean
   }
   organization: any
 }
@@ -26,7 +29,14 @@ export function GalleryMasonry({ content, organization }: GalleryMasonryProps) {
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
-      {allImages.length > 0 ? (
+      {allImages.length > 0 && lightboxActivo(content) ? (
+        <CuadriculaAmpliable
+          imagenes={allImages}
+          contenedor="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4"
+          item="break-inside-avoid rounded-lg overflow-hidden"
+          imagen="w-full h-auto object-cover"
+        />
+      ) : allImages.length > 0 ? (
         <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
           {allImages.map((img: any, i: number) => (
             <div key={i} className="break-inside-avoid rounded-lg overflow-hidden">

@@ -422,6 +422,59 @@ try {
   // OffersGrid siempre pintó sus filtros: ausente = se ven.
   interruptor({ nombre: 'offers/grid', Comp: OffersGrid, props: propsOfertas, clave: 'show_filters', marcas: ['Mayor descuento</option>'] })
   encender({ nombre: 'offers/grid', Comp: OffersGrid, props: propsOfertas, clave: 'show_search', marcas: [BUSCADOR, 'aria-label="Buscar ofertas"'] })
+
+  // ---------------------------------------------------------------- gallery: lightbox (las cuatro)
+  const { GalleryGrid } = await cargar('components/sections/gallery/GalleryGrid.tsx')
+  const { GalleryMasonry } = await cargar('components/sections/gallery/GalleryMasonry.tsx')
+  for (const [nombre, Comp] of [['gallery/masonry', GalleryMasonry], ['gallery/grid', GalleryGrid], ['gallery/carousel', GalleryCarousel], ['gallery/fullscreen', GalleryFullscreen]]) {
+    encender({ nombre, Comp, props: { ...galeria, organization: { website_settings: {} } }, clave: 'lightbox', marcas: ['data-lightbox', 'aria-label="Ampliar foto: Foto 1"'] })
+  }
+
+  // ---------------------------------------------------------------- show_description restantes
+  const { SpacesCards } = await cargar('components/sections/hotel/SpacesCards.tsx')
+  encender({
+    nombre: 'room_types/cards',
+    Comp: SpacesCards,
+    props: { content: {}, data: { spaces: [], spaceTypes: [{ id: 't1', name: 'Doble', description: 'DESC-HABITACION', base_rate: 100, capacity: 2, amenities: [] }] } },
+    clave: 'show_description',
+    marcas: ['DESC-HABITACION'],
+  })
+  encender({ nombre: 'specialties/featured', Comp: SpecialtiesFeatured, props: { content: {}, data: { products: [{ ...PRODUCTOS[0], description: 'DESC-PLATO' }] } }, clave: 'show_description', marcas: ['DESC-PLATO'] })
+  const { ParkingPassPlansCards } = await cargar('components/sections/parking/ParkingPassPlansCards.tsx')
+  encender({ nombre: 'parking_pass_plans/cards', Comp: ParkingPassPlansCards, props: { content: {}, data: { passTypes: [{ id: 1, name: 'Mensual', description: 'DESC-PASE', price: 1000, duration_days: 30 }] } }, clave: 'show_description', marcas: ['DESC-PASE'] })
+  const { ServicesListIconsRow } = await cargar('components/sections/services/ServicesListIconsRow.tsx')
+  encender({ nombre: 'services_list/icons_row', Comp: ServicesListIconsRow, props: { content: {}, data: servicios }, clave: 'show_description', marcas: ['DESC-SERVICIO'] })
+
+  // ---------------------------------------------------------------- botones de tarjeta (card_buttons[])
+  const conBoton = (boton) => ({ ...propsLista, content: { card_buttons: [boton] } })
+  for (const [nombre, Comp] of [
+    ['products_grid/grid', ProductsGrid],
+    ['products_grid/carousel', ProductsCarousel],
+    ['products_grid/list', ProductsList],
+    ['featured_products/grid', FeaturedProducts],
+    ['featured_products/carousel', FeaturedProductsCarousel],
+  ]) {
+    contiene(`${nombre}: card_buttons[].open_new_tab ausente = misma pestaña`, pintar(Comp, conBoton({ action: 'view_detail', variant: 'solid' })), [], ['data-nueva-pestana'])
+    contiene(`${nombre}: card_buttons[].open_new_tab`, pintar(Comp, conBoton({ action: 'view_detail', variant: 'solid', open_new_tab: true })), ['data-nueva-pestana'])
+    contiene(`${nombre}: card_buttons[].full_width_mobile ausente = como antes`, pintar(Comp, conBoton({ action: 'view_detail', full_width: false })), [], ['w-full sm:w-auto'])
+    contiene(`${nombre}: card_buttons[].full_width_mobile`, pintar(Comp, conBoton({ action: 'view_detail', full_width: false, full_width_mobile: true })), ['w-full sm:w-auto'])
+  }
+
+  // ---------------------------------------------------------------- hero: buttons[].full_width e icon_only
+  for (const [v, Comp] of Object.entries(heroes)) {
+    if (v === 'slider') continue // el slider pinta los botones de cada diapositiva: abajo
+    const props = (b) => ({ content: { ...contenidoHero(v), buttons: [{ label: 'BOTON-REPETIDOR', url: '/x', variant: 'solid', icon: 'ArrowRight', ...b }] }, organization: org, primaryColor: '#3B82F6' })
+    contiene(`hero/${v}: buttons[].full_width ausente = como antes`, pintar(Comp, props({})), ['w-full sm:w-auto'], ['font-semibold transition-transform hover:scale-105 px-6 py-3 text-base   w-full"'])
+    contiene(`hero/${v}: buttons[].full_width`, pintar(Comp, props({ full_width: true })), ['   w-full"'])
+    contiene(`hero/${v}: buttons[].icon_only ausente = con texto`, pintar(Comp, props({})), ['BOTON-REPETIDOR<'], ['aria-label="BOTON-REPETIDOR"'])
+    contiene(`hero/${v}: buttons[].icon_only`, pintar(Comp, props({ icon_only: true })), ['aria-label="BOTON-REPETIDOR"'], ['BOTON-REPETIDOR<'])
+  }
+  {
+    const props = (b) => ({ content: { slides: [{ title: 'T', image_url: 'https://x/s.jpg', buttons: [{ label: 'BOTON-SLIDE', url: '/x', variant: 'solid', icon: 'ArrowRight', ...b }] }] }, organization: org, primaryColor: '#3B82F6' })
+    contiene('hero/slider: buttons[].full_width', pintar(heroes.slider, props({ full_width: true })), ['   w-full"'])
+    contiene('hero/slider: buttons[].icon_only', pintar(heroes.slider, props({ icon_only: true })), ['aria-label="BOTON-SLIDE"'], ['BOTON-SLIDE<'])
+    contiene('hero/slider: botones ausentes = como antes', pintar(heroes.slider, props({})), ['BOTON-SLIDE<', 'w-full sm:w-auto'], ['aria-label="BOTON-SLIDE"'])
+  }
 } finally {
   await rm(TMP, { recursive: true, force: true })
 }

@@ -505,6 +505,16 @@ function CardButtonRenderer({
   const textColor = button.text_color || (hasBackground ? '#FFFFFF' : bg)
   // Icon-only nunca ocupa ancho completo: es un botón cuadrado fijo
   const btnFullWidth = btnIconOnly ? false : button.full_width !== false
+  // «Ancho completo en celular» (`full_width_mobile`): solo cuenta si el botón no ocupa ya todo el
+  // ancho. Ausente = como antes (no hacía nada).
+  const anchoClase = btnFullWidth ? 'w-full' : (!btnIconOnly && button.full_width_mobile === true ? 'w-full sm:w-auto' : '')
+  // «Abrir en pestaña nueva» (`open_new_tab`): solo para los botones que navegan (enlace propio
+  // y «Ver detalle»). Ausente = misma pestaña, como antes.
+  const nuevaPestana = button.open_new_tab === true
+  const navegar = (url: string) => {
+    if (nuevaPestana) window.open(url, '_blank', 'noopener,noreferrer')
+    else router.push(url)
+  }
 
   const baseStyle: CSSProperties = {}
   if (variant === 'solid') { baseStyle.backgroundColor = bg; baseStyle.color = textColor }
@@ -609,7 +619,7 @@ function CardButtonRenderer({
         else router.push(ruta(`/productos/${product.uuid}`))
         break
       case 'view_detail':
-        router.push(ruta(`/productos/${product.uuid}`))
+        navegar(ruta(`/productos/${product.uuid}`))
         break
       case 'whatsapp': {
         const msg = encodeURIComponent(`Hola, me interesa el producto "${product.name}" — ${typeof window !== 'undefined' ? window.location.origin : ''}${ruta(`/productos/${product.uuid}`)}`)
@@ -627,7 +637,7 @@ function CardButtonRenderer({
       }
       case 'custom':
       default:
-        if (button.url) router.push(button.url)
+        if (button.url) navegar(button.url)
         break
     }
   }
@@ -643,8 +653,8 @@ function CardButtonRenderer({
     const chooseIconName = 'Layers'
     const ChooseIcon = ICON_MAP[chooseIconName] || Layers
     return (
-      <Link href={ruta(`/productos/${product.uuid}`)} className={btnFullWidth ? 'w-full' : ''}>
-        <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${btnFullWidth ? 'w-full' : ''} ${sizeTextClass}`} style={baseStyle}>
+      <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
+        <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${anchoClase} ${sizeTextClass}`} style={baseStyle}>
           <ChooseIcon className={iconSizeClass} />{!btnIconOnly && <span className="ml-1">{chooseLabel}</span>}
         </Button>
       </Link>
@@ -673,8 +683,9 @@ function CardButtonRenderer({
       size={size as any}
       variant={variant === 'gradient' ? 'solid' : variant as any}
       onClick={handleClick}
+      data-nueva-pestana={nuevaPestana && (button.action === 'view_detail' || button.action === 'custom') ? '' : undefined}
       disabled={disabled}
-      className={`${btnFullWidth ? 'w-full' : ''} ${sizeTextClass} transition-all ${isAddedState ? 'bg-green-500 hover:bg-green-600' : ''}`}
+      className={`${anchoClase} ${sizeTextClass} transition-all ${isAddedState ? 'bg-green-500 hover:bg-green-600' : ''}`}
       style={effectiveStyle}
     >
       {iconNode(button.action)}

@@ -3,9 +3,10 @@
 import { useCallback, useState } from 'react'
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { useAutoplayCarrusel, useDeslizar } from '@/lib/carrusel/useCarrusel'
+import { aFotosLightbox, etiquetaAmpliar, FOCO_FOTO, lightboxActivo, useLightbox } from './FotosAmpliables'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
-export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe'] as const
+export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe', 'lightbox'] as const
 
 interface GalleryCarouselProps {
   content: Record<string, any>
@@ -42,7 +43,11 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
     if (n !== null) setCurrent(n)
   }, [current, total, o.bucle])
 
-  const autoplay = useAutoplayCarrusel({ activo: o.autoplay && total > 1, intervaloMs: o.intervaloMs, pausarAlPasar: o.pausarAlPasar, avanzar: irSiguiente })
+  // «Lightbox al hacer clic»: ausente = la foto no se abre, como antes de leerlo.
+  const ampliar = lightboxActivo(content)
+  const fotos = aFotosLightbox(images)
+  const lightbox = useLightbox(fotos)
+  const autoplay = useAutoplayCarrusel({ activo: o.autoplay && total > 1 && lightbox.abierta === null, intervaloMs: o.intervaloMs, pausarAlPasar: o.pausarAlPasar, avanzar: irSiguiente })
   const deslizar = useDeslizar({ activo: o.deslizar && total > 1, alSiguiente: irSiguiente, alAnterior: irAnterior })
 
   if (images.length === 0) return null
@@ -55,7 +60,13 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
           className={`relative rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-700${o.deslizar ? ' touch-pan-y' : ''}`}
           {...deslizar}
         >
-          <img src={images[current]?.url} alt={images[current]?.alt || ''} className="w-full h-full object-cover" />
+          {ampliar ? (
+            <button type="button" onClick={(e) => lightbox.abrir(current, e.currentTarget)} aria-label={etiquetaAmpliar(fotos[current], current)} className={`block w-full h-full cursor-zoom-in ${FOCO_FOTO}`} data-lightbox="">
+              <img src={images[current]?.url} alt={images[current]?.alt || ''} className="w-full h-full object-cover" />
+            </button>
+          ) : (
+            <img src={images[current]?.url} alt={images[current]?.alt || ''} className="w-full h-full object-cover" />
+          )}
           {images[current]?.caption && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-3 text-sm">{images[current].caption}</div>
           )}
@@ -77,6 +88,7 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
           </div>
         )}
       </div>
+      {lightbox.dialogo}
     </section>
   )
 }

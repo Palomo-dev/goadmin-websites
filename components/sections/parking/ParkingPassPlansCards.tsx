@@ -6,6 +6,7 @@ interface ParkingPassPlansCardsProps {
     subtitle?: string
     cta_text?: string
     cta_url?: string
+    show_description?: boolean
   }
   primaryColor?: string
   data?: { passTypes?: any[] }
@@ -13,6 +14,8 @@ interface ParkingPassPlansCardsProps {
 
 export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPassPlansCardsProps) {
   const plans = data?.passTypes || []
+  // «Mostrar descripción» (parking_pass_types.description). Ausente = sin descripción, como antes.
+  const showDescription = content.show_description === true
 
   return (
     <div>
@@ -38,6 +41,9 @@ export function ParkingPassPlansCards({ content, primaryColor, data }: ParkingPa
               <h3 className="text-xl font-bold mb-1 text-gray-900 dark:text-white">{plan.name}</h3>
               {plan.duration_days && (
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{plan.duration_days} días</p>
+              )}
+              {showDescription && plan.description && (
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{plan.description}</p>
               )}
               <div className="mb-4">
                 <span className="text-4xl font-bold" style={{ color: primaryColor }}>
