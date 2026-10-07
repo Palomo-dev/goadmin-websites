@@ -845,11 +845,12 @@ export async function getOrganizationServices(organizationId: number, limit = 12
   const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
   if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
 
-  // Los servicios se manejan como productos con unit_code 'SV' (Servicio)
+  // Los servicios se manejan como productos con unit_code 'SV' (Servicio). Columnas
+  // explícitas (no `*`): la sección `services_list` lo guarda en la caché del catálogo.
   let query = supabase
     .from('products')
     .select(`
-      *,
+      ${PRODUCT_LIST_COLUMNS},
       product_prices (id, price, compare_price, effective_to)
     `)
     .is('product_prices.effective_to', null)

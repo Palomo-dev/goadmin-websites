@@ -32,7 +32,7 @@ import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
-import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion } from '@/lib/website/datosSecciones'
+import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion, getServiciosDeSeccion } from '@/lib/website/datosSecciones'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
@@ -396,16 +396,19 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // y solo si la página tiene la sección (o en la vista previa del editor).
     const sedeDeLaPagina = typeof branchId === 'number' ? branchId : null
     const tiene = (tipo: string) => esVistaPrevia || sectionTypes.includes(tipo)
-    const [clases, rutas, flota, planes] = await Promise.all([
+    const [clases, rutas, flota, planes, servicios] = await Promise.all([
       tiene('class_schedule') ? getClasesDeSeccion(organization.id, sedeDeLaPagina) : null,
       tiene('routes') ? getRutasDeSeccion(organization.id) : null,
       tiene('fleet_showcase') ? getFlotaDeSeccion(organization.id, sedeDeLaPagina) : null,
       tiene('membership_plans') ? getPlanesDeSeccion(organization.id) : null,
+      // Misma fuente que /servicios: catálogo de servicios (type_id 4) o productos `SV`.
+      tiene('services_list') ? getServiciosDeSeccion(organization.id, sedeDeLaPagina, organization.type_id === 4) : null,
     ])
     if (clases) data.classes = clases
     if (rutas) data.routes = rutas
     if (flota) data.vehicles = flota
     if (planes) data.membershipPlans = planes
+    if (servicios) data.services = servicios
 
     if (sectionTypes.includes('parking_pricing') || sectionTypes.includes('parking_pass_plans') || sectionTypes.includes('parking_availability') || sectionTypes.includes('parking_zones')) {
       const [rates, passTypes, availability, zones] = await Promise.all([

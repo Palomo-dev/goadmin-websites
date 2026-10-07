@@ -22,7 +22,8 @@
     "verify:texto": "node --disable-warning=ExperimentalWarning scripts/verify-texto-plano.mjs",
     "verify:busqueda": "node --disable-warning=ExperimentalWarning scripts/verify-busqueda-org.mjs",
     "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs",
-    "verify:interruptores": "node scripts/verify-interruptores.mjs"
+    "verify:interruptores": "node scripts/verify-interruptores.mjs",
+    "verify:servicios": "node scripts/verify-servicios-seccion.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

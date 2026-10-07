@@ -626,17 +626,34 @@ export interface Database {
         }
         Relationships: []
       }
+      // Catálogo GLOBAL de servicios (sin organización). Columnas verificadas por MCP el
+      // 2026-10-07; antes declaraba organization_id, description, duration_minutes, price,
+      // currency_code y status, que no existen. Cada organización elige los suyos en
+      // `organization_services`.
       services: {
         Row: {
           id: string
-          organization_id: number
           name: string
-          description: string | null
-          duration_minutes: number | null
-          price: number | null
-          currency_code: string | null
-          status: string | null
+          icon: string | null
+          category: string | null
+          is_default: boolean | null
           created_at: string | null
+        }
+      }
+      // Servicios de cada organización (type_id 4: /servicios y la sección `services_list`).
+      // Columnas verificadas por MCP el 2026-10-07. No hay descripción ni precio anterior.
+      organization_services: {
+        Row: {
+          id: string
+          organization_id: number
+          service_id: string | null
+          custom_name: string | null
+          custom_icon: string | null
+          custom_category: string | null
+          is_active: boolean | null
+          created_at: string | null
+          price: number | null
+          linked_product_id: number | null
         }
       }
       spaces: {

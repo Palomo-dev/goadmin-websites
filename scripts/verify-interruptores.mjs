@@ -475,6 +475,26 @@ try {
     contiene('hero/slider: buttons[].icon_only', pintar(heroes.slider, props({ icon_only: true })), ['aria-label="BOTON-SLIDE"'], ['BOTON-SLIDE<'])
     contiene('hero/slider: botones ausentes = como antes', pintar(heroes.slider, props({})), ['BOTON-SLIDE<', 'w-full sm:w-auto'], ['aria-label="BOTON-SLIDE"'])
   }
+
+  // ---------------------------------------------------------------- services_list: datos reales y precio tachado
+  // La sección recibe `data.services` desde lib/website/datosSecciones.ts (productos `SV` con
+  // su precio vigente). Se pasan por la misma conversión que usa la página.
+  const { servicioDesdeProducto, servicioDesdeCatalogo } = await cargar('lib/website/serviciosSeccion.ts')
+  const servicioSV = servicioDesdeProducto({ id: 7, name: 'Masaje', description: '<p>DESC-<strong>SV</strong></p>', product_prices: [{ price: '85000', compare_price: '100000' }] })
+  casos++
+  if (servicioSV.price !== 85000 || servicioSV.compare_price !== 100000 || servicioSV.description !== 'DESC-SV' || servicioSV.id !== '7') {
+    fallos.push(`services_list: la conversión del producto SV no deja precio, precio anterior y descripción en texto (${JSON.stringify(servicioSV)})`)
+  }
+  const servicioOS = servicioDesdeCatalogo({ id: 'u1', custom_name: null, custom_icon: null, price: 0, services: { name: 'WiFi', icon: 'W' } })
+  casos++
+  if (servicioOS.name !== 'WiFi' || servicioOS.icon !== 'W' || servicioOS.compare_price !== null) fallos.push(`services_list: la conversión del catálogo de servicios falla (${JSON.stringify(servicioOS)})`)
+  const datosServicios = { services: [servicioSV] }
+  for (const [v, archivo] of [['cards', 'ServicesListCards'], ['grid', 'ServicesListGrid'], ['list', 'ServicesListList']]) {
+    const Comp = (await cargar(`components/sections/services/${archivo}.tsx`))[archivo]
+    encender({ nombre: `services_list/${v}`, Comp, props: { content: { title: 'S' }, organization: org, data: datosServicios }, clave: 'show_compare_price', marcas: ['data-precio-anterior', 'Precio anterior: </span>$100.000'] })
+    interruptor({ nombre: `services_list/${v} (datos reales)`, Comp, props: { content: { title: 'S' }, organization: org, data: datosServicios }, clave: 'show_description', marcas: ['DESC-SV'] })
+    contiene(`services_list/${v}: sin compare_price mayor, nada tachado`, pintar(Comp, { content: { show_compare_price: true }, organization: org, data: { services: [{ ...servicioSV, compare_price: 85000 }] } }), ['85.000'], ['data-precio-anterior'])
+  }
 } finally {
   await rm(TMP, { recursive: true, force: true })
 }

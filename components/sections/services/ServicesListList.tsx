@@ -1,5 +1,8 @@
 'use client'
 
+import { PrecioAnterior } from '@/components/site/PrecioAnterior'
+import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
+
 interface ServicesListListProps {
   content: Record<string, any>
   organization?: any
@@ -13,6 +16,8 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
   const services = data?.services || []
   // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
   const showDescription = (content as { show_description?: unknown }).show_description !== false
+  // «Mostrar precio tachado»: el `compare_price` real del precio vigente. Ausente = sin tachar.
+  const showCompare = mostrarPrecioAnterior(content as Record<string, unknown>)
 
   return (
     <div>
@@ -27,9 +32,14 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{service.name}</h3>
                 {showDescription && service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
               </div>
-              {service.price && (
+              {service.price && (showCompare && precioAnteriorValido(service.compare_price, service.price) !== null ? (
+                <div className="flex-shrink-0 text-right">
+                  <PrecioAnterior className="block text-sm">${Number(service.compare_price).toLocaleString('es-CO')}</PrecioAnterior>
+                  <p className="font-bold text-lg" style={{ color: primaryColor }}>${service.price.toLocaleString('es-CO')}</p>
+                </div>
+              ) : (
                 <p className="font-bold text-lg flex-shrink-0" style={{ color: primaryColor }}>${service.price.toLocaleString('es-CO')}</p>
-              )}
+              ))}
             </div>
           ))}
         </div>

@@ -27,7 +27,8 @@
 import { cache } from 'react'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { cacheCatalog, cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
-import { getMembershipPlans, getTransportRoutes, type MembershipPlanPublic } from '@/lib/supabase/queries'
+import { getMembershipPlans, getOrganizationServices, getTransportRoutes, type MembershipPlanPublic } from '@/lib/supabase/queries'
+import { MAX_SERVICIOS, servicioDesdeCatalogo, servicioDesdeProducto, type ServicioSeccion } from '@/lib/website/serviciosSeccion'
 
 function cliente() {
   return createAdminClient() || createPublicClient()
@@ -190,4 +191,43 @@ export const getPlanesDeSeccion = cache(
     (organizationId: number): Promise<MembershipPlanPublic[]> => getMembershipPlans(organizationId),
     (organizationId) => organizationId,
   ),
+)
+
+// ---------------------------------------------------------------------------
+// Servicios (`services_list`): precio → caché del catálogo
+// ---------------------------------------------------------------------------
+//
+// La sección leía `data.services`, que nadie cargaba: los 50 sitios con la sección pintaban
+// «No hay servicios configurados aún». Misma fuente que la página /servicios
+// (app/[[...slug]]/page.tsx), con la misma regla:
+// - organizaciones de servicios (type_id 4): su catálogo `organization_services` activo. Sin
+//   descripción ni precio anterior: la tabla no los tiene (verificado por MCP el 2026-10-07:
+//   id, organization_id, service_id, custom_name, custom_icon, custom_category, is_active,
+//   created_at, price, linked_product_id; `services`: id, name, icon, category, is_default).
+// - las demás: productos activos con `unit_code = 'SV'` y su precio vigente, con
+//   `compare_price` (`getOrganizationServices`, la misma consulta de /servicios).
+// Una consulta cacheada por organización y sede (`cacheCatalog`, 30 s, etiqueta del catálogo
+// que invalida el ERP), y solo si la página tiene la sección.
+
+async function getServiciosUncached(organizationId: number, branchId: number | null, catalogoDeServicios: boolean): Promise<ServicioSeccion[]> {
+  if (!catalogoDeServicios) {
+    const productos = await getOrganizationServices(organizationId, MAX_SERVICIOS, branchId)
+    return productos.map(servicioDesdeProducto)
+  }
+  const { data, error } = await cliente()
+    .from('organization_services')
+    .select('id, custom_name, custom_icon, price, services(name, icon)')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(MAX_SERVICIOS)
+  if (error) {
+    console.error('[datosSecciones] organization_services', { organizationId, error: error.message })
+    return []
+  }
+  return (data ?? []).map(servicioDesdeCatalogo)
+}
+
+export const getServiciosDeSeccion = cache(
+  cacheCatalog('getServiciosDeSeccion', getServiciosUncached, (...args) => args[0]),
 )
