@@ -28,7 +28,7 @@ import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
-import { avisarErpRondaMesa, comensalDeRonda, filasConComensal, filasSinComensal, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
+import { avisarErpRondaMesa, buscarRondaPorClave, claveRondaValida, comensalDeRonda, esRondaDuplicada, filasConComensal, filasSinComensal, rechazaClaveRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount,
-      promoDiscount, promotionIds, dinerLabel
+      promoDiscount, promotionIds, dinerLabel, roundKey
     } = body
 
     // Límite de pedidos por IP y por correo (CLAUDE.md: /api/orders). Generoso por IP porque
@@ -229,6 +229,29 @@ export async function POST(request: NextRequest) {
       resolvedShipping = 0
     } else {
       // Domicilio o recoger: sin mesa, exactamente como antes.
+    }
+
+    // ── Carta QR: idempotencia de la ronda (lib/orders/rondaMesa.ts) ──
+    // Misma `roundKey` en esta mesa con un pedido vivo = doble clic o reintento: se devuelve ese
+    // pedido y no se crea otro. La mesa y la organización son las validadas aquí, no las del body.
+    const claveRonda = claveRondaValida(roundKey, !!mesaPedido)
+    if (mesaPedido && claveRonda) {
+      const previa = await buscarRondaPorClave(supabase as any, contextOrgId, mesaPedido.id, claveRonda)
+      if (previa) {
+        console.warn('[Orders] Ronda de mesa repetida: se devuelve la ya creada', { organizationId: contextOrgId, orderId: previa.id })
+        return NextResponse.json({
+          success: true,
+          duplicada: true,
+          orderId: previa.id,
+          orderNumber: previa.order_number,
+          trackingToken: tokenSeguimiento(contextOrgId, previa.id),
+          message: 'Esta ronda ya estaba enviada',
+        })
+      } else {
+        // Primera vez que llega esta ronda: sigue el flujo de siempre.
+      }
+    } else {
+      // Sin mesa o sin clave: exactamente como antes.
     }
 
     // ── Contexto del pedido: organización, ajustes de venta y sede (filtrados por la org del host) ──
@@ -592,6 +615,8 @@ export async function POST(request: NextRequest) {
         ...(mesaPedido && { internal_notes: notaMesa(mesaPedido) }),
         // Carta QR: quién de la mesa pidió la ronda (migración 20261007090100 del ERP).
         ...(comensalDeRonda(dinerLabel, !!mesaPedido) && { diner_label: comensalDeRonda(dinerLabel, !!mesaPedido) }),
+        // Carta QR: clave de idempotencia de la ronda (migración 20261007170528 del ERP).
+        ...(claveRonda && { round_key: claveRonda }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
     }
@@ -606,6 +631,12 @@ export async function POST(request: NextRequest) {
       })
       const { restaurant_table_id: _sinColumna, ...filaTemporal } = filaPedido
       ;({ data: webOrder, error: orderError } = await insertarPedido({ ...filaTemporal, delivery_type: 'pickup' }))
+    } else if (orderError && rechazaClaveRonda(orderError)) {
+      // La base aún no tiene web_orders.round_key: se guarda la ronda sin la clave (el cliente
+      // igual bloquea el reenvío de los mismos platos mientras esperan confirmación).
+      console.warn('[Orders] web_orders aún no admite round_key; se guarda sin la clave', { organizationId: contextOrgId })
+      const { round_key: _sinClave, ...filaSinClave } = filaPedido
+      ;({ data: webOrder, error: orderError } = await insertarPedido(filaSinClave))
     } else if (orderError && rechazaComensal(orderError)) {
       // La base aún no tiene web_orders.diner_label: se guarda la ronda sin el comensal.
       console.warn('[Orders] web_orders aún no admite diner_label; se guarda sin el comensal', { organizationId: contextOrgId })
@@ -613,6 +644,25 @@ export async function POST(request: NextRequest) {
       ;({ data: webOrder, error: orderError } = await insertarPedido(filaSinComensal))
     } else {
       // Sin mesa, o la base aceptó dine_in: el resultado del insert es el definitivo.
+    }
+
+    if (orderError && mesaPedido && claveRonda && esRondaDuplicada(orderError)) {
+      // Dos peticiones simultáneas con la misma ronda: la otra ganó el índice único. Se devuelve esa.
+      const previa = await buscarRondaPorClave(supabase as any, contextOrgId, mesaPedido.id, claveRonda)
+      if (previa) {
+        return NextResponse.json({
+          success: true,
+          duplicada: true,
+          orderId: previa.id,
+          orderNumber: previa.order_number,
+          trackingToken: tokenSeguimiento(contextOrgId, previa.id),
+          message: 'Esta ronda ya estaba enviada',
+        })
+      } else {
+        // La otra petición ya no está viva (se canceló): cae en el error de siempre.
+      }
+    } else {
+      // Sin choque de la clave de ronda: el error (o el éxito) de siempre.
     }
 
     if (orderError) {

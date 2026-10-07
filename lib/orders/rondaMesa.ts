@@ -26,6 +26,59 @@ export function tieneCorreo(email: unknown): boolean {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 }
 
+// ─── Idempotencia de la ronda (`roundKey`) ─────────────────────────────────────────────────
+//
+// La Carta QR manda una clave por ronda (la misma en cada reintento de los mismos platos). Se
+// guarda en `web_orders.round_key` (migración 20261007170528 del ERP), única por organización y
+// mesa entre los pedidos vivos: un doble clic o un reintento tras perder la respuesta devuelven el
+// pedido ya creado en vez de crear otro. Sin mesa, la clave se ignora.
+
+const CLAVE_RONDA_RE = /^[A-Za-z0-9-]{8,64}$/
+
+/** La `roundKey` del cliente si es plausible y el pedido es de una mesa; si no, `null`. */
+export function claveRondaValida(v: unknown, conMesa: boolean): string | null {
+  return conMesa && typeof v === 'string' && CLAVE_RONDA_RE.test(v) ? v : null
+}
+
+/** El insert falló porque la base aún no tiene `web_orders.round_key` (migración sin aplicar). */
+export function rechazaClaveRonda(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  return (error.code === 'PGRST204' || error.code === '42703') && String(error.message || '').includes('round_key')
+}
+
+/** Otra petición con la misma clave ya creó la ronda (índice único idx_web_orders_round_key). */
+export function esRondaDuplicada(error: { code?: string; message?: string; details?: string } | null): boolean {
+  if (!error || error.code !== '23505') return false
+  return `${error.message || ''} ${error.details || ''}`.includes('round_key')
+}
+
+/** Pedidos que ya no cuentan: con la misma clave se puede volver a crear la ronda. */
+export const ESTADOS_RONDA_MUERTA = ['cancelled', 'rejected', 'expired'] as const
+
+/**
+ * El pedido vivo de esa mesa con esa clave, o `null` (también si la columna aún no existe).
+ * Filtra por la organización del contexto y por la mesa validada, nunca por datos del body.
+ */
+export async function buscarRondaPorClave(
+  supabase: { from: (t: string) => any },
+  organizationId: number,
+  mesaId: string,
+  roundKey: string,
+): Promise<{ id: string; order_number: string } | null> {
+  const { data, error } = await supabase
+    .from('web_orders')
+    .select('id, order_number')
+    .eq('organization_id', organizationId)
+    .eq('restaurant_table_id', mesaId)
+    .eq('round_key', roundKey)
+    .not('status', 'in', `(${ESTADOS_RONDA_MUERTA.join(',')})`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return typeof data.id === 'string' && typeof data.order_number === 'string' ? data : null
+}
+
 /** El insert falló porque la base aún no tiene `web_orders.diner_label` (migración sin aplicar). */
 export function rechazaComensal(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false
