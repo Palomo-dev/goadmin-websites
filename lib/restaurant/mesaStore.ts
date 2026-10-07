@@ -107,6 +107,11 @@ export interface EstadoMesaQR {
   seleccionPago: SeleccionPago | null
   /** Instancia de <AvisosMesa /> que pinta los avisos y la hoja del mesero. */
   avisosDuenio: string | null
+  /**
+   * Los botones de la bienvenida (Ver la carta · Llamar al mesero · Pedir la cuenta) están a la
+   * vista: la barra «Ver pedido de la mesa» se esconde (lámina 01, sin barra en la bienvenida).
+   */
+  botonesPortadaALaVista: boolean
 }
 
 const inicial: EstadoMesaQR = {
@@ -134,6 +139,7 @@ const inicial: EstadoMesaQR = {
   abonoPagado: null,
   seleccionPago: null,
   avisosDuenio: null,
+  botonesPortadaALaVista: false,
 }
 
 let estado: EstadoMesaQR = inicial

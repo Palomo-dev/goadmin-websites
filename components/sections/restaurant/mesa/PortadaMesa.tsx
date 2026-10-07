@@ -15,6 +15,7 @@
  * `show_language` no pinta nada hasta que haya otro idioma.
  */
 
+import { useEffect, useLayoutEffect, useState } from 'react'
 import Image from 'next/image'
 import { BellRing, CheckCircle2, Clock, Info, ReceiptText } from 'lucide-react'
 import { normalizarPortadaMesa, reemplazarMarcadores } from '@/lib/website/v2/contrato/seccionesMesa'
@@ -25,6 +26,32 @@ import { irA, mostrarAviso, pedirCuenta, setMesaQR, useMesaQRStore } from '@/lib
 import { useEstadosEnVivo, type SedeConHorario } from '../EstadoApertura'
 import { BotonPrimario, nombreMesa, useSeccionMesa, type PropsSeccionMesa } from './comun'
 import { ALERTA, C, OK, TITULO } from './estilo'
+
+// Antes del primer pintado en el navegador (sin aviso de useLayoutEffect en el servidor).
+const useEfectoAntesDePintar = typeof window === 'undefined' ? useEffect : useLayoutEffect
+
+/**
+ * Publica si los botones de la bienvenida están a la vista (`botonesPortadaALaVista`): mientras se
+ * ven, la barra «Ver pedido de la mesa» se esconde (lámina 01). La primera lectura es síncrona,
+ * antes de pintar, para que la barra no aparezca un instante al abrir; luego, IntersectionObserver.
+ */
+function useBotonesALaVista(el: HTMLElement | null, activo: boolean) {
+  useEfectoAntesDePintar(() => {
+    if (!el || !activo) return
+    const r = el.getBoundingClientRect()
+    setMesaQR({ botonesPortadaALaVista: r.bottom > 0 && r.top < window.innerHeight })
+    if (typeof IntersectionObserver === 'undefined') return () => setMesaQR({ botonesPortadaALaVista: false })
+    const io = new IntersectionObserver((entradas) => {
+      const e = entradas[entradas.length - 1]
+      if (e) setMesaQR({ botonesPortadaALaVista: e.isIntersecting })
+    })
+    io.observe(el)
+    return () => {
+      io.disconnect()
+      setMesaQR({ botonesPortadaALaVista: false })
+    }
+  }, [el, activo])
+}
 
 function sedeDeLaMesa(datos: unknown, sedeId: number | null, branchId: number | null): (SedeConHorario & { nombre: string; direccion: string | null }) | null {
   const d = datos as SedesRestaurante | null
@@ -49,6 +76,8 @@ export function PortadaMesa(props: PropsSeccionMesa) {
   const estados = useEstadosEnVivo(sede ? [sede] : [])
   const apertura = sede ? estados?.get(sede.id)?.apertura ?? null : null
   const sinSesion = !preview && mesa !== null && pedido !== null && pedido.sesion === null
+  const [botones, setBotones] = useState<HTMLDivElement | null>(null)
+  useBotonesALaVista(botones, !preview && mesa !== null)
 
   const valores = { mesa: nombreMesa(mesa), zona: mesa?.zona ?? null, sede: mesa?.nombreSede ?? sede?.nombre ?? null }
   const lugar = [mesa?.zona, [mesa?.nombreSede ?? sede?.nombre, sede?.direccion].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
@@ -120,7 +149,7 @@ export function PortadaMesa(props: PropsSeccionMesa) {
           </p>
         )}
 
-        <div className="mt-5 flex flex-col gap-3">
+        <div ref={setBotones} className="mt-5 flex flex-col gap-3" data-botones-portada-mesa="">
           <BotonPrimario onClick={() => document.getElementById('carta-qr-inicio')?.scrollIntoView({ behavior: 'smooth' })}>
             {c.primaryCtaText}
           </BotonPrimario>

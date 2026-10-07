@@ -107,11 +107,12 @@ export function PedidoMesa(props: PropsSeccionMesa) {
  * `--barra-pedido-mesa-h` y marca el body (`data-barra-pedido-mesa`); app/globals.css pone ese
  * alto como padding inferior de la raíz del sitio. El alto medido es el del contenedor fijo: el
  * botón más su margen inferior, que ya es `max(1rem, env(safe-area-inset-bottom))`. De md en
- * adelante la barra no se pinta (alto 0) y no se reserva nada; al desaparecer, se quita la reserva.
+ * adelante la barra no se pinta (alto 0) y no se reserva nada; al desaparecer o esconderse
+ * (`activa` en false), se quita la reserva.
  */
-function useReservaAlFinal(el: HTMLElement | null) {
+function useReservaAlFinal(el: HTMLElement | null, activa: boolean) {
   useEffect(() => {
-    if (!el) return
+    if (!el || !activa) return
     const raiz = document.documentElement
     const cuerpo = document.body
     const quitar = () => {
@@ -134,21 +135,32 @@ function useReservaAlFinal(el: HTMLElement | null) {
       ro?.disconnect()
       quitar()
     }
-  }, [el])
+  }, [el, activa])
 }
 
 function BarraVerPedido({ ronda, pedido }: { ronda: LineaRonda[]; pedido: DatosPedido | null }) {
   const [barra, setBarra] = useState<HTMLDivElement | null>(null)
-  useReservaAlFinal(barra)
+  // Lámina 01: sin barra mientras los botones de la bienvenida están a la vista (PortadaMesa.tsx).
+  const escondida = useMesaQRStore((e) => e.botonesPortadaALaVista)
+  useReservaAlFinal(barra, !escondida)
   const unidades = ronda.reduce((s, l) => s + l.cantidad, 0)
   const totalLocal = totalRonda(ronda)
   if (unidades === 0 && (pedido?.rondas.length ?? 0) === 0) return null
   const total = unidades > 0 ? totalLocal : pedido?.total ?? 0
   return (
-    <div ref={setBarra} data-barra-ver-pedido="" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+    // Fija: esconderla no mueve nada. Se desliza hacia abajo y se desvanece (200 ms; sin animación
+    // con prefers-reduced-motion); `invisible` al terminar la saca del foco y del lector de pantalla.
+    <div
+      ref={setBarra}
+      data-barra-ver-pedido=""
+      data-escondida={escondida ? '' : undefined}
+      aria-hidden={escondida || undefined}
+      className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-[transform,opacity,visibility] duration-200 ease-out motion-reduce:transition-none md:hidden ${escondida ? 'invisible translate-y-full opacity-0' : 'visible translate-y-0 opacity-100'}`}
+    >
       <button
         type="button"
         onClick={() => irA('pedido')}
+        tabIndex={escondida ? -1 : undefined}
         className="pointer-events-auto flex min-h-[56px] w-full max-w-md items-center justify-between gap-3 rounded-xl px-4 text-[17px] font-semibold shadow-lg"
         style={{ backgroundColor: C.primario, color: C.sobrePrimario }}
       >

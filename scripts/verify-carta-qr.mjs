@@ -309,7 +309,11 @@ if (await existe(dirMig)) {
   check(/!modoQr && !modoMesa && <BannerMesa/.test(vista) && /!hayServicioMesa && !modoMesa &&/.test(vista), 'carta: sin la franja «Pides en Mesa N» en modo mesa')
   // Barra fija «Ver pedido de la mesa»: reserva su alto real al final de la página solo mientras se ve.
   const pedidoSrc = await leer('components/sections/restaurant/mesa/PedidoMesa.tsx')
-  check(/useReservaAlFinal\(barra\)/.test(pedidoSrc) && /<div ref=\{setBarra\} data-barra-ver-pedido=""/.test(pedidoSrc), 'barra del pedido: mide su contenedor fijo (useReservaAlFinal) para reservar su alto')
+  check(/useReservaAlFinal\(barra, !escondida\)/.test(pedidoSrc) && /ref=\{setBarra\}\s*data-barra-ver-pedido=""/.test(pedidoSrc), 'barra del pedido: mide su contenedor fijo (useReservaAlFinal) y quita la reserva mientras está escondida')
+  // Lámina 01: sin barra mientras los botones de la bienvenida están a la vista.
+  const portadaSrc = await leer('components/sections/restaurant/mesa/PortadaMesa.tsx')
+  check(/new IntersectionObserver\(/.test(portadaSrc) && /botonesPortadaALaVista: e\.isIntersecting/.test(portadaSrc) && /<div ref=\{setBotones\}/.test(portadaSrc), 'bienvenida: IntersectionObserver sobre los botones publica botonesPortadaALaVista')
+  check(/const escondida = useMesaQRStore\(\(e\) => e\.botonesPortadaALaVista\)/.test(pedidoSrc) && /motion-reduce:transition-none/.test(pedidoSrc) && /escondida \? 'invisible translate-y-full opacity-0'/.test(pedidoSrc), 'barra del pedido: se esconde con los botones de la bienvenida a la vista, con transición y sin ella con prefers-reduced-motion')
   check(/body\[data-barra-pedido-mesa\] \[data-raiz-sitio\] \{\s*padding-bottom: var\(--barra-pedido-mesa-h, 0px\);/.test(css) && /data-raiz-sitio=""/.test(layout), 'barra del pedido: la raíz del sitio reserva --barra-pedido-mesa-h solo con la barra visible')
   for (const f of ['CartaQrMenu', 'PedidoMesa', 'CuentaMesa', 'comun', 'ServicioMesa', 'ValorarVisita']) {
     const src = await leer(`components/sections/restaurant/mesa/${f}.tsx`)
