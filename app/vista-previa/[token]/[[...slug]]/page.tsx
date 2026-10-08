@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { urlEditorSegura, verificarTokenVistaPrevia } from '@/lib/website/v2/enlaceVistaPrevia'
 import { getSitioBorradorV2 } from '@/lib/website/v2/lectorPublico'
 import { fijarSitioVistaPrevia } from '@/lib/website/v2/vistaPreviaBorrador'
+import { parametrosDelLienzo } from '@/lib/website/v2/lienzoVistaPrevia'
 import { BarraVistaPrevia, type SitioSelector } from '@/components/site/BarraVistaPrevia'
 
 /**
@@ -19,6 +20,10 @@ import { BarraVistaPrevia, type SitioSelector } from '@/components/site/BarraVis
  * Dos capas: la página exterior es la barra (sede, computador/tableta/celular, copiar enlace,
  * volver al editor, publicar) con un iframe; el iframe (`?marco=1`) es el sitio armado con el
  * borrador, que reutiliza la página pública tal cual (`app/[[...slug]]/page.tsx`).
+ *
+ * El lienzo del editor del ERP carga directamente la capa interior (`?marco=1&preview=1`): pinta el
+ * BORRADOR del sitio que se edita (principal o sede), así que una página que aún no está
+ * publicada no sale «404» en el lienzo. Solo `preview` y `hora` pasan a la página.
  *
  * Nunca se cachea (dinámica, sin revalidate) ni se indexa (`noindex` aquí y `X-Robots-Tag` +
  * `Cache-Control: private, no-store` en el middleware para `/vista-previa/*`).
@@ -112,7 +117,7 @@ export default async function VistaPreviaBorradorPage({
     // Sitio de una sede: su prefijo de ruta, para que productos, stock y carta salgan de esa sede.
     const sede = borrador.sitio.branchId !== null ? sedes.get(borrador.sitio.branchId) : undefined
     const conSede = sede?.slug && sede.is_web_published ? [sede.slug, ...ruta] : ruta
-    return CatchAllPage({ params: Promise.resolve({ slug: conSede }), searchParams: Promise.resolve({}) })
+    return CatchAllPage({ params: Promise.resolve({ slug: conSede }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
   }
 
   // ── Capa exterior: barra + iframe ──

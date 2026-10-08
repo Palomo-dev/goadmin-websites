@@ -31,6 +31,7 @@ import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-o
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
+import { sitioVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion, getServiciosDeSeccion } from '@/lib/website/datosSecciones'
 import { ProductGrid } from '@/components/site/ProductGrid'
@@ -503,6 +504,19 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   const resolvedSearchParams = await searchParams
   const fallback = await renderSlugFallback(currentSlug, organization, primaryColor, template, headerNav, headerNavTree, menuCategories, megaMenuItems, footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig, resolvedSearchParams, taxSettings, frozenReason, branchId, settings, outlet, showCurrencyCode, currencyPosition)
   if (fallback) return fallback
+
+  // 3. Vista previa privada del borrador (firmada; la usa el lienzo del editor): una página del
+  //    borrador aún sin secciones se pinta vacía, con encabezado y pie, para que el lienzo le ponga
+  //    las secciones en vivo. Antes salía «404». Web pública: el 404 de siempre.
+  if (page && sitioVistaPreviaDe(organization.id) !== null) {
+    return (
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} headerNavTree={headerNavTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems ?? undefined} footerNav={footerNav} footerNavTree={footerNavTree} menus={footerMenus.length > 0 ? footerMenus : undefined} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} taxSettings={taxSettings} frozenReason={frozenReason} effectiveSettings={settings} outlet={outlet} branchId={branchId} showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
+        <PreviewableSections sections={[]} organization={organization} primaryColor={primaryColor} data={{ branchId, prefijoSede: prefijo }} />
+      </OrganizationLayout>
+    )
+  } else {
+    // Sin página, o fuera de la vista previa del borrador: como siempre.
+  }
 
   // 4. Página no encontrada
   return (

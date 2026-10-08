@@ -636,7 +636,13 @@ export function createAdminClient() {
       const cartaErp = await readFile(join(ERP, 'src/lib/website/carta.server.ts'), 'utf8')
       check(/urlQrMesa\(host, m\.id, sedeWeb\)/.test(cartaErp), 'ERP Sitio web › Carta QR: el QR se arma con la sede elegida')
       const editor = await readFile(join(ERP, 'src/components/sitio-web/editor/useEditorSitio.ts'), 'utf8')
-      check(/baseWebDeSede\(previewUrlBase, sede\) \?\? previewUrlBase/.test(editor) && /const base = baseLienzo;/.test(editor), 'ERP editor: el lienzo de una sede usa la dirección de ESA sede (no la del principal)')
+      // La regla vive en direccionSitio.ts (lienzo, «Ver sitio publicado» y espera de las sedes);
+      // scripts/verify-lienzo-borrador.mjs la ejecuta. Aquí: que el editor la use para el lienzo.
+      const direccion = await readFile(join(ERP, 'src/components/sitio-web/editor/direccionSitio.ts'), 'utf8').catch(() => '')
+      check(
+        /baseWebDeSede\(host, sede\) \?\? host/.test(direccion) && /baseLienzoSitio\(previewUrlBase, sedeConteo, sucursalesWeb\)/.test(editor) && /const base = baseLienzo;/.test(editor),
+        'ERP editor: el lienzo de una sede usa la dirección de ESA sede (no la del principal)',
+      )
     } else {
       notas.push(`Sin el ERP en ${ERP}: no se revisa la URL del QR ni el lienzo del editor.`)
     }

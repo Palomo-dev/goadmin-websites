@@ -193,14 +193,21 @@ export function paginaAPublica(pagina: PaginaSitio, ctx: ContextoPublico): Websi
   }
 }
 
-/** Página publicada por slug. Las plantillas nunca se sirven como ruta. */
+/**
+ * Página publicada por slug. Las plantillas nunca se sirven como ruta.
+ *
+ * `incluirOcultas`: SOLO la vista previa privada del borrador (firmada, `app/vista-previa/[token]`)
+ * lo pide: ahí quien edita ve también la página que tiene «Ocultar del sitio». La web pública
+ * nunca lo pasa: una página oculta sigue sin salir.
+ */
 export function paginaPublicaDesdeDocumento(
   documento: DocumentoSitio,
   slug: string,
   ctx: ContextoPublico,
+  opciones: { incluirOcultas?: boolean } = {},
 ): WebsitePageWithSections | null {
   if (!slug || slug.startsWith(PREFIJO_PLANTILLAS)) return null
-  const pagina = documento.paginas.find((p) => p.slug === slug && p.publicada)
+  const pagina = documento.paginas.find((p) => p.slug === slug && (p.publicada || opciones.incluirOcultas === true))
   return pagina ? paginaAPublica(pagina, ctx) : null
 }
 

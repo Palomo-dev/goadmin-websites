@@ -327,8 +327,12 @@ export async function getPaginaPublica(
 ): Promise<WebsitePageWithSections | null> {
   const sitio = await getSitioPublicoV2(organizationId, branchId)
   if (sitio) {
+    // Vista previa privada del borrador (firma verificada en app/vista-previa/[token]): también la
+    // página oculta, para que el lienzo del editor no la pinte como «404». Web pública: solo las
+    // publicadas, como siempre.
+    const enBorrador = sitioVistaPreviaDe(organizationId) !== null
     try {
-      return paginaPublicaDesdeDocumento(sitio.documento, slug, { organizationId, branchId: sitio.branchId })
+      return paginaPublicaDesdeDocumento(sitio.documento, slug, { organizationId, branchId: sitio.branchId }, { incluirOcultas: enBorrador })
     } catch (error) {
       console.error('[sitio-v2] Error armando la página V2; se sirve legacy', {
         organizationId, slug, siteStateId: sitio.siteStateId, error: error instanceof Error ? error.message : String(error),
