@@ -4,7 +4,7 @@ import { organizacionDePeticion, sedeDeOrganizacion } from '@/lib/api/organizaci
 import { getOrganizationBranches } from '@/lib/supabase/queries'
 import { resolverSedeCarta } from '@/lib/products/carta-sede'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
-import { getSedesWeb } from '@/lib/restaurant/sedes'
+import { cartaDeSede } from '@/lib/restaurant/cartaDeSede'
 import { buscarMesaDeOrganizacion, type MesaPedido } from '@/lib/orders/mesaPedido'
 
 /**
@@ -90,20 +90,4 @@ export async function GET(request: NextRequest) {
     },
     { headers: SIN_CACHE },
   )
-}
-
-/**
- * Carta de una sede publicada con la mesa del QR: dominio propio → `https://<dominio>/menu?mesa=`;
- * si no, `/<slug>/menu?mesa=` bajo el sitio principal (el mismo `href` del selector de sedes,
- * lib/outlet/sedeLayout.ts). `null` si la sede no tiene sitio publicado.
- */
-async function cartaDeSede(organizationId: number, branchId: number, mesaId: string): Promise<string | null> {
-  const sede = (await getSedesWeb(organizationId)).find((s) => s.id === branchId)
-  if (!sede) return null
-  const base = sede.customDomain
-    ? `https://${sede.customDomain}`
-    : sede.slug
-      ? `/${encodeURIComponent(sede.slug)}`
-      : null
-  return base === null ? null : `${base}/menu?mesa=${encodeURIComponent(mesaId)}`
 }
