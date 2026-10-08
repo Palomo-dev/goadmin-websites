@@ -46,6 +46,7 @@ import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { redirect } from 'next/navigation'
 import { refMesaDeUrl } from '@/lib/restaurant/mesaQR'
+import { cartaDeLaSedeDeLaMesa } from '@/lib/restaurant/cartaDeSede'
 import { cartaQrRecibeMesa, esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
 import { pasosDisponibles, resolverPaso } from '@/lib/restaurant/pasosMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
@@ -184,6 +185,21 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   // (una consulta más por escaneo, cacheada); sin esa página o sin el pedido, como hoy.
   if (currentSlug === 'menu' && traeMesa) {
     const refQr = refMesaDeUrl(typeof sp?.mesa === 'string' ? sp.mesa : typeof sp?.table === 'string' ? sp.table : null)
+    // QR leído en el sitio principal: la sede la decide la MESA (restaurant_tables.branch_id,
+    // validada contra la organización del host). Una mesa de una sede con sitio propio va a la
+    // carta de ESA sede (/<slug>/menu?mesa=…), donde está su «Carta QR»; antes se buscaba
+    // «carta-qr» en el principal (un hotel no la tiene) y la carta del principal saltaba en el
+    // navegador. lib/restaurant/cartaDeSede.ts.
+    if (refQr && !outlet) {
+      const cartaSedeMesa = await cartaDeLaSedeDeLaMesa(organization.id, refQr)
+      if (cartaSedeMesa) {
+        redirect(cartaSedeMesa)
+      } else {
+        // Mesa de la sede principal, sin sedes con sitio aparte o sede sin sitio: como hoy.
+      }
+    } else {
+      // Ya en el sitio de una sede, o referencia inválida: como hoy.
+    }
     const paginaQr = refQr
       ? await getPaginaPublica(organization.id, 'carta-qr', branchId, () => getWebsitePageBySlug(organization.id, 'carta-qr', branchId))
       : null

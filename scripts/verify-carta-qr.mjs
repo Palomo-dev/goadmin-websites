@@ -29,6 +29,12 @@
  * 8. Ronda por confirmar e idempotencia: la ronda enviada se ve de inmediato «por confirmar» aunque
  *    la mesa no tenga sesión, no se dejan reenviar los mismos platos, /api/orders reconoce la
  *    `roundKey` (y conserva su else de siempre) y la migración del ERP quita el corte sin sesión.
+ * 9. Carta QR de una SEDE (bug de la org 326: hotel con una sede restaurante servida en /<slug>):
+ *    arnés con la decisión real del sitio (lib/restaurant/cartaDeSede.ts, con un cliente falso) y,
+ *    si el ERP está al lado, la URL real del QR (src/lib/pos/mesas/qrMesa.ts): la mesa de la sede
+ *    lleva a /<slug>/menu, un QR viejo sin sede leído en el principal redirige a la sede de la
+ *    MESA, y una organización de una sola sede (org 140) sigue igual y sin consultas de más.
+ *    También que el lienzo del editor del ERP pida la dirección de la sede que se edita.
  */
 import { readFile, writeFile, mkdtemp, mkdir, rm, access, readdir } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -486,6 +492,156 @@ if (await existe(dirMig)) {
     check(/create unique index if not exists idx_web_orders_round_key[\s\S]{0,200}where round_key is not null and status not in \('cancelled', 'rejected', 'expired'\)/.test(sql), 'migración: índice único de la ronda entre pedidos vivos')
   } else {
     notas.push(`Sin el ERP en ${ERP}: no se revisa la migración de la ronda por confirmar.`)
+  }
+}
+
+// ─── 9. Carta QR de una sede: la sede la decide la MESA ─────────────────────
+{
+  // Módulos con sus importaciones reescritas a módulos temporales (puros o falsos).
+  async function cargar(dir, archivos, falsos = {}) {
+    const nombres = Object.keys(archivos)
+    for (const [nombre, codigo] of Object.entries(falsos)) await writeFile(join(dir, `${nombre}.mjs`), codigo)
+    const todos = new Set([...nombres, ...Object.keys(falsos)])
+    for (const [nombre, { raiz, ruta, alias }] of Object.entries(archivos)) {
+      let js = stripTypeScriptTypes(await readFile(join(raiz, ruta), 'utf8'), { mode: 'strip' }).replace(/^import\s+type[^\n]*\n/gm, '')
+      js = js.replace(/from\s+'([^']+)'/g, (m, spec) => {
+        const destino = alias?.[spec] ?? spec.split('/').pop()
+        if (!todos.has(destino)) throw new Error(`${ruta}: importación sin módulo en el arnés: ${spec}`)
+        return `from './${destino}.mjs'`
+      })
+      await writeFile(join(dir, `${nombre}.mjs`), js)
+    }
+    const m = {}
+    for (const nombre of nombres) m[nombre] = await import(pathToFileURL(join(dir, `${nombre}.mjs`)).href)
+    return m
+  }
+
+  // Datos calcados de la org 326 (sin nombres): sede principal 530 sin sitio aparte, sede 531
+  // restaurante publicada en /<slug> con su «Carta QR», y la Mesa 1 de la sede 531.
+  const ORG = 326
+  const SLUG = 'restaurante'
+  const MESA_SEDE = 'dfae6652-3e00-4763-92f5-0bf19f4afb3a'
+  const MESA_PRINCIPAL = '6c1f8f5e-0d1b-4c7a-9a40-1e2f3a4b5c6d'
+  const MESA_OTRA_ORG = '0b9e7c1d-2a3f-4e5d-8c6b-7a8f9e0d1c2b'
+  const MESAS = [
+    { id: MESA_SEDE, organization_id: ORG, name: 'Mesa 1', zone: null, branch_id: 531 },
+    { id: MESA_PRINCIPAL, organization_id: ORG, name: 'Mesa 2', zone: null, branch_id: 530 },
+    { id: MESA_OTRA_ORG, organization_id: 999, name: 'Mesa 1', zone: null, branch_id: 77 },
+  ]
+  const falsos = {
+    server: `export const consultas = { n: 0 }
+export function createAdminClient() {
+  const filas = globalThis.__mesasArnes
+  return { from() {
+    consultas.n++
+    const filtros = []
+    const q = {
+      select() { return q },
+      eq(col, val) { filtros.push((f) => f[col] === val); return q },
+      order() { return q },
+      limit(n) { return Promise.resolve({ data: filas.filter((f) => filtros.every((p) => p(f))).slice(0, n), error: null }) },
+      maybeSingle() { return Promise.resolve({ data: filas.find((f) => filtros.every((p) => p(f))) ?? null, error: null }) },
+    }
+    return q
+  } }
+}`,
+    sedes: `export async function getSedesWeb(org) { return globalThis.__sedesArnes[org] ?? [] }`,
+    'carta-sede': `export async function resolverSedeCarta(org, b) { return typeof b === 'number' ? b : (globalThis.__principalArnes[org] ?? null) }`,
+  }
+  globalThis.__mesasArnes = MESAS
+  globalThis.__sedesArnes = {
+    [ORG]: [
+      { id: 530, nombre: 'Principal', slug: null, customDomain: null, esPrincipal: true },
+      { id: 531, nombre: 'Sede', slug: SLUG, customDomain: null, esPrincipal: false },
+    ],
+    140: [{ id: 1, nombre: 'Principal', slug: null, customDomain: null, esPrincipal: true }],
+  }
+  globalThis.__principalArnes = { [ORG]: 530, 140: 1 }
+
+  const dirArnes = await mkdtemp(join(ROOT, 'node_modules', '.verify-carta-qr-sede-'))
+  try {
+    let sitio = null
+    try {
+      sitio = await cargar(dirArnes, {
+        mesaQR: { raiz: ROOT, ruta: 'lib/restaurant/mesaQR.ts' },
+        nombreMesa: { raiz: ROOT, ruta: 'lib/orders/nombreMesa.ts' },
+        'estados-pedido': { raiz: ROOT, ruta: 'lib/orders/estados-pedido.ts' },
+        mesaPedido: { raiz: ROOT, ruta: 'lib/orders/mesaPedido.ts' },
+        rutaSitio: { raiz: ROOT, ruta: 'lib/outlet/rutaSitio.ts' },
+        cartaDeSede: { raiz: ROOT, ruta: 'lib/restaurant/cartaDeSede.ts' },
+      }, falsos)
+    } catch (e) {
+      check(false, `arnés del sitio: no se pudo cargar lib/restaurant/cartaDeSede.ts (${e.message})`)
+    }
+    const { consultas } = await import(pathToFileURL(join(dirArnes, 'server.mjs')).href)
+    const decidir = sitio?.cartaDeSede?.cartaDeLaSedeDeLaMesa
+    check(typeof decidir === 'function', 'cartaDeSede.ts exporta cartaDeLaSedeDeLaMesa (la sede la decide la mesa)')
+    if (typeof decidir === 'function') {
+      // QR viejo (sin sede) leído en el principal: a la carta de la sede de la MESA.
+      check(await decidir(ORG, MESA_SEDE) === `/${SLUG}/menu?mesa=${MESA_SEDE}`, 'QR sin sede de una mesa de la sede 531 → /<slug>/menu?mesa=… (allí está su Carta QR)')
+      check(await decidir(ORG, 'Mesa 1') === `/${SLUG}/menu?mesa=${MESA_SEDE}`, 'QR antiguo por nombre («Mesa 1») → la misma sede de la mesa')
+      // Sin regresión: la mesa de la sede principal se queda en el principal.
+      check(await decidir(ORG, MESA_PRINCIPAL) === null, 'mesa de la sede principal → sin redirección (como hoy)')
+      // La mesa se valida contra la organización del host: la de otra organización no existe aquí.
+      check(await decidir(ORG, MESA_OTRA_ORG) === null, 'mesa de OTRA organización → sin redirección (filtro por organization_id)')
+      // Sede sin sitio aparte: cae al principal como hoy.
+      globalThis.__sedesArnes[ORG][1] = { ...globalThis.__sedesArnes[ORG][1], slug: null }
+      check(await decidir(ORG, MESA_SEDE) === null, 'sede sin sitio aparte → el QR sigue en el principal (como hoy)')
+      globalThis.__sedesArnes[ORG][1] = { ...globalThis.__sedesArnes[ORG][1], slug: SLUG }
+      // Una sola sede (org 140): ni una consulta a restaurant_tables.
+      const antes = consultas.n
+      check(await decidir(140, MESA_SEDE) === null && consultas.n === antes, 'org de una sola sede (140): sin redirección y sin consultas de más')
+      // El destino es una sede que el sitio sí resuelve por prefijo (no un slug reservado).
+      check(!sitio.rutaSitio.esSlugReservado(SLUG), 'el slug de la sede no es una ruta reservada del sitio')
+    }
+
+    // La página /menu usa la decisión solo en el principal y conserva su else.
+    const pagina = await leer('app/[[...slug]]/page.tsx')
+    const iQr = pagina.indexOf("getPaginaPublica(organization.id, 'carta-qr'")
+    const iSede = pagina.indexOf('await cartaDeLaSedeDeLaMesa(organization.id, refQr)')
+    check(iSede !== -1 && iSede < iQr, 'page.tsx: /menu?mesa= resuelve la sede de la mesa ANTES de buscar «carta-qr» en el sitio servido')
+    check(/if \(refQr && !outlet\) \{[\s\S]{0,200}if \(cartaSedeMesa\) \{\s*redirect\(cartaSedeMesa\)\s*\} else \{[\s\S]{0,200}\} else \{/.test(pagina), 'page.tsx: solo en el principal (!outlet), con su else que conserva lo de hoy')
+    const resolver = await leer('app/api/restaurant-tables/resolve/route.ts')
+    check(/from '@\/lib\/restaurant\/cartaDeSede'/.test(resolver) && !/async function cartaDeSede/.test(resolver), 'resolve de la mesa: usa la misma cartaDeSede (una sola regla)')
+
+    // ERP al lado: la URL real del QR y la dirección del lienzo del editor.
+    const qrErp = join(ERP, 'src/lib/pos/mesas/qrMesa.ts')
+    if (await existe(qrErp)) {
+      let erp = null
+      try {
+        erp = await cargar(dirArnes, {
+          cupo: { raiz: ERP, ruta: 'src/lib/organizacion/cupo.ts' },
+          invitaciones: { raiz: ERP, ruta: 'src/lib/organizacion/invitaciones.ts' },
+          horarioSede: { raiz: ERP, ruta: 'src/lib/organizacion/horarioSede.ts' },
+          sucursales: { raiz: ERP, ruta: 'src/lib/organizacion/sucursales.ts' },
+          qrMesaErp: { raiz: ERP, ruta: 'src/lib/pos/mesas/qrMesa.ts' },
+        })
+      } catch (e) {
+        check(false, `arnés del ERP: no se pudo cargar qrMesa.ts (${e.message})`)
+      }
+      if (erp) {
+        const host = 'hotel-ejemplo.goadmin.io'
+        const sede531 = { is_main: false, is_active: true, is_web_published: true, slug: SLUG, custom_domain: null }
+        const sede530 = { is_main: true, is_active: true, is_web_published: false, slug: null, custom_domain: null }
+        const url = erp.qrMesaErp.urlQrMesa(host, MESA_SEDE, sede531)
+        check(url === `https://${host}/${SLUG}/menu?mesa=${MESA_SEDE}`, `ERP: el QR de la Mesa 1 lleva a la carta de su sede (${url})`)
+        // Lo que el sitio hace con esa URL: primer segmento = sede publicada → la página /menu de la sede.
+        const segmentos = url ? new URL(url).pathname.split('/').filter(Boolean) : []
+        check(segmentos[0] === SLUG && segmentos[1] === 'menu', 'ERP→sitio: el primer segmento del QR es el slug que el sitio resuelve como sede')
+        check(erp.qrMesaErp.urlQrMesa(host, MESA_PRINCIPAL, sede530) === `https://${host}/menu?mesa=${MESA_PRINCIPAL}`, 'ERP: mesa de la sede principal → el QR de siempre')
+        check(erp.qrMesaErp.urlQrMesa(host, MESA_PRINCIPAL) === `https://${host}/menu?mesa=${MESA_PRINCIPAL}`, 'ERP: sin sede → el QR de siempre (org 140)')
+      }
+      const dialogo = await readFile(join(ERP, 'src/components/pos/mesas/MesaQrDialog.tsx'), 'utf8')
+      check(/urlQrMesa\(sitio\.host, mesa\.id, sedeDe\(mesa\.branchId\)\)/.test(dialogo), 'ERP POS › Mesas: el QR se arma con la sede de la mesa')
+      const cartaErp = await readFile(join(ERP, 'src/lib/website/carta.server.ts'), 'utf8')
+      check(/urlQrMesa\(host, m\.id, sedeWeb\)/.test(cartaErp), 'ERP Sitio web › Carta QR: el QR se arma con la sede elegida')
+      const editor = await readFile(join(ERP, 'src/components/sitio-web/editor/useEditorSitio.ts'), 'utf8')
+      check(/baseWebDeSede\(previewUrlBase, sede\) \?\? previewUrlBase/.test(editor) && /const base = baseLienzo;/.test(editor), 'ERP editor: el lienzo de una sede usa la dirección de ESA sede (no la del principal)')
+    } else {
+      notas.push(`Sin el ERP en ${ERP}: no se revisa la URL del QR ni el lienzo del editor.`)
+    }
+  } finally {
+    await rm(dirArnes, { recursive: true, force: true })
   }
 }
 
