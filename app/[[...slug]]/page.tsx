@@ -29,6 +29,8 @@ import {
 import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
+import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { sitioVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
@@ -98,6 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
   })
   // En una sede, «Página · Sede | Marca»; en el sitio principal, el título de siempre.
   const tituloFinal: string = outlet && typeof seoSede.title === 'string' ? seoSede.title : title
+  const icono = hrefIconoFavicon(await urlFaviconDeLaPeticion())
 
   return {
     title: tituloFinal,
@@ -129,8 +132,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
       description,
     },
     icons: {
-      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
-      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
+      icon: icono ?? '/favicon.ico',
+      apple: icono ?? '/apple-touch-icon.png',
     },
     robots: {
       index: settings?.is_published !== false && !noindex,

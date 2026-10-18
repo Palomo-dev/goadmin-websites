@@ -1,46 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
+import { urlFaviconParaFetch } from '@/lib/website/v2/faviconPublico'
 
-const SYSTEM_DOMAINS = ['goadmin.io']
-
-export async function GET(request: NextRequest) {
-  const headersList = await headers()
-  const subdomain = headersList.get('x-subdomain')
-  const customDomain = headersList.get('x-custom-domain')
-  let identifier = customDomain || subdomain
-
-  // Fallback: extraer del hostname directamente
-  if (!identifier) {
-    const hostname = request.headers.get('host') || ''
-    const isSystemDomain = SYSTEM_DOMAINS.some(d => hostname.endsWith(d))
-    if (isSystemDomain) {
-      const parts = hostname.split('.')
-      if (parts.length > 2) identifier = parts[0]
-    } else if (!hostname.includes('localhost')) {
-      identifier = hostname
-    }
-  }
-
-  if (!identifier) {
-    return new NextResponse(null, { status: 404 })
-  }
-
-  const organization = await getOrganizationByHost(identifier)
-  
-  if (!organization) {
-    return new NextResponse(null, { status: 404 })
-  }
-
-  const settings = organization.website_settings as any
-  const faviconUrl = settings?.favicon_url || organization.logo_url
-
+export async function GET() {
+  const faviconUrl = await urlFaviconDeLaPeticion()
   if (!faviconUrl) {
     return new NextResponse(null, { status: 404 })
   }
 
+  const absoluta = urlFaviconParaFetch(faviconUrl, await headers())
+  if (!absoluta) {
+    return new NextResponse(null, { status: 404 })
+  }
+
   try {
-    const response = await fetch(faviconUrl)
+    const response = await fetch(absoluta)
     if (!response.ok) {
       return new NextResponse(null, { status: 404 })
     }
@@ -51,7 +26,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse(imageBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400',
+        // Corto a propósito: antes era un día y un logo cacheado tapaba el favicon nuevo.
+        'Cache-Control': 'public, max-age=300',
         'Access-Control-Allow-Origin': '*',
       },
     })

@@ -6,6 +6,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Metadata } from 'next'
+import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
+import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
 
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getOrgContext()
@@ -16,13 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   const { organization } = ctx
-  const settings = organization.website_settings
+  const icono = hrefIconoFavicon(await urlFaviconDeLaPeticion())
 
   return {
     title: `Mi Cuenta | ${organization.name}`,
     icons: {
-      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
-      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
+      icon: icono ?? '/favicon.ico',
+      apple: icono ?? '/apple-touch-icon.png',
     }
   }
 }

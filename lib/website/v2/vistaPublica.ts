@@ -18,6 +18,7 @@ import { resolverCampo, LIMITES_DOCUMENTO, type DocumentoSitio, type ItemMenu, t
 import { CAMPOS_HEREDABLES, COLUMNAS_SHELL_ESTRUCTURA, OPCIONES_SHELL, esVacio } from './mapeoAjustes'
 import { leerCampo, structuredCloneSeguro, valorPropioDe } from './rutasDocumento'
 import { visibilidadDesdeDocumento } from './estiloSeccion'
+import { urlIdentidadPublica } from './faviconPublico'
 import type {
   WebsiteMenuItemWithChildren,
   WebsiteMenuWithItems,
@@ -125,7 +126,7 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal: 
       )
     : propio?.mode === 'value' ? propio.value : null
   // https o ruta propia; nunca `//host` (protocolo relativo = recurso de otro dominio).
-  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
+  return urlIdentidadPublica(valor)
 }
 
 /**
@@ -140,7 +141,7 @@ export function logoOscuroPublicoDesdeDocumento(documento: DocumentoSitio, princ
         propio,
       )
     : propio?.mode === 'value' ? propio.value : null
-  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
+  return urlIdentidadPublica(valor)
 }
 
 // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────
