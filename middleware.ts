@@ -204,10 +204,13 @@ export async function middleware(request: NextRequest) {
   // tomaba por archivo salía de aquí sin `x-subdomain`, la página no resolvía la organización
   // del host y respondía 404 a todo enlace de vista previa.
   const esVistaPrevia = url.pathname.startsWith('/vista-previa/')
+  // El navegador pide /favicon.ico aunque el HTML apunte a /api/favicon. No hay archivo
+  // estático: si se ignorara por el punto, la pestaña se queda con el icono genérico.
+  const esFavicon = url.pathname === '/favicon.ico'
   if (
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/static') ||
-    (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia) // archivos con extensión
+    (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia && !esFavicon)
   ) {
     return NextResponse.next()
   }
@@ -330,6 +333,22 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // /favicon.ico → /api/favicon, con el tenant en la petición (no solo en la respuesta).
+  if (esFavicon) {
+    const destino = request.nextUrl.clone()
+    destino.pathname = '/api/favicon'
+    const cabeceras = cabecerasSinSede(request)
+    if (subdomain) cabeceras.set('x-subdomain', subdomain)
+    if (outletSubdomain) cabeceras.set('x-outlet-subdomain', outletSubdomain)
+    if (isCustomOutletDomain) {
+      cabeceras.set('x-custom-domain', subdomain!)
+      cabeceras.set('x-custom-outlet-domain', effectiveHost)
+    } else if (isCustomDomain) {
+      cabeceras.set('x-custom-domain', effectiveHost)
+    }
+    return NextResponse.rewrite(destino, { request: { headers: cabeceras } })
+  }
+
   // Sede por prefijo de ruta: solo en el host del sitio principal (con la sede ya resuelta
   // por host —sub-subdominio o dominio propio de sede— el primer segmento es una página).
   let respuesta: NextResponse = supabaseResponse
@@ -383,9 +402,9 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
      * - public folder
+     * /favicon.ico sí entra: se reescribe a /api/favicon.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

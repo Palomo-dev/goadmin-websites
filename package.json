@@ -26,7 +26,8 @@
     "verify:servicios": "node scripts/verify-servicios-seccion.mjs",
     "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs",
     "verify:estilo-tarjeta": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-tarjeta.mjs",
-    "verify:marca": "node --disable-warning=ExperimentalWarning scripts/verify-marca-correo.mjs"
+    "verify:marca": "node --disable-warning=ExperimentalWarning scripts/verify-marca-correo.mjs",
+    "verify:favicon": "node --disable-warning=ExperimentalWarning scripts/verify-favicon.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

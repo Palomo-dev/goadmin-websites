@@ -172,7 +172,10 @@ const crudo = {
   check(/pageSlug === 'menu'[\s\S]{0,200}<MenuFull/.test(avance), 'menu_preview en /menu delega en MenuFull (las 8 cartas en vivo usan menu_preview)')
   check(avance.includes('cartasParaSeccion('), 'el avance de la home usa la misma elección de carta que /menu')
   const vista = await readFile(join(ROOT, 'lib/website/v2/vistaPublica.ts'), 'utf8')
+  const favicon = await readFile(join(ROOT, 'lib/website/v2/faviconPublico.ts'), 'utf8')
   check(!vista.includes('/^(https:\\/\\/|\\/)/i'), 'vistaPublica.ts: el logo no acepta //host')
+  check(vista.includes('urlIdentidadPublica(valor)'), 'vistaPublica.ts: el logo usa la regla de URL de la identidad')
+  check(favicon.includes('/^(https:\\/\\/|\\/(?!\\/))/i'), 'faviconPublico.ts: la URL de identidad rechaza //host')
 }
 
 // ─── 2. Base de datos (opcional) ─────────────────────────────────────────────────────────────

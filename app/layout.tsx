@@ -5,6 +5,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
+import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
 import './globals.css'
 
 // Nota: custom_scripts se inyectan client-side vía CustomScripts en
@@ -29,11 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
     if (organization) {
       noindex = (await getPixelesSitio(organization.id)).noindex
       orgName = organization.name || undefined
-      const settings = organization.website_settings as any
-      const faviconUrl = settings?.favicon_url || organization.logo_url
-      if (faviconUrl) {
-        faviconIcon = faviconUrl
-      }
+      faviconIcon = hrefIconoFavicon(await urlFaviconDeLaPeticion()) ?? undefined
     }
   }
 
