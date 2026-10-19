@@ -27,6 +27,7 @@ import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 
 interface ProductDetailRendererProps {
   organization: OrganizationWithDetails
@@ -47,6 +48,8 @@ interface ProductDetailRendererProps {
   puedePedir?: boolean
   /** `''` o `'/sede-norte'` (sede servida por prefijo de ruta): «Volver a la carta» de la sede. */
   prefijoSede?: string
+  /** Orden del catálogo de variantes (`variant_values.display_order`). */
+  ordenAtributos?: OrdenAtributos | null
 }
 
 export function ProductDetailRenderer({
@@ -66,6 +69,7 @@ export function ProductDetailRenderer({
   restaurante = null,
   puedePedir = true,
   prefijoSede = '',
+  ordenAtributos = null,
 }: ProductDetailRendererProps) {
   const volver = restaurante
     ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
@@ -116,6 +120,7 @@ export function ProductDetailRenderer({
     branchId,
     restaurante,
     puedePedir,
+    ordenAtributos,
   }
 
   // ---- Modo plantilla: renderizar secciones respetando page_settings.columns ----
@@ -257,6 +262,7 @@ export function ProductDetailRenderer({
         branchId={branchId}
         restaurante={restaurante}
         puedePedir={puedePedir}
+        ordenAtributos={ordenAtributos}
       />
     </div>
   )

@@ -10,6 +10,7 @@ import { ProductModifierSelector, type ProductModifierSelectorRef, type Selected
 import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
 import { isOutOfStock } from '@/lib/stock'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
+import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -46,6 +47,8 @@ interface ProductDetailActionsProps {
   } | null
   /** Pedido en línea activo (`website_settings.enable_online_ordering`). Sin él, no hay botones de compra. */
   puedePedir?: boolean
+  /** Orden del catálogo de variantes (`variant_values.display_order`). */
+  ordenAtributos?: OrdenAtributos | null
 }
 
 export function ProductDetailActions({
@@ -64,6 +67,7 @@ export function ProductDetailActions({
   branchId,
   restaurante = null,
   puedePedir = true,
+  ordenAtributos = null,
 }: ProductDetailActionsProps) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -191,6 +195,7 @@ export function ProductDetailActions({
           onBuyNow={handleBuyNowVariant}
           buyNowPending={comprando}
           modifierGroups={modifierGroups}
+          ordenAtributos={ordenAtributos}
         />
         {campoNota}
       </div>

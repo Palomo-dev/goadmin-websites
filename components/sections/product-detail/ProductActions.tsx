@@ -23,6 +23,7 @@ interface ProductActionsProps {
     branchId?: number | null
     restaurante?: { textoAgotado: string | null } | null
     puedePedir?: boolean
+    ordenAtributos?: Record<string, Record<string, number>> | null
   }
 }
 
@@ -47,6 +48,7 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
         branchId={data?.branchId ?? null}
         restaurante={data?.restaurante ?? null}
         puedePedir={data?.puedePedir ?? true}
+        ordenAtributos={data?.ordenAtributos ?? null}
       />
     </div>
   )

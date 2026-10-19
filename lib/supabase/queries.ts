@@ -9,6 +9,7 @@ import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visi
 import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede, type FilaCartaSede, type PrecioSedeCarta } from '@/lib/products/carta-sede'
 import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
+import { normalizarNombre, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -1286,6 +1287,8 @@ export async function getProductVariants(parentProductId: number, organizationId
     .eq('parent_product_id', parentProductId)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
+    // `products` no tiene `display_order`. El orden de los botones (XS, S, M…)
+    // sale de `variant_values` en `getOrdenAtributos`, no de esta fila.
     .order('name')
 
   if (error) return []
@@ -1295,6 +1298,49 @@ export async function getProductVariants(parentProductId: number, organizationId
     filterStockByBranches(normalizeProductPrices(data || []), webBranchIds),
     await getCartaSedeParaListado(organizationId, branchId)
   )
+}
+
+/**
+ * Orden del catálogo de variantes de una organización (`variant_values.display_order`).
+ * La tienda lo usa para no pintar «L, M, S». Si la consulta falla, mapa vacío: el
+ * selector cae al orden de talla y al numérico.
+ *
+ * No filtra `is_active`: apagar un valor en el catálogo no quita el producto hijo,
+ * y ese hijo sigue necesitando el puesto que tiene en el catálogo.
+ */
+async function getOrdenAtributosUncached(organizationId: number): Promise<OrdenAtributos> {
+  const supabase = getSupabaseForPublicRead() as any
+  const { data: tipos, error } = await supabase
+    .from('variant_types')
+    .select('id, name')
+    .eq('organization_id', organizationId)
+    .order('display_order', { ascending: true })
+  if (error || !tipos?.length) {
+    if (error) console.error('[queries] getOrdenAtributos tipos', { organizationId, error: error.message })
+    return {}
+  }
+  const ids = (tipos as { id: number }[]).map((t) => t.id)
+  const { data: valores, error: errorValores } = await supabase
+    .from('variant_values')
+    .select('variant_type_id, value, display_order')
+    .in('variant_type_id', ids)
+    .order('display_order', { ascending: true })
+  if (errorValores || !valores) {
+    if (errorValores) console.error('[queries] getOrdenAtributos valores', { organizationId, error: errorValores.message })
+    return {}
+  }
+  const nombreTipo = new Map((tipos as { id: number; name: string }[]).map((t) => [t.id, t.name]))
+  const orden: OrdenAtributos = {}
+  for (const fila of valores as { variant_type_id: number; value: string; display_order: number }[]) {
+    const tipo = normalizarNombre(nombreTipo.get(fila.variant_type_id) || '')
+    const valor = normalizarNombre(fila.value || '')
+    if (!tipo || !valor) continue
+    const n = Number(fila.display_order)
+    if (!Number.isFinite(n)) continue
+    const mapa = orden[tipo] ?? (orden[tipo] = {})
+    if (mapa[valor] === undefined || n < mapa[valor]) mapa[valor] = n
+  }
+  return orden
 }
 
 /**
@@ -3457,6 +3503,7 @@ export const getBranchesByOrg = cacheStructural('getBranchesByOrg', getBranchesB
 export const getMetaPixelId = cacheStructural('getMetaPixelId', getMetaPixelIdUncached, SETTINGS_TTL)
 export const getGoogleAdsConfig = cacheStructural('getGoogleAdsConfig', getGoogleAdsConfigUncached, SETTINGS_TTL)
 export const getDefaultTax = cacheStructural('getDefaultTax', getDefaultTaxUncached, SETTINGS_TTL)
+export const getOrdenAtributos = cacheStructural('getOrdenAtributos', getOrdenAtributosUncached, CONTENT_TTL)
 export const getOrganizationTags = cacheStructural('getOrganizationTags', getOrganizationTagsUncached, SETTINGS_TTL)
 export const getOrganizationCategories = cacheStructural('getOrganizationCategories', getOrganizationCategoriesUncached, CONTENT_TTL)
 export const getCategoryBySlug = cacheStructural('getCategoryBySlug', getCategoryBySlugUncached, CONTENT_TTL)

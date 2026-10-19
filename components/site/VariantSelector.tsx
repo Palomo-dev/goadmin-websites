@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { getAvailableStock } from '@/lib/stock'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
+import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 
 interface VariantProduct {
   id: number
@@ -47,6 +48,11 @@ interface VariantSelectorProps {
   buyNowPending?: boolean
   onClose?: () => void
   mode?: 'dialog' | 'inline'
+  /**
+   * `display_order` del catálogo, por tipo y valor ya normalizados.
+   * Sin él, las tallas usan XS…XXXL y los números van de menor a mayor.
+   */
+  ordenAtributos?: OrdenAtributos | null
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -69,6 +75,7 @@ export function VariantSelector({
   onClose,
   mode = 'dialog',
   modifierGroups = [],
+  ordenAtributos = null,
 }: VariantSelectorProps) {
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [mods, setMods] = useState<SelectedModifier[]>([])
@@ -110,10 +117,10 @@ export function VariantSelector({
     })
     const result: Record<string, string[]> = {}
     Object.entries(groups).forEach(([key, values]) => {
-      result[key] = Array.from(values).sort()
+      result[key] = ordenarValoresAtributo(key, Array.from(values), ordenAtributos)
     })
     return result
-  }, [variants])
+  }, [variants, ordenAtributos])
 
   // Pre-seleccionar primera variante
   useEffect(() => {
