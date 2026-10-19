@@ -9,7 +9,7 @@
  * Pura y sin DOM: la prueba `scripts/verify-interruptores.mjs`.
  */
 
-export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name'
+export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name' | 'newest'
 
 export interface EstadoFiltros {
   categoria: number | null
@@ -57,6 +57,13 @@ export function filtrarProductos<T>(productos: T[], estado: EstadoFiltros): T[] 
   if (estado.orden === 'price_asc') result.sort((a, b) => (precio(a) ?? 0) - (precio(b) ?? 0))
   else if (estado.orden === 'price_desc') result.sort((a, b) => (precio(b) ?? 0) - (precio(a) ?? 0))
   else if (estado.orden === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+  else if (estado.orden === 'newest') {
+    const marca = (p: any) => {
+      const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
+      return Number.isFinite(t) ? t : 0
+    }
+    result.sort((a, b) => marca(b) - marca(a))
+  }
   return result
 }
 

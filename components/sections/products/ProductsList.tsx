@@ -37,6 +37,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
   else if (sortOrder === 'price_desc') sorted.sort((a, b) => (getProductPrice(b) ?? 0) - (getProductPrice(a) ?? 0))
   else if (sortOrder === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   else if (sortOrder === 'sales') sorted.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+  else if (sortOrder === 'newest') {
+    const marca = (p: any) => {
+      const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
+      return Number.isFinite(t) ? t : 0
+    }
+    sorted.sort((a, b) => marca(b) - marca(a))
+  }
 
   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
   const filtros = useFiltrosProductos(sorted)

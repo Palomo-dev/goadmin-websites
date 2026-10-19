@@ -8,11 +8,11 @@ import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
-import { estiloChipFiltro } from '@/lib/website/presentacionTienda'
+import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda } from '@/lib/products/filtrosProductos'
+import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
-const ITEMS_PER_PAGE = 12
 
 function getImageUrl(product: any): string | null {
   if (!product.product_images || product.product_images.length === 0) return null
@@ -34,6 +34,11 @@ interface OffersGridProps {
     title?: string
     subtitle?: string
     selected_category_ids?: number[]
+    max_items?: number
+    rows?: number
+    columns?: unknown
+    show_pagination?: boolean
+    sort_order?: string
     show_filters?: boolean
     show_search?: boolean
     // PRODUCT_CARD_INTERACTION_FIELDS (los mismos que lee ProductsGrid)
@@ -68,7 +73,8 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
-  const [sortBy, setSortBy] = useState<'sales' | 'discount' | 'price_asc' | 'price_desc'>('sales')
+  const [ordenVisitante, setOrdenVisitante] = useState<OrdenOfertas | null>(null)
+  const sortBy = ordenVisitante ?? ordenInicialOfertas(content.sort_order)
   const [busqueda, setBusqueda] = useState('')
   // «Mostrar filtros»: esta sección siempre los pintó (ausente = se muestran). «Mostrar buscador»:
   // ausente = sin buscador, como antes de leerlo. Ambos trabajan sobre las ofertas ya cargadas.
@@ -95,15 +101,14 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
       : products
     let result = selectedCategory ? baseProducts.filter((p: any) => p.category_id === selectedCategory) : [...baseProducts]
     if (busqueda.trim()) result = result.filter((p: any) => coincideBusqueda(p, busqueda))
-    if (sortBy === 'sales') result.sort((a: any, b: any) => (b.sales_count || 0) - (a.sales_count || 0))
-    else if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
-    else if (sortBy === 'price_asc') result.sort((a: any, b: any) => Number(a.product_prices?.[0]?.price || 0) - Number(b.product_prices?.[0]?.price || 0))
-    else if (sortBy === 'price_desc') result.sort((a: any, b: any) => Number(b.product_prices?.[0]?.price || 0) - Number(a.product_prices?.[0]?.price || 0))
+    if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
+    else result = ordenarListado(result, sortBy)
     return result
   }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids])
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const recorte = recorteListado(filteredProducts.length, currentPage, content)
+  const totalPages = recorte.paginas
+  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
   const resetPage = () => setCurrentPage(1)
 
   const addToCart = (product: any) => {
@@ -168,7 +173,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
             {showSearch && (
               <div className="flex items-center gap-3">
                 <BuscadorProductos valor={busqueda} onChange={(v) => { setBusqueda(v); resetPage() }} placeholder="Buscar ofertas…" />
-                {!showFilters && <span className="text-xs text-gray-400 ml-auto" aria-live="polite">{filteredProducts.length} ofertas</span>}
+                {!showFilters && <span className="text-xs text-gray-400 ml-auto" aria-live="polite">{recorte.universo} ofertas</span>}
               </div>
             )}
             {showFilters && categories.length > 0 && (
@@ -195,15 +200,17 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
             <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value as any); resetPage() }}
+                onChange={(e) => { setOrdenVisitante(e.target.value as OrdenOfertas); resetPage() }}
                 className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
               >
                 <option value="sales">🔥 Más vendidos</option>
+                <option value="newest">Más nuevos</option>
                 <option value="discount">% Mayor descuento</option>
                 <option value="price_asc">Precio: menor a mayor</option>
                 <option value="price_desc">Precio: mayor a menor</option>
+                <option value="name">Nombre A-Z</option>
               </select>
-              <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} ofertas</span>
+              <span className="text-xs text-gray-400 ml-auto">{recorte.universo} ofertas</span>
             </div>
             )}
           </div>
@@ -211,7 +218,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
 
           {/* Grid */}
           {paginatedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className={clasesColumnasProductos(content.columns)}>
               {paginatedProducts.map((product: any) => {
                 const isAdded = addedToCart.has(product.id)
                 return (

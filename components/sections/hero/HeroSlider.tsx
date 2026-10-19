@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
+import { enlaceDeImagen } from '@/lib/website/presentacionTienda'
 
 interface Slide {
   title?: string
@@ -14,6 +16,7 @@ interface Slide {
   video_url?: string
   cta_text?: string
   cta_url?: string
+  link_url?: string
   buttons?: HeroButtonItem[]
 }
 
@@ -23,6 +26,7 @@ interface HeroSliderProps {
     subtitle?: string
     cta_text?: string
     cta_url?: string
+    link_url?: string
     slides?: Slide[]
     buttons?: HeroButtonItem[]
     // Altura configurable (full-screen) — F3
@@ -277,6 +281,24 @@ function slideHasText(slide: Slide, showTitle: boolean, showCta: boolean, showBo
   return Boolean((showTitle && (slide.title || slide.subtitle)) || showCta || showBooking)
 }
 
+function esExterno(href: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(href)
+}
+
+/** Capa clicable sobre la imagen. El texto deja pasar el clic; el botón no. */
+function CapaEnlace({ href, etiqueta }: { href: string; etiqueta: string }) {
+  if (!href) return null
+  const clase = 'absolute inset-0 z-[1]'
+  if (esExterno(href)) return <a href={href} className={clase} aria-label={etiqueta} />
+  return <Link href={href} className={clase} aria-label={etiqueta} />
+}
+
+function EnvolturaEnlace({ href, children }: { href: string; children: React.ReactNode }) {
+  if (!href) return <>{children}</>
+  if (esExterno(href)) return <a href={href} className="block">{children}</a>
+  return <Link href={href} className="block">{children}</Link>
+}
+
 /**
  * Parsea un valor booleano que puede venir como boolean, string ("true"/"false")
  * o undefined desde JSON de Supabase.
@@ -405,26 +427,30 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
 
   // --- Render vacío (sin slides) ---
   if (slides.length === 0) {
+    const enlace = enlaceDeImagen(null, content, showCta)
     return (
       <div
-        className={`min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`}
+        className={`relative min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`}
         style={{ backgroundColor: primaryColor, ...overlapStyle, ...heightStyle }}
       >
-        <div>
+        <CapaEnlace href={enlace} etiqueta={content.title || 'Ver más'} />
+        <div className="relative z-10 pointer-events-none">
           {showTitle && content.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{content.title}</h1>}
           {showTitle && content.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{content.subtitle}</p>}
-          {showBooking ? (
-            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
-          ) : (
-            <HeroButtons
-              buttons={content.buttons}
-              ctaText={content.cta_text}
-              ctaUrl={content.cta_url}
-              primaryColor={primaryColor || '#3B82F6'}
-              showCta={showCta}
-              className="justify-center"
-            />
-          )}
+          <div className="pointer-events-auto">
+            {showBooking ? (
+              <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+            ) : (
+              <HeroButtons
+                buttons={content.buttons}
+                ctaText={content.cta_text}
+                ctaUrl={content.cta_url}
+                primaryColor={primaryColor || '#3B82F6'}
+                showCta={showCta}
+                className="justify-center"
+              />
+            )}
+          </div>
         </div>
       </div>
     )
@@ -443,7 +469,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const renderSlideText = (slide: Slide) => {
     if (!slideHasText(slide, showTitle, showCta, showBooking)) return null
     return (
-      <div className="relative z-10 min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6">
+      <div className="relative z-10 pointer-events-none min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           {showTitle && slide.title && (
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 drop-shadow-lg">{slide.title}</h1>
@@ -451,20 +477,22 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           {showTitle && slide.subtitle && (
             <p className="text-lg md:text-xl opacity-90 mb-8 drop-shadow-md">{slide.subtitle}</p>
           )}
-          {showBooking ? (
-            <div className="mt-6">
-              <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
-            </div>
-          ) : (
-            <HeroButtons
-              buttons={slide.buttons}
-              ctaText={slide.cta_text}
-              ctaUrl={slide.cta_url}
-              primaryColor={primaryColor || '#3B82F6'}
-              showCta={showCta}
-              className="justify-center"
-            />
-          )}
+          <div className="pointer-events-auto">
+            {showBooking ? (
+              <div className="mt-6">
+                <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
+              </div>
+            ) : (
+              <HeroButtons
+                buttons={slide.buttons}
+                ctaText={slide.cta_text}
+                ctaUrl={slide.cta_url}
+                primaryColor={primaryColor || '#3B82F6'}
+                showCta={showCta}
+                className="justify-center"
+              />
+            )}
+          </div>
         </div>
       </div>
     )
@@ -483,6 +511,8 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
    */
   const renderSlide = (slide: Slide, fullScreen: boolean, isFirst: boolean = false) => {
     const hasText = slideHasText(slide, showTitle, showCta, showBooking)
+    const enlace = enlaceDeImagen(slide, content, showCta)
+    const etiqueta = slide.title || content.title || 'Ver más'
 
     if (slide.video_url) {
       // Video siempre es full-screen con object-cover
@@ -497,6 +527,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
             playsInline
           />
           {showOverlay && <div className="absolute inset-0 bg-black/40" />}
+          <CapaEnlace href={enlace} etiqueta={etiqueta} />
           {renderSlideText(slide)}
         </div>
       )
@@ -514,6 +545,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
               <img src={slide.image_url} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
             </picture>
             {showOverlay && <div className="absolute inset-0 bg-black/40" />}
+            <CapaEnlace href={enlace} etiqueta={etiqueta} />
             {renderSlideText(slide)}
           </div>
         )
@@ -523,32 +555,37 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       // Comportamiento heredado de producción — se adapta a la imagen.
       // image_max_height controla el límite superior (default 85vh).
       return (
-        <picture className="block w-full bg-gray-100 dark:bg-gray-800">
-          {slide.image_url_mobile && (
-            <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
-          )}
-          <img
-            src={slide.image_url}
-            alt={slide.title || ''}
-            className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
-            loading={isFirst ? 'eager' : 'lazy'}
-            fetchPriority={isFirst ? 'high' : 'low'}
-          />
-        </picture>
+        <EnvolturaEnlace href={enlace}>
+          <picture className="block w-full bg-gray-100 dark:bg-gray-800">
+            {slide.image_url_mobile && (
+              <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
+            )}
+            <img
+              src={slide.image_url}
+              alt={slide.title || etiqueta}
+              className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
+              loading={isFirst ? 'eager' : 'lazy'}
+              fetchPriority={isFirst ? 'high' : 'low'}
+            />
+          </picture>
+        </EnvolturaEnlace>
       )
     }
 
     // Sin imagen ni video: fondo de color con texto
     return (
-      <div className={`min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`} style={{ backgroundColor: primaryColor, ...heightStyle }}>
-        <div className="max-w-4xl mx-auto">
+      <div className={`relative min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`} style={{ backgroundColor: primaryColor, ...heightStyle }}>
+        <CapaEnlace href={enlace} etiqueta={etiqueta} />
+        <div className="relative z-10 pointer-events-none max-w-4xl mx-auto">
           {showTitle && slide.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{slide.title}</h1>}
           {showTitle && slide.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{slide.subtitle}</p>}
-          {showBooking ? (
-            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
-          ) : (
-            <HeroButtons buttons={slide.buttons} ctaText={slide.cta_text} ctaUrl={slide.cta_url} primaryColor={primaryColor || '#3B82F6'} showCta={showCta} className="justify-center" />
-          )}
+          <div className="pointer-events-auto">
+            {showBooking ? (
+              <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+            ) : (
+              <HeroButtons buttons={slide.buttons} ctaText={slide.cta_text} ctaUrl={slide.cta_url} primaryColor={primaryColor || '#3B82F6'} showCta={showCta} className="justify-center" />
+            )}
+          </div>
         </div>
       </div>
     )
