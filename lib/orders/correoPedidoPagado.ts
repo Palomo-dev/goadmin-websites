@@ -10,6 +10,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server'
+import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
@@ -50,6 +51,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
     const zona = sede?.timezone || org?.timezone || null
     const esRestaurante = Number(org?.type_id) === 1
     const origen = org ? origenSitio(org) : ''
+    const marca = await cargarMarcaPedido(sb, pedido.organization_id, pedido.branch_id ?? null)
 
     await sendOrderConfirmationEmail({
       orderNumber: pedido.order_number,
@@ -67,7 +69,8 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
       discount: num(pedido.discount_total),
       ...(pedido.coupon_code ? { couponCode: pedido.coupon_code } : {}),
       total: num(pedido.total),
-      organizationName: org?.name || '',
+      organizationName: marca.nombre || org?.name || '',
+      marca,
       trackingUrl: `${origen}${rutaSeguimiento(pedido.organization_id, pedido)}`,
       paymentStatus: 'paid',
       tipoEntrega: etiquetaTipoEntrega(pedido.delivery_type, esRestaurante, pedido.internal_notes),
