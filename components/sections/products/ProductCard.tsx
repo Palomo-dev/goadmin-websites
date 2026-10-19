@@ -57,6 +57,7 @@ import {
   type BadgeConfig,
 } from '@/lib/sectionStyle'
 import { textoPlano } from '@/lib/texto/textoPlano'
+import { coloresEtiqueta, colorPrecioAnterior, estiloPrecio, textoGuardado } from '@/lib/website/presentacionTienda'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -338,11 +339,13 @@ function BadgeRenderer({
   product,
   primaryColor,
   discount,
+  cardStyle,
 }: {
   badge: BadgeConfig
   product: any
   primaryColor: string
   discount: number | null
+  cardStyle?: Record<string, unknown>
 }) {
   const variantCount = product.variant_count || 0
   const salesCount = product.sales_count || 0
@@ -435,8 +438,12 @@ function BadgeRenderer({
     badge.type === 'category' ? primaryColor : // color de marca
     badge.type === 'custom' ? primaryColor :   // color de marca
     primaryColor                                // fallback genérico
-  const fallbackText = '#FFFFFF'
-  const style = resolveBadgeStyle(badge, fallbackBg, fallbackText)
+  const colores = coloresEtiqueta(badge.type, badge, cardStyle, fallbackBg, '#FFFFFF')
+  const style = resolveBadgeStyle(
+    { ...badge, bg_color: colores.bg, text_color: colores.text },
+    colores.bg,
+    colores.text,
+  )
 
   const Icon = badge.icon === 'Layers' ? Layers :
     badge.icon === 'TrendingUp' ? TrendingUp :
@@ -649,7 +656,7 @@ function CardButtonRenderer({
   // label:"Agregar" icon:"Plus" sobreescribe el default "Elegir"/Layers y el
   // padre se agrega al carrito sin elegir variante.
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
-    const chooseLabel = button.label_when_parent || 'Elegir'
+    const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
     const chooseIconName = 'Layers'
     const ChooseIcon = ICON_MAP[chooseIconName] || Layers
     return (
@@ -676,7 +683,8 @@ function CardButtonRenderer({
   }
   const effectiveStyle = isAddedState ? addedStyle : baseStyle
   // Label efectivo: cuando isAdded, forzar "Listo" sin importar button.label
-  const effectiveLabel = isAddedState ? 'Listo' : (button.label || defaultLabel(button.action))
+  const etiquetaSeccion = button.action === 'add_to_cart' ? textoGuardado(cardStyle?.add_button_label) : ''
+  const effectiveLabel = isAddedState ? 'Listo' : (etiquetaSeccion || button.label || defaultLabel(button.action))
 
   return (
     <Button
@@ -850,6 +858,10 @@ export function ProductCard({
     }
   }
 
+  const precio = estiloPrecio(mergedCardStyle, primaryColor)
+  const colorAnterior = colorPrecioAnterior(mergedCardStyle)
+  const claseAnterior = colorAnterior ? 'line-through' : 'text-gray-400 line-through'
+  const estiloAnterior = colorAnterior ? { color: colorAnterior } : undefined
   const { className: cardClassName, style: cardStyleObj } = buildCardStyle(mergedCardStyle)
   const imageFitClass = resolveImageFitClass(mergedCardStyle.image_fit)
   const imageRatioClass = resolveImageRatioClass(mergedCardStyle.image_ratio)
@@ -883,7 +895,7 @@ export function ProductCard({
               <p className="text-xs text-gray-500 line-clamp-1">{textoPlano(product.description)}</p>
             )}
             {price != null && (
-              <p className="text-sm font-bold mt-1" style={{ color: primaryColor }}>
+              <p className="text-sm mt-1" style={precio}>
                 <Price value={price} />
               </p>
             )}
@@ -925,7 +937,7 @@ export function ProductCard({
               return (
                 <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-0.5`}>
                   {cornerBadges.map((b, i) => (
-                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
+                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
                   ))}
                 </div>
               )
@@ -964,11 +976,11 @@ export function ProductCard({
             {price != null && (
               <div className="flex items-center gap-2">
                 {comparePrice && comparePrice > (price ?? 0) && mergedCardStyle.show_compare_price !== false && (
-                  <span className="text-sm text-gray-400 line-through">
+                  <span className={`text-sm ${claseAnterior}`} style={estiloAnterior}>
                     <Price value={comparePrice} />
                   </span>
                 )}
-                <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                <span className="text-lg" style={precio}>
                   <Price value={price} />
                 </span>
               </div>
@@ -1069,7 +1081,7 @@ export function ProductCard({
             return (
               <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-1`}>
                 {cornerBadges.map((b, i) => (
-                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
+                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
                 ))}
                 {hasCornerButtons && (
                   renderButtons('rounded-lg p-1', overlayPos)
@@ -1093,7 +1105,11 @@ export function ProductCard({
           {isOverlay && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
               <h3 className={`font-semibold text-white ${titleLinesClass}`}>{product.name}</h3>
-              {price != null && <span className="font-bold text-white"><Price value={price} /></span>}
+              {price != null && (
+                <span style={textoGuardado(mergedCardStyle.price_color) ? precio : { color: '#ffffff', fontWeight: precio.fontWeight }}>
+                  <Price value={price} />
+                </span>
+              )}
             </div>
           )}
           {/* Botones overlay no-esquina (overlay_bottom, overlay_hover) — sin conflicto con badges */}
@@ -1124,10 +1140,10 @@ export function ProductCard({
           <div className="flex flex-col gap-2 mt-1">
             <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}`}>
               {comparePrice && price !== null && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
-                <Price value={comparePrice} className="text-xs sm:text-sm text-gray-400 line-through" />
+                <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
               )}
               {price !== null && (
-                <Price value={price} className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }} />
+                <Price value={price} className="text-sm sm:text-lg" style={precio} />
               )}
             </div>
             {outOfStock && !isParentProduct(product) ? (

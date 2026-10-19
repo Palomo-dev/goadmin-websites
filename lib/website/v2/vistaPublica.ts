@@ -128,6 +128,21 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal: 
   return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
 }
 
+/**
+ * Logo claro para encabezado o pie con fondo oscuro (`identidad.logoOscuroUrl`).
+ * Misma herencia y la misma regla de URL que el logo principal.
+ */
+export function logoOscuroPublicoDesdeDocumento(documento: DocumentoSitio, principal: BaseHerencia | null): string | null {
+  const propio = documento.identidad.logoOscuroUrl
+  const valor = principal
+    ? resolverCampo<string>(
+        principal.documento?.identidad.logoOscuroUrl?.mode === 'value' ? principal.documento.identidad.logoOscuroUrl.value : null,
+        propio,
+      )
+    : propio?.mode === 'value' ? propio.value : null
+  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
+}
+
 // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────
 
 export interface ContextoPublico {

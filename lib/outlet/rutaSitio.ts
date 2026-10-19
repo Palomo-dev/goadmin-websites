@@ -107,7 +107,7 @@ export function quitarPrefijo(pathname: string, prefijo: string): string {
 
 /**
  * Árbol de navegación (páginas legacy o menús V2 convertidos) con el prefijo aplicado al
- * `slug`, para que `pageToNavItem` (`/${slug}`, `home` → `/`) genere enlaces de la sede.
+ * `slug`, para que `pageToNavItem` (`hrefDeSlug`) genere enlaces de la sede.
  * Los enlaces externos y las anclas se dejan como estaban.
  */
 export function prefijarArbolNav<T extends { slug: string; children?: T[] }>(arbol: T[] | undefined, prefijo: string): T[] | undefined {

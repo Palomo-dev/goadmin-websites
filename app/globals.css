@@ -156,10 +156,10 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
 
 /* Fondo de la sección: «Alterno» (un tono sobre el fondo) y «Oscuro» (el oscuro de la marca). */
 [data-seccion-fondo='alterno'] {
-  background-color: color-mix(in srgb, var(--text-color, #111827) 4%, var(--background-color, #ffffff));
+  background-color: var(--seccion-fondo-alterno, color-mix(in srgb, var(--text-color, #111827) 4%, var(--background-color, #ffffff)));
 }
 .dark [data-seccion-fondo='alterno'] {
-  background-color: color-mix(in srgb, var(--text-color, #ffffff) 6%, var(--background-color, #111827));
+  background-color: var(--seccion-fondo-alterno, color-mix(in srgb, var(--text-color, #ffffff) 6%, var(--background-color, #111827)));
 }
 [data-seccion-fondo='oscuro'] {
   background-color: var(--secondary-color);

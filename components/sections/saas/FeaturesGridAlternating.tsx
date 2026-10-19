@@ -1,19 +1,44 @@
+import { DynamicLucideIcon } from '@/components/sections/products/DynamicLucideIcon'
+
+interface ItemBeneficio {
+  icon?: string
+  label?: string
+  title?: string
+  description?: string
+  image_url?: string
+}
+
 interface FeaturesGridAlternatingProps {
   content: {
     title?: string
     subtitle?: string
-    items?: Array<{
-      icon?: string
-      label: string
-      description?: string
-      image_url?: string
-    }>
+    /** `imagen` (por defecto), `icono` o `texto`. La variante `icons` equivale a ícono. */
+    presentacion?: string
+    items?: ItemBeneficio[]
   }
   primaryColor?: string
+  sectionVariant?: string
 }
 
-export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridAlternatingProps) {
+function IconoBeneficio({ name, color }: { name: string; color: string }) {
+  const esLucide = /^[A-Z][A-Za-z0-9]+$/.test(name)
+  return (
+    <span
+      className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl text-xl"
+      style={{ backgroundColor: `${color}15`, color }}
+    >
+      {esLucide ? <DynamicLucideIcon name={name} className="h-6 w-6" fallback="Sparkles" /> : name}
+    </span>
+  )
+}
+
+export function FeaturesGridAlternating({ content, primaryColor = '#3B82F6', sectionVariant }: FeaturesGridAlternatingProps) {
   const items = content.items || []
+  const modo = content.presentacion === 'icono' || content.presentacion === 'texto' || content.presentacion === 'imagen'
+    ? content.presentacion
+    : sectionVariant === 'icons'
+      ? 'icono'
+      : 'imagen'
 
   return (
     <div>
@@ -24,30 +49,27 @@ export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridA
         <p className="text-gray-600 dark:text-gray-300 text-center mb-12">{content.subtitle}</p>
       )}
       <div className="space-y-16 max-w-5xl mx-auto">
-        {items.map((item, i) => (
-          <div key={i} className={`flex flex-col md:flex-row items-center gap-8 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
-            <div className="flex-1">
-              {item.icon && (
-                <span className="inline-block w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
-                  {item.icon}
-                </span>
-              )}
-              <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{item.label}</h3>
-              {item.description && (
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
-              )}
-            </div>
-            <div className="flex-1 w-full">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.label} className="w-full rounded-xl shadow-lg" loading="lazy" />
-              ) : (
-                <div className="w-full aspect-video rounded-xl flex items-center justify-center text-5xl" style={{ backgroundColor: `${primaryColor}08` }}>
-                  💻
+        {items.map((item, i) => {
+          const titulo = item.title || item.label || ''
+          const mostrarImagen = modo === 'imagen' && !!item.image_url
+          const mostrarIcono = modo === 'icono' || (modo === 'imagen' && !item.image_url && !!item.icon)
+          return (
+            <div key={i} className={`flex flex-col items-center gap-8 ${mostrarImagen ? `md:flex-row ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}` : ''}`}>
+              <div className="flex-1">
+                {mostrarIcono && item.icon && <IconoBeneficio name={item.icon} color={primaryColor} />}
+                {titulo && <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{titulo}</h3>}
+                {item.description && (
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
+                )}
+              </div>
+              {mostrarImagen && (
+                <div className="flex-1 w-full">
+                  <img src={item.image_url} alt={titulo} className="w-full rounded-xl shadow-lg" loading="lazy" />
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

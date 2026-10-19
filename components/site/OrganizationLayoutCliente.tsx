@@ -33,7 +33,7 @@ import { BarraMovilGiro } from './BarraMovilGiro'
 import { ModoMesaProvider } from './ModoMesaContext'
 import { PasosMesaProvider, type PasosMesaServidor } from './PasosMesaContext'
 import { variablesColorMesa } from '@/lib/restaurant/modoMesa'
-import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { fondoOscuro, textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { contraste } from '@/lib/website/v2/contrasteColor'
 import { EncabezadoMesa } from './header/EncabezadoMesa'
 import { PieMesa } from './footer/PieMesa'
@@ -166,6 +166,7 @@ export function OrganizationLayoutCliente({
   const sedesSelector = datosSede?.sedesSelector ?? []
   const pathname = usePathname() ?? '/'
   // Encabezado y pie por plantilla (lib/website/encabezadoPie.ts): todo en su default = lo de hoy.
+  const temaEfectivo = vivos?.tema ?? temaSitio ?? null
   const opcionesShell = opcionesEncabezadoPie(settings)
   const extras = extrasShell ?? EXTRAS_VACIOS
   // Selector de sede: dentro del encabezado si el sitio lo pidió; si no, la franja de siempre.
@@ -183,6 +184,7 @@ export function OrganizationLayoutCliente({
         }
       : null,
     tipo: organization.type_id ?? null,
+    fondoTemaOscuro: !!(temaEfectivo?.fondo && fondoOscuro(temaEfectivo.fondo)),
   }
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
@@ -245,7 +247,6 @@ export function OrganizationLayoutCliente({
   
   // En el lienzo del editor, el estilo general en edición (fuentes, redondeo, botón, movimiento)
   // reemplaza al guardado; se pinta con las mismas funciones que el sitio publicado.
-  const temaEfectivo = vivos?.tema ?? temaSitio ?? null
   const temaVars = atributosTema(temaEfectivo)
   const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo]) : null
   // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de

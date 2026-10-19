@@ -31,6 +31,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { prefijarItemsNav } from '@/lib/outlet/rutaSitio'
 import { IconoTikTok, LogoPieTema, MapaPie, MediosPagoPie } from './PieExtras'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 
 /** Alta de suscriptores del boletín: no existe todavía (2026-10-06). */
 export const BOLETIN_DISPONIBLE = false
@@ -62,12 +63,14 @@ export interface PieTemaProps {
   mostrarHorario: boolean
   mostrarRedes: boolean
   logoHeight: number
+  /** Logo ya elegido (claro si el fondo del pie es oscuro). */
+  logoUrl?: string | null
 }
 
 function enlacesDeMenu(items: WebsiteMenuItemWithChildren[]): Enlace[] {
   return items.map((item) => {
     if ((item.item_type === 'page' || item.item_type === 'policy') && item.page) {
-      return { name: item.custom_label || item.page.title, href: item.page.slug === 'home' ? '/' : `/${item.page.slug}` }
+      return { name: item.custom_label || item.page.title, href: hrefDeSlug(item.page.slug) }
     }
     if (item.item_type === 'category' && item.category) return { name: item.category.name, href: `/categorias/${item.category.slug}` }
     return { name: item.custom_label || '', href: item.custom_url || '#' }
@@ -200,10 +203,11 @@ export function PieTema(p: PieTemaProps) {
   const redes = p.mostrarRedes
     ? Object.entries(p.redes).filter(([red, url]) => !!url && (ICONOS_REDES[red] || (red === 'whatsapp' && opciones.pie.whatsapp)))
     : []
+  const logo = p.logoUrl ?? p.organization.logo_url
   const marca = (
     <div className={`flex flex-col gap-4 ${centrado ? 'items-start md:items-center md:text-center' : 'items-start'}`}>
-      {p.organization.logo_url ? (
-        <Image src={p.organization.logo_url} alt={p.organization.name} width={p.logoHeight * 3} height={p.logoHeight} className="w-auto object-contain" style={{ height: `${p.logoHeight}px` }} />
+      {logo ? (
+        <Image src={logo} alt={p.organization.name} width={p.logoHeight * 3} height={p.logoHeight} className="w-auto object-contain" style={{ height: `${p.logoHeight}px` }} />
       ) : (
         <LogoPieTema nombre={p.organization.name} color={p.primaryColor} textoSobreColor={iconoTxt} />
       )}

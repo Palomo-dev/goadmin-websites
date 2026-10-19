@@ -75,7 +75,7 @@ export default function HeaderClassic({
   );
 
   const renderLogo = (
-    <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
+    <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} fondoOscuro={transparente === 'sobre'} />
   );
 
   let middle: React.ReactNode;

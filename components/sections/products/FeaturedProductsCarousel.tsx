@@ -138,6 +138,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
           mostrarFiltros={content.show_filters === true}
           mostrarBuscador={content.show_search === true}
           mostrarCategorias={content.show_categories !== false}
+          content={content}
         />
       )}
 

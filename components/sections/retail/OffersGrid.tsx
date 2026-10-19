@@ -8,6 +8,7 @@ import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
+import { estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda } from '@/lib/products/filtrosProductos'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -174,17 +175,20 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
               <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
                 <button
                   onClick={() => { setSelectedCategory(null); resetPage() }}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${!selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
-                  style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${estiloChipFiltro(!selectedCategory, primaryColor, content).className}`}
+                  style={estiloChipFiltro(!selectedCategory, primaryColor, content).style}
                 >Todos</button>
-                {categories.map((cat) => (
+                {categories.map((cat) => {
+                  const activo = estiloChipFiltro(selectedCategory === cat.id, primaryColor, content)
+                  return (
                   <button
                     key={cat.id}
                     onClick={() => { setSelectedCategory(selectedCategory === cat.id ? null : cat.id); resetPage() }}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
-                    style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
+                    style={activo.style}
                   >{cat.name}</button>
-                ))}
+                  )
+                })}
               </div>
             )}
             {showFilters && (
