@@ -2,7 +2,14 @@
  * Envía email de confirmación de orden al cliente.
  * Usa Resend (https://resend.com) vía fetch directo — no requiere npm package.
  * Si RESEND_API_KEY no está configurada, no hace nada (silent no-op).
+ *
+ * Con `marca` (el correo de pago confirmado) el mensaje lleva el logo, el color
+ * y el nombre de la tienda. El From es el correo de la tienda solo si su dominio
+ * ya está autenticado; si no, Reply-To apunta a ese correo y el envío sale por
+ * el dominio de la plataforma, que es el único que el proveedor acepta.
  */
+
+import { sobreCorreoPedido, type MarcaCorreoPedido, type SobreCorreoPedido } from '@/lib/email/marcaCorreoPedido'
 
 interface OrderEmailData {
   orderNumber: string
@@ -31,6 +38,8 @@ interface OrderEmailData {
   tipoEntrega?: string | null
   /** Hora programada ya formateada en la zona de la sede («Hoy · 7:30 p. m.»). */
   programadoPara?: string | null
+  /** Marca de la tienda. Sin ella el correo sale como antes: remitente de la plataforma y azul fijo. */
+  marca?: MarcaCorreoPedido | null
 }
 
 // Los nombres de promoción/cupón los escribe el comercio en el ERP; se escapan
@@ -50,13 +59,42 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io'
+  const sobre: SobreCorreoPedido | null = data.marca
+    ? sobreCorreoPedido({
+        nombre: data.marca.nombre || data.organizationName,
+        correoTienda: data.marca.correo,
+        logoUrl: data.marca.logoUrl,
+        color: data.marca.color,
+        dominios: data.marca.dominios,
+        respaldo: process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io',
+      })
+    : null
+  const fromEmail = sobre?.from ?? (process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io')
+  const colorBoton = sobre?.color ?? '#3B82F6'
+  const textoBoton = sobre?.texto ?? '#ffffff'
   const pagado = data.paymentStatus === 'paid'
   const titulo = pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
   const mensaje = pagado
     ? `Recibimos el pago de tu pedido <strong>${escapeHtml(data.orderNumber)}</strong>. Ya lo estamos preparando.`
     : `Tu pedido <strong>${escapeHtml(data.orderNumber)}</strong> llegó al restaurante. Te avisaremos cuando lo confirmen.`
-  const negocio = data.organizationName ? escapeHtml(data.organizationName) : ''
+  const negocio = escapeHtml(sobre?.nombre || data.organizationName || '')
+  const logo = sobre?.logoUrl
+    ? `<img src="${escapeHtml(sobre.logoUrl)}" alt="${negocio}" height="48" style="height:48px;max-width:220px;width:auto;margin:0 auto 12px;display:block;border:0;">`
+    : ''
+  const encabezado = sobre
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${sobre.color};border-radius:8px 8px 0 0;">
+        <tr><td style="padding:28px 24px;text-align:center;">
+          ${logo}
+          ${negocio ? `<p style="margin:0;color:${sobre.texto};font-size:15px;font-weight:700;">${negocio}</p>` : ''}
+        </td></tr>
+      </table>`
+    : `<div style="background:#f8f9fa;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">${titulo}</h1>
+        ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:14px;">${negocio}</p>` : ''}
+      </div>`
+  const pie = sobre?.correo
+    ? `Si tienes alguna pregunta sobre tu pedido, escribe a <a href="mailto:${escapeHtml(sobre.correo)}" style="color:${sobre.color};">${escapeHtml(sobre.correo)}</a>.`
+    : `Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.`
 
   const itemsHtml = data.items.map(item => `
     <tr>
@@ -69,12 +107,10 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-      <div style="background:#f8f9fa;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
-        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">${titulo}</h1>
-        ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:14px;">${negocio}</p>` : ''}
-      </div>
+      ${encabezado}
       
       <div style="padding:24px;">
+        ${sobre ? `<h1 style="margin:0 0 16px;color:#1a1a1a;font-size:24px;">${titulo}</h1>` : ''}
         <p style="color:#333;font-size:16px;">
           Hola <strong>${escapeHtml(data.customerName)}</strong>,
         </p>
@@ -136,13 +172,13 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         </div>
         
         <div style="text-align:center;margin-top:24px;">
-          <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:#3B82F6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+          <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:${colorBoton};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
             Seguir mi pedido
           </a>
         </div>
         
         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
-          Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.
+          ${pie}
         </p>
       </div>
     </div>
@@ -158,7 +194,8 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
       body: JSON.stringify({
         from: fromEmail,
         to: [data.customerEmail],
-        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${data.organizationName ? ` — ${data.organizationName}` : ''}`,
+        ...(sobre?.replyTo ? { reply_to: sobre.replyTo } : {}),
+        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
         html,
       }),
     })
