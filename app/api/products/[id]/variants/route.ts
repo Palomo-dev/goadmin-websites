@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductModifierGroups, getProductModifierGroupsDe, getProductVariants } from '@/lib/supabase/queries'
+import { getOrdenAtributos, getProductModifierGroups, getProductModifierGroupsDe, getProductVariants } from '@/lib/supabase/queries'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { organizacionDePeticion, sedeDeOrganizacion } from '@/lib/api/organizacion-peticion'
 import { gruposDeProducto } from '@/lib/products/modificadores'
@@ -66,5 +66,6 @@ export async function GET(
     variantModifierGroups[String(id)] = grupos
   })
 
-  return NextResponse.json({ variants, modifierGroups, variantModifierGroups })
+  const ordenAtributos = (variants || []).length > 0 ? await getOrdenAtributos(org.organizationId) : {}
+  return NextResponse.json({ variants, modifierGroups, variantModifierGroups, ordenAtributos })
 }

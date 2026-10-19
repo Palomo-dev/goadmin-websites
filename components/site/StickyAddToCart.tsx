@@ -5,6 +5,7 @@ import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isOutOfStock } from '@/lib/stock'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
+import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 
 interface VariantData {
   id: number
@@ -27,6 +28,8 @@ interface StickyAddToCartProps {
   trackStock?: boolean
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
   branchId?: number | null
+  /** `display_order` del catálogo. Sin él, XS…XXXL y números de menor a mayor. */
+  ordenAtributos?: OrdenAtributos | null
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -57,6 +60,7 @@ export function StickyAddToCart({
   trackStock,
   stockLevels,
   branchId,
+  ordenAtributos = null,
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -79,10 +83,10 @@ export function StickyAddToCart({
     })
     const result: Record<string, string[]> = {}
     Object.entries(groups).forEach(([key, values]) => {
-      result[key] = Array.from(values).sort()
+      result[key] = ordenarValoresAtributo(key, Array.from(values), ordenAtributos)
     })
     return result
-  }, [variants])
+  }, [variants, ordenAtributos])
 
   // Pre-seleccionar primera variante
   useEffect(() => {

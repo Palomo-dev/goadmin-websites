@@ -91,6 +91,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
   const [variantParent, setVariantParent] = useState<Product | null>(null)
   const [variantChildren, setVariantChildren] = useState<any[]>([])
   const [variantGroups, setVariantGroups] = useState<ModifierGroup[]>([])
+  const [ordenAtributos, setOrdenAtributos] = useState<Record<string, Record<string, number>> | null>(null)
   const [loadingVariants, setLoadingVariants] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
@@ -127,10 +128,12 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
       const propios: Record<string, ModifierGroup[]> = data.variantModifierGroups || {}
       setVariantChildren(((data.variants || []) as any[]).map((v) => (propios[String(v.id)] ? { ...v, modifier_groups: propios[String(v.id)] } : v)))
       setVariantGroups(Array.isArray(data.modifierGroups) ? data.modifierGroups : [])
+      setOrdenAtributos(data.ordenAtributos && typeof data.ordenAtributos === 'object' ? data.ordenAtributos : null)
     } catch (err) {
       console.error('Error loading variants:', err)
       setVariantChildren([])
       setVariantGroups([])
+      setOrdenAtributos(null)
     } finally {
       setLoadingVariants(false)
     }
@@ -454,7 +457,8 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
           primaryColor={primaryColor}
           mode="dialog"
           modifierGroups={variantGroups}
-          onClose={() => { setVariantParent(null); setVariantChildren([]); setVariantGroups([]) }}
+          ordenAtributos={ordenAtributos}
+          onClose={() => { setVariantParent(null); setVariantChildren([]); setVariantGroups([]); setOrdenAtributos(null) }}
           onSelect={(variant, qty = 1, mods: SelectedModifier[] = []) => {
             const v = variant as any
             const base = Number(v.product_prices?.[0]?.price ?? variantParent.product_prices?.[0]?.price ?? 0)
@@ -472,6 +476,7 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             setVariantParent(null)
             setVariantChildren([])
             setVariantGroups([])
+            setOrdenAtributos(null)
           }}
         />
       )}

@@ -15,7 +15,7 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getProductModifierGroupsDe, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getProductModifierGroupsDe, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches, getOrdenAtributos } from '@/lib/supabase/queries'
 import { aplicarCartaSede, resolverSedeCarta } from '@/lib/products/carta-sede'
 import { exigeEleccion } from '@/lib/products/modificadores'
 import { soldOutReturnLabel } from '@/lib/menu/menuFull'
@@ -213,10 +213,17 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const comparePrice = price?.compare_price ? Number(price.compare_price) : null
   const isParent = product.is_parent === true
 
-  // Obtener variantes si es producto padre
+  // Obtener variantes si es producto padre. El orden del catálogo viaja en paralelo:
+  // es una lectura cacheada y no depende de las variantes.
   let variants: any[] = []
+  let ordenAtributos: Awaited<ReturnType<typeof getOrdenAtributos>> | null = null
   if (isParent) {
-    variants = await getProductVariants(product.id, organization.id, branchId)
+    const [variantes, orden] = await Promise.all([
+      getProductVariants(product.id, organization.id, branchId),
+      getOrdenAtributos(organization.id),
+    ])
+    variants = variantes
+    ordenAtributos = orden
     // Grupos propios de cada variante (si tiene): el selector los usa en vez de los del padre,
     // como el cobro (`gruposDeProducto`). Hoy ninguna variante tiene grupos propios.
     if (variants.length > 0) {
@@ -366,6 +373,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           restaurante={restaurante}
           puedePedir={puedePedir}
           prefijoSede={prefijo}
+          ordenAtributos={ordenAtributos}
         />
       ) : (
       <div className="container mx-auto px-4 py-12">
@@ -452,6 +460,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 branchId={branchId}
                 restaurante={restaurante}
                 puedePedir={puedePedir}
+                ordenAtributos={ordenAtributos}
               />
             </div>
             
@@ -539,6 +548,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           trackStock={product.track_stock}
           stockLevels={product.stock_levels}
           branchId={branchId}
+          ordenAtributos={ordenAtributos}
         />
       )}
     </OrganizationLayout>
