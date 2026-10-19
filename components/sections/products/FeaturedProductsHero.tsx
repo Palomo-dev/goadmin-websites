@@ -63,6 +63,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
       mostrarFiltros={content.show_filters === true}
       mostrarBuscador={content.show_search === true}
       mostrarCategorias={content.show_categories !== false}
+      content={content}
     />
   )
 

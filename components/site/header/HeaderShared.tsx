@@ -18,6 +18,7 @@ import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
 import { useTopbarExtras } from './TopbarExtras';
+import { elegirLogo, encabezadoUsaLogoClaro, hrefDeSlug } from '@/lib/website/presentacionTienda';
 
 // ============================================================
 // SHARED TYPES
@@ -85,7 +86,7 @@ export function getLucideIcon(name: string | null | undefined, fallback: any): a
 export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
   return {
     name: page.title,
-    href: page.slug === 'home' ? '/' : `/${page.slug}`,
+    href: hrefDeSlug(page.slug),
     children: page.children.length > 0 ? page.children.map(pageToNavItem) : undefined,
     icon: page.menu_icon,
     badge: page.menu_badge,
@@ -205,10 +206,13 @@ export function HeaderLogo({
   organization,
   primaryColor,
   height = 48,
+  fondoOscuro = false,
 }: {
   organization: OrganizationWithDetails;
   primaryColor: string;
   height?: number;
+  /** Encabezado transparente sobre la portada: usa el logo claro si existe. */
+  fondoOscuro?: boolean;
 }) {
   // Sitio de una sede por prefijo de ruta: el logo lleva a la portada de la sede.
   const { ruta } = useRutaSitio();
@@ -217,11 +221,16 @@ export function HeaderLogo({
   // redondeo del tema, el nombre con la fuente de títulos y visible también en el celular.
   // Legacy (sin tema): exactamente como siempre.
   const temaColores = useTemaColores();
-  if (organization.logo_url) {
+  const logoSrc = elegirLogo(
+    organization.logo_url,
+    organization.logo_oscuro_url,
+    fondoOscuro || encabezadoUsaLogoClaro(organization.website_settings?.header_bg_color, false),
+  );
+  if (logoSrc) {
     return (
       <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
         <Image
-          src={organization.logo_url}
+          src={logoSrc}
           alt={organization.name}
           width={height * 3}
           height={height}

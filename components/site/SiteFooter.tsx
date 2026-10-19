@@ -14,6 +14,7 @@ import { useEncabezadoPie } from './EncabezadoPieContext'
 import { useTemaColores } from './TemaColoresContext'
 import { BotonWhatsappPie, IconoTikTok, MapaPie, MediosPagoPie } from './footer/PieExtras'
 import { PieTema } from './footer/PieTema'
+import { elegirLogo, hrefDeSlug, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -53,7 +54,7 @@ interface FooterNavItem {
 function buildFooterNavItems(tree: WebsitePageWithChildren[]): FooterNavItem[] {
   return tree.map((page) => ({
     name: page.title,
-    href: page.slug === 'home' ? '/' : `/${page.slug}`,
+    href: hrefDeSlug(page.slug),
     icon: page.menu_icon,
     badge: page.menu_badge,
     children: page.children.length > 0 ? buildFooterNavItems(page.children) : undefined,
@@ -79,7 +80,7 @@ function buildMenuGroupItems(items: WebsiteMenuItemWithChildren[]): FooterNavIte
     if (item.item_type === 'page' || item.item_type === 'policy') {
       if (item.page) {
         name = item.page.title
-        href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
+        href = hrefDeSlug(item.page.slug)
       }
     } else if (item.item_type === 'category') {
       if (item.category) {
@@ -223,7 +224,7 @@ export function SiteFooter({
   const { prefijo, ruta } = useRutaSitio()
   // Encabezado y pie por plantilla: WhatsApp, mapa y medios de pago (cada uno null con su opción
   // apagada). Sitio V2 con tema: el pie de las láminas (PieTema). Legacy: igual que antes.
-  const { opciones: opcionesShell } = useEncabezadoPie()
+  const { opciones: opcionesShell, fondoTemaOscuro } = useEncabezadoPie()
   const temaColores = useTemaColores()
   const socialLinks = (settings?.social_links || {}) as SocialLinks
   // Horario legible: el de la sede si lo hay; si no, business_hours (se guarda con los días en
@@ -278,7 +279,7 @@ export function SiteFooter({
     : footerNav && footerNav.length > 0
       ? footerNav.map((p) => ({
           name: p.title,
-          href: p.slug === 'home' ? '/' : `/${p.slug}`,
+          href: hrefDeSlug(p.slug),
           icon: p.menu_icon,
           badge: p.menu_badge,
         }))
@@ -300,6 +301,12 @@ export function SiteFooter({
 
   // TikTok: ningún sitio lo tenía (se omitía). WhatsApp en redes: solo con footer_show_whatsapp,
   // para no cambiar los sitios que lo tienen en social_links y hoy no lo muestran.
+  const fondoPieOscuro = pieUsaLogoClaro(footerBackground, footerCustomBgColor, primaryColor, fondoTemaOscuro)
+  const logoPie = elegirLogo(organization.logo_url, organization.logo_oscuro_url, fondoPieOscuro)
+  const claseLogoPie = fondoPieOscuro && organization.logo_oscuro_url && logoPie === organization.logo_oscuro_url
+    ? 'w-auto object-contain'
+    : 'w-auto object-contain brightness-0 invert'
+
   const socialIcons: Record<string, React.ComponentType<{ className?: string }>> = {
     facebook: Facebook,
     twitter: Twitter,
@@ -328,6 +335,7 @@ export function SiteFooter({
         mostrarHorario={footerShowHours}
         mostrarRedes={footerShowSocial}
         logoHeight={logoHeight}
+        logoUrl={logoPie}
       />
     )
   }
@@ -340,13 +348,13 @@ export function SiteFooter({
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Logo */}
             <div className="flex items-center space-x-3">
-              {organization.logo_url ? (
+              {logoPie ? (
                 <Image
-                  src={organization.logo_url}
+                  src={logoPie}
                   alt={organization.name}
                   width={logoHeight * 3}
                   height={logoHeight}
-                  className="w-auto object-contain brightness-0 invert"
+                  className={claseLogoPie}
                   style={{ height: `${logoHeight}px` }}
                 />
               ) : (
@@ -430,13 +438,13 @@ export function SiteFooter({
           {/* Logo + descripción centrados */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              {organization.logo_url ? (
+              {logoPie ? (
                 <Image
-                  src={organization.logo_url}
+                  src={logoPie}
                   alt={organization.name}
                   width={logoHeight * 3}
                   height={logoHeight}
-                  className="w-auto object-contain brightness-0 invert"
+                  className={claseLogoPie}
                   style={{ height: `${logoHeight}px` }}
                 />
               ) : (
@@ -539,13 +547,13 @@ export function SiteFooter({
             <div>
               <FooterSection title={organization.name}>
                 <div className="flex items-center space-x-3 mb-4">
-                  {organization.logo_url ? (
+                  {logoPie ? (
                     <Image
-                      src={organization.logo_url}
+                      src={logoPie}
                       alt={organization.name}
                       width={logoHeight * 3}
                       height={logoHeight}
-                      className="w-auto object-contain brightness-0 invert"
+                      className={claseLogoPie}
                       style={{ height: `${logoHeight}px` }}
                     />
                   ) : (
@@ -673,13 +681,13 @@ export function SiteFooter({
             <div>
               <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
                 <div className="flex items-center space-x-3 mb-6">
-                  {organization.logo_url ? (
+                  {logoPie ? (
                     <Image
-                      src={organization.logo_url}
+                      src={logoPie}
                       alt={organization.name}
                       width={logoHeight * 3}
                       height={logoHeight}
-                      className="w-auto object-contain brightness-0 invert"
+                      className={claseLogoPie}
                       style={{ height: `${logoHeight}px` }}
                     />
                   ) : (
@@ -858,13 +866,13 @@ export function SiteFooter({
           <div className="lg:col-span-1">
             <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
               <div className="flex items-center space-x-3 mb-6">
-                {organization.logo_url ? (
+                {logoPie ? (
                   <Image
-                    src={organization.logo_url}
+                    src={logoPie}
                     alt={organization.name}
                     width={logoHeight * 3}
                     height={logoHeight}
-                    className="w-auto object-contain brightness-0 invert"
+                    className={claseLogoPie}
                     style={{ height: `${logoHeight}px` }}
                   />
                 ) : (

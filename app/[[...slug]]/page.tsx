@@ -365,8 +365,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       bannerSections.forEach((s) => {
         const banners = ((s.content as any)?.banners || []) as any[]
         banners.forEach((b) => {
-          if (b.link_type === 'category' && b.show_category_products && b.link_category_id) {
-            previewCategoryIds.add(b.link_category_id)
+          if (b.link_type === 'category' && b.show_category_products && b.link_category_id != null && b.link_category_id !== '') {
+            const idCategoria = Number(b.link_category_id)
+            if (Number.isInteger(idCategoria)) previewCategoryIds.add(idCategoria)
           }
           if (b.link_type === 'page' && b.link_page_id) {
             pageIds.add(b.link_page_id)

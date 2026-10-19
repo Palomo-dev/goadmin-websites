@@ -32,6 +32,8 @@ export interface ValorEncabezadoPie {
   selector: SelectorEnEncabezado | null
   /** Giro de la organización (`organizations.type_id`). */
   tipo: number | null
+  /** El fondo del tema V2 es oscuro: el pie con fondo «tema» usa el logo claro. */
+  fondoTemaOscuro: boolean
 }
 
 export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
@@ -39,6 +41,7 @@ export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
   extras: EXTRAS_VACIOS,
   selector: null,
   tipo: null,
+  fondoTemaOscuro: false,
 }
 
 const Contexto = createContext<ValorEncabezadoPie>(VALOR_POR_DEFECTO)

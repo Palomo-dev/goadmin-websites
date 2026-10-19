@@ -1286,6 +1286,8 @@ export type ShippingRate = Database['public']['Tables']['shipping_rates']['Row']
 export interface OrganizationWithDetails extends Organization {
   organization_types: OrganizationType | null
   website_settings: WebsiteSettings | null
+  /** Logo claro para fondo oscuro. No es columna de `organizations`: sale del documento V2. */
+  logo_oscuro_url?: string | null
 }
 
 // Tipos de templates disponibles

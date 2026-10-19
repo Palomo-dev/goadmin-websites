@@ -18,6 +18,7 @@ import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorP
 import {
   ajustesPublicosDesdeDocumento,
   idsCategoriasDeMenus,
+  logoOscuroPublicoDesdeDocumento,
   logoPublicoDesdeDocumento,
   menusPublicosDesdeDocumento,
   type MenusPublicos,
@@ -26,6 +27,7 @@ import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWith
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
 import { urlsSitio } from '@/lib/seo/sede'
+import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 
 /**
  * Cabecera que pone el middleware al reescribir `/<slug-de-sede>/resto` → `/resto`
@@ -142,6 +144,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   let effectiveSettings = legacySettings
   let menusV2: MenusPublicos | null = null
   let logoV2: string | null = null
+  let logoOscuroV2: string | null = null
   const sitioV2 = await getSitioPublicoV2(organization.id, branchId)
   if (sitioV2) {
     try {
@@ -151,6 +154,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       const baseHerencia = sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
       const ajustesV2 = ajustesPublicosDesdeDocumento(sitioV2.documento, legacySettings, baseHerencia)
       logoV2 = logoPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
+      logoOscuroV2 = logoOscuroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
       menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
       effectiveSettings = ajustesV2
@@ -162,6 +166,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       effectiveSettings = legacySettings
       menusV2 = null
       logoV2 = null
+      logoOscuroV2 = null
     }
   } else {
     // Sitio legacy: sin cambios.
@@ -236,7 +241,11 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   // theme del outlet). Preserva el shape: si settings es null, mantiene el
   // select anidado original (backward compat).
   // Sitio V2 con logo propio (Diseño › Logo): sustituye al de la organización. Legacy: igual.
-  const organizacionBase = logoV2 ? { ...organization, logo_url: logoV2 } : organization
+  const organizacionBase = {
+    ...organization,
+    ...(logoV2 ? { logo_url: logoV2 } : {}),
+    ...(logoOscuroV2 ? { logo_oscuro_url: logoOscuroV2 } : {}),
+  }
   const organizationWithSettings = effectiveSettings
     ? { ...organizacionBase, website_settings: effectiveSettings }
     : organizacionBase
@@ -348,7 +357,7 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
   if (item.item_type === 'page' || item.item_type === 'policy') {
     if (item.page) {
       name = item.page.title
-      href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
+      href = hrefDeSlug(item.page.slug)
     }
   } else if (item.item_type === 'category') {
     if (item.category) {
@@ -357,7 +366,7 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
     }
   } else if (item.item_type === 'custom_link') {
     name = item.custom_label || ''
-    href = item.custom_url || '#'
+    href = item.custom_url ? hrefDeSlug(item.custom_url) : '#'
   }
 
   return {

@@ -434,6 +434,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   features_grid: {
     alternating: FeaturesGridAlternating,
+    icons: FeaturesGridAlternating,
   },
   integrations: {
     logos: IntegrationsLogos,

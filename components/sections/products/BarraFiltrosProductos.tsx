@@ -18,6 +18,7 @@ import {
   type EstadoFiltros,
   type OrdenFiltro,
 } from '@/lib/products/filtrosProductos'
+import { estiloChipFiltro, type ColoresFiltro } from '@/lib/website/presentacionTienda'
 
 const FOCO = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
 
@@ -72,6 +73,7 @@ export function BarraFiltrosProductos({
   mostrarBuscador,
   mostrarCategorias = true,
   etiquetaTotal = 'productos',
+  content,
 }: {
   categorias: any[]
   estado: EstadoFiltros
@@ -82,10 +84,12 @@ export function BarraFiltrosProductos({
   mostrarBuscador: boolean
   mostrarCategorias?: boolean
   etiquetaTotal?: string
+  content?: ColoresFiltro | null
 }) {
   if (!mostrarFiltros && !mostrarBuscador) return null
   const selectedCategory = estado.categoria
   const onlyOffers = estado.soloOfertas
+  const chip = (activo: boolean, acento?: string) => estiloChipFiltro(activo, acento ?? primaryColor, content)
   return (
     <div className="mb-6 space-y-3">
       {mostrarBuscador && (
@@ -103,35 +107,32 @@ export function BarraFiltrosProductos({
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
               <button
                 onClick={() => cambiar({ categoria: null })}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                  !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
-                }`}
-                style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(!selectedCategory).className}`}
+                style={chip(!selectedCategory).style}
               >
                 Todos
               </button>
-              {categorias.map((cat: any) => (
+              {categorias.map((cat: any) => {
+                const activo = chip(selectedCategory === cat.id)
+                return (
                 <button
                   key={cat.id}
                   onClick={() => cambiar({ categoria: selectedCategory === cat.id ? null : cat.id })}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                    selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
-                  }`}
-                  style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
+                  style={activo.style}
                 >
                   {cat.name}
                 </button>
-              ))}
+                )
+              })}
             </div>
           )}
           {/* Ordenar + Ofertas */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => cambiar({ soloOfertas: !onlyOffers })}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
-                onlyOffers ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-              }`}
-              style={onlyOffers ? { backgroundColor: '#EF4444' } : {}}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(onlyOffers, '#EF4444').className}`}
+              style={chip(onlyOffers, '#EF4444').style}
             >
               <SlidersHorizontal className="h-3 w-3" /> Ofertas
             </button>

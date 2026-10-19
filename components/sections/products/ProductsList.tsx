@@ -92,6 +92,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
           mostrarFiltros={content.show_filters === true}
           mostrarBuscador={content.show_search === true}
           mostrarCategorias={content.show_categories !== false}
+          content={content}
         />
       )}
 

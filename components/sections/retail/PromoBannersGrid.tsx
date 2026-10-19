@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
+import { claseAspectoBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -29,8 +30,8 @@ interface BannerItem {
   cta_url?: string
   // Destino tipado (F7.1).
   link_type?: 'category' | 'product' | 'url' | 'page' | 'none'
-  link_category_id?: number
-  link_product_id?: number
+  link_category_id?: number | string
+  link_product_id?: number | string
   link_url?: string
   link_page_id?: string
   show_category_products?: boolean
@@ -44,6 +45,8 @@ interface PromoBannersGridProps {
     title?: string
     subtitle?: string
     layout?: 'grid' | 'carousel' | 'stack'
+    columns?: unknown
+    aspect_ratio?: unknown
     banners?: BannerItem[]
   }
   primaryColor?: string
@@ -82,18 +85,18 @@ function resolveBannerHref(
       return banner.link_url || banner.cta_url || null
     case 'category': {
       if (!banner.link_category_id) return null
-      const cat = data?.categories?.find((c) => c.id === banner.link_category_id)
+      const cat = data?.categories?.find((c) => mismoId(c.id, banner.link_category_id))
       return cat?.slug ? `/categorias/${cat.slug}` : null
     }
     case 'product': {
       if (!banner.link_product_id) return null
-      const prod = data?.products?.find((p) => p.id === banner.link_product_id)
+      const prod = data?.products?.find((p) => mismoId(p.id, banner.link_product_id))
       return prod?.uuid ? `/productos/${prod.uuid}` : null
     }
     case 'page': {
       if (!banner.link_page_id) return null
       const page = data?.bannerPages?.[banner.link_page_id]
-      return page?.slug ? `/${page.slug}` : null
+      return page?.slug ? hrefDeSlug(page.slug) : null
     }
     default:
       return null
@@ -104,12 +107,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   const banners = content.banners || []
   const layout = content.layout || 'grid'
 
-  const gridClass =
-    layout === 'stack'
-      ? 'grid grid-cols-1 gap-6'
-      : layout === 'carousel'
-        ? 'grid grid-cols-1 md:grid-cols-2 gap-6 overflow-x-auto'
-        : 'grid grid-cols-1 md:grid-cols-2 gap-6'
+  const gridClass = `${clasesColumnasBanner(content.columns, layout)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
 
   return (
     <div>
@@ -131,8 +129,9 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
               banner.show_category_products === true &&
               !!banner.link_category_id
             const maxPreview = banner.max_preview_products || 4
+            const mapa = data?.bannerCategoryProducts as Record<string, any[]> | undefined
             const previewProducts = showPreview
-              ? (data?.bannerCategoryProducts?.[banner.link_category_id!] || []).slice(0, maxPreview)
+              ? (mapa?.[String(banner.link_category_id)] || mapa?.[banner.link_category_id as unknown as string] || []).slice(0, maxPreview)
               : []
             const buttonText = banner.button_text || banner.cta_text
             const buttonStyle = banner.button_style || 'solid'
@@ -145,7 +144,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
 
             const card = (
               <div
-                className="relative rounded-2xl overflow-hidden min-h-[200px] flex flex-col justify-center p-8 w-full"
+                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio)} flex flex-col justify-center p-8 w-full`}
                 style={{ backgroundColor: banner.bg_color || primaryColor }}
               >
                 {banner.image_url && (

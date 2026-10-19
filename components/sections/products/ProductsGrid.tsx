@@ -170,6 +170,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           mostrarFiltros={content.show_filters !== false}
           mostrarBuscador={content.show_search === true}
           mostrarCategorias={content.show_categories !== false}
+          content={content}
         />
       )}
 
