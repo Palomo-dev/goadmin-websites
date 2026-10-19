@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
@@ -8,6 +8,7 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { ordenarListado } from '@/lib/products/limiteListado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -37,6 +38,7 @@ interface FeaturedProductsProps {
     title?: string
     subtitle?: string
     max_items?: number
+    sort_order?: string
     filter?: string
     // Card style
     card_radius?: number
@@ -76,7 +78,10 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const branchId = data?.branchId ?? null
-  const allProducts = data?.products || []
+  const allProducts = useMemo(
+    () => ordenarListado(data?.products || [], content.sort_order),
+    [data?.products, content.sort_order],
+  )
   const maxItems = content.max_items || 8
   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
   const filtros = useFiltrosProductos(allProducts)

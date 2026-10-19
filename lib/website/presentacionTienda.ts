@@ -37,7 +37,11 @@ const CLASE_ESCRITORIO: Record<number, string> = {
 }
 
 /** Rejilla de banners. Sin columnas guardadas se queda en 2, como antes. */
-export function clasesColumnasBanner(columns: unknown, layout: string | undefined): string {
+export function clasesColumnasBanner(
+  columns: unknown,
+  layout: string | undefined,
+  columnsMobile?: unknown,
+): string {
   if (layout === 'stack') return 'grid grid-cols-1 gap-6'
   let mobile = 1
   let tablet = 2
@@ -53,16 +57,107 @@ export function clasesColumnasBanner(columns: unknown, layout: string | undefine
       mobile = nCol(o.mobile, 1)
     }
   }
+  const forzado = nCol(columnsMobile, 0)
+  if (forzado === 1 || forzado === 2) mobile = forzado
   return `grid ${CLASE_MOVIL[mobile]} ${CLASE_TABLET[tablet]} ${CLASE_ESCRITORIO[desktop]} gap-6`
 }
 
-/** `auto` y ausente conservan la tarjeta apaisada de siempre. */
-export function claseAspectoBanner(ratio: unknown): string {
+function claseAspectoUna(ratio: unknown): string {
   if (ratio === '1/1') return 'aspect-square'
   if (ratio === '4/3') return 'aspect-[4/3]'
   if (ratio === '3/4') return 'aspect-[3/4]'
   if (ratio === '16/9') return 'aspect-video'
+  if (ratio === '3/1') return 'aspect-[3/1]'
   return 'min-h-[200px]'
+}
+
+function claseAspectoMd(ratio: unknown): string {
+  if (ratio === '1/1') return 'md:aspect-square'
+  if (ratio === '4/3') return 'md:aspect-[4/3]'
+  if (ratio === '3/4') return 'md:aspect-[3/4]'
+  if (ratio === '16/9') return 'md:aspect-video'
+  if (ratio === '3/1') return 'md:aspect-[3/1]'
+  return 'md:aspect-auto md:min-h-[200px]'
+}
+
+/**
+ * `auto` y ausente conservan la tarjeta de siempre.
+ * Con proporción de celular distinta, el prefijo sin breakpoint es el móvil
+ * y `md:` recupera la de escritorio.
+ */
+export function claseAspectoBanner(ratio: unknown, ratioMovil?: unknown): string {
+  const movil = typeof ratioMovil === 'string' ? ratioMovil : ''
+  if (!movil || movil === 'auto' || movil === ratio) return claseAspectoUna(ratio)
+  return `${claseAspectoUna(movil)} ${claseAspectoMd(ratio)}`
+}
+
+/** Recorte y anclaje de la foto del banner. Ausente = cubrir, centrada. */
+export function claseImagenBanner(fit: unknown, position: unknown): string {
+  const ajuste = fit === 'contain' ? 'object-contain' : 'object-cover'
+  const pos = position === 'left' ? 'object-left'
+    : position === 'right' ? 'object-right'
+    : position === 'top' ? 'object-top'
+    : position === 'bottom' ? 'object-bottom'
+    : 'object-center'
+  return `absolute inset-0 w-full h-full ${ajuste} ${pos}`
+}
+
+const REJILLA_PRODUCTOS = 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6'
+const P_BASE: Record<number, string> = {
+  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-2', 4: 'grid-cols-2',
+  5: 'grid-cols-2', 6: 'grid-cols-2', 7: 'grid-cols-2', 8: 'grid-cols-2',
+}
+const P_SM: Record<number, string> = {
+  1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-2', 4: 'sm:grid-cols-2',
+  5: 'sm:grid-cols-2', 6: 'sm:grid-cols-2', 7: 'sm:grid-cols-2', 8: 'sm:grid-cols-2',
+}
+const P_LG: Record<number, string> = {
+  1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7', 8: 'lg:grid-cols-8',
+}
+const P_XL: Record<number, string> = {
+  1: 'xl:grid-cols-1', 2: 'xl:grid-cols-2', 3: 'xl:grid-cols-3', 4: 'xl:grid-cols-4',
+  5: 'xl:grid-cols-5', 6: 'xl:grid-cols-6', 7: 'xl:grid-cols-7', 8: 'xl:grid-cols-8',
+}
+
+/** Sin columnas guardadas, la rejilla de productos no cambia. */
+export function clasesColumnasProductos(columns: unknown): string {
+  if (columns == null || columns === '') return REJILLA_PRODUCTOS
+  let mobile = 2
+  let tablet = 3
+  let desktop = 4
+  let explicito = false
+  if (typeof columns === 'number' || (typeof columns === 'string' && String(columns).trim())) {
+    desktop = nCol(columns, 4)
+    tablet = Math.min(desktop, 3)
+    mobile = Math.min(desktop, 2)
+    explicito = true
+  } else if (columns && typeof columns === 'object') {
+    const o = columns as Record<string, unknown>
+    if ('desktop' in o || 'tablet' in o || 'mobile' in o) {
+      desktop = nCol(o.desktop, 4)
+      tablet = nCol(o.tablet ?? Math.min(desktop, 3), Math.min(desktop, 3))
+      mobile = nCol(o.mobile, Math.min(desktop, 2))
+      explicito = true
+    }
+  }
+  if (!explicito) return REJILLA_PRODUCTOS
+  return `grid ${P_BASE[mobile]} ${P_SM[mobile]} ${P_LG[tablet]} ${P_XL[desktop]} gap-3 sm:gap-6`
+}
+
+/**
+ * Enlace de toda la imagen de la portada.
+ * Con el botón visible no se reutiliza su URL: el botón ya la usa.
+ * Apagado el botón, la URL del botón sirve de enlace de la imagen.
+ */
+export function enlaceDeImagen(
+  slide: { link_url?: unknown; cta_url?: unknown } | null | undefined,
+  content: { link_url?: unknown; cta_url?: unknown } | null | undefined,
+  mostrarBoton: boolean,
+): string {
+  const propio = textoGuardado(slide?.link_url) || textoGuardado(content?.link_url)
+  const bruto = propio || (mostrarBoton ? '' : textoGuardado(slide?.cta_url) || textoGuardado(content?.cta_url))
+  return bruto ? hrefDeSlug(bruto) : ''
 }
 
 export function mismoId(a: unknown, b: unknown): boolean {

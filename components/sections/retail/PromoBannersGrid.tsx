@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
-import { claseAspectoBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
+import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -46,7 +46,11 @@ interface PromoBannersGridProps {
     subtitle?: string
     layout?: 'grid' | 'carousel' | 'stack'
     columns?: unknown
+    columns_mobile?: unknown
     aspect_ratio?: unknown
+    aspect_ratio_mobile?: unknown
+    image_fit?: unknown
+    image_position?: unknown
     banners?: BannerItem[]
   }
   primaryColor?: string
@@ -107,7 +111,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   const banners = content.banners || []
   const layout = content.layout || 'grid'
 
-  const gridClass = `${clasesColumnasBanner(content.columns, layout)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
+  const gridClass = `${clasesColumnasBanner(content.columns, layout, content.columns_mobile)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
 
   return (
     <div>
@@ -144,14 +148,14 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
 
             const card = (
               <div
-                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio)} flex flex-col justify-center p-8 w-full`}
+                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio, content.aspect_ratio_mobile)} flex flex-col justify-center p-8 w-full`}
                 style={{ backgroundColor: banner.bg_color || primaryColor }}
               >
                 {banner.image_url && (
                   <img
                     src={banner.image_url}
                     alt={banner.title || ''}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className={claseImagenBanner(content.image_fit, content.image_position)}
                     loading="lazy"
                   />
                 )}

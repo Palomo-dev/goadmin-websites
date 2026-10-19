@@ -142,6 +142,7 @@ export function BarraFiltrosProductos({
               className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
             >
               <option value="default">Ordenar</option>
+              <option value="newest">Más nuevos</option>
               <option value="price_asc">Precio: menor a mayor</option>
               <option value="price_desc">Precio: mayor a menor</option>
               <option value="name">Nombre A-Z</option>

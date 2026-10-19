@@ -19,6 +19,7 @@ function aMjs(ts) {
 
 const MODULOS = {
   presentacionTienda: 'lib/website/presentacionTienda.ts',
+  limiteListado: 'lib/products/limiteListado.ts',
   colorMarca: 'lib/website/v2/colorMarca.ts',
   fuenteTema: 'lib/website/v2/fuenteTema.ts',
   estiloSeccion: 'lib/website/v2/estiloSeccion.ts',
@@ -47,6 +48,7 @@ const check = (cond, msg) => {
 }
 
 const p = m.presentacionTienda
+const lista = m.limiteListado
 const e = m.estiloSeccion
 
 check(p.hrefDeSlug('/rastreo') === '/rastreo', 'una barra al inicio no se duplica')
@@ -67,6 +69,39 @@ check(p.claseAspectoBanner('3/4') === 'aspect-[3/4]', 'proporción 3:4')
 check(p.claseAspectoBanner('16/9') === 'aspect-video', 'proporción 16:9')
 check(p.claseAspectoBanner('auto') === 'min-h-[200px]', 'automática conserva la altura')
 check(p.claseAspectoBanner(undefined) === 'min-h-[200px]', 'sin proporción conserva la altura')
+check(p.claseAspectoBanner('3/1') === 'aspect-[3/1]', 'proporción 3:1')
+check(p.claseAspectoBanner('3/4', '3/1') === 'aspect-[3/1] md:aspect-[3/4]', 'el celular puede usar otra proporción')
+check(p.claseAspectoBanner(undefined, '3/1') === 'aspect-[3/1] md:aspect-auto md:min-h-[200px]', 'escritorio automático y celular 3:1')
+check(p.claseAspectoBanner('16/9', 'auto') === 'aspect-video', 'proporción de celular vacía no cambia el escritorio')
+check(p.clasesColumnasBanner(4, 'grid').includes('grid-cols-1'), 'sin columnas de celular sigue en una')
+check(p.clasesColumnasBanner(4, 'grid', 2).includes('grid-cols-2') && p.clasesColumnasBanner(4, 'grid', 2).includes('lg:grid-cols-4'), 'dos columnas en el celular')
+check(p.clasesColumnasBanner({ desktop: 4, mobile: 1 }, 'grid', 2).includes('grid-cols-2'), 'la columna del celular gana a la pestaña')
+check(p.claseImagenBanner(undefined, undefined) === 'absolute inset-0 w-full h-full object-cover object-center', 'la imagen se cubre centrada si no hay ajuste')
+check(p.claseImagenBanner('contain', 'left') === 'absolute inset-0 w-full h-full object-contain object-left', 'se puede mostrar completa y anclada a la izquierda')
+check(p.enlaceDeImagen({ cta_url: '/ofertas' }, {}, true) === '', 'con el botón visible la imagen no reutiliza su URL')
+check(p.enlaceDeImagen({ cta_url: '/ofertas' }, {}, false) === '/ofertas', 'sin botón, la imagen usa la URL del botón')
+check(p.enlaceDeImagen({ link_url: 'https://ejemplo.test/a' }, { cta_url: '/x' }, false) === 'https://ejemplo.test/a', 'el enlace de la imagen gana')
+check(p.enlaceDeImagen({}, { link_url: '//rastreo' }, true) === '/rastreo', 'el enlace de la sección colapsa la doble barra')
+check(p.clasesColumnasProductos(undefined) === 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6', 'la rejilla de productos no cambia si no hay columnas')
+check(p.clasesColumnasProductos(1) === 'grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 gap-3 sm:gap-6', 'una columna de productos se honra')
+check(lista.topeProductos({ max_items: 4, rows: 1 }) === 4, 'cantidad 4 y una fila dejan 4')
+check(lista.topeProductos({ rows: 1, columns: 4 }) === 4, 'una fila por cuatro columnas deja 4')
+check(lista.topeProductos({ max_items: 4, rows: 2, columns: 4 }) === 4, 'gana el tope más chico')
+check(lista.topeProductos({ rows: 1 }) === 4, 'una fila sin columnas usa las 4 de escritorio')
+check(lista.topeProductos({}) === null, 'sin tope no recorta')
+const cuatro = lista.recorteListado(40, 1, { max_items: 4, rows: 1 })
+check(cuatro.paginas === 1 && cuatro.hasta === 4, 'cuatro productos no paginan')
+const sinPagina = lista.recorteListado(40, 1, { show_pagination: false })
+check(sinPagina.paginas === 1 && sinPagina.hasta === 40, 'sin paginación se ve todo lo cargado')
+const pagina2 = lista.recorteListado(40, 2, {})
+check(pagina2.desde === 12 && pagina2.paginas === 4, 'sin tope se mantiene el corte de 12')
+const apagada = lista.recorteListado(40, 1, { show_pagination: false, max_items: 4 })
+check(apagada.paginas === 1 && apagada.hasta === 4, 'apagada y con cantidad, solo esa cantidad')
+const nuevos = lista.ordenarListado(
+  [{ id: 1, created_at: '2020-01-01' }, { id: 2 }, { id: 3, created_at: '2024-05-01' }],
+  'newest',
+).map((p) => p.id).join(',')
+check(nuevos === '3,1,2', 'más nuevos primero y sin fecha al final')
 check(p.mismoId(12, '12') === true, 'id de categoría texto o número')
 check(p.mismoId(12, '') === false, 'id vacío no coincide')
 

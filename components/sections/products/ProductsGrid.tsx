@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
+import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
@@ -41,6 +43,9 @@ interface ProductsGridProps {
     show_categories?: boolean
     selected_category_ids?: number[]
     max_items?: number
+    rows?: number
+    columns?: unknown
+    show_pagination?: boolean
     sort_order?: string
     filter?: string
     // Layout
@@ -75,8 +80,6 @@ interface ProductsGridProps {
   organization?: { subdomain?: string; website_settings?: any }
 }
 
-const ITEMS_PER_PAGE = 12
-
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
   const { ruta } = useRutaSitio()
   const router = useRouter()
@@ -97,16 +100,18 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   // memoria, sobre lo ya cargado).
   const baseProducts = useMemo(() => {
     const selectedIds = content.selected_category_ids || []
-    return selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
-  }, [products, content.selected_category_ids])
+    const base = selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
+    return ordenarListado(base, content.sort_order)
+  }, [products, content.selected_category_ids, content.sort_order])
   const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
   const filteredProducts = filtros.filtrados
   const selectedCategory = filtros.estado.categoria
   const onlyOffers = filtros.estado.soloOfertas
   const busqueda = filtros.estado.busqueda.trim()
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const recorte = recorteListado(filteredProducts.length, currentPage, content)
+  const totalPages = recorte.paginas
+  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -165,7 +170,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           categorias={availableCategories}
           estado={filtros.estado}
           cambiar={filtros.cambiar}
-          total={filteredProducts.length}
+          total={recorte.universo}
           primaryColor={primaryColor}
           mostrarFiltros={content.show_filters !== false}
           mostrarBuscador={content.show_search === true}
@@ -175,7 +180,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {paginatedProducts.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        <div className={clasesColumnasProductos(content.columns)}>
           {paginatedProducts.map((product: any) => {
             const isAdded = addedToCart.has(product.id)
             return (
