@@ -68,6 +68,7 @@ function claseAspectoUna(ratio: unknown): string {
   if (ratio === '3/4') return 'aspect-[3/4]'
   if (ratio === '16/9') return 'aspect-video'
   if (ratio === '3/1') return 'aspect-[3/1]'
+  // Cadena completa: Tailwind solo la emite si `lib/` está en `content`.
   return 'min-h-[200px]'
 }
 

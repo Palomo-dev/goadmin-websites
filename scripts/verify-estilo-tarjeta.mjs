@@ -69,6 +69,11 @@ check(p.claseAspectoBanner('3/4') === 'aspect-[3/4]', 'proporción 3:4')
 check(p.claseAspectoBanner('16/9') === 'aspect-video', 'proporción 16:9')
 check(p.claseAspectoBanner('auto') === 'min-h-[200px]', 'automática conserva la altura')
 check(p.claseAspectoBanner(undefined) === 'min-h-[200px]', 'sin proporción conserva la altura')
+const tailwind = await readFile(join(ROOT, 'tailwind.config.ts'), 'utf8')
+check(
+  tailwind.includes("'./lib/**/*.{js,ts,jsx,tsx,mdx}'"),
+  'tailwind escanea lib: si no, min-h-[200px] no llega al CSS y el banner se aplasta',
+)
 check(p.claseAspectoBanner('3/1') === 'aspect-[3/1]', 'proporción 3:1')
 check(p.claseAspectoBanner('3/4', '3/1') === 'aspect-[3/1] md:aspect-[3/4]', 'el celular puede usar otra proporción')
 check(p.claseAspectoBanner(undefined, '3/1') === 'aspect-[3/1] md:aspect-auto md:min-h-[200px]', 'escritorio automático y celular 3:1')
