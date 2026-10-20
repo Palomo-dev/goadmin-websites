@@ -166,6 +166,7 @@ for (const [col] of nuevas) {
 }
 const encabezado = await fuente('components/site/header/HeaderShared.tsx')
 check(encabezado.includes('header_text_color') && encabezado.includes("'--header-fg'") && encabezado.includes('text-current'), 'el encabezado lee header_text_color y pinta con --header-fg')
+check(encabezado.includes('const heredarColor = !isMobile && Boolean(colorTextoEncabezadoGuardado(settings))'), 'en el celular la barra blanca no hereda el color del encabezado')
 // Las reglas CSS de las opciones del panel existen.
 const css = await fuente('app/globals.css')
 for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo', 'data-encabezado-texto', 'data-pie-texto', 'data-pie-sin-separadores']) {
