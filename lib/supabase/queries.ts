@@ -6,7 +6,8 @@ import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
-import { aplicarCartaSede, esSede, excluirNoListados, leerCartaSede, resolverSedeCarta, type CartaSede, type FilaCartaSede, type PrecioSedeCarta } from '@/lib/products/carta-sede'
+import { aplicarCartaSede, esSede, excluirNoListados, idsNoListados, leerCartaSede, resolverSedeCarta, type CartaSede, type FilaCartaSede, type PrecioSedeCarta } from '@/lib/products/carta-sede'
+import { ordenarPorVentasEstable, paginarIds, TAMANO_PAGINA_CATEGORIA, ventasConHijos } from '@/lib/products/paginacionCategoria'
 import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
 import { normalizarNombre, type OrdenAtributos } from '@/lib/products/ordenAtributos'
@@ -1104,10 +1105,221 @@ async function getSubcategoriesUncached(organizationId: number, parentId: number
   return enrichCategoriesWithFallbackImage(supabase, data || [])
 }
 
+/** Ids de listado por tanda. PostgREST corta en 1.000 filas; sin embeds no se infla. */
+const IDS_POR_PAGINA_LISTADO = 1000
+const TOPE_PAGINAS_IDS = 40
+
+/**
+ * Nombre, más recientes, o nombre como base de «más vendidos».
+ * Precio menor/mayor sigue en nombre: el listado anterior no ordenaba por precio.
+ */
+function ordenarConsultaIds(query: any, sort: string) {
+  if (sort === 'name_desc') {
+    return query.order('name', { ascending: false }).order('id', { ascending: false })
+  }
+  if (sort === 'newest') {
+    return query.order('created_at', { ascending: false }).order('id', { ascending: false })
+  }
+  return query.order('name', { ascending: true }).order('id', { ascending: true })
+}
+
+/** Ids con un precio vigente. Lanza si la lectura falla: no se cachea un total a medias. */
+async function idsConPrecioVigente(
+  supabase: ReturnType<typeof getSupabaseForPublicRead>,
+  ids: number[],
+): Promise<Set<number>> {
+  const vigentes = new Set<number>()
+  const CHUNK = 150
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const lote = ids.slice(i, i + CHUNK)
+    let desde = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from('product_prices')
+        .select('product_id')
+        .in('product_id', lote)
+        .is('effective_to', null)
+        .order('product_id', { ascending: true })
+        .range(desde, desde + IDS_POR_PAGINA_LISTADO - 1)
+      if (error) throw new Error(error.message || 'product_prices')
+      for (const fila of data || []) vigentes.add(Number((fila as { product_id: number }).product_id))
+      if (!data || data.length < IDS_POR_PAGINA_LISTADO) break
+      desde += IDS_POR_PAGINA_LISTADO
+    }
+  }
+  return vigentes
+}
+
+/**
+ * Ids del listado, ya filtrados y ordenados. Sin número de página: todas las
+ * páginas comparten esta lista y por eso el total no cambia al paginar.
+ *
+ * Lanza si la base falla, para no guardar un total vacío durante el TTL.
+ */
+async function getOrdenListadoCategoriaUncached(
+  organizationId: number,
+  categoryId: number,
+  sort: string,
+  subcategoryId: number | null,
+  branchId: number | null,
+): Promise<number[]> {
+  const supabase = getSupabaseForPublicRead()
+
+  if (typeof branchId === 'number') {
+    const { data: parentCat, error: errorPadre } = await (supabase as any)
+      .from('categories')
+      .select('id, branch_id')
+      .eq('organization_id', organizationId)
+      .eq('id', categoryId)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (errorPadre) throw new Error(errorPadre.message || 'categories')
+    if (!parentCat || (parentCat.branch_id !== null && parentCat.branch_id !== branchId)) {
+      return []
+    }
+  }
+
+  let categoryIds = [categoryId]
+  if (subcategoryId == null) {
+    let subQuery = supabase
+      .from('categories')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('parent_id', categoryId)
+      .eq('is_active', true)
+    if (typeof branchId === 'number') {
+      subQuery = subQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`)
+    }
+    const { data: subs, error: errorSubs } = await subQuery
+    if (errorSubs) throw new Error(errorSubs.message || 'subcategories')
+    if (subs && subs.length > 0) {
+      categoryIds = [...categoryIds, ...subs.map((s: { id: number }) => s.id)]
+    }
+  } else {
+    if (typeof branchId === 'number') {
+      const { data: subCat, error: errorSub } = await (supabase as any)
+        .from('categories')
+        .select('id, branch_id')
+        .eq('organization_id', organizationId)
+        .eq('id', subcategoryId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (errorSub) throw new Error(errorSub.message || 'subcategory')
+      if (!subCat || (subCat.branch_id !== null && subCat.branch_id !== branchId)) {
+        return []
+      }
+    }
+    categoryIds = [subcategoryId]
+  }
+
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  const ocultos = new Set(idsNoListados(cartaSede))
+  const filas: { id: number; is_parent: boolean }[] = []
+  const vistos = new Set<number>()
+
+  for (let pagina = 0; pagina < TOPE_PAGINAS_IDS; pagina += 1) {
+    const desde = pagina * IDS_POR_PAGINA_LISTADO
+    let query = supabase
+      .from('products')
+      .select('id, is_parent')
+      .eq('organization_id', organizationId)
+      .in('category_id', categoryIds)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+    query = excluirNoListados(query, cartaSede)
+    const { data, error } = await ordenarConsultaIds(query, sort)
+      .range(desde, desde + IDS_POR_PAGINA_LISTADO - 1)
+    if (error) throw new Error(error.message || 'products')
+    const lote = (data || []) as { id: number; is_parent: boolean | null }[]
+    for (const fila of lote) {
+      const id = Number(fila.id)
+      if (vistos.has(id) || ocultos.has(id)) continue
+      vistos.add(id)
+      filas.push({ id, is_parent: fila.is_parent === true })
+    }
+    if (lote.length < IDS_POR_PAGINA_LISTADO) break
+    if (pagina === TOPE_PAGINAS_IDS - 1) {
+      console.error('[queries] getOrdenListadoCategoria alcanzó el tope de ids', { organizationId, categoryId })
+    }
+  }
+
+  if (filas.length === 0) return []
+  const vigentes = await idsConPrecioVigente(supabase, filas.map((f) => f.id))
+  const conPrecio = filas.filter((f) => vigentes.has(f.id))
+  if (conPrecio.length === 0) return []
+  if (sort !== 'best_selling') return conPrecio.map((f) => f.id)
+
+  const salesMap = await getWebSalesByProduct(organizationId)
+  let hijoAPadre: Record<number, number> = {}
+  if (Object.keys(salesMap).length > 0) {
+    const padres = conPrecio.filter((f) => f.is_parent).map((f) => f.id)
+    if (padres.length > 0) {
+      hijoAPadre = (await getVariantChildrenByParent(supabase, padres)).childToParent
+    }
+  }
+  const ventas = ventasConHijos(conPrecio.map((f) => f.id), salesMap, hijoAPadre)
+  return ordenarPorVentasEstable(conPrecio, ventas).map((f) => f.id)
+}
+
+const SELECT_FICHA_LISTADO = `
+  ${PRODUCT_LIST_COLUMNS},
+  product_prices (id, price, compare_price, effective_to),
+  product_images (
+    id, storage_path, is_primary, display_order,
+    shared_image_id,
+    shared_images ( storage_path )
+  ),
+  stock_levels ( branch_id, qty_on_hand, qty_reserved )
+`
+
+/**
+ * Fichas de una página (precio, foto, stock), en el orden de `ids`.
+ * Se cachea por esos ids. El total de la categoría no vive aquí.
+ */
+async function getFichasListadoCategoriaUncached(
+  organizationId: number,
+  ids: number[],
+  branchId: number | null,
+) {
+  if (ids.length === 0) return []
+  const supabase = getSupabaseForPublicRead()
+  const { data, error } = await supabase
+    .from('products')
+    .select(SELECT_FICHA_LISTADO)
+    .is('product_prices.effective_to', null)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+    .in('id', ids)
+
+  if (error) throw new Error(error.message || 'fichas de categoría')
+
+  const porId = new Map(((data || []) as { id: number }[]).map((p) => [Number(p.id), p]))
+  const ordenados = ids
+    .map((id) => porId.get(id))
+    .filter((p): p is NonNullable<typeof p> => p != null)
+
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  const enriched = ordenados.length > 0
+    ? await enrichListing(supabase, organizationId, ordenados)
+    : []
+  return aplicarCartaSede(
+    filterStockByBranches(normalizeProductPrices(enriched), stockBranchIds),
+    cartaSede,
+  )
+}
+
 /**
  * Obtiene productos por categoría con paginación y ordenamiento.
  * F3: acepta `branchId` opcional en `options` para validar que la categoría
  * (y subcategorías) sean visibles para el outlet.
+ *
+ * El total es el largo de {@link getOrdenListadoCategoria}, no el `count` de
+ * una consulta con imágenes y precios embebidos (ese count cuenta filas del
+ * join y, cacheado por página, se desfasa entre la página 1 y la 2).
  */
 async function getProductsByCategoryPaginatedUncached(
   organizationId: number,
@@ -1120,131 +1332,41 @@ async function getProductsByCategoryPaginatedUncached(
     branchId?: number | null
   } = {}
 ) {
-  const supabase = getSupabaseForPublicRead()
-  const { page = 1, limit = 12, sort = 'best_selling', subcategoryId, branchId } = options
-  const offset = (page - 1) * limit
-
-  // F3: si hay branchId, validar que la categoría padre sea visible para el outlet
-  if (typeof branchId === 'number') {
-    const { data: parentCat } = await (supabase as any)
-      .from('categories')
-      .select('id, branch_id')
-      .eq('organization_id', organizationId)
-      .eq('id', categoryId)
-      .eq('is_active', true)
-      .maybeSingle()
-    if (!parentCat || (parentCat.branch_id !== null && parentCat.branch_id !== branchId)) {
-      return { products: [], total: 0 } // categoría no visible para este outlet
-    }
+  const { page = 1, limit = TAMANO_PAGINA_CATEGORIA, sort = 'best_selling', subcategoryId, branchId } = options
+  let ids: number[]
+  try {
+    ids = await getOrdenListadoCategoria(
+      organizationId,
+      categoryId,
+      sort || 'best_selling',
+      subcategoryId ?? null,
+      branchId ?? null,
+    )
+  } catch (error) {
+    console.error('[queries] getProductsByCategoryPaginated', {
+      organizationId,
+      categoryId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return { products: [], total: 0 }
   }
 
-  // Obtener IDs de subcategorías para incluir productos de subcategorías
-  let categoryIds = [categoryId]
-  if (!subcategoryId) {
-    let subQuery = supabase
-      .from('categories')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('parent_id', categoryId)
-      .eq('is_active', true)
-    // F3: filtrar subcategorías visibles del outlet
-    if (typeof branchId === 'number') {
-      subQuery = subQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`)
-    }
-    const { data: subs } = await subQuery
-    if (subs && subs.length > 0) {
-      categoryIds = [...categoryIds, ...subs.map((s: any) => s.id)]
-    }
-  } else {
-    // F3: si hay branchId y subcategoryId, validar que la subcategoría pertenece al outlet
-    if (typeof branchId === 'number') {
-      const { data: subCat } = await (supabase as any)
-        .from('categories')
-        .select('id, branch_id')
-        .eq('organization_id', organizationId)
-        .eq('id', subcategoryId)
-        .eq('is_active', true)
-        .maybeSingle()
-      if (!subCat || (subCat.branch_id !== null && subCat.branch_id !== branchId)) {
-        return { products: [], total: 0 }
-      }
-    }
-    categoryIds = [subcategoryId]
+  const { pagina, total } = paginarIds(ids, page, limit)
+  if (pagina.length === 0) return { products: [], total }
+
+  try {
+    const products = await getFichasListadoCategoria(organizationId, pagina, branchId ?? null)
+    return { products, total }
+  } catch (error) {
+    console.error('[queries] getProductsByCategoryPaginated fichas', {
+      organizationId,
+      categoryId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    // El total sigue siendo el de la lista compartida: un fallo al traer las
+    // fichas no puede cambiar el conteo que ya vio la otra página.
+    return { products: [], total }
   }
-
-  let query = supabase
-    .from('products')
-    .select(`
-      ${PRODUCT_LIST_COLUMNS},
-      product_prices (id, price, compare_price, effective_to),
-      product_images (
-        id, storage_path, is_primary, display_order,
-        shared_image_id,
-        shared_images ( storage_path )
-      ),
-      stock_levels ( branch_id, qty_on_hand, qty_reserved )
-    `, { count: 'exact' })
-    .is('product_prices.effective_to', null)
-    .eq('organization_id', organizationId)
-    .in('category_id', categoryIds)
-    .eq('status', 'active')
-    .is('parent_product_id', null)
-
-  // Carta por sede: los ocultos se excluyen en SQL para que `count` y `range` cuadren.
-  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
-  query = excluirNoListados(query, cartaSede)
-
-  // F3: stock por outlet activo
-  const stockBranchIds = (branchId !== undefined && branchId !== null)
-    ? [branchId]
-    : await getWebStockBranchIds(organizationId)
-
-  // Para best_selling, traer todos y ordenar en memoria con datos de ventas
-  if (sort === 'best_selling') {
-    query = query.order('name', { ascending: true })
-    const { data: allProducts, error: allError, count } = await query
-
-    if (allError || !allProducts) return { products: [], total: 0 }
-
-    // Ventas (propias + de variantes) y variantes, y ordenar/paginar en memoria
-    const sorted = (await enrichListing(supabase, organizationId, allProducts))
-      .sort((a: any, b: any) => b.sales_count - a.sales_count)
-
-    const paginated = sorted.slice(offset, offset + limit)
-    return { products: aplicarCartaSede(filterStockByBranches(normalizeProductPrices(paginated), stockBranchIds), cartaSede), total: count || 0 }
-  }
-
-  // Ordenamiento estándar
-  switch (sort) {
-    case 'name_asc':
-      query = query.order('name', { ascending: true })
-      break
-    case 'name_desc':
-      query = query.order('name', { ascending: false })
-      break
-    case 'newest':
-      query = query.order('created_at', { ascending: false })
-      break
-    case 'price_asc':
-    case 'price_desc':
-      query = query.order('name', { ascending: true })
-      break
-  }
-
-  query = query.range(offset, offset + limit - 1)
-
-  const { data, error, count } = await query
-
-  if (error) return { products: [], total: 0 }
-
-  // Adjuntar sales_count y variantes para los demás sorts
-  const prods = filterStockByBranches(data || [], stockBranchIds)
-  if (prods.length > 0) {
-    const enriched = await enrichListing(supabase, organizationId, prods)
-    return { products: aplicarCartaSede(normalizeProductPrices(enriched), cartaSede), total: count || 0 }
-  }
-
-  return { products: aplicarCartaSede(normalizeProductPrices(prods), cartaSede), total: count || 0 }
 }
 
 /**
@@ -3541,10 +3663,21 @@ export const getProductsByCategoryIds = cache(
   cacheCatalog('getProductsByCategoryIds', getProductsByCategoryIdsUncached, (...args) => args[0])
 )
 export const getProductsByCategory = cacheCatalog('getProductsByCategory', getProductsByCategoryUncached, (...args) => args[0])
-export const getProductsByCategoryPaginated = cacheCatalog(
-  'getProductsByCategoryPaginated',
-  getProductsByCategoryPaginatedUncached,
-  (...args) => args[0]
+// Una sola lista de ids para todas las páginas de la categoría. La clave no
+// lleva `page`: si cada página cacheara su total, al cargar productos la
+// página 1 anunciaría el conteo nuevo y la página 2 seguiría con el corte viejo.
+export const getOrdenListadoCategoria = cacheCatalog(
+  'getOrdenListadoCategoria',
+  getOrdenListadoCategoriaUncached,
+  (...args) => args[0],
+)
+// cache() de React deduplica dentro de la petición. No va en cacheCatalog:
+// el resultado incluye el número de página y volvería a separar los totales.
+export const getProductsByCategoryPaginated = cache(getProductsByCategoryPaginatedUncached)
+export const getFichasListadoCategoria = cacheCatalog(
+  'getFichasListadoCategoria',
+  getFichasListadoCategoriaUncached,
+  (...args) => args[0],
 )
 export const getMenuProducts = cacheCatalog('getMenuProducts', getMenuProductsUncached, (...args) => args[0])
 // Carta completa paginada (menu_full / menu_preview). Solo la piden las páginas con esas secciones.

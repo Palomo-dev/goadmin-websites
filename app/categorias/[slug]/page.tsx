@@ -7,6 +7,7 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CategoryDetailRenderer } from '@/components/sections/category-detail/CategoryDetailRenderer'
 import { JsonLd } from '@/components/site/JsonLd'
 import { Metadata } from 'next'
+import { TAMANO_PAGINA_CATEGORIA } from '@/lib/products/paginacionCategoria'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,7 +65,7 @@ export default async function CategoriaSlugPage({
   // Obtener productos paginados
   const { products, total } = await getProductsByCategoryPaginated(organization.id, category.id, {
     page,
-    limit: 12,
+    limit: TAMANO_PAGINA_CATEGORIA,
     sort,
     subcategoryId,
     branchId
@@ -76,7 +77,7 @@ export default async function CategoriaSlugPage({
     parentCategory = await getParentCategory(organization.id, category.parent_id)
   }
 
-  const totalPages = Math.ceil(total / 12)
+  const totalPages = Math.ceil(total / TAMANO_PAGINA_CATEGORIA)
 
   // F9.4 — Buscar plantilla de detalle de categoría editable
   // Sitio V2: la plantilla sale de la revisión publicada; legacy: igual que antes.
@@ -91,7 +92,7 @@ export default async function CategoriaSlugPage({
     name: category.name,
     description: category.description || undefined,
     numberOfItems: total,
-    itemListElement: products.slice(0, 12).map((p: any, i: number) => ({
+    itemListElement: products.slice(0, TAMANO_PAGINA_CATEGORIA).map((p: any, i: number) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: p.name,
