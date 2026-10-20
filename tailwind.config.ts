@@ -8,6 +8,10 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // Clases que el sitio arma en lib/ (altura y proporción de banners, columnas).
+    // Sin este globo la clase llega al HTML y Tailwind no emite la regla:
+    // la foto es absoluta y la tarjeta se aplasta al relleno.
+    './lib/**/*.{js,ts,jsx,tsx,mdx}',
     '*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
