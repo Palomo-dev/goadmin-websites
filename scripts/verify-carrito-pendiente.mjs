@@ -196,13 +196,18 @@ check(correo.includes('compraPendiente') && correo.includes('textosCorreoCompraP
 check(correo.includes('!data.compraPendiente && (data.tipoEntrega'), 'el pendiente no anuncia la entrega')
 
 const cron = await readFile(join(ROOT, 'app/api/cron/carritos-abandonados/route.ts'), 'utf8')
-check(cron.includes('VENTANA_COMPRA_PENDIENTE_MS') && cron.includes('ESPERA_COMPRA_PENDIENTE_MS'), 'el cron usa la espera y la ventana')
-check(cron.includes('abandoned_email_sent_at'), 'el cron sella el pedido')
+const cola = await readFile(join(ROOT, 'lib/orders/procesarColaCompraPendiente.ts'), 'utf8')
+const minuto = await readFile(join(ROOT, 'app/api/revalidate/sitios-v2/route.ts'), 'utf8')
+check(cola.includes('VENTANA_COMPRA_PENDIENTE_MS') && cola.includes('ESPERA_COMPRA_PENDIENTE_MS'), 'la cola usa la espera y la ventana')
+check(cola.includes('abandoned_email_sent_at'), 'la cola sella el pedido')
 check(cron.includes('CRON_SECRET'), 'el cron falla cerrado sin secreto')
-check(cron.includes("eq('source', 'website')"), 'el cron solo mira pedidos del sitio')
+check(cron.includes('procesarColaCompraPendiente'), 'el cron de 15 minutos usa la cola')
+check(cola.includes("eq('source', 'website')"), 'la cola solo mira pedidos del sitio')
+check(minuto.includes('procesarColaCompraPendiente'), 'el cron de cada minuto también decide la cola')
 
 const vercel = await readFile(join(ROOT, 'vercel.json'), 'utf8')
 check(vercel.includes('"/api/cron/carritos-abandonados"') && vercel.includes('"*/15 * * * *"'), 'el cron corre cada 15 minutos')
+check(vercel.includes('"/api/revalidate/sitios-v2"') && vercel.includes('"* * * * *"'), 'el cron de cada minuto sigue declarado')
 
 const slugs = await readFile(join(ROOT, 'lib/outlet/rutaSitio.ts'), 'utf8')
 check(slugs.includes("'retomar'"), 'retomar está reservado: una sede no puede tapar el enlace')
