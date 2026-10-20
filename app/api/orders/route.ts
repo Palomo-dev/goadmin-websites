@@ -9,6 +9,7 @@ import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { esSede, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { leerTarifasProductos } from '@/lib/orders/leerTarifasProducto'
 import {
   desfasesDePrecio,
   productIdDeLinea,
@@ -518,14 +519,25 @@ export async function POST(request: NextRequest) {
     }
     const totalDiscountAmount = resolvedCouponDiscount + resolvedPromoDiscount
     // Impuesto sobre la base con descuento (cupón + promociones prorrateados por línea), con la
-    // regla del POS (lib/orders/impuestoPedido.ts). Antes iba sobre el subtotal bruto. Si el
-    // impuesto está incluido en el precio, no se suma al total.
-    const impuesto = calcularImpuestoPedido({
-      brutos: lineas.map((l) => redondear2(l.precioUnitario * l.cantidad)),
-      descuento: totalDiscountAmount,
-      tasa: taxRate,
-      incluido: taxIncluded,
-    })
+    // regla del POS (lib/orders/impuestoPedido.ts). Cada línea usa el impuesto de su producto
+    // (`product_tax_relations`). Si esa lectura falla, sigue la tarifa predeterminada de la
+    // organización, que es lo que se cobraba antes.
+    const brutosPedido = lineas.map((l) => redondear2(l.precioUnitario * l.cantidad))
+    const tarifasProducto = await leerTarifasProductos(supabase as never, contextOrgId, lineas.map((l) => l.productId))
+    const impuesto = tarifasProducto
+      ? calcularImpuestoPedido({
+          brutos: brutosPedido,
+          descuento: totalDiscountAmount,
+          tasa: tarifasProducto.predeterminado.tasa,
+          incluido: tarifasProducto.predeterminado.incluido,
+          lineas: lineas.map((l) => tarifasProducto.porProducto.get(l.productId) ?? null),
+        })
+      : calcularImpuestoPedido({
+          brutos: brutosPedido,
+          descuento: totalDiscountAmount,
+          tasa: taxRate,
+          incluido: taxIncluded,
+        })
     const taxTotal = impuesto.total
     const taxForTotal = impuesto.sumaAlTotal
     // ── Envío: decidido en el servidor (lib/shipping/resolveShipping.ts) ──

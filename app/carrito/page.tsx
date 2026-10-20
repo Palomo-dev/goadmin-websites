@@ -33,7 +33,9 @@ export default async function CarritoPage() {
   const cartSettings = {
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
     taxName: defaultTax?.name || 'IVA',
-    taxIncluded: ws?.tax_included || false,
+    // La misma bandera que el checkout y /api/orders: la del impuesto predeterminado.
+    // `website_settings.tax_included` solo queda si la organización no tiene uno.
+    taxIncluded: defaultTax ? defaultTax.taxIncluded : Boolean(ws?.tax_included),
     shippingFlatRate: Number(ws?.shipping_flat_rate ?? 10000),
     freeShippingThreshold: Number(ws?.free_shipping_threshold ?? 100000),
     enableShipping: ws?.enable_shipping !== false,

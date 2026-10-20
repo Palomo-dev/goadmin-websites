@@ -12,7 +12,8 @@ import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/site/OrderConfirmation'
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { momentoPedido, validarMomentoPedido } from '@/lib/restaurant/ventanaPedido'
-import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
+import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { SelectorSede, type SedeSelector } from '@/components/site/header/SelectorSede'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
@@ -430,17 +431,26 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-  // Impuesto con la misma regla que cobra /api/orders (lib/orders/impuestoPedido.ts): sobre la
-  // base con el cupón y las promociones prorrateados. `tax` es lo que se suma al total (0 si va
-  // incluido en el precio); `impuestoIncluido`, lo que el precio ya trae.
-  const impuestoPedido = calcularImpuestoPedido({
+  // Impuesto con la misma regla que cobra /api/orders. Cada producto usa su tarifa
+  // (product_tax_relations); hasta que llega, o si no tiene, la predeterminada.
+  const tarifasCarrito = useTarifasCarrito(cartItems.map((item) => idProductoCarrito(item) ?? 0).filter((id) => id > 0))
+  const predeterminado = { tasa: settings.taxRate, incluido: settings.taxIncluded, nombre: settings.taxName }
+  const impuestoVisto = impuestoParaLineas({
     brutos: cartItems.map((item) => item.price * item.quantity),
     descuento: couponDiscount + promoDiscount,
-    tasa: settings.taxRate,
-    incluido: settings.taxIncluded,
+    predeterminado,
+    tarifas: tarifasCarrito
+      ? cartItems.map((item) => {
+          const id = idProductoCarrito(item)
+          return id != null ? tarifasCarrito.get(id) ?? null : null
+        })
+      : null,
   })
-  const tax = impuestoPedido.sumaAlTotal
-  const impuestoIncluido = settings.taxIncluded ? impuestoPedido.total : 0
+  const tax = impuestoVisto.resumen.suma
+  const impuestoIncluido = impuestoVisto.resumen.incluido
+  const etiquetaImpuesto = impuestoVisto.resumen.tasa != null
+    ? `${impuestoVisto.resumen.nombre} (${impuestoVisto.resumen.tasa}%)`
+    : impuestoVisto.resumen.nombre
   // Shipping solo aplica cuando el tipo seleccionado es delivery
   const needsShipping = orderType === 'delivery' && hasDelivery
   const flatShipping = settings.enableShipping && needsShipping
@@ -1562,13 +1572,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                   </div>
                   {tax > 0 && (
                     <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-600">{settings.taxName} ({settings.taxRate}%)</span>
+                      <span className="text-gray-600">{etiquetaImpuesto}</span>
                       <span>{fmtPrice(tax)}</span>
                     </div>
                   )}
-                  {settings.taxIncluded && settings.taxRate > 0 && (
+                  {impuestoIncluido > 0 && (
                     <p className="text-xs text-gray-400 mt-1">
-                      {settings.taxName} incluido en el precio{impuestoIncluido > 0 ? `: ${fmtPrice(impuestoIncluido)}` : ''}
+                      {impuestoVisto.resumen.nombre} incluido en el precio: {fmtPrice(impuestoIncluido)}
                     </p>
                   )}
                   {needsShipping && settings.enableShipping && (

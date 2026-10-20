@@ -38,6 +38,7 @@ const MODULOS = {
   horario: 'lib/restaurant/horario.ts',
   ventanaPedido: 'lib/restaurant/ventanaPedido.ts',
   impuestoPedido: 'lib/orders/impuestoPedido.ts',
+  impuestoProducto: 'lib/orders/impuestoProducto.ts',
   'estados-pedido': 'lib/orders/estados-pedido.ts',
   disponibilidadPedido: 'lib/orders/disponibilidadPedido.ts',
   resolveShipping: 'lib/shipping/resolveShipping.ts',
@@ -171,6 +172,80 @@ const sinTasa = calcularImpuestoPedido({ brutos: [50000], descuento: 0, tasa: 0,
 igual(sinTasa.total, 0, 'sin impuesto')
 const descuentoMayor = calcularImpuestoPedido({ brutos: [5000], descuento: 9000, tasa: 19, incluido: false })
 igual(descuentoMayor.total, 0, 'descuento mayor que el subtotal: impuesto 0, nunca negativo')
+
+// Tarifa distinta por línea. Sin `lineas`, sigue la tarifa única (casos de arriba).
+const mixto = calcularImpuestoPedido({
+  brutos: [100000, 100000],
+  descuento: 0,
+  tasa: 19,
+  incluido: false,
+  lineas: [
+    { tasa: 19, incluido: false, componentes: [{ tasa: 19, incluido: false }] },
+    { tasa: 5, incluido: false, componentes: [{ tasa: 5, incluido: false }] },
+  ],
+})
+igual([mixto.porLinea, mixto.total, mixto.sumaAlTotal], [[19000, 5000], 24000, 24000], 'cada línea cobra su tasa, no la predeterminada')
+const incluidoYNo = calcularImpuestoPedido({
+  brutos: [119000, 100000],
+  descuento: 0,
+  tasa: 19,
+  incluido: false,
+  lineas: [
+    { componentes: [{ tasa: 19, incluido: true }] },
+    null,
+  ],
+})
+igual([incluidoYNo.porLinea, incluidoYNo.sumaAlTotal], [[19000, 19000], 19000], 'la línea sin tarifa usa la predeterminada; la incluida no se suma')
+
+const { resolverTarifas, impuestoParaLineas } = m.impuestoProducto
+const iva19 = { id: 'iva19', name: 'IVA 19%', rate: 19, taxIncluded: false, isDefault: true, isActive: true, kind: 'tax' }
+const iva5 = { id: 'iva5', name: 'IVA 5%', rate: 5, taxIncluded: false, isDefault: false, isActive: true, kind: 'tax' }
+const exento = { id: 'exento', name: 'Exento', rate: 0, taxIncluded: false, isDefault: false, isActive: true, kind: 'tax' }
+const rete = { id: 'rete', name: 'ReteFuente', rate: 4, taxIncluded: false, isDefault: false, isActive: true, kind: 'withholding' }
+const inactivo = { id: 'viejo', name: 'IVA viejo', rate: 16, taxIncluded: false, isDefault: false, isActive: false, kind: 'tax' }
+const impuestos = [iva19, iva5, exento, rete, inactivo]
+const relaciones = [
+  { productId: 1, taxId: 'iva5' },
+  { productId: 2, taxId: 'exento' },
+  { productId: 3, taxId: 'rete' },
+  { productId: 4, taxId: 'viejo' },
+  { productId: 10, taxId: 'iva5' },
+]
+const resuelto = resolverTarifas({
+  productos: [
+    { id: 1, parentId: null },
+    { id: 2, parentId: null },
+    { id: 3, parentId: null },
+    { id: 4, parentId: null },
+    { id: 5, parentId: null },
+    { id: 11, parentId: 10 },
+    { id: 12, parentId: 10 },
+  ],
+  relaciones: [...relaciones, { productId: 12, taxId: 'iva19' }],
+  impuestos,
+})
+const tarifa = (id) => resuelto.porProducto.find((p) => p.productId === id).tarifa
+igual([tarifa(1).tasa, tarifa(1).delProducto, tarifa(1).nombre], [5, true, 'IVA 5%'], 'el producto con relación no hereda el 19 %')
+igual([tarifa(2).tasa, tarifa(2).delProducto], [0, true], 'tasa 0 configurada no cae al predeterminado')
+igual([tarifa(3).tasa, tarifa(3).delProducto], [19, false], 'solo retención: se trata como sin relación y usa el predeterminado')
+igual([tarifa(4).tasa, tarifa(4).delProducto], [19, false], 'relación inactiva: usa el predeterminado')
+igual([tarifa(5).tasa, tarifa(5).incluido], [19, false], 'sin relación: tarifa predeterminada')
+igual([tarifa(11).tasa, tarifa(11).delProducto], [5, true], 'la variante sin relación usa el impuesto del padre')
+igual([tarifa(12).tasa, tarifa(12).nombre], [19, 'IVA 19%'], 'la variante con relación propia no usa la del padre')
+const visto = impuestoParaLineas({
+  brutos: [100000, 100000],
+  descuento: 0,
+  predeterminado: { tasa: 19, incluido: false, nombre: 'IVA 19%' },
+  tarifas: [tarifa(1), tarifa(5)],
+})
+igual([visto.sumaAlTotal, visto.resumen.nombre, visto.resumen.tasa], [24000, 'Impuestos', null], 'tasas distintas: el total suma las dos y no anuncia una sola')
+const soloPred = impuestoParaLineas({
+  brutos: [119000],
+  descuento: 0,
+  predeterminado: { tasa: 19, incluido: true, nombre: 'IVA 19%' },
+  tarifas: null,
+})
+igual([soloPred.sumaAlTotal, soloPred.resumen.incluido, soloPred.resumen.tasa], [0, 19000, 19], 'sin tarifas de producto: incluido predeterminado, no se suma')
 
 // ─── 3. Estados ─────────────────────────────────────────────────────────────────────────────
 // select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid='web_orders'::regclass and contype='c'

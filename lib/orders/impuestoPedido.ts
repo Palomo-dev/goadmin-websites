@@ -7,6 +7,8 @@
  * - el descuento del pedido (cupón + promociones) se prorratea entre las líneas en proporción a
  *   su bruto, en centavos y con el residuo en la última línea (mismo reparto que
  *   `webOrderTotals.ts` del ERP al facturar el pedido);
+ * - cada línea puede traer su propia tarifa (la de su producto). Si no la trae, usa la
+ *   tarifa única del pedido;
  * - el impuesto de cada línea sale de su neto con la regla única del POS
  *   (`go-admin-erp/src/lib/pos/lineaVenta.ts`, `calcularLineaVenta`):
  *     incluido:    neto − neto / (1 + tasa/100)
@@ -52,13 +54,35 @@ export function prorratear(monto: number, pesos: number[]): number[] {
   return partes.map((c) => c / 100)
 }
 
+/** Un impuesto de una línea. Varios se suman; cada uno dice si ya va en el precio. */
+export interface ComponenteImpuestoLinea {
+  tasa: number
+  incluido: boolean
+}
+
+/**
+ * Tarifa de una línea. Sin `componentes`, valen `tasa` e `incluido`.
+ * `null` en el arreglo de líneas usa la tarifa única del pedido.
+ */
+export interface TarifaDeLinea {
+  tasa?: number
+  incluido?: boolean
+  componentes?: ComponenteImpuestoLinea[]
+}
+
 export interface EntradaImpuestoPedido {
   /** Bruto de cada línea (precio unitario × cantidad). */
   brutos: number[]
   /** Descuento total del pedido (cupón + promociones). */
   descuento: number
+  /** Tarifa del pedido. La usa cada línea que no trae la suya. */
   tasa: number
   incluido: boolean
+  /**
+   * Tarifa de cada línea, en el mismo orden que `brutos`.
+   * Si no viene, todas las líneas usan `tasa` e `incluido`.
+   */
+  lineas?: Array<TarifaDeLinea | null>
 }
 
 export interface ImpuestoPedido {
@@ -70,10 +94,38 @@ export interface ImpuestoPedido {
   sumaAlTotal: number
 }
 
-export function calcularImpuestoPedido({ brutos, descuento, tasa, incluido }: EntradaImpuestoPedido): ImpuestoPedido {
+function componentesDeLinea(
+  especifica: TarifaDeLinea | null | undefined,
+  tasa: number,
+  incluido: boolean,
+): { tasa: number; incluido: boolean }[] {
+  if (especifica?.componentes && especifica.componentes.length > 0) {
+    return especifica.componentes.map((c) => ({ tasa: Number(c.tasa) || 0, incluido: c.incluido === true }))
+  }
+  if (especifica) {
+    return [{ tasa: Number(especifica.tasa) || 0, incluido: especifica.incluido === true }]
+  }
+  return [{ tasa: Number(tasa) || 0, incluido: incluido === true }]
+}
+
+export function calcularImpuestoPedido({ brutos, descuento, tasa, incluido, lineas }: EntradaImpuestoPedido): ImpuestoPedido {
   const descuentoAplicable = Math.min(Math.max(Number(descuento) || 0, 0), brutos.reduce((s, b) => s + Math.max(b, 0), 0))
   const partes = prorratear(descuentoAplicable, brutos)
-  const porLinea = brutos.map((b, i) => impuestoDeLinea(redondear2(Math.max(b, 0) - partes[i]), Number(tasa) || 0, incluido))
+  const porLinea: number[] = []
+  const sumas: number[] = []
+  brutos.forEach((b, i) => {
+    const neto = redondear2(Math.max(b, 0) - partes[i])
+    let totalLinea = 0
+    let sumaLinea = 0
+    for (const c of componentesDeLinea(lineas?.[i], tasa, incluido)) {
+      const imp = impuestoDeLinea(neto, c.tasa, c.incluido)
+      totalLinea += imp
+      if (!c.incluido) sumaLinea += imp
+    }
+    porLinea.push(redondear2(totalLinea))
+    sumas.push(redondear2(sumaLinea))
+  })
   const total = redondear2(porLinea.reduce((s, t) => s + t, 0))
-  return { porLinea, total, sumaAlTotal: incluido ? 0 : total }
+  const sumaAlTotal = redondear2(sumas.reduce((s, t) => s + t, 0))
+  return { porLinea, total, sumaAlTotal }
 }

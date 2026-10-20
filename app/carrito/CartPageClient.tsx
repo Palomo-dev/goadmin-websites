@@ -12,7 +12,8 @@ import {
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { isParentProduct } from '@/components/sections/products/ProductCard'
-import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
+import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
+import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -151,14 +152,24 @@ export function CartPageClient({
   // Cálculos
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
-  // Impuesto con la regla que cobra /api/orders (lib/orders/impuestoPedido.ts): sobre la base con
-  // las promociones; solo se suma al total si no va incluido en el precio.
-  const tax = calcularImpuestoPedido({
+  // Impuesto con la regla que cobra /api/orders. Cada producto usa su tarifa;
+  // hasta que llega, o si no tiene, la predeterminada de la organización.
+  const tarifasCarrito = useTarifasCarrito(items.map((item) => idProductoCarrito(item) ?? 0).filter((id) => id > 0))
+  const impuestoVisto = impuestoParaLineas({
     brutos: items.map((item) => item.price * item.quantity),
     descuento: promoDiscount,
-    tasa: cartSettings.taxRate,
-    incluido: cartSettings.taxIncluded,
-  }).sumaAlTotal
+    predeterminado: { tasa: cartSettings.taxRate, incluido: cartSettings.taxIncluded, nombre: cartSettings.taxName },
+    tarifas: tarifasCarrito
+      ? items.map((item) => {
+          const id = idProductoCarrito(item)
+          return id != null ? tarifasCarrito.get(id) ?? null : null
+        })
+      : null,
+  })
+  const tax = impuestoVisto.resumen.suma
+  const etiquetaImpuesto = impuestoVisto.resumen.tasa != null
+    ? `${impuestoVisto.resumen.nombre} (${impuestoVisto.resumen.tasa}%)`
+    : impuestoVisto.resumen.nombre
   const shipping = cartSettings.enableShipping
     ? (cartSettings.freeShippingThreshold > 0 && subtotal >= cartSettings.freeShippingThreshold ? 0 : cartSettings.shippingFlatRate)
     : 0
@@ -381,12 +392,14 @@ export function CartPageClient({
                 </div>
                 {tax > 0 && (
                   <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                    <span>{cartSettings.taxName} ({cartSettings.taxRate}%)</span>
+                    <span>{etiquetaImpuesto}</span>
                     <span>${tax.toLocaleString('es-CO')}</span>
                   </div>
                 )}
-                {cartSettings.taxIncluded && cartSettings.taxRate > 0 && (
-                  <p className="text-xs text-gray-400">{cartSettings.taxName} incluido en el precio</p>
+                {impuestoVisto.resumen.incluido > 0 && (
+                  <p className="text-xs text-gray-400">
+                    {impuestoVisto.resumen.nombre} incluido en el precio: ${impuestoVisto.resumen.incluido.toLocaleString('es-CO')}
+                  </p>
                 )}
                 {promotions.map(promo => (
                   <div key={promo.id} className="flex justify-between text-green-600 dark:text-green-400">
