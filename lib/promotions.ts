@@ -54,6 +54,11 @@ export interface PromotionRow {
   branches: number[] | null
   applies_to_web: boolean | null
   applicable_days: WeekDay[] | string[] | null
+  /** `HH:mm` o `HH:mm:ss` en la zona del negocio. Nulo = todo el día. */
+  start_time?: string | null
+  end_time?: string | null
+  /** Precio del paquete. Si es mayor que cero, manda sobre el porcentaje. */
+  bundle_price?: number | string | null
   promotion_rules?: PromotionRule[] | null
   rules?: PromotionRule[] | null
 }
@@ -109,6 +114,55 @@ export function realProductId(item: PromoCartItem): number {
   return Number(head)
 }
 
+/**
+ * Unidades gratis de «compra X lleva Y».
+ * Si Y < X, la etiqueta es «XxY» (llevas X, pagas Y): de cada X, X−Y de regalo.
+ * Si Y ≥ X, Y son unidades gratis además de las X que se pagan.
+ * Misma regla que `unidadesGratisCompraLleva` del ERP.
+ */
+export function unidadesGratisCompraLleva(unidades: number, compra: number, lleva: number): number {
+  const n = Math.floor(unidades)
+  const x = Math.trunc(compra)
+  const y = Math.trunc(lleva)
+  if (n <= 0 || x <= 0 || y <= 0) return 0
+  if (y < x) return Math.floor(n / x) * (x - y)
+  return Math.floor(n / (x + y)) * y
+}
+
+function horaEnZona(date: Date, timeZone = 'America/Bogota'): string {
+  try {
+    const partes = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZone,
+    }).formatToParts(date)
+    const tomar = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? '00'
+    return `${tomar('hour')}:${tomar('minute')}:${tomar('second')}`
+  } catch {
+    return '00:00:00'
+  }
+}
+
+function horaNormalizada(valor: string | null | undefined): string | null {
+  if (valor == null || valor === '') return null
+  const m = String(valor).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return null
+  const hh = m[1].padStart(2, '0')
+  const mm = m[2]
+  const ss = (m[3] ?? '00').padStart(2, '0')
+  if (Number(hh) > 23 || Number(mm) > 59 || Number(ss) > 59) return null
+  return `${hh}:${mm}:${ss}`
+}
+
+/** Sin horas, todo el día. Si el fin es anterior al inicio, cruza la medianoche. */
+function enFranjaHoraria(inicio: string | null | undefined, fin: string | null | undefined, hora: string): boolean {
+  const a = horaNormalizada(inicio)
+  const b = horaNormalizada(fin)
+  if (!a && !b) return true
+  if (a && !b) return hora >= a
+  if (!a && b) return hora <= b
+  if (a! <= b!) return hora >= a! && hora <= b!
+  return hora >= a! || hora <= b!
+}
+
 /** Día de la semana en la zona horaria del negocio (por defecto Colombia). */
 export function weekdayInTimezone(date: Date, timeZone = 'America/Bogota'): WeekDay {
   try {
@@ -145,6 +199,7 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
     if (p.end_date && new Date(p.end_date) < date) return false
     if (p.usage_limit && Number(p.usage_count || 0) >= Number(p.usage_limit)) return false
     if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !p.applicable_days.includes(dayName)) return false
+    if (!enFranjaHoraria(p.start_time, p.end_time, horaEnZona(date, ctx.timeZone))) return false
     // `branches` jsonb: null/[] = todas las sucursales.
     if (Array.isArray(p.branches) && p.branches.length > 0) {
       if (ctx.branchId == null) return false
@@ -235,7 +290,7 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
       break
     }
     case 'buy_x_get_y': {
-      // Por cada (X+Y) unidades del mismo producto, Y unidades gratis (las más baratas).
+      // Misma regla que el ERP: Y < X regala X−Y por cada X; si no, Y gratis por cada X+Y.
       const buyQty = Number(promo.buy_quantity || 0)
       const getQty = Number(promo.get_quantity || 0)
       if (buyQty > 0 && getQty > 0) {
@@ -247,9 +302,8 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
         }
         for (const group of byProduct.values()) {
           const totalQty = group.reduce((s, i) => s + i.quantity, 0)
-          const sets = Math.floor(totalQty / (buyQty + getQty))
-          if (sets <= 0) continue
-          let remainingFree = sets * getQty
+          let remainingFree = unidadesGratisCompraLleva(totalQty, buyQty, getQty)
+          if (remainingFree <= 0) continue
           for (const item of [...group].sort((a, b) => a.price - b.price)) {
             if (remainingFree <= 0) break
             const free = Math.min(remainingFree, item.quantity)
@@ -261,9 +315,19 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
       break
     }
     case 'bundle': {
-      // Simplificación (igual que el ERP): porcentaje sobre el subtotal aplicable.
-      const pct = value / 100
-      for (const item of items) add(item, item.price * item.quantity * pct)
+      const precio = Number(promo.bundle_price || 0)
+      const requeridos = rulesOf(promo)
+        .filter((r) => r.rule_type === 'include_product' && r.product_id != null)
+        .map((r) => r.product_id as number)
+      const presentes = new Set(items.map((i) => i.product_id))
+      const cubre = requeridos.length === 0 || requeridos.every((id) => presentes.has(id))
+      if (precio > 0 && cubre && subtotal > precio) {
+        const diferencia = subtotal - precio
+        for (const item of items) add(item, diferencia * ((item.price * item.quantity) / subtotal))
+      } else if (!(precio > 0) && value > 0) {
+        const pct = value / 100
+        for (const item of items) add(item, item.price * item.quantity * pct)
+      }
       break
     }
     // 'free_shipping' no descuenta productos; se ignora aquí.
