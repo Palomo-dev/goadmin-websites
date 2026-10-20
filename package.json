@@ -28,7 +28,8 @@
     "verify:estilo-tarjeta": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-tarjeta.mjs",
     "verify:marca": "node --disable-warning=ExperimentalWarning scripts/verify-marca-correo.mjs",
     "verify:favicon": "node --disable-warning=ExperimentalWarning scripts/verify-favicon.mjs",
-    "verify:orden-tallas": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-orden-tallas.mjs"
+    "verify:orden-tallas": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-orden-tallas.mjs",
+    "verify:paginacion-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-paginacion-categoria.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
