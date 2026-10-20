@@ -230,7 +230,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
       {/* Botón de búsqueda */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
         aria-label="Buscar productos"
       >
         <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
@@ -255,7 +255,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
                 }}
               />
               {query && (
-                <button onClick={() => setQuery('')} className="p-1 rounded-full hover:bg-gray-100">
+                <button onClick={() => setQuery('')} className="p-1 rounded-full hover:bg-[var(--header-hover)]">
                   <X className="h-4 w-4 text-gray-400" />
                 </button>
               )}
@@ -283,7 +283,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
               }}
             />
             {query && (
-              <button onClick={() => setQuery('')} className="p-1 rounded-full hover:bg-gray-100">
+              <button onClick={() => setQuery('')} className="p-1 rounded-full hover:bg-[var(--header-hover)]">
                 <X className="h-4 w-4 text-gray-400" />
               </button>
             )}

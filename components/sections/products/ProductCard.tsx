@@ -423,9 +423,12 @@ function BadgeRenderer({
 
   if (!shouldShow) return null
 
-  // Reemplazar {value} en el label
-  const label = (badge.label ?? '')
-    .replace('{value}', value !== null ? String(value) : '')
+  // Un texto vacío no es «sin etiqueta»: `??` dejaba el descuento en blanco.
+  // Sin texto, el descuento usa «-{value}%» (el mismo default del editor).
+  const plantilla = badge.type === 'discount'
+    ? (badge.label?.trim() || '-{value}%')
+    : (badge.label ?? '')
+  const label = plantilla.replace('{value}', value !== null ? String(value) : '')
 
   const classes = resolveBadgeClasses(badge)
   // Fallbacks de color por tipo: garantizan que el badge SIEMPRE tenga

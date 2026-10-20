@@ -191,6 +191,12 @@ export interface Database {
           header_show_currency?: boolean
           header_text_color?: string | null
           header_sticky?: boolean
+          /** Divisor entre el logo y el menú. Ausente = encendido. `false` lo quita. */
+          header_divider?: boolean
+          /** Color del divisor. Ausente = lavado según el fondo. */
+          header_divider_color?: string | null
+          /** Hover de los íconos. Ausente = lavado según el fondo. */
+          header_hover_color?: string | null
           footer_text_color?: string | null
           footer_show_dividers?: boolean
           logo_height: number | null

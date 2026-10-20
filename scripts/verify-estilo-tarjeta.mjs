@@ -150,6 +150,7 @@ const banners = await readFile(join(ROOT, 'components/sections/retail/PromoBanne
 check(banners.includes("fotoNatural ? 'block w-full h-auto'"), 'automática muestra la foto entera')
 const tarjeta = await readFile(join(ROOT, 'components/sections/products/ProductCard.tsx'), 'utf8')
 check(tarjeta.includes('iconoVacio(button.icon)'), 'sin icono no cae al ícono por defecto')
+check(tarjeta.includes("badge.label?.trim() || '-{value}%'"), 'la etiqueta de descuento vacía usa -{value}%')
 
 if (problemas.length) {
   console.error(`verify:estilo-tarjeta ${problemas.length} fallos de ${casos}`)

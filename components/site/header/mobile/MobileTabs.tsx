@@ -14,6 +14,10 @@ import {
   getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
+  CLASE_FONDO_ENCABEZADO,
+  variablesEncabezado,
+  estiloBarraEncabezado,
+  marcaFondoEncabezado,
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
@@ -47,10 +51,10 @@ export default function MobileTabs({
   const AuthTabIcon = getLucideIcon(settings?.auth_icon as string, User);
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full">
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
           <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
@@ -88,7 +92,7 @@ export default function MobileTabs({
       <div className="h-14" aria-hidden="true" />
 
       {/* Barra inferior fija */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 ${CLASE_FONDO_ENCABEZADO}`} style={estiloBarraEncabezado(settings, 'top')} {...marcaFondoEncabezado(settings)}>
         <div className="grid grid-cols-5 h-14">
           <TabButton href={ruta('/')} icon={<Home className="h-5 w-5" />} label="Inicio" />
           <TabButton
@@ -118,13 +122,13 @@ export default function MobileTabs({
             onClick={() => setShowCategories(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto">
+          <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
             <div className="flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
               <h3 className="font-semibold text-gray-900 dark:text-white">Categorías</h3>
               <button
                 onClick={() => setShowCategories(false)}
                 aria-label="Cerrar"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -135,7 +139,7 @@ export default function MobileTabs({
                     <Link
                       key={cat.id}
                       href={ruta(`/categorias/${cat.slug}`)}
-                      className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
                       onClick={() => setShowCategories(false)}
                     >
                       {cat.icon && <span className="text-xl">{cat.icon}</span>}
@@ -174,13 +178,13 @@ export default function MobileTabs({
             onClick={() => setShowSearch(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full sm:max-w-lg bg-white dark:bg-gray-900 rounded-2xl mx-4">
+          <div className={`relative w-full sm:max-w-lg ${CLASE_FONDO_ENCABEZADO} rounded-2xl mx-4`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
             <div className="flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
               <h3 className="font-semibold text-gray-900 dark:text-white">Buscar</h3>
               <button
                 onClick={() => setShowSearch(false)}
                 aria-label="Cerrar"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -253,7 +257,7 @@ function CategoryNavItem({
   if (item.children && item.children.length > 0) {
     return (
       <details className="group">
-        <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer list-none">
+        <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)] cursor-pointer list-none">
           {item.icon && <span className="text-xl">{item.icon}</span>}
           <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
             {item.name}
@@ -287,7 +291,7 @@ function CategoryNavItem({
   return (
     <Link
       href={item.href}
-      className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+      className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
       onClick={onNavigate}
     >
       {item.icon && <span className="text-xl">{item.icon}</span>}

@@ -17,6 +17,10 @@ import {
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
+  CLASE_FONDO_ENCABEZADO,
+  variablesEncabezado,
+  estiloBarraEncabezado,
+  marcaFondoEncabezado,
 } from '../HeaderShared';
 
 /**
@@ -70,10 +74,10 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full">
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
           <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
@@ -93,7 +97,7 @@ export default function MobileDrawer({
               <button
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
               >
                 <MenuIcon className="h-6 w-6" />
               </button>
@@ -123,13 +127,13 @@ export default function MobileDrawer({
             onClick={() => setOpen(false)}
           />
           {/* Drawer panel */}
-          <div className="absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+          <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] ${CLASE_FONDO_ENCABEZADO} shadow-2xl flex flex-col`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
             {/* Drawer header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
               <span className="font-bold text-gray-900 dark:text-white">Menú</span>
               <button
                 onClick={() => setOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-2 rounded-lg hover:bg-[var(--header-hover)]"
                 aria-label="Cerrar menú"
               >
                 <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
@@ -151,7 +155,7 @@ export default function MobileDrawer({
               {isLoggedIn && showHeaderAuth && (
                 <Link
                   href="/mi-cuenta"
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
                   onClick={() => setOpen(false)}
                 >
                   <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
@@ -236,7 +240,7 @@ function DrawerNavItem({
   if (item.children && item.children.length > 0) {
     return (
       <details className="group">
-        <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors list-none">
+        <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors list-none">
           <span className="flex items-center gap-2">
             {item.icon && <span>{item.icon}</span>}
             <span>{item.name}</span>
@@ -254,7 +258,7 @@ function DrawerNavItem({
         <div className="pl-6 space-y-1 mt-1">
           <Link
             href={item.href}
-            className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--header-hover)] transition-colors"
             onClick={onNavigate}
           >
             Ver todo
@@ -263,7 +267,7 @@ function DrawerNavItem({
             <Link
               key={j}
               href={child.href}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--header-hover)] transition-colors"
               onClick={onNavigate}
             >
               {child.name}
@@ -278,7 +282,7 @@ function DrawerNavItem({
   return (
     <Link
       href={item.href}
-      className="block px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+      className="block px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
       onClick={onNavigate}
     >
       <span className="flex items-center gap-2">

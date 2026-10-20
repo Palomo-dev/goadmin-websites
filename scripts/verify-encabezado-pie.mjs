@@ -41,10 +41,11 @@ async function cargar(ruta, nombre, reemplazos = []) {
   await writeFile(join(dir, nombre), js)
   return import(pathToFileURL(join(dir, nombre)).href)
 }
-let m, ep
+let m, ep, estilo
 try {
   m = await cargar('lib/website/v2/mapeoAjustes.ts', 'mapeoAjustes.mjs')
   ep = await cargar('lib/website/encabezadoPie.ts', 'encabezadoPie.mjs', [["from './v2/mapeoAjustes'", "from './mapeoAjustes.mjs'"]])
+  estilo = await cargar('lib/website/encabezadoEstilo.ts', 'encabezadoEstilo.mjs')
 } finally {
   // los módulos ya están en memoria
 }
@@ -52,7 +53,7 @@ await rm(dir, { recursive: true, force: true })
 
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
-check(nuevas.length === 19, `se esperaban 19 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 22, `se esperaban 22 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla, `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -153,6 +154,9 @@ const CONSUMIDORES = {
   header_show_currency: ['components/site/header/HeaderShared.tsx', 'opcionesShell.moneda'],
   header_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.colorTextoEncabezado'],
   header_sticky: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.fijo'],
+  header_divider: ['components/site/header/HeaderShared.tsx', 'header_divider'],
+  header_divider_color: ['components/site/header/HeaderShared.tsx', 'header_divider_color'],
+  header_hover_color: ['components/site/header/HeaderShared.tsx', 'header_hover_color'],
   footer_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.colorTexto'],
   footer_show_dividers: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.separadores'],
 }
@@ -166,7 +170,46 @@ for (const [col] of nuevas) {
 }
 const encabezado = await fuente('components/site/header/HeaderShared.tsx')
 check(encabezado.includes('header_text_color') && encabezado.includes("'--header-fg'") && encabezado.includes('text-current'), 'el encabezado lee header_text_color y pinta con --header-fg')
-check(encabezado.includes('const heredarColor = !isMobile && Boolean(colorTextoEncabezadoGuardado(settings))'), 'en el celular la barra blanca no hereda el color del encabezado')
+check(encabezado.includes('const heredarColor = Boolean(headerTextColor(settings))'), 'el celular hereda el color: la barra usa el mismo fondo que el computador')
+check(encabezado.includes("'--header-hover'") && encabezado.includes('header_hover_color'), 'el encabezado define --header-hover')
+check(encabezado.includes('header_divider') && encabezado.includes("'--header-divider'"), 'el encabezado define --header-divider')
+check(encabezado.includes('divisorEncendido'), 'con el divisor apagado se quita el borde')
+igual(estilo.lavadoSegunFondo('#101010'), estilo.LAVADO_OSCURO, 'fondo oscuro')
+igual(estilo.lavadoSegunFondo('#ffffff'), estilo.LAVADO_CLARO, 'fondo claro')
+igual(estilo.lavadoSegunFondo('#fff'), estilo.LAVADO_CLARO, 'fondo claro corto')
+igual(estilo.lavadoSegunFondo(null), null, 'sin fondo, lo decide el CSS')
+igual(estilo.lavadoSegunFondo('red;x'), null, 'fondo inválido')
+igual(estilo.colorHoverEfectivo('#abc', '#101010'), '#abc', 'hover guardado gana')
+igual(estilo.colorHoverEfectivo(null, '#101010'), estilo.LAVADO_OSCURO, 'hover por luminancia')
+igual(estilo.colorDivisorEfectivo('', '#ffffff'), estilo.LAVADO_CLARO, 'divisor por luminancia')
+check(estilo.divisorEncendido(undefined) === true && estilo.divisorEncendido(false) === false, 'divisor ausente encendido y false apagado')
+const cssVars = await fuente('app/globals.css')
+check(cssVars.includes('--header-hover') && cssVars.includes('--header-divider') && cssVars.includes('data-fondo-encabezado'), 'el CSS declara el hover, el divisor y el fondo del menú')
+for (const ruta of [
+  'components/site/header/HeaderCentered.tsx',
+  'components/site/header/HeaderMega.tsx',
+  'components/site/header/HeaderClassic.tsx',
+  'components/site/header/HeaderSplit.tsx',
+  'components/site/header/HeaderMinimal.tsx',
+]) {
+  const src = await fuente(ruta)
+  check(src.includes('estiloDivisor(settings') && src.includes('variablesEncabezado(settings)'), `${ruta} no usa el divisor configurable`)
+  check(!src.includes('border-b border-gray-200'), `${ruta} sigue con el borde gris fijo`)
+}
+for (const ruta of [
+  'components/site/header/mobile/MobileDrawer.tsx',
+  'components/site/header/mobile/MobileFullscreen.tsx',
+  'components/site/header/mobile/MobileTabs.tsx',
+  'components/site/header/mobile/MobileBottomSheet.tsx',
+]) {
+  const src = await fuente(ruta)
+  check(src.includes('estiloBarraEncabezado(settings)') && src.includes('variablesEncabezado(settings)'), `${ruta} no pinta el fondo del encabezado`)
+  check(!src.includes('bg-white'), `${ruta} sigue con fondo blanco fijo`)
+}
+for (const ruta of ['components/site/ProductSearch.tsx', 'components/site/CartIndicator.tsx']) {
+  const src = await fuente(ruta)
+  check(src.includes('hover:bg-[var(--header-hover)]') && !src.includes('hover:bg-gray-100'), `${ruta} sigue con el círculo gris del hover`)
+}
 // Las reglas CSS de las opciones del panel existen.
 const css = await fuente('app/globals.css')
 for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo', 'data-encabezado-texto', 'data-pie-texto', 'data-pie-sin-separadores']) {

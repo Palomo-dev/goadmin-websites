@@ -16,6 +16,8 @@ import {
   navBgStyle,
   navTextColor,
   accentColor,
+  variablesEncabezado,
+  estiloDivisor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 
@@ -35,11 +37,11 @@ export default function HeaderCentered({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Fila superior: espacio | logo | acciones — z-20 para estar encima de la fila nav */}
-      <div className="relative z-20 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
+      <div className="relative z-20 backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-between" style={{ minHeight: `${(settings?.logo_height || 48) + 24}px` }}>
             <div className="flex-1" />
@@ -77,7 +79,7 @@ export default function HeaderCentered({
       </div>
 
       {/* Fila inferior: nav centrado | search bar — z-10 para que el dropdown del buscador superior se vea encima */}
-      <div className="relative z-10 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={navBgStyle(settings)}>
+      <div className="relative z-10 backdrop-blur-md bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
             {navItems.length > 0 && (

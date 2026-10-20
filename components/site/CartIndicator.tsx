@@ -64,7 +64,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
     return (
       <Link 
         href={ruta('/checkout')}
-        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
       >
         <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
         {badge}
@@ -77,7 +77,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
     <button
       type="button"
       onClick={onClick}
-      className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+      className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
     >
       <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
       {badge}

@@ -18,6 +18,10 @@ import {
   getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
+  CLASE_FONDO_ENCABEZADO,
+  variablesEncabezado,
+  estiloBarraEncabezado,
+  marcaFondoEncabezado,
 } from '../HeaderShared';
 
 /**
@@ -52,10 +56,10 @@ export default function MobileBottomSheet({
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
-    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`}>
+    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={variablesEncabezado(settings)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
           <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
@@ -76,7 +80,7 @@ export default function MobileBottomSheet({
                 <Drawer.Trigger asChild>
                   <button
                     aria-label="Abrir menú"
-                    className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
                   >
                     <MenuIcon className="h-5 w-5" />
                   </button>
@@ -84,7 +88,9 @@ export default function MobileBottomSheet({
                 <Drawer.Portal container={headerEl}>
                 <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" data-hoja-menu-fondo="" />
                 <Drawer.Content
-                  className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-white dark:bg-gray-900 rounded-t-2xl max-h-[80vh] outline-none"
+                  className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)] rounded-t-2xl max-h-[80vh] outline-none"
+                  style={estiloBarraEncabezado(settings)}
+                  {...marcaFondoEncabezado(settings)}
                   aria-describedby={undefined}
                   data-hoja-menu=""
                 >
@@ -171,7 +177,7 @@ function BottomSheetItem({
       <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center justify-between w-full px-3 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50"
+          className="flex items-center justify-between w-full px-3 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 bg-[var(--header-hover)]"
         >
           <span className="flex items-center gap-2">
             {item.icon && <span>{item.icon}</span>}
@@ -218,7 +224,7 @@ function BottomSheetItem({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className="flex items-center gap-2 px-3 py-3 rounded-lg text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800"
+      className="flex items-center gap-2 px-3 py-3 rounded-lg text-sm font-medium text-gray-800 dark:text-gray-200 bg-[var(--header-hover)] hover:bg-[var(--header-hover)]"
     >
       {item.icon && <span>{item.icon}</span>}
       <span>{item.name}</span>

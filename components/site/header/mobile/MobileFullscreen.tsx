@@ -18,6 +18,10 @@ import {
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
+  CLASE_FONDO_ENCABEZADO,
+  variablesEncabezado,
+  estiloBarraEncabezado,
+  marcaFondoEncabezado,
 } from '../HeaderShared';
 
 /**
@@ -65,10 +69,10 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full">
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
           <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
@@ -88,7 +92,7 @@ export default function MobileFullscreen({
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
               >
                 {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
               </button>
@@ -111,13 +115,13 @@ export default function MobileFullscreen({
 
       {/* Overlay fullscreen */}
       {open && (
-        <div className="fixed inset-0 z-[70] bg-white dark:bg-gray-900 overflow-y-auto shadow-2xl">
+        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto shadow-2xl`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
           <div className="flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(32, Math.round((settings?.logo_height || 48) * 0.7))} />
             <button
               onClick={() => setOpen(false)}
               aria-label="Cerrar menú"
-              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
             >
               <X className="h-5 w-5" />
             </button>

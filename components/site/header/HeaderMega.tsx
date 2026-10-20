@@ -21,6 +21,8 @@ import {
   navTextColor,
   accentColor,
   claseNavEncabezado,
+  variablesEncabezado,
+  estiloDivisor,
 } from '../header/HeaderShared';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
@@ -72,12 +74,12 @@ export default function HeaderMega({
   const showSearchBar = searchStyle !== 'hidden';
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {/* Topbar opcional */}
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Container sticky con backdrop-blur — la fila superior necesita z-20 para que su dropdown se vea encima de la nav row */}
-      <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
+      <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         {/* Fila superior: logo | BARRA DE BÚSQUEDA GRANDE | acciones */}
         <div className="relative z-20 max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 20}px` }}>
@@ -125,7 +127,7 @@ export default function HeaderMega({
         </div>
 
         {/* Fila inferior: nav items con border-top — z-10 para que el dropdown del buscador superior se vea encima */}
-        <div className="relative z-10 border-t border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={navBgStyle(settings)}>
+        <div className="relative z-10 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
           <div className="max-w-7xl mx-auto px-4">
             <nav className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
               {/* Nav items de páginas (con NavDropdown automático si tienen children) */}

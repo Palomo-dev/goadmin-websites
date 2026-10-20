@@ -28,7 +28,7 @@ export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClas
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${heredarColor ? 'text-current' : 'text-gray-600 dark:text-gray-300'} ${hasCompact ? compactClassName : 'px-2 py-1.5 text-sm'}`}
+        className={`flex items-center gap-1 rounded-md hover:bg-[var(--header-hover)] transition-colors ${heredarColor ? 'text-current' : 'text-gray-600 dark:text-gray-300'} ${hasCompact ? compactClassName : 'px-2 py-1.5 text-sm'}`}
         aria-label="Seleccionar moneda"
       >
         <Icon className={hasCompact ? 'h-3 w-3 md:h-4 md:w-4' : 'h-4 w-4'} />

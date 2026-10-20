@@ -17,6 +17,7 @@ import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido } from '@/lib/website/encabezadoEstilo';
 import { useTopbarExtras } from './TopbarExtras';
 import { elegirLogo, encabezadoUsaLogoClaro, hrefDeSlug } from '@/lib/website/presentacionTienda';
 
@@ -189,6 +190,64 @@ export function headerTextColor(settings: HeaderVariantProps['settings'] | undef
   return lum > 0.5 ? '#111827' : '#ffffff';
 }
 
+/**
+ * Variables del `<header>`: `--header-hover` y `--header-divider`.
+ * Con fondo propio salen del color (o del lavado según su luminancia). Sin fondo,
+ * no se fijan y el CSS claro/oscuro pone el default.
+ */
+export function variablesEncabezado(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
+  const hover = colorHoverEfectivo(settings?.header_hover_color, settings?.header_bg_color)
+  const divisor = colorDivisorEfectivo(settings?.header_divider_color, settings?.header_bg_color)
+  const vars: React.CSSProperties & Record<string, string> = {}
+  if (hover) vars['--header-hover'] = hover
+  if (divisor) vars['--header-divider'] = divisor
+  // El color va en el <header>, no en la fila: el estado transparente pisa el `> div`
+  // y los íconos con `text-current` heredan aquí también en el celular.
+  const color = headerTextColor(settings)
+  if (color) {
+    vars['--header-fg'] = color
+    vars.color = 'var(--header-fg)'
+  }
+  return vars
+}
+
+/** `false` quita el borde. Cualquier otro valor (incluido ausente) lo deja. */
+export function estiloDivisor(
+  settings: HeaderVariantProps['settings'] | undefined,
+  lado: 'bottom' | 'top',
+): React.CSSProperties {
+  if (!divisorEncendido(settings?.header_divider)) {
+    return lado === 'bottom' ? { borderBottomWidth: 0 } : { borderTopWidth: 0 }
+  }
+  const borde = '1px solid var(--header-divider, rgba(0,0,0,0.08))'
+  return lado === 'bottom' ? { borderBottom: borde } : { borderTop: borde }
+}
+
+/** Misma clase de fondo que el computador: el color lo pone `headerBgStyle`. */
+export const CLASE_FONDO_ENCABEZADO = 'bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]'
+
+/**
+ * Fondo de la barra y de los paneles del celular, con el color de texto del encabezado.
+ * `lado` añade o quita el divisor.
+ */
+export function estiloBarraEncabezado(
+  settings: HeaderVariantProps['settings'] | undefined,
+  lado?: 'bottom' | 'top',
+): React.CSSProperties {
+  const base = headerBgStyle(settings)
+  const color = headerTextColor(settings)
+  const conColor: React.CSSProperties = color && !base.color ? { ...base, color } : base
+  if (!lado) return conColor
+  return { ...conColor, ...estiloDivisor(settings, lado) }
+}
+
+/** Marca el panel para que el texto gris fijo herede el color del encabezado. */
+export function marcaFondoEncabezado(
+  settings: HeaderVariantProps['settings'] | undefined,
+): { 'data-fondo-encabezado'?: '' } {
+  return headerTextColor(settings) ? { 'data-fondo-encabezado': '' } : {}
+}
+
 // Helper: color de texto del topbar
 export function topbarTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
   const fijo = colorTextoEncabezadoGuardado(settings)
@@ -355,8 +414,8 @@ export function HeaderActions({
   // Defaults: true (igual que el header original)
   const showHeaderCart = settings?.show_header_cart !== false && showCart;
   const showHeaderAuth = settings?.show_header_auth !== false;
-  // En el celular la barra sigue blanca: el blanco de «Texto y enlaces» solo hereda en escritorio.
-  const heredarColor = !isMobile && Boolean(colorTextoEncabezadoGuardado(settings));
+  // La barra del celular usa el mismo fondo que el computador, así que el texto también hereda.
+  const heredarColor = Boolean(headerTextColor(settings));
   const claseIcono = heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
   const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
 
@@ -399,11 +458,11 @@ export function HeaderActions({
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
-        <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
+        <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
           <AuthLoggedInIconComp className={`h-6 w-6 ${claseIcono}`} style={heredarColor ? undefined : { color: primaryColor }} />
         </Link>
       ) : (
-        <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">
           <AuthIconComp className={`h-6 w-6 ${claseIcono}`} />
         </Link>
       )
@@ -905,7 +964,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar moneda</h3>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-[var(--header-hover)]">
                 <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
@@ -920,7 +979,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
                   className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     c.code === currency
                       ? 'font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]'
                   }`}
                   style={c.code === currency && primaryColor ? { color: primaryColor, backgroundColor: `${primaryColor}10` } : undefined}
                 >
@@ -973,7 +1032,7 @@ export function MobileAuthSection({
     <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
       <Link
         href="/mi-cuenta"
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
         onClick={onNavigate}
       >
         <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />

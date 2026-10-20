@@ -22,6 +22,9 @@ import {
   navBgStyle,
   navTextColor,
   accentColor,
+  variablesEncabezado,
+  estiloDivisor,
+  headerTextColor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import {
@@ -106,12 +109,12 @@ export default function HeaderMinimal({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full">
+    <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {/* Topbar opcional */}
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
 
       {/* Barra principal */}
-      <div className="backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={headerBgStyle(settings)}>
+      <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {/* Logo izquierda */}
@@ -159,7 +162,7 @@ export default function HeaderMinimal({
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={openMenu}
-                  className="p-2 rounded-lg text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className={`p-2 rounded-lg hover:bg-[var(--header-hover)] transition-colors ${headerTextColor(settings) ? 'text-current' : 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'}`}
                   aria-label="Abrir menú de navegación"
                 >
                   <MenuIcon className="h-6 w-6" />
@@ -172,7 +175,7 @@ export default function HeaderMinimal({
                       <span className="font-semibold text-sm text-gray-900 dark:text-white">Navegación</span>
                       <button
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="p-1 rounded-full hover:bg-[var(--header-hover)]"
                         aria-label="Cerrar menú"
                       >
                         <X className="h-4 w-4 text-gray-400" />

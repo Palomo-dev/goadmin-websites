@@ -364,6 +364,32 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) details {
   border-color: transparent !important;
 }
+/* Divisor y hover del encabezado. Sin fondo propio, el modo claro/oscuro elige el lavado.
+   Con fondo propio, el <header> pisa estas variables (variablesEncabezado). */
+:root {
+  --header-hover: rgba(0, 0, 0, 0.08);
+  --header-divider: rgba(0, 0, 0, 0.08);
+}
+.dark:not([data-tema-fondo='claro']),
+[data-tema-fondo='oscuro'] {
+  --header-hover: rgba(255, 255, 255, 0.1);
+  --header-divider: rgba(255, 255, 255, 0.1);
+}
+/* El buscador y la moneda son paneles claros: no heredan el lavado del encabezado oscuro. */
+header .bg-white {
+  --header-hover: rgba(0, 0, 0, 0.08);
+}
+.dark header .bg-white,
+[data-tema-fondo='oscuro'] header .bg-white {
+  --header-hover: rgba(255, 255, 255, 0.1);
+}
+/* Menú del celular con el fondo del encabezado: el gris fijo sigue el color de la barra. */
+[data-fondo-encabezado] :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([style*='color']):not([class*='bg-gray-']):not([class*='bg-white']) {
+  color: inherit !important;
+}
+[data-fondo-encabezado] [class*='border-gray-'] {
+  border-color: var(--header-divider, rgba(255, 255, 255, 0.1));
+}
 /* Carta QR: categoría de la carta a la vista, resaltada en el menú del encabezado (SiteHeader). */
 header a[data-categoria-activa][data-categoria-activa] {
   font-weight: 600;
