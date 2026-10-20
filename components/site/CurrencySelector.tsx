@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, type ComponentType } from 'react'
 import { ChevronDown, Globe } from 'lucide-react'
 import { useCurrency } from './CurrencyProvider'
 
-export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClassName = '' }: { primaryColor?: string; icon?: ComponentType<{ className?: string }>; compactClassName?: string }) {
+export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClassName = '', heredarColor = false }: { primaryColor?: string; icon?: ComponentType<{ className?: string }>; compactClassName?: string; heredarColor?: boolean }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -28,7 +28,7 @@ export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClas
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${hasCompact ? compactClassName : 'px-2 py-1.5 text-sm'}`}
+        className={`flex items-center gap-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${heredarColor ? 'text-current' : 'text-gray-600 dark:text-gray-300'} ${hasCompact ? compactClassName : 'px-2 py-1.5 text-sm'}`}
         aria-label="Seleccionar moneda"
       >
         <Icon className={hasCompact ? 'h-3 w-3 md:h-4 md:w-4' : 'h-4 w-4'} />

@@ -164,6 +164,8 @@ for (const [col] of nuevas) {
   }
   check((await fuente(c[0])).includes(c[1]), `${col}: ${c[0]} ya no contiene «${c[1]}» (¿quién la pinta?)`)
 }
+const encabezado = await fuente('components/site/header/HeaderShared.tsx')
+check(encabezado.includes('header_text_color') && encabezado.includes("'--header-fg'") && encabezado.includes('text-current'), 'el encabezado lee header_text_color y pinta con --header-fg')
 // Las reglas CSS de las opciones del panel existen.
 const css = await fuente('app/globals.css')
 for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo', 'data-encabezado-texto', 'data-pie-texto', 'data-pie-sin-separadores']) {
