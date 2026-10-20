@@ -38,6 +38,7 @@ import { contraste } from '@/lib/website/v2/contrasteColor'
 import { EncabezadoMesa } from './header/EncabezadoMesa'
 import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
+import { contarUnidadesCarrito } from '@/lib/cart'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -151,6 +152,24 @@ export function OrganizationLayoutCliente({
     : organization
   const arbolVivo = vivos?.menuEncabezado ? arbolDesdeMenuVivo(vivos.menuEncabezado, organization.id) : null
   const subdomain = organization.subdomain || ''
+  // Al sumar unidades se abre el drawer. Quitar o bajar la cantidad no lo abre.
+  // Checkout, carrito y retoma ya muestran el pedido: el drawer encima estorba.
+  useEffect(() => {
+    if (frozenReason || modoMesa) return
+    const subdominio = () => subdomain || window.location.hostname.split('.')[0]
+    let anterior = contarUnidadesCarrito(subdominio(), branchId)
+    const alActualizar = () => {
+      const ahora = contarUnidadesCarrito(subdominio(), branchId)
+      const subio = ahora > anterior
+      anterior = ahora
+      if (!subio) return
+      const ruta = window.location.pathname
+      if (ruta.includes('/checkout') || ruta.includes('/carrito') || ruta.includes('/retomar')) return
+      setCartOpen(true)
+    }
+    window.addEventListener('cart-updated', alActualizar)
+    return () => window.removeEventListener('cart-updated', alActualizar)
+  }, [subdomain, branchId, frozenReason, modoMesa])
   const effectiveShowCurrencyCode = showCurrencyCode ?? settings?.show_currency_code ?? false
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
   const rootRef = useRef<HTMLDivElement>(null)

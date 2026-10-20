@@ -1,5 +1,17 @@
 import { getCartKey } from '@/lib/utils'
 
+/** Unidades del carrito en esta pestaña. La misma suma que el badge del encabezado. */
+export function contarUnidadesCarrito(subdomain: string, branchId?: number | null): number {
+  if (typeof localStorage === 'undefined') return 0
+  try {
+    const cart = JSON.parse(localStorage.getItem(getCartKey(subdomain, branchId)) || '[]')
+    if (!Array.isArray(cart)) return 0
+    return cart.reduce((suma: number, item: { quantity?: number }) => suma + (Number(item.quantity) || 0), 0)
+  } catch {
+    return 0
+  }
+}
+
 /**
  * Línea del carrito tal como la guarda el navegador en localStorage.
  *

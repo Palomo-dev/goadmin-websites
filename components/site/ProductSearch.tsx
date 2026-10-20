@@ -13,6 +13,16 @@ interface ProductSearchProps {
   icon?: any
   /** El ícono hereda `--header-fg` de la barra. En el panel de resultados sigue el gris. */
   heredarColor?: boolean
+  /**
+   * El menú inferior abre el mismo panel. `true` lo muestra; al cerrar se avisa
+   * con `alCerrar`. Sin estas props el botón del encabezado lo controla solo.
+   */
+  abierto?: boolean
+  alCerrar?: () => void
+  /** Sin el botón redondo: quien abre ya tiene el suyo (la pestaña Buscar). */
+  sinDisparador?: boolean
+  /** Pantalla completa también en tablet. El menú móvil llega hasta el breakpoint del sitio, no solo hasta `md`. */
+  pantallaCompleta?: boolean
 }
 
 interface SearchResult {
@@ -31,9 +41,30 @@ const popularSearches = [
   'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
-export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, heredarColor = false }: ProductSearchProps) {
+export function ProductSearch({
+  primaryColor,
+  icon: SearchIconComp = Search,
+  heredarColor = false,
+  abierto,
+  alCerrar,
+  sinDisparador = false,
+  pantallaCompleta = false,
+}: ProductSearchProps) {
   const { ruta } = useRutaSitio()
-  const [isOpen, setIsOpen] = useState(false)
+  const controlado = abierto !== undefined
+  const [interno, setInterno] = useState(false)
+  const isOpen = controlado ? abierto : interno
+  const cerrar = () => {
+    if (controlado) alCerrar?.()
+    else setInterno(false)
+  }
+  const alternar = () => {
+    if (controlado) {
+      if (isOpen) alCerrar?.()
+      return
+    }
+    setInterno((v) => !v)
+  }
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,6 +72,8 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mobilePortalRef = useRef<HTMLDivElement>(null)
+  const cerrarRef = useRef(cerrar)
+  cerrarRef.current = cerrar
 
   useEffect(() => {
     // Cargar búsquedas recientes del localStorage
@@ -64,7 +97,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
         containerRef.current && !containerRef.current.contains(target) &&
         (!mobilePortalRef.current || !mobilePortalRef.current.contains(target))
       ) {
-        setIsOpen(false)
+        cerrarRef.current()
       }
     }
     if (isOpen) {
@@ -106,7 +139,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
 
   const handleResultClick = (product: SearchResult) => {
     saveRecentSearch(product.name)
-    setIsOpen(false)
+    cerrar()
     setQuery('')
   }
 
@@ -226,18 +259,19 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
   )
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Botón de búsqueda */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
-        aria-label="Buscar productos"
-      >
-        <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
-      </button>
+    <div ref={containerRef} className={sinDisparador ? 'contents' : 'relative'}>
+      {!sinDisparador && (
+        <button
+          onClick={alternar}
+          className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
+          aria-label="Buscar productos"
+        >
+          <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
+        </button>
+      )}
 
-      {/* Desktop: dropdown */}
-      {isOpen && (
+      {/* Desktop: dropdown. En el menú móvil va pantalla completa: ese menú se usa también en tablet. */}
+      {isOpen && !pantallaCompleta && (
         <div className="hidden md:block absolute right-0 top-full mt-2 z-[100]">
           <div className="bg-white dark:bg-gray-900 w-96 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col">
             <div className="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
@@ -251,7 +285,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
                 className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 outline-none text-base"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSearchSubmit(query)
-                  if (e.key === 'Escape') setIsOpen(false)
+                  if (e.key === 'Escape') cerrar()
                 }}
               />
               {query && (
@@ -265,9 +299,9 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
         </div>
       )}
 
-      {/* Mobile: fullscreen via portal (evita stacking context del header) */}
+      {/* Pantalla completa vía portal (evita el stacking context del header). */}
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div ref={mobilePortalRef} className="md:hidden fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col">
+        <div ref={mobilePortalRef} className={`${pantallaCompleta ? '' : 'md:hidden '}fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col`}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input
@@ -279,7 +313,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearchSubmit(query)
-                if (e.key === 'Escape') setIsOpen(false)
+                if (e.key === 'Escape') cerrar()
               }}
             />
             {query && (
@@ -288,7 +322,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, her
               </button>
             )}
             <button
-              onClick={() => { setIsOpen(false); setQuery('') }}
+              onClick={() => { cerrar(); setQuery('') }}
               className="text-sm font-medium ml-1 flex-shrink-0"
               style={{ color: primaryColor }}
             >
