@@ -3,7 +3,7 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, Globe, Search } from 'lucide-react';
+import { Menu as MenuIcon, X, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -11,7 +11,7 @@ import {
   HeaderCTAMovil,
   SearchBarInline,
   buildNavItems,
-  MobileCurrencyChips,
+  BloqueMonedaMovil,
   MobileAuthSection,
   useAuthState,
   getLucideIcon,
@@ -137,13 +137,7 @@ export default function MobileFullscreen({
               />
             ))}
 
-            <div className="px-4 py-4 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                <Globe className="h-4 w-4" />
-                <span>Moneda</span>
-              </div>
-              <MobileCurrencyChips primaryColor={primaryColor} />
-            </div>
+            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 py-4 border-t border-gray-100 dark:border-gray-800" />
 
             <MobileAuthSection isLoggedIn={isLoggedIn} primaryColor={primaryColor} onNavigate={() => setOpen(false)} />
           </nav>

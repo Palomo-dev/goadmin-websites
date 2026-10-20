@@ -55,9 +55,10 @@ const defaultNavItems: NavItem[] = [
 // Selector de moneda móvil con chips (restaurado del header original)
 function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
+  const { opciones: opcionesShell } = useEncabezadoPie()
   const [open, setOpen] = useState(false)
 
-  if (loading || availableCurrencies.length <= 1) return null
+  if (loading || availableCurrencies.length <= 1 || !opcionesShell.moneda) return null
 
   const current = availableCurrencies.find(c => c.code === currency)
 
@@ -65,7 +66,7 @@ function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-[var(--header-hover)] transition-colors"
       >
         <span className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-gray-400" />

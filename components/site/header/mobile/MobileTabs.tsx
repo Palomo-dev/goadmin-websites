@@ -3,14 +3,14 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Home, LayoutGrid, Search, ShoppingBag, User, X, Globe } from 'lucide-react';
+import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
   HeaderTopbar,
   SearchBarInline,
   buildNavItems,
-  MobileCurrencyChips,
+  BloqueMonedaMovil,
   getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
@@ -158,14 +158,7 @@ export default function MobileTabs({
                   ))}
             </div>
 
-            {/* Selector de moneda */}
-            <div className="px-4 pb-4 pt-3 border-t border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                <Globe className="h-4 w-4" />
-                <span>Moneda</span>
-              </div>
-              <MobileCurrencyChips primaryColor={primaryColor} />
-            </div>
+            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-gray-200 dark:border-gray-800" />
           </div>
         </div>
       )}
