@@ -189,6 +189,7 @@ export default async function CheckoutPage() {
         settings={ajustesEncabezado}
         logoUrl={organization.logo_url}
         logoClaroUrl={organization.logo_oscuro_url ?? null}
+        logoFondoClaroUrl={organization.logo_fondo_claro_url ?? null}
         nombre={orgName}
         primaryColor={primaryColor}
         hrefInicio={ruta('/')}

@@ -160,7 +160,13 @@ export const esquemaIdentidad = z
   .object({
     nombre: esquemaCampo(textoCorto).optional(),
     logoUrl: esquemaCampo(url).optional(),
+    /** Logo claro para encabezado o pie con fondo oscuro. */
     logoOscuroUrl: esquemaCampo(url).optional(),
+    /**
+     * Logo para fondo claro (la versión de color). No reemplaza a `logoUrl`:
+     * un encabezado oscuro sin `logoOscuroUrl` sigue mostrando `logoUrl`.
+     */
+    logoFondoClaroUrl: esquemaCampo(url).optional(),
     faviconUrl: esquemaCampo(url).optional(),
     alturaLogo: esquemaCampo(z.number().int().min(16).max(200)).optional(),
   })

@@ -7,7 +7,7 @@ import {
   headerBgStyle,
   variablesEncabezado,
 } from '@/components/site/header/HeaderShared'
-import { elegirLogo, encabezadoUsaLogoClaro } from '@/lib/website/presentacionTienda'
+import { encabezadoUsaLogoClaro, logoSegunFondo } from '@/lib/website/presentacionTienda'
 import type { WebsiteSettings } from '@/types/database'
 
 /**
@@ -18,6 +18,7 @@ export function CheckoutEncabezado({
   settings,
   logoUrl,
   logoClaroUrl,
+  logoFondoClaroUrl,
   nombre,
   primaryColor,
   hrefInicio,
@@ -25,12 +26,14 @@ export function CheckoutEncabezado({
   settings: WebsiteSettings | null
   logoUrl: string | null
   logoClaroUrl: string | null
+  /** Versión de color. Solo se usa si la barra queda sobre un fondo claro. */
+  logoFondoClaroUrl: string | null
   nombre: string
   primaryColor: string
   hrefInicio: string
 }) {
   const fondoOscuro = encabezadoUsaLogoClaro(settings?.header_bg_color, false)
-  const logo = elegirLogo(logoUrl, logoClaroUrl, fondoOscuro)
+  const logo = logoSegunFondo(logoUrl, logoClaroUrl, logoFondoClaroUrl, fondoOscuro)
 
   return (
     <header

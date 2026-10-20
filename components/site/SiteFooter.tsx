@@ -14,7 +14,7 @@ import { useEncabezadoPie } from './EncabezadoPieContext'
 import { useTemaColores } from './TemaColoresContext'
 import { BotonWhatsappPie, IconoTikTok, MapaPie, MediosPagoPie } from './footer/PieExtras'
 import { PieTema } from './footer/PieTema'
-import { elegirLogo, hrefDeSlug, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
+import { hrefDeSlug, logoSegunFondo, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -302,8 +302,16 @@ export function SiteFooter({
   // TikTok: ningún sitio lo tenía (se omitía). WhatsApp en redes: solo con footer_show_whatsapp,
   // para no cambiar los sitios que lo tienen en social_links y hoy no lo muestran.
   const fondoPieOscuro = pieUsaLogoClaro(footerBackground, footerCustomBgColor, primaryColor, fondoTemaOscuro)
-  const logoPie = elegirLogo(organization.logo_url, organization.logo_oscuro_url, fondoPieOscuro)
-  const claseLogoPie = fondoPieOscuro && organization.logo_oscuro_url && logoPie === organization.logo_oscuro_url
+  const logoPie = logoSegunFondo(
+    organization.logo_url,
+    organization.logo_oscuro_url,
+    organization.logo_fondo_claro_url,
+    fondoPieOscuro,
+  )
+  const logoPropioDelFondo =
+    (fondoPieOscuro && organization.logo_oscuro_url && logoPie === organization.logo_oscuro_url) ||
+    (!fondoPieOscuro && organization.logo_fondo_claro_url && logoPie === organization.logo_fondo_claro_url)
+  const claseLogoPie = logoPropioDelFondo
     ? 'w-auto object-contain'
     : 'w-auto object-contain brightness-0 invert'
 

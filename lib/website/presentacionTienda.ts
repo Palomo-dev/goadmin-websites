@@ -259,6 +259,22 @@ export function elegirLogo(
   return normal || null
 }
 
+/**
+ * Logo según el fondo, sin cambiar el del sitio.
+ * Fondo oscuro: el logo claro si existe; si no, el del sitio. Un encabezado
+ * oscuro sin logo claro sigue mostrando ese logo.
+ * Fondo claro: el logo para fondo claro si existe; si no, el del sitio.
+ */
+export function logoSegunFondo(
+  logoSitio: string | null | undefined,
+  logoParaFondoOscuro: string | null | undefined,
+  logoParaFondoClaro: string | null | undefined,
+  fondoOscuro: boolean,
+): string | null {
+  if (fondoOscuro) return elegirLogo(logoSitio, logoParaFondoOscuro, true)
+  return logoParaFondoClaro || logoSitio || null
+}
+
 function esOscuro(hex: string): boolean {
   const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim())
   if (!m) return false

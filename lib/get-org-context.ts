@@ -18,6 +18,7 @@ import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorP
 import {
   ajustesPublicosDesdeDocumento,
   idsCategoriasDeMenus,
+  logoFondoClaroPublicoDesdeDocumento,
   logoOscuroPublicoDesdeDocumento,
   logoPublicoDesdeDocumento,
   menusPublicosDesdeDocumento,
@@ -145,6 +146,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   let menusV2: MenusPublicos | null = null
   let logoV2: string | null = null
   let logoOscuroV2: string | null = null
+  let logoFondoClaroV2: string | null = null
   const sitioV2 = await getSitioPublicoV2(organization.id, branchId)
   if (sitioV2) {
     try {
@@ -155,6 +157,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       const ajustesV2 = ajustesPublicosDesdeDocumento(sitioV2.documento, legacySettings, baseHerencia)
       logoV2 = logoPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       logoOscuroV2 = logoOscuroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
+      logoFondoClaroV2 = logoFondoClaroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
       menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
       effectiveSettings = ajustesV2
@@ -167,6 +170,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       menusV2 = null
       logoV2 = null
       logoOscuroV2 = null
+      logoFondoClaroV2 = null
     }
   } else {
     // Sitio legacy: sin cambios.
@@ -245,6 +249,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     ...organization,
     ...(logoV2 ? { logo_url: logoV2 } : {}),
     ...(logoOscuroV2 ? { logo_oscuro_url: logoOscuroV2 } : {}),
+    ...(logoFondoClaroV2 ? { logo_fondo_claro_url: logoFondoClaroV2 } : {}),
   }
   const organizationWithSettings = effectiveSettings
     ? { ...organizacionBase, website_settings: effectiveSettings }

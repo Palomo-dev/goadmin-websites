@@ -134,12 +134,26 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal: 
  * Misma herencia y la misma regla de URL que el logo principal.
  */
 export function logoOscuroPublicoDesdeDocumento(documento: DocumentoSitio, principal: BaseHerencia | null): string | null {
-  const propio = documento.identidad.logoOscuroUrl
+  return urlIdentidadHeredada(documento, principal, 'logoOscuroUrl')
+}
+
+/**
+ * Logo para fondo claro (`identidad.logoFondoClaroUrl`). No sustituye al logo
+ * del sitio: solo se usa cuando el fondo es claro.
+ */
+export function logoFondoClaroPublicoDesdeDocumento(documento: DocumentoSitio, principal: BaseHerencia | null): string | null {
+  return urlIdentidadHeredada(documento, principal, 'logoFondoClaroUrl')
+}
+
+function urlIdentidadHeredada(
+  documento: DocumentoSitio,
+  principal: BaseHerencia | null,
+  clave: 'logoOscuroUrl' | 'logoFondoClaroUrl',
+): string | null {
+  const propio = documento.identidad[clave]
+  const delPrincipal = principal?.documento?.identidad[clave]
   const valor = principal
-    ? resolverCampo<string>(
-        principal.documento?.identidad.logoOscuroUrl?.mode === 'value' ? principal.documento.identidad.logoOscuroUrl.value : null,
-        propio,
-      )
+    ? resolverCampo<string>(delPrincipal?.mode === 'value' ? delPrincipal.value : null, propio)
     : propio?.mode === 'value' ? propio.value : null
   return urlIdentidadPublica(valor)
 }

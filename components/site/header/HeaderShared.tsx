@@ -19,7 +19,7 @@ import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
 import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido } from '@/lib/website/encabezadoEstilo';
 import { useTopbarExtras } from './TopbarExtras';
-import { elegirLogo, encabezadoUsaLogoClaro, hrefDeSlug } from '@/lib/website/presentacionTienda';
+import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 
 // ============================================================
 // SHARED TYPES
@@ -304,9 +304,10 @@ export function HeaderLogo({
   // redondeo del tema, el nombre con la fuente de títulos y visible también en el celular.
   // Legacy (sin tema): exactamente como siempre.
   const temaColores = useTemaColores();
-  const logoSrc = elegirLogo(
+  const logoSrc = logoSegunFondo(
     organization.logo_url,
     organization.logo_oscuro_url,
+    organization.logo_fondo_claro_url,
     fondoOscuro || encabezadoUsaLogoClaro(organization.website_settings?.header_bg_color, false),
   );
   if (logoSrc) {

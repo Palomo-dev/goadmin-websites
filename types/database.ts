@@ -1294,6 +1294,8 @@ export interface OrganizationWithDetails extends Organization {
   website_settings: WebsiteSettings | null
   /** Logo claro para fondo oscuro. No es columna de `organizations`: sale del documento V2. */
   logo_oscuro_url?: string | null
+  /** Logo para fondo claro. No es columna de `organizations`: sale de `identidad.logoFondoClaroUrl`. */
+  logo_fondo_claro_url?: string | null
 }
 
 // Tipos de templates disponibles
