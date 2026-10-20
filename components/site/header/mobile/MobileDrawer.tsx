@@ -3,7 +3,7 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, Globe, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
+import { Menu as MenuIcon, X, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -11,7 +11,7 @@ import {
   HeaderCTAMovil,
   SearchBarInline,
   buildNavItems,
-  MobileCurrencyChips,
+  BloqueMonedaMovil,
   useAuthState,
   getLucideIcon,
   type HeaderVariantProps,
@@ -30,7 +30,7 @@ import {
  * - Backdrop con backdrop-blur-sm
  * - Nav links con rounded-lg hover:bg-gray-100 font-medium
  * - "Mi Cuenta" dentro del nav (solo si logueado)
- * - Sección de moneda con MobileCurrencyChips
+ * - Sección de moneda con BloqueMonedaMovil (se oculta si el encabezado apagó la moneda)
  * - Auth buttons al final (Iniciar sesión / Registrarse o Cerrar sesión)
  * - Accordion nativo para children (sub-páginas y categorías)
  */
@@ -164,14 +164,7 @@ export default function MobileDrawer({
               )}
             </nav>
 
-            {/* Currency selector */}
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                <Globe className="h-4 w-4" />
-                <span>Moneda</span>
-              </div>
-              <MobileCurrencyChips primaryColor={primaryColor} />
-            </div>
+            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-gray-100 dark:border-gray-800" />
 
             {/* Auth buttons */}
             {showHeaderAuth && (

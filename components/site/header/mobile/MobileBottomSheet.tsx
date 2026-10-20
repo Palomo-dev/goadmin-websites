@@ -5,7 +5,7 @@ import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, ChevronDown, Globe, Search } from 'lucide-react';
+import { Menu as MenuIcon, ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
 import {
   HeaderLogo,
@@ -14,7 +14,7 @@ import {
   HeaderCTAMovil,
   SearchBarInline,
   buildNavItems,
-  MobileCurrencyChips,
+  BloqueMonedaMovil,
   getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
@@ -113,15 +113,7 @@ export default function MobileBottomSheet({
                     {/* Selector de sede dentro de la hoja (header_show_branch_selector): sin fila aparte. */}
                     <SelectorSedeHoja primaryColor={primaryColor} />
 
-                    {opcionesShell.moneda && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-                      <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                        <Globe className="h-4 w-4" />
-                        <span>Moneda</span>
-                      </div>
-                      <MobileCurrencyChips primaryColor={primaryColor} />
-                    </div>
-                    )}
+                    <BloqueMonedaMovil primaryColor={primaryColor} className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800" />
 
                     {/* V2 con tema y sin cuenta en el encabezado (Carta QR): sin «Mi Cuenta». Legacy: como siempre. */}
                     {!(temaColores && settings?.show_header_auth === false) && (

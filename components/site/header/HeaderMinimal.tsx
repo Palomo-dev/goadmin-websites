@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, LogOut, UserCircle, Globe, ChevronDown, Search } from 'lucide-react';
+import { Menu as MenuIcon, X, LogOut, UserCircle, ChevronDown, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -13,7 +13,7 @@ import {
   MobileMenuButton,
   NavList,
   buildNavItems,
-  MobileCurrencyChips,
+  BloqueMonedaMovil,
   useAuthState,
   getLucideIcon,
   type HeaderVariantProps,
@@ -252,14 +252,7 @@ export default function HeaderMinimal({
               )}
             </nav>
 
-            {/* Currency selector */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                <Globe className="h-4 w-4" />
-                <span>Moneda</span>
-              </div>
-              <MobileCurrencyChips primaryColor={primaryColor} />
-            </div>
+            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-gray-200 dark:border-gray-800" />
 
             {/* Auth buttons */}
             {showHeaderAuth && (

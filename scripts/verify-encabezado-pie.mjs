@@ -171,6 +171,8 @@ for (const [col] of nuevas) {
 const encabezado = await fuente('components/site/header/HeaderShared.tsx')
 check(encabezado.includes('header_text_color') && encabezado.includes("'--header-fg'") && encabezado.includes('text-current'), 'el encabezado lee header_text_color y pinta con --header-fg')
 check(encabezado.includes('const heredarColor = Boolean(headerTextColor(settings))'), 'el celular hereda el color: la barra usa el mismo fondo que el computador')
+check(encabezado.includes('export function BloqueMonedaMovil') && encabezado.includes('!opcionesShell.moneda'), 'el menú móvil no pinta «Moneda» si el encabezado la apagó')
+check(!encabezado.includes('hover:bg-gray-50') || !encabezado.slice(encabezado.indexOf('function MobileCurrencyChips')).includes('hover:bg-gray-50'), 'el selector de moneda móvil no usa bg-gray: eso le quita el color del encabezado')
 check(encabezado.includes("'--header-hover'") && encabezado.includes('header_hover_color'), 'el encabezado define --header-hover')
 check(encabezado.includes('header_divider') && encabezado.includes("'--header-divider'"), 'el encabezado define --header-divider')
 check(encabezado.includes('divisorEncendido'), 'con el divisor apagado se quita el borde')

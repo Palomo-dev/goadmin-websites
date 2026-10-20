@@ -383,8 +383,9 @@ header .bg-white {
 [data-tema-fondo='oscuro'] header .bg-white {
   --header-hover: rgba(255, 255, 255, 0.1);
 }
-/* Menú del celular con el fondo del encabezado: el gris fijo sigue el color de la barra. */
-[data-fondo-encabezado] :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([style*='color']):not([class*='bg-gray-']):not([class*='bg-white']) {
+/* Menú del celular con el fondo del encabezado: el gris fijo sigue el color de la barra.
+   Un panel claro (el desplegable de moneda, el buscador) conserva su propio texto. */
+[data-fondo-encabezado] :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([style*='color']):not([class*='bg-gray-']):not([class*='bg-white']):not(.bg-white *) {
   color: inherit !important;
 }
 [data-fondo-encabezado] [class*='border-gray-'] {

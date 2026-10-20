@@ -933,7 +933,9 @@ export function MobileMenuButton({
 // MOBILE SHARED COMPONENTS
 // ============================================================
 
-// Selector de moneda móvil con chips (restaurado del header original)
+// Selector de moneda móvil con chips (restaurado del header original).
+// Sin `bg-gray-*`: con fondo de encabezado, esa clase saca el botón de la regla
+// que hereda el color del texto y el control queda oscuro sobre la barra oscura.
 export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency();
   const [open, setOpen] = useState(false);
@@ -947,7 +949,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-[var(--header-hover)] transition-colors"
       >
         <span className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-gray-400" />
@@ -993,6 +995,32 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Rótulo y selector de moneda del menú móvil. No pinta nada si el encabezado
+ * apagó la moneda (`header_show_currency`) o si no hay más de una para elegir:
+ * el rótulo solo, sin control, no debe quedar.
+ */
+export function BloqueMonedaMovil({
+  primaryColor,
+  className = 'p-4 border-t border-gray-100 dark:border-gray-800',
+}: {
+  primaryColor?: string;
+  className?: string;
+}) {
+  const { loading, availableCurrencies } = useCurrency();
+  const { opciones: opcionesShell } = useEncabezadoPie();
+  if (!opcionesShell.moneda || loading || availableCurrencies.length <= 1) return null;
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
+        <Globe className="h-4 w-4" />
+        <span>Moneda</span>
+      </div>
+      <MobileCurrencyChips primaryColor={primaryColor} />
+    </div>
   );
 }
 
