@@ -16,7 +16,7 @@ import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 
-function origenSitio(org: { custom_domain?: string | null; subdomain?: string | null }): string {
+export function origenSitio(org: { custom_domain?: string | null; subdomain?: string | null }): string {
   if (org.custom_domain) return `https://${org.custom_domain}`
   if (org.subdomain) return `https://${org.subdomain}.goadmin.io`
   return ''

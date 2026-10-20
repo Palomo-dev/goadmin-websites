@@ -42,3 +42,10 @@ export function rutaSeguimiento(organizationId: number, order: { id: string; ord
   const t = tokenSeguimiento(organizationId, order.id)
   return `/pedido/${encodeURIComponent(order.order_number)}${t ? `?t=${t}` : ''}`
 }
+
+/** `/retomar/<id>?t=` con el mismo token. Sin secreto no hay enlace: null. */
+export function rutaRetomar(organizationId: number, orderId: string): string | null {
+  const t = tokenSeguimiento(organizationId, orderId)
+  if (!t) return null
+  return `/retomar/${orderId}?t=${encodeURIComponent(t)}`
+}

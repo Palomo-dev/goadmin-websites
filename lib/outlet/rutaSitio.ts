@@ -26,7 +26,7 @@
 export const SLUGS_RESERVADOS: readonly string[] = [
   'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
   'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
-  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
+  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout', 'retomar',
   'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api',
   'contacto', 'nosotros', 'vista-previa',
 ]

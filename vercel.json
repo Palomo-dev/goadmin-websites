@@ -4,6 +4,10 @@
     {
       "path": "/api/revalidate/sitios-v2",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/carritos-abandonados",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
