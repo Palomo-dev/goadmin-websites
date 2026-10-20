@@ -112,6 +112,12 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   const layout = content.layout || 'grid'
 
   const gridClass = `${clasesColumnasBanner(content.columns, layout, content.columns_mobile)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
+  const aspecto = claseAspectoBanner(content.aspect_ratio, content.aspect_ratio_mobile)
+  // Automática en los dos anchos: la imagen va en el flujo y da la altura.
+  const altoNatural = aspecto === 'h-auto'
+  // Proporción en el celular y automática en escritorio: desde md la foto también va en el flujo.
+  // Si siguiera absoluta, `md:h-auto` dejaría la tarjeta en cero.
+  const altoNaturalEscritorio = aspecto.includes('md:h-auto')
 
   return (
     <div>
@@ -146,20 +152,36 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
               ghost: 'text-white hover:underline',
             }[buttonStyle]
 
+            const fotoNatural = altoNatural && Boolean(banner.image_url)
+            const fotoNaturalMd = !fotoNatural && altoNaturalEscritorio && Boolean(banner.image_url)
             const card = (
               <div
-                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio, content.aspect_ratio_mobile)} flex flex-col justify-center p-8 w-full`}
+                className={fotoNatural
+                  ? 'relative rounded-2xl overflow-hidden w-full'
+                  : fotoNaturalMd
+                    ? `relative rounded-2xl overflow-hidden ${aspecto} flex flex-col justify-center p-8 md:p-0 w-full`
+                    : `relative rounded-2xl overflow-hidden ${aspecto} flex flex-col justify-center p-8 w-full`}
                 style={{ backgroundColor: banner.bg_color || primaryColor }}
               >
                 {banner.image_url && (
                   <img
                     src={banner.image_url}
                     alt={banner.title || ''}
-                    className={claseImagenBanner(content.image_fit, content.image_position)}
+                    className={fotoNatural ? 'block w-full h-auto'
+                      : fotoNaturalMd
+                        ? `${claseImagenBanner(content.image_fit, content.image_position)} md:static md:h-auto`
+                        : claseImagenBanner(content.image_fit, content.image_position)}
                     loading="lazy"
                   />
                 )}
-                <div className="relative z-10" style={{ color: textColor }}>
+                <div
+                  className={fotoNatural
+                    ? 'absolute inset-0 z-10 flex flex-col justify-center p-8'
+                    : fotoNaturalMd
+                      ? 'relative z-10 md:absolute md:inset-0 md:flex md:flex-col md:justify-center md:p-8'
+                      : 'relative z-10'}
+                  style={{ color: textColor }}
+                >
                   {banner.title && (
                     <h3 className="text-2xl font-bold mb-2">{banner.title}</h3>
                   )}

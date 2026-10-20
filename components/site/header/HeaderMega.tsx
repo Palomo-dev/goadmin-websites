@@ -20,7 +20,9 @@ import {
   navBgStyle,
   navTextColor,
   accentColor,
+  claseNavEncabezado,
 } from '../header/HeaderShared';
+import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
@@ -53,6 +55,7 @@ export default function HeaderMega({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
   const [megaOpen, setMegaOpen] = useState(false);
   const { ruta } = useRutaSitio();
+  const { opciones } = useEncabezadoPie();
 
   // Construir nav items desde el árbol de páginas
   const navItems: NavItem[] = buildNavItems(navTree);
@@ -144,7 +147,7 @@ export default function HeaderMega({
                 >
                   <Link
                     href={ruta('/categorias')}
-                    className="relative text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors whitespace-nowrap flex items-center gap-1"
+                    className={claseNavEncabezado(Boolean(opciones.colorTextoEncabezado))}
                   >
                     <span>Categorías</span>
                     <ChevronDown

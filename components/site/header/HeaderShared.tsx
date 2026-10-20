@@ -105,6 +105,24 @@ export function buildNavItems(navTree: WebsitePageWithChildren[]): NavItem[] {
 // Soporta dark mode via variables CSS aplicadas con clases Tailwind.
 // Si header_bg_color está configurado, usa ese color (con opacidad) en ambos modos;
 // si no, usa blanco (light) / gray-900 (dark) con opacidad via CSS vars.
+/** «Texto y enlaces» del panel. Vacío = el encabezado sigue calculando el texto desde el fondo. */
+export function colorTextoEncabezadoGuardado(settings: HeaderVariantProps['settings'] | undefined): string {
+  const valor = settings?.header_text_color
+  if (typeof valor !== 'string') return ''
+  const color = valor.trim()
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color) ? color : ''
+}
+
+/** Pone `--header-fg` y el color del texto para que `text-current` lo herede dentro de la barra. */
+function conColorDeTexto(
+  settings: HeaderVariantProps['settings'] | undefined,
+  base: React.CSSProperties,
+): React.CSSProperties {
+  const color = colorTextoEncabezadoGuardado(settings)
+  if (!color) return base
+  return { ...base, ['--header-fg' as string]: color, color: 'var(--header-fg)' }
+}
+
 export function headerBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const opacity = settings?.header_opacity ?? 95;
   const bgColor = settings?.header_bg_color ?? null;
@@ -115,48 +133,50 @@ export function headerBgStyle(settings: HeaderVariantProps['settings'] | undefin
       const r = parseInt(normalized.slice(0, 2), 16);
       const g = parseInt(normalized.slice(2, 4), 16);
       const b = parseInt(normalized.slice(4, 6), 16);
-      return {
+      return conColorDeTexto(settings, {
         backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity / 100})`,
-      };
+      });
     }
   }
   // Sin color personalizado: usar variables CSS para que Tailwind dark: funcione
-  return {
+  return conColorDeTexto(settings, {
     ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
     ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`,
-  };
+  });
 }
 
 // Helper: style del topbar (usa topbar_bg_color o hereda del header)
 export function topbarBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
   if (bgColor) {
-    return { backgroundColor: bgColor };
+    return conColorDeTexto(settings, { backgroundColor: bgColor });
   }
   // Sin color configurado: herencia del header via variables CSS
   const opacity = settings?.header_opacity ?? 95;
-  return {
+  return conColorDeTexto(settings, {
     ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
     ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`,
-  };
+  });
 }
 
 // Helper: style de la barra de menú inferior (nav row)
 export function navBgStyle(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
   const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
   if (bgColor) {
-    return { backgroundColor: bgColor };
+    return conColorDeTexto(settings, { backgroundColor: bgColor });
   }
   // Sin color personalizado: variables CSS para dark/light
   const opacity = settings?.header_opacity ?? 95;
-  return {
+  return conColorDeTexto(settings, {
     ['--header-bg-light' as string]: `rgba(255, 255, 255, ${opacity / 100})`,
     ['--header-bg-dark' as string]: `rgba(17, 24, 39, ${opacity / 100})`
-  };
+  });
 }
 
 // Helper: color de texto automático según luminancia del fondo
 export function headerTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
+  const fijo = colorTextoEncabezadoGuardado(settings)
+  if (fijo) return fijo
   const bgColor = settings?.header_bg_color ?? null;
   if (!bgColor) return ''; // vacío = hereda de Tailwind (gray-700/300)
   const normalized = bgColor.replace('#', '');
@@ -171,6 +191,8 @@ export function headerTextColor(settings: HeaderVariantProps['settings'] | undef
 
 // Helper: color de texto del topbar
 export function topbarTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
+  const fijo = colorTextoEncabezadoGuardado(settings)
+  if (fijo) return fijo
   const bgColor = settings?.topbar_bg_color ?? settings?.header_bg_color ?? null;
   if (!bgColor) return '';
   const normalized = bgColor.replace('#', '');
@@ -185,6 +207,8 @@ export function topbarTextColor(settings: HeaderVariantProps['settings'] | undef
 
 // Helper: color de texto de la barra de menú
 export function navTextColor(settings: HeaderVariantProps['settings'] | undefined): string {
+  const fijo = colorTextoEncabezadoGuardado(settings)
+  if (fijo) return fijo
   const bgColor = settings?.nav_bg_color ?? settings?.header_bg_color ?? null;
   if (!bgColor) return '';
   const normalized = bgColor.replace('#', '');
@@ -331,6 +355,9 @@ export function HeaderActions({
   // Defaults: true (igual que el header original)
   const showHeaderCart = settings?.show_header_cart !== false && showCart;
   const showHeaderAuth = settings?.show_header_auth !== false;
+  // En el celular la barra sigue blanca: el blanco de «Texto y enlaces» solo hereda en escritorio.
+  const heredarColor = !isMobile && Boolean(colorTextoEncabezadoGuardado(settings));
+  const claseIcono = heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
   const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
 
   // Fase 12B: Iconos personalizables
@@ -353,10 +380,10 @@ export function HeaderActions({
   // Construir elementos de acción según el orden
   const actionElements: Record<string, React.ReactNode | null> = {
     search: showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} />
+      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
-      <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} />
+      <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} heredarColor={heredarColor} />
     ) : null,
     cart: showHeaderCart ? (
       <CartIndicator
@@ -367,16 +394,17 @@ export function HeaderActions({
         organizationSubdomain={organizationSubdomain || ''}
         icon={CartIconComp}
         branchId={branchId}
+        heredarColor={heredarColor}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Mi Cuenta">
-          <AuthLoggedInIconComp className="h-6 w-6" style={{ color: primaryColor }} />
+          <AuthLoggedInIconComp className={`h-6 w-6 ${claseIcono}`} style={heredarColor ? undefined : { color: primaryColor }} />
         </Link>
       ) : (
         <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <AuthIconComp className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          <AuthIconComp className={`h-6 w-6 ${claseIcono}`} />
         </Link>
       )
     ) : null,
@@ -724,6 +752,14 @@ export function HeaderTopbar({
   );
 }
 
+/** Con color de texto configurado, el enlace hereda `--header-fg`. Sin él, el gris de siempre. */
+export function claseNavEncabezado(heredaColor: boolean): string {
+  const base = 'relative text-sm font-medium whitespace-nowrap flex items-center gap-1'
+  return heredaColor
+    ? `${base} text-current hover:opacity-80 transition-opacity`
+    : `${base} text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors`
+}
+
 export function NavLink({
   item,
   primaryColor,
@@ -733,13 +769,15 @@ export function NavLink({
   primaryColor: string;
   hasDropdown?: boolean;
 }) {
+  const { opciones } = useEncabezadoPie()
   const showDropdown = hasDropdown && item.children && item.children.length > 0;
+  const clase = claseNavEncabezado(Boolean(opciones.colorTextoEncabezado))
 
   if (!showDropdown) {
     return (
       <Link
         href={item.href}
-        className="relative text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors whitespace-nowrap flex items-center gap-1"
+        className={clase}
         style={{ '--hover-color': primaryColor } as React.CSSProperties}
       >
         {item.icon && <span className="text-base">{item.icon}</span>}

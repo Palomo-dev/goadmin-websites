@@ -67,8 +67,8 @@ check(p.clasesColumnasBanner(4, 'grid').includes('lg:grid-cols-4'), 'un número 
 check(p.clasesColumnasBanner(4, 'stack') === 'grid grid-cols-1 gap-6', 'apilado ignora las columnas')
 check(p.claseAspectoBanner('3/4') === 'aspect-[3/4]', 'proporción 3:4')
 check(p.claseAspectoBanner('16/9') === 'aspect-video', 'proporción 16:9')
-check(p.claseAspectoBanner('auto') === 'min-h-[200px]', 'automática conserva la altura')
-check(p.claseAspectoBanner(undefined) === 'min-h-[200px]', 'sin proporción conserva la altura')
+check(p.claseAspectoBanner('auto') === 'h-auto', 'automática usa la altura de la foto')
+check(p.claseAspectoBanner(undefined) === 'h-auto', 'sin proporción usa la altura de la foto')
 const tailwind = await readFile(join(ROOT, 'tailwind.config.ts'), 'utf8')
 check(
   tailwind.includes("'./lib/**/*.{js,ts,jsx,tsx,mdx}'"),
@@ -76,7 +76,7 @@ check(
 )
 check(p.claseAspectoBanner('3/1') === 'aspect-[3/1]', 'proporción 3:1')
 check(p.claseAspectoBanner('3/4', '3/1') === 'aspect-[3/1] md:aspect-[3/4]', 'el celular puede usar otra proporción')
-check(p.claseAspectoBanner(undefined, '3/1') === 'aspect-[3/1] md:aspect-auto md:min-h-[200px]', 'escritorio automático y celular 3:1')
+check(p.claseAspectoBanner(undefined, '3/1') === 'aspect-[3/1] md:aspect-auto md:h-auto', 'escritorio automático y celular 3:1')
 check(p.claseAspectoBanner('16/9', 'auto') === 'aspect-video', 'proporción de celular vacía no cambia el escritorio')
 check(p.clasesColumnasBanner(4, 'grid').includes('grid-cols-1'), 'sin columnas de celular sigue en una')
 check(p.clasesColumnasBanner(4, 'grid', 2).includes('grid-cols-2') && p.clasesColumnasBanner(4, 'grid', 2).includes('lg:grid-cols-4'), 'dos columnas en el celular')
@@ -146,6 +146,10 @@ check(e.variablesCssSeccion({ v: 1, fondo: 'tema', colorAlterno: '#F5F3EF' })['-
 
 const css = await readFile(join(ROOT, 'app/globals.css'), 'utf8')
 check(css.includes('var(--seccion-fondo-alterno,'), 'el CSS usa el color propio del fondo alterno')
+const banners = await readFile(join(ROOT, 'components/sections/retail/PromoBannersGrid.tsx'), 'utf8')
+check(banners.includes("fotoNatural ? 'block w-full h-auto'"), 'automática muestra la foto entera')
+const tarjeta = await readFile(join(ROOT, 'components/sections/products/ProductCard.tsx'), 'utf8')
+check(tarjeta.includes('iconoVacio(button.icon)'), 'sin icono no cae al ícono por defecto')
 
 if (problemas.length) {
   console.error(`verify:estilo-tarjeta ${problemas.length} fallos de ${casos}`)

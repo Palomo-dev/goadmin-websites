@@ -273,7 +273,7 @@ export function OrganizationLayoutCliente({
     // Texto sobre el primario y primario legible como texto, para las secciones de la Carta QR.
     // Sin consumidores fuera de ellas; con colores no hex no se emite nada.
     ...variablesColorMesa(primaryColor, temaEfectivo, { sobre: textoSobreAcentoSiHex, contraste }),
-    ...(opcionesShell.colorTextoEncabezado ? { '--encabezado-texto': opcionesShell.colorTextoEncabezado } : {}),
+    ...(opcionesShell.colorTextoEncabezado ? { '--encabezado-texto': opcionesShell.colorTextoEncabezado, '--header-fg': opcionesShell.colorTextoEncabezado } : {}),
     ...(opcionesShell.pie.colorTexto ? { '--pie-texto': opcionesShell.pie.colorTexto } : {}),
   } as React.CSSProperties
   

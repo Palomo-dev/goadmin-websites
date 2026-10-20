@@ -11,6 +11,8 @@ import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
 interface ProductSearchProps {
   primaryColor: string
   icon?: any
+  /** El ícono hereda `--header-fg` de la barra. En el panel de resultados sigue el gris. */
+  heredarColor?: boolean
 }
 
 interface SearchResult {
@@ -29,7 +31,7 @@ const popularSearches = [
   'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
 ]
 
-export function ProductSearch({ primaryColor, icon: SearchIconComp = Search }: ProductSearchProps) {
+export function ProductSearch({ primaryColor, icon: SearchIconComp = Search, heredarColor = false }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -231,7 +233,7 @@ export function ProductSearch({ primaryColor, icon: SearchIconComp = Search }: P
         className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Buscar productos"
       >
-        <SearchIconComp className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+        <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
       </button>
 
       {/* Desktop: dropdown */}

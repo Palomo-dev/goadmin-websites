@@ -15,9 +15,11 @@ interface CartIndicatorProps {
   /** Icono personalizado (del editor). Default: ShoppingCart */
   icon?: LucideIcon
   branchId?: number | null
+  /** El ícono hereda `--header-fg` de la barra. */
+  heredarColor?: boolean
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
   const [itemCount, setItemCount] = useState(0)
@@ -64,7 +66,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
         href={ruta('/checkout')}
         className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <Icon className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+        <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
         {badge}
       </Link>
     )
@@ -77,7 +79,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       onClick={onClick}
       className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
     >
-      <Icon className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+      <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
       {badge}
     </button>
   )

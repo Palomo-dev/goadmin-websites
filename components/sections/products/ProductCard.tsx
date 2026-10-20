@@ -271,6 +271,11 @@ function RatingStars({
 
 export type ProductCardVariant = 'grid' | 'list' | 'compact' | 'overlay'
 
+/** El editor guarda «Sin icono» como cadena vacía. Ausente sigue siendo el ícono de la acción. */
+export function iconoVacio(icon: string | null | undefined): boolean {
+  return typeof icon === 'string' && icon.trim() === ''
+}
+
 export interface CardButtonConfig {
   action: string
   label?: string
@@ -573,6 +578,8 @@ function CardButtonRenderer({
     if (isAdded && action === 'add_to_cart') {
       return <Check className={iconSizeClass} />
     }
+    // «Sin icono» guarda ''. Un vacío no es «sin configurar»: no pinta el ícono por defecto.
+    if (iconoVacio(button.icon)) return null
     // Si el botón tiene un icono personalizado configurado, usarlo
     if (button.icon && ICON_MAP[button.icon]) {
       const Icon = ICON_MAP[button.icon]
@@ -657,12 +664,14 @@ function CardButtonRenderer({
   // padre se agrega al carrito sin elegir variante.
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
     const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
-    const chooseIconName = 'Layers'
-    const ChooseIcon = ICON_MAP[chooseIconName] || Layers
+    // El ícono del botón normal (Plus, etc.) no se reutiliza: «Elegir» lleva Layers.
+    // La excepción es «Sin icono» (`''`): tampoco lleva Layers.
+    const sinIcono = iconoVacio(button.icon)
+    const ChooseIcon = ICON_MAP.Layers || Layers
     return (
       <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
         <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${anchoClase} ${sizeTextClass}`} style={baseStyle}>
-          <ChooseIcon className={iconSizeClass} />{!btnIconOnly && <span className="ml-1">{chooseLabel}</span>}
+          {!sinIcono && <ChooseIcon className={iconSizeClass} />}{!btnIconOnly && <span className={sinIcono ? undefined : 'ml-1'}>{chooseLabel}</span>}
         </Button>
       </Link>
     )

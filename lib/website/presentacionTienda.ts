@@ -68,8 +68,8 @@ function claseAspectoUna(ratio: unknown): string {
   if (ratio === '3/4') return 'aspect-[3/4]'
   if (ratio === '16/9') return 'aspect-video'
   if (ratio === '3/1') return 'aspect-[3/1]'
-  // Cadena completa: Tailwind solo la emite si `lib/` está en `content`.
-  return 'min-h-[200px]'
+  // Automática: la foto marca la altura. Una mínima fija la recorta.
+  return 'h-auto'
 }
 
 function claseAspectoMd(ratio: unknown): string {
@@ -78,11 +78,11 @@ function claseAspectoMd(ratio: unknown): string {
   if (ratio === '3/4') return 'md:aspect-[3/4]'
   if (ratio === '16/9') return 'md:aspect-video'
   if (ratio === '3/1') return 'md:aspect-[3/1]'
-  return 'md:aspect-auto md:min-h-[200px]'
+  return 'md:aspect-auto md:h-auto'
 }
 
 /**
- * `auto` y ausente conservan la tarjeta de siempre.
+ * `auto` y ausente dejan la altura de la foto (`h-auto`).
  * Con proporción de celular distinta, el prefijo sin breakpoint es el móvil
  * y `md:` recupera la de escritorio.
  */
