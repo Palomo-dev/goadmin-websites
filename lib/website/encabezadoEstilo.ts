@@ -12,6 +12,26 @@
 export const LAVADO_OSCURO = 'rgba(255,255,255,0.1)'
 export const LAVADO_CLARO = 'rgba(0,0,0,0.08)'
 
+export type PesoIconoEncabezado = 'contorno' | 'relleno'
+export type FormaCarritoEncabezado = 'bolsa' | 'carrito'
+
+/**
+ * Estilo de los iconos de moneda, carrito y cuenta.
+ * Sin forma guardada se respeta `cart_icon` (bolsa, paquete, regalo…).
+ */
+export function estiloIconosEncabezado(settings: {
+  header_icons_weight?: unknown
+  header_cart_glyph?: unknown
+  header_icons_circle?: unknown
+} | null | undefined): { relleno: boolean; circulo: boolean; forma: FormaCarritoEncabezado | null } {
+  const peso: PesoIconoEncabezado = settings?.header_icons_weight === 'relleno' ? 'relleno' : 'contorno'
+  const forma: FormaCarritoEncabezado | null =
+    settings?.header_cart_glyph === 'carrito' || settings?.header_cart_glyph === 'bolsa'
+      ? settings.header_cart_glyph
+      : null
+  return { relleno: peso === 'relleno', circulo: settings?.header_icons_circle === true, forma }
+}
+
 export function colorHexValido(valor: unknown): string {
   if (typeof valor !== 'string') return ''
   const color = valor.trim()

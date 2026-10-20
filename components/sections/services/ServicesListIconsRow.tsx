@@ -1,5 +1,8 @@
 'use client'
 
+import { serviciosParaPintar } from '@/lib/website/serviciosSeccion'
+import { IconoServicio } from './pintarServicio'
+
 interface ServicesListIconsRowProps {
   content: Record<string, any>
   organization?: any
@@ -9,7 +12,7 @@ interface ServicesListIconsRowProps {
 
 export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }: ServicesListIconsRowProps) {
   const title = content.title || 'Nuestros Servicios'
-  const services = data?.services || []
+  const services = serviciosParaPintar(content, data?.services)
   // «Mostrar descripción». Esta variante no la pintaba: ausente = sin descripción.
   const showDescription = content.show_description === true
 
@@ -24,7 +27,7 @@ export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }
                 className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl"
                 style={{ backgroundColor: primaryColor }}
               >
-                {service.icon || service.name?.charAt(0) || '★'}
+                {service.icon ? <IconoServicio name={service.icon} className="h-6 w-6" /> : service.name?.charAt(0) || '★'}
               </div>
               <span className="text-sm font-medium text-center leading-tight text-gray-900 dark:text-white">{service.name}</span>
               {showDescription && service.description && (

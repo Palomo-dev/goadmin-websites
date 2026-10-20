@@ -17,7 +17,8 @@ import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
-import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido } from '@/lib/website/encabezadoEstilo';
+import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 
@@ -420,12 +421,25 @@ export function HeaderActions({
   const claseIcono = heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
   const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
 
-  // Fase 12B: Iconos personalizables
-  const CartIconComp = getLucideIcon(settings?.cart_icon as string, ShoppingBag);
+  // Fase 12B: Iconos personalizables. El estilo (contorno/relleno, bolsa/carrito, círculo)
+  // vive en el documento: header_icons_weight, header_cart_glyph, header_icons_circle.
+  const estiloIconos = estiloIconosEncabezado({
+    header_icons_weight: settings?.header_icons_weight,
+    header_cart_glyph: settings?.header_cart_glyph,
+    header_icons_circle: settings?.header_icons_circle,
+  });
+  const trazo = propsTrazoIcono(estiloIconos.relleno);
+  const CartIconComp =
+    estiloIconos.forma === 'carrito'
+      ? ShoppingCart
+      : estiloIconos.forma === 'bolsa'
+        ? ShoppingBag
+        : getLucideIcon(settings?.cart_icon as string, ShoppingBag);
   const AuthIconComp = getLucideIcon(settings?.auth_icon as string, User);
   const AuthLoggedInIconComp = getLucideIcon(settings?.auth_icon as string, UserCircle);
   const CurrencyIconComp = getLucideIcon(settings?.currency_icon as string, Globe);
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const claseIconoAccion = estiloIconos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`;
 
   // Fase 12B: Orden de acciones configurable
   const actionsOrder: string[] = (() => {
@@ -443,7 +457,14 @@ export function HeaderActions({
       <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
-      <CurrencySelector key="currency" primaryColor={primaryColor} icon={CurrencyIconComp} heredarColor={heredarColor} />
+      <CurrencySelector
+        key="currency"
+        primaryColor={primaryColor}
+        icon={CurrencyIconComp}
+        heredarColor={heredarColor}
+        relleno={estiloIconos.relleno}
+        circulo={estiloIconos.circulo}
+      />
     ) : null,
     cart: showHeaderCart ? (
       <CartIndicator
@@ -455,16 +476,22 @@ export function HeaderActions({
         icon={CartIconComp}
         branchId={branchId}
         heredarColor={heredarColor}
+        relleno={estiloIconos.relleno}
+        circulo={estiloIconos.circulo}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
-          <AuthLoggedInIconComp className={`h-6 w-6 ${claseIcono}`} style={heredarColor ? undefined : { color: primaryColor }} />
+          <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
+            <AuthLoggedInIconComp className={claseIconoAccion} style={heredarColor || estiloIconos.circulo ? undefined : { color: primaryColor }} {...trazo} />
+          </IconoConCirculo>
         </Link>
       ) : (
         <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">
-          <AuthIconComp className={`h-6 w-6 ${claseIcono}`} />
+          <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
+            <AuthIconComp className={claseIconoAccion} {...trazo} />
+          </IconoConCirculo>
         </Link>
       )
     ) : null,

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ShoppingCart, type LucideIcon } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { IconoConCirculo, propsTrazoIcono } from './header/IconoEncabezado'
 
 interface CartIndicatorProps {
   primaryColor: string
@@ -17,11 +18,22 @@ interface CartIndicatorProps {
   branchId?: number | null
   /** El ícono hereda `--header-fg` de la barra. */
   heredarColor?: boolean
+  /** Relleno del icono (el trazo se queda). */
+  relleno?: boolean
+  /** Círculo del color de la marca detrás del icono. */
+  circulo?: boolean
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
+  const trazo = propsTrazoIcono(relleno)
+  const claseIcono = circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'
+  const icono = (
+    <IconoConCirculo circulo={circulo} primaryColor={primaryColor}>
+      <Icon className={claseIcono} {...trazo} />
+    </IconoConCirculo>
+  )
   const [itemCount, setItemCount] = useState(0)
   
   useEffect(() => {
@@ -66,7 +78,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
         href={ruta('/checkout')}
         className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
       >
-        <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
+        {icono}
         {badge}
       </Link>
     )
@@ -79,7 +91,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       onClick={onClick}
       className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
     >
-      <Icon className={heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'} />
+      {icono}
       {badge}
     </button>
   )

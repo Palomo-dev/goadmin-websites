@@ -2,6 +2,8 @@
 
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
+import { serviciosParaPintar } from '@/lib/website/serviciosSeccion'
+import { EnlaceServicio, FotoServicio, IconoServicio } from './pintarServicio'
 
 interface ServicesListListProps {
   content: Record<string, any>
@@ -13,7 +15,7 @@ interface ServicesListListProps {
 export function ServicesListList({ content, primaryColor = '#3B82F6', data }: ServicesListListProps) {
   const title = content.title || 'Nuestros Servicios'
   const subtitle = content.subtitle
-  const services = data?.services || []
+  const services = serviciosParaPintar(content, data?.services)
   // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
   const showDescription = (content as { show_description?: unknown }).show_description !== false
   // «Mostrar precio tachado»: el `compare_price` real del precio vigente. Ausente = sin tachar.
@@ -27,10 +29,17 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
         <div className="max-w-3xl mx-auto space-y-4">
           {services.map((service: any, i: number) => (
             <div key={i} className="flex items-start gap-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
-              <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }} />
+              {service.image_url ? (
+                <FotoServicio url={service.image_url} alt={service.name} compact />
+              ) : service.icon ? (
+                <IconoServicio name={service.icon} className="mt-0.5 h-6 w-6 flex-shrink-0" />
+              ) : (
+                <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }} />
+              )}
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{service.name}</h3>
                 {showDescription && service.description && <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{service.description}</p>}
+                <EnlaceServicio texto={service.cta_text} url={service.cta_url} color={primaryColor} />
               </div>
               {service.price && (showCompare && precioAnteriorValido(service.compare_price, service.price) !== null ? (
                 <div className="flex-shrink-0 text-right">

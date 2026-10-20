@@ -3,7 +3,9 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
+import { Home, LayoutGrid, Search, ShoppingBag, ShoppingCart, User, X } from 'lucide-react';
+import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { IconoConCirculo, propsTrazoIcono } from '../IconoEncabezado';
 import {
   HeaderLogo,
   HeaderActions,
@@ -45,10 +47,23 @@ export default function MobileTabs({
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
 
-  // Fase 12B: Iconos personalizables para la barra inferior
+  // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno
+  // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
+  const estiloIconos = estiloIconosEncabezado(settings);
+  const trazo = propsTrazoIcono(estiloIconos.relleno);
   const SearchTabIcon = getLucideIcon(settings?.search_icon as string, Search);
-  const CartTabIcon = getLucideIcon(settings?.cart_icon as string, ShoppingBag);
+  const CartTabIcon =
+    estiloIconos.forma === 'carrito'
+      ? ShoppingCart
+      : estiloIconos.forma === 'bolsa'
+        ? ShoppingBag
+        : getLucideIcon(settings?.cart_icon as string, ShoppingBag);
   const AuthTabIcon = getLucideIcon(settings?.auth_icon as string, User);
+  const iconoTab = (Icono: typeof ShoppingBag) => (
+    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor} tamano="sm">
+      <Icono className="h-5 w-5" {...trazo} />
+    </IconoConCirculo>
+  );
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
@@ -107,10 +122,10 @@ export default function MobileTabs({
           />
           <TabButton
             onClick={() => onCartClick?.()}
-            icon={<CartTabIcon className="h-5 w-5" />}
+            icon={iconoTab(CartTabIcon)}
             label="Carrito"
           />
-          <TabButton href="/auth" icon={<AuthTabIcon className="h-5 w-5" />} label="Cuenta" />
+          <TabButton href="/auth" icon={iconoTab(AuthTabIcon)} label="Cuenta" />
         </div>
       </nav>
 

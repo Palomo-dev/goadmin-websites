@@ -19,9 +19,10 @@
  * 4. Con `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`, ejecuta los dos `select`
  *    contra PostgREST: un nombre de columna inexistente responde 42703 y el script falla.
  */
-import { readFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import { stripTypeScriptTypes } from 'node:module'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const leer = (r) => readFile(join(ROOT, r), 'utf8')
@@ -100,6 +101,41 @@ exigir(/tiene\('services_list'\)\s*\?\s*getServiciosDeSeccion\(organization\.id/
 exigir(/data\.services\s*=\s*servicios/.test(pagina), 'page.tsx: data.services no recibe los servicios')
 exigir((pagina.match(/getServiciosDeSeccion\(/g) || []).length === 1, 'page.tsx: getServiciosDeSeccion no se llama exactamente una vez')
 exigir(/export const getServiciosDeSeccion = cache\(\s*cacheCatalog\(/.test(datos), 'datosSecciones: getServiciosDeSeccion no va en cache(cacheCatalog(...)) (una consulta por render y caché entre visitas)')
+
+const VARIANTES_SERVICIOS = [
+  'components/sections/services/ServicesListGrid.tsx',
+  'components/sections/services/ServicesListCards.tsx',
+  'components/sections/services/ServicesListList.tsx',
+  'components/sections/services/ServicesListIconsRow.tsx',
+]
+for (const archivo of VARIANTES_SERVICIOS) {
+  const src = await leer(archivo)
+  exigir(src.includes('serviciosParaPintar'), `${archivo} no lee los ítems que guarda el editor`)
+  exigir(!src.includes('configuradas'), `${archivo} sigue diciendo «configuradas»`)
+  exigir(src.includes('configurados'), `${archivo} no dice «configurados»`)
+}
+
+const dirServicios = join(ROOT, '.verify-servicios-tmp')
+await rm(dirServicios, { recursive: true, force: true })
+await mkdir(dirServicios)
+let modServicios
+try {
+  const plano = stripTypeScriptTypes(await leer('lib/texto/textoPlano.ts'), { mode: 'strip' })
+  const seccion = stripTypeScriptTypes(await leer('lib/website/serviciosSeccion.ts'), { mode: 'strip' })
+    .replace("from '@/lib/texto/textoPlano'", "from './textoPlano.mjs'")
+  await writeFile(join(dirServicios, 'textoPlano.mjs'), plano)
+  await writeFile(join(dirServicios, 'serviciosSeccion.mjs'), seccion)
+  modServicios = await import(pathToFileURL(join(dirServicios, 'serviciosSeccion.mjs')).href)
+} finally {
+  await rm(dirServicios, { recursive: true, force: true })
+}
+const catalogo = [{ id: 'cat', name: 'Catálogo', description: null, price: null, compare_price: null, icon: null }]
+const delEditor = modServicios.serviciosParaPintar({ items: [{ title: 'Corte', icon: 'Sparkles' }] }, catalogo)
+exigir(delEditor.length === 1 && delEditor[0].name === 'Corte' && delEditor[0].icon === 'Sparkles', 'los ítems del editor ganan al catálogo')
+const vacios = modServicios.serviciosParaPintar({ items: [{ title: '   ' }, {}] }, catalogo)
+exigir(vacios.length === 1 && vacios[0].name === 'Catálogo', 'una fila vacía del editor no esconde el catálogo')
+const sinItems = modServicios.serviciosParaPintar({}, catalogo)
+exigir(sinItems[0]?.name === 'Catálogo', 'sin ítems del editor se pinta el catálogo')
 
 // 2 y 3. Consultas: filtros y columnas.
 const fnSecc = cuerpo(datos, 'async function getServiciosUncached')

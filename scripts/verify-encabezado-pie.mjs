@@ -53,7 +53,7 @@ await rm(dir, { recursive: true, force: true })
 
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
-check(nuevas.length === 22, `se esperaban 22 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 25, `se esperaban 25 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla, `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -157,6 +157,9 @@ const CONSUMIDORES = {
   header_divider: ['components/site/header/HeaderShared.tsx', 'header_divider'],
   header_divider_color: ['components/site/header/HeaderShared.tsx', 'header_divider_color'],
   header_hover_color: ['components/site/header/HeaderShared.tsx', 'header_hover_color'],
+  header_icons_weight: ['components/site/header/HeaderShared.tsx', 'header_icons_weight'],
+  header_cart_glyph: ['components/site/header/HeaderShared.tsx', 'header_cart_glyph'],
+  header_icons_circle: ['components/site/header/HeaderShared.tsx', 'header_icons_circle'],
   footer_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.colorTexto'],
   footer_show_dividers: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.separadores'],
 }
@@ -185,6 +188,14 @@ igual(estilo.colorHoverEfectivo('#abc', '#101010'), '#abc', 'hover guardado gana
 igual(estilo.colorHoverEfectivo(null, '#101010'), estilo.LAVADO_OSCURO, 'hover por luminancia')
 igual(estilo.colorDivisorEfectivo('', '#ffffff'), estilo.LAVADO_CLARO, 'divisor por luminancia')
 check(estilo.divisorEncendido(undefined) === true && estilo.divisorEncendido(false) === false, 'divisor ausente encendido y false apagado')
+igual(estilo.estiloIconosEncabezado(null), { relleno: false, circulo: false, forma: null }, 'sin estilo de iconos se queda el contorno y cart_icon')
+igual(
+  estilo.estiloIconosEncabezado({ header_icons_weight: 'relleno', header_cart_glyph: 'carrito', header_icons_circle: true }),
+  { relleno: true, circulo: true, forma: 'carrito' },
+  'relleno, carrito y círculo',
+)
+igual(estilo.estiloIconosEncabezado({ header_cart_glyph: 'otro' }).forma, null, 'una forma desconocida no pisa cart_icon')
+igual(estilo.estiloIconosEncabezado({ header_icons_weight: 'contorno', header_cart_glyph: 'bolsa' }), { relleno: false, circulo: false, forma: 'bolsa' }, 'bolsa en contorno')
 const cssVars = await fuente('app/globals.css')
 check(cssVars.includes('--header-hover') && cssVars.includes('--header-divider') && cssVars.includes('data-fondo-encabezado'), 'el CSS declara el hover, el divisor y el fondo del menú')
 for (const ruta of [

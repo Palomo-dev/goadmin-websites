@@ -197,6 +197,12 @@ export interface Database {
           header_divider_color?: string | null
           /** Hover de los íconos. Ausente = lavado según el fondo. */
           header_hover_color?: string | null
+          /** `contorno` (default) o `relleno` en moneda, carrito y cuenta. */
+          header_icons_weight?: string | null
+          /** `bolsa` o `carrito`. Ausente = se respeta `cart_icon`. */
+          header_cart_glyph?: string | null
+          /** Círculo del color de la marca detrás de esos iconos. */
+          header_icons_circle?: boolean
           footer_text_color?: string | null
           footer_show_dividers?: boolean
           logo_height: number | null

@@ -62,6 +62,28 @@ export function clasesColumnasBanner(
   return `grid ${CLASE_MOVIL[mobile]} ${CLASE_TABLET[tablet]} ${CLASE_ESCRITORIO[desktop]} gap-6`
 }
 
+const CLASE_MD: Record<number, string> = {
+  1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4',
+  5: 'md:grid-cols-5', 6: 'md:grid-cols-6', 7: 'md:grid-cols-7', 8: 'md:grid-cols-8',
+}
+
+/** Columnas de escritorio de una rejilla: número, o `desktop` si el editor guardó el objeto responsive. */
+export function columnasEscritorio(columns: unknown, fallback = 3): number {
+  if (columns && typeof columns === 'object' && !Array.isArray(columns)) {
+    const o = columns as Record<string, unknown>
+    if ('desktop' in o || 'tablet' in o || 'mobile' in o) return nCol(o.desktop, fallback)
+  }
+  return nCol(columns, fallback)
+}
+
+/**
+ * Grid de características: dos columnas en el celular y las del ajuste
+ * «Columnas» desde `md`. El texto va centrado.
+ */
+export function clasesGridCaracteristicas(columns: unknown): string {
+  return `grid grid-cols-2 ${CLASE_MD[columnasEscritorio(columns, 3)]} gap-8 text-center`
+}
+
 function claseAspectoUna(ratio: unknown): string {
   if (ratio === '1/1') return 'aspect-square'
   if (ratio === '4/3') return 'aspect-[4/3]'
