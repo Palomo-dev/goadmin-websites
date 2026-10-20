@@ -10,6 +10,7 @@
  */
 
 import { sobreCorreoPedido, type MarcaCorreoPedido, type SobreCorreoPedido } from '@/lib/email/marcaCorreoPedido'
+import { textosCorreoCompraPendiente } from '@/lib/email/textosCorreoPedido'
 
 interface OrderEmailData {
   orderNumber: string
@@ -34,6 +35,11 @@ interface OrderEmailData {
    * que nadie lo confirme.
    */
   paymentStatus?: 'pending' | 'paid'
+  /**
+   * Compra que no se pagó (cancelada o expirada). Mismo sobre que el pago
+   * confirmado; el botón dice «Retomar mi compra» y abre el enlace de retoma.
+   */
+  compraPendiente?: boolean
   /** «🛵 Domicilio», «🏪 Recoger en el local», «🍽️ Comer aquí · Mesa 4». */
   tipoEntrega?: string | null
   /** Hora programada ya formateada en la zona de la sede («Hoy · 7:30 p. m.»). */
@@ -73,10 +79,17 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
   const colorBoton = sobre?.color ?? '#3B82F6'
   const textoBoton = sobre?.texto ?? '#ffffff'
   const pagado = data.paymentStatus === 'paid'
-  const titulo = pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
-  const mensaje = pagado
-    ? `Recibimos el pago de tu pedido <strong>${escapeHtml(data.orderNumber)}</strong>. Ya lo estamos preparando.`
-    : `Tu pedido <strong>${escapeHtml(data.orderNumber)}</strong> llegó al restaurante. Te avisaremos cuando lo confirmen.`
+  const pendiente = textosCorreoCompraPendiente({
+    orderNumber: data.orderNumber,
+    nombreTienda: sobre?.nombre || data.organizationName || '',
+  })
+  const titulo = data.compraPendiente ? pendiente.titulo : pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
+  const mensaje = data.compraPendiente
+    ? pendiente.mensajeHtml
+    : pagado
+      ? `Recibimos el pago de tu pedido <strong>${escapeHtml(data.orderNumber)}</strong>. Ya lo estamos preparando.`
+      : `Tu pedido <strong>${escapeHtml(data.orderNumber)}</strong> llegó al restaurante. Te avisaremos cuando lo confirmen.`
+  const textoEnlace = data.compraPendiente ? pendiente.boton : 'Seguir mi pedido'
   const negocio = escapeHtml(sobre?.nombre || data.organizationName || '')
   const logo = sobre?.logoUrl
     ? `<img src="${escapeHtml(sobre.logoUrl)}" alt="${negocio}" height="48" style="height:48px;max-width:220px;width:auto;margin:0 auto 12px;display:block;border:0;">`
@@ -117,7 +130,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         <p style="color:#666;font-size:14px;">
           ${mensaje}
         </p>
-        ${data.tipoEntrega || data.programadoPara ? `
+        ${!data.compraPendiente && (data.tipoEntrega || data.programadoPara) ? `
         <p style="color:#333;font-size:14px;margin:12px 0;padding:10px 12px;background:#f8f9fa;border-radius:6px;">
           ${data.tipoEntrega ? escapeHtml(data.tipoEntrega) : ''}${data.tipoEntrega && data.programadoPara ? ' · ' : ''}${data.programadoPara ? `Para: ${escapeHtml(data.programadoPara)}` : ''}
         </p>` : ''}
@@ -173,7 +186,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         
         <div style="text-align:center;margin-top:24px;">
           <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:${colorBoton};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-            Seguir mi pedido
+            ${escapeHtml(textoEnlace)}
           </a>
         </div>
         
@@ -195,7 +208,9 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
         from: fromEmail,
         to: [data.customerEmail],
         ...(sobre?.replyTo ? { reply_to: sobre.replyTo } : {}),
-        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
+        subject: data.compraPendiente
+          ? pendiente.asunto
+          : `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
         html,
       }),
     })
@@ -206,7 +221,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
       return false
     }
 
-    console.log(`[Email] Confirmación enviada a ${data.customerEmail} para orden ${data.orderNumber}`)
+    console.log(`[Email] ${data.compraPendiente ? 'Compra pendiente enviada' : 'Confirmación enviada'} a ${data.customerEmail} para orden ${data.orderNumber}`)
     return true
   } catch (error) {
     console.error('[Email] Error enviando email:', error)
