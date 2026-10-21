@@ -38,6 +38,7 @@ interface CartItem {
   comparePrice?: number | null
   quantity: number
   imageUrl?: string | null
+  uuid?: string
   notes?: string
   modifiers?: CartModifier[]
   newModifiers?: NewCartModifier[]
@@ -261,7 +262,7 @@ export function CartPageClient({
               className="flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-sm transition-shadow"
             >
               {/* Imagen */}
-              <Link href={ruta(`/productos/${item.productId || item.id}`)} className="shrink-0">
+              <Link href={ruta(`/productos/${item.uuid || item.productId || item.id}`)} className="shrink-0">
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -276,7 +277,7 @@ export function CartPageClient({
               {/* Info */}
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <Link href={ruta(`/productos/${item.productId || item.id}`)}>
+                  <Link href={ruta(`/productos/${item.uuid || item.productId || item.id}`)}>
                     <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-2">{item.name}</h3>
                   </Link>
                   {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (

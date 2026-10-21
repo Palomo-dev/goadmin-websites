@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ShoppingCart, type LucideIcon } from 'lucide-react'
-import { getCartKey } from '@/lib/utils'
+import { contarUnidadesCarrito } from '@/lib/cart'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { IconoConCirculo, propsTrazoIcono } from './header/IconoEncabezado'
 
@@ -38,15 +38,8 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
   
   useEffect(() => {
     const updateCount = () => {
-      try {
-        const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-        const cartKey = getCartKey(subdomain, branchId)
-        const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-        const count = cart.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)
-        setItemCount(count)
-      } catch {
-        setItemCount(0)
-      }
+      const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
+      setItemCount(contarUnidadesCarrito(subdomain, branchId))
     }
     
     // Initial load

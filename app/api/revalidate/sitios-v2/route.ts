@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cronAutorizado } from '@/lib/orders/cronAutorizado'
 import { tagEstadosV2Org, tagSitioV2 } from '@/lib/website/v2/lectorPublico'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 /**
  * Procesa `website_publication_outbox` (sitios V2): cada publicación o cambio de adopción del ERP
@@ -16,27 +17,19 @@ export const dynamic = 'force-dynamic'
  * `sitio-v2-org-<organization_id>` (estados: adopción y revisión publicada). Sin este proceso
  * el sitio igual ve la publicación a los 60 s (TTL de los estados); esto la adelanta.
  *
- * Autenticación (falla cerrado, 401 sin CRON_SECRET configurado), cualquiera de las dos:
- *   - `x-webhook-secret: <CRON_SECRET>`, como POST /api/revalidate (llamada del ERP).
- *   - `Authorization: Bearer <CRON_SECRET>`, el formato de Vercel Cron.
+ * Autenticación (falla cerrado): `CRON_SECRET` del despliegue, por
+ * `x-webhook-secret` o `Authorization: Bearer`, o el secreto del vault
+ * con el que llama la base. Sin ninguno de los dos, 401.
  *
  * Columnas verificadas por MCP el 2026-10-05: id (bigint), organization_id, site_state_id,
  * revision_id, status ('pending'|'done'|'error'), attempts, last_error, created_at,
  * processed_at. La tabla no admite anon ni authenticated: solo service role.
+ *
+ * El correo de compra pendiente no corre aquí. Lo dispara pg_cron contra
+ * `/api/cron/carritos-abandonados` en el proyecto que puede enviarlo.
  */
 const MAX_INTENTOS = 5
 const LOTE = 50
-
-function secretoValido(request: NextRequest): boolean {
-  const esperado = process.env.CRON_SECRET
-  if (!esperado) return false
-  const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? null
-  const recibido = request.headers.get('x-webhook-secret') ?? bearer
-  if (!recibido) return false
-  const a = Buffer.from(recibido)
-  const b = Buffer.from(esperado)
-  return a.length === b.length && timingSafeEqual(a, b)
-}
 
 interface FilaOutbox {
   id: number
@@ -47,10 +40,10 @@ interface FilaOutbox {
 }
 
 async function procesar(request: NextRequest) {
-  if (!secretoValido(request)) {
+  const supabase = createAdminClient()
+  if (!(await cronAutorizado(request, supabase))) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
-  const supabase = createAdminClient()
   if (!supabase) {
     console.error('[outbox-sitios-v2] Sin SUPABASE_SERVICE_ROLE_KEY')
     return NextResponse.json({ error: 'Servicio no configurado' }, { status: 500 })

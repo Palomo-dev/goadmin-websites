@@ -1,10 +1,12 @@
 /**
  * Motor de promociones automáticas del escaparate web.
  *
- * Espejo de `src/lib/services/promotionEngine.ts` del ERP (canal `web`), para
- * que el cliente vea en el carrito/checkout exactamente el mismo descuento que
- * luego calcula el POS/ERP. Mantener ambos alineados: mismos valores de
- * `promotion_type`, `applies_to` y `rule_type` que permite el CHECK de la tabla.
+ * Espejo del motor puro del ERP (`src/lib/promotions/motorPromociones.ts`,
+ * canal `web`), para que el cliente vea en el carrito/checkout exactamente el
+ * mismo descuento que luego calcula el POS. Mantener ambos alineados: mismos
+ * valores de `promotion_type`, `applies_to` y `rule_type`, y la misma cuenta
+ * de cantidad mínima, compra mínima y paquetes. El redondeo de aquí sigue
+ * siendo a pesos enteros; el del ERP, a centavos.
  *
  * Dos capas:
  *  - `calculatePromotions(...)`: pura, sin BD. Recibe promociones ya cargadas y
@@ -31,6 +33,8 @@ export interface PromotionRule {
   rule_type: PromotionRuleType | string
   product_id: number | null
   category_id: number | null
+  /** Unidades de este producto en un paquete. Nulo = 1. */
+  quantity?: number | null
 }
 
 export interface PromotionRow {
@@ -42,6 +46,12 @@ export interface PromotionRow {
   buy_quantity: number | null
   get_quantity: number | null
   min_purchase_amount: number | string | null
+  /** `eligible` = líneas de la promo. `cart` = toda la cuenta. Nulo = se deriva. */
+  min_purchase_scope?: string | null
+  /** Unidades mínimas de las líneas que entran. Solo porcentaje, monto fijo y paquete. */
+  min_quantity?: number | string | null
+  /** Repite el descuento cada N unidades. Nulo = una sola vez. */
+  repeat_every_quantity?: number | string | null
   max_discount_amount: number | string | null
   applies_to: PromotionAppliesTo | string
   start_date: string | null
@@ -54,6 +64,11 @@ export interface PromotionRow {
   branches: number[] | null
   applies_to_web: boolean | null
   applicable_days: WeekDay[] | string[] | null
+  /** `HH:mm` o `HH:mm:ss` en la zona del negocio. Nulo = todo el día. */
+  start_time?: string | null
+  end_time?: string | null
+  /** Precio del paquete. Si es mayor que cero, manda sobre el porcentaje. */
+  bundle_price?: number | string | null
   promotion_rules?: PromotionRule[] | null
   rules?: PromotionRule[] | null
 }
@@ -109,6 +124,55 @@ export function realProductId(item: PromoCartItem): number {
   return Number(head)
 }
 
+/**
+ * Unidades gratis de «compra X lleva Y».
+ * Si Y < X, la etiqueta es «XxY» (llevas X, pagas Y): de cada X, X−Y de regalo.
+ * Si Y ≥ X, Y son unidades gratis además de las X que se pagan.
+ * Misma regla que `unidadesGratisCompraLleva` del ERP.
+ */
+export function unidadesGratisCompraLleva(unidades: number, compra: number, lleva: number): number {
+  const n = Math.floor(unidades)
+  const x = Math.trunc(compra)
+  const y = Math.trunc(lleva)
+  if (n <= 0 || x <= 0 || y <= 0) return 0
+  if (y < x) return Math.floor(n / x) * (x - y)
+  return Math.floor(n / (x + y)) * y
+}
+
+function horaEnZona(date: Date, timeZone = 'America/Bogota'): string {
+  try {
+    const partes = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZone,
+    }).formatToParts(date)
+    const tomar = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? '00'
+    return `${tomar('hour')}:${tomar('minute')}:${tomar('second')}`
+  } catch {
+    return '00:00:00'
+  }
+}
+
+function horaNormalizada(valor: string | null | undefined): string | null {
+  if (valor == null || valor === '') return null
+  const m = String(valor).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return null
+  const hh = m[1].padStart(2, '0')
+  const mm = m[2]
+  const ss = (m[3] ?? '00').padStart(2, '0')
+  if (Number(hh) > 23 || Number(mm) > 59 || Number(ss) > 59) return null
+  return `${hh}:${mm}:${ss}`
+}
+
+/** Sin horas, todo el día. Si el fin es anterior al inicio, cruza la medianoche. */
+function enFranjaHoraria(inicio: string | null | undefined, fin: string | null | undefined, hora: string): boolean {
+  const a = horaNormalizada(inicio)
+  const b = horaNormalizada(fin)
+  if (!a && !b) return true
+  if (a && !b) return hora >= a
+  if (!a && b) return hora <= b
+  if (a! <= b!) return hora >= a! && hora <= b!
+  return hora >= a! || hora <= b!
+}
+
 /** Día de la semana en la zona horaria del negocio (por defecto Colombia). */
 export function weekdayInTimezone(date: Date, timeZone = 'America/Bogota'): WeekDay {
   try {
@@ -145,6 +209,7 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
     if (p.end_date && new Date(p.end_date) < date) return false
     if (p.usage_limit && Number(p.usage_count || 0) >= Number(p.usage_limit)) return false
     if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !p.applicable_days.includes(dayName)) return false
+    if (!enFranjaHoraria(p.start_time, p.end_time, horaEnZona(date, ctx.timeZone))) return false
     // `branches` jsonb: null/[] = todas las sucursales.
     if (Array.isArray(p.branches) && p.branches.length > 0) {
       if (ctx.branchId == null) return false
@@ -199,6 +264,54 @@ function rulesOf(p: PromotionRow): PromotionRule[] {
   return (p.promotion_rules ?? p.rules ?? []) as PromotionRule[]
 }
 
+function positiveInt(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Math.trunc(Number(v))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Toda la cuenta si la promo es general o el alcance es `cart`. Si no, las líneas que entran. */
+function purchaseScope(p: PromotionRow): 'eligible' | 'cart' {
+  if (p.min_purchase_scope === 'cart' || p.min_purchase_scope === 'eligible') return p.min_purchase_scope
+  return p.applies_to === 'all' ? 'cart' : 'eligible'
+}
+
+function eligibleUnits(items: ResolvedPromoItem[]): number {
+  return items.reduce((s, i) => s + Number(i.quantity), 0)
+}
+
+function bundleRequirements(promo: PromotionRow): Array<{ productId: number; perPackage: number }> {
+  const map = new Map<number, number>()
+  for (const r of rulesOf(promo)) {
+    if (r.rule_type !== 'include_product' || r.product_id == null) continue
+    const q = positiveInt(r.quantity) ?? 1
+    map.set(r.product_id, Math.max(map.get(r.product_id) ?? 0, q))
+  }
+  return Array.from(map.entries()).map(([productId, perPackage]) => ({ productId, perPackage }))
+}
+
+function assignBundle(item: ResolvedPromoItem, reqs: Array<{ productId: number }>): number | null {
+  if (reqs.some((r) => r.productId === item.product_id)) return item.product_id
+  if (item.parent_product_id != null && reqs.some((r) => r.productId === item.parent_product_id)) {
+    return item.parent_product_id
+  }
+  return null
+}
+
+/** Reparte un entero en proporción. La última entrada absorbe el redondeo. */
+function splitAmount(amount: number, weights: Array<{ key: string; weight: number }>): Record<string, number> {
+  const out: Record<string, number> = {}
+  const sum = weights.reduce((s, w) => s + w.weight, 0)
+  if (!(amount > 0) || !(sum > 0)) return out
+  let acc = 0
+  weights.forEach((w, i) => {
+    const part = i === weights.length - 1 ? amount - acc : round((amount * w.weight) / sum)
+    if (part > 0) out[w.key] = (out[w.key] || 0) + part
+    acc += part > 0 ? part : 0
+  })
+  return out
+}
+
 // ── Cálculo por promoción ────────────────────────────────────────────────────
 
 interface PromoDiscountResult {
@@ -223,19 +336,37 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
   switch (promo.promotion_type) {
     case 'percentage': {
       const pct = value / 100
-      for (const item of items) add(item, item.price * item.quantity * pct)
+      const every = positiveInt(promo.repeat_every_quantity)
+      if (every == null) {
+        for (const item of items) add(item, item.price * item.quantity * pct)
+      } else {
+        let left = Math.floor(eligibleUnits(items) / every) * every
+        for (const item of items) {
+          if (left <= 0) break
+          const take = Math.min(Number(item.quantity), left)
+          add(item, take * item.price * pct)
+          left -= take
+        }
+      }
       break
     }
     case 'fixed_amount': {
-      // Monto fijo repartido proporcionalmente entre las líneas aplicables.
-      if (subtotal > 0 && value > 0) {
-        const capped = Math.min(value, subtotal)
+      // Un monto, o floor(unidades/N) veces ese monto, repartido entre las
+      // líneas que entran y nunca más que su subtotal.
+      const every = positiveInt(promo.repeat_every_quantity)
+      let amount = value
+      if (every != null) {
+        const groups = Math.floor(eligibleUnits(items) / every)
+        amount = groups > 0 ? groups * value : 0
+      }
+      if (subtotal > 0 && amount > 0) {
+        const capped = Math.min(amount, subtotal)
         for (const item of items) add(item, capped * ((item.price * item.quantity) / subtotal))
       }
       break
     }
     case 'buy_x_get_y': {
-      // Por cada (X+Y) unidades del mismo producto, Y unidades gratis (las más baratas).
+      // Misma regla que el ERP: Y < X regala X−Y por cada X; si no, Y gratis por cada X+Y.
       const buyQty = Number(promo.buy_quantity || 0)
       const getQty = Number(promo.get_quantity || 0)
       if (buyQty > 0 && getQty > 0) {
@@ -247,9 +378,8 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
         }
         for (const group of byProduct.values()) {
           const totalQty = group.reduce((s, i) => s + i.quantity, 0)
-          const sets = Math.floor(totalQty / (buyQty + getQty))
-          if (sets <= 0) continue
-          let remainingFree = sets * getQty
+          let remainingFree = unidadesGratisCompraLleva(totalQty, buyQty, getQty)
+          if (remainingFree <= 0) continue
           for (const item of [...group].sort((a, b) => a.price - b.price)) {
             if (remainingFree <= 0) break
             const free = Math.min(remainingFree, item.quantity)
@@ -261,9 +391,48 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
       break
     }
     case 'bundle': {
-      // Simplificación (igual que el ERP): porcentaje sobre el subtotal aplicable.
-      const pct = value / 100
-      for (const item of items) add(item, item.price * item.quantity * pct)
+      const precio = Number(promo.bundle_price || 0)
+      const reqs = bundleRequirements(promo)
+      if (precio > 0 && reqs.length > 0) {
+        const assigned = new Map<number, ResolvedPromoItem[]>()
+        for (const item of items) {
+          const dest = assignBundle(item, reqs)
+          if (dest == null) continue
+          const arr = assigned.get(dest) || []
+          arr.push(item)
+          assigned.set(dest, arr)
+        }
+        let packages = Number.POSITIVE_INFINITY
+        for (const req of reqs) {
+          const qty = (assigned.get(req.productId) || []).reduce((s, i) => s + Number(i.quantity), 0)
+          packages = Math.min(packages, Math.floor(qty / req.perPackage))
+        }
+        if (Number.isFinite(packages) && packages > 0) {
+          const consumed: Array<{ key: string; weight: number }> = []
+          for (const req of reqs) {
+            let left = packages * req.perPackage
+            for (const item of assigned.get(req.productId) || []) {
+              if (left <= 0) break
+              const take = Math.min(Number(item.quantity), left)
+              const worth = take * Number(item.price)
+              if (worth > 0) consumed.push({ key: String(item.id), weight: worth })
+              left -= take
+            }
+          }
+          const worth = consumed.reduce((s, c) => s + c.weight, 0)
+          const discount = round(worth - packages * precio)
+          if (discount > 0) {
+            const parts = splitAmount(discount, consumed)
+            for (const item of items) {
+              const part = parts[String(item.id)]
+              if (part > 0) add(item, part)
+            }
+          }
+        }
+      } else if (!(precio > 0) && value > 0) {
+        const pct = value / 100
+        for (const item of items) add(item, item.price * item.quantity * pct)
+      }
       break
     }
     // 'free_shipping' no descuenta productos; se ignora aquí.
@@ -303,14 +472,30 @@ export function calculatePromotions(
   const promotions = opts.applyFilters === false ? promotionsInput : filterActivePromotions(promotionsInput, opts)
   const cartSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
 
-  const eligible = promotions
-    .filter((p) => !(p.min_purchase_amount && cartSubtotal < Number(p.min_purchase_amount)))
+  const passesGates = (p: PromotionRow, applicable: ResolvedPromoItem[]): boolean => {
+    const minMoney = Number(p.min_purchase_amount || 0)
+    if (minMoney > 0) {
+      const base = purchaseScope(p) === 'cart'
+        ? cartSubtotal
+        : applicable.reduce((s, i) => s + i.price * i.quantity, 0)
+      if (base < minMoney) return false
+    }
+    const tipo = String(p.promotion_type)
+    if (tipo === 'percentage' || tipo === 'fixed_amount' || tipo === 'bundle') {
+      const minQty = positiveInt(p.min_quantity)
+      if (minQty != null && eligibleUnits(applicable) < minQty) return false
+    }
+    return true
+  }
+
+  const eligible = [...promotions]
     // Mayor prioridad primero (mismo criterio que el ERP).
     .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
 
   const forPromo = (p: PromotionRow) => {
     const applicable = items.filter((i) => itemMatchesRules(i, rulesOf(p), p.applies_to))
-    return applicable.length ? { applicable, ...calculatePromotionDiscount(p, applicable) } : null
+    if (!applicable.length || !passesGates(p, applicable)) return null
+    return { applicable, ...calculatePromotionDiscount(p, applicable) }
   }
 
   // Estrategia del ERP: una no-combinable compite contra la suma de las
@@ -387,7 +572,7 @@ export async function evaluateCartPromotions(supabase: any, input: EvaluateCartI
   const now = (input.date || new Date()).toISOString()
   const { data: promos, error } = await supabase
     .from('promotions')
-    .select('*, promotion_rules(id, rule_type, product_id, category_id)')
+    .select('*, promotion_rules(id, rule_type, product_id, category_id, quantity)')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .eq('applies_to_web', true)

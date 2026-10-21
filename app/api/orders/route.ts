@@ -849,6 +849,7 @@ export async function POST(request: NextRequest) {
           subtotal: calculatedSubtotal,
           tax: taxTotal,
           shipping: resolvedShipping,
+          tip: resolvedTip || 0,
           discount: totalDiscountAmount,
           promotions: promoEval.promotions.map(p => ({ name: p.name, discount: p.discount })),
           ...(resolvedCoupon && resolvedCouponDiscount > 0 ? { couponCode: resolvedCoupon.code, couponDiscount: resolvedCouponDiscount } : {}),

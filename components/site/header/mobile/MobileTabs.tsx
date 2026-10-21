@@ -1,9 +1,11 @@
 'use client';
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, ShoppingCart, User, X } from 'lucide-react';
+import { ProductSearch } from '../../ProductSearch';
+import { contarUnidadesCarrito } from '@/lib/cart';
 import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { IconoConCirculo, propsTrazoIcono } from '../IconoEncabezado';
 import {
@@ -28,7 +30,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
  * Header móvil con barra inferior fija tipo app.
  * - Header: logo izq + acciones der (sin menu button)
  * - Barra inferior fija (fixed bottom-0) con 5 tabs:
- *   Inicio, Categorías (modal), Buscar (modal), Carrito, Cuenta
+ *   Inicio, Categorías (modal), Buscar (el mismo panel del encabezado), Carrito, Cuenta
  */
 export default function MobileTabs({
   organization,
@@ -46,6 +48,7 @@ export default function MobileTabs({
   const { ruta } = useRutaSitio();
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
+  const unidadesCarrito = useUnidadesCarrito(organization.subdomain || '', branchId);
 
   // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno
   // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
@@ -122,8 +125,21 @@ export default function MobileTabs({
           />
           <TabButton
             onClick={() => onCartClick?.()}
-            icon={iconoTab(CartTabIcon)}
+            icon={
+              <span className="relative">
+                {iconoTab(CartTabIcon)}
+                {unidadesCarrito > 0 && (
+                  <span
+                    className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {unidadesCarrito > 99 ? '99+' : unidadesCarrito}
+                  </span>
+                )}
+              </span>
+            }
             label="Carrito"
+            ariaLabel={unidadesCarrito > 0 ? `Carrito, ${unidadesCarrito}` : 'Carrito'}
           />
           <TabButton href="/auth" icon={iconoTab(AuthTabIcon)} label="Cuenta" />
         </div>
@@ -178,46 +194,40 @@ export default function MobileTabs({
         </div>
       )}
 
-      {/* Modal de búsqueda */}
+      {/* El mismo buscador del encabezado: resultados en vivo, no el formulario a /search. */}
       {showSearch && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowSearch(false)}
-            aria-hidden="true"
-          />
-          <div className={`relative w-full sm:max-w-lg ${CLASE_FONDO_ENCABEZADO} rounded-2xl mx-4`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
-            <div className="flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Buscar</h3>
-              <button
-                onClick={() => setShowSearch(false)}
-                aria-label="Cerrar"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-4">
-              <form
-                action="/search"
-                className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2"
-              >
-                <SearchTabIcon className="h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="q"
-                  placeholder="Buscar productos..."
-                  autoFocus
-                  className="flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-white placeholder-gray-400"
-                />
-              </form>
-            </div>
-          </div>
-        </div>
+        <ProductSearch
+          primaryColor={primaryColor}
+          icon={SearchTabIcon}
+          abierto
+          sinDisparador
+          pantallaCompleta
+          alCerrar={() => setShowSearch(false)}
+        />
       )}
       <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
+}
+
+function useUnidadesCarrito(subdomain: string, branchId?: number | null) {
+  const [unidades, setUnidades] = useState(0);
+
+  useEffect(() => {
+    const leer = () => {
+      const clave = subdomain || window.location.hostname.split('.')[0];
+      setUnidades(contarUnidadesCarrito(clave, branchId));
+    };
+    leer();
+    window.addEventListener('cart-updated', leer);
+    window.addEventListener('storage', leer);
+    return () => {
+      window.removeEventListener('cart-updated', leer);
+      window.removeEventListener('storage', leer);
+    };
+  }, [subdomain, branchId]);
+
+  return unidades;
 }
 
 function TabButton({
@@ -225,11 +235,13 @@ function TabButton({
   onClick,
   icon,
   label,
+  ariaLabel,
 }: {
   href?: string;
   onClick?: () => void;
   icon: React.ReactNode;
   label: string;
+  ariaLabel?: string;
 }) {
   const content = (
     <span className="flex flex-col items-center justify-center gap-0.5 h-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -247,7 +259,7 @@ function TabButton({
   }
 
   return (
-    <button onClick={onClick} className="flex items-center justify-center" aria-label={label}>
+    <button type="button" onClick={onClick} className="flex items-center justify-center" aria-label={ariaLabel || label}>
       {content}
     </button>
   );

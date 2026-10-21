@@ -1,5 +1,17 @@
 import { getCartKey } from '@/lib/utils'
 
+/** Unidades del carrito en esta pestaña. La misma suma que el badge del encabezado. */
+export function contarUnidadesCarrito(subdomain: string, branchId?: number | null): number {
+  if (typeof localStorage === 'undefined') return 0
+  try {
+    const cart = JSON.parse(localStorage.getItem(getCartKey(subdomain, branchId)) || '[]')
+    if (!Array.isArray(cart)) return 0
+    return cart.reduce((suma: number, item: { quantity?: number }) => suma + (Number(item.quantity) || 0), 0)
+  } catch {
+    return 0
+  }
+}
+
 /**
  * Línea del carrito tal como la guarda el navegador en localStorage.
  *
@@ -63,6 +75,8 @@ export interface LineaPlatoInput {
   quantity: number
   sku?: string | null
   imageUrl?: string | null
+  /** Uuid del producto: la ficha abre `/productos/{uuid}`, no el id numérico. */
+  uuid?: string | null
   comparePrice?: number | null
   /** Opciones de grupos (con precio). Se guardan en `newModifiers`, el campo que pintan el
    *  carrito, el drawer y el checkout con nombre y extra. */
@@ -97,17 +111,17 @@ export function idLineaCarrito(productId: number, modifierIds: number[] = [], no
   return partes.length > 0 ? `${productId}_${partes.join('_')}` : productId
 }
 
-/**
- * Suma una línea al carrito del sitio (clave por sede, evento `cart-updated` del píxel). Si la
- * misma línea (producto + opciones + nota) ya está, suma la cantidad.
- */
-export function agregarPlatoAlCarrito(
-  subdomain: string,
-  branchId: number | null | undefined,
-  linea: LineaPlatoInput,
-  opciones: { reemplazar?: boolean } = {},
-): void {
-  const cartKey = getCartKey(subdomain, branchId)
+function cantidadDeLinea(quantity: number, conservarDecimales: boolean): number {
+  const n = Number(quantity)
+  if (conservarDecimales) {
+    if (!Number.isFinite(n) || n <= 0) return 1
+    return Math.round(n * 1000) / 1000
+  }
+  return Math.max(1, Math.trunc(n) || 1)
+}
+
+/** La misma forma que ya leen el drawer, el checkout y `/api/orders`. */
+function objetoLinea(linea: LineaPlatoInput, conservarDecimales: boolean) {
   const notes = linea.notes?.trim().slice(0, MAX_NOTA_COCINA) || null
   const modifiers = linea.modifiers && linea.modifiers.length > 0 ? linea.modifiers : null
   const antiguos = linea.legacyModifiers && linea.legacyModifiers.length > 0 ? linea.legacyModifiers : null
@@ -120,31 +134,68 @@ export function agregarPlatoAlCarrito(
   )
   // Carta QR: el mismo plato para otro comensal es otra línea. Sin comensal, el id de siempre.
   const id = diner ? `${idBase}_d${hashCorto(diner)}` : idBase
-  const cantidad = Math.max(1, Math.trunc(linea.quantity) || 1)
+  const cantidad = cantidadDeLinea(linea.quantity, conservarDecimales)
+  return {
+    id,
+    // Con id compuesto, el servidor lee el producto de aquí (productIdDeLinea).
+    ...(typeof id === 'string' && { productId: linea.productId }),
+    name: linea.name,
+    price: linea.unitPrice,
+    quantity: cantidad,
+    ...(linea.sku && { sku: linea.sku }),
+    ...(linea.imageUrl && { imageUrl: linea.imageUrl }),
+    ...(typeof linea.uuid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linea.uuid) && { uuid: linea.uuid.toLowerCase() }),
+    ...(linea.comparePrice && { comparePrice: linea.comparePrice }),
+    ...(antiguos && { modifiers: antiguos }),
+    ...(modifiers && { newModifiers: modifiers }),
+    ...(notes && { notes }),
+    ...(linea.variantAttributes && { variantAttributes: linea.variantAttributes }),
+    ...(diner && { diner }),
+    // Con id compuesto por el comensal, el servidor lee el producto de `productId`.
+    ...(diner && typeof id === 'string' && { productId: linea.productId }),
+  }
+}
+
+/**
+ * Suma una línea al carrito del sitio (clave por sede, evento `cart-updated` del píxel). Si la
+ * misma línea (producto + opciones + nota) ya está, suma la cantidad.
+ */
+export function agregarPlatoAlCarrito(
+  subdomain: string,
+  branchId: number | null | undefined,
+  linea: LineaPlatoInput,
+  opciones: { reemplazar?: boolean } = {},
+): void {
+  const cartKey = getCartKey(subdomain, branchId)
+  const objeto = objetoLinea(linea, false)
   const cart = opciones.reemplazar ? [] : JSON.parse(localStorage.getItem(cartKey) || '[]')
-  const idx = cart.findIndex((item: { id: number | string }) => item.id === id)
+  const idx = cart.findIndex((item: { id: number | string }) => item.id === objeto.id)
   if (idx >= 0) {
-    cart[idx].quantity += cantidad
+    cart[idx].quantity += objeto.quantity
   } else {
-    cart.push({
-      id,
-      // Con id compuesto, el servidor lee el producto de aquí (productIdDeLinea).
-      ...(typeof id === 'string' && { productId: linea.productId }),
-      name: linea.name,
-      price: linea.unitPrice,
-      quantity: cantidad,
-      ...(linea.sku && { sku: linea.sku }),
-      ...(linea.imageUrl && { imageUrl: linea.imageUrl }),
-      ...(linea.comparePrice && { comparePrice: linea.comparePrice }),
-      ...(antiguos && { modifiers: antiguos }),
-      ...(modifiers && { newModifiers: modifiers }),
-      ...(notes && { notes }),
-      ...(linea.variantAttributes && { variantAttributes: linea.variantAttributes }),
-      ...(diner && { diner }),
-      // Con id compuesto por el comensal, el servidor lee el producto de `productId`.
-      ...(diner && typeof id === 'string' && { productId: linea.productId }),
-    })
+    cart.push(objeto)
   }
   localStorage.setItem(cartKey, JSON.stringify(cart))
+  window.dispatchEvent(new CustomEvent('cart-updated'))
+}
+
+/**
+ * Deja el carrito del sitio exactamente con estas líneas (enlace «Retomar mi compra»).
+ * No suma sobre lo que ya hubiera. Conserva decimales: un producto por peso no puede
+ * quedar en una unidad entera.
+ */
+export function reemplazarCarrito(
+  subdomain: string,
+  branchId: number | null | undefined,
+  lineas: LineaPlatoInput[],
+): void {
+  const cart: ReturnType<typeof objetoLinea>[] = []
+  for (const linea of lineas) {
+    const objeto = objetoLinea(linea, true)
+    const idx = cart.findIndex((item) => item.id === objeto.id)
+    if (idx >= 0) cart[idx].quantity = Math.round((cart[idx].quantity + objeto.quantity) * 1000) / 1000
+    else cart.push(objeto)
+  }
+  localStorage.setItem(getCartKey(subdomain, branchId), JSON.stringify(cart))
   window.dispatchEvent(new CustomEvent('cart-updated'))
 }
