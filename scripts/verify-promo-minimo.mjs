@@ -91,6 +91,44 @@ const ignora = promo({
 })
 check(descuento(ignora, 2, 4000) === 4000, 'compra X lleva Y ignora min_quantity')
 
+for (const buy of [1, 0, null, '', '1', '1.9']) {
+  check(
+    descuento(promo({ buy_quantity: buy, discount_value: 1000, min_purchase_amount: 0 }), 1, 4000) === 1000,
+    `buy_quantity ${JSON.stringify(buy)} no inventa un mínimo`,
+  )
+}
+
+const soloUno = promo({
+  discount_value: 1000,
+  min_purchase_amount: 4000,
+  applies_to: 'products',
+  promotion_rules: [{ rule_type: 'include_product', product_id: 1, category_id: null }],
+})
+const dosLineas = calculatePromotions(
+  [soloUno],
+  [item(1, 4000), { ...item(1, 4000), id: '2' }],
+  { applyFilters: false },
+).totalDiscount
+const ajena = calculatePromotions(
+  [soloUno],
+  [item(1, 4000), { ...item(5, 4000), id: '9', product_id: 2 }],
+  { applyFilters: false },
+).totalDiscount
+check(dosLineas === 1000, 'dos líneas del mismo producto suman el mínimo legado')
+check(ajena === 0, 'una línea que no entra no completa el mínimo')
+
+const paquete = promo({
+  promotion_type: 'bundle',
+  bundle_price: 3000,
+  discount_value: 0,
+  buy_quantity: 2,
+  min_quantity: null,
+  applies_to: 'products',
+  promotion_rules: [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 }],
+})
+check(descuento(paquete, 1, 4000) === 0, 'el paquete no arranca con 1 unidad si el mínimo legado es 2')
+check(descuento(paquete, 2, 4000) === 2000, 'el paquete descuenta al completar 2 unidades')
+
 if (problemas.length) {
   console.error(problemas.join('\n'))
   process.exit(1)
