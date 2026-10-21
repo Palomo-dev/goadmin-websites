@@ -40,16 +40,29 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+          className={`absolute inset-0 w-full h-full object-cover${content.image_url_mobile ? ' hidden md:block' : ''}`}
           poster={content.image_url || content.image_url_mobile || undefined}
         >
           <source src={content.video_url} type="video/mp4" />
         </video>
-      ) : content.image_url || content.image_url_mobile ? (
-        <img src={content.image_url || content.image_url_mobile} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      ) : (
+      ) : null}
+      {content.image_url_mobile ? (
+        <img
+          src={content.image_url_mobile}
+          alt=""
+          className={`absolute inset-0 h-full w-full object-cover${content.image_url || content.video_url ? ' md:hidden' : ''}`}
+        />
+      ) : null}
+      {!content.video_url && content.image_url ? (
+        <img
+          src={content.image_url}
+          alt=""
+          className={`absolute inset-0 w-full h-full object-cover${content.image_url_mobile ? ' hidden md:block' : ''}`}
+        />
+      ) : null}
+      {!content.video_url && !content.image_url && !content.image_url_mobile ? (
         <div className="absolute inset-0 bg-gray-900" />
-      )}
+      ) : null}
       {showOverlay && (
         <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: overlayOpacity }} />
       )}
