@@ -18,6 +18,7 @@ import type { Metadata } from 'next'
 import { buildRestaurantJsonLd, type EspecificacionHorario } from '@/components/site/JsonLd'
 import { DIAS, horarioRevisado, turnosDe, type Dia, type HorarioSemana } from '@/lib/restaurant/horario'
 import { sedeAceptaReservas, type SedeSitio, type SedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import { urlPublicaDeOrganizacion, type DominioPublico } from '@/lib/site/urlPublicaOrg'
 
 /** Dominio de los subdominios de sitios. El mismo literal que usa page.tsx para la base. */
 export const DOMINIO_SITIOS = 'goadmin.io'
@@ -39,21 +40,26 @@ export interface UrlsSitio {
   urlBase: string
 }
 
-/** Base pública del sitio principal: la misma fórmula de `app/[[...slug]]/page.tsx`. */
-export function urlBasePrincipal(org: OrgUrl): string {
-  return org.custom_domain
-    ? `https://${org.custom_domain}`
-    : `https://${(org.subdomain ?? '').toLowerCase()}.${DOMINIO_SITIOS}`
+/**
+ * Base pública del sitio principal. Sale de los dominios verificados; el
+ * subdominio de la organización es el respaldo. No usa `custom_domain`.
+ */
+export function urlBasePrincipal(org: OrgUrl, dominios: readonly DominioPublico[] = []): string {
+  return urlPublicaDeOrganizacion({ dominios, subdomain: org.subdomain })
 }
 
 /**
  * URL pública de una sede publicada, con el mismo orden que el sitio la resuelve:
  * dominio propio de la sede → `/<slug>` bajo la base del principal.
  */
-export function urlPublicaSede(org: OrgUrl, sede: { slug?: string | null; customDomain?: string | null }): string | null {
+export function urlPublicaSede(
+  org: OrgUrl,
+  sede: { slug?: string | null; customDomain?: string | null },
+  dominios: readonly DominioPublico[] = [],
+): string | null {
   if (sede.customDomain) return `https://${sede.customDomain}`
   if (!sede.slug) return null
-  return `${urlBasePrincipal(org)}/${encodeURIComponent(sede.slug)}`
+  return `${urlBasePrincipal(org, dominios)}/${encodeURIComponent(sede.slug)}`
 }
 
 /**
@@ -65,11 +71,12 @@ export function urlPublicaSede(org: OrgUrl, sede: { slug?: string | null; custom
  */
 export function urlsSitio(params: {
   organization: OrgUrl
+  dominios?: readonly DominioPublico[]
   outlet: SedeUrl | null
   porPrefijo: boolean
   hostSede?: string | null
 }): UrlsSitio {
-  const principal = urlBasePrincipal(params.organization)
+  const principal = urlBasePrincipal(params.organization, params.dominios)
   if (!params.outlet) return { urlBasePrincipal: principal, urlBase: principal }
   if (params.porPrefijo) {
     return { urlBasePrincipal: principal, urlBase: `${principal}/${encodeURIComponent(params.outlet.branchSlug)}` }
@@ -91,11 +98,14 @@ export function metadataSede(params: {
   sede?: { branchName: string } | null
   tituloPagina?: string | null
 }): Pick<Metadata, 'metadataBase' | 'alternates' | 'title'> & { openGraph: { url: string } } {
-  const url = params.slugPagina === 'home' ? params.urlBase : `${params.urlBase}/${params.slugPagina}`
+  const absoluta = params.urlBase.startsWith('https://') ? params.urlBase.replace(/\/$/, '') : ''
+  const url = absoluta
+    ? params.slugPagina === 'home' ? absoluta : `${absoluta}/${params.slugPagina}`
+    : params.slugPagina === 'home' ? '/' : `/${params.slugPagina}`
   const partes = [params.tituloPagina, params.sede?.branchName].filter((p): p is string => !!p && p.trim() !== '')
   const title = partes.length > 0 ? `${partes.join(' · ')} | ${params.marca}` : params.marca
   return {
-    metadataBase: new URL(params.urlBase.endsWith('/') ? params.urlBase : `${params.urlBase}/`),
+    ...(absoluta ? { metadataBase: new URL(`${absoluta}/`) } : {}),
     alternates: { canonical: url },
     openGraph: { url },
     title,

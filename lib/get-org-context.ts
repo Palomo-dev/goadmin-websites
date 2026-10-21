@@ -28,6 +28,7 @@ import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWith
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
 import { urlsSitio } from '@/lib/seo/sede'
+import { dominiosPublicos } from '@/lib/site/dominiosPublicos'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 
 /**
@@ -257,8 +258,10 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
 
   // SEO local y enlaces de la sede (contratos de lib/outlet/rutaSitio.ts y lib/seo/sede.ts).
   const prefijoSede = calcularPrefijoSede(outlet, sedePorPrefijo)
+  const dominios = await dominiosPublicos(organization.id)
   const { urlBase, urlBasePrincipal } = urlsSitio({
     organization,
+    dominios,
     outlet,
     porPrefijo: sedePorPrefijo,
     hostSede: outlet && !sedePorPrefijo
@@ -279,6 +282,8 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     urlBase,
     /** Base pública del sitio principal de la organización. */
     urlBasePrincipal,
+    /** Dominios activos con los que se armó esa base. */
+    dominios,
     effectiveSettings: settings,
     primaryColor,
     template,

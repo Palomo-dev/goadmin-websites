@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendClassReservationEmail } from '@/lib/email/send-class-reservation-email'
+import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
 import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 
@@ -177,7 +178,7 @@ export async function POST(
     // `organizations.domain` no existe: el select fallaba y el correo nunca salía.
     const { data: orgData } = await (supabase as any)
       .from('organizations')
-      .select('name, subdomain, custom_domain')
+      .select('name')
       .eq('id', organizationId)
       .single()
 
@@ -188,10 +189,10 @@ export async function POST(
       .eq('id', classId)
       .single()
 
-    if (customerData?.email && orgData) {
+    const origen = customerData?.email && orgData ? await origenSitio(supabase, organizationId) : ''
+    if (customerData?.email && orgData && origen) {
       const instructor = classDetail?.profiles
       const instructorName = instructor ? `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim() : undefined
-      const domain = orgData.custom_domain || (orgData.subdomain ? `${orgData.subdomain}.goadmin.io` : 'localhost:3000')
 
       sendClassReservationEmail({
         customerEmail: customerData.email,
@@ -203,7 +204,7 @@ export async function POST(
         endAt: gymClass.end_at,
         room: classDetail?.room,
         organizationName: orgData.name,
-        portalUrl: `https://${domain}/mi-cuenta/clases`,
+        portalUrl: `${origen}/mi-cuenta/clases`,
       }).catch(err => console.error('[Class Reserve] Error enviando email:', err))
     }
 

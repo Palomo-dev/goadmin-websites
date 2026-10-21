@@ -12,12 +12,10 @@ export async function origenSitio(sb: Cliente, organizationId: number): Promise<
   const [{ data: dominios, error: errorDominios }, { data: org, error: errorOrg }] = await Promise.all([
     sb
       .from('organization_domains')
-      .select('host, domain_type, status, is_primary, is_active')
+      .select('host, domain_type, status, is_primary, is_active, updated_at')
       .eq('organization_id', organizationId)
-      .eq('is_primary', true)
-      .eq('is_active', true)
-      .eq('status', 'verified'),
-    sb.from('organizations').select('custom_domain, subdomain').eq('id', organizationId).maybeSingle(),
+      .eq('is_active', true),
+    sb.from('organizations').select('subdomain').eq('id', organizationId).maybeSingle(),
   ])
   if (errorDominios || errorOrg) {
     console.error('[origen-sitio] No se pudo leer el dominio', {
@@ -33,10 +31,10 @@ export async function origenSitio(sb: Cliente, organizationId: number): Promise<
     status: String(d.status || ''),
     isPrimary: d.is_primary === true,
     isActive: d.is_active === true,
+    updatedAt: d.updated_at ?? null,
   }))
   return origenDesdeDatos({
     dominios: filas,
-    customDomain: org?.custom_domain ?? null,
     subdomain: org?.subdomain ?? null,
   })
 }

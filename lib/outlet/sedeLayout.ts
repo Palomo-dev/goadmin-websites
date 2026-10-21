@@ -22,6 +22,7 @@ import { getSedesWeb, getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { direccionCompleta, sedeAceptaReservas } from '@/lib/restaurant/sedes-modelo'
 import { horarioDeSede, horarioRevisado, type HorarioSemana } from '@/lib/restaurant/horario'
 import { urlBasePrincipal } from '@/lib/seo/sede'
+import { dominiosPublicos } from '@/lib/site/dominiosPublicos'
 import { urlComoLlegar, urlLlamar } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import type { SedeSelector } from '@/components/site/header/SelectorSede'
@@ -78,7 +79,7 @@ export async function getDatosSedeLayout(
     // Prefijo solo si la sede de la petición es la que el middleware sacó de la ruta.
     const prefijo = sedeDeRuta?.slug && sedeDeRuta.id === sedeActualId ? prefijoSede({ branchSlug: sedeDeRuta.slug }, true) : ''
     // Desde el host de una sede (sub-subdominio o dominio propio) las demás sedes viven bajo el principal.
-    const origen = enHostDeSede ? urlBasePrincipal(organization) : ''
+    const origen = enHostDeSede ? urlBasePrincipal(organization, await dominiosPublicos(organization.id)) : ''
     const sedesSelector: SedeSelector[] = sedesWeb.flatMap((s) => {
       const href = s.customDomain
         ? `https://${s.customDomain}`
