@@ -6,7 +6,12 @@
  * Sin base de datos. Carga las funciones puras y comprueba:
  * - un pedido de pasarela, dos horas después, sí se escribe;
  * - efectivo, mesa, sin correo y quien ya pagó después, no;
- * - fuera de las 48 horas no entra (y ese motivo no se sella);
+ * - fuera de las 24 horas no entra (y ese motivo no se sella);
+ * - dos pedidos del mismo correo producen un solo envío;
+ * - una cancelación a mano no se escribe;
+ * - el enlace usa el dominio propio verificado;
+ * - la foto de la variante, o la del padre, viaja al carrito;
+ * - con IVA incluido el impuesto no se vuelve a sumar;
  * - el asunto, el párrafo y el botón son los de la compra pendiente;
  * - el correo de pago confirmado sigue diciendo lo de antes.
  */
@@ -22,6 +27,9 @@ const dir = await mkdtemp(join(tmpdir(), 'verify-carrito-pendiente-'))
 let reglas
 let textos
 let token
+let origen
+let imagen
+let totales
 try {
   const estados = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/estados-pedido.ts'), 'utf8'), { mode: 'strip' })
   const compra = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/compraPendiente.ts'), 'utf8'), { mode: 'strip' })
@@ -29,13 +37,22 @@ try {
   const textosSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/email/textosCorreoPedido.ts'), 'utf8'), { mode: 'strip' })
   process.env.ORDER_TRACKING_SECRET = 'secreto-de-prueba-para-el-enlace'
   const tokenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/tokenSeguimiento.ts'), 'utf8'), { mode: 'strip' })
+  const origenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/origenSitio.ts'), 'utf8'), { mode: 'strip' })
+  const imagenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/imagenProducto.ts'), 'utf8'), { mode: 'strip' })
+  const totalesSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/email/totalesCorreo.ts'), 'utf8'), { mode: 'strip' })
   await writeFile(join(dir, 'estados-pedido.mjs'), estados)
   await writeFile(join(dir, 'compraPendiente.mjs'), compra)
   await writeFile(join(dir, 'textosCorreoPedido.mjs'), textosSrc)
   await writeFile(join(dir, 'tokenSeguimiento.mjs'), tokenSrc)
+  await writeFile(join(dir, 'origenSitio.mjs'), origenSrc)
+  await writeFile(join(dir, 'imagenProducto.mjs'), imagenSrc)
+  await writeFile(join(dir, 'totalesCorreo.mjs'), totalesSrc)
   reglas = await import(pathToFileURL(join(dir, 'compraPendiente.mjs')).href)
   textos = await import(pathToFileURL(join(dir, 'textosCorreoPedido.mjs')).href)
   token = await import(pathToFileURL(join(dir, 'tokenSeguimiento.mjs')).href)
+  origen = await import(pathToFileURL(join(dir, 'origenSitio.mjs')).href)
+  imagen = await import(pathToFileURL(join(dir, 'imagenProducto.mjs')).href)
+  totales = await import(pathToFileURL(join(dir, 'totalesCorreo.mjs')).href)
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
@@ -86,8 +103,14 @@ igual(reglas.decisionRetoma('preparing', 'failed'), 'en_curso', 'un pedido en pr
 
 igual(motivo(pedido()), null, 'pasarela, dos horas después, se escribe')
 igual(motivo(pedido({ cancelledAt: iso(2 * hora - 1) })), 'fuera_de_ventana', 'antes de las dos horas no')
-igual(motivo(pedido({ cancelledAt: iso(48 * hora) })), null, 'a las 48 horas todavía entra')
-igual(motivo(pedido({ cancelledAt: iso(48 * hora + 1) })), 'fuera_de_ventana', 'después de 48 horas no entra')
+igual(motivo(pedido({ cancelledAt: iso(24 * hora) })), null, 'a las 24 horas todavía entra')
+igual(motivo(pedido({ cancelledAt: iso(24 * hora + 1) })), 'fuera_de_ventana', 'después de 24 horas no entra')
+igual(motivo(pedido({ cancellationReason: 'Expirado por falta de pago' })), null, 'expirado por el sistema se escribe')
+igual(motivo(pedido({ status: 'cancelled', cancellationReason: 'Expirado por falta de pago' })), null, 'cancelado por el sistema por falta de pago se escribe')
+igual(motivo(pedido({ cancellationReason: 'el cliente llamó' })), 'manual', 'una razón escrita a mano no')
+igual(motivo(pedido({ status: 'cancelled', cancellationReason: '' })), 'manual', 'cancelado sin la razón del sistema no')
+igual(motivo(pedido({ cancelledBy: '44444444-4444-4444-4444-444444444444' })), 'manual', 'con usuario que cancela no')
+check(reglas.MOTIVOS_SELLADOS.includes('manual'), 'la cancelación manual se sella')
 check(!reglas.MOTIVOS_SELLADOS.includes('fuera_de_ventana'), 'lo que quedó fuera de la ventana no se sella')
 
 igual(motivo(pedido({ email: '' })), 'sin_correo', 'sin correo no')
@@ -157,6 +180,87 @@ const linea = reglas.lineaRetoma({
 igual(linea.quantity, 1.5, 'la cantidad por peso se conserva')
 igual(linea.unitPrice, 3500.5, 'el precio es el recalculado')
 igual(linea.modifiers[0].modifierId, 2, 'la opción viaja para que el checkout la vuelva a cobrar')
+const conFoto = reglas.lineaRetoma({
+  productId: 9,
+  nombre: 'Pan',
+  precioUnitario: 1000,
+  cantidad: 1,
+  sku: null,
+  modificadores: [],
+  sinPrecio: [],
+  notas: null,
+  imageUrl: 'https://cdn.ejemplo/foto.jpg',
+  uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  variantAttributes: { color: 'Beige' },
+})
+igual(conFoto.imageUrl, 'https://cdn.ejemplo/foto.jpg', 'la foto viaja en la línea')
+igual(conFoto.uuid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'el uuid abre la ficha')
+igual(conFoto.variantAttributes, { color: 'Beige' }, 'la variante viaja con la línea')
+
+const plan = reglas.planDeEnvio(
+  [
+    { id: 'b', organizationId: 7, email: 'Cliente@ejemplo.com', cancelledAt: iso(3 * hora) },
+    { id: 'a', organizationId: 7, email: 'cliente@ejemplo.com', cancelledAt: iso(2 * hora) },
+  ],
+  ahora,
+  [],
+)
+igual(plan, { enviar: ['a'], omitidos: ['b'] }, 'dos pedidos del mismo correo: solo el más reciente')
+const planSellado = reglas.planDeEnvio(
+  [{ id: 'a', organizationId: 7, email: 'cliente@ejemplo.com', cancelledAt: iso(2 * hora) }],
+  ahora,
+  [{ organizationId: 7, email: 'cliente@ejemplo.com', sentAt: iso(1 * hora) }],
+)
+igual(planSellado, { enviar: [], omitidos: ['a'] }, 'si ya se escribió en 24 horas, no se repite')
+const planViejo = reglas.planDeEnvio(
+  [{ id: 'a', organizationId: 7, email: 'cliente@ejemplo.com', cancelledAt: iso(2 * hora) }],
+  ahora,
+  [{ organizationId: 7, email: 'cliente@ejemplo.com', sentAt: iso(25 * hora) }],
+)
+igual(planViejo.enviar, ['a'], 'un sello de hace más de 24 horas no bloquea')
+
+igual(
+  origen.origenDesdeDatos({
+    dominios: [{ host: 'tienda.example', domainType: 'custom_domain', status: 'verified', isPrimary: true, isActive: true }],
+    customDomain: null,
+    subdomain: 'tienda',
+  }),
+  'https://tienda.example',
+  'el dominio propio verificado gana al subdominio',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [{ host: 'tienda.goadmin.io', domainType: 'system_subdomain', status: 'verified', isPrimary: true, isActive: true }],
+    customDomain: null,
+    subdomain: 'tienda',
+  }),
+  'https://tienda.goadmin.io',
+  'sin dominio propio se usa el subdominio de la plataforma',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [],
+    customDomain: 'alias.example',
+    subdomain: 'tienda',
+  }),
+  'https://alias.example',
+  'sin fila verificada se usa custom_domain',
+)
+
+const base = 'https://cdn.ejemplo'
+const fotos = [
+  { productId: 2, storagePath: 'padre.jpg', sharedPath: null, isPrimary: true, displayOrder: 0 },
+  { productId: 9, storagePath: '', sharedPath: null, isPrimary: false, displayOrder: 1 },
+]
+igual(imagen.imagenRetoma(fotos, 9, 2, base), `${base}/storage/v1/object/public/product-images/padre.jpg`, 'sin foto de la variante se usa la del padre')
+igual(
+  imagen.imagenRetoma([{ productId: 9, storagePath: 'variante.jpg', sharedPath: null, isPrimary: true, displayOrder: 0 }], 9, 2, base),
+  `${base}/storage/v1/object/public/product-images/variante.jpg`,
+  'la foto de la variante gana a la del padre',
+)
+
+check(totales.impuestoVaIncluido({ subtotal: 1398, tax: 223, shipping: 10000, tip: 0, discount: 0, total: 11398 }), '1398 + envío cuadra con el total: el IVA va incluido')
+check(!totales.impuestoVaIncluido({ subtotal: 1398, tax: 223, shipping: 10000, tip: 0, discount: 0, total: 11621 }), 'si el impuesto cuadra al sumarlo, se muestra aparte')
 check(reglas.lineaRetoma({
   productId: 0, nombre: 'X', precioUnitario: 1, cantidad: 1, sku: null, modificadores: [], sinPrecio: [], notas: null,
 }) === null, 'sin producto no hay línea')
@@ -194,6 +298,9 @@ check(correo.includes('Recibimos tu pedido'), 'el pedido recibido conserva su t�
 check(correo.includes('Seguir mi pedido'), 'el botón de seguimiento sigue')
 check(correo.includes('compraPendiente') && correo.includes('textosCorreoCompraPendiente'), 'el pendiente usa los textos nuevos')
 check(correo.includes('!data.compraPendiente && (data.tipoEntrega'), 'el pendiente no anuncia la entrega')
+check(correo.includes('Subtotal (IVA incluido)') && correo.includes('de los cuales IVA:'), 'el IVA incluido se nombra y no se suma otra vez')
+check(correo.includes('impuestoVaIncluido'), 'el correo decide el IVA con la regla pura')
+check(!correo.includes('customerEmail} para orden'), 'el log no escribe el correo del comprador')
 
 const cron = await readFile(join(ROOT, 'app/api/cron/carritos-abandonados/route.ts'), 'utf8')
 const cola = await readFile(join(ROOT, 'lib/orders/procesarColaCompraPendiente.ts'), 'utf8')
@@ -208,7 +315,14 @@ check(!clave.includes('console.log') && !clave.includes('console.error(data'), '
 check(cron.includes('cronAutorizado'), 'el cron de 15 minutos comprueba el secreto')
 check(authCron.includes('CRON_SECRET') && authCron.includes('fn_secreto_vault_coincide'), 'el cron falla cerrado y acepta el secreto de la base')
 check(cron.includes('procesarColaCompraPendiente'), 'el cron de 15 minutos usa la cola')
-check(cola.includes("eq('source', 'website')"), 'la cola solo mira pedidos del sitio')
+check(cola.includes('fn_reclamar_cola_compra_pendiente'), 'la cola reclama con bloqueo en la base')
+check(cola.includes("source = 'website'"), 'la cola solo mira pedidos del sitio')
+check(!cola.includes(".in('status'"), 'la cola ya no elige los pedidos en el servidor')
+const retoma = await readFile(join(ROOT, 'lib/orders/cargarRetoma.ts'), 'utf8')
+const carrito = await readFile(join(ROOT, 'lib/cart.ts'), 'utf8')
+const pagina = await readFile(join(ROOT, 'app/carrito/CartPageClient.tsx'), 'utf8')
+check(retoma.includes('imagenRetoma') && retoma.includes('parent_product_id'), 'al retomar se lee la foto del producto o la del padre')
+check(carrito.includes('uuid:') && pagina.includes('item.uuid || item.productId || item.id'), 'el enlace del carrito abre la ficha por uuid')
 check(minuto.includes('procesarColaCompraPendiente') && minuto.includes('cronAutorizado'), 'el cron de cada minuto también decide la cola')
 
 const vercel = await readFile(join(ROOT, 'vercel.json'), 'utf8')

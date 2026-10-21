@@ -21,6 +21,12 @@ import {
   type DatosClienteRetomar,
   type LineaRetoma,
 } from '@/lib/orders/compraPendiente'
+import {
+  atributosVariante,
+  imagenRetoma,
+  uuidProducto,
+  type FotoProducto,
+} from '@/lib/orders/imagenProducto'
 
 export interface ProductoOmitido {
   nombre: string
@@ -162,8 +168,10 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
     else console.error('[retomar] Carta de sede ilegible; se usan los precios vigentes', { organizationId, error: lecturaCarta.error })
   }
   const resuelto = resolverLineasPedido(lineasCliente, lectura.datos, { organizationId, carta })
+  const ficha = await fichaDeProductos(sb, organizationId, resuelto.lineas.map((l) => l.productId))
   const lineas: LineaRetoma[] = []
   for (const l of resuelto.lineas) {
+    const producto = ficha.get(l.productId)
     const linea = lineaRetoma({
       productId: l.productId,
       nombre: l.nombre,
@@ -173,6 +181,11 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
       modificadores: l.modificadores,
       sinPrecio: l.modificadoresSinPrecio,
       notas: l.notas,
+      imageUrl: producto
+        ? imagenRetoma(producto.fotos, l.productId, producto.parentId, baseImagen())
+        : null,
+      uuid: producto?.uuid ?? null,
+      variantAttributes: producto?.atributos ?? null,
     })
     if (linea) lineas.push(linea)
     else omitidos.push({ nombre: l.nombre, detalle: 'ya no está disponible' })
@@ -181,4 +194,73 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
     omitidos.push({ nombre: p.nombre, detalle: p.detalle })
   }
   return { tipo: 'retomar', ...base, lineas, omitidos }
+}
+
+function baseImagen(): string {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+}
+
+interface FichaProducto {
+  uuid: string | null
+  parentId: number | null
+  atributos: Record<string, string> | null
+  fotos: FotoProducto[]
+}
+
+/** Imagen, uuid y variante. Si la variante no tiene foto, se usa la del padre. */
+async function fichaDeProductos(
+  sb: any,
+  organizationId: number,
+  productIds: number[],
+): Promise<Map<number, FichaProducto>> {
+  const mapa = new Map<number, FichaProducto>()
+  if (productIds.length === 0) return mapa
+  const { data: productos, error } = await sb
+    .from('products')
+    .select('id, uuid, parent_product_id, variant_data')
+    .eq('organization_id', organizationId)
+    .in('id', productIds)
+  if (error) {
+    console.error('[retomar] No se pudieron leer las fichas', { organizationId, error: error.message })
+    return mapa
+  }
+  const padres: number[] = []
+  for (const fila of (productos || []) as any[]) {
+    const id = Number(fila.id)
+    if (!Number.isInteger(id)) continue
+    const parentId = Number(fila.parent_product_id)
+    const padre = Number.isInteger(parentId) && parentId > 0 ? parentId : null
+    if (padre) padres.push(padre)
+    mapa.set(id, {
+      uuid: uuidProducto(fila.uuid),
+      parentId: padre,
+      atributos: atributosVariante(fila.variant_data),
+      fotos: [],
+    })
+  }
+  const idsFoto = Array.from(new Set([...mapa.keys(), ...padres]))
+  if (idsFoto.length === 0) return mapa
+  const { data: imagenes, error: errorImagenes } = await sb
+    .from('product_images')
+    .select('product_id, storage_path, is_primary, display_order, shared_images(storage_path)')
+    .in('product_id', idsFoto)
+    .order('display_order', { ascending: true })
+  if (errorImagenes) {
+    console.error('[retomar] No se pudieron leer las fotos', { organizationId, error: errorImagenes.message })
+    return mapa
+  }
+  const fotos: FotoProducto[] = ((imagenes || []) as any[]).map((img) => {
+    const compartida = img.shared_images
+    const sharedPath = Array.isArray(compartida) ? compartida[0]?.storage_path : compartida?.storage_path
+    return {
+      productId: Number(img.product_id),
+      storagePath: typeof img.storage_path === 'string' ? img.storage_path : null,
+      sharedPath: typeof sharedPath === 'string' ? sharedPath : null,
+      isPrimary: img.is_primary === true,
+      displayOrder: Number.isFinite(Number(img.display_order)) ? Number(img.display_order) : 0,
+    }
+  })
+  // imagenRetoma elige la del producto y, si no hay, la del padre.
+  for (const ficha of mapa.values()) ficha.fotos = fotos
+  return mapa
 }

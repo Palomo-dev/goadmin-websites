@@ -2,10 +2,12 @@
  * A quién se le escribe el correo de compra pendiente, y con qué se rearma el carrito.
  *
  * Un solo correo, unas dos horas después de que el pedido pase a cancelado o
- * expirado, y no más allá de 48 horas: la primera ejecución no escribe años de
- * pedidos viejos. Solo sitio web, con correo, pago por pasarela. No a efectivo,
- * transferencia, contraentrega ni rondas de mesa, ni si ese correo ya pagó otro
- * pedido de la misma organización después.
+ * expirado, y no más allá de 24 horas: la primera ejecución no escribe pedidos
+ * viejos. Solo sitio web, con correo, pago por pasarela, y solo si expiró por
+ * falta de pago. No a efectivo, transferencia, contraentrega ni rondas de mesa,
+ * ni si alguien lo canceló a mano, ni si ese correo ya pagó otro pedido de la
+ * misma organización después. Un mismo correo, en la misma tienda, recibe como
+ * mucho un mensaje cada 24 horas, y es por el pedido más reciente.
  *
  * Puro. La pasarela es la misma regla que `fn_web_order_metodo_nativo`: método
  * `cash`, `transfer` o `mesa`, o un método de la organización sin conexión de
@@ -17,7 +19,12 @@ import { esComerAqui } from '@/lib/orders/estados-pedido'
 /** Dos horas después de cancelado o expirado. */
 export const ESPERA_COMPRA_PENDIENTE_MS = 2 * 60 * 60 * 1000
 /** Tope hacia atrás. Lo anterior a esto no se selecciona ni se marca. */
-export const VENTANA_COMPRA_PENDIENTE_MS = 48 * 60 * 60 * 1000
+export const VENTANA_COMPRA_PENDIENTE_MS = 24 * 60 * 60 * 1000
+/** Un correo por comprador y tienda en este lapso, aunque haya varios pedidos. */
+export const DEDUPE_COMPRA_PENDIENTE_MS = 24 * 60 * 60 * 1000
+/** La escribe el vencimiento automático. Cualquier otra razón es manual. */
+export const MOTIVO_FALTA_DE_PAGO = 'Expirado por falta de pago'
+export const MOTIVO_OMITIDO_DUPLICADO = 'omitido por duplicado'
 
 const METODOS_NATIVOS = new Set(['cash', 'transfer', 'mesa'])
 
@@ -27,6 +34,7 @@ export type MotivoSinCorreoPendiente =
   | 'sin_correo'
   | 'no_es_sitio'
   | 'estado'
+  | 'manual'
   | 'pago'
   | 'mesa'
   | 'nativo'
@@ -46,6 +54,9 @@ export interface PedidoPendiente {
   cancelledAt: string | null
   createdAt: string | null
   yaEnviado: boolean
+  /** Ausente se trata como null: los pedidos viejos del contrato no lo traen. */
+  cancelledBy?: string | null
+  cancellationReason?: string | null
 }
 
 export interface FilaMetodoPago {
@@ -68,6 +79,9 @@ export interface LineaRetoma {
   unitPrice: number
   quantity: number
   sku?: string | null
+  imageUrl?: string | null
+  uuid?: string | null
+  variantAttributes?: Record<string, string> | null
   modifiers?: { groupId: number; groupName: string; modifierId: number; name: string; extraPrice: number }[]
   legacyModifiers?: { typeId: number; typeName: string; valueId: number; valueName: string }[]
   notes?: string | null
@@ -107,6 +121,79 @@ export function metodoEsNativo(
   return filas.some((f) => f.organizationId === organizationId && f.code === m && f.sinPasarela)
 }
 
+/**
+ * Cancelado a mano: hay un usuario, o la razón no es la del vencimiento
+ * automático. Un expirado sin razón sigue siendo del sistema.
+ */
+export function esCancelacionManual(pedido: {
+  status: string
+  cancelledBy?: string | null
+  cancellationReason?: string | null
+}): boolean {
+  if (pedido.cancelledBy) return true
+  const motivo = (pedido.cancellationReason ?? '').trim()
+  if (pedido.status === 'expired') return motivo.length > 0 && motivo !== MOTIVO_FALTA_DE_PAGO
+  if (pedido.status === 'cancelled') return motivo !== MOTIVO_FALTA_DE_PAGO
+  return true
+}
+
+export interface PedidoPlanEnvio {
+  id: string
+  organizationId: number
+  email: string
+  cancelledAt: string
+}
+
+export interface SelloCompraPendiente {
+  organizationId: number
+  email: string
+  sentAt: string
+}
+
+/** A quién se le escribe cuando hay varios pedidos del mismo correo. */
+export function planDeEnvio(
+  pedidos: readonly PedidoPlanEnvio[],
+  ahora: Date,
+  sellos: readonly SelloCompraPendiente[],
+): { enviar: string[]; omitidos: string[] } {
+  const grupos = new Map<string, PedidoPlanEnvio[]>()
+  for (const pedido of pedidos) {
+    const email = pedido.email.trim().toLowerCase()
+    if (!email) continue
+    const clave = `${pedido.organizationId}\n${email}`
+    const lista = grupos.get(clave) ?? []
+    lista.push(pedido)
+    grupos.set(clave, lista)
+  }
+  const enviar: string[] = []
+  const omitidos: string[] = []
+  const ahoraMs = ahora.getTime()
+  for (const [clave, lista] of grupos) {
+    const salto = clave.indexOf('\n')
+    const org = Number(clave.slice(0, salto))
+    const email = clave.slice(salto + 1)
+    const reciente = sellos.some((sello) => {
+      if (sello.organizationId !== org) return false
+      if (sello.email.trim().toLowerCase() !== email) return false
+      const t = Date.parse(sello.sentAt)
+      if (!Number.isFinite(t)) return false
+      const edad = ahoraMs - t
+      return edad >= 0 && edad <= DEDUPE_COMPRA_PENDIENTE_MS
+    })
+    const ordenados = [...lista].sort((a, b) => {
+      const delta = Date.parse(b.cancelledAt) - Date.parse(a.cancelledAt)
+      if (delta !== 0) return delta
+      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0
+    })
+    if (reciente) {
+      for (const pedido of ordenados) omitidos.push(pedido.id)
+      continue
+    }
+    ordenados.forEach((pedido, indice) => (indice === 0 ? enviar : omitidos).push(pedido.id))
+  }
+  return { enviar, omitidos }
+}
+
 function pagoDespues(pedido: PedidoPendiente, pagos: PagoPosterior[]): boolean {
   const correo = (pedido.email || '').trim().toLowerCase()
   const desde = Date.parse(pedido.createdAt || '')
@@ -136,6 +223,7 @@ export function motivoNoEscribir(
   if (!correoUtil(pedido.email)) return 'sin_correo'
   if (pedido.source !== 'website') return 'no_es_sitio'
   if (pedido.status !== 'expired' && pedido.status !== 'cancelled') return 'estado'
+  if (esCancelacionManual(pedido)) return 'manual'
   if (pedido.paymentStatus !== 'failed') return 'pago'
   if (esComerAqui(pedido.deliveryType, pedido.notasInternas) || pedido.restaurantTableId) return 'mesa'
   if (metodoEsNativo(pedido.paymentMethod, pedido.organizationId, metodos)) return 'nativo'
@@ -162,6 +250,7 @@ export const MOTIVOS_SELLADOS: readonly MotivoSinCorreoPendiente[] = [
   'sin_correo',
   'no_es_sitio',
   'estado',
+  'manual',
   'pago',
   'mesa',
   'nativo',
@@ -199,6 +288,9 @@ export function lineaRetoma(entrada: {
   modificadores: { groupId: number; groupName: string; modifierId: number; name: string; extraPrice: number }[]
   sinPrecio: { typeId: unknown; typeName: unknown; valueId: unknown; valueName: unknown }[]
   notas: string | null
+  imageUrl?: string | null
+  uuid?: string | null
+  variantAttributes?: Record<string, string> | null
 }): LineaRetoma | null {
   if (!Number.isInteger(entrada.productId) || entrada.productId <= 0) return null
   const cantidad = Number(entrada.cantidad)
@@ -216,6 +308,11 @@ export function lineaRetoma(entrada: {
     name: typeof m.name === 'string' ? m.name : '',
     extraPrice: Number.isFinite(Number(m.extraPrice)) && Number(m.extraPrice) > 0 ? Number(m.extraPrice) : 0,
   }))
+  const imagen = typeof entrada.imageUrl === 'string' && entrada.imageUrl.trim() ? entrada.imageUrl.trim() : null
+  const uuid = typeof entrada.uuid === 'string' && entrada.uuid.trim() ? entrada.uuid.trim() : null
+  const atributos = entrada.variantAttributes && Object.keys(entrada.variantAttributes).length > 0
+    ? entrada.variantAttributes
+    : null
   const legacy = (entrada.sinPrecio || []).flatMap((m) => {
     const typeId = entero(m.typeId)
     const valueId = entero(m.valueId)
@@ -233,6 +330,9 @@ export function lineaRetoma(entrada: {
     unitPrice: precio,
     quantity: cantidad,
     sku: entrada.sku,
+    ...(imagen ? { imageUrl: imagen } : {}),
+    ...(uuid ? { uuid } : {}),
+    ...(atributos ? { variantAttributes: atributos } : {}),
     ...(modifiers.length > 0 ? { modifiers } : {}),
     ...(legacy.length > 0 ? { legacyModifiers: legacy } : {}),
     notes: entrada.notas,

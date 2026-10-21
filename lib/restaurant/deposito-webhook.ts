@@ -28,14 +28,9 @@ import { fechaLarga } from './horario'
 import { contextoCorreoReserva } from './reservas-servidor'
 import { rutaGestionReserva, tokenValido } from './reservas-errores'
 import { estadoDepositoWompi } from './deposito-modelo'
+import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
 
 export type ResultadoWebhookDeposito = ResultadoCobroFirmado
-
-function origenSitio(org: { custom_domain?: string | null; subdomain?: string | null } | null): string {
-  if (org?.custom_domain) return `https://${org.custom_domain}`
-  if (org?.subdomain) return `https://${org.subdomain}.goadmin.io`
-  return ''
-}
 
 /**
  * Firma, idempotencia y registro en `integration_events`: lib/payments/wompi-cobro-firmado.ts
@@ -94,21 +89,18 @@ export async function procesarDepositoWompi(
 }
 
 async function avisarReservaPagada(supabase: any, organizationId: number, reservationId: string): Promise<void> {
-  const [{ data: r }, { data: org }] = await Promise.all([
-    supabase
-      .from('restaurant_reservations')
-      .select('id, branch_id, status, customer_name, customer_email, customer_phone, party_size, reservation_date, reservation_time, notes, manage_token')
-      .eq('id', reservationId)
-      .eq('organization_id', organizationId)
-      .maybeSingle(),
-    supabase.from('organizations').select('custom_domain, subdomain').eq('id', organizationId).maybeSingle(),
-  ])
+  const { data: r } = await supabase
+    .from('restaurant_reservations')
+    .select('id, branch_id, status, customer_name, customer_email, customer_phone, party_size, reservation_date, reservation_time, notes, manage_token')
+    .eq('id', reservationId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
   if (!r) return
   const branchId = r.branch_id == null ? null : Number(r.branch_id)
   const datos = await contextoCorreoReserva(supabase, organizationId, branchId)
   const hora = String(r.reservation_time).slice(0, 5)
   const codigo = String(r.id).slice(0, 8).toUpperCase()
-  const origen = origenSitio(org)
+  const origen = await origenSitio(supabase, organizationId)
   const manageUrl = tokenValido(r.manage_token) && origen ? `${origen}${rutaGestionReserva(r.manage_token)}` : null
 
   if (r.customer_email) {

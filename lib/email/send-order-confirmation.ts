@@ -11,6 +11,7 @@
 
 import { sobreCorreoPedido, type MarcaCorreoPedido, type SobreCorreoPedido } from '@/lib/email/marcaCorreoPedido'
 import { textosCorreoCompraPendiente } from '@/lib/email/textosCorreoPedido'
+import { impuestoVaIncluido } from '@/lib/email/totalesCorreo'
 
 interface OrderEmailData {
   orderNumber: string
@@ -20,6 +21,8 @@ interface OrderEmailData {
   subtotal: number
   tax: number
   shipping: number
+  /** Propina. Entra en el total guardado; si falta, se trata como cero. */
+  tip?: number
   /** Descuento total (cupón + promociones). */
   discount?: number
   promotions?: { name: string; discount: number }[]
@@ -58,14 +61,19 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+export interface ResultadoEnvioCorreo {
+  ok: boolean
+  id: string | null
+}
+
 export async function sendOrderConfirmationEmail(
   data: OrderEmailData,
   opciones?: { apiKey?: string | null },
-): Promise<boolean> {
+): Promise<ResultadoEnvioCorreo> {
   const apiKey = (opciones?.apiKey && opciones.apiKey.startsWith('re_') ? opciones.apiKey : null) || process.env.RESEND_API_KEY
   if (!apiKey) {
     console.log('[Email] RESEND_API_KEY no configurada — email de confirmación omitido')
-    return false
+    return { ok: false, id: null }
   }
 
   const sobre: SobreCorreoPedido | null = data.marca
@@ -112,6 +120,24 @@ export async function sendOrderConfirmationEmail(
     ? `Si tienes alguna pregunta sobre tu pedido, escribe a <a href="mailto:${escapeHtml(sobre.correo)}" style="color:${sobre.color};">${escapeHtml(sobre.correo)}</a>.`
     : `Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.`
 
+  const incluido = impuestoVaIncluido({
+    subtotal: data.subtotal,
+    tax: data.tax,
+    shipping: data.shipping,
+    tip: data.tip,
+    discount: data.discount,
+    total: data.total,
+  })
+  const filaTotal = (etiqueta: string, valor: number) =>
+    `<div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;"><span>${etiqueta}</span><span>$${valor.toLocaleString('es-CO')}</span></div>`
+  const totalesHtml = [
+    filaTotal(incluido ? 'Subtotal (IVA incluido)' : 'Subtotal', data.subtotal),
+    incluido && data.tax > 0 ? filaTotal('de los cuales IVA:', data.tax) : '',
+    !incluido && data.tax > 0 ? filaTotal('Impuestos', data.tax) : '',
+    data.shipping > 0 ? filaTotal('Envío', data.shipping) : '',
+    (data.tip || 0) > 0 ? filaTotal('Propina', data.tip || 0) : '',
+  ].join('')
+
   const itemsHtml = data.items.map(item => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(item.name)}</td>
@@ -153,22 +179,7 @@ export async function sendOrderConfirmationEmail(
         </table>
         
         <div style="border-top:2px solid #eee;padding-top:12px;margin-top:12px;">
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
-            <span>Subtotal</span>
-            <span>$${data.subtotal.toLocaleString('es-CO')}</span>
-          </div>
-          ${data.tax > 0 ? `
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
-            <span>Impuestos</span>
-            <span>$${data.tax.toLocaleString('es-CO')}</span>
-          </div>
-          ` : ''}
-          ${data.shipping > 0 ? `
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;">
-            <span>Envío</span>
-            <span>$${data.shipping.toLocaleString('es-CO')}</span>
-          </div>
-          ` : ''}
+          ${totalesHtml}
           ${(data.promotions || []).filter(p => p.discount > 0).map(p => `
           <div style="display:flex;justify-content:space-between;font-size:14px;color:#16a34a;margin-bottom:4px;">
             <span>🏷️ ${escapeHtml(p.name)}</span>
@@ -219,15 +230,16 @@ export async function sendOrderConfirmationEmail(
     })
 
     if (!res.ok) {
-      const err = await res.text()
-      console.error('[Email] Error enviando email:', err)
-      return false
+      console.error('[Email] Error enviando email', { orden: data.orderNumber, status: res.status })
+      return { ok: false, id: null }
     }
 
-    console.log(`[Email] ${data.compraPendiente ? 'Compra pendiente enviada' : 'Confirmación enviada'} a ${data.customerEmail} para orden ${data.orderNumber}`)
-    return true
-  } catch (error) {
-    console.error('[Email] Error enviando email:', error)
-    return false
+    const cuerpo = await res.json().catch(() => null) as { id?: unknown } | null
+    const id = typeof cuerpo?.id === 'string' ? cuerpo.id : null
+    console.log(`[Email] ${data.compraPendiente ? 'Compra pendiente enviada' : 'Confirmación enviada'} para orden ${data.orderNumber}`)
+    return { ok: true, id }
+  } catch {
+    console.error('[Email] Error enviando email', { orden: data.orderNumber })
+    return { ok: false, id: null }
   }
 }
