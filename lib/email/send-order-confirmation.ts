@@ -58,8 +58,11 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
-export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY
+export async function sendOrderConfirmationEmail(
+  data: OrderEmailData,
+  opciones?: { apiKey?: string | null },
+): Promise<boolean> {
+  const apiKey = (opciones?.apiKey && opciones.apiKey.startsWith('re_') ? opciones.apiKey : null) || process.env.RESEND_API_KEY
   if (!apiKey) {
     console.log('[Email] RESEND_API_KEY no configurada — email de confirmación omitido')
     return false

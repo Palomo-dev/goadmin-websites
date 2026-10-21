@@ -9,10 +9,11 @@
  * llama aquí. El sello se pone antes de enviar y solo se quita si el correo
  * falla, así que los dos horarios no escriben dos veces.
  *
- * Quien no califica queda sellado. Si falta la clave del correo, no se sella:
- * el siguiente ciclo lo reintenta.
+ * Quien no califica queda sellado. Si falta la clave del correo (ni en el
+ * despliegue ni en el vault), no se sella: el siguiente ciclo lo reintenta.
  */
 
+import { claveResend } from '@/lib/orders/claveResend'
 import { enviarCorreoCompraPendiente } from '@/lib/orders/correoCompraPendiente'
 import {
   ESPERA_COMPRA_PENDIENTE_MS,
@@ -94,8 +95,9 @@ async function quitarSello(sb: any, id: string, sello: string): Promise<void> {
 }
 
 export async function procesarColaCompraPendiente(supabase: { from: (tabla: string) => any }): Promise<ResultadoColaCompraPendiente> {
-  if (!process.env.RESEND_API_KEY) {
-    console.error('[carritos-abandonados] Falta RESEND_API_KEY')
+  const apiKey = await claveResend(supabase)
+  if (!apiKey) {
+    console.error('[carritos-abandonados] Falta la clave de envío')
     return { revisados: 0, enviados: 0, omitidos: 0, reintentos: 0, motivo: 'sin_resend' }
   }
   const sb = supabase as any

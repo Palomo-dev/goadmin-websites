@@ -9,6 +9,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+import { claveResend } from '@/lib/orders/claveResend'
 import { origenSitio } from '@/lib/orders/correoPedidoPagado'
 import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 
@@ -25,6 +26,11 @@ export async function enviarCorreoCompraPendiente(webOrderId: string): Promise<b
       return false
     }
     const sb = supabase as any
+    const apiKey = await claveResend(sb)
+    if (!apiKey) {
+      console.error('[CorreoPendiente] Falta la clave de envío', { webOrderId })
+      return false
+    }
     const { data: pedido, error } = await sb
       .from('web_orders')
       .select('id, order_number, organization_id, branch_id, payment_status, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, total, coupon_code, web_order_items ( product_name, quantity, unit_price, total )')
@@ -68,7 +74,7 @@ export async function enviarCorreoCompraPendiente(webOrderId: string): Promise<b
       marca,
       trackingUrl: `${origen}${ruta}`,
       compraPendiente: true,
-    })
+    }, { apiKey })
   } catch (err) {
     console.error('[CorreoPendiente] Error enviando el correo', { webOrderId, err })
     return false
