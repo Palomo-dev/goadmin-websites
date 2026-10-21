@@ -533,7 +533,8 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       )
     }
 
-    if (slide.image_url) {
+    const fotoSlide = slide.image_url || slide.image_url_mobile
+    if (fotoSlide) {
       if (fullScreen || hasText) {
         // Modo full-screen o con texto: imagen como fondo con object-cover
         return (
@@ -542,7 +543,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
               {slide.image_url_mobile && (
                 <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
               )}
-              <img src={slide.image_url} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
+              <img src={fotoSlide} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
             </picture>
             {showOverlay && <div className="absolute inset-0 bg-black/40" />}
             <CapaEnlace href={enlace} etiqueta={etiqueta} />
@@ -561,7 +562,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
               <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
             )}
             <img
-              src={slide.image_url}
+              src={fotoSlide}
               alt={slide.title || etiqueta}
               className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
               loading={isFirst ? 'eager' : 'lazy'}

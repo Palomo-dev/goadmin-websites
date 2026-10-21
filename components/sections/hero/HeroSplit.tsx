@@ -11,6 +11,7 @@ interface HeroSplitProps {
     cta_secondary_text?: string
     cta_secondary_url?: string
     image_url?: string
+    image_url_mobile?: string
     // F3.5 — campos nuevos
     content_position?: string
     buttons?: HeroButtonItem[]
@@ -36,7 +37,9 @@ function verticalAlignClass(pos: string): string {
 }
 
 export function HeroSplit({ content, primaryColor, organization }: HeroSplitProps) {
-  const imageUrl = content.image_url || organization?.logo_url
+  const imageUrl = content.image_url || null
+  const imageUrlMobile = content.image_url_mobile || null
+  const logo = !imageUrl && !imageUrlMobile ? organization?.logo_url : null
   const showTitle = (content as any).show_title !== false
   const showCta = (content as any).show_cta !== false
   const contentPosition = content.content_position || 'middle-center'
@@ -85,8 +88,17 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
         ) : null}
       </div>
       <div className="order-first md:order-last">
-        {imageUrl ? (
-          <img src={imageUrl} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
+        {imageUrl || imageUrlMobile ? (
+          imageUrlMobile && imageUrlMobile !== imageUrl ? (
+            <picture>
+              <source media="(max-width: 767px)" srcSet={imageUrlMobile} />
+              <img src={imageUrl || imageUrlMobile} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
+            </picture>
+          ) : (
+            <img src={imageUrl || imageUrlMobile || ''} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
+          )
+        ) : logo ? (
+          <img src={logo} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
         ) : (
           <div className="w-full aspect-square rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${primaryColor}10` }}>
             <span className="text-8xl opacity-30">🏢</span>

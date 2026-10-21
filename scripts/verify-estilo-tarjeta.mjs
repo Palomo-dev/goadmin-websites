@@ -87,6 +87,7 @@ check(p.clasesGridCaracteristicas(4).includes('md:grid-cols-4') && p.clasesGridC
 check(p.clasesGridCaracteristicas({ desktop: 4, mobile: 1 }).includes('md:grid-cols-4') && p.clasesGridCaracteristicas({ desktop: 4, mobile: 1 }).startsWith('grid grid-cols-2'), 'el celular de características se queda en 2')
 const gridCaracteristicas = await readFile(join(ROOT, 'components/sections/saas/FeaturesGridAlternating.tsx'), 'utf8')
 check(gridCaracteristicas.includes('clasesGridCaracteristicas'), 'la rejilla de características usa el ajuste de columnas')
+check(gridCaracteristicas.includes('if (!limpio) return null'), 'sin icono no se reserva el cuadrado')
 check(!gridCaracteristicas.includes('space-y-16'), 'la variante alternada ya no es una pila con space-y-16')
 check(p.claseImagenBanner(undefined, undefined) === 'absolute inset-0 w-full h-full object-cover object-center', 'la imagen se cubre centrada si no hay ajuste')
 check(p.claseImagenBanner('contain', 'left') === 'absolute inset-0 w-full h-full object-contain object-left', 'se puede mostrar completa y anclada a la izquierda')

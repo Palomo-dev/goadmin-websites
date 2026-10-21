@@ -75,7 +75,7 @@ export function itemDeEditorTieneServicio(item: unknown): boolean {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return false
   const o = item as Record<string, unknown>
   return Boolean(
-    texto(o.title) || texto(o.name) || texto(o.label) || texto(o.description) || texto(o.icon) || texto(o.image_url),
+    texto(o.title) || texto(o.name) || texto(o.label) || texto(o.description) || texto(o.icon) || texto(o.image_url) || texto(o.cta_text) || texto(o.cta_url),
   )
 }
 

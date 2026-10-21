@@ -23,9 +23,10 @@ interface FeaturesGridAlternatingProps {
   sectionVariant?: string
 }
 
-/** Hueco fijo del ícono. Vacío se queda en blanco para que la rejilla no salte. */
+/** Hueco del ícono solo cuando hay uno. Sin ícono no se reserva el cuadrado. */
 function IconoBeneficio({ name, color }: { name?: string; color: string }) {
   const limpio = (name ?? '').trim()
+  if (!limpio) return null
   const esLucide = /^[A-Z][A-Za-z0-9]+$/.test(limpio)
   return (
     <span

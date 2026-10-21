@@ -9,6 +9,12 @@ export function IconoServicio({ name, className }: { name?: string | null; class
   return <span className={className}>{limpio}</span>
 }
 
+export function srcFotoServicio(url: string | null | undefined): string | null {
+  const src = urlSegura(url)
+  if (!src || !(src.startsWith('/') || /^https?:/i.test(src))) return null
+  return src
+}
+
 function urlSegura(url: string | null | undefined): string | null {
   const href = (url ?? '').trim()
   if (!href || href.startsWith('//') || /^javascript:/i.test(href)) return null
@@ -17,8 +23,8 @@ function urlSegura(url: string | null | undefined): string | null {
 }
 
 export function FotoServicio({ url, alt, compact = false }: { url?: string | null; alt: string; compact?: boolean }) {
-  const src = urlSegura(url)
-  if (!src || !(src.startsWith('/') || /^https?:/i.test(src))) return null
+  const src = srcFotoServicio(url)
+  if (!src) return null
   return (
     <img
       src={src}

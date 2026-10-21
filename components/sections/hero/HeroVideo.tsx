@@ -10,6 +10,7 @@ interface HeroVideoProps {
     cta_url?: string
     video_url?: string
     image_url?: string
+    image_url_mobile?: string
     overlay_opacity?: number
     // F3.5 — campos nuevos
     overlay_color?: string
@@ -40,12 +41,12 @@ export function HeroVideo({ content, organization, primaryColor }: HeroVideoProp
           loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
-          poster={content.image_url || undefined}
+          poster={content.image_url || content.image_url_mobile || undefined}
         >
           <source src={content.video_url} type="video/mp4" />
         </video>
-      ) : content.image_url ? (
-        <img src={content.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      ) : content.image_url || content.image_url_mobile ? (
+        <img src={content.image_url || content.image_url_mobile} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-gray-900" />
       )}

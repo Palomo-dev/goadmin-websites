@@ -3,7 +3,7 @@
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 import { serviciosParaPintar } from '@/lib/website/serviciosSeccion'
-import { EnlaceServicio, FotoServicio, IconoServicio } from './pintarServicio'
+import { EnlaceServicio, FotoServicio, IconoServicio, srcFotoServicio } from './pintarServicio'
 
 interface ServicesListListProps {
   content: Record<string, any>
@@ -29,7 +29,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
         <div className="max-w-3xl mx-auto space-y-4">
           {services.map((service: any, i: number) => (
             <div key={i} className="flex items-start gap-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
-              {service.image_url ? (
+              {srcFotoServicio(service.image_url) ? (
                 <FotoServicio url={service.image_url} alt={service.name} compact />
               ) : service.icon ? (
                 <IconoServicio name={service.icon} className="mt-0.5 h-6 w-6 flex-shrink-0" />

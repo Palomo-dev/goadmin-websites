@@ -124,17 +124,17 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
       className={`relative ${bookingHeightClass} flex ${pos} text-white`}
       style={{ ...overlapStyle, ...heightStyle }}
     >
-      {imageUrl && (
+      {(imageUrl || imageUrlMobile) && (
         <>
-          {imageUrlMobile ? (
+          {imageUrlMobile && imageUrlMobile !== imageUrl ? (
             <picture className="absolute inset-0 w-full h-full">
               <source media="(max-width: 767px)" srcSet={imageUrlMobile} />
-              <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+              <img src={imageUrl || imageUrlMobile} alt="" className="w-full h-full object-cover" />
             </picture>
           ) : (
             <div
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageUrl})` }}
+              style={{ backgroundImage: `url(${imageUrl || imageUrlMobile})` }}
             />
           )}
         </>
@@ -145,7 +145,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
           style={{
             backgroundColor: overlayColor,
             // Si overlay_opacity está definido, usarlo; si no, preservar 0.7 con imagen / 1 sin imagen (heredado)
-            opacity: overlayOpacity != null ? overlayOpacity : imageUrl ? 0.7 : 1,
+            opacity: overlayOpacity != null ? overlayOpacity : imageUrl || imageUrlMobile ? 0.7 : 1,
           }}
         />
       )}
