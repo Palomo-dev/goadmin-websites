@@ -323,11 +323,22 @@ const carrito = await readFile(join(ROOT, 'lib/cart.ts'), 'utf8')
 const pagina = await readFile(join(ROOT, 'app/carrito/CartPageClient.tsx'), 'utf8')
 check(retoma.includes('imagenRetoma') && retoma.includes('parent_product_id'), 'al retomar se lee la foto del producto o la del padre')
 check(carrito.includes('uuid:') && pagina.includes('item.uuid || item.productId || item.id'), 'el enlace del carrito abre la ficha por uuid')
-check(minuto.includes('procesarColaCompraPendiente') && minuto.includes('cronAutorizado'), 'el cron de cada minuto también decide la cola')
+check(minuto.includes('cronAutorizado') && !minuto.includes('procesarColaCompraPendiente'), 'el cron de cada minuto no reclama la cola del correo')
+check(
+  imagen.urlFotoEnCorreo('https://cdn.example/a.jpg', 'https://tienda.example') === 'https://cdn.example/a.jpg',
+  'la foto https del producto se conserva',
+)
+check(
+  imagen.urlFotoEnCorreo(null, 'https://tienda.example') === 'https://tienda.example/correo/sin-foto.png',
+  'sin foto se usa el placeholder https del sitio',
+)
+check(imagen.urlFotoEnCorreo('http://cdn.example/a.jpg', 'https://tienda.example') === 'https://tienda.example/correo/sin-foto.png', 'una foto http no entra al correo')
+check(correo.includes('width="64"') && correo.includes('height="64"') && correo.includes('imageUrl'), 'cada producto del correo lleva imagen con ancho, alto y alt')
 
 const vercel = await readFile(join(ROOT, 'vercel.json'), 'utf8')
-check(vercel.includes('"/api/cron/carritos-abandonados"') && vercel.includes('"*/15 * * * *"'), 'el cron corre cada 15 minutos')
+check(!vercel.includes('"/api/cron/carritos-abandonados"'), 'vercel.json no programa la cola: el otro proyecto la duplicaría')
 check(vercel.includes('"/api/revalidate/sitios-v2"') && vercel.includes('"* * * * *"'), 'el cron de cada minuto sigue declarado')
+check(cron.includes('sqlstate') && cron.includes('mensajePostgres') && cron.includes('otro_proyecto'), 'un fallo de la cola devuelve SQLSTATE y el otro proyecto no reclama')
 
 const slugs = await readFile(join(ROOT, 'lib/outlet/rutaSitio.ts'), 'utf8')
 check(slugs.includes("'retomar'"), 'retomar está reservado: una sede no puede tapar el enlace')

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import { cronAutorizado } from '@/lib/orders/cronAutorizado'
-import { procesarColaCompraPendiente } from '@/lib/orders/procesarColaCompraPendiente'
 import { tagEstadosV2Org, tagSitioV2 } from '@/lib/website/v2/lectorPublico'
 
 export const dynamic = 'force-dynamic'
@@ -26,8 +25,8 @@ export const maxDuration = 60
  * revision_id, status ('pending'|'done'|'error'), attempts, last_error, created_at,
  * processed_at. La tabla no admite anon ni authenticated: solo service role.
  *
- * En el mismo ciclo corre la cola de «Tu compra quedó pendiente». El horario
- * de cada 15 minutos no ha llegado a leerla; este, de cada minuto, sí corre.
+ * El correo de compra pendiente no corre aquí. Lo dispara pg_cron contra
+ * `/api/cron/carritos-abandonados` en el proyecto que puede enviarlo.
  */
 const MAX_INTENTOS = 5
 const LOTE = 50
@@ -50,20 +49,6 @@ async function procesar(request: NextRequest) {
     return NextResponse.json({ error: 'Servicio no configurado' }, { status: 500 })
   }
 
-  const compraPendiente = async () => {
-    try {
-      const resultado = await procesarColaCompraPendiente(supabase)
-      if (resultado.revisados > 0 || resultado.motivo) {
-        console.log('[carritos-abandonados] resultado', resultado)
-      }
-      return resultado
-    } catch (err) {
-      const mensaje = err instanceof Error ? err.message : String(err)
-      console.error('[carritos-abandonados] La cola no se pudo procesar', mensaje)
-      return { revisados: 0, enviados: 0, omitidos: 0, reintentos: 0, error: mensaje }
-    }
-  }
-
   const { data, error } = await (supabase as any)
     .from('website_publication_outbox')
     .select('id, organization_id, site_state_id, status, attempts')
@@ -73,7 +58,7 @@ async function procesar(request: NextRequest) {
     .limit(LOTE)
   if (error) {
     console.error('[outbox-sitios-v2] No se pudo leer el outbox:', error.message || error)
-    return NextResponse.json({ error: 'No se pudo leer el outbox', compraPendiente: await compraPendiente() }, { status: 500 })
+    return NextResponse.json({ error: 'No se pudo leer el outbox' }, { status: 500 })
   }
 
   const resultado = { procesadas: 0, hechas: 0, errores: 0, omitidas: 0 }
@@ -114,7 +99,7 @@ async function procesar(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, ...resultado, compraPendiente: await compraPendiente() })
+  return NextResponse.json({ ok: true, ...resultado })
 }
 
 export async function POST(request: NextRequest) {

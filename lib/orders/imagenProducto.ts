@@ -72,3 +72,19 @@ export function imagenRetoma(
   if (parentId == null) return null
   return urlImagenProducto(elegirRutaImagen(fotos, parentId), base)
 }
+
+/** Cuadrado gris del correo cuando el producto no tiene foto. */
+export const RUTA_FOTO_AUSENTE = '/correo/sin-foto.png'
+
+/**
+ * URL absoluta https para el `<img>` del correo. La foto del producto si
+ * ya es https; si no, el placeholder del propio sitio. http no entra:
+ * Gmail no lo muestra.
+ */
+export function urlFotoEnCorreo(foto: string | null | undefined, origen: string): string | null {
+  const limpia = (foto || '').trim()
+  if (limpia.startsWith('https://') && !limpia.includes(' ') && limpia.length < 2000) return limpia
+  const base = origen.trim().replace(/\/$/, '')
+  if (!base.startsWith('https://') || base.includes(' ')) return null
+  return `${base}${RUTA_FOTO_AUSENTE}`
+}

@@ -16,6 +16,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { esCancelacionManual } from '@/lib/orders/compraPendiente'
 import { claveResend } from '@/lib/orders/claveResend'
 import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
+import { lineasConFoto } from '@/lib/orders/fotosLinea'
 import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 
 const num = (v: unknown): number => {
@@ -43,7 +44,7 @@ export async function enviarCorreoCompraPendiente(webOrderId: string): Promise<R
     }
     const { data: pedido, error } = await sb
       .from('web_orders')
-      .select('id, order_number, organization_id, branch_id, status, payment_status, cancelled_by, cancellation_reason, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, coupon_code, web_order_items ( product_name, quantity, unit_price, total )')
+      .select('id, order_number, organization_id, branch_id, status, payment_status, cancelled_by, cancellation_reason, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, coupon_code, web_order_items ( product_id, product_name, quantity, unit_price, total )')
       .eq('id', webOrderId)
       .maybeSingle()
     if (error || !pedido?.customer_email) {
@@ -91,12 +92,7 @@ export async function enviarCorreoCompraPendiente(webOrderId: string): Promise<R
       orderNumber: pedido.order_number,
       customerEmail: pedido.customer_email,
       customerName: pedido.customer_name || '',
-      items: (pedido.web_order_items || []).map((i: any) => ({
-        name: String(i.product_name || ''),
-        quantity: num(i.quantity),
-        unitPrice: num(i.unit_price),
-        total: num(i.total),
-      })),
+      items: await lineasConFoto(sb, organizationId, origen, pedido.web_order_items || []),
       subtotal: num(pedido.subtotal),
       tax: num(pedido.tax_total),
       shipping: num(pedido.delivery_fee),

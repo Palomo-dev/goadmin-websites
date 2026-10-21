@@ -1,12 +1,12 @@
 /**
  * Cola del correo «Tu compra quedó pendiente».
  *
- * La leen el cron de cada 15 minutos y el de cada minuto que vacía la
- * bandeja de publicación. pg_cron ya no dispara esta ruta. Los dos horarios
- * de Vercel reclaman con `fn_reclamar_cola_compra_pendiente`: la base bloquea
- * la fila (`FOR UPDATE SKIP LOCKED`), escribe un solo correo por comprador y
- * tienda cada 24 horas, y solo por el pedido más reciente. El sello se quita
- * si el envío falla, para que el siguiente ciclo lo reintente.
+ * La dispara solo pg_cron, cada 15 minutos, contra el proyecto que tiene la
+ * clave de servicio. No la reclama el cron de cada minuto ni el otro proyecto
+ * de Vercel: los dos compartirían el mismo `vercel.json` y duplicarían el envío.
+ * `fn_reclamar_cola_compra_pendiente` bloquea la fila (`FOR UPDATE SKIP LOCKED`),
+ * escribe un solo correo por comprador y tienda cada 24 horas, y solo por el
+ * pedido más reciente. El sello se quita si el envío falla.
  *
  * La elegibilidad (source = 'website', expirado por falta de pago, sin
  * cancelación manual) vive en esa función. Si falta, no se vuelve al select
@@ -19,6 +19,25 @@
 import { claveResend } from '@/lib/orders/claveResend'
 import { enviarCorreoCompraPendiente } from '@/lib/orders/correoCompraPendiente'
 import { ESPERA_COMPRA_PENDIENTE_MS, VENTANA_COMPRA_PENDIENTE_MS } from '@/lib/orders/compraPendiente'
+
+export class ErrorReclamoCola extends Error {
+  readonly sqlstate: string | null
+  readonly mensajePostgres: string
+
+  constructor(sqlstate: string | null, mensajePostgres: string) {
+    super('No se pudo reclamar la cola')
+    this.name = 'ErrorReclamoCola'
+    this.sqlstate = sqlstate
+    this.mensajePostgres = mensajePostgres
+  }
+}
+
+function detallePostgres(error: { message?: string; code?: string } | null): { sqlstate: string | null; mensaje: string } {
+  const mensaje = typeof error?.message === 'string' && error.message.trim() ? error.message.trim() : 'sin mensaje'
+  const code = typeof error?.code === 'string' ? error.code.trim() : ''
+  const sqlstate = /^[0-9A-Z]{5}$/.test(code) ? code : null
+  return { sqlstate, mensaje }
+}
 
 const LOTE = 20
 
@@ -40,7 +59,7 @@ export interface ResultadoColaCompraPendiente {
 
 type ClienteCola = {
   from: (tabla: string) => any
-  rpc: (nombre: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }>
+  rpc: (nombre: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string; code?: string } | null }>
 }
 
 type ClienteRecibido = { from: (tabla: string) => any }
@@ -70,8 +89,12 @@ export async function procesarColaCompraPendiente(supabase: ClienteRecibido): Pr
     p_lote: LOTE,
   })
   if (error) {
-    console.error('[carritos-abandonados] No se pudo reclamar la cola', error.message || error)
-    throw new Error('No se pudo reclamar la cola')
+    const detalle = detallePostgres(error)
+    console.error('[carritos-abandonados] No se pudo reclamar la cola', {
+      sqlstate: detalle.sqlstate,
+      mensajePostgres: detalle.mensaje,
+    })
+    throw new ErrorReclamoCola(detalle.sqlstate, detalle.mensaje)
   }
 
   const filas = (Array.isArray(data) ? data : []) as FilaReclamada[]

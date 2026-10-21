@@ -17,7 +17,7 @@ interface OrderEmailData {
   orderNumber: string
   customerEmail: string
   customerName: string
-  items: { name: string; quantity: number; unitPrice: number; total: number }[]
+  items: { name: string; quantity: number; unitPrice: number; total: number; imageUrl?: string | null }[]
   subtotal: number
   tax: number
   shipping: number
@@ -138,9 +138,20 @@ export async function sendOrderConfirmationEmail(
     (data.tip || 0) > 0 ? filaTotal('Propina', data.tip || 0) : '',
   ].join('')
 
+  const fotoDe = (item: { name: string; imageUrl?: string | null }) => {
+    const url = (item.imageUrl || '').trim()
+    if (!url.startsWith('https://')) return ''
+    const alt = escapeHtml(item.name || 'Producto')
+    return `<td style="padding:0 12px 0 0;vertical-align:middle;"><img src="${escapeHtml(url)}" alt="${alt}" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:6px;object-fit:cover;"></td>`
+  }
   const itemsHtml = data.items.map(item => `
     <tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(item.name)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          ${fotoDe(item)}
+          <td style="vertical-align:middle;font-size:14px;color:#1a1a1a;">${escapeHtml(item.name)}</td>
+        </tr></table>
+      </td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.unitPrice.toLocaleString('es-CO')}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$${item.total.toLocaleString('es-CO')}</td>

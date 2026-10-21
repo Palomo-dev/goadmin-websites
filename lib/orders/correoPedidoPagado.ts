@@ -14,6 +14,7 @@ import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
 import { registrarCorreoPedido } from '@/lib/email/registrarCorreoPedido'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
+import { lineasConFoto } from '@/lib/orders/fotosLinea'
 import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
@@ -33,7 +34,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
     const sb = supabase as any
     const { data: pedido, error } = await sb
       .from('web_orders')
-      .select('id, order_number, organization_id, branch_id, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, delivery_type, internal_notes, is_scheduled, scheduled_at, coupon_code, web_order_items ( product_name, quantity, unit_price, total )')
+      .select('id, order_number, organization_id, branch_id, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, delivery_type, internal_notes, is_scheduled, scheduled_at, coupon_code, web_order_items ( product_id, product_name, quantity, unit_price, total )')
       .eq('id', webOrderId)
       .maybeSingle()
     if (error || !pedido?.customer_email) {
@@ -53,12 +54,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
       orderNumber: pedido.order_number,
       customerEmail: pedido.customer_email,
       customerName: pedido.customer_name || '',
-      items: (pedido.web_order_items || []).map((i: any) => ({
-        name: String(i.product_name || ''),
-        quantity: num(i.quantity),
-        unitPrice: num(i.unit_price),
-        total: num(i.total),
-      })),
+      items: await lineasConFoto(sb, Number(pedido.organization_id), origen, pedido.web_order_items || []),
       subtotal: num(pedido.subtotal),
       tax: num(pedido.tax_total),
       shipping: num(pedido.delivery_fee),
