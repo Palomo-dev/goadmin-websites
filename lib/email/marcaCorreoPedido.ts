@@ -1,14 +1,12 @@
 /**
- * Marca y remitente del correo de un pedido pagado en el sitio.
+ * Marca y remitente del correo de un pedido de la tienda.
  *
- * El comprador tiene que ver la tienda: su nombre, su logo y su color.
- * El sobre solo puede salir de un dominio que el proveedor ya autenticó
- * (`email_domains` en estado `verified`). Si el correo de la tienda está en
- * ese dominio, el From es ese correo. Si no, poner un Gmail (o cualquier
- * dominio ajeno) como From hace que el proveedor rechace el mensaje y el
- * cliente no recibe nada: el nombre visible sigue siendo el de la tienda,
- * Reply-To es su correo y la dirección de envío queda en el dominio de la
- * plataforma.
+ * El comprador ve el nombre, el logo y el color de la tienda. El From solo
+ * puede ser el dominio predeterminado que el proveedor ya autenticó
+ * (`email_domains.is_default` y `verified`): `"Tienda" <from_email>`.
+ * Si no hay uno, el From es `"Tienda" <pedidos@goadmin.io>`. Reply-To es el
+ * correo de la tienda cuando es distinto. Un dominio autenticado que no es
+ * el predeterminado no se usa como From.
  *
  * Código puro: sin React, Next ni Supabase.
  */
@@ -182,8 +180,36 @@ function formatoDesde(nombre: string, correo: string): string {
 }
 
 /**
- * Sobre del correo. `propio` es true solo cuando la dirección de envío
- * pertenece a un dominio autenticado de la tienda.
+ * From del correo de la tienda. Solo el dominio predeterminado y verificado.
+ * Si no hay, el respaldo de la plataforma. Reply-To es el correo de la tienda.
+ */
+export function resolverRemitente(entrada: {
+  nombre: string
+  correoTienda: string | null
+  dominios: DominioRemitente[]
+  respaldo?: string
+}): { from: string; replyTo: string | null; propio: boolean } {
+  const correo = correoValido(entrada.correoTienda)
+  const predeterminado = dominiosLimpios(entrada.dominios).find((d) => d.isDefault)
+  const desde = predeterminado ? correoValido(predeterminado.fromEmail) : null
+  if (desde) {
+    return {
+      from: formatoDesde(entrada.nombre, desde),
+      replyTo: correo && correo !== desde ? correo : null,
+      propio: true,
+    }
+  }
+  const respaldo = correoValido(entrada.respaldo) ?? RESPALDO_POR_DEFECTO
+  return {
+    from: formatoDesde(entrada.nombre, respaldo),
+    replyTo: correo && correo !== respaldo ? correo : null,
+    propio: false,
+  }
+}
+
+/**
+ * Sobre del correo. `propio` es true solo cuando el From es el dominio
+ * predeterminado autenticado de la tienda.
  */
 export function sobreCorreoPedido(entrada: {
   nombre: string
@@ -197,27 +223,15 @@ export function sobreCorreoPedido(entrada: {
   const correo = correoValido(entrada.correoTienda)
   const color = colorMarca(entrada.color) ?? COLOR_POR_DEFECTO
   const logoUrl = logoCorreo(entrada.logoUrl)
-  const dominios = dominiosLimpios(entrada.dominios)
-  const base = { nombre, correo, logoUrl, color, texto: textoSobreColor(color) }
-  const delCorreo = correo ? dominios.find((d) => dominioDe(correo) === d.domain) : undefined
-  if (correo && delCorreo) {
-    return { ...base, from: formatoDesde(nombre, correo), replyTo: null, propio: true }
-  }
-  const propio = dominios.find((d) => d.isDefault) ?? dominios[0]
-  const desdePropio = propio ? correoValido(propio.fromEmail) : null
-  if (desdePropio) {
-    return {
-      ...base,
-      from: formatoDesde(nombre, desdePropio),
-      replyTo: correo && correo !== desdePropio ? correo : null,
-      propio: true,
-    }
-  }
-  const respaldo = correoValido(entrada.respaldo) ?? RESPALDO_POR_DEFECTO
+  const remitente = resolverRemitente(entrada)
   return {
-    ...base,
-    from: formatoDesde(nombre, respaldo),
-    replyTo: correo && correo !== respaldo ? correo : null,
-    propio: false,
+    nombre,
+    correo,
+    logoUrl,
+    color,
+    texto: textoSobreColor(color),
+    from: remitente.from,
+    replyTo: remitente.replyTo,
+    propio: remitente.propio,
   }
 }

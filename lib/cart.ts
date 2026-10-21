@@ -75,6 +75,8 @@ export interface LineaPlatoInput {
   quantity: number
   sku?: string | null
   imageUrl?: string | null
+  /** Uuid del producto: la ficha abre `/productos/{uuid}`, no el id numérico. */
+  uuid?: string | null
   comparePrice?: number | null
   /** Opciones de grupos (con precio). Se guardan en `newModifiers`, el campo que pintan el
    *  carrito, el drawer y el checkout con nombre y extra. */
@@ -142,6 +144,7 @@ function objetoLinea(linea: LineaPlatoInput, conservarDecimales: boolean) {
     quantity: cantidad,
     ...(linea.sku && { sku: linea.sku }),
     ...(linea.imageUrl && { imageUrl: linea.imageUrl }),
+    ...(typeof linea.uuid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linea.uuid) && { uuid: linea.uuid.toLowerCase() }),
     ...(linea.comparePrice && { comparePrice: linea.comparePrice }),
     ...(antiguos && { modifiers: antiguos }),
     ...(modifiers && { newModifiers: modifiers }),

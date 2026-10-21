@@ -6,8 +6,9 @@
  * Sin base de datos. Carga lib/email/marcaCorreoPedido.ts (puro, sin imports)
  * con module.stripTypeScriptTypes y comprueba:
  * - un Gmail no puede ser el From (el proveedor lo rechazaría);
- * - el correo de la tienda sí es el From cuando su dominio ya está autenticado;
- * - si hay otro dominio autenticado, el From es ese y Reply-To el correo de la tienda;
+ * - el From es el from_email del dominio predeterminado verificado;
+ * - un dominio autenticado que no es el predeterminado no se usa como From;
+ * - Reply-To es el correo de la tienda cuando es distinto del From;
  * - el logo solo entra si es https; un logo vaciado en la sede no revive el legacy;
  * - un color claro lleva texto oscuro.
  */
@@ -59,20 +60,36 @@ check(!sinDominio.from.includes('gmail.com'), 'el From no usa el Gmail de la tie
 
 const propio = marca.sobreCorreoPedido({
   ...base,
-  correoTienda: 'pedidos@tienda.ejemplo',
-  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'hola@tienda.ejemplo', isDefault: true }],
+  correoTienda: 'caja@tienda.ejemplo',
+  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'pedidos@tienda.ejemplo', isDefault: true }],
 })
-igual(propio.from, '"Tienda Norte" <pedidos@tienda.ejemplo>', 'el From es el correo de la tienda si su dominio está autenticado')
-igual(propio.replyTo, null, 'no hace falta Reply-To cuando el From ya es el de la tienda')
+igual(propio.from, '"Tienda Norte" <pedidos@tienda.ejemplo>', 'el From es el predeterminado verificado')
+igual(propio.replyTo, 'caja@tienda.ejemplo', 'las respuestas van al correo de la tienda')
 igual(propio.propio, true, 'el sobre propio se marca')
+
+const mismo = marca.sobreCorreoPedido({
+  ...base,
+  correoTienda: 'pedidos@tienda.ejemplo',
+  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'pedidos@tienda.ejemplo', isDefault: true }],
+})
+igual(mismo.from, '"Tienda Norte" <pedidos@tienda.ejemplo>', 'el mismo buzón no necesita Reply-To')
+igual(mismo.replyTo, null, 'no hace falta Reply-To cuando el From ya es el de la tienda')
 
 const otro = marca.sobreCorreoPedido({
   ...base,
   dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'hola@tienda.ejemplo', isDefault: false }],
 })
-igual(otro.from, '"Tienda Norte" <hola@tienda.ejemplo>', 'con dominio autenticado y correo en Gmail, el From es el dominio de la tienda')
+igual(otro.from, '"Tienda Norte" <pedidos@goadmin.io>', 'un dominio autenticado que no es el predeterminado no se usa como From')
 igual(otro.replyTo, 'caja@gmail.com', 'las respuestas van al correo de contacto')
-igual(otro.propio, true, 'ese sobre también es de la tienda')
+igual(otro.propio, false, 'sin predeterminado el sobre es el de la plataforma')
+
+const directo = marca.resolverRemitente({
+  nombre: 'Tienda Norte',
+  correoTienda: 'caja@tienda.ejemplo',
+  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'pedidos@tienda.ejemplo', isDefault: true }],
+})
+igual(directo.from, '"Tienda Norte" <pedidos@tienda.ejemplo>', 'resolverRemitente usa el predeterminado verificado')
+igual(directo.replyTo, 'caja@tienda.ejemplo', 'resolverRemitente deja Reply-To en el correo de la tienda')
 
 const inyeccion = marca.sobreCorreoPedido({
   ...base,
