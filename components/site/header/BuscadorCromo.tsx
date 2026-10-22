@@ -53,9 +53,6 @@ export function BuscadorCromo({
   }
   const ancho = presentacion.tipo === 'mini' ? 'max-w-[9rem] focus-within:max-w-md transition-all' : ''
   const sombra = presentacion.shadow ? 'shadow-lg' : ''
-  const borde = presentacion.border === 'none' ? '[&_input]:border-0' : presentacion.border === 'thick' ? '[&_input]:border-2' : ''
-  const lado = presentacion.iconSide === 'right' ? '[&_svg]:left-auto [&_svg]:right-3 [&_input]:!pl-3 [&_input]:!pr-10' : ''
-  const fondo = presentacion.background ? `[&_input]:!bg-[${presentacion.background}]` : ''
   return (
     <div
       className={`flex min-w-0 items-center gap-2 ${ancho} ${sombra} ${RADIO[presentacion.radius]} ${className}`}
@@ -68,12 +65,21 @@ export function BuscadorCromo({
           {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       )}
-      <div className={`min-w-0 flex-1 ${borde} ${lado} ${fondo}`} style={presentacion.iconColor ? { color: presentacion.iconColor } : undefined}>
+      <div className="min-w-0 flex-1">
         <SearchBarInput
           primaryColor={primaryColor}
           className="w-full"
           size={presentacion.tipo === 'mini' ? 'sm' : 'lg'}
           icon={Icono}
+          cromo={{
+            radius: presentacion.radius,
+            border: presentacion.border,
+            borderColor: presentacion.borderColor,
+            background: presentacion.background,
+            iconSide: presentacion.iconSide,
+            iconColor: presentacion.iconColor,
+            iconBackground: presentacion.iconBackground,
+          }}
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
         />
       </div>

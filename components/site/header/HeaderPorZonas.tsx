@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Heart, Phone, Search } from 'lucide-react'
+import { Globe, Heart, Phone, Search, User } from 'lucide-react'
 import {
   HeaderLogo,
+  SearchBarInline,
   buildNavItems,
   getLucideIcon,
   type HeaderVariantProps,
@@ -16,6 +17,7 @@ import {
 } from './HeaderShared'
 import { BuscadorCromo } from './BuscadorCromo'
 import { CartIndicator } from '../CartIndicator'
+import { CurrencySelector } from '../CurrencySelector'
 import type { BotonHeader, ConstructorEncabezado, ElementoZona, IconoElemento, MegaItem, ZonaHeader } from '@/lib/website/constructorEncabezado'
 
 const FILA_TOP = ['topbar_left', 'topbar_center', 'topbar_right'] as const
@@ -101,29 +103,40 @@ function Elemento(props: {
   constructor: ConstructorEncabezado
   dispositivo: 'desktop' | 'mobile'
 }) {
-  const { el, nav, organization, primaryColor, settings, showCart, onCartClick, branchId, constructor, dispositivo } = props
+  const { el, nav, organization, primaryColor, settings, showCart, onCartClick, branchId, menuCategories, constructor, dispositivo } = props
   const icono = constructor.iconos?.[el.type]
-  if (el.type === 'logo') return <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 40} />
-  if (el.type === 'menu') return <MenuZona nav={nav} mega={constructor.mega} primaryColor={primaryColor} movil={dispositivo === 'mobile'} />
-  if (el.type === 'search' && constructor.buscador) return <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" />
-  if (el.type === 'search') return <span className="text-sm">Buscar</span>
-  if (el.type === 'cart' && showCart !== false) {
-    return <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, Search)} />
-  }
-  if (el.type === 'account') return <Link href="/mi-cuenta" className={claseIcono(icono)} aria-label="Cuenta">Cuenta</Link>
-  if (el.type === 'favorites') return <Link href="/favoritos" className={claseIcono(icono)} aria-label={icono?.label || 'Favoritos'}><Heart className="h-5 w-5" />{icono?.label && <span className="text-xs">{icono.label}</span>}</Link>
-  if (el.type === 'whatsapp') return <a href={enlaceWhatsapp(settings)} className={claseIcono(icono)}>WhatsApp</a>
-  if (el.type === 'phone') return organization.phone ? <a href={`tel:${organization.phone}`} className={claseIcono(icono)}><Phone className="h-4 w-4" />{el.label || organization.phone}</a> : null
-  if (el.type === 'text') return <span className="text-sm">{el.label}</span>
-  if (el.type === 'button') {
+  let nodo: ReactNode = null
+  if (el.type === 'logo') nodo = <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 40} />
+  else if (el.type === 'menu') nodo = <MenuZona nav={nav} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} movil={dispositivo === 'mobile'} />
+  else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
+  else if (el.type === 'search') nodo = <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
+  else if (el.type === 'cart' && showCart !== false) nodo = (
+    <CajaIcono icono={icono} primary={primaryColor}>
+      <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, Search)} relleno={icono?.weight === 'relleno'} />
+    </CajaIcono>
+  )
+  else if (el.type === 'account') nodo = <Link href="/mi-cuenta" aria-label="Cuenta"><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>
+  else if (el.type === 'favorites') nodo = <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><CajaIcono icono={icono} primary={primaryColor}><Heart style={estiloTrazo(icono)} /></CajaIcono></Link>
+  else if (el.type === 'whatsapp') nodo = <a href={enlaceWhatsapp(settings, constructor)}><CajaIcono icono={icono} primary={primaryColor}>WhatsApp</CajaIcono></a>
+  else if (el.type === 'phone' && organization.phone) nodo = <a href={`tel:${organization.phone}`}><CajaIcono icono={icono} primary={primaryColor}><Phone style={estiloTrazo(icono)} /></CajaIcono></a>
+  else if (el.type === 'text') nodo = <span className="text-sm">{el.label}</span>
+  else if (el.type === 'button') {
     const boton = constructor.botones?.find((b) => b.id === el.buttonId) ?? constructor.botones?.[0]
-    return boton ? <BotonVisual boton={boton} primaryColor={primaryColor} onCart={onCartClick} /> : null
+    nodo = boton ? <BotonVisual boton={boton} primaryColor={primaryColor} onCart={onCartClick} /> : null
   }
-  if (el.type === 'currency' || el.type === 'social') return <span className="text-xs">{el.label || (el.type === 'currency' ? 'Moneda' : 'Redes')}</span>
-  return <Search className="h-5 w-5" aria-hidden />
+  else if (el.type === 'currency') nodo = <CurrencySelector primaryColor={icono?.color || primaryColor} icon={getLucideIcon(icono?.icon, Globe)} relleno={icono?.weight === 'relleno'} />
+  else if (el.type === 'social') nodo = <Redes settings={settings} />
+  if (!nodo) return null
+  return <span className={!el.tablet ? 'inline-flex md:max-lg:hidden' : 'contents'}>{nodo}</span>
 }
 
-function MenuZona({ nav, mega, primaryColor, movil }: { nav: NavItem[]; mega: MegaItem[] | null; primaryColor: string; movil: boolean }) {
+function enlacesColumna(col: MegaItem['columnas'][number], categorias: HeaderVariantProps['menuCategories']) {
+  if (col.links.length) return col.links
+  const padre = categorias?.find((c) => c.id === col.categoryId)
+  return (padre?.children ?? []).slice(0, 12).map((h) => ({ label: h.name, href: `/categorias/${h.slug}` }))
+}
+
+function MenuZona({ nav, mega, categorias, primaryColor, movil }: { nav: NavItem[]; mega: MegaItem[] | null; categorias: HeaderVariantProps['menuCategories']; primaryColor: string; movil: boolean }) {
   const [abierto, setAbierto] = useState<string | null>(null)
   return (
     <nav className={movil ? 'flex flex-col' : 'flex items-center gap-4'}>
@@ -137,7 +150,9 @@ function MenuZona({ nav, mega, primaryColor, movil }: { nav: NavItem[]; mega: Me
               {bloque.columnas.map((col) => (
                 <div key={col.title} className="pl-3">
                   <p className="text-xs font-semibold">{col.title}</p>
-                  {col.links.map((l) => <Link key={l.href} href={l.href} className="block py-1 text-sm">{l.label}</Link>)}
+                  {col.text && <p className="text-sm">{col.text}</p>}
+                  {enlacesColumna(col, categorias).map((l) => <Link key={l.href} href={l.href} className="block py-1 text-sm">{l.label}</Link>)}
+                  {col.products && <p className="text-xs text-gray-500">Productos de la categoría</p>}
                 </div>
               ))}
             </details>
@@ -163,7 +178,9 @@ function MenuZona({ nav, mega, primaryColor, movil }: { nav: NavItem[]; mega: Me
                   <div key={col.title} className={bloque.dividers ? 'border-r pr-3 last:border-0' : ''}>
                     <p className="mb-2 text-sm font-semibold" style={{ color: primaryColor }}>{col.title}</p>
                     {col.image && <a href={col.imageHref || '#'}><img src={col.image} alt="" className="mb-2 h-20 w-full object-cover" /></a>}
-                    {col.links.map((l) => <Link key={l.href} href={l.href} className="block py-1 text-sm">{l.label}</Link>)}
+                    {col.text && <p className="mb-2 text-sm">{col.text}</p>}
+                    {enlacesColumna(col, categorias).map((l) => <Link key={l.href} href={l.href} className="block py-1 text-sm">{l.label}</Link>)}
+                    {col.products && <p className="text-xs text-gray-500">Productos de la categoría</p>}
                   </div>
                 ))}
               </div>
@@ -176,27 +193,84 @@ function MenuZona({ nav, mega, primaryColor, movil }: { nav: NavItem[]; mega: Me
 }
 
 function BotonVisual({ boton, primaryColor, onCart }: { boton: BotonHeader; primaryColor: string; onCart?: () => void }) {
+  const [modal, setModal] = useState(false)
+  const [hover, setHover] = useState(false)
   const forma = boton.shape === 'pill' || boton.shape === 'circle' ? '999px' : boton.shape === 'square' ? '0' : boton.shape === 'semi' ? '6px' : '10px'
-  const estilo: React.CSSProperties = boton.style === 'outline'
-    ? { border: `1px solid ${boton.color || primaryColor}`, color: boton.color || primaryColor, borderRadius: forma }
+  const base = boton.style === 'outline'
+    ? { border: `1px solid ${boton.color || primaryColor}`, color: boton.color || primaryColor, background: hover && boton.hover ? boton.hover : 'transparent' }
     : boton.style === 'ghost'
-      ? { color: boton.color || primaryColor, borderRadius: forma }
-      : { background: boton.style === 'gradient' ? `linear-gradient(90deg, ${boton.color || primaryColor}, ${boton.textColor || '#111'})` : (boton.color || primaryColor), color: boton.textColor || '#fff', borderRadius: forma }
+      ? { color: boton.color || primaryColor, background: hover && boton.hover ? boton.hover : 'transparent' }
+      : { background: hover && boton.hover ? boton.hover : boton.style === 'gradient' ? `linear-gradient(90deg, ${boton.color || primaryColor}, ${boton.textColor || '#111'})` : (boton.color || primaryColor), color: boton.textColor || '#fff' }
+  const estilo: CSSProperties = { ...base, borderRadius: forma }
   const clase = `inline-flex items-center gap-1 px-3 font-medium ${boton.size === 'sm' ? 'h-8 text-xs' : boton.size === 'lg' ? 'h-12 text-base' : 'h-10 text-sm'}`
-  const contenido = boton.style === 'icon_only' ? (boton.icon || '•') : boton.text
-  if (boton.action === 'cart') return <button type="button" className={clase} style={estilo} onClick={onCart}>{contenido}</button>
-  if (boton.action === 'whatsapp') return <a className={clase} style={estilo} href={`https://wa.me/?text=${encodeURIComponent(boton.message || boton.text)}`}>{contenido}</a>
-  if (boton.action === 'call') return <a className={clase} style={estilo} href={`tel:${boton.href || ''}`}>{contenido}</a>
-  if (boton.action === 'download') return <a className={clase} style={estilo} href={boton.href || '#'} download>{contenido}</a>
-  return <Link href={boton.href || '/'} className={clase} style={estilo}>{contenido}</Link>
+  const marca = boton.icon ? <span aria-hidden="true">{boton.icon}</span> : null
+  const contenido = boton.style === 'icon_only'
+    ? (marca || '•')
+    : <>{boton.iconSide !== 'right' && marca}{boton.text}{boton.iconSide === 'right' && marca}</>
+  const eventos = { className: clase, style: estilo, onMouseEnter: () => setHover(true), onMouseLeave: () => setHover(false) }
+  const nodo = boton.action === 'cart' ? <button type="button" {...eventos} onClick={onCart}>{contenido}</button>
+    : boton.action === 'search' ? <button type="button" {...eventos} onClick={() => document.querySelector<HTMLInputElement>('[data-buscador] input')?.focus()}>{contenido}</button>
+    : boton.action === 'menu' ? <button type="button" {...eventos} onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="Abrir menú"]')?.click()}>{contenido}</button>
+    : boton.action === 'modal' ? <button type="button" {...eventos} onClick={() => setModal(true)}>{contenido}</button>
+    : boton.action === 'whatsapp' ? <a {...eventos} href={`https://wa.me/?text=${encodeURIComponent(boton.message || boton.text)}`}>{contenido}</a>
+    : boton.action === 'call' ? <a {...eventos} href={`tel:${boton.href || ''}`}>{contenido}</a>
+    : boton.action === 'download' ? <a {...eventos} href={boton.href || '#'} download>{contenido}</a>
+    : boton.action === 'category' ? <Link {...eventos} href={boton.href || '/categorias'}>{contenido}</Link>
+    : <Link {...eventos} href={boton.href || '/'}>{contenido}</Link>
+  return (
+    <>
+      {nodo}
+      {modal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40" onClick={() => setModal(false)}>
+          <div className="max-w-sm rounded-xl bg-white p-4" onClick={(e) => e.stopPropagation()}>{boton.message || boton.text}</div>
+        </div>
+      )}
+    </>
+  )
 }
 
-function claseIcono(icono: IconoElemento | undefined) {
-  const caja = icono?.container === 'circle' ? 'rounded-full' : icono?.container === 'rounded' ? 'rounded-md' : icono?.container === 'square' ? 'rounded-none' : ''
-  return `inline-flex items-center gap-1 p-2 text-sm ${caja}`
+function CajaIcono({ icono, primary, children }: { icono?: IconoElemento; primary: string; children: ReactNode }) {
+  const tam = icono?.size ?? 20
+  const caja = icono?.container === 'circle' ? 'rounded-full' : icono?.container === 'rounded' ? 'rounded-lg' : icono?.container === 'square' ? 'rounded-none' : ''
+  const [hover, setHover] = useState(false)
+  const estilo: CSSProperties = {
+    color: hover && icono?.hover ? icono.hover : icono?.color || primary,
+    background: icono?.background,
+    border: icono?.border ? `1px solid ${icono.border}` : undefined,
+  }
+  return (
+    <span
+      className={`inline-flex items-center justify-center gap-1 p-1 ${icono?.labelPos === 'side' ? 'flex-row' : 'flex-col'} ${caja}`}
+      style={estilo}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span className="inline-flex" style={{ width: tam, height: tam }}>{children}</span>
+      {icono?.label && <span className="text-[10px] leading-none">{icono.label}</span>}
+    </span>
+  )
 }
 
-function enlaceWhatsapp(settings: HeaderVariantProps['settings']) {
+function estiloTrazo(icono?: IconoElemento): CSSProperties {
+  return {
+    width: icono?.size ?? 20,
+    height: icono?.size ?? 20,
+    strokeWidth: icono?.stroke ?? 2,
+    fill: icono?.weight === 'relleno' ? 'currentColor' : icono?.weight === 'duotono' ? 'currentColor' : 'none',
+    fillOpacity: icono?.weight === 'duotono' ? 0.28 : icono?.weight === 'relleno' ? 1 : 0,
+  }
+}
+
+function Redes({ settings }: { settings: HeaderVariantProps['settings'] }) {
+  const redes = settings?.social_links && typeof settings.social_links === 'object' ? settings.social_links as Record<string, unknown> : {}
+  const lista = Object.entries(redes).filter(([, href]) => typeof href === 'string' && /^https?:\/\//i.test(href)).slice(0, 5)
+  if (!lista.length) return null
+  return <span className="flex gap-2 text-xs">{lista.map(([nombre, href]) => <a key={nombre} href={String(href)} target="_blank" rel="noopener noreferrer">{nombre}</a>)}</span>
+}
+
+function enlaceWhatsapp(settings: HeaderVariantProps['settings'], constructor: ConstructorEncabezado) {
+  const mensaje = constructor.botones?.find((b) => b.action === 'whatsapp')?.message
   const n = (settings as { whatsapp_number?: string } | null)?.whatsapp_number
-  return n ? `https://wa.me/${String(n).replace(/\D/g, '')}` : 'https://wa.me/'
+  const base = n ? `https://wa.me/${String(n).replace(/\D/g, '')}` : 'https://wa.me/'
+  return mensaje ? `${base}?text=${encodeURIComponent(mensaje)}` : base
 }

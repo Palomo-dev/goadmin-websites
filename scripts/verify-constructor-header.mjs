@@ -39,6 +39,10 @@ const mega = leerConstructor({
   },
 })
 check(mega?.mega?.[0].columns === 4 && mega.mega[0].columnas[0].links[0].label === 'Alimento', 'el mega menú guarda columnas y enlaces')
+const megaCat = leerConstructor({ header_builder: { mega: [{ href: '/c', columns_data: [{ title: 'Padre', category_id: 12, text: 'Nota', products: true }] }] } })
+check(megaCat?.mega?.[0].columnas[0].categoryId === 12 && megaCat.mega[0].columnas[0].products === true && megaCat.mega[0].columnas[0].text === 'Nota', 'la columna puede salir de una categoría padre')
+const hover = leerConstructor({ header_builder: { buttons: [{ text: 'Ir', hover: '#aabbcc', action: 'modal' }] } })
+check(hover?.botones?.[0].hover === '#aabbcc' && hover.botones[0].action === 'modal', 'el botón guarda hover y modal')
 check(leerConstructor({ header_builder: { mega: [{ href: '/x', columns: 9 }] } })?.mega?.[0].columns === 6, 'más de 6 columnas se recorta')
 
 const icono = leerConstructor({ header_builder: { icons: { cart: { container: 'circle', color: '#112233', weight: 'relleno' } } } })
