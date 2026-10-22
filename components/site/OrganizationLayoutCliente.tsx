@@ -38,6 +38,7 @@ import { contraste } from '@/lib/website/v2/contrasteColor'
 import { EncabezadoMesa } from './header/EncabezadoMesa'
 import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
+import { headerSobreHero, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { contarUnidadesCarrito } from '@/lib/cart'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
@@ -219,8 +220,9 @@ export function OrganizationLayoutCliente({
     ? extras.barraMovil
     : null
 
-  // Medir la altura real del header y exponerla como --header-h
-  // para que los heros con overlap_header puedan solaparlo correctamente
+  const sobreHero = headerSobreHero(settings as { header_transparent_over_hero?: unknown; header_style?: unknown } | null)
+  // Medir la altura real del header y exponerla como --header-h.
+  // El respaldo (72px) ya está en el estilo inicial, antes de esta medida.
   useEffect(() => {
     if (frozenReason) return
     const root = rootRef.current
@@ -236,12 +238,29 @@ export function OrganizationLayoutCliente({
     observer.observe(header)
     return () => observer.disconnect()
   }, [frozenReason])
+  // Transparente encima del hero al inicio; con fondo al bajar, para no tapar el resto.
+  useEffect(() => {
+    if (!sobreHero) return
+    const root = rootRef.current
+    if (!root) return
+    const alScroll = () => {
+      if (window.scrollY > 8) root.setAttribute('data-header-solido', '')
+      else root.removeAttribute('data-header-solido')
+    }
+    alScroll()
+    window.addEventListener('scroll', alScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', alScroll)
+      root.removeAttribute('data-header-solido')
+    }
+  }, [sobreHero])
   
   // Panel «Encabezado» / «Pie de página»: color de texto fijo, fijo al bajar y separadores. Solo
   // atributos cuando difieren del default (app/globals.css); sin ellos, todo como siempre.
   const atributosShell: Record<string, string> = {}
   if (opcionesShell.colorTextoEncabezado) atributosShell['data-encabezado-texto'] = ''
   if (!opcionesShell.fijo) atributosShell['data-encabezado-no-fijo'] = ''
+  if (sobreHero) atributosShell['data-header-sobre-hero'] = ''
   if (opcionesShell.pie.colorTexto) atributosShell['data-pie-texto'] = ''
   if (!opcionesShell.pie.separadores) atributosShell['data-pie-sin-separadores'] = ''
   if (modoMesa) atributosShell['data-modo-mesa'] = ''
@@ -278,6 +297,7 @@ export function OrganizationLayoutCliente({
   // CSS Variables para colores personalizados
   const secondaryColor = settings?.secondary_color || organization.secondary_color || '#1E40AF'
   const cssVariables = {
+    '--header-h': `${RESPALDO_HEADER_PX}px`,
     '--primary-color': primaryColor,
     '--secondary-color': secondaryColor,
     '--accent-color': settings?.accent_color || primaryColor,

@@ -1,5 +1,6 @@
 import type { Json } from '@/types/database'
 import { buildSectionStyle } from '@/lib/sectionStyle'
+import { heroSolapa, margenExplicito, offsetPrimeraPx, paddingExplicito, pxEnRango } from '@/lib/website/espacioHeader'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
@@ -20,6 +21,10 @@ interface SectionWrapperProps {
   /** Variante de la sección (la Carta QR ajusta márgenes por variante). */
   sectionVariant?: string
   sectionId?: string
+  /** Primera sección visible de la página. Sin padding ni margen propios, queda pegada al header. */
+  isFirst?: boolean
+  /** Ajustes del sitio (`header_transparent_over_hero`, `first_section_offset_px`). */
+  ajustesSitio?: Record<string, unknown> | null
   children: React.ReactNode
 }
 
@@ -76,7 +81,7 @@ const SIN_RELLENO_POR_DEFECTO: ReadonlySet<string> = new Set([
   'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
 ])
 
-export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, children }: SectionWrapperProps) {
+export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, isFirst = false, ajustesSitio, children }: SectionWrapperProps) {
   // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
   // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
@@ -86,7 +91,11 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   const sinRelleno = SIN_RELLENO_POR_DEFECTO.has(sectionType ?? '') || SIN_RELLENO_POR_DEFECTO.has(`${sectionType}:${sectionVariant}`)
   // La carta «qr» empieza pegada a la barra de la mesa.
   const cartaQr = sectionType === 'menu_full' && sectionVariant === 'qr'
-  const paddingTop = content?.padding_top || (sinRelleno || cartaQr ? 'none' : 'lg')
+  const ptExplicito = paddingExplicito(content?.padding_top)
+  const mtExplicito = margenExplicito(content?.margin_top)
+  const ptPx = pxEnRango(content?.padding_top_px, 0, 480)
+  const pbPx = pxEnRango(content?.padding_bottom_px, 0, 480)
+  const paddingTop = ptExplicito ? String(content.padding_top) : (sinRelleno || cartaQr ? 'none' : 'lg')
   const paddingBottom = content?.padding_bottom || (sinRelleno ? 'none' : 'lg')
   const paddingX = content?.padding_x || (sinRelleno ? 'none' : 'md')
   const marginTop = content?.margin_top || 'none'
@@ -98,8 +107,9 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
     || (content?.full_bleed === undefined && content?.container_width === undefined && isHero)
     || content?.container_width === 'full'
 
-  // overlap_header: solo aplica a hero; default true para hero, false para el resto
-  const overlapHeader = isHero && content?.overlap_header !== false
+  // Solape solo si el sitio o el alias `overlap_header` lo piden. El default es no.
+  const solapa = isHero && heroSolapa(ajustesSitio, content?.overlap_header)
+  const offset = isFirst ? offsetPrimeraPx(ajustesSitio) : 0
 
   // Construir clases de padding vertical individuales
   const ptMap: Record<string, string> = {
@@ -115,20 +125,22 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
     none: '', xs: 'mb-2', sm: 'mb-4', md: 'mb-8', lg: 'mb-12', xl: 'mb-16',
   }
 
-  // Cuando overlap_header es true, el hero sube debajo del header transparente.
-  // El padding-top se maneja via --header-h en el componente del hero (no aquí),
-  // pero respetamos el padding_bottom y margin_bottom del editor.
-  // Si el usuario configura explícitamente padding_top o margin_top, lo respetamos
-  // incluso con overlap (sobreescribe el comportamiento automático).
-  const pt = overlapHeader
-    ? (content?.padding_top && content?.padding_top !== 'lg' ? (ptMap[paddingTop] || '') : '')
+  // Con solape, el alto del header lo reserva el hero (`padding-top: var(--header-h)`),
+  // sin margen negativo. La primera sección, sin padding ni margen propios, queda en 0.
+  // `padding_*_px` gana al tamaño fijo. Un valor explícito se respeta.
+  let pt = solapa
+    ? (ptExplicito && content?.padding_top !== 'lg' ? claseDe(ptMap, paddingTop, '') : '')
     : claseDe(ptMap, paddingTop, ptMap.lg)
-  const pb = claseDe(pbMap, paddingBottom, pbMap.lg)
+  let pb = claseDe(pbMap, paddingBottom, pbMap.lg)
   const px = claseDe(PADDING_X_MAP, paddingX, PADDING_X_MAP.md)
-  const mt = overlapHeader
-    ? (content?.margin_top && content?.margin_top !== 'none' ? (mtMap[marginTop] || '') : '')
+  let mt = solapa
+    ? (mtExplicito ? (mtMap[marginTop] || '') : '')
     : (mtMap[marginTop] || '')
   const mb = mbMap[marginBottom] || ''
+  if (ptPx != null) pt = ''
+  if (pbPx != null) pb = ''
+  if (isFirst && !ptExplicito && ptPx == null && !solapa) pt = ''
+  if (isFirst && !mtExplicito) mt = ''
 
   // ---- Contrato de estilo (F2.1) ----
   // buildSectionStyle traduce content + settings a clases estáticas + CSS vars.
@@ -154,6 +166,10 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   // Fallback: si el contrato no aplicó bg/text (bg_type ausente), usar formato viejo de settings
   if (!hasContractBg && settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
   if (!hasContractText && settings.text_color) (style as any)['--section-text'] = settings.text_color
+  if (ptPx != null) style.paddingTop = ptPx
+  else if (isFirst && !ptExplicito && !solapa && offset > 0) style.paddingTop = offset
+  if (pbPx != null) style.paddingBottom = pbPx
+  if (isFirst && !mtExplicito && offset > 0 && (ptExplicito || ptPx != null || solapa)) style.marginTop = offset
 
   const bgClass = !hasContractBg && settings.bg_color
     ? 'bg-[var(--section-bg)] dark:bg-gray-900/40'
@@ -176,6 +192,7 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
       className={`w-full ${pt} ${pb} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
       style={style}
       data-section-id={sectionId}
+      data-primera-hero={isFirst && solapa ? '' : undefined}
       {...presentacion.datos}
     >
       {hojaFuentes && <link rel="stylesheet" href={hojaFuentes} />}

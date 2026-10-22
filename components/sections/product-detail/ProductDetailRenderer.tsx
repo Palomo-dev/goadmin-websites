@@ -139,6 +139,8 @@ export function ProductDetailRenderer({
     const rightSections = visibleSections.filter((s) => !LEFT_TYPES.has(s.section_type) && !FULL_WIDTH_TYPES.has(s.section_type))
     const fullWidthSections = visibleSections.filter((s) => FULL_WIDTH_TYPES.has(s.section_type))
 
+    const ordenVisual = [...leftSections, ...rightSections, ...fullWidthSections]
+    const idPrimera = ordenVisual.find((s) => s.is_visible !== false)?.id
     const renderSection = (section: WebsitePageSection) => (
       <SectionRenderer
         key={section.id}
@@ -146,6 +148,7 @@ export function ProductDetailRenderer({
         organization={organization}
         primaryColor={primaryColor}
         data={sectionData}
+        isFirst={section.id === idPrimera}
       />
     )
 

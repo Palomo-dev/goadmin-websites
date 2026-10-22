@@ -1,3 +1,4 @@
+import { heroSolapa, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 
@@ -91,7 +92,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   const showOverlay = (content as any).show_overlay !== false
   const showTitle = (content as any).show_title !== false
   const showCta = (content as any).show_cta !== false
-  const overlapHeader = (content as any).overlap_header !== false
+  const overlapHeader = heroSolapa(organization?.website_settings, (content as any).overlap_header)
 
   // F3.2 — campos nuevos con defaults que preservan el aspecto actual
   const height = (content as any).height || 'auto'
@@ -102,9 +103,10 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
   const textAlign = content.text_align || 'center'
   const buttons = content.buttons
 
-  // Solape con el header usando la variable CSS --header-h (F1)
+  // El header transparente queda fijo encima. El hero no sube con margen negativo:
+  // reserva el alto medido para que el texto no quede tapado.
   const overlapStyle: React.CSSProperties = overlapHeader
-    ? { marginTop: 'calc(-1 * var(--header-h, 0px))', paddingTop: 'var(--header-h, 0px)' }
+    ? { paddingTop: `var(--header-h, ${RESPALDO_HEADER_PX}px)` }
     : {}
 
   // Altura: si es custom, usar style; si no, clase

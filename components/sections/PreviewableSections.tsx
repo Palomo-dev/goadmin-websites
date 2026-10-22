@@ -30,13 +30,14 @@ export function PreviewableSections({
   // Carta QR en modo mesa (el layout pone el contexto): un paso a la vez (PasosMesa).
   const { activo: porPasos } = usePasosMesa();
 
+  const idPrimera = sections.find((s) => s.is_visible !== false)?.id
   if (!isPreview) {
     if (porPasos) {
       return (
         <PasosMesa
           sections={sections}
           render={(section) => (
-            <SectionRenderer section={section} organization={organization} primaryColor={primaryColor} data={data} />
+            <SectionRenderer section={section} organization={organization} primaryColor={primaryColor} data={data} isFirst={section.id === idPrimera} />
           )}
         />
       );
@@ -51,13 +52,15 @@ export function PreviewableSections({
             organization={organization}
             primaryColor={primaryColor}
             data={data}
+            isFirst={section.id === idPrimera}
           />
         ))}
       </>
     );
   }
 
-  const pintar = (section: WebsitePageSection, avisos: Record<string, AvisoLienzo>) =>
+  const idPrimeraViva = (lista: WebsitePageSection[]) => lista.find((s) => s.is_visible !== false)?.id
+  const pintar = (section: WebsitePageSection, avisos: Record<string, AvisoLienzo>, primeraId?: string) =>
     // Faltan datos (lo decide el editor con los conteos del ERP): estado vacío del lienzo.
     avisos[section.id] ? (
       <SeccionVaciaLienzo
@@ -73,19 +76,21 @@ export function PreviewableSections({
         organization={organization}
         primaryColor={primaryColor}
         data={data}
+        isFirst={section.id === primeraId}
       />
     );
 
   return (
     <PreviewBridge initialSections={sections}>
-      {(liveSections, _activa, avisos) =>
-        porPasos ? (
+      {(liveSections, _activa, avisos) => {
+        const primera = idPrimeraViva(liveSections)
+        return porPasos ? (
           // Lienzo de la Carta QR: el paso de la sección seleccionada (lámina 17).
-          <PasosMesa sections={liveSections} render={(section) => pintar(section, avisos)} />
+          <PasosMesa sections={liveSections} render={(section) => pintar(section, avisos, primera)} />
         ) : (
-          <>{liveSections.map((section) => pintar(section, avisos))}</>
+          <>{liveSections.map((section) => pintar(section, avisos, primera))}</>
         )
-      }
+      }}
     </PreviewBridge>
   );
 }
