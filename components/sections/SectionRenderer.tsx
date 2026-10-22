@@ -1,6 +1,7 @@
 import type { WebsitePageSection } from '@/types/database'
 import type { OrganizationWithDetails } from '@/types/database'
 import { SectionWrapper } from './SectionWrapper'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
 
 // Secciones universales — Hero
 import { HeroFullscreen } from './hero/HeroFullscreen'
@@ -529,6 +530,9 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
 
   return (
     <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id}>
+      {section.section_type === 'hero' && (
+        <ContadoresDe settings={organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }} ubicacion="hero" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
+      )}
       <Component
         content={content}
         organization={organization}

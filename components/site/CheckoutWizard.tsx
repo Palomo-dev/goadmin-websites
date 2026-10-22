@@ -19,6 +19,8 @@ import { SelectorSede, type SedeSelector } from '@/components/site/header/Select
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadoresDe, conversionManda } from '@/components/site/ContadorPublico'
+import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
@@ -54,6 +56,8 @@ interface CartItem {
   modifiers?: CartModifier[]
   newModifiers?: NewCartModifier[]
   variantAttributes?: Record<string, string> | null
+  /** Existencias reales. Sin este dato no se muestra el aviso. */
+  stock?: number | null
 }
 
 interface WebsitePaymentMethod {
@@ -95,6 +99,10 @@ interface CheckoutSettings {
   showTrustBadges?: boolean
   trustBadges?: TrustBadge[]
   showStockWarning?: boolean
+  stockWarningThreshold?: number
+  stockWarningTemplate?: string
+  conversion?: ConversionSitio | null
+  conversionFines?: Record<string, string | null> | null
   showPaymentLogos?: boolean
   showCountdown?: boolean
   countdownConfig?: CountdownConfig
@@ -166,6 +174,13 @@ const DEFAULT_SETTINGS: CheckoutSettings = {
   shippingDescription: '',
 }
 
+function AvisoStockLinea({ activo, stock, umbral, plantilla }: { activo: boolean; stock?: number | null; umbral: number; plantilla: string }) {
+  if (!activo) return null
+  const texto = avisoStock(stock, umbral, plantilla)
+  if (!texto) return null
+  return <p className="text-xs text-orange-600 font-medium mt-1">{texto}</p>
+}
+
 export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
@@ -182,24 +197,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [resumenPedido, setResumenPedido] = useState<ResumenPedidoConfirmado | null>(null)
   // Sitio principal sin sede: carritos guardados en sitios de sede (el carrito es por sede).
   const [carritosDeSede, setCarritosDeSede] = useState<{ sede: SedeSelector; unidades: number }[]>([])
-  // Urgencia: generar número pseudo-aleatorio estable por producto
-  const getUrgencyNumber = (id: number | string) => {
-    const seed = typeof id === 'string' ? id.charCodeAt(0) * 7 + id.length : Number(id) * 13
-    return (seed % 20) + 1
-  }
-  const urgencyMessages = [
-    (n: number) => `¡Solo quedan ${n}!`,
-    (n: number) => `¡Últimas ${n} unidades disponibles!`,
-    (n: number) => `⚡ Quedan ${n} — ¡no te quedes sin el tuyo!`,
-    (n: number) => `🔥 ¡Solo ${n}! Otros lo están comprando ahora`,
-    (n: number) => `⏰ ¡Apúrate! Solo quedan ${n} en stock`,
-    (n: number) => `🚀 ${n} disponibles — se agotan rápido`,
-    (n: number) => `❗ Casi agotado: quedan ${n}`,
-    (n: number) => `💨 ¡Últimas ${n}! Alta demanda`,
-    (n: number) => `🛒 ${n} personas lo tienen en su carrito`,
-    (n: number) => `📦 Stock limitado: ${n} restantes`,
-  ]
-
   // Delivery type state (aplica a restaurant y retail)
   const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
   const hasDelivery = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
@@ -859,7 +856,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       )}
 
       {/* Countdown Banner en checkout */}
-      {settings.showCountdown && settings.countdownConfig && (
+      {conversionManda(settings, 'checkout') ? (
+        <div className="mb-6">
+          <ContadoresDe settings={settings} ubicacion="checkout" primaryColor={primaryColor} variante="inline" />
+        </div>
+      ) : settings.showCountdown && settings.countdownConfig ? (
         <div className="mb-6">
           <CountdownBanner
             config={{ ...settings.countdownConfig, countdown_enabled: true }}
@@ -867,7 +868,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
             variant="inline"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Sede del pedido (restaurante): «Pides en Sede Norte · Cambiar sede» */}
       {isRestaurant && sedePedido && (
@@ -980,11 +981,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           {item.notes && (
                             <p className="text-xs text-gray-400 italic truncate mt-0.5">📝 {item.notes}</p>
                           )}
-                          {settings.showStockWarning && (item.productId || item.id) && (
-                            <p className="text-xs text-orange-600 font-medium mt-1 animate-pulse">
-                              {urgencyMessages[(typeof item.id === 'string' ? item.id.length : Number(item.id)) % urgencyMessages.length](getUrgencyNumber(item.productId || item.id))}
-                            </p>
-                          )}
+                          <AvisoStockLinea
+                            activo={!!settings.showStockWarning}
+                            stock={item.stock}
+                            umbral={settings.conversion?.urgencia.stockBajo.activo ? settings.conversion.urgencia.stockBajo.umbral : (settings.stockWarningThreshold ?? 5)}
+                            plantilla={settings.conversion?.urgencia.stockBajo.plantilla || settings.stockWarningTemplate || 'Quedan {n}'}
+                          />
                           {promotionsForItem(appliedPromotions, item.id).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {promotionsForItem(appliedPromotions, item.id).map(promo => (

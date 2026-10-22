@@ -28,6 +28,8 @@ import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWith
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
 import { urlsSitio } from '@/lib/seo/sede'
+import { finesPromocion, idsPromocion } from '@/lib/website/finesPromocion'
+import type { ConversionSitio } from '@/lib/website/conversion'
 import { dominiosPublicos } from '@/lib/site/dominiosPublicos'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 
@@ -156,6 +158,12 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
         : null
       const baseHerencia = sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
       const ajustesV2 = ajustesPublicosDesdeDocumento(sitioV2.documento, legacySettings, baseHerencia)
+      const conversion = (ajustesV2 as { conversion?: ConversionSitio }).conversion
+      const ids = idsPromocion(conversion)
+      if (ids.length) {
+        const fines = await finesPromocion(organization.id, ids)
+        ;(ajustesV2 as { conversionFines?: Record<string, string | null> }).conversionFines = fines
+      }
       logoV2 = logoPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       logoOscuroV2 = logoOscuroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       logoFondoClaroV2 = logoFondoClaroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)

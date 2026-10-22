@@ -109,6 +109,7 @@ export function ajustesPublicosDesdeDocumento(
     const opciones = def.zona === 'header' ? header.opciones : footer.opciones
     ajustes[columna] = columna in (opciones ?? {}) ? structuredCloneSeguro(opciones[columna]) : def.porDefecto
   }
+  if (documento.conversion) ajustes.conversion = structuredCloneSeguro(documento.conversion)
   return ajustes as unknown as WebsiteSettings
 }
 
