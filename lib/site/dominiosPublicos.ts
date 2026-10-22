@@ -1,13 +1,18 @@
 /**
- * Dominios activos de una organización, una vez por request. La URL pública
- * se decide con `hostPublico`; esta lectura no usa `organizations.custom_domain`.
+ * Dominios activos de una organización. La URL pública se decide con
+ * `hostPublico`; esta lectura no usa `organizations.custom_domain`.
+ *
+ * `react.cache` evita repetirla dentro de la misma visita. `cacheStructural`
+ * la comparte entre visitas durante 300 s: el dominio principal casi no cambia
+ * y esta consulta se hacía en cada request.
  */
 
 import { cache } from 'react'
+import { cacheStructural, SETTINGS_TTL } from '@/lib/supabase/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { DominioPublico } from '@/lib/site/urlPublicaOrg'
 
-export const dominiosPublicos = cache(async (organizationId: number): Promise<DominioPublico[]> => {
+async function dominiosPublicosSinCache(organizationId: number): Promise<DominioPublico[]> {
   if (!Number.isInteger(organizationId) || organizationId <= 0) return []
   const sb = createAdminClient()
   if (!sb) return []
@@ -35,4 +40,9 @@ export const dominiosPublicos = cache(async (organizationId: number): Promise<Do
     isActive: d.is_active === true,
     updatedAt: d.updated_at,
   }))
-})
+}
+
+/** 300 s entre visitas (SETTINGS_TTL) y una sola vez por request. */
+export const dominiosPublicos = cache(
+  cacheStructural('dominiosPublicos', dominiosPublicosSinCache, SETTINGS_TTL),
+)
