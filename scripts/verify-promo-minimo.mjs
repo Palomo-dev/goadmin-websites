@@ -1,11 +1,12 @@
 /**
- * verify-promo-minimo.mjs — el mínimo legado de buy_quantity.
+ * verify-promo-minimo.mjs — el mínimo es solo min_quantity.
  *
  *   npm run verify:promo-minimo
  *
- * Sin base de datos. Importa el motor real de la tienda. Una promo de monto
- * fijo con buy_quantity=2 y min_quantity vacía no descuenta 1 unidad y sí
- * descuenta 2. min_quantity=3 manda. Compra X Lleva Y no cambia.
+ * Sin base de datos. Importa el motor real de la tienda. Los importes son
+ * los mismos que el POS: una unidad conserva el descuento si min_quantity
+ * está vacía, aunque buy_quantity sea 2. min_quantity=3 manda. Compra X
+ * Lleva Y no cambia.
  */
 import { calculatePromotions } from '../lib/promotions.ts'
 
@@ -60,17 +61,17 @@ function descuento(p, quantity, price) {
   return calculatePromotions([p], [item(quantity, price)], { applyFilters: false }).totalDiscount
 }
 
-const legado = promo({ min_purchase_amount: 14000 })
-check(descuento(legado, 1, 14000) === 0, '1 unidad de monto fijo con buy_quantity=2 no descuenta')
-check(descuento(legado, 2, 14000) === 7000, '2 unidades de monto fijo con buy_quantity=2 descuentan 7000')
+const sinMinimo = promo({ min_purchase_amount: 14000 })
+check(descuento(sinMinimo, 1, 14000) === 7000, '1 unidad conserva el descuento de 7000 si min_quantity está vacía')
+check(descuento(sinMinimo, 2, 14000) === 7000, '2 unidades del mismo monto fijo siguen en 7000')
 
 const tres = promo({ discount_value: 1000, min_quantity: 3, min_purchase_amount: 0 })
 check(descuento(tres, 2, 4000) === 0, 'min_quantity=3 no deja pasar 2 unidades')
 check(descuento(tres, 3, 4000) === 1000, 'min_quantity=3 descuenta a las 3 unidades')
 
 const diez = promo({ promotion_type: 'percentage', discount_value: 10, buy_quantity: '2', min_quantity: null })
-check(descuento(diez, 1, 10000) === 0, 'el porcentaje tampoco descuenta 1 unidad')
-check(descuento(diez, 2, 10000) === 2000, 'el porcentaje descuenta las 2 unidades')
+check(descuento(diez, 1, 10000) === 1000, 'el porcentaje de 1 unidad es 1000, igual que el POS')
+check(descuento(diez, 2, 10000) === 2000, 'el porcentaje de 2 unidades es 2000, igual que el POS')
 
 const lleva = promo({
   promotion_type: 'buy_x_get_y',
@@ -109,13 +110,14 @@ const dosLineas = calculatePromotions(
   [item(1, 4000), { ...item(1, 4000), id: '2' }],
   { applyFilters: false },
 ).totalDiscount
-const ajena = calculatePromotions(
+const soloAjena = calculatePromotions(
   [soloUno],
-  [item(1, 4000), { ...item(5, 4000), id: '9', product_id: 2 }],
+  [{ ...item(5, 4000), id: '9', product_id: 2 }],
   { applyFilters: false },
 ).totalDiscount
-check(dosLineas === 1000, 'dos líneas del mismo producto suman el mínimo legado')
-check(ajena === 0, 'una línea que no entra no completa el mínimo')
+check(descuento(soloUno, 1, 4000) === 1000, 'una sola línea ya descuenta si no hay min_quantity')
+check(dosLineas === 1000, 'dos líneas del mismo producto no duplican el monto fijo')
+check(soloAjena === 0, 'un producto que no entra no recibe el descuento')
 
 const paquete = promo({
   promotion_type: 'bundle',
@@ -126,8 +128,8 @@ const paquete = promo({
   applies_to: 'products',
   promotion_rules: [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 }],
 })
-check(descuento(paquete, 1, 4000) === 0, 'el paquete no arranca con 1 unidad si el mínimo legado es 2')
-check(descuento(paquete, 2, 4000) === 2000, 'el paquete descuenta al completar 2 unidades')
+check(descuento(paquete, 1, 4000) === 1000, 'el paquete de 1 unidad descuenta 1000, igual que el POS')
+check(descuento(paquete, 2, 4000) === 2000, 'el paquete de 2 unidades descuenta 2000, igual que el POS')
 
 if (problemas.length) {
   console.error(problemas.join('\n'))

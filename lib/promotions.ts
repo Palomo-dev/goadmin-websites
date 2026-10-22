@@ -6,9 +6,8 @@
  * mismo descuento que luego calcula el POS. Mantener ambos alineados: mismos
  * valores de `promotion_type`, `applies_to` y `rule_type`, y la misma cuenta
  * de cantidad mínima, compra mínima y paquetes. La cantidad mínima es
- * `min_quantity`; si viene vacía y `buy_quantity` es mayor que 1, ese
- * `buy_quantity` es el mínimo (promos anteriores a la columna). Compra X
- * Lleva Y no lo usa. El redondeo de aquí sigue
+ * solo `min_quantity`. Vacía es sin mínimo: `buy_quantity` no se usa
+ * para deducirla. Compra X Lleva Y no la mira. El redondeo de aquí sigue
  * siendo a pesos enteros; el del ERP, a centavos.
  *
  * Dos capas:
@@ -284,16 +283,13 @@ function eligibleUnits(items: ResolvedPromoItem[]): number {
 }
 
 /**
- * Porcentaje, monto fijo y paquete. `min_quantity` manda. Si está vacía,
- * `buy_quantity` mayor que 1 es el mínimo legado. Compra X Lleva Y devuelve null.
+ * Porcentaje, monto fijo y paquete. Solo `min_quantity`. Vacía es sin
+ * mínimo. Compra X Lleva Y devuelve null. Igual que el POS.
  */
 function cantidadMinimaEfectiva(p: PromotionRow): number | null {
   const tipo = String(p.promotion_type)
   if (tipo !== 'percentage' && tipo !== 'fixed_amount' && tipo !== 'bundle') return null
-  const explicita = positiveInt(p.min_quantity)
-  if (explicita != null) return explicita
-  const legado = positiveInt(p.buy_quantity)
-  return legado != null && legado > 1 ? legado : null
+  return positiveInt(p.min_quantity)
 }
 
 function bundleRequirements(promo: PromotionRow): Array<{ productId: number; perPackage: number }> {
