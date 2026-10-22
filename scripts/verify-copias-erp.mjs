@@ -31,6 +31,8 @@ export const COPIAS = [
   ['lib/website/v2/estiloSeccion.ts', 'src/lib/website/v2/estiloSeccion.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
+  // Distribución de banners: el editor y la tienda usan el mismo plano y el mismo aviso.
+  ['lib/website/distribucionBanner.ts', 'src/lib/website/distribucionBanner.ts'],
   // Contraste WCAG: lo usa textoSobreAcento (texto del botón del encabezado y modo del fondo).
   ['lib/website/v2/contrasteColor.ts', 'src/lib/utils/contrasteColor.ts'],
   // Teléfono con país: parseo, validación por país y E.164 (los usa components/site/TelefonoPais.tsx).
