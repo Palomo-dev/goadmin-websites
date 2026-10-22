@@ -458,7 +458,7 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
           datos: datosSedes,
           urlDe: (sede) => (outlet && sede.id === outlet.branchId
             ? baseSitio
-            : (sede.publicada ? urlPublicaSede(organization, { slug: sede.slug }) : null) ?? baseUrl),
+            : (sede.publicada ? urlPublicaSede(organization, { slug: sede.slug }, ctx.dominios) : null) ?? baseUrl),
           marca: organization.name,
           esRestaurante: organization.type_id === 1,
           logo: organization.logo_url ?? null,

@@ -209,11 +209,11 @@ export async function sendOrderConfirmationEmail(
           </div>
         </div>
         
-        <div style="text-align:center;margin-top:24px;">
+        ${data.trackingUrl.startsWith('https://') ? `<div style="text-align:center;margin-top:24px;">
           <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:${colorBoton};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
             ${escapeHtml(textoEnlace)}
           </a>
-        </div>
+        </div>` : ''}
         
         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
           ${pie}

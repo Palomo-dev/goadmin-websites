@@ -64,7 +64,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
       total: num(pedido.total),
       organizationName: marca.nombre || org?.name || '',
       marca,
-      trackingUrl: `${origen}${rutaSeguimiento(pedido.organization_id, pedido)}`,
+      trackingUrl: origen ? `${origen}${rutaSeguimiento(pedido.organization_id, pedido)}` : '',
       paymentStatus: 'paid',
       tipoEntrega: etiquetaTipoEntrega(pedido.delivery_type, esRestaurante, pedido.internal_notes),
       programadoPara: pedido.is_scheduled && pedido.scheduled_at ? momentoPedido(pedido.scheduled_at, zona) : null,

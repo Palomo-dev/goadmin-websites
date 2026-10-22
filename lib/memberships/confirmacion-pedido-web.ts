@@ -14,6 +14,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendMembershipConfirmationEmail } from '@/lib/email/send-membership-confirmation'
+import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
 
 interface MembresiaActivadaErp {
   id: number
@@ -42,12 +43,6 @@ function leerMembresias(valor: unknown): MembresiaActivadaErp[] {
   )
 }
 
-function urlPortal(org: { custom_domain?: string | null; subdomain?: string | null }): string {
-  if (org.custom_domain) return `https://${org.custom_domain}/mi-cuenta/membresia`
-  if (org.subdomain) return `https://${org.subdomain}.goadmin.io/mi-cuenta/membresia`
-  return ''
-}
-
 export async function enviarConfirmacionMembresiasPedidoWeb(webOrderId: string, membresiasErp: unknown): Promise<void> {
   try {
     // Solo las que quedaron activas: una `pending` (plan que exige activación en el primer
@@ -72,9 +67,9 @@ export async function enviarConfirmacionMembresiasPedidoWeb(webOrderId: string, 
       return
     }
 
-    const [{ data: org }, { data: lineas }, { data: planes }] = await Promise.all([
+    const [{ data: org }, { data: lineas }, { data: planes }, origen] = await Promise.all([
       sb.from('organizations')
-        .select('name, subdomain, custom_domain, timezone')
+        .select('name, timezone')
         .eq('id', pedido.organization_id)
         .maybeSingle(),
       sb.from('web_order_items')
@@ -84,6 +79,7 @@ export async function enviarConfirmacionMembresiasPedidoWeb(webOrderId: string, 
         .select('id, duration_unit, duration_value, duration_days')
         .eq('organization_id', pedido.organization_id)
         .in('id', activas.map((m) => m.plan_id).filter((id): id is number => typeof id === 'number')),
+      origenSitio(sb, pedido.organization_id),
     ])
 
     for (const m of activas) {
@@ -106,7 +102,7 @@ export async function enviarConfirmacionMembresiasPedidoWeb(webOrderId: string, 
         accessCode: m.codigo || '',
         frequency: periodo,
         organizationName: org?.name || '',
-        portalUrl: org ? urlPortal(org) : '',
+        portalUrl: origen ? `${origen}/mi-cuenta/membresia` : '',
         timeZone: org?.timezone || 'America/Bogota',
       })
     }

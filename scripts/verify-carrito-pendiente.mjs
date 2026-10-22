@@ -37,13 +37,16 @@ try {
   const textosSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/email/textosCorreoPedido.ts'), 'utf8'), { mode: 'strip' })
   process.env.ORDER_TRACKING_SECRET = 'secreto-de-prueba-para-el-enlace'
   const tokenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/tokenSeguimiento.ts'), 'utf8'), { mode: 'strip' })
+  const urlPublicaSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/site/urlPublicaOrg.ts'), 'utf8'), { mode: 'strip' })
   const origenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/origenSitio.ts'), 'utf8'), { mode: 'strip' })
+    .replaceAll("from '@/lib/site/urlPublicaOrg'", "from './urlPublicaOrg.mjs'")
   const imagenSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/orders/imagenProducto.ts'), 'utf8'), { mode: 'strip' })
   const totalesSrc = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/email/totalesCorreo.ts'), 'utf8'), { mode: 'strip' })
   await writeFile(join(dir, 'estados-pedido.mjs'), estados)
   await writeFile(join(dir, 'compraPendiente.mjs'), compra)
   await writeFile(join(dir, 'textosCorreoPedido.mjs'), textosSrc)
   await writeFile(join(dir, 'tokenSeguimiento.mjs'), tokenSrc)
+  await writeFile(join(dir, 'urlPublicaOrg.mjs'), urlPublicaSrc)
   await writeFile(join(dir, 'origenSitio.mjs'), origenSrc)
   await writeFile(join(dir, 'imagenProducto.mjs'), imagenSrc)
   await writeFile(join(dir, 'totalesCorreo.mjs'), totalesSrc)
@@ -240,11 +243,50 @@ igual(
 igual(
   origen.origenDesdeDatos({
     dominios: [],
-    customDomain: 'alias.example',
     subdomain: 'tienda',
   }),
-  'https://alias.example',
-  'sin fila verificada se usa custom_domain',
+  'https://tienda.goadmin.io',
+  'sin dominio verificado se usa el subdominio, no una columna suelta',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [{ host: 'pendiente.example', domainType: 'custom_domain', status: 'pending', isPrimary: true, isActive: true }],
+    subdomain: 'tienda',
+  }),
+  'https://tienda.goadmin.io',
+  'un dominio sin verificar no es la URL pública',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [{ host: 'apagado.example', domainType: 'custom_domain', status: 'verified', isPrimary: true, isActive: false }],
+    subdomain: 'tienda',
+  }),
+  'https://tienda.goadmin.io',
+  'un dominio inactivo no es la URL pública',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [{ host: 'secundario.example', domainType: 'custom_domain', status: 'verified', isPrimary: false, isActive: true }],
+    subdomain: 'tienda',
+  }),
+  'https://tienda.goadmin.io',
+  'un dominio verificado que no es el principal no gana',
+)
+igual(
+  origen.origenDesdeDatos({
+    dominios: [
+      { host: 'viejo.example', domainType: 'custom_domain', status: 'verified', isPrimary: true, isActive: true, updatedAt: '2026-01-01T00:00:00Z' },
+      { host: 'nuevo.example', domainType: 'custom_domain', status: 'verified', isPrimary: true, isActive: true, updatedAt: '2026-06-01T00:00:00Z' },
+    ],
+    subdomain: 'tienda',
+  }),
+  'https://nuevo.example',
+  'si hubiera dos principales, gana el más reciente',
+)
+igual(
+  origen.origenDesdeDatos({ dominios: [], subdomain: '' }),
+  '',
+  'sin subdominio no se inventa un host',
 )
 
 const base = 'https://cdn.ejemplo'

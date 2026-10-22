@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendClassCancellationEmail } from '@/lib/email/send-class-reservation-email'
+import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,15 +98,18 @@ export async function POST(
       .eq('id', customerId)
       .single()
 
+    // `organizations.domain` no existe. El enlace sale del dominio principal.
     const { data: orgData } = await (supabase as any)
       .from('organizations')
-      .select('name, domain')
+      .select('name')
       .eq('id', organizationId)
       .single()
 
-    if (customerData?.email && orgData) {
-      const domain = orgData.domain || 'localhost:3000'
-
+    const orgId = Number(organizationId)
+    const origen = customerData?.email && orgData && Number.isInteger(orgId)
+      ? await origenSitio(supabase, orgId)
+      : ''
+    if (customerData?.email && orgData && origen) {
       sendClassCancellationEmail({
         customerEmail: customerData.email,
         customerName: `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim() || 'Cliente',
@@ -113,7 +117,7 @@ export async function POST(
         startAt: reservation.gym_classes?.start_at,
         endAt: reservation.gym_classes?.start_at,
         organizationName: orgData.name,
-        portalUrl: `https://${domain}/clases`,
+        portalUrl: `${origen}/clases`,
       }).catch(err => console.error('[Class Cancel] Error enviando email:', err))
     }
 
