@@ -1,5 +1,6 @@
 import { DynamicLucideIcon } from '@/components/sections/products/DynamicLucideIcon'
 import { clasesGridCaracteristicas } from '@/lib/website/presentacionTienda'
+import { clasesImagenBeneficio, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 
 interface ItemBeneficio {
   icon?: string
@@ -18,6 +19,12 @@ interface FeaturesGridAlternatingProps {
     /** Número, o `{ desktop, tablet, mobile }` si el editor guardó columnas por dispositivo. */
     columns?: unknown
     items?: ItemBeneficio[]
+    /** Ausentes = la foto de hoy: cubrir, alto máximo 12 rem, sin margen. */
+    image_fit?: string
+    image_ratio?: string
+    image_max_size?: number
+    image_padding?: number
+    image_bg?: string
   }
   primaryColor?: string
   sectionVariant?: string
@@ -56,7 +63,13 @@ export function FeaturesGridAlternating({ content, primaryColor = '#3B82F6' }: F
             <div key={i} className="flex flex-col items-center text-center">
               <IconoBeneficio name={item.icon} color={primaryColor} />
               {item.image_url ? (
-                <img src={item.image_url} alt={titulo} className="mb-4 w-full max-h-48 rounded-xl object-cover" loading="lazy" />
+                <img
+                  src={item.image_url}
+                  alt={titulo}
+                  className={clasesImagenBeneficio(content)}
+                  style={estiloMarcoImagen(content)}
+                  loading="lazy"
+                />
               ) : null}
               {titulo ? <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{titulo}</h3> : null}
               {item.description ? (

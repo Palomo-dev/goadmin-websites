@@ -18,6 +18,7 @@
 
 import Link from 'next/link'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { claseAjusteImagen, claseProporcionImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 
 export interface CategoryCardStyle {
   /** Forma del contenedor. `round` es alias de `circle` (compat hacia atrás). */
@@ -30,6 +31,12 @@ export interface CategoryCardStyle {
   card_padding?: number
   card_hover?: 'none' | 'zoom' | 'lift' | 'glow' | 'border'
   image_fit?: 'cover' | 'contain' | 'fill'
+  /** Si viene, sustituye al aspect de `shape`. Ausente = el aspect de la forma. */
+  image_ratio?: string
+  /** Margen interior del recuadro, en px. Ausente = sin margen. */
+  image_padding?: number
+  /** Fondo del recuadro. Ausente = el de la tarjeta, si lo hay. */
+  image_bg?: string
   text_align?: 'left' | 'center' | 'right'
   /** Dónde va el texto respecto a la imagen. */
   text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
@@ -107,12 +114,6 @@ const TEXT_ALIGN_CLASS: Record<string, string> = {
   right: 'text-right',
 }
 
-const IMAGE_FIT_CLASS: Record<string, string> = {
-  cover: 'object-cover',
-  contain: 'object-contain',
-  fill: 'object-fill',
-}
-
 function radiusStyle(radius?: number): number | undefined {
   if (radius == null) return undefined
   if (radius <= 0) return 0
@@ -153,6 +154,9 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     card_padding,
     card_hover,
     image_fit,
+    image_ratio,
+    image_padding,
+    image_bg,
     text_align,
     text_position = 'overlay',
     title_size = 'lg',
@@ -172,6 +176,8 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
 
   const isRound = shape === 'circle' || shape === 'round'
   const { aspect, radius } = shapeClasses(shape)
+  const proporcion = claseProporcionImagen(image_ratio)
+  const aspecto = proporcion || aspect
   const accent = show_color && cat.color ? cat.color : primaryColor || '#8B6914'
 
   // --- Estilo inline (sobreescribe clases cuando hay valor explícito) ---
@@ -200,15 +206,16 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   const mediaStyle: React.CSSProperties = {
     ...(card_bg ? { backgroundColor: card_bg } : {}),
     ...(media_max_width ? { maxWidth: media_max_width, marginLeft: 'auto', marginRight: 'auto' } : {}),
+    ...estiloMarcoImagen({ image_padding, image_bg }),
   }
 
   const media = (
-    <div className={`relative w-full ${aspect} ${radius} overflow-hidden`} style={mediaStyle}>
+    <div className={`relative w-full ${aspecto} ${radius} overflow-hidden`} style={mediaStyle}>
       {hasImage ? (
         <img
           src={cat.image_url}
           alt={cat.name}
-          className={`w-full h-full ${IMAGE_FIT_CLASS[image_fit || 'cover']} ${
+          className={`w-full h-full ${claseAjusteImagen(image_fit)} ${
             card_hover === 'zoom' ? 'group-hover:scale-105 transition-transform duration-300' : ''
           }`}
           loading="lazy"
