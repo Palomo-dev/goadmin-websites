@@ -409,7 +409,7 @@ export default function SiteHeader({
   }
 
   const constructor = leerConstructor(settings)
-  if (constructor?.zonas) {
+  if (constructor?.zonas || constructor?.menus) {
     return (
       <HeaderPorZonas
         {...variantProps}

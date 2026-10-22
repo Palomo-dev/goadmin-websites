@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Globe, type LucideIcon } from 'lucide-react'
 import { useCurrency } from './CurrencyProvider'
 import { IconoConCirculo, propsTrazoIcono } from './header/IconoEncabezado'
+import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
+import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 
-export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClassName = '', heredarColor = false, relleno = false, circulo = false }: { primaryColor?: string; icon?: LucideIcon; compactClassName?: string; heredarColor?: boolean; relleno?: boolean; circulo?: boolean }) {
+export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClassName = '', heredarColor = false, relleno = false, circulo = false, contenedor = null, colores }: { primaryColor?: string; icon?: LucideIcon; compactClassName?: string; heredarColor?: boolean; relleno?: boolean; circulo?: boolean; contenedor?: ContenedorIconos | null; colores?: ColoresCaja }) {
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -32,9 +34,15 @@ export function CurrencySelector({ primaryColor, icon: Icon = Globe, compactClas
         className={`flex items-center gap-1 rounded-md hover:bg-[var(--header-hover)] transition-colors ${heredarColor ? 'text-current' : 'text-gray-600 dark:text-gray-300'} ${hasCompact ? compactClassName : 'px-2 py-1.5 text-sm'}`}
         aria-label="Seleccionar moneda"
       >
-        <IconoConCirculo circulo={circulo} primaryColor={primaryColor || '#111827'} tamano={hasCompact ? 'sm' : 'md'}>
-          <Icon className={hasCompact ? 'h-3 w-3 md:h-4 md:w-4' : 'h-4 w-4'} {...propsTrazoIcono(relleno)} />
-        </IconoConCirculo>
+        {contenedor ? (
+          <ContenedorIcono base={contenedor} clave="currency" colores={colores || { primary: primaryColor || '#111827', accent: primaryColor || '#111827', secondary: primaryColor || '#111827' }}>
+            <Icon style={trazoContenedor(contenedor, 'currency', relleno)} />
+          </ContenedorIcono>
+        ) : (
+          <IconoConCirculo circulo={circulo} primaryColor={primaryColor || '#111827'} tamano={hasCompact ? 'sm' : 'md'}>
+            <Icon className={hasCompact ? 'h-3 w-3 md:h-4 md:w-4' : 'h-4 w-4'} {...propsTrazoIcono(relleno)} />
+          </IconoConCirculo>
+        )}
         <span className="font-medium">{currency}</span>
         <ChevronDown className={`transition-transform ${open ? 'rotate-180' : ''} ${hasCompact ? 'h-2.5 w-2.5 md:h-3 md:w-3' : 'h-3 w-3'}`} />
       </button>

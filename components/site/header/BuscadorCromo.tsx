@@ -4,7 +4,8 @@ import { Search } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
 import type { ReactNode } from 'react'
-import { buscadorEnBarra, leerConstructor, type CromoBuscador } from '@/lib/website/constructorEncabezado'
+import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
+import type { ColoresCaja } from './ContenedorIcono'
 
 /** La barra de hoy si no hay cromo nuevo. El overlay no ocupa la barra. */
 export function barraSiCromo(
@@ -34,12 +35,16 @@ export function BuscadorCromo({
   primaryColor,
   className = '',
   categorias = [],
+  contenedor = null,
+  colores,
 }: {
   presentacion: CromoBuscador
   primaryColor: string
   organizationId?: number
   className?: string
   categorias?: { id: number; name: string }[]
+  contenedor?: ContenedorIconos | null
+  colores?: ColoresCaja
 }) {
   const Icono = Search
   if (presentacion.tipo === 'icon_overlay') {
@@ -48,6 +53,8 @@ export function BuscadorCromo({
         primaryColor={primaryColor}
         icon={Icono}
         pantallaCompleta={presentacion.mobile === 'fullscreen'}
+        contenedor={contenedor}
+        colores={colores}
       />
     )
   }

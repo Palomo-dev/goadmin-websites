@@ -7,6 +7,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
+import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
+import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 
 interface ProductSearchProps {
   primaryColor: string
@@ -23,6 +25,9 @@ interface ProductSearchProps {
   sinDisparador?: boolean
   /** Pantalla completa también en tablet. El menú móvil llega hasta el breakpoint del sitio, no solo hasta `md`. */
   pantallaCompleta?: boolean
+  /** Caja del ícono. Sin ella el botón de buscar se pinta igual que hoy. */
+  contenedor?: ContenedorIconos | null
+  colores?: ColoresCaja
 }
 
 interface SearchResult {
@@ -49,6 +54,8 @@ export function ProductSearch({
   alCerrar,
   sinDisparador = false,
   pantallaCompleta = false,
+  contenedor = null,
+  colores,
 }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
   const controlado = abierto !== undefined
@@ -266,7 +273,13 @@ export function ProductSearch({
           className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
           aria-label="Buscar productos"
         >
-          <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
+          {contenedor ? (
+            <ContenedorIcono base={contenedor} clave="search" colores={colores || { primary: primaryColor, accent: primaryColor, secondary: primaryColor }}>
+              <SearchIconComp style={trazoContenedor(contenedor, 'search')} />
+            </ContenedorIcono>
+          ) : (
+            <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
+          )}
         </button>
       )}
 

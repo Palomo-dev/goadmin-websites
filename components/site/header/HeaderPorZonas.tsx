@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Globe, Heart, Phone, Search, User } from 'lucide-react'
+import { Globe, Heart, Phone, Search, ShoppingCart, User } from 'lucide-react'
 import {
   HeaderLogo,
   SearchBarInline,
@@ -18,19 +18,22 @@ import {
 import { BuscadorCromo } from './BuscadorCromo'
 import { CartIndicator } from '../CartIndicator'
 import { CurrencySelector } from '../CurrencySelector'
-import type { BotonHeader, ConstructorEncabezado, ElementoZona, IconoElemento, MegaItem, ZonaHeader } from '@/lib/website/constructorEncabezado'
+import { MENU_MOVIL, zonasConMenus, type BotonHeader, type ConstructorEncabezado, type ElementoZona, type IconoElemento, type MegaItem, type ZonaHeader } from '@/lib/website/constructorEncabezado'
+import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './ContenedorIcono'
+import { MenuBarra, MenusMovil } from './MenusEncabezado'
 
 const FILA_TOP = ['topbar_left', 'topbar_center', 'topbar_right'] as const
 const FILA = ['header_left', 'header_center', 'header_right'] as const
 const MENU = ['menu_left', 'menu_center', 'menu_right'] as const
 
 /**
- * Header armado por zonas. Solo se monta si `header_builder.zones` trae elementos.
+ * Header armado por zonas. Solo se monta si hay zonas o menús propios.
+ * Sin eso, el sitio sigue con la variante de hoy.
  */
 export function HeaderPorZonas({
   organization, primaryColor, navTree, settings, showCart, onCartClick, branchId, menuCategories, constructor,
 }: HeaderVariantProps & { constructor: ConstructorEncabezado }) {
-  const zonas = constructor.zonas
+  const zonas = constructor.menus?.length ? zonasConMenus(constructor) : constructor.zonas
   const hayBarra = !!zonas?.mobile_bottom?.length
   useEffect(() => {
     if (!hayBarra) return
@@ -48,11 +51,15 @@ export function HeaderPorZonas({
         <FilaZonas nombres={FILA} zonas={zonas} className="hidden md:flex" fondo={false}>
           {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="desktop" />}
         </FilaZonas>
-        <div className="flex items-center gap-2 px-4 md:hidden" style={{ minHeight: 56 }}>
-          {(zonas.mobile_header ?? zonas.header_left ?? []).filter((el) => el.mobile).map((el) => (
-            <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="mobile" />
-          ))}
-        </div>
+        <FilaMovil
+          zonas={zonas}
+          semilla={!constructor.zonas}
+          cierre={(zonas.mobile_header ?? zonas.header_left ?? []).some((el) => el.menuId === MENU_MOVIL) ? null : (
+            <MenusMovil menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
+          )}
+        >
+          {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="mobile" />}
+        </FilaMovil>
       </div>
       <FilaZonas nombres={MENU} zonas={zonas} className="hidden border-t md:flex" fondo>
         {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="desktop" />}
@@ -90,6 +97,34 @@ function FilaZonas({
   )
 }
 
+function FilaMovil({
+  zonas, semilla, cierre, children,
+}: {
+  zonas: NonNullable<ConstructorEncabezado['zonas']>
+  semilla: boolean
+  cierre?: ReactNode
+  children: (el: ElementoZona) => ReactNode
+}) {
+  const fila = (zonas.mobile_header ?? zonas.header_left ?? []).filter((el) => el.mobile)
+  if (!fila.length && !cierre) return null
+  const nodos = fila.map(children)
+  return (
+    <div className="flex items-center gap-2 px-4 md:hidden" style={{ minHeight: 56 }}>
+      {semilla ? (
+        <>
+          {nodos[0]}
+          <span className="ml-auto flex items-center gap-1">{nodos.slice(1)}</span>
+        </>
+      ) : (
+        <>
+          {nodos}
+          {cierre}
+        </>
+      )}
+    </div>
+  )
+}
+
 function Elemento(props: {
   el: ElementoZona
   nav: NavItem[]
@@ -105,18 +140,32 @@ function Elemento(props: {
 }) {
   const { el, nav, organization, primaryColor, settings, showCart, onCartClick, branchId, menuCategories, constructor, dispositivo } = props
   const icono = constructor.iconos?.[el.type]
+  const colores: ColoresCaja = {
+    primary: primaryColor,
+    accent: settings?.accent_color || primaryColor,
+    secondary: settings?.secondary_color || '#1E40AF',
+  }
+  const menuPropio = el.menuId ? constructor.menus?.find((m) => m.id === el.menuId) : undefined
   let nodo: ReactNode = null
   if (el.type === 'logo') nodo = <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 40} />
+  else if (el.type === 'menu' && el.menuId === MENU_MOVIL) nodo = <MenusMovil menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
+  else if (el.type === 'menu' && menuPropio) nodo = <MenuBarra menu={menuPropio} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
   else if (el.type === 'menu') nodo = <MenuZona nav={nav} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} movil={dispositivo === 'mobile'} />
   else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
   else if (el.type === 'search') nodo = <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
-  else if (el.type === 'cart' && showCart !== false) nodo = (
+  else if (el.type === 'cart' && showCart !== false) nodo = constructor.contenedor ? (
+    <CartIndicator contenedor={constructor.contenedor} colores={colores} primaryColor={primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, ShoppingCart)} />
+  ) : (
     <CajaIcono icono={icono} primary={primaryColor}>
       <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, Search)} relleno={icono?.weight === 'relleno'} />
     </CajaIcono>
   )
-  else if (el.type === 'account') nodo = <Link href="/mi-cuenta" aria-label="Cuenta"><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>
-  else if (el.type === 'favorites') nodo = <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><CajaIcono icono={icono} primary={primaryColor}><Heart style={estiloTrazo(icono)} /></CajaIcono></Link>
+  else if (el.type === 'account') nodo = constructor.contenedor ? (
+    <Link href="/mi-cuenta" aria-label="Cuenta"><ContenedorIcono base={constructor.contenedor} clave="account" colores={colores}><User style={trazoContenedor(constructor.contenedor, 'account')} /></ContenedorIcono></Link>
+  ) : <Link href="/mi-cuenta" aria-label="Cuenta"><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>
+  else if (el.type === 'favorites') nodo = constructor.contenedor ? (
+    <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><ContenedorIcono base={constructor.contenedor} clave="favorites" colores={colores}><Heart style={trazoContenedor(constructor.contenedor, 'favorites')} /></ContenedorIcono></Link>
+  ) : <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><CajaIcono icono={icono} primary={primaryColor}><Heart style={estiloTrazo(icono)} /></CajaIcono></Link>
   else if (el.type === 'whatsapp') nodo = <a href={enlaceWhatsapp(settings, constructor)}><CajaIcono icono={icono} primary={primaryColor}>WhatsApp</CajaIcono></a>
   else if (el.type === 'phone' && organization.phone) nodo = <a href={`tel:${organization.phone}`}><CajaIcono icono={icono} primary={primaryColor}><Phone style={estiloTrazo(icono)} /></CajaIcono></a>
   else if (el.type === 'text') nodo = <span className="text-sm">{el.label}</span>
@@ -124,7 +173,9 @@ function Elemento(props: {
     const boton = constructor.botones?.find((b) => b.id === el.buttonId) ?? constructor.botones?.[0]
     nodo = boton ? <BotonVisual boton={boton} primaryColor={primaryColor} onCart={onCartClick} /> : null
   }
-  else if (el.type === 'currency') nodo = <CurrencySelector primaryColor={icono?.color || primaryColor} icon={getLucideIcon(icono?.icon, Globe)} relleno={icono?.weight === 'relleno'} />
+  else if (el.type === 'currency') nodo = constructor.contenedor ? (
+    <CurrencySelector primaryColor={primaryColor} icon={getLucideIcon(icono?.icon, Globe)} contenedor={constructor.contenedor} colores={colores} />
+  ) : <CurrencySelector primaryColor={icono?.color || primaryColor} icon={getLucideIcon(icono?.icon, Globe)} relleno={icono?.weight === 'relleno'} />
   else if (el.type === 'social') nodo = <Redes settings={settings} />
   if (!nodo) return null
   return <span className={!el.tablet ? 'inline-flex md:max-lg:hidden' : 'contents'}>{nodo}</span>
