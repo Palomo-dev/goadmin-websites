@@ -3,6 +3,7 @@ interface ImageTextRightProps {
     title?: string
     text?: string
     image_url?: string | null
+    image_url_mobile?: string | null
   }
   primaryColor?: string
 }
@@ -21,8 +22,15 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
         )}
       </div>
       <div className="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-[4/3]">
-        {content.image_url ? (
-          <img src={content.image_url} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
+        {content.image_url || content.image_url_mobile ? (
+          content.image_url_mobile && content.image_url_mobile !== content.image_url ? (
+            <picture className="block h-full w-full">
+              <source media="(max-width: 767px)" srcSet={content.image_url_mobile} />
+              <img src={content.image_url || content.image_url_mobile} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
+            </picture>
+          ) : (
+            <img src={content.image_url || content.image_url_mobile || ''} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <span className="text-4xl">🖼️</span>

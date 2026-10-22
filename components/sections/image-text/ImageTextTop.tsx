@@ -6,14 +6,21 @@ interface ImageTextTopProps {
 }
 
 export function ImageTextTop({ content, primaryColor = '#3B82F6' }: ImageTextTopProps) {
-  const { title, body, image_url, cta_text, cta_url } = content
+  const { title, body, image_url, image_url_mobile, cta_text, cta_url } = content
 
   return (
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto">
-        {image_url && (
+        {(image_url || image_url_mobile) && (
           <div className="rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-700 mb-8">
-            <img src={image_url} alt={title || ''} className="w-full h-full object-cover" />
+            {image_url_mobile && image_url_mobile !== image_url ? (
+              <picture className="block h-full w-full">
+                <source media="(max-width: 767px)" srcSet={image_url_mobile} />
+                <img src={image_url || image_url_mobile} alt={title || ''} className="w-full h-full object-cover" />
+              </picture>
+            ) : (
+              <img src={image_url || image_url_mobile} alt={title || ''} className="w-full h-full object-cover" />
+            )}
           </div>
         )}
         <div className="text-center">

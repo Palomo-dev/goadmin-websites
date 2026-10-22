@@ -6,6 +6,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
+import { ajusteImagen, puntoFocal } from '@/lib/website/alturaHero'
 import { enlaceDeImagen } from '@/lib/website/presentacionTienda'
 
 interface Slide {
@@ -329,6 +330,18 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const imageMaxHeight = (content as any).image_max_height || '85vh'
   const overlapHeader = parseBool((content as any).overlap_header, true)
 
+  const focal = puntoFocal((content as any).focal_point)
+  const fitMovil = ajusteImagen((content as any).image_fit_mobile)
+  const claseObjeto = fitMovil ? `object-${fitMovil} md:object-cover` : 'object-cover'
+  const estiloObjeto: React.CSSProperties | undefined = focal ? { objectPosition: focal } : undefined
+  const alturaMovil = (content as any).mobile_height as string | undefined
+  const claseMovil = alturaMovil === '60vh'
+    ? 'max-md:min-h-[60vh]'
+    : alturaMovil === '100vh'
+      ? 'max-md:min-h-[100dvh]'
+      : alturaMovil === 'auto'
+        ? 'max-md:min-h-[50vh]'
+        : ''
   const heightClassStr = sliderHeightClass(height)
   const imageMaxHClass = imageMaxHeightClass(imageMaxHeight)
   const heightStyle: React.CSSProperties =
@@ -543,7 +556,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
               {slide.image_url_mobile && (
                 <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
               )}
-              <img src={fotoSlide} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
+              <img src={fotoSlide} alt={slide.title || ''} className={`w-full h-full ${claseObjeto}`} style={estiloObjeto} loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
             </picture>
             {showOverlay && <div className="absolute inset-0 bg-black/40" />}
             <CapaEnlace href={enlace} etiqueta={etiqueta} />
@@ -564,7 +577,8 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
             <img
               src={fotoSlide}
               alt={slide.title || etiqueta}
-              className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
+              className={`w-full h-auto ${imageMaxHClass} ${fitMovil ? claseObjeto : 'object-contain'} mx-auto transition-opacity duration-700`}
+              style={estiloObjeto}
               loading={isFirst ? 'eager' : 'lazy'}
               fetchPriority={isFirst ? 'high' : 'low'}
             />
@@ -595,7 +609,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   // --- Modo slide (embla) ---
   if (transition === 'slide') {
     return (
-      <div className={`relative w-full ${containerClass}`} style={{ ...overlapStyle, ...heightStyle }}>
+      <div className={`relative w-full ${containerClass} ${claseMovil}`} style={{ ...overlapStyle, ...heightStyle }}>
         <div
           className="relative overflow-hidden"
           style={sliderStyle}
@@ -620,7 +634,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
 
   // --- Modo fade / zoom (crossfade manual) ---
   return (
-    <div className={`relative w-full ${containerClass}`} style={{ ...overlapStyle, ...heightStyle }}>
+    <div className={`relative w-full ${containerClass} ${claseMovil}`} style={{ ...overlapStyle, ...heightStyle }}>
       <div
         className="relative overflow-hidden"
         style={sliderStyle}

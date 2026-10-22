@@ -1,6 +1,28 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
+import { ajusteImagen, proporcionImagen, puntoFocal } from '@/lib/website/alturaHero'
+
+function useMedida(url: string | null, ancho: unknown, alto: unknown, activo: boolean): string | null {
+  const guardada = proporcionImagen(ancho, alto)
+  const [medida, setMedida] = useState<string | null>(guardada)
+  useEffect(() => {
+    if (!activo) return
+    if (guardada) return
+    if (!url) return
+    let vivo = true
+    const img = new window.Image()
+    img.onload = () => {
+      if (vivo && img.naturalWidth > 0 && img.naturalHeight > 0) setMedida(`${img.naturalWidth} / ${img.naturalHeight}`)
+    }
+    img.src = url
+    return () => { vivo = false }
+  }, [activo, guardada, url])
+  return guardada || medida
+}
 
 interface HeroSplitProps {
   content: {
@@ -39,6 +61,28 @@ function verticalAlignClass(pos: string): string {
 export function HeroSplit({ content, primaryColor, organization }: HeroSplitProps) {
   const imageUrl = content.image_url || null
   const imageUrlMobile = content.image_url_mobile || null
+  const focal = puntoFocal((content as any).focal_point)
+  const fitMovil = ajusteImagen((content as any).image_fit_mobile)
+  const altura = (content as any).height
+  const alturaMovil = (content as any).mobile_height as string | undefined
+  const proporcion = useMedida(
+    imageUrl || imageUrlMobile,
+    (content as any).image_width,
+    (content as any).image_height,
+    altura === 'image' || alturaMovil === 'image',
+  )
+  const claseImagen = `w-full rounded-2xl shadow-lg${fitMovil ? ` object-${fitMovil} md:object-cover` : ''}`
+  const estiloImagen: React.CSSProperties = {
+    ...(focal ? { objectPosition: focal } : {}),
+    ...(altura === 'image' && proporcion ? { aspectRatio: proporcion } : {}),
+  }
+  const claseCaja = alturaMovil === '60vh'
+    ? 'max-md:min-h-[60vh]'
+    : alturaMovil === '100vh'
+      ? 'max-md:min-h-[100dvh]'
+      : alturaMovil === 'auto'
+        ? 'max-md:min-h-[50vh]'
+        : ''
   const logo = !imageUrl && !imageUrlMobile ? organization?.logo_url : null
   const showTitle = (content as any).show_title !== false
   const showCta = (content as any).show_cta !== false
@@ -87,15 +131,15 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
           </div>
         ) : null}
       </div>
-      <div className="order-first md:order-last">
+      <div className={`order-first md:order-last ${claseCaja}`}>
         {imageUrl || imageUrlMobile ? (
           imageUrlMobile && imageUrlMobile !== imageUrl ? (
             <picture>
               <source media="(max-width: 767px)" srcSet={imageUrlMobile} />
-              <img src={imageUrl || imageUrlMobile} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
+              <img src={imageUrl || imageUrlMobile} alt={content.title || ''} className={claseImagen} style={estiloImagen} loading="eager" />
             </picture>
           ) : (
-            <img src={imageUrl || imageUrlMobile || ''} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
+            <img src={imageUrl || imageUrlMobile || ''} alt={content.title || ''} className={claseImagen} style={estiloImagen} loading="eager" />
           )
         ) : logo ? (
           <img src={logo} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />

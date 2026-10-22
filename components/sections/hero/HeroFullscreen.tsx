@@ -1,5 +1,30 @@
+'use client'
+
+import { useEffect, useId, useState } from 'react'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
+import { ajusteImagen, cssAltura, planAlturaPortada, proporcionImagen, puntoFocal } from '@/lib/website/alturaHero'
+
+function useMedida(url: string | null, ancho: unknown, alto: unknown, activo: boolean): string | null {
+  const guardada = proporcionImagen(ancho, alto)
+  const [medida, setMedida] = useState<string | null>(guardada)
+  useEffect(() => {
+    if (!activo) return
+    if (guardada) {
+      setMedida(guardada)
+      return
+    }
+    if (!url) return
+    let vivo = true
+    const img = new window.Image()
+    img.onload = () => {
+      if (vivo && img.naturalWidth > 0 && img.naturalHeight > 0) setMedida(`${img.naturalWidth} / ${img.naturalHeight}`)
+    }
+    img.src = url
+    return () => { vivo = false }
+  }, [activo, guardada, url])
+  return guardada || medida
+}
 
 interface HeroFullscreenProps {
   content: {
@@ -11,6 +36,13 @@ interface HeroFullscreenProps {
     image_url_mobile?: string | null
     // F3.2 — campos nuevos del catálogo
     height?: string
+    mobile_height?: string
+    image_fit_mobile?: string
+    focal_point?: string
+    image_width?: number
+    image_height?: number
+    image_width_mobile?: number
+    image_height_mobile?: number
     custom_height?: number
     overlay_opacity?: number
     overlay_color?: string
@@ -63,23 +95,6 @@ function textAlignClass(align?: string): string {
   }
 }
 
-/** Resuelve la altura del hero según el campo `height`. */
-function heightClass(height?: string): string {
-  switch (height) {
-    case '50vh':
-      return 'min-h-[50vh]'
-    case '70vh':
-      return 'min-h-[70vh]'
-    case '100vh':
-      return 'min-h-[100dvh]'
-    case 'custom':
-      return '' // se aplica via style
-    // auto o undefined: comportamiento heredado
-    default:
-      return ''
-  }
-}
-
 export function HeroFullscreen({ content, organization, primaryColor }: HeroFullscreenProps) {
   const title = content.title || organization.name
   const subtitle = content.subtitle || organization.description || ''
@@ -95,6 +110,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
 
   // F3.2 — campos nuevos con defaults que preservan el aspecto actual
   const height = (content as any).height || 'auto'
+  const mobileHeight = (content as any).mobile_height
   const customHeight = Number((content as any).custom_height) || 0
   const overlayOpacity = content.overlay_opacity != null ? content.overlay_opacity / 100 : null
   const overlayColor = content.overlay_color || primaryColor || '#1A1A2E'
@@ -107,34 +123,60 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
     ? { marginTop: 'calc(-1 * var(--header-h, 0px))', paddingTop: 'var(--header-h, 0px)' }
     : {}
 
-  // Altura: si es custom, usar style; si no, clase
+  // Altura: si es custom, usar style; si no, clase. Sin claves nuevas, la clase es la de hoy.
   const heightStyle: React.CSSProperties =
     height === 'custom' && customHeight > 0 ? { minHeight: `${customHeight}px` } : {}
-
-  // Comportamiento heredado: si height es 'auto' y hay booking, usar min-h auto
-  const isAutoHeight = height === 'auto'
-  const bookingHeightClass = showBooking && isAutoHeight
-    ? 'min-h-[auto] py-20 md:min-h-[720px] md:py-0'
-    : heightClass(height) || (showBooking ? 'min-h-[auto] py-20 md:min-h-[720px] md:py-0' : 'min-h-[50vh] md:min-h-[70vh]')
+  const focal = puntoFocal((content as any).focal_point)
+  const fitMovil = ajusteImagen((content as any).image_fit_mobile)
+  const quiereMedida = height === 'image' || mobileHeight === 'image'
+  const proporcionEsc = useMedida(
+    imageUrl || imageUrlMobile,
+    (content as any).image_width,
+    (content as any).image_height,
+    quiereMedida && height === 'image',
+  )
+  const proporcionMov = useMedida(
+    imageUrlMobile || imageUrl,
+    (content as any).image_width_mobile ?? (content as any).image_width,
+    (content as any).image_height_mobile ?? (content as any).image_height,
+    quiereMedida && mobileHeight === 'image',
+  )
+  const plan = planAlturaPortada(height, mobileHeight, showBooking, proporcionEsc, proporcionMov)
+  const idAltura = `hero-h-${useId().replace(/:/g, '')}`
+  const cssAlturaHero = cssAltura(idAltura, plan)
+  const bookingHeightClass = plan.clase
+  const claseFoto = fitMovil ? `h-full w-full object-${fitMovil} md:object-cover` : 'w-full h-full object-cover'
+  const estiloFoto: React.CSSProperties = focal ? { objectPosition: focal } : {}
 
   const pos = positionClasses(contentPosition)
   const alignClass = textAlignClass(textAlign)
   return (
     <div
-      className={`relative ${bookingHeightClass} flex ${pos} text-white`}
+      className={`relative ${idAltura} ${bookingHeightClass} flex ${pos} text-white`}
       style={{ ...overlapStyle, ...heightStyle }}
     >
+      {cssAlturaHero ? <style>{cssAlturaHero}</style> : null}
       {(imageUrl || imageUrlMobile) && (
         <>
           {imageUrlMobile && imageUrlMobile !== imageUrl ? (
             <picture className="absolute inset-0 w-full h-full">
               <source media="(max-width: 767px)" srcSet={imageUrlMobile} />
-              <img src={imageUrl || imageUrlMobile} alt="" className="w-full h-full object-cover" />
+              <img src={imageUrl || imageUrlMobile} alt="" className={claseFoto} style={estiloFoto} />
             </picture>
+          ) : fitMovil ? (
+            <img
+              src={imageUrl || imageUrlMobile || ''}
+              alt=""
+              className={`absolute inset-0 ${claseFoto}`}
+              style={estiloFoto}
+            />
           ) : (
             <div
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageUrl || imageUrlMobile})` }}
+              style={{
+                backgroundImage: `url(${imageUrl || imageUrlMobile})`,
+                ...(focal ? { backgroundPosition: focal } : {}),
+              }}
             />
           )}
         </>
