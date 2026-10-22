@@ -5,7 +5,9 @@
  * canal `web`), para que el cliente vea en el carrito/checkout exactamente el
  * mismo descuento que luego calcula el POS. Mantener ambos alineados: mismos
  * valores de `promotion_type`, `applies_to` y `rule_type`, y la misma cuenta
- * de cantidad mínima, compra mínima y paquetes. El redondeo de aquí sigue
+ * de cantidad mínima, compra mínima y paquetes. La cantidad mínima es
+ * solo `min_quantity`. Vacía es sin mínimo: `buy_quantity` no se usa
+ * para deducirla. Compra X Lleva Y no la mira. El redondeo de aquí sigue
  * siendo a pesos enteros; el del ERP, a centavos.
  *
  * Dos capas:
@@ -43,7 +45,7 @@ export interface PromotionRow {
   description: string | null
   promotion_type: PromotionType | string
   discount_value: number | string | null
-  buy_quantity: number | null
+  buy_quantity: number | string | null
   get_quantity: number | null
   min_purchase_amount: number | string | null
   /** `eligible` = líneas de la promo. `cart` = toda la cuenta. Nulo = se deriva. */
@@ -280,6 +282,16 @@ function eligibleUnits(items: ResolvedPromoItem[]): number {
   return items.reduce((s, i) => s + Number(i.quantity), 0)
 }
 
+/**
+ * Porcentaje, monto fijo y paquete. Solo `min_quantity`. Vacía es sin
+ * mínimo. Compra X Lleva Y devuelve null. Igual que el POS.
+ */
+function cantidadMinimaEfectiva(p: PromotionRow): number | null {
+  const tipo = String(p.promotion_type)
+  if (tipo !== 'percentage' && tipo !== 'fixed_amount' && tipo !== 'bundle') return null
+  return positiveInt(p.min_quantity)
+}
+
 function bundleRequirements(promo: PromotionRow): Array<{ productId: number; perPackage: number }> {
   const map = new Map<number, number>()
   for (const r of rulesOf(promo)) {
@@ -480,11 +492,8 @@ export function calculatePromotions(
         : applicable.reduce((s, i) => s + i.price * i.quantity, 0)
       if (base < minMoney) return false
     }
-    const tipo = String(p.promotion_type)
-    if (tipo === 'percentage' || tipo === 'fixed_amount' || tipo === 'bundle') {
-      const minQty = positiveInt(p.min_quantity)
-      if (minQty != null && eligibleUnits(applicable) < minQty) return false
-    }
+    const minQty = cantidadMinimaEfectiva(p)
+    if (minQty != null && eligibleUnits(applicable) < minQty) return false
     return true
   }
 
