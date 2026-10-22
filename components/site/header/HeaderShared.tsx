@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
+import { BuscadorCromo } from './BuscadorCromo';
+import { leerConstructor } from '@/lib/website/constructorEncabezado';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -452,8 +454,11 @@ export function HeaderActions({
   })();
 
   // Construir elementos de acción según el orden
+  const cromoOverlay = leerConstructor(settings)?.buscador
   const actionElements: Record<string, React.ReactNode | null> = {
-    search: showSearchIcon && searchStyle === 'icon' ? (
+    search: cromoOverlay?.tipo === 'icon_overlay' ? (
+      <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} />
+    ) : showSearchIcon && searchStyle === 'icon' ? (
       <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (

@@ -120,6 +120,12 @@
   body.con-barra-movil #go-chat-btn {
     bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
   }
+  body.con-barra-constructor [data-raiz-sitio] {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+  body.con-barra-constructor #go-chat-btn {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom)) !important;
+  }
 }
 
 /* Barra fija «Ver pedido de la mesa» de la Carta QR (components/sections/restaurant/mesa/PedidoMesa.tsx):

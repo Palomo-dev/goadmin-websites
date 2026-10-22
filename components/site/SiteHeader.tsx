@@ -28,6 +28,8 @@ import MobileBottomSheet from './header/mobile/MobileBottomSheet'
 import MobileFullscreen from './header/mobile/MobileFullscreen'
 import MobileTabs from './header/mobile/MobileTabs'
 import type { MenuCategory } from './header/HeaderShared'
+import { HeaderPorZonas } from './header/HeaderPorZonas'
+import { leerConstructor } from '@/lib/website/constructorEncabezado'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -406,6 +408,15 @@ export default function SiteHeader({
     branchId,
   }
 
+  const constructor = leerConstructor(settings)
+  if (constructor?.zonas) {
+    return (
+      <HeaderPorZonas
+        {...variantProps}
+        constructor={constructor}
+      />
+    )
+  }
   const variante = elegirVariante()
   // Hotel: barra de reserva con fechas bajo el encabezado (header_booking_bar). Sin la opción,
   // la variante sola, como siempre.

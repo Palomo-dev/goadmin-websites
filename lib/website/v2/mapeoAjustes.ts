@@ -210,6 +210,11 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_cart_glyph: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: FORMA_CARRITO_ENCABEZADO }, nueva: true },
   /** Círculo del color de la marca detrás de moneda, carrito y cuenta. */
   header_icons_circle: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
+  /**
+   * Constructor del encabezado: zonas, íconos, botones, mega menú y cromo del buscador.
+   * `null` = el header de hoy. Vive en el JSON del documento. No hay columna ni migración.
+   */
+  header_builder: { zona: 'header', porDefecto: null, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
