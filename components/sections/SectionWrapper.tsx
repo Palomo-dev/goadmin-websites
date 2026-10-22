@@ -3,6 +3,8 @@ import { buildSectionStyle } from '@/lib/sectionStyle'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
+import { EncabezadoSeccion } from './EncabezadoSeccion'
+import { estilosFondo, leerEncabezado, leerFondo } from '@/lib/website/cascaronSeccion'
 
 interface SectionSettings {
   bg_color?: string | null
@@ -155,7 +157,14 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   if (!hasContractBg && settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
   if (!hasContractText && settings.text_color) (style as any)['--section-text'] = settings.text_color
 
-  const bgClass = !hasContractBg && settings.bg_color
+  const encabezado = leerEncabezado(content)
+  const fondoNuevo = leerFondo(content)
+  if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
+  const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
+  const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
+  const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
+
+  const bgClass = !hasContractBg && settings.bg_color && !fondoNuevo?.color && !fondoNuevo?.gradient_1 && !fondoNuevo?.image_url
     ? 'bg-[var(--section-bg)] dark:bg-gray-900/40'
     : ''
   const textClass = !hasContractText && settings.text_color
@@ -167,22 +176,63 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   // Para secciones no-hero full-bleed sí añadimos padding horizontal para que el contenido
   // no quede pegado a los bordes.
   const containerWidth = content?.container_width || 'lg'
-  const innerClass = isFullBleed
+  const sangria = anchoForzado == null ? isFullBleed : anchoForzado
+  const innerClass = sangria
     ? (isHero ? 'w-full' : `w-full ${px}`)
     : `w-full mx-auto ${CONTAINER_MAX[containerWidth] || CONTAINER_MAX.lg} ${px}`
+  const encabezadoNodo = encabezado ? (
+    <EncabezadoSeccion
+      encabezado={encabezado}
+      titulo={typeof content?.title === 'string' ? content.title : undefined}
+      descripcion={typeof content?.subtitle === 'string' ? content.subtitle : undefined}
+      primaryColor={primaryColor}
+    />
+  ) : null
 
   return (
     <section
-      className={`w-full ${pt} ${pb} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
+      className={fondoNuevo?.overlay_opacity
+        ? `w-full relative ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`
+        : `w-full ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
       style={style}
       data-section-id={sectionId}
+      data-encabezado-shell={encabezado ? '' : undefined}
+      data-fondo-movil={fondoNuevo?.image_url_mobile ? '' : undefined}
       {...presentacion.datos}
     >
       {hojaFuentes && <link rel="stylesheet" href={hojaFuentes} />}
       {'data-seccion-entrada' in presentacion.datos && <EntradaSeccion />}
-      <div className={innerClass}>
-        {children}
+      {fondoNuevo?.overlay_opacity ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${fondoNuevo.overlay_opacity / 100})` }} />
+      ) : null}
+      {fondoNuevo?.separator === 'wave' && <Separador forma="wave" color={fondoNuevo.separator_color} />}
+      {fondoNuevo?.separator === 'diagonal' && <Separador forma="diagonal" color={fondoNuevo.separator_color} />}
+      {fondoNuevo?.separator === 'line' && <hr className="relative z-10 mx-auto mb-2 w-full max-w-7xl border-t" style={{ borderColor: fondoNuevo.separator_color }} />}
+      <div className={`${innerClass}${fondoNuevo?.overlay_opacity ? ' relative z-10' : ''}`}>
+        {encabezado?.layout === 'side' ? (
+          <div className="grid items-start gap-6 md:grid-cols-[minmax(12rem,22rem)_1fr]">
+            {encabezadoNodo}
+            <div>{children}</div>
+          </div>
+        ) : (
+          <>
+            {encabezadoNodo}
+            {children}
+          </>
+        )}
       </div>
     </section>
+  )
+}
+
+function Separador({ forma, color }: { forma: 'wave' | 'diagonal'; color?: string }) {
+  const fill = color || 'currentColor'
+  if (forma === 'diagonal') {
+    return <div className="h-8 w-full" style={{ background: `linear-gradient(to bottom right, transparent 49%, ${fill} 50%, transparent 51%)` }} />
+  }
+  return (
+    <svg viewBox="0 0 1440 48" className="block h-8 w-full" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 24c120 24 240 24 360 0s240-24 360 0 240 24 360 0 240-24 360 0v24H0z" fill={fill} />
+    </svg>
   )
 }

@@ -12,7 +12,7 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div>
         {content.title && (
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white" style={{ color: primaryColor }}>
+          <h2 className="titulo-legado text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white" style={{ color: primaryColor }}>
             {content.title}
           </h2>
         )}

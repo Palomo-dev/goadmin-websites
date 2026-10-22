@@ -12,7 +12,7 @@ export function NewsletterWithImage({ content, primaryColor = '#3B82F6' }: Newsl
     <section className="py-16 px-4">
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         <div>
-          {title && <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">{title}</h2>}
+          {title && <h2 className="titulo-legado text-3xl font-bold mb-3 text-gray-900 dark:text-white">{title}</h2>}
           {subtitle && <p className="text-gray-600 dark:text-gray-300 mb-6">{subtitle}</p>}
           <div className="flex gap-2">
             <input type="email" placeholder="tu@email.com" className="flex-1 px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />

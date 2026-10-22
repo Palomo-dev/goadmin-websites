@@ -70,7 +70,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
   if (!hero && filtros.activos) {
     return (
       <div>
-        {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         {barra}
         <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       </div>
@@ -92,7 +92,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
       {barra}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Producto principal */}

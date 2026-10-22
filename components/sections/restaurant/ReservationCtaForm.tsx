@@ -260,7 +260,7 @@ export function ReservationCtaForm({ content, primaryColor, organization, data: 
   return (
     <div className="text-center" style={content.bg_color ? { backgroundColor: content.bg_color } : undefined}>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: content.text_color || undefined }}>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold mb-3" style={{ color: content.text_color || undefined }}>
           {content.title}
         </h2>
       )}

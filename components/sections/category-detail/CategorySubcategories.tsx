@@ -30,7 +30,7 @@ export function CategorySubcategories({ content, primaryColor = '#3B82F6', data 
   if (layout === 'horizontal') {
     return (
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
+        <h2 className="titulo-legado text-lg font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
         <div className="flex gap-3 overflow-x-auto pb-2">
           {subcategories.map((sub: any) => (
             <Link
@@ -49,7 +49,7 @@ export function CategorySubcategories({ content, primaryColor = '#3B82F6', data 
 
   return (
     <div className="mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
+      <h2 className="titulo-legado text-lg font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {subcategories.map((sub: any) => (
           <Link

@@ -36,7 +36,7 @@ export function ProductFAQ({ content }: ProductFAQProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="titulo-legado text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
 
       {layout === 'accordion' ? (
         <div className="space-y-2" style={{ gap: `${gap}px` }}>

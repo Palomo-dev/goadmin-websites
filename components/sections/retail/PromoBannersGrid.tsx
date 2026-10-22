@@ -122,7 +122,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">
           {content.title}
         </h2>
       )}

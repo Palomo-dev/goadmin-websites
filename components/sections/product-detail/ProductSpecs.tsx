@@ -61,7 +61,7 @@ export function ProductSpecs({ content, data }: ProductSpecsProps) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="titulo-legado text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
       {Object.entries(grouped).map(([category, attrs]) => (
         <div key={category}>
           {groupByCategory && Object.keys(grouped).length > 1 && (

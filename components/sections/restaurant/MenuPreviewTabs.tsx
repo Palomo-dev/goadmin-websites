@@ -91,7 +91,7 @@ export function MenuPreviewTabs({ content, organization, primaryColor, data, sec
   return (
     <div>
       {content.title && (
-        <h2 className="mb-3 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{content.title}</h2>
+        <h2 className="titulo-legado mb-3 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{content.title}</h2>
       )}
       {content.subtitle && <p className="mb-8 text-center text-gray-600 dark:text-gray-300">{content.subtitle}</p>}
 

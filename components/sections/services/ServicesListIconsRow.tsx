@@ -18,7 +18,7 @@ export function ServicesListIconsRow({ content, primaryColor = '#3B82F6', data }
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
       {services.length > 0 ? (
         <div className="flex flex-wrap justify-center gap-8 md:gap-12">
           {services.map((service: any, i: number) => (

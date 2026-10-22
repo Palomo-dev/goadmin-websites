@@ -11,7 +11,7 @@ export function NewsletterBanner({ content, primaryColor = '#3B82F6' }: Newslett
   return (
     <section className="py-16 px-4" style={{ backgroundColor: primaryColor }}>
       <div className="max-w-3xl mx-auto text-center text-white">
-        {title && <h2 className="text-3xl font-bold mb-3">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold mb-3">{title}</h2>}
         {subtitle && <p className="mb-6 opacity-90">{subtitle}</p>}
         <div className="flex gap-2 max-w-md mx-auto">
           <input type="email" placeholder="tu@email.com" className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:ring-2 focus:outline-none" />

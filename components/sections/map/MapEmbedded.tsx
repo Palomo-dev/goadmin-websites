@@ -23,7 +23,7 @@ export function MapEmbedded({ content, organization, primaryColor = '#3B82F6' }:
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-2 rounded-xl overflow-hidden min-h-[350px]">
           {mapa ? (

@@ -17,7 +17,7 @@ export function SpacesDetailed({ content, primaryColor, data }: SpacesDetailedPr
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       <Suspense fallback={<div className="text-center py-12 text-gray-400">Cargando habitaciones...</div>}>
         <SpacesFilterableGrid
