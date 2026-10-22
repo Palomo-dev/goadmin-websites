@@ -165,6 +165,8 @@ export const esquemaIdentidad = z
     /**
      * Logo para fondo claro (la versión de color). No reemplaza a `logoUrl`:
      * un encabezado oscuro sin `logoOscuroUrl` sigue mostrando `logoUrl`.
+     * goadmin-websites valida el documento en modo estricto y tiene que
+     * aceptar este campo antes de que una publicación lo escriba.
      */
     logoFondoClaroUrl: esquemaCampo(url).optional(),
     faviconUrl: esquemaCampo(url).optional(),
