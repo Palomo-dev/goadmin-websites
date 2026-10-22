@@ -28,6 +28,7 @@ import MobileBottomSheet from './header/mobile/MobileBottomSheet'
 import MobileFullscreen from './header/mobile/MobileFullscreen'
 import MobileTabs from './header/mobile/MobileTabs'
 import type { MenuCategory } from './header/HeaderShared'
+import { logoMovil } from '@/lib/website/logoEncabezado'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -404,6 +405,7 @@ export default function SiteHeader({
     menuCategories,
     megaMenuItems,
     branchId,
+    posicionLogo: logoMovil(settings),
   }
 
   const variante = elegirVariante()

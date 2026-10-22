@@ -36,6 +36,8 @@ export interface HeaderVariantProps {
   menuCategories?: MenuCategory[];
   megaMenuItems?: NavItem[];
   branchId?: number | null;
+  /** Lado del logo en el celular. Ausente: se calcula de los ajustes. */
+  posicionLogo?: 'left' | 'center' | 'right';
 }
 
 export interface MenuCategory {
