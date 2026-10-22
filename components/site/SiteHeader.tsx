@@ -21,6 +21,9 @@ import HeaderSplit from './header/HeaderSplit'
 import HeaderMinimal from './header/HeaderMinimal'
 import HeaderMega from './header/HeaderMega'
 import HeaderTransparent from './header/HeaderTransparent'
+import HeaderCommerce from './header/HeaderCommerce'
+import { useScrollEncabezado } from './header/useScrollEncabezado'
+import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes'
 import { BarraReservaHotel } from './header/BarraReservaHotel'
 import { useEncabezadoPie } from './EncabezadoPieContext'
 import MobileDrawer from './header/mobile/MobileDrawer'
@@ -386,7 +389,9 @@ export default function SiteHeader({
   useCategoriaActiva(categoriasCarta && categoriasCarta.length > 0 ? categoriasCarta.map((c) => c.href) : null)
 
   // Determinar variante de header
-  const headerStyle = settings?.header_style || 'default'
+  const extra = settings as { header_layout?: unknown; header_scroll?: unknown } | null | undefined
+  const headerStyle = estiloDeHeaderLayout(extra?.header_layout) || settings?.header_style || 'default'
+  const scroll = useScrollEncabezado(extra?.header_scroll)
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
   // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
   // así que se usa el menú móvil hasta llegar a lg.
@@ -408,16 +413,21 @@ export default function SiteHeader({
 
   const variante = elegirVariante()
   // Hotel: barra de reserva con fechas bajo el encabezado (header_booking_bar). Sin la opción,
-  // la variante sola, como siempre.
-  if (opcionesShell.barraReserva) {
-    return (
-      <>
-        {variante}
-        <BarraReservaHotel primaryColor={primaryColor} />
-      </>
-    )
-  }
-  return variante
+  // la variante sola, como siempre. Sin scroll nuevo, el árbol es el de hoy.
+  const nodo = opcionesShell.barraReserva ? (
+    <>
+      {variante}
+      <BarraReservaHotel primaryColor={primaryColor} />
+    </>
+  ) : (
+    variante
+  )
+  if (!scroll.activo) return nodo
+  return (
+    <div className={scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : undefined}>
+      {nodo}
+    </div>
+  )
 
   function elegirVariante() {
   // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)
@@ -447,6 +457,8 @@ export default function SiteHeader({
       return <HeaderMega {...variantProps} />
     case 'transparent':
       return <HeaderTransparent {...variantProps} />
+    case 'comercio':
+      return <HeaderCommerce {...variantProps} />
     default:
       return <HeaderClassic {...variantProps} />
   }

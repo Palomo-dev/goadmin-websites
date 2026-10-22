@@ -3,10 +3,11 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Home, LayoutGrid, Search, ShoppingBag, ShoppingCart, User, X } from 'lucide-react';
+import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { ProductSearch } from '../../ProductSearch';
 import { contarUnidadesCarrito } from '@/lib/cart';
 import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { IconoConCirculo, propsTrazoIcono } from '../IconoEncabezado';
 import {
   HeaderLogo,
@@ -54,14 +55,9 @@ export default function MobileTabs({
   // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
   const estiloIconos = estiloIconosEncabezado(settings);
   const trazo = propsTrazoIcono(estiloIconos.relleno);
-  const SearchTabIcon = getLucideIcon(settings?.search_icon as string, Search);
-  const CartTabIcon =
-    estiloIconos.forma === 'carrito'
-      ? ShoppingCart
-      : estiloIconos.forma === 'bolsa'
-        ? ShoppingBag
-        : getLucideIcon(settings?.cart_icon as string, ShoppingBag);
-  const AuthTabIcon = getLucideIcon(settings?.auth_icon as string, User);
+  const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
+  const CartTabIcon = getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag);
+  const AuthTabIcon = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User);
   const iconoTab = (Icono: typeof ShoppingBag) => (
     <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor} tamano="sm">
       <Icono className="h-5 w-5" {...trazo} />

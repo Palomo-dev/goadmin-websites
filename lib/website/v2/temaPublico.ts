@@ -18,6 +18,8 @@
  */
 import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
 import { fondoOscuro } from './textoSobreAcento'
+import { familiasDePar, variablesDeTokens } from './tokensDiseno'
+import type { TokensCrudos } from './tokensDiseno'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -31,6 +33,8 @@ export interface TemaPublico {
   radio: RadioSitio | null
   estiloBoton: EstiloBotonSitio | null
   movimiento: MovimientoSitio | null
+  /** Perillas combinables. `null` = la tienda no eligió ninguna. */
+  tokens: TokensCrudos | null
 }
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -88,6 +92,7 @@ export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): 
     radio: typeof radio === 'number' && RADIOS.includes(radio) ? (radio as RadioSitio) : null,
     estiloBoton: typeof boton === 'string' && BOTONES.includes(boton) ? (boton as EstiloBotonSitio) : null,
     movimiento: typeof movimiento === 'string' && MOVIMIENTOS.includes(movimiento) ? (movimiento as MovimientoSitio) : null,
+    tokens: ((t.tokens ?? (esSede ? p?.tokens : undefined)) as TokensCrudos | undefined) ?? null,
   }
 }
 
@@ -159,6 +164,9 @@ export function atributosTema(t: TemaPublico | null): AtributosTema {
     datos['data-movimiento'] = t.movimiento
     if (t.movimiento !== 'ninguno') variables['--movimiento-distancia'] = `${DISTANCIA_MOVIMIENTO[t.movimiento]}px`
   }
+  const perillas = variablesDeTokens(t?.tokens)
+  for (const [clave, valor] of Object.entries(perillas)) variables[clave] = valor
+  if (Object.keys(perillas).length > 0) datos['data-tokens-diseno'] = 'propio'
   return { variables, datos }
 }
 
@@ -167,7 +175,7 @@ export function atributosTema(t: TemaPublico | null): AtributosTema {
  * ninguna. Solo familias que pasan `familiaSegura`. Pesos 400-700 (los del estilo por sección).
  */
 export function urlGoogleFonts(familias: (string | null | undefined)[]): string | null {
-  const unicas = Array.from(new Set(familias.map(familiaSegura).filter((f): f is string => !!f))).slice(0, 6)
+  const unicas = Array.from(new Set(familias.flatMap((f) => (f && f.includes('_') ? familiasDePar(f) : [familiaSegura(f)])).filter((f): f is string => !!f))).slice(0, 6)
   if (unicas.length === 0) return null
   const partes = unicas.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700`)
   return `https://fonts.googleapis.com/css2?${partes.join('&')}&display=swap`
