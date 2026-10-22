@@ -61,6 +61,8 @@ import { TextBlockTwoColumns } from './text-block/TextBlockTwoColumns'
 import { NewsletterSimple } from './newsletter/NewsletterSimple'
 import { NewsletterWithImage } from './newsletter/NewsletterWithImage'
 import { NewsletterBanner } from './newsletter/NewsletterBanner'
+import { NewsletterSection } from './newsletter/NewsletterSection'
+import { leerBoletin } from '@/lib/website/boletin'
 // Secciones universales — Partners
 import { PartnersLogos } from './partners/PartnersLogos'
 import { PartnersCards } from './partners/PartnersCards'
@@ -526,6 +528,14 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
 
   const settings = (section.settings || {}) as Record<string, any>
   const content = (section.content || {}) as Record<string, any>
+
+  if (section.section_type === 'newsletter' && leerBoletin(content)) {
+    return (
+      <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id}>
+        <NewsletterSection content={content} primaryColor={primaryColor} organization={organization} sectionId={section.id} />
+      </SectionWrapper>
+    )
+  }
 
   return (
     <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id}>
