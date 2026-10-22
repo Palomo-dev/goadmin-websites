@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { leerBoletin, validarEnvio, type Boletin, type TextoBoletin } from '@/lib/website/boletin'
 
 const REDES = ['instagram', 'facebook', 'tiktok', 'youtube', 'whatsapp', 'linkedin', 'twitter'] as const
@@ -235,10 +235,12 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
   const [cumple, setCumple] = useState('')
   const [acepta, setAcepta] = useState(false)
   const [aviso, setAviso] = useState<'ok' | 'correo' | 'aceptacion' | null>(null)
+  const marca = useId().replace(/:/g, '')
   const f = boletin.form
   const forma = FORMA[f.input.shape] || FORMA.rounded
   const formaBoton = FORMA[f.button.shape] || FORMA.rounded
   const tam = TAM_INPUT[f.input.size] || TAM_INPUT.md
+  const tamBoton = TAM_INPUT[f.button.size] || tam
   const borde = f.input.style === 'underline' ? 'border-0 border-b rounded-none bg-transparent' : f.input.style === 'filled' ? 'border-0' : 'border bg-transparent'
   const estiloInput: CSSProperties = {
     backgroundColor: f.input.background,
@@ -271,6 +273,7 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
         value={correo}
         onChange={(e) => setCorreo(e.target.value)}
         aria-label="Correo"
+        data-boletin-input=""
         className={`w-full dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 ${borde} ${forma} ${tam} ${f.input.icon ? 'pl-10' : ''}`}
         style={estiloInput}
       />
@@ -280,7 +283,9 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
     <button
       type="submit"
       aria-label={f.button.style === 'icon_only' ? f.button.text : undefined}
-      className={`font-medium hover:opacity-90 ${formaBoton} ${f.button.style === 'outline' ? 'border' : ''} ${f.button.style === 'icon_only' ? 'px-3' : tam} whitespace-nowrap`}
+      className={`font-medium hover:opacity-90 ${formaBoton} ${f.button.style === 'outline' ? 'border' : ''} ${f.button.style === 'icon_only' ? 'px-3' : tamBoton} whitespace-nowrap`}
+      onMouseEnter={(e) => { if (f.button.hover && f.button.style === 'solid') e.currentTarget.style.backgroundColor = f.button.hover }}
+      onMouseLeave={(e) => { if (f.button.hover && f.button.style === 'solid') e.currentTarget.style.backgroundColor = f.button.color || primaryColor }}
       style={estiloBoton}
     >
       {f.button.icon || f.button.style === 'icon_only' ? '✉ ' : ''}{f.button.style === 'icon_only' ? '' : f.button.text}
@@ -315,7 +320,8 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
   )
 
   return (
-    <form onSubmit={enviar} className="flex w-full flex-col gap-3" noValidate={false}>
+    <form onSubmit={enviar} data-boletin={marca} className="flex w-full flex-col gap-3">
+      {f.input.placeholderColor && <style>{`[data-boletin="${marca}"] [data-boletin-input]::placeholder{color:${f.input.placeholderColor}}`}</style>}
       {fila}
       {(f.showName || f.showPhone || f.showBirthday || f.showConsent) && extras}
       {aviso === 'ok' && <p className="text-sm" role="status">{boletin.success}</p>}

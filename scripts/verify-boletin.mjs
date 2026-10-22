@@ -24,6 +24,10 @@ check(leerBoletin({ newsletter_layout: 'image_right', image_url: '/foto.jpg' })?
 check(leerBoletin({ newsletter: { form: { show_name: true, show_phone: true, arrangement: 'inside' } } })?.form.showName === true, 'el nombre es opcional y se puede pedir')
 check(leerBoletin({ newsletter: { form: { show_consent: true } } })?.form.showConsent === true, 'la aceptación se pide solo si se enciende')
 check(leerBoletin({ title: 'Hola', newsletter_layout: 'centered' })?.title.text === 'Hola', 'el título de hoy se sigue leyendo')
+check(leerBoletin({ newsletter: { texts: { eyebrow: 'Nuevo', eyebrow_size: 'lg', description_weight: 'bold', legal_font: 'Georgia' } } })?.eyebrow?.size === 'lg', 'la ceja tiene tamaño propio')
+check(leerBoletin({ newsletter: { texts: { description_weight: 'bold' } } })?.description?.weight === 'bold', 'la descripción tiene peso propio')
+const campo = leerBoletin({ newsletter: { form: { input: { placeholder_color: '#112233', size: 'lg' }, button: { size: 'sm', hover: '#abcdef' } } } })?.form
+check(campo?.input.size === 'lg' && campo?.input.placeholderColor === '#112233' && campo?.button.size === 'sm' && campo?.button.hover === '#abcdef', 'el campo y el botón leen tamaño, placeholder y hover')
 check(validarEnvio('no-es-correo', false, false) === 'correo', 'un correo mal formado no pasa')
 check(validarEnvio('ana@correo.co', false, true) === 'aceptacion', 'sin la casilla de datos no pasa')
 check(validarEnvio('ana@correo.co', true, true) === 'ok', 'correo y aceptación pasan')
