@@ -1,5 +1,6 @@
 import { DynamicLucideIcon } from '@/components/sections/products/DynamicLucideIcon'
 import { clasesGridCaracteristicas } from '@/lib/website/presentacionTienda'
+import { claseTarjetaBeneficio, estiloTarjetaBeneficio, iconoBeneficio, type ContenidoBeneficio } from '@/lib/website/tarjetaBeneficio'
 
 interface ItemBeneficio {
   icon?: string
@@ -18,22 +19,32 @@ interface FeaturesGridAlternatingProps {
     /** Número, o `{ desktop, tablet, mobile }` si el editor guardó columnas por dispositivo. */
     columns?: unknown
     items?: ItemBeneficio[]
+    card_preset?: string
+    card_radius?: number
+    card_shadow?: string
+    card_bg?: string
+    card_padding?: number
+    card_border_width?: number
+    card_border_color?: string
+    icon_style?: string
+    icon_color?: string
+    icon_size?: string
+    icon_shape?: string
   }
   primaryColor?: string
   sectionVariant?: string
 }
 
 /** Hueco del ícono solo cuando hay uno. Sin ícono no se reserva el cuadrado. */
-function IconoBeneficio({ name, color }: { name?: string; color: string }) {
+function IconoBeneficio({ name, color, contenido }: { name?: string; color: string; contenido: ContenidoBeneficio }) {
   const limpio = (name ?? '').trim()
   if (!limpio) return null
   const esLucide = /^[A-Z][A-Za-z0-9]+$/.test(limpio)
+  const icono = iconoBeneficio(contenido, color)
+  const grande = contenido.icon_size === 'lg'
   return (
-    <span
-      className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl text-xl"
-      style={{ backgroundColor: `${color}15`, color }}
-    >
-      {esLucide ? <DynamicLucideIcon name={limpio} className="h-6 w-6" fallback="Sparkles" /> : limpio || null}
+    <span className={icono.clase} style={icono.estilo}>
+      {esLucide ? <DynamicLucideIcon name={limpio} className={grande ? 'h-8 w-8' : 'h-6 w-6'} fallback="Sparkles" /> : limpio || null}
     </span>
   )
 }
@@ -53,8 +64,8 @@ export function FeaturesGridAlternating({ content, primaryColor = '#3B82F6' }: F
         {items.map((item, i) => {
           const titulo = item.title || item.label || ''
           return (
-            <div key={i} className="flex flex-col items-center text-center">
-              <IconoBeneficio name={item.icon} color={primaryColor} />
+            <div key={i} className={claseTarjetaBeneficio(content)} style={estiloTarjetaBeneficio(content)}>
+              <IconoBeneficio name={item.icon} color={primaryColor} contenido={content} />
               {item.image_url ? (
                 <img src={item.image_url} alt={titulo} className="mb-4 w-full max-h-48 rounded-xl object-cover" loading="lazy" />
               ) : null}
