@@ -27,6 +27,7 @@ import { SelectorSede } from './header/SelectorSede'
 import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
 import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
+import { TarjetaProductoProvider } from './TarjetaProductoContext'
 import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
@@ -303,6 +304,7 @@ export function OrganizationLayoutCliente({
     <EncabezadoPieProvider value={valorEncabezadoPie}>
     <ModoMesaProvider value={modoMesa}>
     <PasosMesaProvider value={modoMesa ? pasosMesa : null}>
+    <TarjetaProductoProvider valor={temaEfectivo?.tarjetaProducto ?? null}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -459,6 +461,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </TarjetaProductoProvider>
     </PasosMesaProvider>
     </ModoMesaProvider>
     </EncabezadoPieProvider>

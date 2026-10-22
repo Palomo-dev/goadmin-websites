@@ -172,6 +172,17 @@ export const esquemaIdentidad = z
   })
   .strict();
 
+/**
+ * `product_card_style` del sitio. Objeto plano con botones y etiquetas anidados
+ * un nivel. Ausente = la tarjeta de hoy. La sección lo reemplaza con la misma forma.
+ */
+const primitivoTarjeta = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
+export const esquemaTarjetaProducto = z.record(
+  z.string().max(64),
+  z.union([primitivoTarjeta, z.record(z.string().max(64), primitivoTarjeta)]),
+);
+export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
+
 /** Tokens de tema (D12 grupo «tema»). */
 export const esquemaTema = z
   .object({
@@ -205,6 +216,11 @@ export const esquemaTema = z
     radio: esquemaCampo(z.union([z.literal(0), z.literal(4), z.literal(12), z.literal(24)])).optional(),
     estiloBoton: esquemaCampo(z.enum(['solido', 'contorno', 'pastilla', 'sombra_dura'])).optional(),
     movimiento: esquemaCampo(z.enum(['ninguno', 'bajo', 'medio', 'alto'])).optional(),
+    /**
+     * Tarjeta de producto del sitio. Ausente = la tarjeta de hoy. Una sección
+     * puede reemplazarla con `contenido.product_card_style`.
+     */
+    tarjetaProducto: esquemaCampo(esquemaTarjetaProducto).optional(),
   })
   .strict();
 

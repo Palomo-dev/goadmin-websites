@@ -10,6 +10,8 @@ import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 
 /**
@@ -33,6 +35,7 @@ interface ProductsCarouselProps {
 
 export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: ProductsCarouselProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = (data?.branchId as number | null | undefined) ?? null
@@ -190,7 +193,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
             ref={scrollRef}
             onScroll={updateScrollState}
             className={`flex gap-4 ${o.deslizar ? 'overflow-x-auto' : 'overflow-x-hidden touch-pan-y'} pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth`}
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', ...separacion }}
           >
             {products.map((product: any) => {
               const isAdded = addedToCart.has(product.id)

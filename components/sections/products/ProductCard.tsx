@@ -33,8 +33,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Check, Package, Layers, ShoppingBag, Heart, Eye, Share2,
-  MessageCircle, Star, TrendingUp, Zap,
+  Plus, Check, Package, Layers, ShoppingBag, ShoppingCart, Heart, Eye, Share2,
+  MessageCircle, Star, TrendingUp, Zap, ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -58,6 +58,20 @@ import {
 } from '@/lib/sectionStyle'
 import { textoPlano } from '@/lib/texto/textoPlano'
 import { coloresEtiqueta, colorPrecioAnterior, estiloPrecio, textoGuardado } from '@/lib/website/presentacionTienda'
+import {
+  CLASE_BOTON_HOVER_MOVIL,
+  CLASE_PESO_TITULO,
+  CLASE_TAMANO_PRECIO,
+  CLASE_TAMANO_TITULO,
+  etiquetasDeEstilo,
+  fondoTarjeta,
+  posicionBotonInterna,
+  radioForma,
+  separacionTarjetas,
+  type EstiloBotonTarjeta,
+  type EstiloTarjetaProducto,
+} from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -74,6 +88,24 @@ const CORNER_TO_OVERLAY_POS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Helpers de producto (compartidos, antes duplicados en cada componente)
 // ---------------------------------------------------------------------------
+
+function segundaImagenProducto(product: any): string | null {
+  const imgs = product?.product_images
+  if (!Array.isArray(imgs) || imgs.length < 2) return null
+  const primary = imgs.find((img: any) => img.is_primary) || imgs[0]
+  const otra = imgs.find((img: any) => img !== primary)
+  const path = otra?.storage_path || otra?.shared_images?.storage_path
+  if (!path) return null
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+}
+
+function marcaProducto(product: any): string {
+  return product?.brand || product?.brands?.name || product?.brand_name || ''
+}
+
+function categoriaProducto(product: any): string {
+  return product?.categories?.name || product?.category_name || ''
+}
 
 export function getProductImageUrl(product: any): string | null {
   if (!product.product_images || product.product_images.length === 0) return null
@@ -131,6 +163,68 @@ export function requiereElegir(product: any): boolean {
 // ---------------------------------------------------------------------------
 // Defaults que reproducen el aspecto legacy
 // ---------------------------------------------------------------------------
+
+function pintarEstiloTarjeta(merged: Record<string, any>, estilo: EstiloTarjetaProducto) {
+  if (estilo.card_radius != null) merged.card_radius = estilo.card_radius
+  if (estilo.card_shadow === 'none') {
+    merged.card_shadow = 'none'
+    merged.card_shadow_hover = 'none'
+  } else if (estilo.card_shadow === 'hover') {
+    merged.card_shadow = 'none'
+    merged.card_shadow_hover = 'lg'
+  } else if (estilo.card_shadow) {
+    merged.card_shadow = estilo.card_shadow
+  }
+  if (estilo.card_border_width != null) merged.card_border_width = estilo.card_border_width
+  if (estilo.card_border_color) merged.card_border_color = estilo.card_border_color
+  if (estilo.card_bg) merged.card_bg = estilo.card_bg === 'transparent' ? 'transparent' : estilo.card_bg
+  if (estilo.text_align) merged.text_align = estilo.text_align
+  if (estilo.title_lines) merged.title_lines = estilo.title_lines
+  if (estilo.image_fit) merged.image_fit = estilo.image_fit
+  if (estilo.image_ratio) merged.image_ratio = estilo.image_ratio
+  if (estilo.show_compare_price != null) merged.show_compare_price = estilo.show_compare_price
+  if (estilo.card_layout) merged.card_layout = estilo.card_layout
+  if (estilo.price_color) merged.price_color = estilo.price_color
+  if (estilo.show_reviews === true) merged.show_rating = true
+  if (estilo.show_reviews === false) merged.show_rating = false
+  if (estilo.reviews_position) merged.rating_position = estilo.reviews_position
+  if (estilo.reviews_style === 'stars') merged.rating_style = 'stars'
+  if (estilo.reviews_style === 'number_star') merged.rating_style = 'compact'
+}
+
+function aplicarBotonTarjeta(btn: CardButtonConfig, cfg: EstiloBotonTarjeta | undefined): CardButtonConfig | null {
+  if (!cfg) return btn
+  if (cfg.show === false) return null
+  const soloIcono = cfg.button_style === 'icon_only'
+  const forma = cfg.button_shape
+  const radio = radioForma(forma, soloIcono)
+  const pos = posicionBotonInterna(cfg.button_position)
+  return {
+    ...btn,
+    ...(cfg.button_style ? { variant: soloIcono ? 'solid' : cfg.button_style, icon_only: soloIcono } : {}),
+    ...(cfg.button_size ? { size: cfg.button_size } : {}),
+    ...(cfg.button_width ? { full_width: cfg.button_width === 'full' } : {}),
+    ...(radio != null ? { radius: radio } : {}),
+    ...(pos ? { position: pos } : {}),
+    ...(cfg.bg ? { bg_color: cfg.bg } : {}),
+    ...(cfg.gradient_1 ? { bg_color: cfg.gradient_1 } : {}),
+    ...(cfg.gradient_2 ? { bg_color_end: cfg.gradient_2 } : {}),
+    ...(cfg.gradient_angle != null ? { gradient_angle: cfg.gradient_angle } : {}),
+    ...(cfg.text ? { text_color: cfg.text } : {}),
+    ...(cfg.border ? { border_color: cfg.border } : {}),
+    ...(cfg.hover ? { hover_bg: cfg.hover } : {}),
+    ...(cfg.icon != null ? { icon: cfg.icon } : {}),
+    ...(cfg.icon_side ? { icon_position: cfg.icon_side } : {}),
+    ...(cfg.button_visibility === 'hover' ? { hover_reveal: true } : {}),
+  }
+}
+
+function cfgBoton(estilo: EstiloTarjetaProducto, accion: string, esPadre: boolean): EstiloBotonTarjeta | undefined {
+  if (esPadre && (accion === 'add_to_cart' || accion === 'buy_now')) return estilo.choose ?? estilo.add
+  if (accion === 'add_to_cart') return estilo.add
+  if (accion === 'buy_now') return estilo.buy
+  return undefined
+}
 
 const DEFAULT_CARD_STYLE = {
   card_radius: 12, // rounded-xl
@@ -292,6 +386,11 @@ export interface CardButtonConfig {
   bg_color?: string
   bg_color_end?: string
   text_color?: string
+  border_color?: string
+  hover_bg?: string
+  gradient_angle?: number
+  /** Solo el estilo nuevo: en celular el botón se ve; en escritorio, al pasar el mouse. */
+  hover_reveal?: boolean
   radius?: number
   full_width?: boolean
   full_width_mobile?: boolean
@@ -447,11 +546,14 @@ function BadgeRenderer({
     badge.type === 'custom' ? primaryColor :   // color de marca
     primaryColor                                // fallback genérico
   const colores = coloresEtiqueta(badge.type, badge, cardStyle, fallbackBg, '#FFFFFF')
-  const style = resolveBadgeStyle(
-    { ...badge, bg_color: colores.bg, text_color: colores.text },
-    colores.bg,
-    colores.text,
-  )
+  const style = {
+    ...resolveBadgeStyle(
+      { ...badge, bg_color: colores.bg, text_color: colores.text },
+      colores.bg,
+      colores.text,
+    ),
+    ...(badge.extra_style ?? {}),
+  }
 
   const Icon = badge.icon === 'Layers' ? Layers :
     badge.icon === 'TrendingUp' ? TrendingUp :
@@ -534,7 +636,7 @@ function CardButtonRenderer({
   const baseStyle: CSSProperties = {}
   if (variant === 'solid') { baseStyle.backgroundColor = bg; baseStyle.color = textColor }
   if (variant === 'outline') {
-    baseStyle.borderColor = bg
+    baseStyle.borderColor = button.border_color || bg
     baseStyle.color = textColor
     // El outline de shadcn trae bg-background (blanco); lo sobreescribimos a
     // transparente para que solo se vea el borde + texto del color configurado.
@@ -543,7 +645,8 @@ function CardButtonRenderer({
   if (variant === 'ghost') { baseStyle.color = textColor }
   if (variant === 'link') { baseStyle.color = textColor; baseStyle.textDecoration = 'underline' }
   if (variant === 'gradient' && bgEnd) {
-    baseStyle.backgroundImage = `linear-gradient(135deg, ${bg}, ${bgEnd})`
+    const angulo = typeof button.gradient_angle === 'number' ? button.gradient_angle : 135
+    baseStyle.backgroundImage = `linear-gradient(${angulo}deg, ${bg}, ${bgEnd})`
     baseStyle.color = textColor
     baseStyle.border = 'none'
   } else if (variant === 'gradient') {
@@ -566,8 +669,8 @@ function CardButtonRenderer({
 
   // Mapa de iconos Lucide por nombre (para soportar button.icon personalizado)
   const ICON_MAP: Record<string, any> = {
-    Plus, Check, ShoppingBag, Heart, Eye, Share2, MessageCircle,
-    Layers, Package, Star, TrendingUp, Zap,
+    Plus, Check, ShoppingBag, ShoppingCart, Heart, Eye, Share2, MessageCircle,
+    Layers, Package, Star, TrendingUp, Zap, ArrowRight,
   }
 
   // Tamaño de iconos según el size configurado en el ERP
@@ -665,6 +768,13 @@ function CardButtonRenderer({
   // botón normal (sin variantes). Si se usan, un card_buttons configurado con
   // label:"Agregar" icon:"Plus" sobreescribe el default "Elegir"/Layers y el
   // padre se agrega al carrito sin elegir variante.
+  const ladoIcono = button.icon_position === 'right' ? 'right' : 'left'
+  const alPasar = button.hover_bg
+    ? (e: MouseEvent<HTMLButtonElement>, entra: boolean) => {
+        e.currentTarget.style.backgroundColor = entra ? (button.hover_bg as string) : (baseStyle.backgroundColor as string) || ''
+      }
+    : undefined
+
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
     const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
     // El ícono del botón normal (Plus, etc.) no se reutiliza: «Elegir» lleva Layers.
@@ -673,8 +783,17 @@ function CardButtonRenderer({
     const ChooseIcon = ICON_MAP.Layers || Layers
     return (
       <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
-        <Button size={size as any} variant={variant === 'gradient' ? 'solid' : variant as any} className={`${anchoClase} ${sizeTextClass}`} style={baseStyle}>
-          {!sinIcono && <ChooseIcon className={iconSizeClass} />}{!btnIconOnly && <span className={sinIcono ? undefined : 'ml-1'}>{chooseLabel}</span>}
+        <Button
+          size={size as any}
+          variant={variant === 'gradient' ? 'solid' : variant as any}
+          className={`${anchoClase} ${sizeTextClass}`}
+          style={baseStyle}
+          onMouseEnter={alPasar ? (e) => alPasar(e, true) : undefined}
+          onMouseLeave={alPasar ? (e) => alPasar(e, false) : undefined}
+        >
+          {ladoIcono === 'left' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
+          {!btnIconOnly && <span className={sinIcono ? undefined : ladoIcono === 'right' ? 'mr-1' : 'ml-1'}>{chooseLabel}</span>}
+          {ladoIcono === 'right' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
         </Button>
       </Link>
     )
@@ -707,10 +826,13 @@ function CardButtonRenderer({
       disabled={disabled}
       className={`${anchoClase} ${sizeTextClass} transition-all ${isAddedState ? 'bg-green-500 hover:bg-green-600' : ''}`}
       style={effectiveStyle}
+      onMouseEnter={!isAddedState && alPasar ? (e) => alPasar(e, true) : undefined}
+      onMouseLeave={!isAddedState && alPasar ? (e) => alPasar(e, false) : undefined}
     >
-      {iconNode(button.action)}
-      {!btnIconOnly && iconNode(button.action) && <span className="ml-1">{effectiveLabel}</span>}
+      {ladoIcono === 'left' && iconNode(button.action)}
+      {!btnIconOnly && iconNode(button.action) && <span className={ladoIcono === 'right' ? 'mr-1' : 'ml-1'}>{effectiveLabel}</span>}
       {!btnIconOnly && !iconNode(button.action) && effectiveLabel}
+      {ladoIcono === 'right' && iconNode(button.action)}
     </Button>
   )
 }
@@ -745,6 +867,7 @@ export function ProductCard({
   organizationId,
   branchId,
 }: ProductCardProps) {
+  const estiloTarjeta = useEstiloTarjeta(cardStyle?.product_card_style)
   const router = useRouter()
   const { ruta } = useRutaSitio()
   const [internalAdded, setInternalAdded] = useState(false)
@@ -797,8 +920,10 @@ export function ProductCard({
   const handleAdd = onAddToCart ? () => onAddToCart(product) : () => internalAddToCart(product)
   const handleBuy = onBuyNow ? () => onBuyNow(product) : () => internalBuyNow(product)
 
-  // Merge cardStyle con defaults
+  // Merge cardStyle con defaults. El estilo nuevo solo pisa las claves que trae.
   const mergedCardStyle: Record<string, any> = { ...DEFAULT_CARD_STYLE, ...(cardStyle || {}) }
+  if (estiloTarjeta) pintarEstiloTarjeta(mergedCardStyle, estiloTarjeta)
+  if (estiloTarjeta && variant === 'list') mergedCardStyle.card_layout = 'horizontal'
   const showDesc = showDescription ?? mergedCardStyle.show_description === true
 
   // Rating (estrellas de valoración)
@@ -840,7 +965,7 @@ export function ProductCard({
   const showRatingBlock = showRating && ratingAvg > 0 && (!hideIfNoReviews || ratingCount > 0)
 
   // Badges efectivos — defaults si no hay badges configurados
-  const effectiveBadges = (!badges || badges.length === 0) ? DEFAULT_BADGES : badges
+  let effectiveBadges = (!badges || badges.length === 0) ? DEFAULT_BADGES : badges
 
   // Botones efectivos — si no hay botones configurados (undefined o array vacío),
   // se usan los defaults: Agregar al carrito + Comprar ahora (si showBuyNow)
@@ -870,11 +995,25 @@ export function ProductCard({
     }
   }
 
+  if (estiloTarjeta) {
+    effectiveButtons = effectiveButtons
+      .map((btn) => aplicarBotonTarjeta(btn, cfgBoton(estiloTarjeta, btn.action, isParent)))
+      .filter((btn): btn is CardButtonConfig => btn != null)
+    const etiquetas = etiquetasDeEstilo(estiloTarjeta)
+    if (etiquetas) {
+      const propias = etiquetas.map((e) => ({ ...e }))
+      const extras = effectiveBadges.filter((b) => b.type === 'variants' || b.type === 'sales_count')
+      effectiveBadges = [...propias, ...extras]
+    }
+  }
+
   const precio = estiloPrecio(mergedCardStyle, primaryColor)
   const colorAnterior = colorPrecioAnterior(mergedCardStyle)
   const claseAnterior = colorAnterior ? 'line-through' : 'text-gray-400 line-through'
   const estiloAnterior = colorAnterior ? { color: colorAnterior } : undefined
   const { className: cardClassName, style: cardStyleObj } = buildCardStyle(mergedCardStyle)
+  const fondo = fondoTarjeta(estiloTarjeta)
+  if (fondo) Object.assign(cardStyleObj, fondo)
   const imageFitClass = resolveImageFitClass(mergedCardStyle.image_fit)
   const imageRatioClass = resolveImageRatioClass(mergedCardStyle.image_ratio)
   const titleLinesClass = resolveTitleLinesClass(mergedCardStyle.title_lines)
@@ -889,7 +1028,7 @@ export function ProductCard({
   }
 
   // --- Variante compact (favoritos) ---
-  if (variant === 'compact') {
+  if (variant === 'compact' && !estiloTarjeta) {
     return (
       <div
         className={`bg-white rounded-xl border overflow-hidden flex transition-opacity ${className}`}
@@ -936,7 +1075,7 @@ export function ProductCard({
   }
 
   // --- Variante list (horizontal) ---
-  if (variant === 'list') {
+  if (variant === 'list' && !estiloTarjeta) {
     return (
       <div
         className={`flex gap-4 p-4 bg-white dark:bg-gray-800/50 rounded-xl border dark:border-gray-700 hover:shadow-md transition-shadow ${className}`}
@@ -1030,6 +1169,35 @@ export function ProductCard({
 
   // --- Variante grid (por defecto) y overlay ---
   const isOverlay = variant === 'overlay'
+  const horizontal = mergedCardStyle.card_layout === 'horizontal'
+  const ampliarImagen = !estiloTarjeta || estiloTarjeta.hover_image == null || estiloTarjeta.hover_image === 'zoom'
+  const claseImagen = ampliarImagen
+    ? `${imageFitClass} group-hover:scale-105 transition-transform duration-300`
+    : `${imageFitClass} transition-transform duration-300`
+  const estiloImagen: CSSProperties | undefined = estiloTarjeta && (estiloTarjeta.image_bg || estiloTarjeta.image_padding != null || estiloTarjeta.image_radius != null)
+    ? {
+        ...(estiloTarjeta.image_bg ? { backgroundColor: estiloTarjeta.image_bg } : {}),
+        ...(estiloTarjeta.image_padding != null ? { padding: estiloTarjeta.image_padding } : {}),
+        ...(estiloTarjeta.image_radius != null ? { borderRadius: estiloTarjeta.image_radius } : {}),
+      }
+    : undefined
+  const segundaUrl = estiloTarjeta?.hover_image === 'second' ? segundaImagenProducto(product) : null
+  const posPrecio = estiloTarjeta?.price_position
+  const precioAbajo = !posPrecio || posPrecio === 'below_title'
+  const claseTitulo = estiloTarjeta?.title_weight || estiloTarjeta?.title_size
+    ? `${CLASE_PESO_TITULO[estiloTarjeta.title_weight ?? 'semibold']} ${CLASE_TAMANO_TITULO[estiloTarjeta.title_size ?? 'sm']} text-gray-900 dark:text-white mb-1`
+    : 'font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1'
+  const clasePrecio = estiloTarjeta?.price_size ? CLASE_TAMANO_PRECIO[estiloTarjeta.price_size] : 'text-sm sm:text-lg'
+  const claseCuerpo = estiloTarjeta?.card_padding != null ? '' : 'p-2.5 sm:p-4'
+  const padCuerpo = estiloTarjeta?.card_padding != null ? { padding: estiloTarjeta.card_padding } : undefined
+  const revela = (pos: string) =>
+    effectiveButtons.some((b) => (b.position || 'below') === pos && b.hover_reveal) ? ` ${CLASE_BOTON_HOVER_MOVIL}` : ''
+  const alinearBotones = estiloTarjeta?.text_align === 'left' ? 'justify-start' : estiloTarjeta?.text_align === 'right' ? 'justify-end' : 'justify-center'
+  const marcas = [
+    estiloTarjeta?.show_brand ? marcaProducto(product) : '',
+    estiloTarjeta?.show_category ? categoriaProducto(product) : '',
+  ].filter(Boolean)
+  const etiquetasTitulo = effectiveBadges.filter((b) => b.position === 'over_title')
 
   // Render de botones reutilizable — permite filtrar por posición individual
   const buttonsContainerClass = `flex ${buttonsLayout === 'row' ? 'flex-row gap-2' : 'flex-col gap-1.5'} ${buttonsFullWidth ? 'w-full' : ''}`
@@ -1082,8 +1250,11 @@ export function ProductCard({
       className={`group ${cardClassName} ${legacyDarkClasses.join(' ')} ${className}`}
       style={cardStyleObj}
     >
-      <Link href={ruta(`/productos/${product.uuid}`)}>
-        <div className={`${imageRatioClass} bg-gray-100 dark:bg-gray-700 overflow-hidden relative`}>
+      <Link href={ruta(`/productos/${product.uuid}`)} className={horizontal ? 'relative w-28 shrink-0 self-stretch sm:w-40' : undefined}>
+        <div
+          className={`${horizontal ? 'h-full min-h-[7rem]' : imageRatioClass} bg-gray-100 dark:bg-gray-700 overflow-hidden relative`}
+          style={estiloImagen}
+        >
           {/* Badges agrupados por esquina + botones overlay de esquina (evita superposición) */}
           {BADGE_CORNERS.map((corner) => {
             const cornerBadges = effectiveBadges.filter((b) => (b.position ?? 'top-left') === corner)
@@ -1096,7 +1267,7 @@ export function ProductCard({
                   <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
                 ))}
                 {hasCornerButtons && (
-                  renderButtons('rounded-lg p-1', overlayPos)
+                  renderButtons(`rounded-lg p-1${revela(overlayPos)}`, overlayPos)
                 )}
               </div>
             )
@@ -1106,12 +1277,31 @@ export function ProductCard({
               src={imgUrl}
               alt={product.name}
               fill
-              className={`${imageFitClass} group-hover:scale-105 transition-transform duration-300`}
+              className={claseImagen}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Package className="h-16 w-16 text-gray-300 dark:text-gray-500" />
+            </div>
+          )}
+          {segundaUrl && (
+            <Image
+              src={segundaUrl}
+              alt=""
+              fill
+              className={`${imageFitClass} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            />
+          )}
+          {posPrecio === 'over_image' && price !== null && (
+            <div className="absolute bottom-2 left-2 z-10 rounded bg-white/90 px-1.5 py-0.5">
+              <Price value={price} className={clasePrecio} style={precio} />
+            </div>
+          )}
+          {showRatingBlock && estiloTarjeta?.reviews_position === 'over_image' && (
+            <div className="absolute bottom-2 right-2 z-10 rounded bg-white/90 px-1.5 py-0.5">
+              <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
             </div>
           )}
           {isOverlay && (
@@ -1127,7 +1317,7 @@ export function ProductCard({
           {/* Botones overlay no-esquina (overlay_bottom, overlay_hover) — sin conflicto con badges */}
           {!outOfStock && nonCornerOverlayPositions.map((pos) =>
             hasButtonsAt(pos) ? (
-              <div key={pos} className={overlayPositionClass[pos] || ''}>
+              <div key={pos} className={`${overlayPositionClass[pos] || ''}${revela(pos)}`}>
                 {renderButtons(pos === 'overlay_hover' ? 'rounded-lg p-1.5' : 'rounded-lg p-1', pos)}
               </div>
             ) : null
@@ -1135,9 +1325,29 @@ export function ProductCard({
         </div>
       </Link>
       {!isOverlay && (
-        <div className="p-2.5 sm:p-4">
+        <div className={`${claseCuerpo}${horizontal ? ' flex min-w-0 flex-1 flex-col justify-center' : ''}`} style={padCuerpo}>
+          {marcas.length > 0 && (
+            <p className="mb-0.5 text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{marcas.join(' · ')}</p>
+          )}
+          {etiquetasTitulo.length > 0 && (
+            <div className="mb-1 flex flex-wrap gap-1">
+              {etiquetasTitulo.map((b, i) => (
+                <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+              ))}
+            </div>
+          )}
+          {posPrecio === 'above_title' && price !== null && (
+            <div className="mb-1">
+              <Price value={price} className={clasePrecio} style={precio} />
+            </div>
+          )}
+          {showRatingBlock && ratingPosition === 'above_title' && (
+            <div className="mb-1">
+              <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
+            </div>
+          )}
           <Link href={ruta(`/productos/${product.uuid}`)}>
-            <h3 className={`font-semibold text-xs sm:text-sm text-gray-900 dark:text-white mb-1 ${titleLinesClass} group-hover:underline`}>
+            <h3 className={`${claseTitulo} ${titleLinesClass} group-hover:underline`}>
               {product.name}
             </h3>
           </Link>
@@ -1150,21 +1360,23 @@ export function ProductCard({
             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1">{textoPlano(product.description)}</p>
           )}
           <div className="flex flex-col gap-2 mt-1">
-            <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}`}>
+            {(precioAbajo || (posPrecio === 'beside_button' && !hasButtonsAt('beside_price'))) && (
+            <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}${estiloTarjeta?.text_align === 'center' ? ' justify-center' : estiloTarjeta?.text_align === 'right' ? ' justify-end' : ''}`}>
               {comparePrice && price !== null && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
                 <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
               )}
               {price !== null && (
-                <Price value={price} className="text-sm sm:text-lg" style={precio} />
+                <Price value={price} className={clasePrecio} style={precio} />
               )}
             </div>
+            )}
             {outOfStock && !isParentProduct(product) ? (
               <span className="text-xs text-red-500 font-medium">Sin stock</span>
             ) : (
               <>
                 {/* Botones "below" centrados (default) */}
                 {hasButtonsAt('below') && (
-                  <div className="flex justify-center">{renderButtons('', 'below')}</div>
+                  <div className={`flex ${alinearBotones}${revela('below')}`}>{renderButtons('', 'below')}</div>
                 )}
                 {/* Botones "below_left" */}
                 {hasButtonsAt('below_left') && (
@@ -1176,7 +1388,17 @@ export function ProductCard({
                 )}
                 {/* Botones "beside_price" */}
                 {hasButtonsAt('beside_price') && (
-                  <div className="flex items-center justify-between gap-2">{renderButtons('', 'beside_price')}</div>
+                  <div className={`flex items-center justify-between gap-2${revela('beside_price')}`}>
+                    {posPrecio === 'beside_button' && price !== null && (
+                      <span className="flex items-center gap-1">
+                        {comparePrice && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
+                          <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
+                        )}
+                        <Price value={price} className={clasePrecio} style={precio} />
+                      </span>
+                    )}
+                    {renderButtons('', 'beside_price')}
+                  </div>
                 )}
                 {/* Botones "bottom_bar" */}
                 {hasButtonsAt('bottom_bar') && (

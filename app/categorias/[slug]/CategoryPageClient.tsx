@@ -7,6 +7,8 @@ import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } 
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -100,6 +102,7 @@ export function CategoryPageClient({
   branchId
 }: CategoryPageClientProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(undefined))
   const router = useRouter()
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [view, setView] = useState<'grid' | 'list'>(currentView)
@@ -261,7 +264,7 @@ export function CategoryPageClient({
       {products.length > 0 ? (
         <>
           {view === 'grid' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6" style={separacion}>
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -278,7 +281,7 @@ export function CategoryPageClient({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4" style={separacion}>
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
