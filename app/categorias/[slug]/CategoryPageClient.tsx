@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { Paginacion } from '@/components/site/Paginacion'
+import { useEsMovilLista, useListaCarrusel } from '@/components/site/listaCarrusel'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
@@ -101,6 +104,14 @@ export function CategoryPageClient({
 }: CategoryPageClientProps) {
   const { ruta } = useRutaSitio()
   const router = useRouter()
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const paginacion = resolverPaginacion(
+    { legado: 'categoria', porPagina: totalPages > 0 ? Math.max(1, Math.ceil(total / totalPages)) : 12 },
+    globalLista.paginacion,
+    null,
+    movil,
+  )
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [view, setView] = useState<'grid' | 'list'>(currentView)
   const [showFilters, setShowFilters] = useState(false)
@@ -298,6 +309,20 @@ export function CategoryPageClient({
 
           {/* Paginación */}
           {totalPages > 1 && (
+            paginacion.activo ? (
+              <Paginacion
+                pagina={currentPage}
+                totalPaginas={totalPages}
+                totalItems={total}
+                porPagina={paginacion.porPagina}
+                resuelta={paginacion}
+                color={primaryColor}
+                pathname=""
+                search=""
+                hrefDe={(n) => ruta(buildUrl({ page: String(n) }))}
+                onIr={handlePageChange}
+              />
+            ) : (
             <div className="flex items-center justify-center gap-2 mt-10">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -334,6 +359,7 @@ export function CategoryPageClient({
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
+            )
           )}
         </>
       ) : (

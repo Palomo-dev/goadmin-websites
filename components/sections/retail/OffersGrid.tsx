@@ -11,6 +11,9 @@ import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosPr
 import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda } from '@/lib/products/filtrosProductos'
 import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
+import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { Paginacion } from '@/components/site/Paginacion'
+import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -72,6 +75,9 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   const effectiveBranchId = branchId ?? data?.branchId ?? null
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const paginacion = resolverPaginacion({ legado: 'grilla', porPagina: 12 }, globalLista.paginacion, (content as { paginacion?: unknown }).paginacion, movil)
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [ordenVisitante, setOrdenVisitante] = useState<OrdenOfertas | null>(null)
   const sortBy = ordenVisitante ?? ordenInicialOfertas(content.sort_order)
@@ -106,9 +112,14 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
     return result
   }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids])
 
-  const recorte = recorteListado(filteredProducts.length, currentPage, content)
+  const porPagina = paginacion.activo ? paginacion.porPagina : undefined
+  const sonda = recorteListado(filteredProducts.length, 1, content, porPagina)
+  const lista = usePaginaLista(paginacion.activo, sonda.paginas)
+  const pagina = paginacion.activo ? lista.pagina : currentPage
+  const recorte = recorteListado(filteredProducts.length, pagina, content, porPagina)
   const totalPages = recorte.paginas
-  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
+  const acumulable = paginacion.activo && (paginacion.estilo === 'cargar_mas' || paginacion.estilo === 'infinito')
+  const paginatedProducts = acumulable ? filteredProducts.slice(0, recorte.hasta) : filteredProducts.slice(recorte.desde, recorte.hasta)
   const resetPage = () => setCurrentPage(1)
 
   const addToCart = (product: any) => {
@@ -256,6 +267,9 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
 
           {/* Paginación */}
           {totalPages > 1 && (
+            paginacion.activo ? (
+              <Paginacion pagina={lista.pagina} totalPaginas={totalPages} totalItems={recorte.universo} porPagina={paginacion.porPagina} resuelta={paginacion} color={primaryColor} pathname={lista.pathname} search={lista.search} onIr={lista.ir} />
+            ) : (
             <div className="flex items-center justify-center gap-1 mt-8">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <ChevronLeft className="h-4 w-4" />
@@ -277,6 +291,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
+            )
           )}
         </>
       )}

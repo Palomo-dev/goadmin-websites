@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
@@ -8,6 +8,9 @@ import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProduc
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
+import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { Paginacion } from '@/components/site/Paginacion'
+import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
@@ -89,7 +92,14 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const products = data?.products || []
   const categories = data?.categories || []
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const paginacion = resolverPaginacion(
+    { legado: 'grilla', porPagina: 12 },
+    globalLista.paginacion,
+    (content as { paginacion?: unknown }).paginacion,
+    movil,
+  )
   // Categorías únicas de los productos
   const availableCategories = useMemo(
     () => categoriasDisponibles(products, categories, content.selected_category_ids),
@@ -103,15 +113,23 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
     const base = selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
     return ordenarListado(base, content.sort_order)
   }, [products, content.selected_category_ids, content.sort_order])
-  const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
+  const irRef = useRef<(n: number) => void>(() => {})
+  const filtros = useFiltrosProductos(baseProducts, () => irRef.current(1))
   const filteredProducts = filtros.filtrados
   const selectedCategory = filtros.estado.categoria
   const onlyOffers = filtros.estado.soloOfertas
   const busqueda = filtros.estado.busqueda.trim()
 
-  const recorte = recorteListado(filteredProducts.length, currentPage, content)
+  const porPagina = paginacion.activo ? paginacion.porPagina : undefined
+  const sonda = recorteListado(filteredProducts.length, 1, content, porPagina)
+  const lista = usePaginaLista(paginacion.activo, sonda.paginas)
+  irRef.current = lista.ir
+  const acumulable = paginacion.activo && (paginacion.estilo === 'cargar_mas' || paginacion.estilo === 'infinito')
+  const recorte = recorteListado(filteredProducts.length, lista.pagina, content, porPagina)
   const totalPages = recorte.paginas
-  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
+  const paginatedProducts = acumulable
+    ? filteredProducts.slice(0, recorte.hasta)
+    : filteredProducts.slice(recorte.desde, recorte.hasta)
 
   const addToCart = (product: any) => {
     const price = getPrice(product)
@@ -218,42 +236,56 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
       {/* Paginación */}
       {totalPages > 1 && (
+        paginacion.activo ? (
+          <Paginacion
+            pagina={acumulable ? lista.pagina : lista.pagina}
+            totalPaginas={totalPages}
+            totalItems={recorte.universo}
+            porPagina={paginacion.porPagina}
+            resuelta={paginacion}
+            color={primaryColor}
+            pathname={lista.pathname}
+            search={lista.search}
+            onIr={lista.ir}
+          />
+        ) : (
         <div className="flex items-center justify-center gap-1 mt-8">
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => lista.ir(Math.max(1, lista.pagina - 1))}
+            disabled={lista.pagina === 1}
             className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           {Array.from({ length: totalPages }).map((_, i) => {
             const page = i + 1
-            if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
+            if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - lista.pagina) <= 1) {
               return (
                 <button
                   key={page}
-                  onClick={() => setCurrentPage(page)}
+                  onClick={() => lista.ir(page)}
                   className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-all ${
-                    currentPage === page ? 'text-white' : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    lista.pagina === page ? 'text-white' : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
-                  style={currentPage === page ? { backgroundColor: primaryColor } : {}}
+                  style={lista.pagina === page ? { backgroundColor: primaryColor } : {}}
                 >
                   {page}
                 </button>
               )
             }
-            if (page === 2 && currentPage > 3) return <span key="start-dots" className="px-1 text-gray-400">...</span>
-            if (page === totalPages - 1 && currentPage < totalPages - 2) return <span key="end-dots" className="px-1 text-gray-400">...</span>
+            if (page === 2 && lista.pagina > 3) return <span key="start-dots" className="px-1 text-gray-400">...</span>
+            if (page === totalPages - 1 && lista.pagina < totalPages - 2) return <span key="end-dots" className="px-1 text-gray-400">...</span>
             return null
           })}
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => lista.ir(Math.min(totalPages, lista.pagina + 1))}
+            disabled={lista.pagina === totalPages}
             className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+        )
       )}
     </div>
   )

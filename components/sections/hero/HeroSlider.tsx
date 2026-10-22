@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { BASE_CARRUSEL_HERO, resolverCarrusel } from '@/lib/website/v2/paginacionCarrusel'
+import { ControlesCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { useEsMovilLista, useListaCarrusel } from '@/components/site/listaCarrusel'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 import { enlaceDeImagen } from '@/lib/website/presentacionTienda'
@@ -312,6 +315,9 @@ function parseBool(val: unknown, fallback: boolean): boolean {
 }
 
 export function HeroSlider({ content, organization, primaryColor }: HeroSliderProps) {
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const carrusel = resolverCarrusel(BASE_CARRUSEL_HERO, globalLista.carrusel, (content as { carrusel?: unknown }).carrusel, movil)
   const showBooking = parseBool((content as any).show_booking_widget, organization?.website_settings?.show_hero_booking ?? false)
   const showOverlay = parseBool((content as any).show_overlay, true)
   const showTitle = parseBool((content as any).show_title, true)
@@ -338,21 +344,21 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
     : {}
 
   // CAROUSEL_FIELDS con defaults que preservan el comportamiento heredado
-  const autoplay = content.autoplay ?? true
-  const intervalMs = Number(content.interval_ms) || 5000
-  const pauseOnHover = content.pause_on_hover ?? true
-  const loop = content.loop ?? true
+  const autoplay = carrusel.activo ? carrusel.autoplay : (content.autoplay ?? true)
+  const intervalMs = carrusel.activo ? carrusel.segundos * 1000 : (Number(content.interval_ms) || 5000)
+  const pauseOnHover = carrusel.activo ? carrusel.pausaHover : (content.pause_on_hover ?? true)
+  const loop = carrusel.activo ? carrusel.loop : (content.loop ?? true)
   const transition = content.transition || 'slide'
   const transitionMs = Number(content.transition_ms) || 500
-  const showArrows = content.show_arrows ?? false
+  const showArrows = carrusel.activo ? false : (content.show_arrows ?? false)
   const arrowStyle = content.arrow_style || 'circle'
   const arrowPosition = content.arrow_position || 'inside'
   const arrowSize = Number(content.arrow_size) || 40
   const arrowColor = content.arrow_color
   const arrowBgColor = content.arrow_bg_color
-  const showDots = content.show_dots ?? true
+  const showDots = carrusel.activo ? false : (content.show_dots ?? true)
   const dotStyle = content.dot_style || 'dots'
-  const enableSwipe = content.enable_swipe ?? true
+  const enableSwipe = carrusel.activo ? carrusel.arrastre : (content.enable_swipe ?? true)
 
   const [current, setCurrent] = useState(0)
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -613,6 +619,19 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           </div>
           <SliderArrows show={showArrows} style={arrowStyle} position={arrowPosition} size={arrowSize} color={arrowColor} bgColor={arrowBgColor} onPrev={goPrev} onNext={goNext} />
           <SliderDots show={showDots} style={dotStyle} count={slides.length} current={current} onSelect={goTo} />
+          {carrusel.activo && (
+            <ControlesCarrusel
+              resuelta={carrusel}
+              forzar
+              total={slides.length}
+              actual={current}
+              color={primaryColor}
+              onAnterior={goPrev}
+              onSiguiente={goNext}
+              onIr={goTo}
+              miniaturas={slides.map((s, i) => ({ src: String((s as { image?: string; image_url?: string }).image_url || (s as { image?: string }).image || ''), alt: String((s as { title?: string }).title || `Diapositiva ${i + 1}`) })).filter((m) => m.src)}
+            />
+          )}
         </div>
       </div>
     )
@@ -645,6 +664,19 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
         </div>
         <SliderArrows show={showArrows} style={arrowStyle} position={arrowPosition} size={arrowSize} color={arrowColor} bgColor={arrowBgColor} onPrev={goPrev} onNext={goNext} />
         <SliderDots show={showDots} style={dotStyle} count={slides.length} current={current} onSelect={goTo} />
+        {carrusel.activo && (
+          <ControlesCarrusel
+            resuelta={carrusel}
+            forzar
+            total={slides.length}
+            actual={current}
+            color={primaryColor}
+            onAnterior={goPrev}
+            onSiguiente={goNext}
+            onIr={goTo}
+            miniaturas={slides.map((s, i) => ({ src: String((s as { image?: string; image_url?: string }).image_url || (s as { image?: string }).image || ''), alt: String((s as { title?: string }).title || `Diapositiva ${i + 1}`) })).filter((m) => m.src)}
+          />
+        )}
       </div>
     </div>
   )

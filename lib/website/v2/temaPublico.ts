@@ -18,6 +18,7 @@
  */
 import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
 import { fondoOscuro } from './textoSobreAcento'
+import { sanitizarCarrusel, sanitizarPaginacion, type ParcialCarrusel, type ParcialPaginacion } from './paginacionCarrusel'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -31,6 +32,10 @@ export interface TemaPublico {
   radio: RadioSitio | null
   estiloBoton: EstiloBotonSitio | null
   movimiento: MovimientoSitio | null
+  /** null si el documento no trae el ajuste: la paginación de hoy. */
+  paginacion: ParcialPaginacion | null
+  /** null si el documento no trae el ajuste: las flechas y los puntos de hoy. */
+  carrusel: ParcialCarrusel | null
 }
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -88,6 +93,8 @@ export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): 
     radio: typeof radio === 'number' && RADIOS.includes(radio) ? (radio as RadioSitio) : null,
     estiloBoton: typeof boton === 'string' && BOTONES.includes(boton) ? (boton as EstiloBotonSitio) : null,
     movimiento: typeof movimiento === 'string' && MOVIMIENTOS.includes(movimiento) ? (movimiento as MovimientoSitio) : null,
+    paginacion: sanitizarPaginacion(resolver(t, p, (x) => x.paginacion, esSede)),
+    carrusel: sanitizarCarrusel(resolver(t, p, (x) => x.carrusel, esSede)),
   }
 }
 
