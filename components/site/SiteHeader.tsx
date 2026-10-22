@@ -27,6 +27,9 @@ import MobileDrawer from './header/mobile/MobileDrawer'
 import MobileBottomSheet from './header/mobile/MobileBottomSheet'
 import MobileFullscreen from './header/mobile/MobileFullscreen'
 import MobileTabs from './header/mobile/MobileTabs'
+import { HeaderMovilConfigurable } from './header/mobile/HeaderMovilConfigurable'
+import { MobileBottomNav, useUnidadesBarra } from './header/mobile/MobileBottomNav'
+import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 
 interface SiteHeaderProps {
@@ -419,10 +422,7 @@ export default function SiteHeader({
   }
   return variante
 
-  function elegirVariante() {
-  // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)
-  if (isMobile) {
-    // Renderizar variante móvil según mobile_menu_style
+  function menuLegado() {
     switch (mobileMenuStyle) {
       case 'bottom_sheet':
         return <MobileBottomSheet {...variantProps} />
@@ -433,6 +433,25 @@ export default function SiteHeader({
       default:
         return <MobileDrawer {...variantProps} />
     }
+  }
+
+  function elegirVariante() {
+  // Siempre usar el sistema de variantes nuevo (unifica el look en todas las páginas)
+  if (isMobile) {
+    const presentacion = leerPresentacionMovil(settings)
+    if (presentacion?.usarHeaderNuevo) {
+      return <HeaderMovilConfigurable {...variantProps} presentacion={presentacion} />
+    }
+    const legado = menuLegado()
+    if (presentacion?.barra) {
+      return (
+        <>
+          {legado}
+          <BarraSobreLegado barra={presentacion.barra} primaryColor={primaryColor} organization={organization} branchId={branchId} onCartClick={onCartClick} />
+        </>
+      )
+    }
+    return legado
   }
 
   // Renderizar variante desktop según header_style
@@ -451,6 +470,35 @@ export default function SiteHeader({
       return <HeaderClassic {...variantProps} />
   }
   }
+}
+
+function BarraSobreLegado({
+  barra, primaryColor, organization, branchId, onCartClick,
+}: {
+  barra: NonNullable<ReturnType<typeof leerPresentacionMovil>>['barra']
+  primaryColor: string
+  organization: SiteHeaderProps['organization']
+  branchId?: number | null
+  onCartClick?: () => void
+}) {
+  const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
+  if (!barra) return null
+  return (
+    <MobileBottomNav
+      barra={barra}
+      primaryColor={primaryColor}
+      unidades={unidades}
+      onMenu={() => {
+        const boton = document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')
+        boton?.click()
+      }}
+      onSearch={() => {
+        const boton = document.querySelector<HTMLButtonElement>('header button[aria-label="Buscar"], header button[aria-label="Abrir búsqueda"]')
+        boton?.click()
+      }}
+      onCart={onCartClick}
+    />
+  )
 }
 
 /**
