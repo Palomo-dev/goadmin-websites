@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { ListRenderer } from '../ListRenderer'
 
 interface CategoriesGridProps {
   content: {
@@ -471,6 +473,22 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const desktopGrid = desktopColumns > 0
     ? `grid-cols-${desktopColumns}`
     : getGridClass(maxItems || categories.length)
+
+  const listaNueva = listaDelInspector(content)
+  if (listaNueva && categories.length > 0) {
+    return (
+      <div>
+        {content.title && (
+          <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        )}
+        <ListRenderer lista={listaNueva}>
+          {categories.map((cat: any) => (
+            <ListCard key={cat.id} cat={cat} cardStyle={cardStyle} primaryColor={primaryColor} />
+          ))}
+        </ListRenderer>
+      </div>
+    )
+  }
 
   return (
     <div>

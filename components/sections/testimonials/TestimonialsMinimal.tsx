@@ -9,6 +9,7 @@ import {
   type TestimonialsContent,
   type TestimonialsData,
 } from './testimonialsUtils'
+import { SiLista } from '../ListRenderer'
 
 interface TestimonialsMinimalProps {
   content: TestimonialsContent
@@ -43,7 +44,7 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6', data }:
           </div>
         )}
         {items.length > 0 && (
-        <div className="space-y-6">
+        <SiLista content={content} className="space-y-6">
           {items.map((item) => {
             const stars = ratingStars(item.rating)
             const srcLabel = sourceLabel(item.source)
@@ -89,7 +90,7 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6', data }:
               </div>
             )
           })}
-        </div>
+        </SiLista>
         )}
       </div>
     </section>

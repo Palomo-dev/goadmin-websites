@@ -20,6 +20,7 @@ import {
   type TestimonialsData,
   type NormalizedTestimonial,
 } from './testimonialsUtils'
+import { SiLista } from '../ListRenderer'
 
 interface TestimonialsGridProps {
   content: TestimonialsContent
@@ -71,7 +72,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
             <p>No hay testimonios disponibles aún</p>
           </div>
         ) : (
-        <div className={`grid ${gridCls}`} style={{ gap: `${gap}px` }}>
+        <SiLista content={content} className={`grid ${gridCls}`} style={{ gap: `${gap}px` }}>
           {items.map((item) => {
             const isExpanded = expanded[item.id]
             const stars = ratingStars(item.rating)
@@ -164,7 +165,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
               </div>
             )
           })}
-        </div>
+        </SiLista>
         )}
       </div>
     </section>

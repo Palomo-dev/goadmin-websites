@@ -6,8 +6,8 @@
 
 export const FUENTES = ['all', 'categories', 'manual', 'new', 'offers', 'best_sellers'] as const
 export type FuenteProductos = (typeof FUENTES)[number]
-export const MODOS = ['grid', 'list', 'carousel'] as const
-export const PAGINACIONES = ['none', 'pages', 'load_more', 'infinite'] as const
+export const MODOS = ['grid', 'list', 'carousel', 'masonry'] as const
+export const PAGINACIONES = ['none', 'pages', 'load_more', 'infinite', 'full'] as const
 export const CHIPS = ['pill', 'semi', 'square', 'underline'] as const
 export const POS_FILTRO = ['top', 'side', 'drawer'] as const
 export const FILTROS = ['category', 'price', 'offers', 'stock', 'brand', 'attributes', 'rating', 'shipping'] as const
@@ -198,7 +198,7 @@ export function recortePresentacion(
 ): { desde: number; hasta: number; paginas: number; universo: number } | null {
   if (!p?.pagination) return null
   const universo = Math.max(0, total)
-  if (p.pagination === 'none') return { desde: 0, hasta: universo, paginas: 1, universo }
+  if (p.pagination === 'none' || p.pagination === 'full') return { desde: 0, hasta: universo, paginas: 1, universo }
   if (p.pagination === 'load_more' || p.pagination === 'infinite') {
     const primero = p.perPage ?? Math.min(universo, 12)
     return { desde: 0, hasta: Math.min(universo, primero), paginas: 1, universo }

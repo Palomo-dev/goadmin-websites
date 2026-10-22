@@ -7,6 +7,8 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { SiLista } from '../ListRenderer'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -108,10 +110,12 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
           const cols = content.columns || content.desktop_columns || 1
           const rows = content.rows || content.desktop_rows
           const maxItemsByRows = rows ? cols * rows : 0
-          const visibleProducts = maxItemsByRows > 0 ? products.slice(0, maxItemsByRows) : products
+          const lista = listaDelInspector(content)
+          const visibleProducts = lista ? products : (maxItemsByRows > 0 ? products.slice(0, maxItemsByRows) : products)
           const isGrid = cols > 1
           return (
-            <div
+            <SiLista
+              content={content}
               className={isGrid ? 'grid gap-4 max-w-6xl mx-auto' : 'space-y-4 max-w-4xl mx-auto'}
               style={isGrid ? { gridTemplateColumns: `repeat(${Math.min(cols, 4)}, minmax(0, 1fr))` } : undefined}
             >
@@ -139,7 +143,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
                   />
                 )
               })}
-            </div>
+            </SiLista>
           )
         })()
       ) : filtros.activos ? (

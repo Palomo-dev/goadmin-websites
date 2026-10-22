@@ -20,6 +20,7 @@ import {
   type TestimonialsData,
   type NormalizedTestimonial,
 } from './testimonialsUtils'
+import { SiLista } from '../ListRenderer'
 
 interface TestimonialsCarouselProps {
   content: TestimonialsContent
@@ -72,7 +73,8 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
           <p>No hay testimonios disponibles aún</p>
         </div>
       ) : (
-      <div
+      <SiLista
+        content={content}
         className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0`}
         style={{ gap: `${gap}px` }}
       >
@@ -168,7 +170,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
             </div>
           )
         })}
-      </div>
+      </SiLista>
       )}
     </div>
   )

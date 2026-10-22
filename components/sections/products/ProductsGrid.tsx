@@ -9,6 +9,8 @@ import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { clasesColumnasListado, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { SiLista } from '../ListRenderer'
 import { isOutOfStock } from '@/lib/stock'
 import { BarraListado } from './BarraListado'
 import { getCartKey } from '@/lib/utils'
@@ -191,13 +193,17 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
     ? 'flex flex-col gap-4'
     : presentacion?.displayMode === 'carousel'
       ? 'flex gap-4 overflow-x-auto pb-2'
-      : columnas
+      : presentacion?.displayMode === 'masonry'
+        ? 'columns-2 gap-4 md:columns-3'
+        : columnas
   const estiloTarjeta = content.product_card_style && typeof content.product_card_style === 'object'
     ? { ...content, ...(content.product_card_style as Record<string, unknown>) }
     : content
   const marcas = Array.from(new Set(products.map((p: any) => p.brand).filter((m: unknown): m is string => typeof m === 'string' && m.length > 0)))
   const verMas = presentacion?.pagination === 'load_more' || presentacion?.pagination === 'infinite'
   const mostrados = extra.length ? [...paginatedProducts, ...extra] : paginatedProducts
+  const listaShell = listaDelInspector(content)
+  const fuenteTarjetas = listaShell ? filteredProducts : mostrados
   const categoriasChips = presentacion?.chipSource === 'all'
     ? categories.map((c: any) => ({ id: c.id, name: c.name }))
     : presentacion?.chipSource === 'manual' && presentacion.chipCategoryIds?.length
@@ -331,9 +337,9 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
         />
       )}
 
-      {mostrados.length > 0 ? (
-        <div className={claseRejilla}>
-          {mostrados.map((product: any) => {
+      {(listaShell ? fuenteTarjetas : mostrados).length > 0 ? (
+        <SiLista content={content} className={claseRejilla}>
+          {(listaShell ? fuenteTarjetas : mostrados).map((product: any) => {
             const isAdded = addedToCart.has(product.id)
             return (
               <ProductCard
@@ -357,7 +363,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
               />
             )
           })}
-        </div>
+        </SiLista>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
@@ -369,13 +375,13 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {/* Paginación */}
-      {verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
+      {!listaShell && verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
         <div className="mt-8 flex justify-center">
           <button type="button" onClick={cargarMas} className="rounded-full px-5 py-2 text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>Ver más</button>
           {presentacion?.pagination === 'infinite' && <div ref={sentinel} className="h-px w-full" aria-hidden="true" />}
         </div>
       )}
-      {!verMas && totalPages > 1 && (
+      {!listaShell && !verMas && totalPages > 1 && (
         <div className="flex items-center justify-center gap-1 mt-8">
           <button
             onClick={() => void irPagina(Math.max(1, currentPage - 1))}

@@ -4,7 +4,9 @@ import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
 import { EncabezadoSeccion } from './EncabezadoSeccion'
-import { estilosFondo, leerEncabezado, leerFondo } from '@/lib/website/cascaronSeccion'
+import { AccionEncabezado } from './EncabezadoSeccion'
+import { CarruselShell, HuecoFlechas } from './ListRenderer'
+import { combinarEncabezado, estilosFondo, leerFondo, listaDelInspector, type EncabezadoSeccion as DatosEncabezado } from '@/lib/website/cascaronSeccion'
 
 interface SectionSettings {
   bg_color?: string | null
@@ -22,6 +24,8 @@ interface SectionWrapperProps {
   /** Variante de la sección (la Carta QR ajusta márgenes por variante). */
   sectionVariant?: string
   sectionId?: string
+  /** `tema.seccion` del sitio. Ausente = no se hereda nada. */
+  estiloGlobal?: unknown
   children: React.ReactNode
 }
 
@@ -78,7 +82,7 @@ const SIN_RELLENO_POR_DEFECTO: ReadonlySet<string> = new Set([
   'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
 ])
 
-export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, children }: SectionWrapperProps) {
+export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, estiloGlobal, children }: SectionWrapperProps) {
   // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
   // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
@@ -157,7 +161,8 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   if (!hasContractBg && settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
   if (!hasContractText && settings.text_color) (style as any)['--section-text'] = settings.text_color
 
-  const encabezado = leerEncabezado(content)
+  const encabezado = combinarEncabezado(content, estiloGlobal)
+  const flechasArriba = listaDelInspector(content)?.arrows === 'top'
   const fondoNuevo = leerFondo(content)
   if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
   const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
@@ -186,6 +191,7 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
       titulo={typeof content?.title === 'string' ? content.title : undefined}
       descripcion={typeof content?.subtitle === 'string' ? content.subtitle : undefined}
       primaryColor={primaryColor}
+      controles={flechasArriba ? <HuecoFlechas /> : undefined}
     />
   ) : null
 
@@ -208,20 +214,67 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
       {fondoNuevo?.separator === 'wave' && <Separador forma="wave" color={fondoNuevo.separator_color} />}
       {fondoNuevo?.separator === 'diagonal' && <Separador forma="diagonal" color={fondoNuevo.separator_color} />}
       {fondoNuevo?.separator === 'line' && <hr className="relative z-10 mx-auto mb-2 w-full max-w-7xl border-t" style={{ borderColor: fondoNuevo.separator_color }} />}
-      <div className={`${innerClass}${fondoNuevo?.overlay_opacity ? ' relative z-10' : ''}`}>
-        {encabezado?.layout === 'side' ? (
-          <div className="grid items-start gap-6 md:grid-cols-[minmax(12rem,22rem)_1fr]">
-            {encabezadoNodo}
-            <div>{children}</div>
-          </div>
-        ) : (
-          <>
-            {encabezadoNodo}
+      {flechasArriba ? (
+        <CarruselShell>
+          <CuerpoSeccion
+            innerClass={innerClass}
+            overlay={Boolean(fondoNuevo?.overlay_opacity)}
+            encabezado={encabezado}
+            encabezadoNodo={encabezadoNodo}
+            primaryColor={primaryColor}
+          >
             {children}
-          </>
-        )}
-      </div>
+          </CuerpoSeccion>
+        </CarruselShell>
+      ) : (
+        <CuerpoSeccion
+          innerClass={innerClass}
+          overlay={Boolean(fondoNuevo?.overlay_opacity)}
+          encabezado={encabezado}
+          encabezadoNodo={encabezadoNodo}
+          primaryColor={primaryColor}
+        >
+          {children}
+        </CuerpoSeccion>
+      )}
     </section>
+  )
+}
+
+function CuerpoSeccion({
+  innerClass,
+  overlay,
+  encabezado,
+  encabezadoNodo,
+  primaryColor,
+  children,
+}: {
+  innerClass: string
+  overlay: boolean
+  encabezado: DatosEncabezado | null
+  encabezadoNodo: React.ReactNode
+  primaryColor?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`${innerClass}${overlay ? ' relative z-10' : ''}`}>
+      {encabezado?.layout === 'side' ? (
+        <div className="grid items-start gap-6 md:grid-cols-[minmax(12rem,22rem)_1fr]">
+          {encabezadoNodo}
+          <div>{children}</div>
+        </div>
+      ) : (
+        <>
+          {encabezadoNodo}
+          {children}
+        </>
+      )}
+      {encabezado?.action?.position === 'end' && (
+        <div className="mt-8 flex justify-center">
+          <AccionEncabezado accion={encabezado.action} primaryColor={primaryColor} />
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
 import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
+import { SiLista } from '../ListRenderer'
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -130,7 +131,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
       {banners.length > 0 ? (
-        <div className={gridClass}>
+        <SiLista content={content} className={gridClass}>
           {banners.map((banner, i) => {
             const href = resolveBannerHref(banner, data)
             const textColor = banner.text_color || '#ffffff'
@@ -235,7 +236,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
               <div key={i}>{card}</div>
             )
           })}
-        </div>
+        </SiLista>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🏷️</p>

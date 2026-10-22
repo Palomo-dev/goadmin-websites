@@ -11,6 +11,8 @@ import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosPr
 import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda } from '@/lib/products/filtrosProductos'
 import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { SiLista } from '../ListRenderer'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -217,9 +219,9 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
           )}
 
           {/* Grid */}
-          {paginatedProducts.length > 0 ? (
-            <div className={clasesColumnasProductos(content.columns)}>
-              {paginatedProducts.map((product: any) => {
+          {(listaDelInspector(content) ? filteredProducts : paginatedProducts).length > 0 ? (
+            <SiLista content={content} className={clasesColumnasProductos(content.columns)}>
+              {(listaDelInspector(content) ? filteredProducts : paginatedProducts).map((product: any) => {
                 const isAdded = addedToCart.has(product.id)
                 return (
                   <ProductCard
@@ -245,7 +247,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                   />
                 )
               })}
-            </div>
+            </SiLista>
           ) : (
             <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
               <p className="text-4xl mb-3">📦</p>
@@ -255,7 +257,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
           )}
 
           {/* Paginación */}
-          {totalPages > 1 && (
+          {!listaDelInspector(content) && totalPages > 1 && (
             <div className="flex items-center justify-center gap-1 mt-8">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <ChevronLeft className="h-4 w-4" />

@@ -9,6 +9,7 @@ import {
   type TestimonialsContent,
   type TestimonialsData,
 } from './testimonialsUtils'
+import { SiLista } from '../ListRenderer'
 
 interface TestimonialsQuotesProps {
   content: TestimonialsContent
@@ -51,7 +52,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
-        <div className="space-y-10">
+        <SiLista content={content} className="space-y-10">
           {items.map((item) => {
             const stars = ratingStars(item.rating)
             const srcLabel = sourceLabel(item.source)
@@ -118,7 +119,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
               </blockquote>
             )
           })}
-        </div>
+        </SiLista>
       </div>
     </section>
   )

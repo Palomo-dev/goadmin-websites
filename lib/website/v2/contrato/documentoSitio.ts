@@ -205,6 +205,11 @@ export const esquemaTema = z
     radio: esquemaCampo(z.union([z.literal(0), z.literal(4), z.literal(12), z.literal(24)])).optional(),
     estiloBoton: esquemaCampo(z.enum(['solido', 'contorno', 'pastilla', 'sombra_dura'])).optional(),
     movimiento: esquemaCampo(z.enum(['ninguno', 'bajo', 'medio', 'alto'])).optional(),
+    /**
+     * Estilo global de los encabezados de sección. Ausente = cada sección sigue
+     * con su título de hoy. Lo lee el cascarón (`section_style` público).
+     */
+    seccion: z.record(z.string().max(40), z.unknown()).optional(),
   })
   .strict();
 

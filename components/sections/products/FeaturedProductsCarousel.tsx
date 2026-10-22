@@ -11,6 +11,8 @@ import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { ListRenderer } from '../ListRenderer'
 
 /**
  * Lo que hacía el carrusel antes de leer los interruptores «Reproducción automática», «Bucle
@@ -117,6 +119,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
     addToCart(product)
     router.push(ruta('/checkout'))
   }
+  const lista = listaDelInspector(content)
 
   return (
     <div>
@@ -144,7 +147,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
 
       {products.length > 0 ? (
         <div className="relative group/carousel" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
-          {flechaIzq && (
+          {!lista && flechaIzq && (
             <button
               type="button"
               onClick={() => scroll('left')}
@@ -155,7 +158,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
-          {flechaDer && (
+          {!lista && flechaDer && (
             <button
               type="button"
               onClick={() => scroll('right')}
@@ -166,6 +169,32 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
               <ChevronRight className="h-5 w-5" />
             </button>
           )}
+          {lista ? (
+            <ListRenderer lista={lista}>
+              {products.map((product: any) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  primaryColor={primaryColor}
+                  variant="grid"
+                  cardStyle={content}
+                  badges={content.badges}
+                  cardButtons={content.card_buttons}
+                  buttonsPosition={content.buttons_position}
+                  buttonsLayout={content.buttons_layout}
+                  buttonsFullWidth={content.buttons_full_width !== false}
+                  iconOnly={content.icon_only}
+                  showBuyNow={showBuyNow}
+                  onAddToCart={addToCart}
+                  onBuyNow={buyNow}
+                  isAdded={addedToCart.has(product.id)}
+                  organizationSubdomain={organizationSubdomain}
+                  branchId={branchId}
+                  className="w-full"
+                />
+              ))}
+            </ListRenderer>
+          ) : (
           <div
             ref={scrollRef}
             onScroll={updateScrollState}
@@ -198,7 +227,8 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
               )
             })}
           </div>
-          {totalPages > 1 && (
+          )}
+          {!lista && totalPages > 1 && (
             <div className="flex justify-center gap-1.5 mt-3">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button

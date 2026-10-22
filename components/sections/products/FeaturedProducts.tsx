@@ -9,6 +9,8 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
 import { ordenarListado } from '@/lib/products/limiteListado'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { ListRenderer } from '../ListRenderer'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -135,6 +137,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
     addToCart(product)
     router.push(ruta('/checkout'))
   }
+  const lista = listaDelInspector(content)
 
   return (
     <div>
@@ -160,6 +163,31 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
       )}
 
       {products.length > 0 ? (
+        lista ? (
+          <ListRenderer lista={lista}>
+            {products.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                primaryColor={primaryColor}
+                variant="grid"
+                cardStyle={content}
+                badges={content.badges}
+                cardButtons={content.card_buttons}
+                buttonsPosition={content.buttons_position}
+                buttonsLayout={content.buttons_layout}
+                buttonsFullWidth={content.buttons_full_width !== false}
+                iconOnly={content.icon_only}
+                showBuyNow={showBuyNow}
+                onAddToCart={addToCart}
+                onBuyNow={buyNow}
+                isAdded={addedToCart.has(product.id)}
+                organizationSubdomain={organization?.subdomain}
+                branchId={branchId}
+              />
+            ))}
+          </ListRenderer>
+        ) : (
         <div className="relative group/carousel">
           {/* Flecha izquierda */}
           <button
@@ -228,6 +256,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
             </div>
           )}
         </div>
+        )
       ) : filtros.activos ? (
         <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       ) : (

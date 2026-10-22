@@ -3,7 +3,7 @@
  *
  *   npm run verify:cascaron-listado
  */
-import { leerEncabezado, leerFondo, estilosFondo } from '../lib/website/cascaronSeccion.ts'
+import { combinarEncabezado, leerEncabezado, leerFondo, leerLista, listaDelInspector, estilosFondo } from '../lib/website/cascaronSeccion.ts'
 import { expandirCategorias, pedidoServidor, leerPresentacion, clasesColumnasListado, recortePresentacion } from '../lib/products/fuenteListado.ts'
 
 const problemas = []
@@ -56,6 +56,20 @@ check(recortePresentacion(40, 1, null) === null, 'sin paginación nueva sigue el
 check(leerPresentacion({ chip_source: 'manual', chip_category_ids: '3, 1' })?.chipCategoryIds?.join(',') === '3,1', 'la barra manual conserva el orden')
 check(leerPresentacion({ chip_mobile: 'scroll' })?.chipMobile === 'scroll', 'el scroll de chips se lee')
 check(estilosFondo(leerFondo({ section_background: { image_url_mobile: 'https://cdn.ejemplo/a.jpg' } }))['--fondo-movil']?.includes('https://cdn.ejemplo/a.jpg'), 'el fondo de celular queda en la variable')
+check(combinarEncabezado({ title: 'Hoy' }, null) === null, 'sin estilo global el título de hoy sigue')
+check(combinarEncabezado({}, { align: 'left', layout: 'inline' })?.layout === 'inline', 'el global alinea cuando la sección no trae encabezado')
+check(combinarEncabezado({ section_header: { align: 'center' } }, { align: 'left' })?.align === 'center', 'la sección pisa la alineación global')
+check(combinarEncabezado({ section_header: { align: 'inherit', title: 'X' } }, { align: 'right' })?.align === 'right', 'heredar toma la alineación global')
+check(leerEncabezado({ section_header: { section_action: { text: 'Ver todas', href: '/categorias', kind: 'link', position: 'inline' } } })?.action?.kind === 'link', 'la acción es un enlace')
+check(leerEncabezado({ section_header: { section_action: { text: 'Ver', href: '/x' } } })?.action?.kind === 'link', 'sin tipo, la acción es enlace')
+check(leerEncabezado({ section_header: { view_all: true, view_all_url: '/ofertas', layout: 'inline' } })?.action?.position === 'inline', 'ver todo sigue siendo la acción de la fila')
+check(leerLista({}) === null, 'sin modo de lista no hay renderer nuevo')
+check(leerLista({ display_mode: 'grid' }) === null, 'la cuadrícula de hoy no cambia')
+check(leerLista({ display_mode: 'masonry', pagination: 'full' })?.pagination === 'full', 'masonry y mostrar todo')
+check(leerLista({ section_display: { display_mode: 'carousel', arrow_position: 'top', autoplay: true } })?.arrows === 'top', 'las flechas pueden ir arriba')
+check(listaDelInspector({ autoplay: true }) === null, 'el autoplay de las marcas no cambia el listado')
+check(listaDelInspector({ section_display: { display_mode: 'list' } })?.mode === 'list', 'el inspector lee section_display')
+check(leerEncabezado({ section_header: { section_action: { text: 'Ver', href: 'perros', dest: 'category', kind: 'link' } } })?.action?.href === '/categorias/perros', 'un slug de categoría se vuelve ruta')
 check(leerFondo({ section_background: { overlay_opacity: 0 } })?.overlay_opacity === 0, 'una capa en cero se lee y no tapa')
 
 if (problemas.length) {

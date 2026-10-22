@@ -44,6 +44,34 @@ export interface EncabezadoSeccion {
   view_all_label?: string
   view_all_url?: string
   view_all_style?: (typeof BOTON)[number]
+  action?: AccionEncabezado
+  media?: MedioTitulo
+  description_weight?: (typeof PESOS)[number]
+  description_font?: string
+}
+
+export interface AccionEncabezado {
+  text: string
+  href: string
+  kind: 'link' | 'button'
+  position: 'inline' | 'below' | 'end'
+  icon?: boolean
+  underline?: boolean
+  style?: (typeof BOTON)[number]
+  shape?: 'square' | 'rounded' | 'pill'
+  color?: string
+  textColor?: string
+  /** page | category | collection | url. El enlace sigue siendo `href`. */
+  dest?: 'page' | 'category' | 'collection' | 'url'
+}
+
+export interface MedioTitulo {
+  kind: 'image' | 'icon'
+  src?: string
+  icon?: string
+  place: 'left' | 'above'
+  size?: number
+  shape?: 'circle' | 'rounded' | 'square'
 }
 
 export interface FondoSeccion {
@@ -146,7 +174,197 @@ export function leerEncabezado(content: unknown): EncabezadoSeccion | null {
   if (vu) e.view_all_url = vu
   const vs = enLista(BOTON, o.view_all_style)
   if (vs) e.view_all_style = vs
+  const dw = enLista(PESOS, o.description_weight)
+  if (dw) e.description_weight = dw
+  const df = texto(o.description_font, 80)
+  if (df && (df === 'site' || /^[A-Za-z0-9 ]+$/.test(df))) e.description_font = df
+  const accion = leerAccion(o.section_action) ?? accionDesdeVerTodo(e)
+  if (accion) e.action = accion
+  const medio = leerMedio(o.media)
+  if (medio) e.media = medio
   return Object.keys(e).length > 0 ? e : null
+}
+
+const DESTINOS = ['page', 'category', 'collection', 'url'] as const
+
+/** Un slug suelto de categoría, colección o página se vuelve ruta. Una URL ya válida se deja. */
+function hrefAccion(o: Record<string, unknown>): string | undefined {
+  const directo = urlSegura(o.href)
+  if (directo) return directo
+  const t = texto(o.href, 160)
+  if (!t || /[:\\]|\.\./.test(t) || !/^[A-Za-z0-9/_-]+$/.test(t.replace(/^\/+/, ''))) return undefined
+  const limpio = t.replace(/^\/+/, '')
+  if (o.dest === 'category') return `/categorias/${limpio}`
+  if (o.dest === 'collection') return `/colecciones/${limpio}`
+  if (o.dest === 'page') return `/${limpio}`
+  return undefined
+}
+
+function leerAccion(valor: unknown): AccionEncabezado | undefined {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return undefined
+  const o = valor as Record<string, unknown>
+  const text = texto(o.text, 40)
+  const href = hrefAccion(o)
+  if (!text || !href) return undefined
+  return {
+    text,
+    href,
+    kind: o.kind === 'button' ? 'button' : 'link',
+    position: o.position === 'end' ? 'end' : o.position === 'below' ? 'below' : 'inline',
+    icon: o.icon === true,
+    underline: o.underline !== false,
+    style: enLista(BOTON, o.style),
+    shape: enLista(['square', 'rounded', 'pill'] as const, o.shape),
+    color: color(o.color),
+    textColor: color(o.text_color),
+    dest: enLista(DESTINOS, o.dest),
+  }
+}
+
+function accionDesdeVerTodo(e: EncabezadoSeccion): AccionEncabezado | undefined {
+  if (!e.view_all || !e.view_all_url) return undefined
+  return {
+    text: e.view_all_label || 'Ver todo',
+    href: e.view_all_url,
+    kind: e.view_all_style === 'ghost' ? 'link' : 'button',
+    position: e.layout === 'inline' ? 'inline' : 'below',
+    style: e.view_all_style,
+    icon: e.view_all_style === 'ghost',
+    underline: true,
+  }
+}
+
+function leerMedio(valor: unknown): MedioTitulo | undefined {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return undefined
+  const o = valor as Record<string, unknown>
+  const kind = o.kind === 'icon' ? 'icon' : o.kind === 'image' ? 'image' : undefined
+  if (!kind) return undefined
+  const src = urlSegura(o.src)
+  const icon = texto(o.icon, 40)
+  if (kind === 'image' && !src) return undefined
+  if (kind === 'icon' && !icon) return undefined
+  return {
+    kind,
+    src,
+    icon,
+    place: o.place === 'above' ? 'above' : 'left',
+    size: entero(o.size, 16, 96),
+    shape: enLista(['circle', 'rounded', 'square'] as const, o.shape),
+  }
+}
+
+/** Estilo global (`tema.seccion`). Vacío = las secciones siguen como hoy. */
+export function leerEstiloGlobal(valor: unknown): EncabezadoSeccion | null {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return null
+  return leerEncabezado({ section_header: valor })
+}
+
+/**
+ * La sección pisa al global. Sin ninguno de los dos, null: el título de hoy.
+ * `align` o `layout` en `inherit` no pisan.
+ */
+export function combinarEncabezado(content: unknown, global: unknown): EncabezadoSeccion | null {
+  const propio = leerEncabezado(content)
+  const base = leerEstiloGlobal(global)
+  if (!propio && !base) return null
+  if (!base) return propio
+  if (!propio) return base
+  const crudo = (content as Record<string, unknown>).section_header as Record<string, unknown>
+  const alineado = crudo.align === 'inherit' ? base.align : propio.align ?? base.align
+  const dispuesto = crudo.layout === 'inherit' ? base.layout : propio.layout ?? base.layout
+  return {
+    ...base,
+    ...propio,
+    align: alineado,
+    layout: dispuesto,
+    action: propio.action ?? base.action,
+    media: propio.media ?? base.media,
+  }
+}
+
+export const MODOS_LISTA = ['grid', 'carousel', 'list', 'masonry'] as const
+export const PAGINAS_LISTA = ['none', 'pages', 'load_more', 'infinite', 'full'] as const
+export const FLECHAS = ['sides', 'top', 'bottom'] as const
+
+export interface ListaVisual {
+  mode: (typeof MODOS_LISTA)[number]
+  perPage?: number
+  pagination?: (typeof PAGINAS_LISTA)[number]
+  columnsDesktop?: number
+  columnsTablet?: number
+  columnsMobile?: number
+  gap?: number
+  visibleDesktop?: number
+  visibleTablet?: number
+  visibleMobile?: number
+  arrows?: (typeof FLECHAS)[number]
+  dots?: boolean
+  progress?: boolean
+  autoplay?: boolean
+  interval?: number
+  loop?: boolean
+  drag?: boolean
+}
+
+/**
+ * Lo que escribe la pestaña Visualización (`section_display`).
+ * No lee la raíz: `autoplay` de las marcas es el carrusel de hoy.
+ */
+export function listaDelInspector(content: unknown): ListaVisual | null {
+  if (!content || typeof content !== 'object') return null
+  const caja = (content as Record<string, unknown>).section_display
+  if (!caja || typeof caja !== 'object' || Array.isArray(caja)) return null
+  return leerLista({ section_display: caja })
+}
+
+/** null = la rejilla de hoy. `grid` solo no cambia nada. */
+export function leerLista(content: unknown): ListaVisual | null {
+  if (!content || typeof content !== 'object') return null
+  const c = content as Record<string, unknown>
+  const caja = c.section_display && typeof c.section_display === 'object' && !Array.isArray(c.section_display)
+    ? c.section_display as Record<string, unknown>
+    : c
+  const mode = enLista(MODOS_LISTA, caja.display_mode)
+  const pagination = enLista(PAGINAS_LISTA, caja.pagination)
+  const arrows = enLista(FLECHAS, caja.arrow_position)
+  const columnsDesktop = entero(caja.columns_desktop, 1, 6)
+  const columnsTablet = entero(caja.columns_tablet, 1, 4)
+  const columnsMobile = entero(caja.columns_mobile, 1, 2)
+  const gap = entero(caja.item_gap, 0, 64)
+  const visibleDesktop = entero(caja.visible_desktop, 1, 6)
+  const visibleTablet = entero(caja.visible_tablet, 1, 4)
+  const visibleMobile = entero(caja.visible_mobile, 1, 2)
+  const interval = entero(caja.autoplay_interval, 2, 20)
+  const perPage = entero(caja.per_page, 1, 48)
+  const pide = (mode && mode !== 'grid')
+    || (pagination && pagination !== 'none')
+    || arrows
+    || caja.autoplay === true
+    || caja.dots === true
+    || caja.progress === true
+    || columnsDesktop != null
+    || gap != null
+    || visibleDesktop != null
+  if (!pide) return null
+  return {
+    mode: mode || 'grid',
+    pagination,
+    perPage,
+    columnsDesktop,
+    columnsTablet,
+    columnsMobile,
+    gap,
+    visibleDesktop,
+    visibleTablet,
+    visibleMobile,
+    arrows,
+    dots: caja.dots === true,
+    progress: caja.progress === true,
+    autoplay: caja.autoplay === true,
+    interval,
+    loop: caja.loop !== false,
+    drag: caja.drag !== false,
+  }
 }
 
 export function leerFondo(content: unknown): FondoSeccion | null {

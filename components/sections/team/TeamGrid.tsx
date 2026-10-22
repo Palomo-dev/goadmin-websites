@@ -1,3 +1,5 @@
+import { SiLista } from '../ListRenderer'
+
 interface TeamMember {
   name: string
   role?: string
@@ -20,7 +22,7 @@ export function TeamGrid({ content, primaryColor }: TeamGridProps) {
       {content.title && (
         <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <SiLista content={content} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {members.map((member, i) => (
           <div key={i} className="text-center">
             <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-4 bg-gray-100 dark:bg-gray-700">
@@ -39,7 +41,7 @@ export function TeamGrid({ content, primaryColor }: TeamGridProps) {
             {member.role && <p className="text-gray-500 dark:text-gray-400 text-sm">{member.role}</p>}
           </div>
         ))}
-      </div>
+      </SiLista>
     </div>
   )
 }
