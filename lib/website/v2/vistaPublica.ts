@@ -18,6 +18,7 @@ import { resolverCampo, LIMITES_DOCUMENTO, type DocumentoSitio, type ItemMenu, t
 import { CAMPOS_HEREDABLES, COLUMNAS_SHELL_ESTRUCTURA, OPCIONES_SHELL, esVacio } from './mapeoAjustes'
 import { leerCampo, structuredCloneSeguro, valorPropioDe } from './rutasDocumento'
 import { visibilidadDesdeDocumento } from './estiloSeccion'
+import { legalSinTexto } from './textoLegalPublico'
 import { urlIdentidadPublica } from './faviconPublico'
 import type {
   WebsiteMenuItemWithChildren,
@@ -327,6 +328,8 @@ function itemAPublico(
       const pagina = paginas.get(item.paginaId)
       // Igual que legacy: un ítem de una página no publicada no sale.
       if (!pagina || !pagina.publicada) return null
+      // Una página legal vacía o sin publicar no sale en el pie. Los enlaces custom no pasan por aquí.
+      if (legalSinTexto(pagina)) return null
       nodo = { ...base, item_type: 'page', page_id: pagina.id, page: { id: pagina.id, slug: pagina.slug, title: item.etiqueta || pagina.titulo } }
       break
     }

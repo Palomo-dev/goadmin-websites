@@ -2,6 +2,7 @@ interface TextBlockCenteredProps {
   content: {
     title?: string
     body?: string
+    content?: string
     show_divider?: boolean
   }
   primaryColor?: string
@@ -16,8 +17,8 @@ export function TextBlockCentered({ content, primaryColor }: TextBlockCenteredPr
       {content.show_divider && (
         <div className="w-16 h-1 mx-auto mb-6 rounded" style={{ backgroundColor: primaryColor }} />
       )}
-      {content.body && (
-        <div className="text-gray-600 dark:text-gray-300 leading-relaxed prose prose-lg dark:prose-invert mx-auto" dangerouslySetInnerHTML={{ __html: content.body }} />
+      {(content.body || content.content) && (
+        <div className="text-gray-600 dark:text-gray-300 leading-relaxed prose prose-lg dark:prose-invert mx-auto" dangerouslySetInnerHTML={{ __html: content.body || content.content || '' }} />
       )}
     </div>
   )
