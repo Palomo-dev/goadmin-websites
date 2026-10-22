@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
-import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
@@ -25,7 +25,7 @@ const FOCO_FLECHA = 'focus:outline-none focus-visible:opacity-100 focus-visible:
 interface FeaturedProductsCarouselProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
+  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: any }
 }
 
@@ -35,7 +35,15 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = data?.branchId ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
-  const allProducts = data?.products || []
+  const allProducts = useMemo(() => {
+    const fuente = unirProductosDeCategoria(data?.products, data?.productosCategoria, content.selected_category_ids)
+    return filtrarProductosPorCategorias(
+      fuente,
+      content.selected_category_ids,
+      data?.categories,
+      incluirSubcategorias(content.include_subcategories, 'featured_products'),
+    )
+  }, [data?.products, data?.productosCategoria, data?.categories, content.selected_category_ids, content.include_subcategories])
   const maxItems = content.max_items || 8
   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
   const filtros = useFiltrosProductos(allProducts)

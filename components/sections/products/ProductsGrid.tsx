@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
-import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { getCartKey } from '@/lib/utils'
@@ -42,6 +42,7 @@ interface ProductsGridProps {
     show_search?: boolean
     show_categories?: boolean
     selected_category_ids?: number[]
+    include_subcategories?: boolean
     max_items?: number
     rows?: number
     columns?: unknown
@@ -76,7 +77,7 @@ interface ProductsGridProps {
     icon_only?: boolean
   }
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
+  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: any }
 }
 
@@ -99,10 +100,16 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   // Base: las categorías elegidas en la sección. Encima, filtros y buscador del visitante (en
   // memoria, sobre lo ya cargado).
   const baseProducts = useMemo(() => {
-    const selectedIds = content.selected_category_ids || []
-    const base = selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
+    // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
+    const fuente = unirProductosDeCategoria(products, data?.productosCategoria, content.selected_category_ids)
+    const base = filtrarProductosPorCategorias(
+      fuente,
+      content.selected_category_ids,
+      categories,
+      incluirSubcategorias(content.include_subcategories, 'products_grid'),
+    )
     return ordenarListado(base, content.sort_order)
-  }, [products, content.selected_category_ids, content.sort_order])
+  }, [products, data?.productosCategoria, categories, content.selected_category_ids, content.include_subcategories, content.sort_order])
   const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
   const filteredProducts = filtros.filtrados
   const selectedCategory = filtros.estado.categoria

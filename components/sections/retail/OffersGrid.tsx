@@ -9,7 +9,7 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
 import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
-import { coincideBusqueda } from '@/lib/products/filtrosProductos'
+import { coincideBusqueda, filtrarProductosPorCategorias, incluirSubcategorias } from '@/lib/products/filtrosProductos'
 import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -34,6 +34,7 @@ interface OffersGridProps {
     title?: string
     subtitle?: string
     selected_category_ids?: number[]
+    include_subcategories?: boolean
     max_items?: number
     rows?: number
     columns?: unknown
@@ -59,7 +60,7 @@ interface OffersGridProps {
   }
   primaryColor?: string
   organization?: { subdomain?: string; website_settings?: any }
-  data?: { offerProducts?: any[]; branchId?: number | null }
+  data?: { offerProducts?: any[]; categories?: any[]; branchId?: number | null }
   branchId?: number | null
 }
 
@@ -95,16 +96,19 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   }, [products, content.selected_category_ids])
 
   const filteredProducts = useMemo(() => {
-    const selectedIds = content.selected_category_ids || []
-    const baseProducts = selectedIds.length > 0
-      ? products.filter((p: any) => selectedIds.includes(p.category_id))
-      : products
+    // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
+    const baseProducts = filtrarProductosPorCategorias(
+      products,
+      content.selected_category_ids,
+      data?.categories,
+      incluirSubcategorias(content.include_subcategories, 'offers'),
+    )
     let result = selectedCategory ? baseProducts.filter((p: any) => p.category_id === selectedCategory) : [...baseProducts]
     if (busqueda.trim()) result = result.filter((p: any) => coincideBusqueda(p, busqueda))
     if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
     else result = ordenarListado(result, sortBy)
     return result
-  }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids])
+  }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids, content.include_subcategories, data?.categories])
 
   const recorte = recorteListado(filteredProducts.length, currentPage, content)
   const totalPages = recorte.paginas

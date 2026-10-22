@@ -7,7 +7,7 @@ import { ProductCard } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
-import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado } from '@/lib/products/limiteListado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -60,6 +60,7 @@ interface FeaturedProductsProps {
     show_search?: boolean
     show_categories?: boolean
     selected_category_ids?: number[]
+    include_subcategories?: boolean
     // Botones y badges (PRODUCT_CARD_INTERACTION_FIELDS)
     badges?: any[]
     card_buttons?: any[]
@@ -69,7 +70,7 @@ interface FeaturedProductsProps {
     icon_only?: boolean
   }
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[]; branchId?: number | null }
+  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[]; branchId?: number | null }
   organization?: { subdomain?: string; website_settings?: { show_buy_now_button?: boolean } }
 }
 
@@ -78,10 +79,18 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const branchId = data?.branchId ?? null
-  const allProducts = useMemo(
-    () => ordenarListado(data?.products || [], content.sort_order),
-    [data?.products, content.sort_order],
-  )
+  // La selección limita los productos ANTES de los filtros del visitante. Sin selección, el listado
+  // general no cambia. `include_subcategories` ausente en destacados incluye las hijas.
+  const allProducts = useMemo(() => {
+    const fuente = unirProductosDeCategoria(data?.products, data?.productosCategoria, content.selected_category_ids)
+    const base = filtrarProductosPorCategorias(
+      fuente,
+      content.selected_category_ids,
+      data?.categories,
+      incluirSubcategorias(content.include_subcategories, 'featured_products'),
+    )
+    return ordenarListado(base, content.sort_order)
+  }, [data?.products, data?.productosCategoria, data?.categories, content.selected_category_ids, content.include_subcategories, content.sort_order])
   const maxItems = content.max_items || 8
   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
   const filtros = useFiltrosProductos(allProducts)
