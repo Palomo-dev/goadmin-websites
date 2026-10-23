@@ -234,8 +234,9 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
   --header-bg-dark: color-mix(in srgb, var(--background-color) 95%, transparent) !important;
   color: var(--text-color);
 }
-/* Encabezados móviles (components/site/header/mobile/*): barra, menú lateral y hojas. */
-[data-tema-colores] header :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']) {
+/* Encabezados móviles (components/site/header/mobile/*): barra, menú lateral y hojas.
+   `data-superficie-propia` (buscador, hoja de moneda) conserva su fondo y su texto. */
+[data-tema-colores] header :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']):not([data-superficie-propia]) {
   background-color: var(--background-color) !important;
   color: var(--text-color);
 }
@@ -255,13 +256,13 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
    franja del selector de sede. Un color en línea (`color:`) o un fondo en línea por encima (color
    elegido en el editor) siguen mandando. Los selectores de estilo exigen inicio, `;` o `; ` delante
    para no confundir `--hover-color` ni la variable `--background-color` de la raíz. */
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='text-gray-']:not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='text-gray-']:not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: color-mix(in srgb, var(--text-color) 72%, var(--background-color)) !important;
 }
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) :is([class~='text-gray-900'], [class~='text-gray-800'], [class~='dark:text-white'], [class*='text-gray-']:hover):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) :is([class~='text-gray-900'], [class~='text-gray-800'], [class~='dark:text-white'], [class*='text-gray-']:hover):not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: var(--text-color) !important;
 }
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='hover:bg-gray-']:hover:not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='hover:bg-gray-']:hover:not([data-superficie-propia] *):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   background-color: color-mix(in srgb, var(--text-color) 8%, var(--background-color)) !important;
 }
 [data-tema-colores] header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800'])[class*='border-gray-'],
@@ -350,7 +351,7 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-encabezado-no-fijo] header[class*='sticky']:not(main *) {
   position: relative;
 }
-[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([data-superficie-propia] *):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: var(--encabezado-texto) !important;
 }
 [data-encabezado-texto] header:not(main *) > div:not([style*='background-color']) {
@@ -369,11 +370,77 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 :root {
   --header-hover: rgba(0, 0, 0, 0.08);
   --header-divider: rgba(0, 0, 0, 0.08);
+  /* Menú móvil, claro: los mismos grises de hoy. Sin !important: un color en línea gana. */
+  --mm-bg: #ffffff;
+  --mm-fg: #374151;
+  --mm-fg-muted: #4b5563;
+  --mm-hover-bg: var(--header-hover);
+  --mm-hover-fg: #374151;
+  --mm-active: #111827;
+  --mm-title: #111827;
+  --mm-divider: #f3f4f6;
+  --mm-cur-text: #6b7280;
+  --mm-cur-value: #111827;
+  --mm-cur-border: #e5e7eb;
+  --mm-cur-bg: transparent;
+  --mm-cur-icon: #9ca3af;
+  --mm-login-bg: var(--primary-color, #111827);
+  --mm-login-text: #ffffff;
+  --mm-register-border: var(--primary-color, #111827);
+  --mm-register-text: var(--primary-color, #111827);
+  --mm-logout: #dc2626;
+  --mm-logout-border: #fecaca;
+  --hdr-mobile-icon: #374151;
 }
 .dark:not([data-tema-fondo='claro']),
 [data-tema-fondo='oscuro'] {
   --header-hover: rgba(255, 255, 255, 0.1);
   --header-divider: rgba(255, 255, 255, 0.1);
+  --mm-bg: #111827;
+  --mm-fg: #d1d5db;
+  --mm-fg-muted: #9ca3af;
+  --mm-hover-bg: var(--header-hover);
+  --mm-hover-fg: #d1d5db;
+  --mm-active: #ffffff;
+  --mm-title: #ffffff;
+  --mm-divider: #1f2937;
+  --mm-cur-text: #9ca3af;
+  --mm-cur-value: #ffffff;
+  --mm-cur-border: #374151;
+  --mm-cur-icon: #9ca3af;
+  --mm-logout: #f87171;
+  --mm-logout-border: #7f1d1d;
+  --hdr-mobile-icon: #d1d5db;
+}
+/* Tema V2: el menú sigue el texto del tema. El oscuro va después para ganar al claro. */
+[data-tema-colores]:not([data-tema-fondo='oscuro']) {
+  /* El mismo 72 % que la regla del tema aplicaba a text-gray-500/600/700.
+     El título y el valor del select siguen a text-gray-900: el texto del tema. */
+  --mm-fg: color-mix(in srgb, var(--text-color, #374151) 72%, var(--background-color, #ffffff));
+  --mm-fg-muted: color-mix(in srgb, var(--text-color, #374151) 72%, var(--background-color, #ffffff));
+  --mm-title: var(--text-color, #111827);
+  --mm-hover-fg: var(--text-color, #111827);
+  --mm-active: var(--text-color, #111827);
+  --mm-divider: color-mix(in srgb, var(--text-color, #111827) 10%, var(--background-color, #ffffff));
+  --mm-cur-text: color-mix(in srgb, var(--text-color, #374151) 72%, var(--background-color, #ffffff));
+  --mm-cur-value: var(--text-color, #111827);
+  --mm-cur-icon: color-mix(in srgb, var(--text-color, #374151) 72%, var(--background-color, #ffffff));
+  --hdr-mobile-icon: color-mix(in srgb, var(--text-color, #374151) 72%, var(--background-color, #ffffff));
+}
+[data-tema-colores][data-tema-fondo='oscuro'] {
+  --mm-bg: var(--background-color, #111827);
+  --mm-fg: color-mix(in srgb, var(--text-color, #ffffff) 72%, var(--background-color, #111827));
+  --mm-fg-muted: color-mix(in srgb, var(--text-color, #ffffff) 72%, var(--background-color, #111827));
+  --mm-title: var(--text-color, #ffffff);
+  --mm-hover-fg: var(--text-color, #ffffff);
+  --mm-active: var(--text-color, #ffffff);
+  --mm-divider: color-mix(in srgb, var(--text-color, #ffffff) 10%, var(--background-color, #111827));
+  --mm-cur-text: color-mix(in srgb, var(--text-color, #ffffff) 72%, var(--background-color, #111827));
+  --mm-cur-value: var(--text-color, #ffffff);
+  --mm-cur-border: color-mix(in srgb, var(--text-color, #ffffff) 18%, var(--background-color, #111827));
+  --mm-cur-icon: color-mix(in srgb, var(--text-color, #ffffff) 72%, var(--background-color, #111827));
+  --hdr-mobile-icon: color-mix(in srgb, var(--text-color, #ffffff) 72%, var(--background-color, #111827));
+  --mm-logout: #f87171;
 }
 /* El buscador y la moneda son paneles claros: no heredan el lavado del encabezado oscuro. */
 header .bg-white {
@@ -383,13 +450,41 @@ header .bg-white {
 [data-tema-fondo='oscuro'] header .bg-white {
   --header-hover: rgba(255, 255, 255, 0.1);
 }
-/* Menú del celular con el fondo del encabezado: el gris fijo sigue el color de la barra.
-   Un panel claro (el desplegable de moneda, el buscador) conserva su propio texto. */
-[data-fondo-encabezado] :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([style*='color']):not([class*='bg-gray-']):not([class*='bg-white']):not(.bg-white *) {
-  color: inherit !important;
+/* En el encabezado, el hover del menú sigue al de la barra salvo que el resolvedor lo fije. */
+header {
+  --mm-hover-bg: var(--header-hover);
 }
-[data-fondo-encabezado] [class*='border-gray-'] {
-  border-color: var(--header-divider, rgba(255, 255, 255, 0.1));
+/* El color del menú móvil lo resuelven --mm-* (lib/headerColors.ts).
+   Antes se intentaba heredar el color salvo dentro de un ancestro con fondo blanco, y el
+   layout envuelve todo el sitio en ese fondo: la regla nunca coincidía. Un color en línea
+   pisa estas variables sin !important.
+   Hover y activo solo cuando el editor fijó ese color. */
+[data-mm-hover] :is(a, summary):hover {
+  color: var(--mm-hover-fg);
+  background-color: var(--mm-hover-bg);
+}
+[data-mm-activo] details[open] > summary {
+  color: var(--mm-active);
+  background-color: color-mix(in srgb, var(--mm-active) 10%, transparent);
+}
+/* Hoja de moneda y buscador: su propio fondo, aunque el encabezado sea oscuro. */
+header [data-superficie-propia][data-superficie-propia] {
+  --header-hover: rgba(0, 0, 0, 0.08);
+  --mm-hover-bg: rgba(0, 0, 0, 0.08);
+  --mm-fg: #374151;
+  --mm-title: #111827;
+  --mm-fg-muted: #4b5563;
+  --mm-cur-text: #6b7280;
+  --mm-cur-value: #111827;
+}
+.dark header [data-superficie-propia][data-superficie-propia] {
+  --header-hover: rgba(255, 255, 255, 0.1);
+  --mm-hover-bg: rgba(255, 255, 255, 0.1);
+  --mm-fg: #d1d5db;
+  --mm-title: #ffffff;
+  --mm-fg-muted: #9ca3af;
+  --mm-cur-text: #9ca3af;
+  --mm-cur-value: #ffffff;
 }
 /* Carta QR: categoría de la carta a la vista, resaltada en el menú del encabezado (SiteHeader). */
 header a[data-categoria-activa][data-categoria-activa] {

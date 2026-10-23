@@ -21,6 +21,9 @@ import {
   CLASE_FONDO_ENCABEZADO,
   variablesEncabezado,
   estiloBarraEncabezado,
+  estiloPanelMenu,
+  atributosMenuMovil,
+  useTemaMenuMovil,
   marcaFondoEncabezado,
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
@@ -43,6 +46,7 @@ export default function MobileTabs({
   branchId,
 }: HeaderVariantProps) {
   const [showCategories, setShowCategories] = useState(false);
+  const temaMenu = useTemaMenuMovil(primaryColor);
   const [showSearch, setShowSearch] = useState(false);
   const navItems = buildNavItems(navTree);
   const { ruta } = useRutaSitio();
@@ -69,7 +73,7 @@ export default function MobileTabs({
   );
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -110,7 +114,7 @@ export default function MobileTabs({
       <div className="h-14" aria-hidden="true" />
 
       {/* Barra inferior fija */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-40 ${CLASE_FONDO_ENCABEZADO}`} style={estiloBarraEncabezado(settings, 'top')} {...marcaFondoEncabezado(settings)}>
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 ${CLASE_FONDO_ENCABEZADO}`} style={{ ...estiloBarraEncabezado(settings, 'top'), color: 'var(--hdr-mobile-icon)' }} {...marcaFondoEncabezado(settings)}>
         <div className="grid grid-cols-5 h-14">
           <TabButton href={ruta('/')} icon={<Home className="h-5 w-5" />} label="Inicio" />
           <TabButton
@@ -153,13 +157,13 @@ export default function MobileTabs({
             onClick={() => setShowCategories(false)}
             aria-hidden="true"
           />
-          <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
-            <div className="flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Categorías</h3>
+          <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+            <div className="flex items-center justify-between px-4 h-14 border-b border-[color:var(--mm-divider)]">
+              <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
               <button
                 onClick={() => setShowCategories(false)}
                 aria-label="Cerrar"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]"
+                className="p-2 rounded-lg text-[var(--mm-title)] hover:bg-[var(--mm-hover-bg)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -174,7 +178,7 @@ export default function MobileTabs({
                       onClick={() => setShowCategories(false)}
                     >
                       {cat.icon && <span className="text-xl">{cat.icon}</span>}
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      <span className="text-sm font-medium text-[var(--mm-fg)]">
                         {cat.name}
                       </span>
                     </Link>
@@ -189,7 +193,7 @@ export default function MobileTabs({
                   ))}
             </div>
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-gray-200 dark:border-gray-800" />
+            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
           </div>
         </div>
       )}
@@ -244,7 +248,7 @@ function TabButton({
   ariaLabel?: string;
 }) {
   const content = (
-    <span className="flex flex-col items-center justify-center gap-0.5 h-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <span className="flex flex-col items-center justify-center gap-0.5 h-full text-[var(--hdr-mobile-icon)] hover:opacity-80 transition-opacity">
       {icon}
       <span className="text-[10px] font-medium">{label}</span>
     </span>
@@ -279,7 +283,7 @@ function CategoryNavItem({
       <details className="group">
         <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)] cursor-pointer list-none">
           {item.icon && <span className="text-xl">{item.icon}</span>}
-          <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+          <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">
             {item.name}
           </span>
           {item.badge && (
@@ -290,14 +294,14 @@ function CategoryNavItem({
               {item.badge}
             </span>
           )}
-          <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+          <span className="text-[var(--mm-fg-muted)] group-open:rotate-180 transition-transform">▾</span>
         </summary>
         <div className="pl-8 space-y-1">
           {item.children.map((child, j) => (
             <Link
               key={j}
               href={child.href}
-              className="block py-2 px-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] hover:text-[var(--mm-hover-fg)]"
               onClick={onNavigate}
             >
               {child.name}
@@ -315,7 +319,7 @@ function CategoryNavItem({
       onClick={onNavigate}
     >
       {item.icon && <span className="text-xl">{item.icon}</span>}
-      <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+      <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">
         {item.name}
       </span>
       {item.badge && (

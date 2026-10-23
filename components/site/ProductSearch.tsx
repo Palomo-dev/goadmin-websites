@@ -23,6 +23,8 @@ interface ProductSearchProps {
   sinDisparador?: boolean
   /** Pantalla completa también en tablet. El menú móvil llega hasta el breakpoint del sitio, no solo hasta `md`. */
   pantallaCompleta?: boolean
+  /** Clase del ícono disparador. En el celular, `--hdr-mobile-icon`. */
+  claseIcono?: string
 }
 
 interface SearchResult {
@@ -49,6 +51,7 @@ export function ProductSearch({
   alCerrar,
   sinDisparador = false,
   pantallaCompleta = false,
+  claseIcono,
 }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
   const controlado = abierto !== undefined
@@ -266,14 +269,14 @@ export function ProductSearch({
           className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
           aria-label="Buscar productos"
         >
-          <SearchIconComp className={heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300'} />
+          <SearchIconComp className={claseIcono ?? (heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300')} />
         </button>
       )}
 
       {/* Desktop: dropdown. En el menú móvil va pantalla completa: ese menú se usa también en tablet. */}
       {isOpen && !pantallaCompleta && (
         <div className="hidden md:block absolute right-0 top-full mt-2 z-[100]">
-          <div className="bg-white dark:bg-gray-900 w-96 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 w-96 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col" data-superficie-propia="">
             <div className="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
               <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <input
@@ -301,7 +304,7 @@ export function ProductSearch({
 
       {/* Pantalla completa vía portal (evita el stacking context del header). */}
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div ref={mobilePortalRef} className={`${pantallaCompleta ? '' : 'md:hidden '}fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col`}>
+        <div ref={mobilePortalRef} data-superficie-propia="" className={`${pantallaCompleta ? '' : 'md:hidden '}fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col`}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input

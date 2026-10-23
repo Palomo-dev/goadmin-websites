@@ -34,6 +34,8 @@ export interface ValorEncabezadoPie {
   tipo: number | null
   /** El fondo del tema V2 es oscuro: el pie con fondo «tema» usa el logo claro. */
   fondoTemaOscuro: boolean
+  /** Hex del fondo del tema, para mezclar un encabezado con opacidad. `null` sin tema. */
+  fondoTema: string | null
 }
 
 export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
@@ -42,6 +44,7 @@ export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
   selector: null,
   tipo: null,
   fondoTemaOscuro: false,
+  fondoTema: null,
 }
 
 const Contexto = createContext<ValorEncabezadoPie>(VALOR_POR_DEFECTO)

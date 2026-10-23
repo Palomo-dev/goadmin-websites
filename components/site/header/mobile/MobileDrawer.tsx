@@ -20,7 +20,13 @@ import {
   CLASE_FONDO_ENCABEZADO,
   variablesEncabezado,
   estiloBarraEncabezado,
+  estiloPanelMenu,
+  atributosMenuMovil,
+  useTemaMenuMovil,
   marcaFondoEncabezado,
+  ESTILO_BOTON_ENTRAR,
+  ESTILO_BOTON_REGISTRO,
+  ESTILO_BOTON_SALIR,
 } from '../HeaderShared';
 
 /**
@@ -44,6 +50,7 @@ export default function MobileDrawer({
   menuCategories,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
+  const temaMenu = useTemaMenuMovil(primaryColor);
   const isLoggedIn = useAuthState();
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
@@ -74,7 +81,7 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -97,7 +104,7 @@ export default function MobileDrawer({
               <button
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
+                className="p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors"
               >
                 <MenuIcon className="h-6 w-6" />
               </button>
@@ -127,16 +134,16 @@ export default function MobileDrawer({
             onClick={() => setOpen(false)}
           />
           {/* Drawer panel */}
-          <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] ${CLASE_FONDO_ENCABEZADO} shadow-2xl flex flex-col`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
+          <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] ${CLASE_FONDO_ENCABEZADO} shadow-2xl flex flex-col`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
             {/* Drawer header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-              <span className="font-bold text-gray-900 dark:text-white">Menú</span>
+            <div className="flex items-center justify-between p-4 border-b border-[color:var(--mm-divider)]">
+              <span className="font-bold text-[var(--mm-title)]">Menú</span>
               <button
                 onClick={() => setOpen(false)}
                 className="p-2 rounded-lg hover:bg-[var(--header-hover)]"
                 aria-label="Cerrar menú"
               >
-                <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                <X className="h-5 w-5 text-[var(--mm-title)]" />
               </button>
             </div>
 
@@ -155,7 +162,7 @@ export default function MobileDrawer({
               {isLoggedIn && showHeaderAuth && (
                 <Link
                   href="/mi-cuenta"
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
                   onClick={() => setOpen(false)}
                 >
                   <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
@@ -164,11 +171,11 @@ export default function MobileDrawer({
               )}
             </nav>
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-gray-100 dark:border-gray-800" />
+            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-[color:var(--mm-divider)]" />
 
             {/* Auth buttons */}
             {showHeaderAuth && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="p-4 border-t border-[color:var(--mm-divider)] space-y-2">
                 {isLoggedIn ? (
                   <button
                     onClick={async () => {
@@ -178,7 +185,8 @@ export default function MobileDrawer({
                       setOpen(false);
                       window.location.href = '/';
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+                    style={ESTILO_BOTON_SALIR}
                   >
                     <LogOut className="h-4 w-4" />
                     Cerrar sesión
@@ -187,8 +195,8 @@ export default function MobileDrawer({
                   <>
                     <Link
                       href="/auth"
-                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: primaryColor }}
+                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium transition-opacity hover:opacity-90"
+                      style={ESTILO_BOTON_ENTRAR}
                       onClick={() => setOpen(false)}
                     >
                       Iniciar sesión
@@ -196,10 +204,7 @@ export default function MobileDrawer({
                     <Link
                       href="/auth?tab=register"
                       className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
-                      style={{
-                        borderColor: primaryColor,
-                        color: primaryColor,
-                      }}
+                      style={ESTILO_BOTON_REGISTRO}
                       onClick={() => setOpen(false)}
                     >
                       Registrarse
@@ -233,7 +238,7 @@ function DrawerNavItem({
   if (item.children && item.children.length > 0) {
     return (
       <details className="group">
-        <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors list-none">
+        <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors list-none">
           <span className="flex items-center gap-2">
             {item.icon && <span>{item.icon}</span>}
             <span>{item.name}</span>
@@ -246,12 +251,12 @@ function DrawerNavItem({
               </span>
             )}
           </span>
-          <ChevronDown className="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" />
+          <ChevronDown className="h-4 w-4 text-[var(--mm-fg-muted)] group-open:rotate-180 transition-transform" />
         </summary>
         <div className="pl-6 space-y-1 mt-1">
           <Link
             href={item.href}
-            className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--header-hover)] transition-colors"
+            className="block px-3 py-2 rounded-lg text-sm text-[var(--mm-fg-muted)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] transition-colors"
             onClick={onNavigate}
           >
             Ver todo
@@ -260,7 +265,7 @@ function DrawerNavItem({
             <Link
               key={j}
               href={child.href}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--header-hover)] transition-colors"
+              className="block px-3 py-2 rounded-lg text-sm text-[var(--mm-fg-muted)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] transition-colors"
               onClick={onNavigate}
             >
               {child.name}
@@ -275,7 +280,7 @@ function DrawerNavItem({
   return (
     <Link
       href={item.href}
-      className="block px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
+      className="block px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
       onClick={onNavigate}
     >
       <span className="flex items-center gap-2">

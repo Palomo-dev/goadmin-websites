@@ -22,16 +22,18 @@ interface CartIndicatorProps {
   relleno?: boolean
   /** Círculo del color de la marca detrás del icono. */
   circulo?: boolean
+  /** Clase del ícono. En el celular, `--hdr-mobile-icon`. */
+  claseIcono?: string
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, claseIcono }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
   const trazo = propsTrazoIcono(relleno)
-  const claseIcono = circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'
+  const clase = claseIcono ?? (circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300')
   const icono = (
     <IconoConCirculo circulo={circulo} primaryColor={primaryColor}>
-      <Icon className={claseIcono} {...trazo} />
+      <Icon className={clase} {...trazo} />
     </IconoConCirculo>
   )
   const [itemCount, setItemCount] = useState(0)

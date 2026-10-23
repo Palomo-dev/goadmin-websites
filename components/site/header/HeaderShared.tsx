@@ -17,7 +17,8 @@ import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
-import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
@@ -196,7 +197,10 @@ export function headerTextColor(settings: HeaderVariantProps['settings'] | undef
  * Con fondo propio salen del color (o del lavado según su luminancia). Sin fondo,
  * no se fijan y el CSS claro/oscuro pone el default.
  */
-export function variablesEncabezado(settings: HeaderVariantProps['settings'] | undefined): React.CSSProperties {
+export function variablesEncabezado(
+  settings: HeaderVariantProps['settings'] | undefined,
+  tema?: TemaMenuMovil,
+): React.CSSProperties {
   const hover = colorHoverEfectivo(settings?.header_hover_color, settings?.header_bg_color)
   const divisor = colorDivisorEfectivo(settings?.header_divider_color, settings?.header_bg_color)
   const vars: React.CSSProperties & Record<string, string> = {}
@@ -209,7 +213,47 @@ export function variablesEncabezado(settings: HeaderVariantProps['settings'] | u
     vars['--header-fg'] = color
     vars.color = 'var(--header-fg)'
   }
-  return vars
+  return { ...vars, ...variablesMenuMovil(settings, tema) }
+}
+
+/** Tema que el menú móvil usa para mezclar la opacidad y el contraste de los botones. */
+export function useTemaMenuMovil(primario?: string): TemaMenuMovil {
+  const { fondoTema, fondoTemaOscuro } = useEncabezadoPie()
+  return { fondo: fondoTema, oscuro: fondoTemaOscuro, primario: primario ?? null }
+}
+
+/**
+ * Panel del menú (cajón, hoja, pantalla, pestañas): el fondo del encabezado, o el del menú
+ * si está fijado, y el color que resuelve `variablesMenuMovil`.
+ */
+export function estiloPanelMenu(
+  settings: HeaderVariantProps['settings'] | undefined,
+  tema?: TemaMenuMovil,
+  lado?: 'bottom' | 'top',
+): React.CSSProperties {
+  const base = estiloBarraEncabezado(settings, lado)
+  const menuBg = colorHexValido(settings?.mobile_menu_bg_color)
+  return {
+    ...base,
+    ...variablesMenuMovil(settings, tema),
+    ...(menuBg ? { backgroundColor: menuBg } : {}),
+    color: 'var(--mm-fg)',
+  }
+}
+
+export { atributosMenuMovil }
+
+export const ESTILO_BOTON_ENTRAR: React.CSSProperties = {
+  backgroundColor: 'var(--mm-login-bg)',
+  color: 'var(--mm-login-text)',
+}
+export const ESTILO_BOTON_REGISTRO: React.CSSProperties = {
+  borderColor: 'var(--mm-register-border)',
+  color: 'var(--mm-register-text)',
+}
+export const ESTILO_BOTON_SALIR: React.CSSProperties = {
+  color: 'var(--mm-logout)',
+  borderColor: 'var(--mm-logout-border)',
 }
 
 /** `false` quita el borde. Cualquier otro valor (incluido ausente) lo deja. */
@@ -418,7 +462,9 @@ export function HeaderActions({
   const showHeaderAuth = settings?.show_header_auth !== false;
   // La barra del celular usa el mismo fondo que el computador, así que el texto también hereda.
   const heredarColor = Boolean(headerTextColor(settings));
-  const claseIcono = heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
+  const claseIcono = isMobile
+    ? 'text-[var(--hdr-mobile-icon)]'
+    : heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
   const cartBehavior: 'drawer' | 'redirect' = (settings as any)?.cart_click_behavior === 'redirect' ? 'redirect' : 'drawer';
 
   // Fase 12B: Iconos personalizables. El estilo (contorno/relleno, bolsa/carrito, círculo)
@@ -454,7 +500,7 @@ export function HeaderActions({
   // Construir elementos de acción según el orden
   const actionElements: Record<string, React.ReactNode | null> = {
     search: showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} />
+      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} claseIcono={isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
       <CurrencySelector
@@ -478,6 +524,7 @@ export function HeaderActions({
         heredarColor={heredarColor}
         relleno={estiloIconos.relleno}
         circulo={estiloIconos.circulo}
+        claseIcono={isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
@@ -948,7 +995,7 @@ export function MobileMenuButton({
   return (
     <button
       onClick={onClick}
-      className={`md:hidden p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white ${className}`}
+      className={`md:hidden p-2 text-[var(--hdr-mobile-icon)] hover:opacity-80 ${className}`}
       aria-label="Abrir menú"
     >
       <MenuIcon className="h-6 w-6" />
@@ -976,13 +1023,14 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm font-medium hover:bg-[var(--header-hover)] transition-colors"
+        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+        style={{ borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
       >
         <span className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-gray-400" />
+          <Globe className="h-4 w-4 text-[var(--mm-cur-icon)]" />
           {current ? `${current.code} — ${current.country}` : currency}
         </span>
-        <ChevronDown className="h-4 w-4 text-gray-400" />
+        <ChevronDown className="h-4 w-4 text-[var(--mm-cur-icon)]" />
       </button>
 
       {open && (
@@ -990,6 +1038,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             className="relative bg-white dark:bg-gray-900 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom duration-200"
+            data-superficie-propia=""
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -1032,7 +1081,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
  */
 export function BloqueMonedaMovil({
   primaryColor,
-  className = 'p-4 border-t border-gray-100 dark:border-gray-800',
+  className = 'p-4 border-t border-[color:var(--mm-divider)]',
 }: {
   primaryColor?: string;
   className?: string;
@@ -1042,7 +1091,7 @@ export function BloqueMonedaMovil({
   if (!opcionesShell.moneda || loading || availableCurrencies.length <= 1) return null;
   return (
     <div className={className}>
-      <div className="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-2 mb-3 text-sm text-[var(--mm-cur-text)]">
         <Globe className="h-4 w-4" />
         <span>Moneda</span>
       </div>
@@ -1063,11 +1112,11 @@ export function MobileAuthSection({
 }) {
   if (!isLoggedIn) {
     return (
-      <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+      <div className="p-4 border-t border-[color:var(--mm-divider)] space-y-2">
         <Link
           href="/auth"
-          className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: primaryColor }}
+          className="block w-full text-center px-4 py-2.5 rounded-lg font-medium transition-opacity hover:opacity-90"
+          style={ESTILO_BOTON_ENTRAR}
           onClick={onNavigate}
         >
           Iniciar sesión
@@ -1075,7 +1124,7 @@ export function MobileAuthSection({
         <Link
           href="/auth?tab=register"
           className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
-          style={{ borderColor: primaryColor, color: primaryColor }}
+          style={ESTILO_BOTON_REGISTRO}
           onClick={onNavigate}
         >
           Registrarse
@@ -1085,10 +1134,10 @@ export function MobileAuthSection({
   }
 
   return (
-    <div className="p-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+    <div className="p-4 border-t border-[color:var(--mm-divider)] space-y-2">
       <Link
         href="/mi-cuenta"
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
         onClick={onNavigate}
       >
         <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
@@ -1101,7 +1150,8 @@ export function MobileAuthSection({
           onNavigate();
           window.location.href = '/';
         }}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+        style={ESTILO_BOTON_SALIR}
       >
         <LogOut className="h-4 w-4" />
         Cerrar sesión

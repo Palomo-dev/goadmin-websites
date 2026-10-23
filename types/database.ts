@@ -203,6 +203,23 @@ export interface Database {
           header_cart_glyph?: string | null
           /** Círculo del color de la marca detrás de esos iconos. */
           header_icons_circle?: boolean
+          /** Menú móvil. Ausentes = automáticos (heredan el encabezado o el contraste). */
+          mobile_menu_bg_color?: string | null
+          mobile_menu_text_color?: string | null
+          mobile_menu_link_hover_color?: string | null
+          mobile_menu_link_active_color?: string | null
+          mobile_menu_title_color?: string | null
+          mobile_menu_divider_color?: string | null
+          mobile_menu_currency_text_color?: string | null
+          mobile_menu_currency_border_color?: string | null
+          mobile_menu_currency_bg_color?: string | null
+          mobile_menu_login_bg_color?: string | null
+          mobile_menu_login_text_color?: string | null
+          mobile_menu_register_border_color?: string | null
+          mobile_menu_register_text_color?: string | null
+          mobile_menu_logout_color?: string | null
+          /** Íconos de la barra del celular. Ausente = texto del encabezado o contraste. */
+          header_mobile_icon_color?: string | null
           footer_text_color?: string | null
           footer_show_dividers?: boolean
           logo_height: number | null

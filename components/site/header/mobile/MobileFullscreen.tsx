@@ -21,6 +21,9 @@ import {
   CLASE_FONDO_ENCABEZADO,
   variablesEncabezado,
   estiloBarraEncabezado,
+  estiloPanelMenu,
+  atributosMenuMovil,
+  useTemaMenuMovil,
   marcaFondoEncabezado,
 } from '../HeaderShared';
 
@@ -43,6 +46,7 @@ export default function MobileFullscreen({
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const isLoggedIn = useAuthState();
+  const temaMenu = useTemaMenuMovil(primaryColor);
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = settings?.mobile_search_style ?? 'icon';
@@ -69,7 +73,7 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -92,7 +96,7 @@ export default function MobileFullscreen({
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-                className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
+                className="p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors"
               >
                 {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
               </button>
@@ -115,13 +119,13 @@ export default function MobileFullscreen({
 
       {/* Overlay fullscreen */}
       {open && (
-        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto shadow-2xl`} style={estiloBarraEncabezado(settings)} {...marcaFondoEncabezado(settings)}>
-          <div className="flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
+        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto shadow-2xl`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+          <div className="flex items-center justify-between px-4 border-b border-[color:var(--mm-divider)]" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(32, Math.round((settings?.logo_height || 48) * 0.7))} />
             <button
               onClick={() => setOpen(false)}
               aria-label="Cerrar menú"
-              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
+              className="p-2 rounded-lg text-[var(--mm-title)] hover:bg-[var(--mm-hover-bg)] transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -137,7 +141,7 @@ export default function MobileFullscreen({
               />
             ))}
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 py-4 border-t border-gray-100 dark:border-gray-800" />
+            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 py-4 border-t border-[color:var(--mm-divider)]" />
 
             <MobileAuthSection isLoggedIn={isLoggedIn} primaryColor={primaryColor} onNavigate={() => setOpen(false)} />
           </nav>
@@ -159,8 +163,8 @@ function FullscreenNavItem({
 }) {
   if (item.children && item.children.length > 0) {
     return (
-      <details className="group border-b border-gray-100 dark:border-gray-800">
-        <summary className="flex items-center justify-between cursor-pointer py-4 text-lg font-medium text-gray-900 dark:text-white list-none">
+      <details className="group border-b border-[color:var(--mm-divider)]">
+        <summary className="flex items-center justify-between cursor-pointer py-4 text-lg font-medium text-[var(--mm-title)] hover:text-[var(--mm-hover-fg)] list-none">
           <span className="flex items-center gap-2">
             {item.icon && <span>{item.icon}</span>}
             <span>{item.name}</span>
@@ -173,12 +177,12 @@ function FullscreenNavItem({
               </span>
             )}
           </span>
-          <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+          <span className="text-[var(--mm-fg-muted)] group-open:rotate-180 transition-transform">▾</span>
         </summary>
         <div className="pl-6 pb-3">
           <Link
             href={item.href}
-            className="block py-2 text-base text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="block py-2 text-base text-[var(--mm-fg-muted)] hover:text-[var(--mm-hover-fg)]"
             onClick={onNavigate}
           >
             Ver todo
@@ -187,7 +191,7 @@ function FullscreenNavItem({
             <Link
               key={j}
               href={child.href}
-              className="block py-2 text-base text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              className="block py-2 text-base text-[var(--mm-fg-muted)] hover:text-[var(--mm-hover-fg)]"
               onClick={onNavigate}
             >
               {child.name}
@@ -201,7 +205,7 @@ function FullscreenNavItem({
   return (
     <Link
       href={item.href}
-      className="flex items-center gap-2 py-4 text-lg font-medium text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800"
+      className="flex items-center gap-2 py-4 text-lg font-medium text-[var(--mm-title)] border-b border-[color:var(--mm-divider)] hover:text-[var(--mm-hover-fg)]"
       onClick={onNavigate}
     >
       {item.icon && <span>{item.icon}</span>}

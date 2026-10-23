@@ -204,6 +204,7 @@ export function OrganizationLayoutCliente({
       : null,
     tipo: organization.type_id ?? null,
     fondoTemaOscuro: !!(temaEfectivo?.fondo && fondoOscuro(temaEfectivo.fondo)),
+    fondoTema: temaEfectivo?.fondo ?? null,
   }
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
