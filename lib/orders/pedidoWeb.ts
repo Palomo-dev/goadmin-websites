@@ -196,3 +196,34 @@ export function sedePorDefectoPedido<T extends { id: number; is_main?: boolean |
   const activas = (sedes || []).filter((b) => b.is_active !== false).sort((a, b) => a.id - b.id)
   return activas.find((b) => b.is_web_stock_source) ?? activas.find((b) => b.is_main) ?? activas[0] ?? null
 }
+
+/** Id de sucursal usable: entero positivo. Cualquier otra cosa no es una sede. */
+function idDeSede(valor: unknown): number | null {
+  return typeof valor === 'number' && Number.isInteger(valor) && valor > 0 ? valor : null
+}
+
+/**
+ * Sede con la que se evalúan las promociones del carrito web y en la que queda
+ * el pedido (antes de «comer aquí», que usa la sede de la mesa).
+ *
+ * 1. Outlet explícito, o la sede a la que navegó el selector (eso es el outlet).
+ * 2. Sede ya elegida por quien llama: la mesa de «comer aquí», o la sede del
+ *    pedido que la página ya resolvió (la misma de `sedePorDefectoPedido` en
+ *    el checkout de restaurante). «Carta por sede» no se antepone sola: decide
+ *    precios, y el pedido de domicilio sigue saliendo de la fuente de inventario.
+ * 3. Sede por defecto de pedidos web: fuente de inventario, si no la principal,
+ *    si no la primera activa.
+ *
+ * Sin sedes y sin id, `null`: el llamador del servidor completa el paso 3.
+ * Las promociones sin sucursal (nulo o []) siguen aplicando en cualquiera.
+ */
+export function sedeDePedidoWeb<T extends { id: number; is_main?: boolean | null; is_web_stock_source?: boolean | null; is_active?: boolean | null }>(
+  sedes: T[] | null | undefined,
+  opciones?: { outletId?: number | null; sedeElegidaId?: number | null },
+): number | null {
+  const outlet = idDeSede(opciones?.outletId)
+  if (outlet != null) return outlet
+  const elegida = idDeSede(opciones?.sedeElegidaId)
+  if (elegida != null) return elegida
+  return sedePorDefectoPedido(sedes)?.id ?? null
+}

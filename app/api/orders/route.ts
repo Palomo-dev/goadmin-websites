@@ -20,7 +20,7 @@ import {
 } from '@/lib/products/precio-servidor'
 import { leerDatosPrecio } from '@/lib/products/precio-servidor-lectura'
 import { validarCupon } from '@/lib/coupons/validar-cupon'
-import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, sedePorDefectoPedido, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
+import { buscarOCrearCliente, cancelarPedidoWeb, guardarDireccionPrincipal, leerContextoPedido, sedeDePedidoWeb, tipoEntregaCliente } from '@/lib/orders/pedidoWeb'
 import { evaluarDisponibilidadPedido, horarioSedeObligatorio } from '@/lib/orders/disponibilidadPedido'
 import { horarioDeSede, hoyEnZona } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true)
         .order('id', { ascending: true })
 
-      resolvedBranchId = sedePorDefectoPedido<{ id: number; is_main: boolean | null; is_web_stock_source: boolean | null }>(branches)?.id
+      resolvedBranchId = sedeDePedidoWeb<{ id: number; is_main: boolean | null; is_web_stock_source: boolean | null }>(branches)
     }
 
     const sedeExplicita: number | null = Number.isFinite(branchId) ? Number(branchId) : null
@@ -501,10 +501,10 @@ export async function POST(request: NextRequest) {
     // El `promoDiscount` que manda el cliente solo sirve para detectar desfases.
     const promoEval = await evaluateCartPromotions(supabase, {
       organizationId: contextOrgId,
-      // Misma sucursal que vio el cliente en /api/promotions/check (outlet
-      // explícito o ninguna); no el fallback de stock, para no aplicar aquí
-      // promos por sucursal que el carrito nunca mostró.
-      branchId: Number.isFinite(branchId) ? branchId : null,
+      // La sede en la que queda el pedido (outlet, mesa o sede por defecto),
+      // la misma que resolvió /api/promotions/check. Una promo limitada a esa
+      // sede aplica; una de otra sede, no. Sin sucursales sigue aplicando.
+      branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
       items: lineas.map((l) => ({
         id: l.productId, productId: l.productId, name: l.nombre, price: l.precioUnitario, quantity: l.cantidad,
       })),

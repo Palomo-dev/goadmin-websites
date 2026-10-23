@@ -5,7 +5,7 @@
  * canal `web`), para que el cliente vea en el carrito/checkout exactamente el
  * mismo descuento que luego calcula el POS. Mantener ambos alineados: mismos
  * valores de `promotion_type`, `applies_to` y `rule_type`, y la misma cuenta
- * de cantidad mínima, compra mínima y paquetes. La cantidad mínima es
+ * de cantidad mínima, compra mínima, repetición cada N y paquetes. La cantidad mínima es
  * solo `min_quantity`. Vacía es sin mínimo: `buy_quantity` no se usa
  * para deducirla. Compra X Lleva Y no la mira. El redondeo de aquí sigue
  * siendo a pesos enteros; el del ERP, a centavos.
@@ -52,7 +52,10 @@ export interface PromotionRow {
   min_purchase_scope?: string | null
   /** Unidades mínimas de las líneas que entran. Solo porcentaje, monto fijo y paquete. */
   min_quantity?: number | string | null
-  /** Repite el descuento cada N unidades. Nulo = una sola vez. */
+  /**
+   * Repite el descuento cada N unidades. Nulo = el comportamiento de siempre:
+   * porcentaje sobre todas las unidades, monto fijo una vez, paquete sin tope.
+   */
   repeat_every_quantity?: number | string | null
   max_discount_amount: number | string | null
   applies_to: PromotionAppliesTo | string
@@ -420,6 +423,12 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
           packages = Math.min(packages, Math.floor(qty / req.perPackage))
         }
         if (Number.isFinite(packages) && packages > 0) {
+          // Con N, como máximo floor(unidades que entran / N) paquetes llevan
+          // el precio. NULL no limita: todos los paquetes completos, como antes.
+          const every = positiveInt(promo.repeat_every_quantity)
+          if (every != null) packages = Math.min(packages, Math.floor(eligibleUnits(items) / every))
+        }
+        if (Number.isFinite(packages) && packages > 0) {
           const consumed: Array<{ key: string; weight: number }> = []
           for (const req of reqs) {
             let left = packages * req.perPackage
@@ -442,8 +451,20 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
           }
         }
       } else if (!(precio > 0) && value > 0) {
+        // Sin precio de paquete es un porcentaje, con la misma repetición.
         const pct = value / 100
-        for (const item of items) add(item, item.price * item.quantity * pct)
+        const every = positiveInt(promo.repeat_every_quantity)
+        if (every == null) {
+          for (const item of items) add(item, item.price * item.quantity * pct)
+        } else {
+          let left = Math.floor(eligibleUnits(items) / every) * every
+          for (const item of items) {
+            if (left <= 0) break
+            const take = Math.min(Number(item.quantity), left)
+            add(item, take * item.price * pct)
+            left -= take
+          }
+        }
       }
       break
     }
