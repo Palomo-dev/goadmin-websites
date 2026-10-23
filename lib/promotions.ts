@@ -63,6 +63,8 @@ export interface PromotionRow {
   usage_count: number | null
   is_combinable: boolean | null
   priority: number | null
+  /** Desempate cuando el descuento y la prioridad coinciden: gana la más antigua. */
+  created_at?: string | null
   branches: number[] | null
   applies_to_web: boolean | null
   applicable_days: WeekDay[] | string[] | null
@@ -84,6 +86,11 @@ export interface PromoCartItem {
   name: string
   price: number
   quantity: number
+  /**
+   * La línea no recibe promoción y no cuenta para mínimos, paquetes,
+   * «lleve X» ni «cada N». El POS la marca al quitar la promoción.
+   */
+  promo_excluded?: boolean | null
 }
 
 /** Línea ya enriquecida con los datos del producto necesarios para las reglas. */
@@ -467,6 +474,85 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
   return { discount: total, perItem }
 }
 
+// ── Exclusividad por líneas que se solapan ──────────────────────────────────
+// Misma regla que `evaluarPromociones` del ERP. Una promoción de cuenta
+// (`applies_to = all` o compra mínima sobre toda la cuenta) toca todas las
+// líneas y compite como antes. Dos no combinables sobre productos distintos
+// no se pisan y se aplican las dos. Dentro de un grupo, gana la de mayor
+// prioridad; empate, la que más descuenta; sigue el empate, la más antigua.
+
+interface CalculoWeb {
+  promo: PromotionRow
+  applicable: ResolvedPromoItem[]
+  discount: number
+  perItem: Record<string, number>
+  grupo: string[]
+}
+
+function esDeCuenta(p: PromotionRow): boolean {
+  return p.applies_to === 'all' || purchaseScope(p) === 'cart'
+}
+
+function seCruzanIds(a: string[], b: string[]): boolean {
+  const menor = a.length <= b.length ? a : b
+  const mayor = new Set(a.length <= b.length ? b : a)
+  return menor.some((id) => mayor.has(id))
+}
+
+function componentesWeb(calculos: CalculoWeb[]): CalculoWeb[][] {
+  const n = calculos.length
+  const padre = Array.from({ length: n }, (_, i) => i)
+  const encontrar = (i: number): number => {
+    let x = i
+    while (padre[x] !== x) {
+      padre[x] = padre[padre[x]]
+      x = padre[x]
+    }
+    return x
+  }
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (!seCruzanIds(calculos[i].grupo, calculos[j].grupo)) continue
+      const ra = encontrar(i)
+      const rb = encontrar(j)
+      if (ra !== rb) padre[rb] = ra
+    }
+  }
+  const grupos = new Map<number, CalculoWeb[]>()
+  calculos.forEach((c, i) => {
+    const r = encontrar(i)
+    const arr = grupos.get(r) ?? []
+    arr.push(c)
+    grupos.set(r, arr)
+  })
+  return Array.from(grupos.values())
+}
+
+function fechaPromo(v: string | null | undefined): number {
+  const t = v ? new Date(v).getTime() : NaN
+  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY
+}
+
+function compararCompetidorasWeb(a: CalculoWeb, b: CalculoWeb): number {
+  const pa = Number(a.promo.priority || 0)
+  const pb = Number(b.promo.priority || 0)
+  if (pa !== pb) return pb - pa
+  if (a.discount !== b.discount) return b.discount - a.discount
+  const ca = fechaPromo(a.promo.created_at)
+  const cb = fechaPromo(b.promo.created_at)
+  if (ca !== cb) return ca < cb ? -1 : 1
+  return String(a.promo.id) < String(b.promo.id) ? -1 : String(a.promo.id) > String(b.promo.id) ? 1 : 0
+}
+
+function elegirEnComponenteWeb(grupo: CalculoWeb[]): CalculoWeb[] {
+  const combinables = grupo.filter((c) => !!c.promo.is_combinable)
+  const exclusivas = grupo.filter((c) => !c.promo.is_combinable).sort(compararCompetidorasWeb)
+  const suma = combinables.reduce((s, c) => s + c.discount, 0)
+  const mejor = exclusivas[0] ?? null
+  if (mejor && mejor.discount >= suma) return [mejor]
+  return combinables
+}
+
 // ── Evaluación (pura) ────────────────────────────────────────────────────────
 
 export interface CalculateOptions extends PromotionFilterContext {
@@ -482,7 +568,10 @@ export function calculatePromotions(
   if (!items.length || !promotionsInput.length) return EMPTY
 
   const promotions = opts.applyFilters === false ? promotionsInput : filterActivePromotions(promotionsInput, opts)
-  const cartSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
+  // Una línea excluida no entra: ni descuento, ni mínimos, ni paquetes, ni «lleve X», ni «cada N».
+  const vivos = items.filter((i) => i.promo_excluded !== true && Number(i.quantity) > 0 && Number(i.price) >= 0)
+  const cartSubtotal = vivos.reduce((s, i) => s + i.price * i.quantity, 0)
+  const idsVivos = vivos.map((i) => String(i.id))
 
   const passesGates = (p: PromotionRow, applicable: ResolvedPromoItem[]): boolean => {
     const minMoney = Number(p.min_purchase_amount || 0)
@@ -497,51 +586,37 @@ export function calculatePromotions(
     return true
   }
 
-  const eligible = [...promotions]
-    // Mayor prioridad primero (mismo criterio que el ERP).
-    .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
-
-  const forPromo = (p: PromotionRow) => {
-    const applicable = items.filter((i) => itemMatchesRules(i, rulesOf(p), p.applies_to))
-    if (!applicable.length || !passesGates(p, applicable)) return null
-    return { applicable, ...calculatePromotionDiscount(p, applicable) }
+  const listos: CalculoWeb[] = []
+  for (const p of promotions) {
+    const applicable = vivos.filter((i) => itemMatchesRules(i, rulesOf(p), p.applies_to))
+    if (!applicable.length || !passesGates(p, applicable)) continue
+    const res = calculatePromotionDiscount(p, applicable)
+    if (!(res.discount > 0)) continue
+    listos.push({
+      promo: p,
+      applicable,
+      discount: res.discount,
+      perItem: res.perItem,
+      grupo: esDeCuenta(p) ? idsVivos : applicable.map((i) => String(i.id)),
+    })
   }
 
-  // Estrategia del ERP: una no-combinable compite contra la suma de las
-  // combinables; gana lo que más descuenta. Entre las no-combinables se toma la
-  // que más descuenta para ESTE carrito (empate → mayor prioridad, ya ordenadas):
-  // una no-combinable que no toca ningún item del carrito no debe bloquear al
-  // resto.
-  const nonCombinable = eligible.filter((p) => !p.is_combinable)
-  const combinable = eligible.filter((p) => !!p.is_combinable)
-
-  let toApply: PromotionRow[] = combinable
-  if (nonCombinable.length > 0) {
-    let best: PromotionRow | null = null
-    let bestDiscount = 0
-    for (const p of nonCombinable) {
-      const d = forPromo(p)?.discount ?? 0
-      if (d > bestDiscount) { best = p; bestDiscount = d }
-    }
-    const combinableDiscount = combinable.reduce((s, p) => s + (forPromo(p)?.discount ?? 0), 0)
-    if (best && bestDiscount >= combinableDiscount) toApply = [best]
-  }
+  const toApply = componentesWeb(listos).flatMap(elegirEnComponenteWeb)
 
   const applied: AppliedPromotion[] = []
   const itemDiscounts: Record<string, number> = {}
   let totalDiscount = 0
 
-  for (const promo of toApply) {
-    const res = forPromo(promo)
-    if (!res || res.discount <= 0) continue
+  for (const res of toApply) {
+    if (res.discount <= 0) continue
     for (const [k, amt] of Object.entries(res.perItem)) itemDiscounts[k] = (itemDiscounts[k] || 0) + amt
     totalDiscount += res.discount
     applied.push({
-      id: promo.id,
-      name: promo.name,
-      description: promo.description ?? null,
-      promotion_type: String(promo.promotion_type),
-      discount_value: Number(promo.discount_value || 0),
+      id: res.promo.id,
+      name: res.promo.name,
+      description: res.promo.description ?? null,
+      promotion_type: String(res.promo.promotion_type),
+      discount_value: Number(res.promo.discount_value || 0),
       discount: res.discount,
       affectedItems: res.applicable.map((i) => i.name),
       affectedItemIds: res.applicable.map((i) => i.id),
@@ -575,7 +650,14 @@ export async function evaluateCartPromotions(supabase: any, input: EvaluateCartI
 
   const cleanItems: PromoCartItem[] = items
     .filter((i) => i && Number(i.quantity) > 0)
-    .map((i) => ({ id: i.id, productId: i.productId ?? null, name: String(i.name ?? ''), price: Number(i.price) || 0, quantity: Number(i.quantity) || 0 }))
+    .map((i) => ({
+      id: i.id,
+      productId: i.productId ?? null,
+      name: String(i.name ?? ''),
+      price: Number(i.price) || 0,
+      quantity: Number(i.quantity) || 0,
+      ...(i.promo_excluded === true ? { promo_excluded: true as const } : {}),
+    }))
   if (cleanItems.length === 0) return EMPTY
 
   const now = (input.date || new Date()).toISOString()
