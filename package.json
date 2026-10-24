@@ -48,7 +48,8 @@
     "verify:boletin": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-boletin.mjs",
     "verify:conversion": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-conversion.mjs",
     "verify:legales-publicos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-legales-publicos.mjs",
-    "verify:promo-sede": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-sede.mjs"
+    "verify:promo-sede": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-sede.mjs",
+    "verify:promo-grupos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-grupos.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
