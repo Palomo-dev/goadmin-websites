@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { listadosDeSecciones } from '@/lib/products/listadosSeccion'
+import { notFound } from 'next/navigation'
 import { 
   getOrganizationProducts, 
   getOrganizationCategories,
@@ -36,6 +37,7 @@ import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
 import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
+import { legalSinTexto } from '@/lib/website/v2/textoLegalPublico'
 import { sitioVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion, getServiciosDeSeccion } from '@/lib/website/datosSecciones'
@@ -139,7 +141,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
       apple: icono ?? '/apple-touch-icon.png',
     },
     robots: {
-      index: settings?.is_published !== false && !noindex,
+      index: settings?.is_published !== false && !noindex && !legalSinTexto(page ?? {}),
       follow: settings?.is_published !== false && !noindex,
     },
     verification: (settings as any)?.google_site_verification ? {
@@ -178,6 +180,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
   //    publicada; legacy: exactamente la misma consulta de antes.
   const page = await getPaginaPublica(organization.id, currentSlug, branchId,
     () => getWebsitePageBySlug(organization.id, currentSlug, branchId))
+
+  if (page && legalSinTexto(page)) notFound()
 
   // QR de mesa (?mesa= / ?table=) sobre una página /menu del constructor sin carta pedible: se
   // cae a la carta clásica (MenuView), que sí deja pedir. Con carta en la página, sin cambios.

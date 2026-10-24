@@ -6,7 +6,8 @@ interface TextBlockLeftProps {
 }
 
 export function TextBlockLeft({ content, primaryColor = '#3B82F6' }: TextBlockLeftProps) {
-  const { title, body, show_divider } = content
+  const { title, show_divider } = content
+  const body = content.body || content.content
 
   return (
     <section className="py-16 px-4">
