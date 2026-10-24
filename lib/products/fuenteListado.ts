@@ -82,7 +82,9 @@ export function pedidoServidor(content: unknown): PedidoListado | null {
     if (!pidePagina && entero(c.products_limit, 4, 100) == null) return null
   }
   const fuente = source && source !== 'all' ? source : 'all'
-  const tope = entero(c.products_limit, 4, 100) ?? null
+  const topeNuevo = entero(c.products_limit, 4, 100)
+  const topeViejo = entero(c.max_items, 1, 100)
+  const tope = topeNuevo && topeViejo ? Math.min(topeNuevo, topeViejo) : topeNuevo ?? topeViejo ?? null
   const porPagina = entero(c.per_page, 4, 48)
   const tamano = pidePagina ? (porPagina ?? tope ?? 12) : (tope ?? 12)
   return {
@@ -91,7 +93,7 @@ export function pedidoServidor(content: unknown): PedidoListado | null {
     includeSubcategories: c.include_subcategories === true,
     productIds: ids(c.selected_product_ids, 100),
     excludeOutOfStock: c.exclude_out_of_stock === true,
-    limit: tamano,
+    limit: tope == null ? tamano : Math.min(tamano, tope),
     max: tope,
     days: entero(c.new_days, 1, 365) ?? 30,
     sort: typeof c.sort_order === 'string' ? c.sort_order : 'default',

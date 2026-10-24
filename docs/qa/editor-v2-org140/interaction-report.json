@@ -1,0 +1,58 @@
+{
+  "surface": "Componentes React reales de menú/barra con infraestructura mock. El callback del carrito se representa con un diálogo de prueba; no es el carrito completo.",
+  "tests": [
+    {
+      "test": "top_dropdown",
+      "status": "passed",
+      "geometry": {
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "width": 390,
+        "height": 236
+      }
+    },
+    {
+      "test": "top_dropdown cerrar con overlay",
+      "status": "passed"
+    },
+    {
+      "test": "drawer_left",
+      "status": "passed",
+      "geometry": {
+        "left": 0,
+        "right": 331.5,
+        "top": 0,
+        "width": 331.5,
+        "height": 844
+      }
+    },
+    {
+      "test": "drawer_left cerrar con overlay",
+      "status": "passed"
+    },
+    {
+      "test": "drawer_right",
+      "status": "passed",
+      "geometry": {
+        "left": 58.5,
+        "right": 390,
+        "top": 0,
+        "width": 331.5,
+        "height": 844
+      }
+    },
+    {
+      "test": "drawer_right cerrar con overlay",
+      "status": "passed"
+    },
+    {
+      "test": "Pedir ejecuta onCart sin navegar",
+      "status": "passed"
+    },
+    {
+      "test": "cerrar carrito fixture",
+      "status": "passed"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import { Menu as MenuIcon, X, ChevronDown, LogOut, UserCircle, Search } from 'lu
 import {
   HeaderLogo,
   HeaderActions,
+  HeaderCTA2,
   HeaderTopbar,
   HeaderCTAMovil,
   SearchBarInline,
@@ -83,7 +84,7 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
+    <header className="lg:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -106,6 +107,7 @@ export default function MobileDrawer({
                   showSearchIcon={searchStyle === 'icon'}
                   isMobile={true}
                 />
+                <HeaderCTA2 settings={settings} movil />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               </>
             }
@@ -123,6 +125,7 @@ export default function MobileDrawer({
           {showSearchBar && (
             <div className="pb-3">
               <SearchBarInline
+                settings={settings}
                 primaryColor={primaryColor}
                 organizationId={organizationId}
                 className="w-full"
@@ -136,7 +139,7 @@ export default function MobileDrawer({
 
       {/* Mobile Drawer — restaurado al estilo del header original */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-[60]">
+        <div className="lg:hidden fixed inset-0 z-[60]">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"

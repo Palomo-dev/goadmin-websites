@@ -8,6 +8,7 @@ import { Menu as MenuIcon, X, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
+  HeaderCTA2,
   HeaderTopbar,
   HeaderCTAMovil,
   SearchBarInline,
@@ -75,7 +76,7 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
+    <header className="lg:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -98,6 +99,7 @@ export default function MobileFullscreen({
                   showSearchIcon={searchStyle === 'icon'}
                   isMobile={true}
                 />
+                <HeaderCTA2 settings={settings} movil />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               </>
             }
@@ -115,6 +117,7 @@ export default function MobileFullscreen({
           {searchStyle === 'bar' && (
             <div className="px-4 pb-3">
               <SearchBarInline
+                settings={settings}
                 primaryColor={primaryColor}
                 organizationId={organizationId}
                 className="w-full"

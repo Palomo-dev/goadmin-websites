@@ -24,6 +24,8 @@ const ERP = resolve(process.env.ERP_REPO || join(ROOT, '..', 'go-admin-erp'))
 
 /** [ruta aquí, ruta en el ERP] */
 export const COPIAS = [
+  ['lib/website/tarjetaProducto.ts', 'src/lib/website/tarjetaProducto.ts'],
+  ['lib/website/distribucionBanner.ts', 'src/lib/website/distribucionBanner.ts'],
   ['lib/website/v2/contrato/documentoSitio.ts', 'src/lib/website/contrato/documentoSitio.ts'],
   // Carta QR en la mesa: tipos, variantes, campos y defaults de las secciones de mesa (lámina 18).
   ['lib/website/v2/contrato/seccionesMesa.ts', 'src/lib/website/contrato/seccionesMesa.ts'],

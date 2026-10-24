@@ -29,7 +29,7 @@ const ACCION: Record<AccionBarra['accion'], { texto: string; Icono: typeof Phone
   como_llegar: { texto: 'Cómo llegar', Icono: Navigation },
 }
 
-export function BarraMovilGiro({ acciones, primaryColor }: { acciones: AccionBarra[]; primaryColor: string }) {
+export function BarraMovilGiro({ acciones, primaryColor, onCartClick }: { acciones: AccionBarra[]; primaryColor: string; onCartClick?: () => void }) {
   const visible = acciones.length > 0
   // La burbuja del chat sube mientras hay barra (misma clase que la barra del restaurante).
   useEffect(() => {
@@ -74,7 +74,9 @@ export function BarraMovilGiro({ acciones, primaryColor }: { acciones: AccionBar
             )
             return (
               <li key={accion} className="flex flex-1">
-                {externo ? (
+                {accion === 'pedir' ? (
+                  <button type="button" onClick={onCartClick ?? (() => window.dispatchEvent(new Event('open-cart')))} className={clase} style={estilo}>{contenido}</button>
+                ) : externo ? (
                   <a href={href} target="_blank" rel="noopener noreferrer" className={clase} style={estilo}>
                     {contenido}
                   </a>

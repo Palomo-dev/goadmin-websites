@@ -1272,7 +1272,12 @@ export interface Database {
       }
     }
     Views: {}
-    Functions: {}
+    Functions: {
+      website_registrar_presencia: {
+        Args: { p_organization_id: number; p_session_hash: string; p_page_path: string }
+        Returns: number
+      }
+    }
     Enums: {}
   }
 }

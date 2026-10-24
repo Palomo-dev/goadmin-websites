@@ -2,6 +2,8 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CheckoutWizard } from '@/components/site/CheckoutWizard'
+import { UrgenciaDe } from '@/components/site/UrgenciaDe'
+import { UrgenciasUbicacion } from '@/components/sections/countdown/UrgenciasUbicacion'
 import { CurrencyProvider } from '@/components/site/CurrencyProvider'
 import { Metadata } from 'next'
 import { getMetaPixelId, getGoogleAdsConfig, getDefaultTax, getOrganizationBranches } from '@/lib/supabase/queries'
@@ -17,6 +19,7 @@ import { PixelesSitio } from '@/components/site/PixelesSitio'
 import { CartEventTracker } from '@/components/site/CartEventTracker'
 import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
+import type { ConversionSitio } from '@/lib/website/conversion'
 
 export const dynamic = 'force-dynamic'
 
@@ -146,6 +149,7 @@ export default async function CheckoutPage() {
     .is('branch_id', null)
     .maybeSingle()
 
+  const conversion = (organization.website_settings as { conversion?: ConversionSitio } | null)?.conversion
   const checkoutSettings = {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
@@ -162,12 +166,12 @@ export default async function CheckoutPage() {
     shippingDescription: wsRow?.shipping_flat_rate_description || '',
     showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
     trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
-    showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
+    showStockWarning: conversion ? false : (wsRow?.checkout_show_stock_warning ?? false),
     stockWarningThreshold: Number(wsRow?.checkout_stock_warning_threshold ?? 5),
-    conversion: (organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio; conversionFines?: Record<string, string | null> } | null)?.conversion ?? null,
+    conversion: null,
     conversionFines: (organization.website_settings as { conversionFines?: Record<string, string | null> } | null)?.conversionFines ?? null,
     showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
-    showCountdown: wsRow?.checkout_show_countdown ?? false,
+    showCountdown: conversion ? false : (wsRow?.checkout_show_countdown ?? false),
     countdownConfig: {
       countdown_enabled: wsRow?.countdown_enabled ?? false,
       countdown_mode: wsRow?.countdown_mode || 'daily_reset',
@@ -215,6 +219,8 @@ export default async function CheckoutPage() {
         ) : (
           <>
             <MetaPixelInitiateCheckout />
+            <UrgenciasUbicacion organization={organization} ubicacion="checkout" primaryColor={primaryColor} branchId={branchId} prefijoSede={ctx.prefijoSede} />
+            {conversion && <div className="max-w-6xl mx-auto px-4 pt-4"><UrgenciaDe settings={organization.website_settings} ubicacion="checkout" primaryColor={primaryColor} prefijoSede={ctx.prefijoSede} organizationSubdomain={organization.subdomain || ''} branchId={branchId} /></div>}
             <CheckoutWizard
               organizationId={organization.id}
               primaryColor={primaryColor}

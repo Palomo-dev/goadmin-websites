@@ -49,7 +49,17 @@
     "verify:conversion": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-conversion.mjs",
     "verify:legales-publicos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-legales-publicos.mjs",
     "verify:promo-sede": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-sede.mjs",
-    "verify:promo-grupos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-grupos.mjs"
+    "verify:promo-grupos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-grupos.mjs",
+    "verify:tarjeta-render": "node scripts/verify-product-card-render.cjs",
+    "verify:banners-categorias-listado": "node scripts/verify-banners-categorias-listado.cjs",
+    "verify:publicacion-confirmada": "node scripts/verify-publicacion-confirmada.cjs",
+    "verify:cache-estructura": "node scripts/verify-cache-estructura.cjs",
+    "verify:presencia": "node scripts/verify-presencia-pagina.cjs && node scripts/verify-presencia-hook.cjs",
+    "verify:detalle-urgencia": "node scripts/verify-detalle-urgencia.mjs",
+    "verify:stock-publico": "node scripts/verify-stock-publico.cjs",
+    "verify:elegir": "node scripts/verify-product-choice-interaction.cjs",
+    "verify:tenant": "node scripts/verify-tenant-middleware.cjs",
+    "verify:header-render": "node scripts/verify-header-render.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -116,6 +126,7 @@
     "@types/react-dom": "^18",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "jsdom": "26.1.0"
   }
 }

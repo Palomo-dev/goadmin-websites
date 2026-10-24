@@ -64,7 +64,7 @@ const getOrgSettingsUncached = async (organizationId: number): Promise<WebsiteSe
     .maybeSingle()
   return data as WebsiteSettings | null
 }
-export const getOrgSettings = cache(cacheStructural('getOrgSettings', getOrgSettingsUncached, CONTENT_TTL))
+export const getOrgSettings = cache(cacheStructural('getOrgSettings', getOrgSettingsUncached, CONTENT_TTL, (org) => org))
 
 /**
  * Obtiene settings del outlet (branch_id = branchId) por organization_id.
@@ -83,7 +83,7 @@ const getOutletSettingsUncached = async (
     .maybeSingle()
   return data as WebsiteSettings | null
 }
-export const getOutletSettings = cache(cacheStructural('getOutletSettings', getOutletSettingsUncached, CONTENT_TTL))
+export const getOutletSettings = cache(cacheStructural('getOutletSettings', getOutletSettingsUncached, CONTENT_TTL, (org) => org))
 
 /**
  * Settings efectivas = merge(global, outlet si existe).

@@ -73,6 +73,7 @@ export function clasesRejillaBeneficios(columns: unknown, layout: DisposicionBen
 }
 
 export function tamanoIconoBeneficio(size: unknown, layout: DisposicionBeneficio): { caja: number; icono: number } {
+  if (typeof size === 'number' && Number.isFinite(size)) { const n = Math.max(12, Math.min(64, size)); return { caja: n + 24, icono: n } }
   const pedido = size === 'sm' || size === 'md' || size === 'lg' ? size : layout === 'stacked' ? null : 'md'
   if (pedido === 'sm') return { caja: 40, icono: 24 }
   if (pedido === 'lg') return { caja: 56, icono: 48 }

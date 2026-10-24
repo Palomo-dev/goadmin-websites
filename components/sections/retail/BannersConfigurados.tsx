@@ -11,6 +11,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner } from '@/lib/website/presentacionTienda'
 import {
   bloquesDistribucion,
+  normalizarEstiloBanners,
   posicionFocal,
   radioBotonBanner,
   type BloqueBanner,
@@ -132,12 +133,12 @@ export function BannersConfigurados({ content, config, primaryColor, data }: Pro
     : ''
 
   return (
-    <div style={fondoSeccion}>
+    <div style={fondoSeccion} data-banner-layout={layout}>
       {movil === 'stack' && (
         <style>{`@media (max-width:767px){[data-banners-movil="stack"]{display:flex !important;flex-direction:column !important}[data-banners-movil="stack"]>*{width:100% !important}}`}</style>
       )}
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>}
       {banners.length === 0 ? (
@@ -321,7 +322,7 @@ function Carrusel(props: {
         <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${pagina * (100 / visibles)}%)` }}>
           {props.banners.map((banner, i) => (
             <div key={i} className="px-2" style={{ flex: `0 0 ${100 / visibles}%` }}>
-              <Tarjeta banner={banner} estilo={props.estilo} primaryColor={props.primaryColor} data={props.data} content={props.content} aspecto={props.aspecto} layout="carousel" />
+              <Tarjeta banner={banner} estilo={props.estilo} primaryColor={props.primaryColor} data={props.data} content={props.content} aspecto={props.aspecto} layout="carousel" indice={i} />
             </div>
           ))}
         </div>
@@ -361,7 +362,11 @@ function Tarjeta(props: {
   extra?: CSSProperties
   indice?: number
 }) {
-  const { banner, estilo, primaryColor, data, content, layout } = props
+  const { banner, estilo: estiloGlobal, primaryColor, data, content, layout } = props
+  const individual = normalizarEstiloBanners(banner.banner_style) ?? {}
+  const estilo = { ...estiloGlobal, ...individual }
+  const alineacionIndividual = normalizarEstiloBanners({ text_align: banner.text_align, text_valign: banner.text_valign })
+  Object.assign(estilo, alineacionIndividual)
   const href = resolveBannerHref(banner, data)
   const escritorio = banner.image_url
   const movil = banner.image_url_mobile
@@ -409,7 +414,7 @@ function Tarjeta(props: {
   )
 
   const textos = (banner.kicker || banner.title || banner.subtitle) && (
-    <div className={claseRevelar} style={{ color: banner.text_color || estilo.text_color || (layout === 'side_text' ? '#111827' : '#ffffff') }}>
+    <div className={claseRevelar} style={{ color: banner.text_color || estilo.text_color || (layout === 'side_text' ? '#111827' : '#ffffff'), textAlign: estilo.text_align }}>
       {banner.kicker && <p className="mb-1 text-xs font-semibold uppercase tracking-wide">{banner.kicker}</p>}
       {banner.title && (
         <h3 className={`mb-2 ${PESO[estilo.title_weight || 'bold']} ${TAM_TITULO[estilo.title_size || 'md']}`}>{banner.title}</h3>
@@ -421,6 +426,7 @@ function Tarjeta(props: {
   const preview = previewProductos(banner, data)
   const cuerpo = (
     <div
+      data-banner-shape={estilo.banner_shape ?? (layout === 'circles' ? 'circle' : 'rounded')}
       className={layout === 'circles'
         ? 'w-28 shrink-0 text-center'
         : layout === 'side_text'
@@ -473,7 +479,7 @@ function Tarjeta(props: {
   ) : cuerpo
 
   const marcado = (
-    <div className={`group ${elevar}`} style={props.extra}>
+    <div className={`group ${elevar}`} style={props.extra} data-banner-index={props.indice}>
       {pieza}
     </div>
   )

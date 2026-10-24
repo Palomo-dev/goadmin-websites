@@ -57,6 +57,7 @@ interface CategoriesGridProps {
     title_size?: 'sm' | 'md' | 'lg'
     badge?: string
   }
+  sectionVariant?: string
   primaryColor?: string
   data?: { categories?: any[] }
 }
@@ -263,7 +264,12 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   )
 }
 
-export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
+export function CategoriesGrid(props: CategoriesGridProps) {
+  const nuevo = estiloCategoria(props.sectionVariant)
+  return <CategoriesGridActual {...props} content={nuevo ? { ...props.content, category_style: nuevo } : props.content} />
+}
+
+function CategoriesGridActual({ content, primaryColor, data }: CategoriesGridProps) {
   const maxItems = content.max_items || 0
   const shape = content.shape || 'square'
   const desktopLayout = content.desktop_layout || 'grid'
@@ -507,12 +513,11 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const estiloNuevo = estiloCategoria(content.category_style)
   if (estiloNuevo) {
     return (
-      <EstilosCategoria
-        categorias={categories}
-        estilo={estiloNuevo}
-        primaryColor={primaryColor || '#111827'}
-        content={content}
-      />
+      <div>
+        {enableSearch && <input aria-label="Buscar categorías" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar categorías" className="mb-4 w-full rounded-lg border bg-transparent px-3 py-2" />}
+        <EstilosCategoria categorias={categories} estilo={estiloNuevo} primaryColor={primaryColor || '#111827'} content={content} />
+        {(enablePagination || paginacion.activo) && totalPages > 1 && <Paginacion pagina={pagina} totalPaginas={totalPages} totalItems={totalItems} porPagina={tamano} resuelta={paginacion} color={primaryColor || '#111827'} pathname={lista.pathname} search={lista.search} onIr={paginacion.activo ? lista.ir : setCurrentPage} />}
+      </div>
     )
   }
 

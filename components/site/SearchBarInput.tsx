@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePopularesBusqueda } from '@/lib/hooks/usePopularesBusqueda'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda';
 
@@ -40,7 +41,6 @@ interface SearchResult {
   tag?: string | null;
 }
 
-const popularSearches = ['Ofertas', 'Nuevo', 'Tenis', 'Accesorios'];
 
 const sizeConfig = {
   sm: {
@@ -71,6 +71,7 @@ export function SearchBarInput({
   const { ruta } = useRutaSitio();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const popularSearches = usePopularesBusqueda(focused);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -167,7 +168,7 @@ export function SearchBarInput({
             (e.target as HTMLInputElement).style.borderColor = primaryColor;
           }}
           onBlurCapture={(e) => {
-            (e.target as HTMLInputElement).style.borderColor = '';
+            (e.target as HTMLInputElement).style.borderColor = cromo?.borderColor || '';
           }}
         />
         {query && (
@@ -176,7 +177,7 @@ export function SearchBarInput({
               setQuery('');
               inputRef.current?.focus();
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className={`absolute ${cromo?.iconSide === 'right' ? 'right-10' : 'right-3'} top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
             aria-label="Limpiar"
           >
             <X className="h-4 w-4 text-gray-400" />
@@ -276,7 +277,7 @@ export function SearchBarInput({
                 )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Populares
+                    <TrendingUp className="h-3 w-3" /> {popularSearches.length ? 'Populares' : 'Explora el catálogo con el buscador'}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {popularSearches.map((term) => (

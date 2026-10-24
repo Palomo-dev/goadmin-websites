@@ -54,11 +54,12 @@ export function ContadorPublico({
   useEffect(() => {
     if (contador.modo.tipo !== 'evergreen') return
     const clave = `contador-${contador.id}`
-    let inicio = Number(typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(clave) : 0)
-    if (!inicio) {
-      inicio = Date.now()
-      try { sessionStorage.setItem(clave, String(inicio)) } catch { /* sin sesión */ }
-    }
+    let inicio = Date.now()
+    try {
+      const guardado = Number(sessionStorage.getItem(clave))
+      if (Number.isFinite(guardado) && guardado > 0) inicio = guardado
+      else sessionStorage.setItem(clave, String(inicio))
+    } catch { /* Sin almacenamiento de sesión el contador dura durante esta visita. */ }
     setFinEvergreen(new Date(inicio + contador.modo.minutos * 60_000))
   }, [contador.id, contador.modo])
   useEffect(() => {
@@ -66,6 +67,7 @@ export function ContadorPublico({
     return () => window.clearInterval(id)
   }, [])
 
+  if (contador.modo.tipo === 'evergreen' && !finEvergreen) return null
   const estado = contador.modo.tipo === 'evergreen'
     ? (finEvergreen && finEvergreen.getTime() > ahora.getTime()
       ? { tipo: 'cuenta' as const, fin: finEvergreen }
@@ -80,9 +82,11 @@ export function ContadorPublico({
   const resta = Math.max(0, estado.fin.getTime() - ahora.getTime())
   const totalSeg = Math.floor(resta / 1000)
   const dias = Math.floor(totalSeg / 86400)
-  const horas = Math.floor((totalSeg % 86400) / 3600)
-  const minutos = Math.floor((totalSeg % 3600) / 60)
-  const segundos = totalSeg % 60
+  const restoDias = contador.formato.dias ? totalSeg % 86400 : totalSeg
+  const horas = Math.floor(restoDias / 3600)
+  const restoHoras = contador.formato.horas ? restoDias % 3600 : restoDias
+  const minutos = Math.floor(restoHoras / 60)
+  const segundos = contador.formato.minutos ? restoHoras % 60 : restoHoras
   const partes: { n: number; etiqueta: string }[] = []
   if (contador.formato.dias) partes.push({ n: dias, etiqueta: 'días' })
   if (contador.formato.horas) partes.push({ n: horas, etiqueta: 'horas' })
@@ -96,6 +100,7 @@ export function ContadorPublico({
     <span key={p.etiqueta} className="inline-flex items-center gap-1">
       {i > 0 && contador.estilo.cajas === 'linea' ? <span>:</span> : null}
       <span
+        suppressHydrationWarning
         className={`font-mono font-bold ${tam} ${contador.estilo.cajas === 'digito' ? 'rounded px-1.5 py-0.5' : ''}`}
         style={contador.estilo.cajas === 'digito' ? { background: 'rgba(255,255,255,.2)', borderRadius: radio } : undefined}
       >
@@ -110,7 +115,7 @@ export function ContadorPublico({
       style={{
         background: fondo,
         color: texto,
-        borderRadius: variante === 'inline' ? radio : undefined,
+        borderRadius: variante === 'inline' || contador.estilo.forma !== 'pastilla' || contador.estilo.radio !== undefined ? radio : undefined,
         border: contador.estilo.borde ? `1px solid ${contador.estilo.borde}` : undefined,
         boxShadow: contador.estilo.sombra ? '0 8px 24px rgba(0,0,0,.18)' : undefined,
       }}

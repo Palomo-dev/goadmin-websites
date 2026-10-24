@@ -23,6 +23,7 @@ export interface ContenidoBeneficio {
   icon_color?: unknown
   icon_size?: unknown
   icon_shape?: unknown
+  icon_background?: unknown
 }
 
 function numero(valor: unknown): number | null {
@@ -78,6 +79,7 @@ const FORMA: Record<string, string> = {
   rounded: 'rounded-xl',
   circle: 'rounded-full',
   square: 'rounded-none',
+  none: 'rounded-none',
 }
 
 /** Clase e inline del ícono. Sin claves: el suave de 48 px en el color de la marca. */
@@ -91,5 +93,5 @@ export function iconoBeneficio(contenido: ContenidoBeneficio | null | undefined,
   const clase = `mb-4 inline-flex ${tamano} items-center justify-center ${forma} text-xl`
   if (estiloIcono === 'plain') return { clase, estilo: { backgroundColor: 'transparent', color } }
   if (estiloIcono === 'solid') return { clase, estilo: { backgroundColor: color, color: '#ffffff' } }
-  return { clase, estilo: { backgroundColor: `${color}15`, color } }
+  return { clase, estilo: { backgroundColor: typeof contenido?.icon_background === 'string' && contenido.icon_background ? contenido.icon_background : `${color}15`, color } }
 }

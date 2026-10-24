@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * CategoryDetailRenderer (F9.4)
  *
@@ -10,12 +12,14 @@
  */
 
 import Link from 'next/link'
+import { PreviewBridge, useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import { ChevronRight, Home } from 'lucide-react'
 import { SectionRenderer } from '@/components/sections/SectionRenderer'
 import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { BLOQUES_BASE_CATEGORIA, completarBloquesBase } from '@/lib/website/bloquesBaseDetalle'
 
 interface CategoryDetailRendererProps {
   organization: OrganizationWithDetails
@@ -35,7 +39,7 @@ interface CategoryDetailRendererProps {
   branchId?: number | null
 }
 
-export function CategoryDetailRenderer({
+function CategoryDetailRendererContenido({
   organization,
   primaryColor,
   templatePage,
@@ -74,16 +78,23 @@ export function CategoryDetailRenderer({
 
   // ---- Modo plantilla: renderizar secciones ----
   if (hasSections && templatePage) {
+    const secciones = completarBloquesBase(templatePage.website_page_sections, BLOQUES_BASE_CATEGORIA, 'despues')
+    const posicion = (s: typeof secciones[number]) => s.section_type === 'category_products' ? '' : String((s.content as Record<string, unknown>)?.detail_position ?? '')
+    const ordenadas = [
+      ...secciones.filter((s) => posicion(s) === 'before'),
+      ...secciones.filter((s) => !['before', 'after'].includes(posicion(s))),
+      ...secciones.filter((s) => posicion(s) === 'after'),
+    ]
     return (
       <div className="container mx-auto px-4 py-8">
-        {templatePage.website_page_sections.map((section, i) => (
+        {ordenadas.map((section, i) => (
           <SectionRenderer
             key={section.id}
             section={section}
             organization={organization}
             primaryColor={primaryColor}
             data={sectionData}
-            isFirst={i === 0 || templatePage.website_page_sections.slice(0, i).every((s) => s.is_visible === false)}
+            isFirst={i === 0}
           />
         ))}
       </div>
@@ -164,4 +175,12 @@ export function CategoryDetailRenderer({
       />
     </div>
   )
+}
+
+/** El lienzo y la web comparten la composición; el bridge solo reemplaza secciones en vivo. */
+export function CategoryDetailRenderer(props: CategoryDetailRendererProps) {
+  const preview = useIsPreviewMode()
+  if (!preview || !props.templatePage) return <CategoryDetailRendererContenido {...props} />
+  const templatePage = props.templatePage
+  return <PreviewBridge initialSections={templatePage.website_page_sections}>{(secciones) => <CategoryDetailRendererContenido {...props} templatePage={{ ...templatePage, website_page_sections: secciones }} />}</PreviewBridge>
 }

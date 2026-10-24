@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Globe, Heart, Phone, Search, ShoppingCart, User } from 'lucide-react'
 import {
   HeaderLogo,
+  HeaderCTA2,
   SearchBarInline,
   buildNavItems,
   getLucideIcon,
@@ -18,7 +19,7 @@ import {
 import { BuscadorCromo } from './BuscadorCromo'
 import { CartIndicator } from '../CartIndicator'
 import { CurrencySelector } from '../CurrencySelector'
-import { MENU_MOVIL, zonasConMenus, type BotonHeader, type ConstructorEncabezado, type ElementoZona, type IconoElemento, type MegaItem, type ZonaHeader } from '@/lib/website/constructorEncabezado'
+import { MENU_MOVIL, resolverFuentesMenus, zonasConMenus, type EnlaceFuenteMenu, type BotonHeader, type ConstructorEncabezado, type ElementoZona, type IconoElemento, type MegaItem, type ZonaHeader } from '@/lib/website/constructorEncabezado'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './ContenedorIcono'
 import { MenuBarra, MenusMovil } from './MenusEncabezado'
 
@@ -31,8 +32,10 @@ const MENU = ['menu_left', 'menu_center', 'menu_right'] as const
  * Sin eso, el sitio sigue con la variante de hoy.
  */
 export function HeaderPorZonas({
-  organization, primaryColor, navTree, settings, showCart, onCartClick, branchId, menuCategories, constructor,
+  organization, primaryColor, navTree, settings, showCart, onCartClick, branchId, menuCategories, constructor: configuracion,
 }: HeaderVariantProps & { constructor: ConstructorEncabezado }) {
+  const convertirCategoria = (c: NonNullable<HeaderVariantProps['menuCategories']>[number]): EnlaceFuenteMenu => ({ name: c.name, href: `/categorias/${c.slug}`, children: (c.children ?? []).map(convertirCategoria) })
+  const constructor = resolverFuentesMenus(configuracion, buildNavItems(navTree), (menuCategories ?? []).map(convertirCategoria))
   const zonas = constructor.menus?.length ? zonasConMenus(constructor) : constructor.zonas
   const hayBarra = !!zonas?.mobile_bottom?.length
   useEffect(() => {
@@ -48,14 +51,15 @@ export function HeaderPorZonas({
         {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="desktop" />}
       </FilaZonas>
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
-        <FilaZonas nombres={FILA} zonas={zonas} className="hidden md:flex" fondo={false}>
+        <FilaZonas extra={<HeaderCTA2 settings={settings} />} nombres={FILA} zonas={zonas} className="hidden md:flex" fondo={false}>
           {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="desktop" />}
         </FilaZonas>
         <FilaMovil
           zonas={zonas}
           semilla={!constructor.zonas}
+          extra={<HeaderCTA2 settings={settings} movil />}
           cierre={(zonas.mobile_header ?? zonas.header_left ?? []).some((el) => el.menuId === MENU_MOVIL) ? null : (
-            <MenusMovil menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
+            <MenusMovil settings={settings} menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
           )}
         >
           {(el) => <Elemento key={el.id} el={el} nav={nav} organization={organization} primaryColor={primaryColor} settings={settings} showCart={showCart} onCartClick={onCartClick} branchId={branchId} menuCategories={menuCategories} constructor={constructor} dispositivo="mobile" />}
@@ -76,12 +80,13 @@ export function HeaderPorZonas({
 }
 
 function FilaZonas({
-  nombres, zonas, className, children,
+  nombres, zonas, className, children, extra,
 }: {
   nombres: readonly ZonaHeader[]
   zonas: NonNullable<ConstructorEncabezado['zonas']>
   className: string
   fondo: boolean
+  extra?: ReactNode
   children: (el: ElementoZona) => ReactNode
 }) {
   const hay = nombres.some((n) => zonas[n]?.length)
@@ -91,6 +96,7 @@ function FilaZonas({
       {nombres.map((nombre) => (
         <div key={nombre} className={`flex min-w-0 flex-1 items-center gap-2 ${nombre.endsWith('center') ? 'justify-center' : nombre.endsWith('right') ? 'justify-end' : ''}`}>
           {(zonas[nombre] ?? []).filter((el) => el.desktop).map(children)}
+          {nombre === 'header_right' && extra}
         </div>
       ))}
     </div>
@@ -98,11 +104,12 @@ function FilaZonas({
 }
 
 function FilaMovil({
-  zonas, semilla, cierre, children,
+  zonas, semilla, cierre, children, extra,
 }: {
   zonas: NonNullable<ConstructorEncabezado['zonas']>
   semilla: boolean
   cierre?: ReactNode
+  extra?: ReactNode
   children: (el: ElementoZona) => ReactNode
 }) {
   const fila = (zonas.mobile_header ?? zonas.header_left ?? []).filter((el) => el.mobile)
@@ -121,6 +128,7 @@ function FilaMovil({
           {cierre}
         </>
       )}
+      {extra}
     </div>
   )
 }
@@ -148,16 +156,16 @@ function Elemento(props: {
   const menuPropio = el.menuId ? constructor.menus?.find((m) => m.id === el.menuId) : undefined
   let nodo: ReactNode = null
   if (el.type === 'logo') nodo = <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 40} />
-  else if (el.type === 'menu' && el.menuId === MENU_MOVIL) nodo = <MenusMovil menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
+  else if (el.type === 'menu' && el.menuId === MENU_MOVIL) nodo = <MenusMovil settings={settings} menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
   else if (el.type === 'menu' && menuPropio) nodo = <MenuBarra menu={menuPropio} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
   else if (el.type === 'menu') nodo = <MenuZona nav={nav} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} movil={dispositivo === 'mobile'} />
-  else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
+  else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} colores={colores} className="w-full" categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
   else if (el.type === 'search') nodo = <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
   else if (el.type === 'cart' && showCart !== false) nodo = constructor.contenedor ? (
     <CartIndicator contenedor={constructor.contenedor} colores={colores} primaryColor={primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, ShoppingCart)} />
   ) : (
     <CajaIcono icono={icono} primary={primaryColor}>
-      <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, Search)} relleno={icono?.weight === 'relleno'} />
+      <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, ShoppingCart)} relleno={icono?.weight === 'relleno'} />
     </CajaIcono>
   )
   else if (el.type === 'account') nodo = constructor.contenedor ? (

@@ -67,3 +67,11 @@ export function ventasConHijos(
   }
   return ventas
 }
+
+/** El tamaño del detalle editable se usa tanto en la consulta como en la grilla. */
+export function tamanoPaginaCategoriaPlantilla(secciones: readonly { section_type: string; is_visible?: boolean; content?: unknown }[] | null | undefined): number {
+  const seccion = secciones?.find(s => s.section_type === 'category_products' && s.is_visible !== false)
+  const contenido = seccion?.content && typeof seccion.content === 'object' ? seccion.content as Record<string, unknown> : {}
+  const n = Number(contenido.max_items)
+  return Number.isInteger(n) && n >= 1 && n <= 48 ? n : TAMANO_PAGINA_CATEGORIA
+}

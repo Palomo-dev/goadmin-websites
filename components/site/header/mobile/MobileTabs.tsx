@@ -14,6 +14,7 @@ import { contenedorDe, leerConstructor } from '@/lib/website/constructorEncabeza
 import {
   HeaderLogo,
   HeaderActions,
+  HeaderCTA2,
   HeaderTopbar,
   SearchBarInline,
   buildNavItems,
@@ -83,7 +84,7 @@ export default function MobileTabs({
   );
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
+    <header className="lg:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
       {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -106,12 +107,14 @@ export default function MobileTabs({
                 isMobile={true}
                 branchId={branchId}
               />
+              <HeaderCTA2 settings={settings} movil />
             }
           />
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
               <SearchBarInline
+                settings={settings}
                 primaryColor={primaryColor}
                 organizationId={organizationId}
                 className="w-full"

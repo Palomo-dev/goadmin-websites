@@ -40,22 +40,30 @@ export const CONTENT_TTL = 60
 /** Ajustes que casi nunca cambian: organización, sucursales, impuestos. */
 export const SETTINGS_TTL = 300
 
+/** Ajustes, páginas y menús: publicar una organización no enfría las demás tiendas. */
+export const estructuraSitioTag = (organizationId: number) => `estructura-sitio-${organizationId}`
+
 export function cacheStructural<A extends any[], R>(
   name: string,
   fn: (...args: A) => Promise<R>,
-  revalidate: number = CONTENT_TTL
+  revalidate: number = CONTENT_TTL,
+  organizationIdOf?: NoInfer<(...args: A) => number>
 ): (...args: A) => Promise<R> {
-  const cached = unstable_cache(
+  const crearCache = (organizationId?: number) => unstable_cache(
     async (...args: any[]) =>
       fn(...(args.map((a) => (a === UNDEFINED_SENTINEL ? undefined : a)) as A)),
     // `name` desempata: la clave fija de Next es fn.toString() + keyParts, y dos
     // funciones con el mismo cuerpo colisionarían sin esto.
-    [name],
-    { revalidate, tags: [name] }
+    // Versión nueva para que ninguna entrada previa, sin etiqueta de organización, se reutilice.
+    organizationIdOf ? [name, 'estructura-org-v1'] : [name],
+    { revalidate, tags: [name, ...(organizationId !== undefined ? [estructuraSitioTag(organizationId)] : [])] }
   )
+  const compartida = organizationIdOf ? null : crearCache()
 
-  return ((...args: A) =>
-    cached(...args.map((a) => (a === undefined ? UNDEFINED_SENTINEL : a)))) as (
+  return ((...args: A) => {
+    const cached = compartida ?? crearCache(organizationIdOf!(...args))
+    return cached(...args.map((a) => (a === undefined ? UNDEFINED_SENTINEL : a)))
+  }) as (
     ...args: A
   ) => Promise<R>
 }

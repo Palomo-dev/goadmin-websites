@@ -4,6 +4,8 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu as MenuIcon, X } from 'lucide-react'
+import { leerPresentacionMovil } from '@/lib/website/menuMovil'
+import { MobileMenuShell } from './mobile/MobileMenuShell'
 import type { MegaItem, MenuConstruido } from '@/lib/website/constructorEncabezado'
 import { getLucideIcon, type HeaderVariantProps } from './HeaderShared'
 
@@ -38,7 +40,9 @@ export function MenusMovil({
   mega,
   categorias,
   primaryColor,
+  settings,
 }: {
+  settings?: HeaderVariantProps['settings']
   menus: MenuConstruido[]
   mega: MegaItem[] | null
   categorias: Categorias
@@ -46,13 +50,27 @@ export function MenusMovil({
 }) {
   const lista = menus.filter((m) => m.mobile).sort((a, b) => a.mobileOrder - b.mobileOrder || a.name.localeCompare(b.name, 'es'))
   const [abierto, setAbierto] = useState(false)
+  const presentacion = leerPresentacionMovil(settings)
+  const contenido = lista.map((menu) => (
+    <section key={menu.id} className="flex flex-col gap-1">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{menu.name}</p>
+      {menu.items.map((item) => <ItemMenu key={item.href + item.label} menu={menu} item={item} mega={mega} categorias={categorias} primaryColor={primaryColor} movil />)}
+    </section>
+  ))
   if (!lista.length) return null
   return (
     <>
       <button type="button" aria-label="Abrir menú" className="inline-flex h-10 w-10 items-center justify-center" onClick={() => setAbierto(true)}>
         <MenuIcon className="h-6 w-6" />
       </button>
-      {abierto && (
+      {presentacion && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs' ? (
+        <MobileMenuShell abierto={abierto} onCerrar={() => setAbierto(false)} estilo={presentacion.estilo} panel={presentacion.panel}>
+          <div className="flex flex-col gap-4 p-4" onClick={(e) => { if ((e.target as Element).closest('a')) setAbierto(false) }}>
+            <button type="button" aria-label="Cerrar menú" className="self-end p-2" onClick={() => setAbierto(false)}><X className="h-5 w-5" /></button>
+            {contenido}
+          </div>
+        </MobileMenuShell>
+      ) : abierto && (
         <div className="fixed inset-0 z-[70] md:hidden" data-menus-movil="">
           <button type="button" aria-label="Cerrar menú" className="absolute inset-0 bg-black/40" onClick={() => setAbierto(false)} />
           <div className="absolute bottom-0 right-0 top-0 flex w-80 max-w-[85vw] flex-col gap-5 overflow-y-auto bg-white p-4 shadow-xl">

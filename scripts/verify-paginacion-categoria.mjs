@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import {
   TAMANO_PAGINA_CATEGORIA,
+  tamanoPaginaCategoriaPlantilla,
   ordenarPorVentasEstable,
   paginarIds,
   ventasConHijos,
@@ -27,6 +28,14 @@ const igual = (obtenido, esperado, msg) => {
 }
 
 check(TAMANO_PAGINA_CATEGORIA === 12, 'la página de categoría sigue en 12')
+check(tamanoPaginaCategoriaPlantilla([{ section_type: 'category_products', content: { max_items: 6 } }]) === 6, 'el detalle configurable consulta páginas de 6 sin omitir productos')
+check(tamanoPaginaCategoriaPlantilla([]) === 12, 'sin grilla configurada conserva páginas de 12')
+check(tamanoPaginaCategoriaPlantilla([{ section_type: 'category_products', content: { max_items: -1 } }]) === 12, 'tamaño inválido conserva default')
+
+const limiteSeis = tamanoPaginaCategoriaPlantilla([{ section_type: 'category_products', content: { max_items: 6 } }])
+const ids19 = Array.from({ length: 19 }, (_, i) => i + 1)
+igual(paginarIds(ids19, 2, limiteSeis).pagina, [7, 8, 9, 10, 11, 12], 'seis por página recorre todos sin saltos')
+check(paginarIds(ids19, 2, limiteSeis).totalPaginas === 4, '19 productos son cuatro páginas de seis')
 
 const de42 = Array.from({ length: 42 }, (_, i) => i + 1)
 const p1 = paginarIds(de42, 1)
@@ -82,7 +91,7 @@ check(!queries.includes("cacheCatalog(\n  'getProductsByCategoryPaginated'"), 'n
 check(queries.includes('paginarIds('), 'el corte sale de la lista compartida')
 check(queries.includes("'getFichasListadoCategoria'"), 'las fichas se cachean por ids, no por número de página')
 check(!queries.includes('total: count'), 'el total no es el count de PostgREST')
-check(pagina.includes('TAMANO_PAGINA_CATEGORIA'), 'la página usa el mismo tamaño para el corte y el número de páginas')
+check(pagina.includes('tamanoPaginaCategoriaPlantilla(categoryDetailTemplate?.website_page_sections)') && pagina.includes('limit: porPagina') && pagina.includes('Math.ceil(total / porPagina)'), 'la página usa el mismo tamaño configurable para el corte y el número de páginas')
 check(!pagina.includes('total / 12'), 'el número de páginas no tiene un 12 suelto')
 
 if (problemas.length > 0) {

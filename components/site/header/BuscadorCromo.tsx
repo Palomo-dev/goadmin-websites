@@ -1,10 +1,10 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { Search, ScanSearch } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
 import type { ReactNode } from 'react'
-import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
+import { colorDeToken, buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
 
 /** La barra de hoy si no hay cromo nuevo. El overlay no ocupa la barra. */
@@ -15,7 +15,8 @@ export function barraSiCromo(
 ): ReactNode {
   const cromo = leerConstructor(settings)?.buscador
   if (!cromo || !buscadorEnBarra(cromo.tipo)) return actual
-  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} />
+  const ajuste = settings as { accent_color?: string; secondary_color?: string } | null
+  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} colores={{ primary: props.primaryColor, accent: ajuste?.accent_color || props.primaryColor, secondary: ajuste?.secondary_color || props.primaryColor }} />
 }
 
 const RADIO: Record<CromoBuscador['radius'], string> = {
@@ -46,7 +47,9 @@ export function BuscadorCromo({
   contenedor?: ContenedorIconos | null
   colores?: ColoresCaja
 }) {
-  const Icono = Search
+  const Icono = presentacion.icon === 'scan-search' ? ScanSearch : Search
+  const paleta = colores ?? { primary: primaryColor, accent: primaryColor, secondary: primaryColor }
+  const color = (v: string | undefined) => colorDeToken(v, paleta)
   if (presentacion.tipo === 'icon_overlay') {
     return (
       <ProductSearch
@@ -61,17 +64,17 @@ export function BuscadorCromo({
   const ancho = presentacion.tipo === 'mini' ? 'max-w-[9rem] focus-within:max-w-md transition-all' : ''
   const sombra = presentacion.shadow ? 'shadow-lg' : ''
   return (
-    <div
-      className={`flex min-w-0 items-center gap-2 ${ancho} ${sombra} ${RADIO[presentacion.radius]} ${className}`}
-      style={{ maxWidth: presentacion.width }}
+    <form
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const query = e.currentTarget.querySelector('input')?.value.trim()
+        if (query) window.location.href = `/search?q=${encodeURIComponent(query)}`
+      }}
+      className={`flex min-w-0 items-center gap-2 ${ancho} ${sombra} ${RADIO[presentacion.radius]} ${presentacion.tipo === 'mega' ? 'w-full min-w-[16rem]' : ''} ${className}`}
+      style={{ maxWidth: presentacion.width, ...(presentacion.tipo === 'underline' ? { borderBottom: `2px solid ${color(presentacion.borderColor) || primaryColor}`, borderRadius: 0 } : {}) }}
       data-buscador={presentacion.tipo}
     >
-      {presentacion.tipo === 'mega' && (
-        <select aria-label="Categoría" className="h-11 shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm">
-          <option value="">Todas</option>
-          {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      )}
       <div className="min-w-0 flex-1">
         <SearchBarInput
           primaryColor={primaryColor}
@@ -81,18 +84,18 @@ export function BuscadorCromo({
           cromo={{
             radius: presentacion.radius,
             border: presentacion.border,
-            borderColor: presentacion.borderColor,
-            background: presentacion.background,
+            borderColor: color(presentacion.borderColor),
+            background: color(presentacion.background),
             iconSide: presentacion.iconSide,
-            iconColor: presentacion.iconColor,
-            iconBackground: presentacion.iconBackground,
+            iconColor: color(presentacion.iconColor),
+            iconBackground: color(presentacion.iconBackground),
           }}
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
         />
       </div>
       {presentacion.button !== 'none' && (
         <button
-          type="button"
+          type="submit"
           className="inline-flex h-11 shrink-0 items-center gap-1 px-3 text-sm font-medium text-white"
           style={{ backgroundColor: primaryColor, borderRadius: presentacion.radius === 'pill' ? 999 : 8 }}
           aria-label="Buscar"
@@ -100,6 +103,6 @@ export function BuscadorCromo({
           {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
-    </div>
+    </form>
   )
 }

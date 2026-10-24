@@ -39,7 +39,7 @@ const CLAVES_PERMITIDAS = new Set([
   'primary_color', 'secondary_color', 'background_color', 'text_color', 'theme_mode',
   'social_links', 'business_hours',
   // Encabezado y pie por plantilla: idiomas del selector (el resto entra por los prefijos).
-  'site_locales',
+  'site_locales', 'conversion',
 ])
 /** Nunca en vivo: cambian qué datos se cargan, eso sí necesita guardar. */
 const CLAVES_EXCLUIDAS = new Set(['header_menu_id', 'header_mega_menu_id'])
@@ -49,15 +49,15 @@ function clavePermitida(clave: string): boolean {
   return CLAVES_PERMITIDAS.has(clave) || PREFIJOS_PERMITIDOS.some((p) => clave.startsWith(p))
 }
 
-function valorSimple(v: unknown, profundidad = 0): boolean {
+function valorSimple(v: unknown, profundidad = 0, limite = 2): boolean {
   if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) {
     return typeof v !== 'string' || v.length <= 2000
   }
-  if (profundidad > 2) return false
-  if (Array.isArray(v)) return v.length <= 50 && v.every((x) => valorSimple(x, profundidad + 1))
+  if (profundidad > limite) return false
+  if (Array.isArray(v)) return v.length <= 50 && v.every((x) => valorSimple(x, profundidad + 1, limite))
   if (typeof v === 'object') {
     const entradas = Object.entries(v as Record<string, unknown>)
-    return entradas.length <= 50 && entradas.every(([, x]) => valorSimple(x, profundidad + 1))
+    return entradas.length <= 50 && entradas.every(([, x]) => valorSimple(x, profundidad + 1, limite))
   }
   return false
 }
@@ -92,7 +92,7 @@ export function useAjustesVivosPreview(): AjustesVivos | null {
       const ajustes: Record<string, unknown> = {}
       if (crudos && typeof crudos === 'object') {
         for (const [clave, valor] of Object.entries(crudos as Record<string, unknown>).slice(0, 200)) {
-          if (clavePermitida(clave) && valorSimple(valor)) ajustes[clave] = valor
+          if (clavePermitida(clave) && valorSimple(valor, 0, clave === 'header_builder' || clave === 'mobile_header' || clave === 'conversion' ? 8 : 2)) ajustes[clave] = valor
         }
       }
       setVivos({ ajustes, menuEncabezado: menuValido(e.data.menuEncabezado), tema: temaPublicoDesdeMensaje(e.data.tema) })

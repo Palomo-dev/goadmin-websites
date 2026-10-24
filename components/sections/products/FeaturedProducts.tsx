@@ -6,11 +6,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado } from '@/lib/products/limiteListado'
-import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
-import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
 
@@ -150,7 +150,8 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
     addToCart(product)
     router.push(ruta('/checkout'))
   }
-  const lista = listaDelInspector(content)
+  const listaBase = listaDelInspector(content)
+  const lista = listaBase && separacion ? { ...listaBase, gap: listaBase.gap ?? Number.parseFloat(separacion.gap) } : listaBase
 
   return (
     <div>
