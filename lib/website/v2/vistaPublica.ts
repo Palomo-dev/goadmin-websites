@@ -109,6 +109,8 @@ export function ajustesPublicosDesdeDocumento(
     const opciones = def.zona === 'header' ? header.opciones : footer.opciones
     ajustes[columna] = columna in (opciones ?? {}) ? structuredCloneSeguro(opciones[columna]) : def.porDefecto
   }
+  const seccion = (documento.tema as { seccion?: unknown }).seccion
+  if (seccion && typeof seccion === 'object') ajustes.section_style = structuredCloneSeguro(seccion)
   return ajustes as unknown as WebsiteSettings
 }
 

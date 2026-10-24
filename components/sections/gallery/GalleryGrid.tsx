@@ -1,6 +1,7 @@
 'use client'
 
 import { CuadriculaAmpliable, lightboxActivo } from './FotosAmpliables'
+import { SiLista } from '../ListRenderer'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
 export const CONTENT_KEYS = ['title', 'images', 'lightbox'] as const
@@ -18,7 +19,7 @@ export function GalleryGrid({ content, primaryColor = '#3B82F6' }: GalleryGridPr
   return (
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         {lightboxActivo(content) ? (
           <CuadriculaAmpliable
             imagenes={images}
@@ -27,13 +28,13 @@ export function GalleryGrid({ content, primaryColor = '#3B82F6' }: GalleryGridPr
             imagen="w-full h-full object-cover hover:scale-105 transition-transform"
           />
         ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <SiLista content={content} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img: any, i: number) => (
             <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
               <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover hover:scale-105 transition-transform" loading="lazy" />
             </div>
           ))}
-        </div>
+        </SiLista>
         )}
       </div>
     </section>

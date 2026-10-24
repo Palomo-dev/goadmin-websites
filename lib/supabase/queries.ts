@@ -1,7 +1,8 @@
 import { cache } from 'react'
 import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
-import { filterStockByBranches } from '@/lib/stock'
+import { filterStockByBranches, isOutOfStock } from '@/lib/stock'
+import { expandirCategorias, type PedidoListado } from '@/lib/products/fuenteListado'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { cacheStructural, cacheCatalog, CONTENT_TTL, SETTINGS_TTL } from './cache'
 import { precioVigente } from '@/lib/memberships/precio'
@@ -805,6 +806,142 @@ const getOrganizationProductsInCategoriesUncached = async (
     normalizeProductPrices(await enrichListing(supabase, organizationId, data || [])),
     stockBranchIds,
   ), cartaSede)
+}
+
+/**
+ * Listado de una sección `products_grid` cuando pide fuente, tope o paginación.
+ * Filtra en la base (`.in` / `.range`), no sobre el corte de 500 de la página.
+ */
+export async function getListadoSeccion(
+  organizationId: number,
+  branchId: number | null | undefined,
+  pedido: PedidoListado,
+  categorias: { id: number; parent_id: number | null }[],
+  desde = 0,
+  categoriaVisitante?: number | null,
+): Promise<{ products: any[]; total: number }> {
+  const supabase = getSupabaseForPublicRead()
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return { products: [], total: 0 }
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  const limite = Math.min(100, Math.max(4, pedido.limit))
+  const inicio = Math.max(0, desde)
+  if (pedido.max != null && inicio >= pedido.max) return { products: [], total: 0 }
+
+  let categoryIds: number[] | null = null
+  if (pedido.source === 'categories' && pedido.categoryIds.length > 0) {
+    categoryIds = expandirCategorias(pedido.categoryIds, categorias, pedido.includeSubcategories)
+    if (allowedCategoryIds) categoryIds = categoryIds.filter((id) => allowedCategoryIds.includes(id))
+    if (categoryIds.length === 0) return { products: [], total: 0 }
+  } else if (allowedCategoryIds) {
+    categoryIds = allowedCategoryIds
+  }
+  if (categoriaVisitante && categoriaVisitante > 0) {
+    if (categoryIds && !categoryIds.includes(categoriaVisitante)) return { products: [], total: 0 }
+    categoryIds = [categoriaVisitante]
+  }
+  if (pedido.source === 'manual' && pedido.productIds.length === 0) return { products: [], total: 0 }
+
+  let idsOrden: number[] | null = null
+  if (pedido.source === 'best_sellers') {
+    idsOrden = await getBestSellerListingIds(supabase, organizationId, 200)
+    if (idsOrden.length === 0) return { products: [], total: 0 }
+  }
+
+  let query = supabase
+    .from('products')
+    .select(`
+      ${PRODUCT_LIST_COLUMNS},
+      categories ( id, name ),
+      product_prices (id, price, compare_price, effective_to),
+      product_images ( id, storage_path, is_primary, display_order, shared_image_id, shared_images ( storage_path ) ),
+      stock_levels ( branch_id, qty_on_hand, qty_reserved )
+    `, { count: 'exact' })
+    .is('product_prices.effective_to', null)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+
+  if (categoryIds) query = query.in('category_id', categoryIds.slice(0, 200))
+  if (pedido.source === 'manual') query = query.in('id', pedido.productIds.slice(0, 100))
+  const finIds = pedido.max != null ? Math.min(inicio + limite, pedido.max) : inicio + limite
+  if (idsOrden) query = query.in('id', idsOrden.slice(inicio, finIds))
+  if (pedido.source === 'new') {
+    const desdeFecha = new Date(Date.now() - pedido.days * 86400000).toISOString()
+    query = query.gte('created_at', desdeFecha)
+  }
+  query = excluirNoListados(query, cartaSede)
+
+  if (pedido.sort === 'name') query = query.order('name', { ascending: true })
+  else if (pedido.sort === 'newest' || pedido.source === 'new') query = query.order('created_at', { ascending: false })
+  else query = query.order('id', { ascending: true })
+
+  const fin = pedido.max != null ? Math.min(inicio + limite, pedido.max) - 1 : inicio + limite - 1
+  const consulta = idsOrden
+    ? query
+    : query.range(inicio, fin)
+  const { data, error, count } = await consulta
+  if (error || !data) return { products: [], total: 0 }
+
+  let filas = data as any[]
+  // compare_price vive en product_prices: no hay un predicado SQL estable, así que
+  // la página de ofertas se recorta después del range (el total puede sobrar).
+  if (pedido.source === 'offers') {
+    filas = filas.filter((p) => {
+      const precio = p.product_prices?.[0]
+      return precio && Number(precio.compare_price) > Number(precio.price)
+    })
+  }
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  let products = aplicarCartaSede(filterStockByBranches(
+    normalizeProductPrices(await enrichListing(supabase, organizationId, filas)),
+    stockBranchIds,
+  ), cartaSede)
+  if (pedido.excludeOutOfStock) products = products.filter((p) => !isOutOfStock(p))
+  if (pedido.sort === 'price_asc') products.sort((a, b) => Number(a.product_prices?.[0]?.price || 0) - Number(b.product_prices?.[0]?.price || 0))
+  if (pedido.sort === 'price_desc') products.sort((a, b) => Number(b.product_prices?.[0]?.price || 0) - Number(a.product_prices?.[0]?.price || 0))
+  if (pedido.sort === 'manual' && pedido.productIds.length > 0) {
+    const pos = new Map(pedido.productIds.map((id, i) => [id, i]))
+    products.sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9))
+  } else if (idsOrden && (pedido.sort === 'default' || pedido.sort === 'sales')) {
+    const pos = new Map(idsOrden.map((id, i) => [id, i]))
+    products.sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9))
+  }
+  products = await anexarAtributos(supabase, organizationId, products)
+  const crudo = idsOrden ? idsOrden.length : (count ?? products.length)
+  const total = pedido.max != null ? Math.min(crudo, pedido.max) : crudo
+  return { products, total }
+}
+
+/** Talla y color de las variantes, solo para el listado que ya pidió la sección. */
+async function anexarAtributos(supabase: ReturnType<typeof getSupabaseForPublicRead>, organizationId: number, products: any[]): Promise<any[]> {
+  const padres = products.filter((p) => p?.is_parent).map((p) => p.id as number).slice(0, 100)
+  if (padres.length === 0) return products
+  const { data, error } = await supabase
+    .from('products')
+    .select('parent_product_id, variant_data')
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .in('parent_product_id', padres)
+    .limit(1000)
+  if (error || !data?.length) return products
+  const mapa = new Map<number, Record<string, string[]>>()
+  for (const fila of data as { parent_product_id: number; variant_data: unknown }[]) {
+    const datos = fila.variant_data
+    if (!datos || typeof datos !== 'object' || Array.isArray(datos)) continue
+    const grupo = mapa.get(fila.parent_product_id) ?? {}
+    for (const [nombre, valor] of Object.entries(datos)) {
+      if (typeof valor !== 'string' || !valor.trim()) continue
+      const lista = grupo[nombre] ?? []
+      if (!lista.includes(valor)) lista.push(valor)
+      grupo[nombre] = lista
+    }
+    mapa.set(fila.parent_product_id, grupo)
+  }
+  if (mapa.size === 0) return products
+  return products.map((p) => (mapa.has(p.id) ? { ...p, atributos: mapa.get(p.id) } : p))
 }
 
 /**

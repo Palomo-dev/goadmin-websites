@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { listadosDeSecciones } from '@/lib/products/listadosSeccion'
 import { 
   getOrganizationProducts, 
   getOrganizationCategories,
@@ -360,6 +361,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
       if (idsCategoria.length > 0) {
         data.productosCategoria = await getOrganizationProductsInCategories(organization.id, idsCategoria, branchId)
       }
+    }
+    if (needsProducts) {
+      data.listados = await listadosDeSecciones(organization.id, branchId, page.website_page_sections, data.categories)
     }
     if (sectionTypes.includes('offers')) {
       data.offerProducts = await getOfferProducts(organization.id, 500, branchId)

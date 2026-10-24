@@ -397,6 +397,15 @@ try {
     if (ids({ categoria: 20 }) !== '2') fallos.push('filtros: la categoría no filtra')
     if (ids({ soloOfertas: true }) !== '1') fallos.push('filtros: «Ofertas» no deja solo los que tienen compare_price mayor')
     if (ids({ orden: 'price_asc' }) !== '3,2,1') fallos.push('filtros: el orden por precio no ordena')
+    const stock = [
+      { id: 1, track_stock: true, stock_levels: [{ qty_on_hand: 0, qty_reserved: 0 }], rating_avg: 5, atributos: { Talla: ['M'] } },
+      { id: 2, track_stock: false, rating_avg: 2 },
+    ]
+    const idsStock = (estado) => filtrarProductos(stock, { ...FILTROS_INICIALES, ...estado }).map((p) => p.id).join(',')
+    if (idsStock({}) !== '1,2') fallos.push('filtros: el estado inicial recorta por stock o nota')
+    if (idsStock({ soloDisponibles: true }) !== '2') fallos.push('filtros: disponibles no quita el agotado')
+    if (idsStock({ calificacionMin: 4 }) !== '1') fallos.push('filtros: la calificación no usa rating_avg')
+    if (idsStock({ atributo: 'Talla::M' }) !== '1') fallos.push('filtros: talla y color no filtran')
   }
   const BARRA = 'Precio: menor a mayor</option>'
   const BUSCADOR = 'data-buscador-productos'

@@ -13,6 +13,8 @@ import { coincideBusqueda, filtrarProductosPorCategorias, incluirSubcategorias }
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { SiLista } from '../ListRenderer'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -145,7 +147,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
@@ -225,9 +227,9 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
           )}
 
           {/* Grid */}
-          {paginatedProducts.length > 0 ? (
-            <div className={clasesColumnasProductos(content.columns)} style={separacion}>
-              {paginatedProducts.map((product: any) => {
+          {(listaDelInspector(content) ? filteredProducts : paginatedProducts).length > 0 ? (
+            <SiLista content={content} className={clasesColumnasProductos(content.columns)} style={separacion}>
+              {(listaDelInspector(content) ? filteredProducts : paginatedProducts).map((product: any) => {
                 const isAdded = addedToCart.has(product.id)
                 return (
                   <ProductCard
@@ -253,7 +255,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
                   />
                 )
               })}
-            </div>
+            </SiLista>
           ) : (
             <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
               <p className="text-4xl mb-3">📦</p>
@@ -263,7 +265,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
           )}
 
           {/* Paginación */}
-          {totalPages > 1 && (
+          {!listaDelInspector(content) && totalPages > 1 && (
             <div className="flex items-center justify-center gap-1 mt-8">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <ChevronLeft className="h-4 w-4" />

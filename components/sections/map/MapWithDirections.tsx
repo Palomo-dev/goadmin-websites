@@ -15,7 +15,7 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{title}</h2>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="rounded-xl overflow-hidden min-h-[400px]">
           {fullAddress ? (

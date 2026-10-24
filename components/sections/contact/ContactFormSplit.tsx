@@ -34,7 +34,7 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
     <div className={`grid grid-cols-1 ${showInfo ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto w-full'} gap-12`}>
       <div>
         {content.title && (
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{content.title}</h2>
+          <h2 className="titulo-legado text-2xl font-bold mb-6 text-gray-900 dark:text-white">{content.title}</h2>
         )}
         <form className="space-y-4" onSubmit={submit} noValidate>
           <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />

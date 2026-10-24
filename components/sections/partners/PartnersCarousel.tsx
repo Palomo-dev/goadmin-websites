@@ -60,7 +60,7 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
   return (
     <section className="py-12 px-4" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         {flechas ? (
           <div className="flex items-center gap-4">
             <FlechaCarrusel direccion="anterior" etiqueta="Aliados anteriores" onClick={irAnterior} disabled={indiceAnterior(offset, posiciones, o.bucle) === null} color={primaryColor} className="flex-shrink-0" />

@@ -6,6 +6,8 @@ import { atributosCarrusel, leerOpcionesCarrusel, type OpcionesCarrusel } from '
 import { desplazar } from '@/lib/carrusel/desplazamiento'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 import { PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { ListRenderer } from '../ListRenderer'
 
 interface BrandsLogosProps {
   content: {
@@ -40,6 +42,7 @@ const SIZE_CLASSES = {
 
 export function BrandsLogos({ content, primaryColor }: BrandsLogosProps) {
   const items = content.items || []
+  const lista = listaDelInspector(content)
   const layout = content.layout || 'flex'
   const logoSize = content.logo_size || 'md'
   const grayscale = content.grayscale !== false
@@ -52,13 +55,19 @@ export function BrandsLogos({ content, primaryColor }: BrandsLogosProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
       {items.length > 0 ? (
-        layout === 'carousel' ? (
+        lista ? (
+          <ListRenderer lista={lista}>
+            {items.map((item, i) => (
+              <BrandLogo key={item.id || i} item={item} sizeClass={sizeClass} grayscaleClass={grayscaleClass} />
+            ))}
+          </ListRenderer>
+        ) : layout === 'carousel' ? (
           <BrandsCarousel items={items} sizeClass={sizeClass} grayscaleClass={grayscaleClass} opciones={leerOpcionesCarrusel(content as Record<string, unknown>, HOY_CARRUSEL)} primaryColor={primaryColor} />
         ) : layout === 'grid' ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 items-center justify-items-center">

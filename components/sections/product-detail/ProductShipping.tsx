@@ -36,7 +36,7 @@ export function ProductShipping({ content }: ProductShippingProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="titulo-legado text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
 
       <div className={`grid grid-cols-1 ${smGridColsClass}`} style={{ gap: `${gap}px` }}>
         {showDeliveryTime && (

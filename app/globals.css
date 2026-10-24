@@ -10,8 +10,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+/* El encabezado nuevo reemplaza el h2 de la sección. Sin el atributo, la clase no hace nada. */
+[data-encabezado-shell] .titulo-legado {
+  display: none;
+}
+}
+
+/* Imagen de fondo de celular. Solo si la sección guardó `image_url_mobile`. */
+@media (max-width: 767px) {
+  [data-fondo-movil] {
+    background-image: var(--fondo-movil) !important;
   }
 }
 

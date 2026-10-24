@@ -3,6 +3,10 @@ import { buildSectionStyle } from '@/lib/sectionStyle'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
+import { EncabezadoSeccion } from './EncabezadoSeccion'
+import { AccionEncabezado } from './EncabezadoSeccion'
+import { CarruselShell, HuecoFlechas } from './ListRenderer'
+import { combinarEncabezado, estilosFondo, leerFondo, listaDelInspector, type EncabezadoSeccion as DatosEncabezado } from '@/lib/website/cascaronSeccion'
 
 interface SectionSettings {
   bg_color?: string | null
@@ -20,6 +24,8 @@ interface SectionWrapperProps {
   /** Variante de la sección (la Carta QR ajusta márgenes por variante). */
   sectionVariant?: string
   sectionId?: string
+  /** `tema.seccion` del sitio. Ausente = no se hereda nada. */
+  estiloGlobal?: unknown
   children: React.ReactNode
 }
 
@@ -76,7 +82,7 @@ const SIN_RELLENO_POR_DEFECTO: ReadonlySet<string> = new Set([
   'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
 ])
 
-export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, children }: SectionWrapperProps) {
+export function SectionWrapper({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, estiloGlobal, children }: SectionWrapperProps) {
   // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
   // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
@@ -155,7 +161,15 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   if (!hasContractBg && settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
   if (!hasContractText && settings.text_color) (style as any)['--section-text'] = settings.text_color
 
-  const bgClass = !hasContractBg && settings.bg_color
+  const encabezado = combinarEncabezado(content, estiloGlobal)
+  const flechasArriba = listaDelInspector(content)?.arrows === 'top'
+  const fondoNuevo = leerFondo(content)
+  if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
+  const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
+  const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
+  const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
+
+  const bgClass = !hasContractBg && settings.bg_color && !fondoNuevo?.color && !fondoNuevo?.gradient_1 && !fondoNuevo?.image_url
     ? 'bg-[var(--section-bg)] dark:bg-gray-900/40'
     : ''
   const textClass = !hasContractText && settings.text_color
@@ -167,22 +181,111 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   // Para secciones no-hero full-bleed sí añadimos padding horizontal para que el contenido
   // no quede pegado a los bordes.
   const containerWidth = content?.container_width || 'lg'
-  const innerClass = isFullBleed
+  const sangria = anchoForzado == null ? isFullBleed : anchoForzado
+  const innerClass = sangria
     ? (isHero ? 'w-full' : `w-full ${px}`)
     : `w-full mx-auto ${CONTAINER_MAX[containerWidth] || CONTAINER_MAX.lg} ${px}`
+  const encabezadoNodo = encabezado ? (
+    <EncabezadoSeccion
+      encabezado={encabezado}
+      titulo={typeof content?.title === 'string' ? content.title : undefined}
+      descripcion={typeof content?.subtitle === 'string' ? content.subtitle : undefined}
+      primaryColor={primaryColor}
+      controles={flechasArriba ? <HuecoFlechas /> : undefined}
+    />
+  ) : null
 
   return (
     <section
-      className={`w-full ${pt} ${pb} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
+      className={fondoNuevo?.overlay_opacity
+        ? `w-full relative ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`
+        : `w-full ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
       style={style}
       data-section-id={sectionId}
+      data-encabezado-shell={encabezado ? '' : undefined}
+      data-fondo-movil={fondoNuevo?.image_url_mobile ? '' : undefined}
       {...presentacion.datos}
     >
       {hojaFuentes && <link rel="stylesheet" href={hojaFuentes} />}
       {'data-seccion-entrada' in presentacion.datos && <EntradaSeccion />}
-      <div className={innerClass}>
-        {children}
-      </div>
+      {fondoNuevo?.overlay_opacity ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${fondoNuevo.overlay_opacity / 100})` }} />
+      ) : null}
+      {fondoNuevo?.separator === 'wave' && <Separador forma="wave" color={fondoNuevo.separator_color} />}
+      {fondoNuevo?.separator === 'diagonal' && <Separador forma="diagonal" color={fondoNuevo.separator_color} />}
+      {fondoNuevo?.separator === 'line' && <hr className="relative z-10 mx-auto mb-2 w-full max-w-7xl border-t" style={{ borderColor: fondoNuevo.separator_color }} />}
+      {flechasArriba ? (
+        <CarruselShell>
+          <CuerpoSeccion
+            innerClass={innerClass}
+            overlay={Boolean(fondoNuevo?.overlay_opacity)}
+            encabezado={encabezado}
+            encabezadoNodo={encabezadoNodo}
+            primaryColor={primaryColor}
+          >
+            {children}
+          </CuerpoSeccion>
+        </CarruselShell>
+      ) : (
+        <CuerpoSeccion
+          innerClass={innerClass}
+          overlay={Boolean(fondoNuevo?.overlay_opacity)}
+          encabezado={encabezado}
+          encabezadoNodo={encabezadoNodo}
+          primaryColor={primaryColor}
+        >
+          {children}
+        </CuerpoSeccion>
+      )}
     </section>
+  )
+}
+
+function CuerpoSeccion({
+  innerClass,
+  overlay,
+  encabezado,
+  encabezadoNodo,
+  primaryColor,
+  children,
+}: {
+  innerClass: string
+  overlay: boolean
+  encabezado: DatosEncabezado | null
+  encabezadoNodo: React.ReactNode
+  primaryColor?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`${innerClass}${overlay ? ' relative z-10' : ''}`}>
+      {encabezado?.layout === 'side' ? (
+        <div className="grid items-start gap-6 md:grid-cols-[minmax(12rem,22rem)_1fr]">
+          {encabezadoNodo}
+          <div>{children}</div>
+        </div>
+      ) : (
+        <>
+          {encabezadoNodo}
+          {children}
+        </>
+      )}
+      {encabezado?.action?.position === 'end' && (
+        <div className="mt-8 flex justify-center">
+          <AccionEncabezado accion={encabezado.action} primaryColor={primaryColor} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Separador({ forma, color }: { forma: 'wave' | 'diagonal'; color?: string }) {
+  const fill = color || 'currentColor'
+  if (forma === 'diagonal') {
+    return <div className="h-8 w-full" style={{ background: `linear-gradient(to bottom right, transparent 49%, ${fill} 50%, transparent 51%)` }} />
+  }
+  return (
+    <svg viewBox="0 0 1440 48" className="block h-8 w-full" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 24c120 24 240 24 360 0s240-24 360 0 240 24 360 0 240-24 360 0v24H0z" fill={fill} />
+    </svg>
   )
 }

@@ -4,6 +4,7 @@ import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 import { serviciosParaPintar } from '@/lib/website/serviciosSeccion'
 import { EnlaceServicio, FotoServicio, IconoServicio } from './pintarServicio'
+import { SiLista } from '../ListRenderer'
 
 interface ServicesListGridProps {
   content: Record<string, any>
@@ -23,10 +24,10 @@ export function ServicesListGrid({ content, primaryColor = '#3B82F6', data }: Se
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
       {subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{subtitle}</p>}
       {services.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <SiLista content={content} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service: any, i: number) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 text-center hover:shadow-md transition-shadow">
               <FotoServicio url={service.image_url} alt={service.name} />
@@ -46,7 +47,7 @@ export function ServicesListGrid({ content, primaryColor = '#3B82F6', data }: Se
               <EnlaceServicio texto={service.cta_text} url={service.cta_url} color={primaryColor} />
             </div>
           ))}
-        </div>
+        </SiLista>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p>No hay servicios configurados aún</p>

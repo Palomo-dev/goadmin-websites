@@ -55,7 +55,7 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
   return (
     <section className="py-16 px-4" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
       <div className="max-w-4xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div
           className={`relative rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-700${o.deslizar ? ' touch-pan-y' : ''}`}
           {...deslizar}

@@ -75,7 +75,7 @@ export function CategoriesHorizontal({ content, primaryColor = '#3B82F6', data }
   return (
     <div>
       <div className="text-center mb-8">
-        {title && <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{title}</h2>}
         {subtitle && <p className="text-gray-600 dark:text-gray-300 mt-2">{subtitle}</p>}
       </div>
       {visibleCategories.length > 0 ? (

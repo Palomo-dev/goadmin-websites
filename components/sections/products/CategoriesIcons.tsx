@@ -74,7 +74,7 @@ export function CategoriesIcons({ content, primaryColor = '#3B82F6', data }: Cat
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10">{title}</h2>}
       {visibleCategories.length > 0 ? (
         <>
           <div

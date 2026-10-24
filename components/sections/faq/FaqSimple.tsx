@@ -12,7 +12,7 @@ export function FaqSimple({ content, primaryColor = '#3B82F6' }: FaqSimpleProps)
   return (
     <section className="py-16 px-4">
       <div className="max-w-3xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div className="space-y-8">
           {items.map((item: any, i: number) => (
             <div key={i}>

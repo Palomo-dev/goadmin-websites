@@ -55,7 +55,7 @@ export function GalleryFullscreen({ content, primaryColor = '#3B82F6' }: Gallery
   return (
     <section className="py-16 px-4" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
       <div className="max-w-6xl mx-auto">
-        {title && <h2 className="text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div
           className={`rounded-xl overflow-hidden aspect-[16/9] bg-gray-100 dark:bg-gray-700 mb-4${conControles ? ' relative' : ''}${o.deslizar ? ' touch-pan-y' : ''}`}
           {...deslizar}

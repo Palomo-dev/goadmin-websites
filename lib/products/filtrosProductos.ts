@@ -1,3 +1,5 @@
+import { isOutOfStock } from '@/lib/stock'
+
 /**
  * Filtros y buscador de las listas de productos de las secciones (`show_filters`, `show_search`).
  *
@@ -9,13 +11,20 @@
  * Pura y sin DOM: la prueba `scripts/verify-interruptores.mjs`.
  */
 
-export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name' | 'newest'
+export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name' | 'newest' | 'sales'
 
 export interface EstadoFiltros {
   categoria: number | null
   soloOfertas: boolean
   orden: OrdenFiltro
   busqueda: string
+  /** Solo si el visitante eligió marca, rango, stock, nota o atributo. Ausentes = el filtro de hoy. */
+  marca?: string
+  precioMin?: number | null
+  precioMax?: number | null
+  soloDisponibles?: boolean
+  calificacionMin?: number | null
+  atributo?: string
 }
 
 export const FILTROS_INICIALES: EstadoFiltros = { categoria: null, soloOfertas: false, orden: 'default', busqueda: '' }
@@ -54,6 +63,20 @@ export function filtrarProductos<T>(productos: T[], estado: EstadoFiltros): T[] 
   if (estado.busqueda.trim()) result = result.filter((p) => coincideBusqueda(p, estado.busqueda))
   if (estado.categoria) result = result.filter((p: any) => p.category_id === estado.categoria)
   if (estado.soloOfertas) result = result.filter(esOferta)
+  if (estado.marca) result = result.filter((p: any) => p.brand === estado.marca)
+  if (estado.precioMin != null) result = result.filter((p) => (precio(p) ?? 0) >= (estado.precioMin as number))
+  if (estado.precioMax != null) result = result.filter((p) => (precio(p) ?? 0) <= (estado.precioMax as number))
+  if (estado.soloDisponibles) result = result.filter((p) => !isOutOfStock(p as never))
+  if (estado.calificacionMin != null) {
+    const minimo = estado.calificacionMin
+    result = result.filter((p: any) => Number(p?.rating_avg) >= minimo)
+  }
+  if (estado.atributo) {
+    const corte = estado.atributo.indexOf('::')
+    const nombre = corte >= 0 ? estado.atributo.slice(0, corte) : ''
+    const valor = corte >= 0 ? estado.atributo.slice(corte + 2) : ''
+    if (nombre && valor) result = result.filter((p) => coincideAtributo(p, nombre, valor))
+  }
   if (estado.orden === 'price_asc') result.sort((a, b) => (precio(a) ?? 0) - (precio(b) ?? 0))
   else if (estado.orden === 'price_desc') result.sort((a, b) => (precio(b) ?? 0) - (precio(a) ?? 0))
   else if (estado.orden === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
@@ -63,12 +86,30 @@ export function filtrarProductos<T>(productos: T[], estado: EstadoFiltros): T[] 
       return Number.isFinite(t) ? t : 0
     }
     result.sort((a, b) => marca(b) - marca(a))
+  } else if (estado.orden === 'sales') {
+    result.sort((a: any, b: any) => (Number(b?.sales_count) || 0) - (Number(a?.sales_count) || 0))
   }
   return result
 }
 
+/** Talla o color: `atributos` del listado (mapa nombre → valores) o `variant_data` del producto. */
+function coincideAtributo(p: any, nombre: string, valor: string): boolean {
+  const grupos = p?.atributos
+  if (grupos && typeof grupos === 'object' && !Array.isArray(grupos)) {
+    const lista = grupos[nombre]
+    if (Array.isArray(lista)) return lista.includes(valor)
+    if (typeof lista === 'string') return lista === valor
+  }
+  const datos = p?.variant_data
+  return !!datos && typeof datos === 'object' && !Array.isArray(datos) && datos[nombre] === valor
+}
+
 export function hayFiltrosActivos(estado: EstadoFiltros): boolean {
-  return Boolean(estado.categoria || estado.soloOfertas || estado.busqueda.trim() || estado.orden !== 'default')
+  return Boolean(
+    estado.categoria || estado.soloOfertas || estado.busqueda.trim() || estado.orden !== 'default'
+    || estado.marca || estado.precioMin != null || estado.precioMax != null
+    || estado.soloDisponibles || estado.calificacionMin != null || estado.atributo,
+  )
 }
 
 /**

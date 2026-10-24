@@ -16,7 +16,7 @@ export function BookingCtaBanner({ content, primaryColor }: BookingCtaBannerProp
     <div>
       {content.show_form !== false ? (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-gray-900/30 p-6 md:p-8">
-          <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
+          <h2 className="titulo-legado text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
             {content.title || 'Reserva tu Estadía'}
           </h2>
           <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -49,7 +49,7 @@ export function BookingCtaBanner({ content, primaryColor }: BookingCtaBannerProp
         </div>
       ) : (
         <div className="text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title || 'Reserva tu Estadía'}</h2>
+          <h2 className="titulo-legado text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title || 'Reserva tu Estadía'}</h2>
           {content.subtitle && <p className="text-gray-600 dark:text-gray-300 mb-6">{content.subtitle}</p>}
           <Link
             href={content.cta_url || '/reservas'}

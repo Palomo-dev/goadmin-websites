@@ -12,7 +12,7 @@ export function NewsletterSimple({ content, primaryColor }: NewsletterSimpleProp
   return (
     <div className="max-w-xl mx-auto text-center">
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 mb-6">{content.subtitle}</p>

@@ -11,6 +11,8 @@ import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategor
 import { ordenarListado } from '@/lib/products/limiteListado'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { ListRenderer } from '../ListRenderer'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -148,11 +150,12 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
     addToCart(product)
     router.push(ruta('/checkout'))
   }
+  const lista = listaDelInspector(content)
 
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
@@ -173,6 +176,31 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
       )}
 
       {products.length > 0 ? (
+        lista ? (
+          <ListRenderer lista={lista}>
+            {products.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                primaryColor={primaryColor}
+                variant="grid"
+                cardStyle={content}
+                badges={content.badges}
+                cardButtons={content.card_buttons}
+                buttonsPosition={content.buttons_position}
+                buttonsLayout={content.buttons_layout}
+                buttonsFullWidth={content.buttons_full_width !== false}
+                iconOnly={content.icon_only}
+                showBuyNow={showBuyNow}
+                onAddToCart={addToCart}
+                onBuyNow={buyNow}
+                isAdded={addedToCart.has(product.id)}
+                organizationSubdomain={organization?.subdomain}
+                branchId={branchId}
+              />
+            ))}
+          </ListRenderer>
+        ) : (
         <div className="relative group/carousel">
           {/* Flecha izquierda */}
           <button
@@ -241,6 +269,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
             </div>
           )}
         </div>
+        )
       ) : filtros.activos ? (
         <SinResultadosFiltros onLimpiar={filtros.limpiar} primaryColor={primaryColor} />
       ) : (

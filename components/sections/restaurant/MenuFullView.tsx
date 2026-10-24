@@ -162,7 +162,7 @@ function Intro({ eyebrow, title, subtitle }: { eyebrow: string | null; title: st
         </p>
       )}
       {title && (
-        <h2 className="text-4xl font-bold leading-tight text-foreground md:text-5xl [font-family:var(--font-heading)]">
+        <h2 className="titulo-legado text-4xl font-bold leading-tight text-foreground md:text-5xl [font-family:var(--font-heading)]">
           {title}
         </h2>
       )}

@@ -5,6 +5,7 @@ import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner } from '@/l
 import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
 import { usarDistribucionNueva } from '@/lib/website/distribucionBanner'
 import { BannersConfigurados } from './BannersConfigurados'
+import { SiLista } from '../ListRenderer'
 
 export type { BannerItem }
 export { resolveBannerHref }
@@ -73,7 +74,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">
           {content.title}
         </h2>
       )}
@@ -81,7 +82,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
       {banners.length > 0 ? (
-        <div className={gridClass}>
+        <SiLista content={content} className={gridClass}>
           {banners.map((banner, i) => {
             const href = resolveBannerHref(banner, data)
             const textColor = banner.text_color || '#ffffff'
@@ -186,7 +187,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
               <div key={i}>{card}</div>
             )
           })}
-        </div>
+        </SiLista>
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">🏷️</p>

@@ -23,7 +23,7 @@ export function ServicesListList({ content, primaryColor = '#3B82F6', data }: Se
 
   return (
     <div>
-      {title && <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
+      {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3 text-gray-900 dark:text-white">{title}</h2>}
       {subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{subtitle}</p>}
       {services.length > 0 ? (
         <div className="max-w-3xl mx-auto space-y-4">

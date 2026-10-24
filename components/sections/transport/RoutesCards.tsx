@@ -19,7 +19,7 @@ export function RoutesCards({ content, primaryColor, data }: RoutesCardsProps) {
   return (
     <div>
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-3">{content.title}</h2>
       )}
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>

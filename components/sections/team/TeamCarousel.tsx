@@ -19,7 +19,7 @@ export function TeamCarousel({ content, primaryColor = '#3B82F6' }: TeamCarousel
   return (
     <section className="py-16 px-4">
       <div className="max-w-3xl mx-auto text-center">
-        {title && <h2 className="text-3xl font-bold mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {title && <h2 className="titulo-legado text-3xl font-bold mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div className="mb-6">
           {member.photo_url ? (
             <img src={member.photo_url} alt={member.name} className="w-32 h-32 rounded-full mx-auto object-cover mb-4" />

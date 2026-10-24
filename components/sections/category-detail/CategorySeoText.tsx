@@ -24,7 +24,7 @@ export function CategorySeoText({ content }: CategorySeoTextProps) {
   return (
     <div className="mt-12 pt-8 border-t dark:border-gray-700">
       {title && (
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
+        <h2 className="titulo-legado text-xl font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
       )}
       {text && (
         <div className="prose prose-sm dark:prose-invert max-w-3xl text-gray-600 dark:text-gray-400">
