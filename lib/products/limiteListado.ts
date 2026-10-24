@@ -45,11 +45,12 @@ export function topeProductos(content: ContenidoListado | null | undefined, colu
   return max ?? porFilas
 }
 
-export function recorteListado(total: number, pagina: number, content: ContenidoListado | null | undefined) {
+export function recorteListado(total: number, pagina: number, content: ContenidoListado | null | undefined, porPaginaForzado?: number) {
   const tope = topeProductos(content)
   const universo = tope ? Math.min(Math.max(0, total), tope) : Math.max(0, total)
   const paginar = content?.show_pagination !== false
-  const porPagina = paginar ? 12 : Math.max(universo, 1)
+  const forzado = porPaginaForzado && porPaginaForzado > 0 ? Math.round(porPaginaForzado) : null
+  const porPagina = forzado ?? (paginar ? 12 : Math.max(universo, 1))
   const paginas = Math.max(1, Math.ceil(universo / porPagina) || 1)
   const p = Math.min(Math.max(1, Math.round(pagina) || 1), paginas)
   const desde = (p - 1) * porPagina

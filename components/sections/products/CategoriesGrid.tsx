@@ -10,6 +10,9 @@ import { DynamicLucideIcon } from './DynamicLucideIcon'
 import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
+import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { Paginacion } from '@/components/site/Paginacion'
+import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 
 interface CategoriesGridProps {
   content: {
@@ -286,6 +289,15 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const [searchQuery, setSearchQuery] = useState('')
   const [pageSize, setPageSize] = useState(initialPageSize)
   const [currentPage, setCurrentPage] = useState(1)
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const paginacion = resolverPaginacion(
+    { legado: 'categoria', porPagina: initialPageSize },
+    globalLista.paginacion,
+    (content as { paginacion?: unknown }).paginacion,
+    movil,
+  )
+  const tamano = paginacion.activo && paginacion.porPaginaExplicito ? paginacion.porPagina : pageSize
 
   const showControls = enableSearch || enablePagination
 
@@ -311,9 +323,14 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
 
   // Paginar
   const totalItems = searchedCategories.length
-  const totalPages = Math.ceil(totalItems / pageSize)
-  const paginatedCategories = enablePagination
-    ? searchedCategories.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const totalPages = Math.max(1, Math.ceil(totalItems / tamano) || 1)
+  const lista = usePaginaLista(paginacion.activo, totalPages)
+  const pagina = paginacion.activo ? lista.pagina : currentPage
+  const acumulable = paginacion.activo && (paginacion.estilo === 'cargar_mas' || paginacion.estilo === 'infinito')
+  const paginatedCategories = enablePagination || paginacion.activo
+    ? (acumulable
+      ? searchedCategories.slice(0, pagina * tamano)
+      : searchedCategories.slice((pagina - 1) * tamano, pagina * tamano))
     : searchedCategories
 
   // Reset página cuando cambia búsqueda o pageSize
@@ -814,7 +831,10 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
           )}
 
           {/* === Paginación (solo si está habilitada) === */}
-          {enablePagination && totalPages > 1 && (
+          {((enablePagination && totalPages > 1) || (paginacion.activo && totalPages > 1)) && (
+            paginacion.activo ? (
+              <Paginacion pagina={pagina} totalPaginas={totalPages} totalItems={totalItems} porPagina={tamano} resuelta={paginacion} color={primaryColor || '#111827'} pathname={lista.pathname} search={lista.search} onIr={lista.ir} />
+            ) : (
             <div className="flex items-center justify-center gap-2 mt-10">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -851,6 +871,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
+            )
           )}
 
         </>

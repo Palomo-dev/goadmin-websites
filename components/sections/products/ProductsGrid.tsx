@@ -15,6 +15,9 @@ import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { SiLista } from '../ListRenderer'
 import { isOutOfStock } from '@/lib/stock'
 import { BarraListado } from './BarraListado'
+import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { Paginacion } from '@/components/site/Paginacion'
+import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
@@ -83,7 +86,6 @@ interface ProductsGridProps {
     buttons_layout?: string
     buttons_full_width?: boolean
     icon_only?: boolean
-    product_card_style?: unknown
     exclude_out_of_stock?: boolean
     chip_source?: string
     chip_category_ids?: number[]
@@ -112,9 +114,18 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const cargando = useRef(false)
   const sentinel = useRef<HTMLDivElement>(null)
   const saltoFiltro = useRef(true)
+  const irRef = useRef<(n: number) => void>(() => {})
   const listado = sectionId ? data?.listados?.[sectionId] : undefined
   const products = vistos ?? listado?.products ?? data?.products ?? []
   const categories = data?.categories || []
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const paginacion = resolverPaginacion(
+    { legado: 'grilla', porPagina: 12 },
+    globalLista.paginacion,
+    (content as { paginacion?: unknown }).paginacion,
+    movil,
+  )
   // Categorías únicas de los productos
   const availableCategories = useMemo(
     () => categoriasDisponibles(products, categories, content.selected_category_ids),
@@ -139,12 +150,15 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       ? ordenados.filter((p: any) => !isOutOfStock(p))
       : ordenados
   }, [products, data?.productosCategoria, categories, content.selected_category_ids, content.include_subcategories, content.sort_order, content.exclude_out_of_stock, listado])
-  const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
+  const filtros = useFiltrosProductos(baseProducts, () => irRef.current(1))
   const filteredProducts = filtros.filtrados
   const selectedCategory = filtros.estado.categoria
   const onlyOffers = filtros.estado.soloOfertas
   const busqueda = filtros.estado.busqueda.trim()
 
+  const ajusteLista = paginacion.activo && !listado
+  const sonda = recorteListado(filteredProducts.length, 1, content, ajusteLista ? paginacion.porPagina : undefined)
+  const lista = usePaginaLista(ajusteLista, sonda.paginas)
   const addToCart = (product: any) => {
     const price = getPrice(product)
     if (price === null) return
@@ -190,14 +204,31 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   }
 
   const presentacion = leerPresentacion(content)
-  const recorteCliente = listado ? null : recortePresentacion(filteredProducts.length, currentPage, presentacion)
-  const recorte = recorteCliente ?? recorteListado(filteredProducts.length, currentPage, content)
-  const porPagina = presentacion?.perPage ?? pedidoServidor(content)?.limit ?? 12
+  const paginaCliente = ajusteLista ? lista.pagina : currentPage
+  const recorteCliente = listado || ajusteLista ? null : recortePresentacion(filteredProducts.length, paginaCliente, presentacion)
+  const recorte = recorteCliente ?? recorteListado(
+    filteredProducts.length,
+    paginaCliente,
+    content,
+    ajusteLista ? paginacion.porPagina : undefined,
+  )
+  const porPagina = ajusteLista
+    ? paginacion.porPagina
+    : presentacion?.perPage ?? pedidoServidor(content)?.limit ?? 12
   const paginasServidor = listado && presentacion?.pagination === 'pages'
     ? Math.max(1, Math.ceil((totalRemoto ?? listado.total) / porPagina))
     : null
   const totalPages = paginasServidor ?? (listado && presentacion?.pagination !== 'pages' ? 1 : recorte.paginas)
-  const paginatedProducts = listado ? filteredProducts : filteredProducts.slice(recorte.desde, recorte.hasta)
+  const acumulable = ajusteLista && (paginacion.estilo === 'cargar_mas' || paginacion.estilo === 'infinito')
+  const paginatedProducts = listado
+    ? filteredProducts
+    : acumulable
+      ? filteredProducts.slice(0, recorte.hasta)
+      : filteredProducts.slice(recorte.desde, recorte.hasta)
+  irRef.current = (n: number) => {
+    setCurrentPage(n)
+    if (ajusteLista) lista.ir(n)
+  }
   const barraNueva = !!(presentacion && (presentacion.chipStyle || presentacion.filterPosition || presentacion.filters || presentacion.showSort === false || presentacion.showCount === false || presentacion.chipMobile))
   const columnas = clasesColumnasListado(presentacion) ?? clasesColumnasProductos(content.columns)
   const claseRejilla = presentacion?.displayMode === 'list'
@@ -386,13 +417,26 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {/* Paginación */}
-      {!listaShell && verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
+      {!listaShell && !ajusteLista && verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
         <div className="mt-8 flex justify-center">
           <button type="button" onClick={cargarMas} className="rounded-full px-5 py-2 text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>Ver más</button>
           {presentacion?.pagination === 'infinite' && <div ref={sentinel} className="h-px w-full" aria-hidden="true" />}
         </div>
       )}
-      {!listaShell && !verMas && totalPages > 1 && (
+      {!listaShell && ajusteLista && (
+        <Paginacion
+          pagina={lista.pagina}
+          totalPaginas={totalPages}
+          totalItems={recorte.universo}
+          porPagina={paginacion.porPagina}
+          resuelta={paginacion}
+          color={primaryColor}
+          pathname={lista.pathname}
+          search={lista.search}
+          onIr={lista.ir}
+        />
+      )}
+      {!listaShell && !ajusteLista && !verMas && totalPages > 1 && (
         <div className="flex items-center justify-center gap-1 mt-8">
           <button
             onClick={() => void irPagina(Math.max(1, currentPage - 1))}

@@ -15,6 +15,9 @@ import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
+import { BASE_CARRUSEL_PRODUCTO, resolverCarrusel } from '@/lib/website/v2/paginacionCarrusel'
+import { ControlesCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { useEsMovilLista, useListaCarrusel } from '@/components/site/listaCarrusel'
 
 /**
  * Lo que hacía el carrusel antes de leer los interruptores «Reproducción automática», «Bucle
@@ -36,6 +39,9 @@ interface ProductsCarouselProps {
 }
 
 export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, organization }: ProductsCarouselProps) {
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const carrusel = resolverCarrusel(BASE_CARRUSEL_PRODUCTO, globalLista.carrusel, content.carrusel, movil)
   const { ruta } = useRutaSitio()
   const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
@@ -66,9 +72,9 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
 
   // slides_per_view responsive: puede ser número o { desktop, tablet, mobile }
   const spv = content.slides_per_view
-  const spvDesktop = (typeof spv === 'object' ? spv?.desktop : spv) || 4
-  const spvTablet = (typeof spv === 'object' ? spv?.tablet : spv) || Math.min(3, spvDesktop)
-  const spvMobile = (typeof spv === 'object' ? spv?.mobile : spv) || Math.min(2, spvDesktop)
+  const spvDesktop = carrusel.activo ? (carrusel.visiblesEscritorio || 4) : ((typeof spv === 'object' ? spv?.desktop : spv) || 4)
+  const spvTablet = carrusel.activo ? (carrusel.visiblesTableta || Math.min(3, spvDesktop)) : ((typeof spv === 'object' ? spv?.tablet : spv) || Math.min(3, spvDesktop))
+  const spvMobile = carrusel.activo ? (carrusel.visiblesMovil || Math.min(2, spvDesktop)) : ((typeof spv === 'object' ? spv?.mobile : spv) || Math.min(2, spvDesktop))
   // Calcula ancho de cada card según slides_per_view
   const cardWidthClass = `flex-shrink-0 w-[calc(${100 / spvMobile}%-${spvMobile > 1 ? '8px' : '0px'})] sm:w-[calc(${100 / spvTablet}%-${spvTablet > 1 ? '11px' : '0px'})] lg:w-[calc(${100 / spvDesktop}%-${spvDesktop > 1 ? '12px' : '0px'})] snap-start`
 
@@ -101,7 +107,19 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
     return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect() }
   }, [updateScrollState])
 
-  const o = leerOpcionesCarrusel(content, HOY)
+  const oBase = leerOpcionesCarrusel(content, HOY)
+  const o = carrusel.activo
+    ? {
+        ...oBase,
+        autoplay: carrusel.autoplay,
+        intervaloMs: Math.min(15000, Math.max(1000, carrusel.segundos * 1000)),
+        bucle: carrusel.loop,
+        pausarAlPasar: carrusel.pausaHover,
+        deslizar: carrusel.arrastre,
+        flechas: carrusel.flechas,
+        puntos: carrusel.indicador !== 'ninguno',
+      }
+    : oBase
   const scroll = (dir: 'left' | 'right') => desplazar(scrollRef.current, dir === 'left' ? 'anterior' : 'siguiente', o.bucle, 0.8)
   const autoplay = useAutoplayCarrusel({
     activo: o.autoplay && products.length > 1,
@@ -168,9 +186,33 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
       )}
 
       {products.length > 0 ? (
-        <div className="relative group/carousel" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
-          {/* Flecha izquierda */}
-          {!lista && flechaIzq && (
+        <div className="relative group/carousel" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay} tabIndex={0} onKeyDown={(e) => {
+            if (!carrusel.activo) return
+            if (e.key === 'ArrowLeft') scroll('left')
+            if (e.key === 'ArrowRight') scroll('right')
+          }}>
+          {!lista && (carrusel.activo ? (
+            <ControlesCarrusel
+              resuelta={carrusel}
+              forzar
+              total={Math.max(totalPages, 1)}
+              actual={activePage}
+              color={primaryColor}
+              onAnterior={() => scroll('left')}
+              onSiguiente={() => scroll('right')}
+              onIr={(i) => {
+                const el = scrollRef.current
+                if (!el) return
+                const scrollWidth = el.scrollWidth - el.clientWidth
+                const pasos = Math.max(totalPages - 1, 1)
+                el.scrollTo({ left: (i / pasos) * scrollWidth, behavior: 'smooth' })
+              }}
+              deshabilitarAnterior={!flechaIzq}
+              deshabilitarSiguiente={!flechaDer}
+            />
+          ) : (
+            <>
+          {flechaIzq && (
             <button
               type="button"
               onClick={() => scroll('left')}
@@ -181,8 +223,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
-          {/* Flecha derecha */}
-          {!lista && flechaDer && (
+          {flechaDer && (
             <button
               type="button"
               onClick={() => scroll('right')}
@@ -193,6 +234,8 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
               <ChevronRight className="h-5 w-5" />
             </button>
           )}
+            </>
+          ))}
           {lista ? (
             <ListRenderer lista={lista}>
               {products.map((product: any) => (
@@ -253,7 +296,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
           </div>
           )}
           {/* Puntos de navegación */}
-          {!lista && totalPages > 1 && (
+          {!lista && !carrusel.activo && totalPages > 1 && (
             <div className="flex justify-center gap-1.5 mt-3">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button

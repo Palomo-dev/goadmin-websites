@@ -20,6 +20,7 @@ import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } 
 import { fondoOscuro } from './textoSobreAcento'
 import { familiasDePar, variablesDeTokens } from './tokensDiseno'
 import type { TokensCrudos } from './tokensDiseno'
+import { sanitizarCarrusel, sanitizarPaginacion, type ParcialCarrusel, type ParcialPaginacion } from './paginacionCarrusel'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -40,6 +41,10 @@ export interface TemaPublico {
    * reemplaza; el lector no pinta nada si el objeto no trae claves útiles.
    */
   tarjetaProducto: Record<string, unknown> | null
+  /** null si el documento no trae el ajuste: la paginación de hoy. */
+  paginacion: ParcialPaginacion | null
+  /** null si el documento no trae el ajuste: las flechas y los puntos de hoy. */
+  carrusel: ParcialCarrusel | null
 }
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -100,6 +105,8 @@ export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): 
     movimiento: typeof movimiento === 'string' && MOVIMIENTOS.includes(movimiento) ? (movimiento as MovimientoSitio) : null,
     tokens: ((t.tokens ?? (esSede ? p?.tokens : undefined)) as TokensCrudos | undefined) ?? null,
     tarjetaProducto: tarjeta && typeof tarjeta === 'object' && !Array.isArray(tarjeta) ? tarjeta : null,
+    paginacion: sanitizarPaginacion(resolver(t, p, (x) => x.paginacion, esSede)),
+    carrusel: sanitizarCarrusel(resolver(t, p, (x) => x.carrusel, esSede)),
   }
 }
 

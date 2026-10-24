@@ -29,6 +29,7 @@ import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
 import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
 import { TarjetaProductoProvider } from './TarjetaProductoContext'
+import { ProveedorListaCarrusel } from './listaCarrusel'
 import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { BarraMovilGiro } from './BarraMovilGiro'
@@ -320,6 +321,7 @@ export function OrganizationLayoutCliente({
   
   return (
     <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
+    <ProveedorListaCarrusel paginacion={temaEfectivo?.paginacion ?? null} carrusel={temaEfectivo?.carrusel ?? null}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
     <EncabezadoPieProvider value={valorEncabezadoPie}>
@@ -491,6 +493,7 @@ export function OrganizationLayoutCliente({
     </EncabezadoPieProvider>
     </TemaColoresProvider>
     </RutaSitioProvider>
+    </ProveedorListaCarrusel>
     </CurrencyProvider>
   )
 }

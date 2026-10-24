@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { BASE_CARRUSEL_PRODUCTO, resolverCarrusel } from '@/lib/website/v2/paginacionCarrusel'
+import { ControlesCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { useEsMovilLista, useListaCarrusel } from '@/components/site/listaCarrusel'
 import {
   resolveTestimonialItems,
   useShuffledTestimonials,
@@ -53,6 +56,14 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
   const textSize = content.text_size || 'md'
   const maxLines = content.text_max_lines
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const globalLista = useListaCarrusel()
+  const movil = useEsMovilLista()
+  const carrusel = resolverCarrusel(BASE_CARRUSEL_PRODUCTO, globalLista.carrusel, (content as { carrusel?: unknown }).carrusel, movil)
+  const [paginaCarrusel, setPaginaCarrusel] = useState(0)
+  const porVista = Math.max(1, carrusel.visibles)
+  const totalCarrusel = Math.max(1, Math.ceil(items.length / porVista))
+  const paginaSegura = Math.min(paginaCarrusel, totalCarrusel - 1)
+  const lista = carrusel.activo ? items.slice(paginaSegura * porVista, paginaSegura * porVista + porVista) : items
 
   const gridCls = gridColumnsClass(columns)
   const radiusCls = cardRadiusClass(content.card_radius)
@@ -78,7 +89,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
         className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0`}
         style={{ gap: `${gap}px` }}
       >
-        {items.map((item) => {
+        {lista.map((item) => {
           const isExpanded = expanded[item.id]
           const stars = ratingStars(item.rating)
           const srcLabel = sourceLabel(item.source)
@@ -171,6 +182,20 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
           )
         })}
       </SiLista>
+      )}
+      {carrusel.activo && totalCarrusel > 1 && (
+        <div className="relative mt-4">
+          <ControlesCarrusel
+            resuelta={{ ...carrusel, posicionFlechas: 'indicador' }}
+            forzar
+            total={totalCarrusel}
+            actual={paginaSegura}
+            color={primaryColor}
+            onAnterior={() => setPaginaCarrusel((p) => (carrusel.loop ? (p - 1 + totalCarrusel) % totalCarrusel : Math.max(0, p - 1)))}
+            onSiguiente={() => setPaginaCarrusel((p) => (carrusel.loop ? (p + 1) % totalCarrusel : Math.min(totalCarrusel - 1, p + 1)))}
+            onIr={setPaginaCarrusel}
+          />
+        </div>
       )}
     </div>
   )
