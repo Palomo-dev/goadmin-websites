@@ -18,7 +18,8 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
-import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+import { esEnlaceExterno, hrefBoton, type EnlacesSitio } from '@/lib/website/encabezadoPie';
+import { enlaceWhatsapp } from '@/lib/website/ajustesSitio';
 import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
@@ -682,11 +683,20 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
  * principal (láminas de Figma «16 Sitio web»). Mismo tamaño y redondeo que el principal
  * (cta_padding_*, cta_border_radius). Sin texto o sin enlace (lo de hoy) no pinta nada.
  */
+function hrefSegundoBoton(url: string, enlaces: EnlacesSitio): string | null {
+  const directo = hrefBoton(url, enlaces);
+  if (directo) return directo;
+  if (url !== 'whatsapp') return null;
+  const tel = enlaces.llamar?.startsWith('tel:') ? enlaces.llamar.slice(4) : '';
+  if (!/\d/.test(tel)) return null;
+  return enlaceWhatsapp({ numero: tel, saludo: null });
+}
+
 export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settings'] }) {
   const { opciones, extras } = useEncabezadoPie();
   const boton = opciones.boton2;
   if (!boton) return null;
-  const href = hrefBoton(boton.url, extras.enlaces);
+  const href = hrefSegundoBoton(boton.url, extras.enlaces);
   if (!href) return null;
   const paddingX = settings?.cta_padding_x ?? 16;
   const paddingY = settings?.cta_padding_y ?? 8;
@@ -696,7 +706,7 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     padding: `${Math.max(0, paddingY - 1)}px ${Math.max(0, paddingX - 1)}px`,
     borderRadius: `${borderRadius}px`,
   };
-  const clase = 'hidden md:inline-flex items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
+  const clase = 'inline-flex items-center whitespace-nowrap border border-current text-xs md:text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
   return externo ? (
     <a href={href} className={clase} style={estilo} data-boton-secundario="" {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
       {boton.texto}

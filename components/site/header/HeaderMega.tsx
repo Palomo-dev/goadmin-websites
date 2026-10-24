@@ -28,6 +28,7 @@ import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
 import { barraSiCromo } from './BuscadorCromo';
+import { alineacionBuscador } from '@/lib/website/constructorEncabezado';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 /**
@@ -53,6 +54,7 @@ export default function HeaderMega({
 }: HeaderVariantProps) {
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
+  const alignBusqueda = alineacionBuscador(settings);
   const ctaText = settings?.header_cta_text ?? '';
   const ctaHref = settings?.header_cta_url ?? undefined;
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
@@ -83,7 +85,7 @@ export default function HeaderMega({
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         {/* Fila superior: logo | BARRA DE BÚSQUEDA GRANDE | acciones */}
         <div className="relative z-20 max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 20}px` }}>
+          <div className="hidden md:flex items-center justify-between gap-4" data-busqueda={alignBusqueda ?? undefined} style={{ minHeight: `${(settings?.logo_height || 48) + 20}px` }}>
             {/* Logo izquierda */}
             <HeaderLogo
               organization={organization}
@@ -91,8 +93,13 @@ export default function HeaderMega({
               height={settings?.logo_height || 48}
             />
 
-            {/* Barra de búsqueda grande (siempre visible a menos que search_style='hidden') */}
-            {barraSiCromo(settings, showSearchBar ? (
+            {alignBusqueda === 'left' ? barraSiCromo(settings, showSearchBar ? (
+              <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full max-w-md" size="lg" icon={SearchIconComp} />
+            ) : null, { primaryColor, organizationId, className: 'w-full max-w-md' }) : null}
+            {alignBusqueda === 'right' ? <div className="flex-1" /> : null}
+
+            {/* Barra de búsqueda grande (siempre visible a menos que search_style='hidden'). */}
+            {alignBusqueda == null || alignBusqueda === 'center' ? barraSiCromo(settings, showSearchBar ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -100,7 +107,7 @@ export default function HeaderMega({
                 size="lg"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-2xl mx-auto' })}
+            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-2xl mx-auto' }) : null}
 
             {/* Acciones derecha (sin icono de búsqueda, la barra ya está visible) */}
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -124,6 +131,9 @@ export default function HeaderMega({
                 settings={settings}
               />
             </div>
+            {alignBusqueda === 'right' ? barraSiCromo(settings, showSearchBar ? (
+              <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full max-w-md" size="lg" icon={SearchIconComp} />
+            ) : null, { primaryColor, organizationId, className: 'w-full max-w-md' }) : null}
           </div>
         </div>
 

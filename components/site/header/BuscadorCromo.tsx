@@ -80,12 +80,13 @@ export function BuscadorCromo({
           icon={Icono}
           cromo={{
             radius: presentacion.radius,
-            border: presentacion.border,
+            border: presentacion.variante === 'underline' ? 'none' : presentacion.border,
             borderColor: presentacion.borderColor,
-            background: presentacion.background,
+            background: presentacion.variante === 'underline' ? 'transparent' : presentacion.background,
             iconSide: presentacion.iconSide,
             iconColor: presentacion.iconColor,
             iconBackground: presentacion.iconBackground,
+            variante: presentacion.variante,
           }}
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
         />

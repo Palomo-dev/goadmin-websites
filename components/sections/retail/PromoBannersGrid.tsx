@@ -63,7 +63,11 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
   const banners = content.banners || []
   const layout = content.layout || 'grid'
 
-  const gridClass = `${clasesColumnasBanner(content.columns, layout, content.columns_mobile)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
+  const gridClass = layout === 'carousel'
+    ? 'flex gap-4 overflow-x-auto snap-x pb-2 [&>*]:w-[86%] [&>*]:shrink-0 [&>*]:snap-start md:[&>*]:w-[70%]'
+    : layout === 'stack'
+      ? 'flex flex-col gap-3 [&>*]:min-h-[240px] [&>*]:rounded-none'
+      : `${clasesColumnasBanner(content.columns, layout, content.columns_mobile)}`
   const aspecto = claseAspectoBanner(content.aspect_ratio, content.aspect_ratio_mobile)
   // Automática en los dos anchos: la imagen va en el flujo y da la altura.
   const altoNatural = aspecto === 'h-auto'
@@ -108,11 +112,12 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
             const fotoNaturalMd = !fotoNatural && altoNaturalEscritorio && Boolean(banner.image_url)
             const card = (
               <div
+                data-banner-layout={layout}
                 className={fotoNatural
-                  ? 'relative rounded-2xl overflow-hidden w-full'
+                  ? `relative overflow-hidden w-full ${layout === 'stack' ? 'rounded-none min-h-[220px]' : 'rounded-2xl'}`
                   : fotoNaturalMd
-                    ? `relative rounded-2xl overflow-hidden ${aspecto} flex flex-col justify-center p-8 md:p-0 w-full`
-                    : `relative rounded-2xl overflow-hidden ${aspecto} flex flex-col justify-center p-8 w-full`}
+                    ? `relative overflow-hidden ${aspecto} flex flex-col justify-center p-8 md:p-0 w-full ${layout === 'stack' ? 'rounded-none' : 'rounded-2xl'}`
+                    : `relative overflow-hidden ${aspecto} flex flex-col justify-center p-8 w-full ${layout === 'carousel' ? 'min-h-[220px]' : ''} ${layout === 'stack' ? 'rounded-none min-h-[280px]' : 'rounded-2xl'}`}
                 style={{ backgroundColor: banner.bg_color || primaryColor }}
               >
                 {banner.image_url && (

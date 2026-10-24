@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag, Tag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { ContadoresDe } from './ContadorPublico'
-import { conversionManda } from '@/lib/website/conversion'
+import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
+import { AvisoViendo } from './AvisoViendo'
+import { leerAvisoViendo } from '@/lib/website/urgenciaSeccion'
 import { Price, useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
@@ -57,7 +59,7 @@ interface CartDrawerProps {
     rate: number
     taxIncluded: boolean
   } | null
-  countdownConfig?: CountdownConfig
+  countdownConfig?: (CountdownConfig & { conversion?: ConversionSitio | null; urgencia_viendo?: unknown }) | null
   cartButtonConfig?: {
     mode: 'dynamic' | 'fixed'
     texts: string[]
@@ -68,6 +70,10 @@ interface CartDrawerProps {
 export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
   const { ruta } = useRutaSitio()
   const [items, setItems] = useState<CartItem[]>([])
+  const [stockMap, setStockMap] = useState<Record<string, number>>({})
+  const stockCfg = countdownConfig?.conversion?.urgencia?.stockBajo
+  const stockActivo = !!stockCfg?.activo && !!stockCfg.ubicaciones?.includes('carrito')
+  const viendo = leerAvisoViendo(countdownConfig?.urgencia_viendo)
   const { formatPrice } = useCurrency()
   // Promociones automáticas (mismo motor que checkout y /api/orders)
   const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
@@ -99,6 +105,23 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
       window.removeEventListener('storage', loadCart)
     }
   }, [cartKey])
+
+  const idsStock = items.map((item) => Number(item.productId ?? item.id)).filter((n) => Number.isInteger(n) && n > 0).join(',')
+  useEffect(() => {
+    if (!isOpen || !stockActivo || !idsStock) return
+    let vivo = true
+    fetch(`/api/products/stock?ids=${idsStock}`)
+      .then((res) => (res.ok ? res.json() : { stock: {} }))
+      .then((data: { stock?: Record<string, number> }) => {
+        if (vivo) setStockMap(data.stock ?? {})
+      })
+      .catch(() => {
+        if (vivo) setStockMap({})
+      })
+    return () => {
+      vivo = false
+    }
+  }, [isOpen, stockActivo, idsStock])
   
   const updateQuantity = (id: number | string, delta: number) => {
     const updatedItems = items.map(item => {
@@ -255,6 +278,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                               <Price value={Number(item.comparePrice)} className="text-xs text-gray-400 line-through" />
                             )}
                             <Price value={Number(item.price)} className="text-sm font-bold" style={{ color: primaryColor }} />
+                            {stockActivo && avisoStock(stockMap[String(item.productId ?? item.id)], stockCfg?.umbral ?? 5, stockCfg?.plantilla || 'Quedan {n}') && (
+                              <span className="text-xs font-medium text-orange-600">
+                                {avisoStock(stockMap[String(item.productId ?? item.id)], stockCfg?.umbral ?? 5, stockCfg?.plantilla || 'Quedan {n}')}
+                              </span>
+                            )}
+                            <AvisoViendo config={viendo} semilla={String(item.productId ?? item.id)} className="basis-full text-xs text-gray-500" />
                             {lineDiscount > 0 && (
                               <span className="text-xs text-green-600 dark:text-green-400 font-medium">
                                 -<Price value={lineDiscount} /> en promo

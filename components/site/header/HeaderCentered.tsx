@@ -21,6 +21,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { alineacionBuscador } from '@/lib/website/constructorEncabezado';
 
 export default function HeaderCentered({
   organization,
@@ -34,8 +35,18 @@ export default function HeaderCentered({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const showSearchBar = settings?.search_style === 'bar';
+  const alignBusqueda = alineacionBuscador(settings);
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const barra = (className: string) => barraSiCromo(settings, showSearchBar ? (
+    <SearchBarInline
+      primaryColor={primaryColor}
+      organizationId={organizationId}
+      className={className}
+      size="md"
+      icon={SearchIconComp}
+    />
+  ) : null, { primaryColor, organizationId, className });
 
   return (
     <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
@@ -44,21 +55,15 @@ export default function HeaderCentered({
       {/* Fila superior: espacio | logo | acciones — z-20 para estar encima de la fila nav */}
       <div className="relative z-20 backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between" style={{ minHeight: `${(settings?.logo_height || 48) + 24}px` }}>
-            <div className="flex-1" />
+          <div className="hidden md:flex items-center justify-between" data-busqueda={alignBusqueda ?? undefined} style={{ minHeight: `${(settings?.logo_height || 48) + 24}px` }}>
+            <div className="flex-1 flex items-center">
+              {alignBusqueda === 'left' ? barra('w-64') : null}
+            </div>
             <div className="flex-shrink-0">
               <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
             </div>
             <div className="flex-1 flex items-center justify-end gap-3">
-              {barraSiCromo(settings, showSearchBar ? (
-                <SearchBarInline
-                  primaryColor={primaryColor}
-                  organizationId={organizationId}
-                  className="w-64"
-                  size="md"
-                  icon={SearchIconComp}
-                />
-              ) : null, { primaryColor, organizationId, className: 'w-64' })}
+              {alignBusqueda == null || alignBusqueda === 'right' ? barra('w-64') : null}
               <HeaderActions
                 settings={settings}
                 showCart={showCart}
@@ -86,15 +91,7 @@ export default function HeaderCentered({
             {navItems.length > 0 && (
               <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} />
             )}
-            {barraSiCromo(settings, showSearchBar ? (
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-56"
-                size="sm"
-                icon={SearchIconComp}
-              />
-            ) : null, { primaryColor, organizationId, className: 'w-56' })}
+            {(alignBusqueda == null || alignBusqueda === 'center') ? barra('w-56') : null}
           </div>
         </div>
       </div>

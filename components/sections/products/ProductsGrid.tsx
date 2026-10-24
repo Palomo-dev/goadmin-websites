@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
-import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
+import { ordenarListado, recorteListado, recortarPorModo } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
@@ -245,7 +245,13 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const verMas = presentacion?.pagination === 'load_more' || presentacion?.pagination === 'infinite'
   const mostrados = extra.length ? [...paginatedProducts, ...extra] : paginatedProducts
   const listaShell = listaDelInspector(content)
-  const fuenteTarjetas = listaShell ? filteredProducts : mostrados
+  const contenidoTope = { ...content, max_items: content.max_items ?? content.products_limit }
+  const recorteShell = listaShell ? recortarPorModo(filteredProducts, contenidoTope, paginaCliente) : null
+  const fuenteTarjetas = recorteShell && (recorteShell.modo != null || recorteShell.items.length !== filteredProducts.length)
+    ? recorteShell.items
+    : listaShell
+      ? filteredProducts
+      : mostrados
   const categoriasChips = presentacion?.chipSource === 'all'
     ? categories.map((c: any) => ({ id: c.id, name: c.name }))
     : presentacion?.chipSource === 'manual' && presentacion.chipCategoryIds?.length
@@ -417,6 +423,13 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {/* Paginación */}
+      {listaShell && recorteShell?.modo === 'pages' && recorteShell.paginas > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-2">
+          <button type="button" onClick={() => irRef.current(Math.max(1, paginaCliente - 1))} disabled={paginaCliente <= 1} className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-30">Anterior</button>
+          <span className="text-sm text-gray-500">{paginaCliente} / {recorteShell.paginas}</span>
+          <button type="button" onClick={() => irRef.current(Math.min(recorteShell.paginas, paginaCliente + 1))} disabled={paginaCliente >= recorteShell.paginas} className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-30">Siguiente</button>
+        </div>
+      )}
       {!listaShell && !ajusteLista && verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
         <div className="mt-8 flex justify-center">
           <button type="button" onClick={cargarMas} className="rounded-full px-5 py-2 text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>Ver más</button>

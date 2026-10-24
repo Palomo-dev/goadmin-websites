@@ -124,6 +124,16 @@ function categoriaProducto(product: any): string {
   return product?.categories?.name || product?.category_name || ''
 }
 
+/** La cuadrícula 3×3 guarda `top-left` … `bottom-right`. Izquierda/centro/derecha solas no entran. */
+function partesAlineacion(valor: unknown): { h: 'left' | 'center' | 'right'; v: 'top' | 'middle' | 'bottom' } | null {
+  if (typeof valor !== 'string' || !valor.includes('-')) return null
+  const [vertical, horizontal] = valor.split('-')
+  const vOk = vertical === 'top' || vertical === 'middle' || vertical === 'bottom'
+  const hOk = horizontal === 'left' || horizontal === 'center' || horizontal === 'right'
+  if (!vOk || !hOk) return null
+  return { h: horizontal, v: vertical }
+}
+
 // ---------------------------------------------------------------------------
 // Defaults que reproducen el aspecto legacy
 // ---------------------------------------------------------------------------
@@ -584,8 +594,14 @@ function CardButtonRenderer({
   // para que siempre sea visible sobre fondos claros.
   const hasBackground = variant === 'solid' || variant === 'gradient'
   const textColor = button.text_color || (hasBackground ? '#FFFFFF' : bg)
-  // Icon-only nunca ocupa ancho completo: es un botón cuadrado fijo
-  const btnFullWidth = btnIconOnly ? false : button.full_width !== false
+  // Icon-only nunca ocupa ancho completo: es un botón cuadrado fijo.
+  // Las posiciones angostas (izquierda, derecha, junto al precio, esquinas) no
+  // se estiran salvo que el editor pida ancho completo: si no, se ven centradas.
+  const posBoton = button.position || 'below'
+  const angosta = posBoton === 'below_left' || posBoton === 'below_right' || posBoton === 'beside_price'
+    || posBoton === 'overlay_top_left' || posBoton === 'overlay_top_right'
+    || posBoton === 'overlay_bottom_left' || posBoton === 'overlay_bottom_right' || posBoton === 'overlay_hover'
+  const btnFullWidth = btnIconOnly ? false : button.full_width === true ? true : button.full_width === false ? false : !angosta
   // «Ancho completo en celular» (`full_width_mobile`): solo cuenta si el botón no ocupa ya todo el
   // ancho. Ausente = como antes (no hacía nada).
   const anchoClase = btnFullWidth ? 'w-full' : (!btnIconOnly && button.full_width_mobile === true ? 'w-full sm:w-auto' : '')
@@ -664,6 +680,7 @@ function CardButtonRenderer({
       case 'whatsapp': return <MessageCircle className={iconSizeClass} />
       case 'share': return <Share2 className={iconSizeClass} />
       case 'view_detail': return <Eye className={iconSizeClass} />
+      case 'choose': return <Layers className={iconSizeClass} />
       default: return null
     }
   }
@@ -677,6 +694,7 @@ function CardButtonRenderer({
       case 'whatsapp': return 'WhatsApp'
       case 'share': return 'Compartir'
       case 'view_detail': return 'Ver detalle'
+      case 'choose': return 'Elegir'
       default: return button.label || ''
     }
   }
@@ -699,6 +717,7 @@ function CardButtonRenderer({
         if (onToggleFavorite) onToggleFavorite(Number(product.id))
         break
       case 'quick_view':
+      case 'choose':
         if (onQuickView) onQuickView()
         else router.push(ruta(`/productos/${product.uuid}`))
         break
@@ -1068,6 +1087,11 @@ export function ProductCard({
         </Link>
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
+            {showRatingBlock && ratingPosition === 'above_title' && (
+              <div className="mb-1">
+                <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
+              </div>
+            )}
             <Link href={ruta(`/productos/${product.uuid}`)}>
               <h3 className="font-semibold text-gray-900 dark:text-white hover:underline line-clamp-1">
                 {product.name}
@@ -1098,6 +1122,11 @@ export function ProductCard({
                 <span className="text-lg" style={precio}>
                   <Price value={price} />
                 </span>
+              </div>
+            )}
+            {showRatingBlock && ratingPosition === 'below_price' && (
+              <div className="mt-1">
+                <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
               </div>
             )}
             {outOfStock ? (
@@ -1132,7 +1161,8 @@ export function ProductCard({
   }
 
   // --- Variante grid (por defecto) y overlay ---
-  const isOverlay = variant === 'overlay'
+  const alineacionCelda = partesAlineacion(estiloTarjeta?.text_align)
+  const isOverlay = variant === 'overlay' || mergedCardStyle.card_layout === 'overlay' || estiloTarjeta?.card_preset === 'overlay'
   const horizontal = mergedCardStyle.card_layout === 'horizontal'
   const ampliarImagen = !estiloTarjeta || estiloTarjeta.hover_image == null || estiloTarjeta.hover_image === 'zoom'
   const claseImagen = ampliarImagen
@@ -1156,7 +1186,11 @@ export function ProductCard({
   const padCuerpo = estiloTarjeta?.card_padding != null ? { padding: estiloTarjeta.card_padding } : undefined
   const revela = (pos: string) =>
     effectiveButtons.some((b) => (b.position || 'below') === pos && b.hover_reveal) ? ` ${CLASE_BOTON_HOVER_MOVIL}` : ''
-  const alinearBotones = estiloTarjeta?.text_align === 'left' ? 'justify-start' : estiloTarjeta?.text_align === 'right' ? 'justify-end' : 'justify-center'
+  const alinearBotones = alineacionCelda
+    ? (alineacionCelda.h === 'left' ? 'justify-start' : alineacionCelda.h === 'right' ? 'justify-end' : 'justify-center')
+    : estiloTarjeta?.text_align === 'left' ? 'justify-start' : estiloTarjeta?.text_align === 'right' ? 'justify-end' : 'justify-center'
+  const claseAlineacionTexto = alineacionCelda?.h === 'center' ? ' text-center' : alineacionCelda?.h === 'right' ? ' text-right' : alineacionCelda ? ' text-left' : ''
+  const claseAlineacionVertical = alineacionCelda?.v === 'middle' ? ' justify-center' : alineacionCelda?.v === 'bottom' ? ' justify-end' : ''
   const marcas = [
     estiloTarjeta?.show_brand ? marcaProducto(product) : '',
     estiloTarjeta?.show_category ? categoriaProducto(product) : '',
@@ -1269,12 +1303,15 @@ export function ProductCard({
             </div>
           )}
           {isOverlay && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent flex flex-col justify-end gap-1 p-4">
               <h3 className={`font-semibold text-white ${titleLinesClass}`}>{product.name}</h3>
               {price != null && (
                 <span style={textoGuardado(mergedCardStyle.price_color) ? precio : { color: '#ffffff', fontWeight: precio.fontWeight }}>
                   <Price value={price} />
                 </span>
+              )}
+              {!outOfStock && hasButtonsAt('below') && (
+                <div className="mt-1">{renderButtons('', 'below')}</div>
               )}
             </div>
           )}
@@ -1289,7 +1326,7 @@ export function ProductCard({
         </div>
       </Link>
       {!isOverlay && (
-        <div className={`${claseCuerpo}${horizontal ? ' flex min-w-0 flex-1 flex-col justify-center' : ''}`} style={padCuerpo}>
+        <div className={`${claseCuerpo}${horizontal ? ' flex min-w-0 flex-1 flex-col justify-center' : alineacionCelda ? ` flex flex-col flex-1${claseAlineacionVertical}` : ''}${claseAlineacionTexto}`} style={padCuerpo}>
           {marcas.length > 0 && (
             <p className="mb-0.5 text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{marcas.join(' · ')}</p>
           )}
@@ -1324,8 +1361,8 @@ export function ProductCard({
             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1">{textoPlano(product.description)}</p>
           )}
           <div className="flex flex-col gap-2 mt-1">
-            {(precioAbajo || (posPrecio === 'beside_button' && !hasButtonsAt('beside_price'))) && (
-            <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}${estiloTarjeta?.text_align === 'center' ? ' justify-center' : estiloTarjeta?.text_align === 'right' ? ' justify-end' : ''}`}>
+            {(precioAbajo || (posPrecio === 'beside_button' && !hasButtonsAt('beside_price'))) && !hasButtonsAt('beside_price') && (
+            <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}${alineacionCelda?.h === 'center' || estiloTarjeta?.text_align === 'center' ? ' justify-center' : alineacionCelda?.h === 'right' || estiloTarjeta?.text_align === 'right' ? ' justify-end' : ''}`}>
               {comparePrice && price !== null && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
                 <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
               )}
@@ -1333,6 +1370,11 @@ export function ProductCard({
                 <Price value={price} className={clasePrecio} style={precio} />
               )}
             </div>
+            )}
+            {showRatingBlock && ratingPosition === 'below_price' && (
+              <div className={`mb-1 flex${alinearBotones === 'justify-end' ? ' justify-end' : alinearBotones === 'justify-center' ? ' justify-center' : ''}`}>
+                <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
+              </div>
             )}
             {outOfStock && !isParentProduct(product) ? (
               <span className="text-xs text-red-500 font-medium">Sin stock</span>
@@ -1353,7 +1395,7 @@ export function ProductCard({
                 {/* Botones "beside_price" */}
                 {hasButtonsAt('beside_price') && (
                   <div className={`flex items-center justify-between gap-2${revela('beside_price')}`}>
-                    {posPrecio === 'beside_button' && price !== null && (
+                    {price !== null && (
                       <span className="flex items-center gap-1">
                         {comparePrice && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
                           <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
@@ -1361,12 +1403,12 @@ export function ProductCard({
                         <Price value={price} className={clasePrecio} style={precio} />
                       </span>
                     )}
-                    {renderButtons('', 'beside_price')}
+                    {renderButtons('w-auto shrink-0', 'beside_price')}
                   </div>
                 )}
                 {/* Botones "bottom_bar" */}
                 {hasButtonsAt('bottom_bar') && (
-                  <div className="flex">{renderButtons('', 'bottom_bar')}</div>
+                  <div className="-mx-2 mt-1 flex border-t border-gray-200 px-2 pt-2 dark:border-gray-700">{renderButtons('w-full', 'bottom_bar')}</div>
                 )}
               </>
             )}

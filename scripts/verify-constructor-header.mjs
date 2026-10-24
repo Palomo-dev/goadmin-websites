@@ -3,7 +3,8 @@
  *
  *   npm run verify:constructor-header
  */
-import { buscadorEnBarra, contenedorDe, leerConstructor, radioForma, zonasConMenus } from '../lib/website/constructorEncabezado.ts'
+import { readFileSync } from 'node:fs'
+import { alineacionBuscador, buscadorEnBarra, contenedorDe, leerConstructor, radioForma, zonasConMenus } from '../lib/website/constructorEncabezado.ts'
 
 const problemas = []
 let casos = 0
@@ -66,7 +67,7 @@ check(delCarrito.shape === 'square' && delCarrito.radius === 10 && delCarrito.ba
 check(contenedorDe(caja.contenedor, 'account').shape === 'rounded', 'el resto de íconos usa la caja común')
 check(leerConstructor({ header_builder: { icon_container: { shape: 'rounded', radius: 3 } } })?.contenedor?.radius === undefined, 'un radio menor a 4 se descarta')
 check(leerConstructor({ header_builder: { icon_container: { shape: 'rounded', radius: 16 } } })?.contenedor?.radius === 16, 'el radio 16 entra')
-check(radioForma('square') === '0px' && radioForma('squircle') === '30%' && radioForma('semi') === '8px' && radioForma('circle') === '9999px', 'cada forma tiene su radio')
+check(radioForma('square') === '0px' && radioForma('squircle') === '30%' && radioForma('semi') === '14px' && radioForma('rounded') === '8px' && radioForma('circle') === '9999px', 'cada forma tiene su radio')
 check(leerConstructor({ header_builder: { icon_container: { shape: 'circle', background: 'rojo' } } })?.contenedor?.background === undefined, 'un fondo que no es token ni hex se descarta')
 
 const menus = leerConstructor({
@@ -86,6 +87,14 @@ check(armado?.header_left?.[0].type === 'logo' && armado.header_right?.some((el)
 check(armado?.menu_center?.some((el) => el.menuId === menus.menus[0].id) && armado.topbar_right?.some((el) => el.menuId === 'enlaces'), 'cada menú cae en su zona')
 check(armado?.mobile_header?.some((el) => el.menuId === '__movil__'), 'el celular tiene un solo botón de menú')
 check(zonasConMenus({ zonas: null, menus: null }) === null, 'sin menús no se reescribe el header')
+check(alineacionBuscador(null) === null && alineacionBuscador({ header_builder: { search: { align: 'arriba' } } }) === null, 'sin lado elegido la barra queda donde está')
+check(alineacionBuscador({ header_builder: { search: { align: 'left' } } }) === 'left', 'la barra puede ir a la izquierda')
+check(alineacionBuscador({ header_builder: { search: { align: 'center' } } }) === 'center' && alineacionBuscador({ header_builder: { search: { align: 'right' } } }) === 'right', 'centro y derecha también')
+check(leerConstructor({ header_builder: { search: { align: 'left' } } }) === null, 'elegir el lado no cambia el cromo de la barra de hoy')
+for (const archivo of ['HeaderClassic.tsx', 'HeaderCentered.tsx', 'HeaderSplit.tsx', 'HeaderMinimal.tsx', 'HeaderMega.tsx']) {
+  const src = readFileSync(new URL(`../components/site/header/${archivo}`, import.meta.url), 'utf8')
+  check(src.includes('alineacionBuscador') && src.includes('data-busqueda'), `${archivo} mueve la barra cuando hay un lado`)
+}
 
 if (problemas.length) {
   console.error(problemas.join('\n'))
