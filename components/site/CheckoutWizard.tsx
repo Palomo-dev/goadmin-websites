@@ -1156,7 +1156,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                     onClick={() => setStep(2)}
                     disabled={momentoBloqueado || mesaFaltante}
                   >
-                    {mesaFaltante ? 'Indica tu mesa' : momentoBloqueado ? 'Elige la hora del pedido' : 'Continuar'}
+                    Continuar
                   </Button>
                 )}
               </CardContent>
