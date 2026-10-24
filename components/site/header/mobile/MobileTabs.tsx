@@ -25,6 +25,7 @@ import {
   marcaFondoEncabezado,
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
+import { FilaLogoMovil } from './FilaLogoMovil';
 
 /**
  * MobileTabs
@@ -40,6 +41,7 @@ export default function MobileTabs({
   settings,
   showCart,
   onCartClick,
+  posicionLogo,
   menuCategories,
   branchId,
 }: HeaderVariantProps) {
@@ -70,9 +72,12 @@ export default function MobileTabs({
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
-          <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
-            <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
-            <div className="flex items-center gap-2 flex-shrink-0">
+          <FilaLogoMovil
+            ajustes={settings}
+            posicion={posicionLogo}
+            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            acciones={
               <HeaderActions
                 settings={settings}
                 showCart={showCart}
@@ -85,8 +90,8 @@ export default function MobileTabs({
                 isMobile={true}
                 branchId={branchId}
               />
-            </div>
-          </div>
+            }
+          />
 
           {searchStyle === 'bar' && (
             <div className="pb-3">

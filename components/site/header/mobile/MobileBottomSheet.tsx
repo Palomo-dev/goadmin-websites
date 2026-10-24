@@ -7,6 +7,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
+import { FilaLogoMovil } from './FilaLogoMovil';
 import {
   HeaderLogo,
   HeaderActions,
@@ -39,6 +40,7 @@ export default function MobileBottomSheet({
   showCart,
   onCartClick,
   branchId,
+  posicionLogo,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   // La hoja se monta dentro del propio <header> (portal) y no en la fila de botones: así queda
@@ -61,30 +63,39 @@ export default function MobileBottomSheet({
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
-          <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
-            <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <HeaderActions
-                settings={settings}
-                showCart={showCart}
-                onCartClick={onCartClick}
-                searchStyle={searchStyle}
-                organizationId={organizationId}
-                primaryColor={primaryColor}
-                organizationSubdomain={organization.subdomain || ''}
-                showSearchIcon={searchStyle === 'icon'}
-                isMobile={true}
-              />
-              <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
-              <Drawer.Root open={open} onOpenChange={setOpen} direction="bottom">
-                <Drawer.Trigger asChild>
-                  <button
-                    aria-label="Abrir menú"
-                    className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
-                  >
-                    <MenuIcon className="h-5 w-5" />
-                  </button>
-                </Drawer.Trigger>
+          <Drawer.Root open={open} onOpenChange={setOpen} direction="bottom">
+          <FilaLogoMovil
+            ajustes={settings}
+            posicion={posicionLogo}
+            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            acciones={
+              <>
+                <HeaderActions
+                  settings={settings}
+                  showCart={showCart}
+                  onCartClick={onCartClick}
+                  searchStyle={searchStyle}
+                  organizationId={organizationId}
+                  primaryColor={primaryColor}
+                  organizationSubdomain={organization.subdomain || ''}
+                  showSearchIcon={searchStyle === 'icon'}
+                  isMobile={true}
+                />
+                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+              </>
+            }
+            menu={
+              <Drawer.Trigger asChild>
+                <button
+                  aria-label="Abrir menú"
+                  className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)] transition-colors"
+                >
+                  <MenuIcon className="h-5 w-5" />
+                </button>
+              </Drawer.Trigger>
+            }
+          />
                 <Drawer.Portal container={headerEl}>
                 <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" data-hoja-menu-fondo="" />
                 <Drawer.Content
@@ -131,9 +142,7 @@ export default function MobileBottomSheet({
                   </div>
                 </Drawer.Content>
                 </Drawer.Portal>
-              </Drawer.Root>
-            </div>
-          </div>
+          </Drawer.Root>
 
           {searchStyle === 'bar' && (
             <div className="pb-3">

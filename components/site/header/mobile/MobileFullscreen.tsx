@@ -1,6 +1,7 @@
 'use client';
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
+import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, X, Search } from 'lucide-react';
@@ -40,6 +41,7 @@ export default function MobileFullscreen({
   showCart,
   onCartClick,
   menuCategories,
+  posicionLogo,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const isLoggedIn = useAuthState();
@@ -74,21 +76,28 @@ export default function MobileFullscreen({
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">
-          <div className="flex items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
-            <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <HeaderActions
-                settings={settings}
-                showCart={showCart}
-                onCartClick={onCartClick}
-                searchStyle={searchStyle}
-                organizationId={organizationId}
-                primaryColor={primaryColor}
-                organizationSubdomain={organization.subdomain || ''}
-                showSearchIcon={searchStyle === 'icon'}
-                isMobile={true}
-              />
-              <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+          <FilaLogoMovil
+            ajustes={settings}
+            posicion={posicionLogo}
+            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            acciones={
+              <>
+                <HeaderActions
+                  settings={settings}
+                  showCart={showCart}
+                  onCartClick={onCartClick}
+                  searchStyle={searchStyle}
+                  organizationId={organizationId}
+                  primaryColor={primaryColor}
+                  organizationSubdomain={organization.subdomain || ''}
+                  showSearchIcon={searchStyle === 'icon'}
+                  isMobile={true}
+                />
+                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+              </>
+            }
+            menu={
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
@@ -96,8 +105,8 @@ export default function MobileFullscreen({
               >
                 {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
               </button>
-            </div>
-          </div>
+            }
+          />
 
           {searchStyle === 'bar' && (
             <div className="px-4 pb-3">
