@@ -4,20 +4,10 @@ import { useEffect, useState } from 'react'
 import {
   contadoresEn,
   estadoContador,
+  leerAjustes,
   type ContadorConversion,
-  type ConversionSitio,
   type UbicacionContador,
 } from '@/lib/website/conversion'
-
-interface AjustesConversion {
-  conversion?: ConversionSitio | null
-  conversionFines?: Record<string, string | null> | null
-}
-
-function leerAjustes(settings: object | null | undefined): AjustesConversion | null {
-  if (!settings || typeof settings !== 'object') return null
-  return settings as AjustesConversion
-}
 
 export function ContadoresDe({
   settings,
@@ -46,11 +36,6 @@ export function ContadoresDe({
       ))}
     </>
   )
-}
-
-/** `true` cuando el documento trae conversion: la columna legacy de esa ubicación no se pinta. */
-export function conversionManda(settings: object | null | undefined, ubicacion: UbicacionContador): boolean {
-  return contadoresEn(leerAjustes(settings)?.conversion, ubicacion) !== null
 }
 
 export function ContadorPublico({

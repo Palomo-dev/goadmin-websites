@@ -20,8 +20,8 @@ import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
-import { ContadoresDe, conversionManda } from '@/components/site/ContadorPublico'
-import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
+import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { Truck, Shield, Package, Star } from 'lucide-react'
@@ -29,9 +29,9 @@ import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
 
-function stockReal(product: { track_stock?: boolean | null; stock_levels?: { quantity?: number | null }[] | null }): number | null {
+function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
-  return product.stock_levels.reduce((suma, nivel) => suma + Number(nivel?.quantity || 0), 0)
+  return product.stock_levels.reduce((suma, nivel) => suma + Number(nivel?.qty_on_hand || 0), 0)
 }
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
@@ -247,8 +247,9 @@ export function ProductDetailRenderer({
   // Countdown
   const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio } | null
   const stockProducto = stockReal(product)
-  const avisoProducto = ajustesProducto?.conversion?.urgencia.stockBajo.activo && ajustesProducto.conversion.urgencia.stockBajo.ubicaciones.includes('producto')
-    ? avisoStock(stockProducto, ajustesProducto.conversion.urgencia.stockBajo.umbral, ajustesProducto.conversion.urgencia.stockBajo.plantilla)
+  const stockBajo = ajustesProducto?.conversion?.urgencia?.stockBajo
+  const avisoProducto = stockBajo?.activo && stockBajo.ubicaciones?.includes('producto')
+    ? avisoStock(stockProducto, stockBajo.umbral, stockBajo.plantilla)
     : null
   const countdownBlock = conversionManda(ajustesProducto, 'producto') ? (
     <ContadoresDe settings={ajustesProducto} ubicacion="producto" primaryColor={primaryColor} variante="inline" />

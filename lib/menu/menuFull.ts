@@ -32,7 +32,7 @@ import {
   getProductImageUrl,
   getProductPrice,
   isParentProduct,
-} from '@/components/sections/products/ProductCard'
+} from '@/lib/products/datosTarjeta'
 
 // ---------------------------------------------------------------------------
 // Entrada: forma de los productos que devuelve getOrganizationProducts

@@ -209,6 +209,22 @@ function finDiario(ahora: Date, zona: string, hora: number): Date | null {
 }
 
 export function contadoresEn(conversion: ConversionSitio | null | undefined, ubicacion: UbicacionContador): ContadorConversion[] | null {
-  if (!conversion) return null
+  if (!conversion || !Array.isArray(conversion.contadores)) return null
   return conversion.contadores.filter((c) => c.activo && c.ubicaciones.includes(ubicacion))
+}
+
+export interface AjustesConversion {
+  conversion?: ConversionSitio | null
+  conversionFines?: Record<string, string | null> | null
+}
+
+/** Ajustes del documento. `null` si no hay fila: la tienda sigue el camino de hoy. */
+export function leerAjustes(settings: object | null | undefined): AjustesConversion | null {
+  if (!settings || typeof settings !== 'object') return null
+  return settings as AjustesConversion
+}
+
+/** `true` cuando el documento trae conversion: la columna legacy de esa ubicación no se pinta. */
+export function conversionManda(settings: object | null | undefined, ubicacion: UbicacionContador): boolean {
+  return contadoresEn(leerAjustes(settings)?.conversion, ubicacion) !== null
 }

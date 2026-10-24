@@ -19,7 +19,8 @@ import { SelectorSede, type SedeSelector } from '@/components/site/header/Select
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
-import { ContadoresDe, conversionManda } from '@/components/site/ContadorPublico'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
+import { conversionManda } from '@/lib/website/conversion'
 import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
@@ -986,8 +987,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           <AvisoStockLinea
                             activo={!!settings.showStockWarning}
                             stock={item.stock}
-                            umbral={settings.conversion?.urgencia.stockBajo.activo ? settings.conversion.urgencia.stockBajo.umbral : (settings.stockWarningThreshold ?? 5)}
-                            plantilla={settings.conversion?.urgencia.stockBajo.plantilla || settings.stockWarningTemplate || 'Quedan {n}'}
+                            umbral={settings.conversion?.urgencia?.stockBajo?.activo ? settings.conversion.urgencia.stockBajo.umbral : (settings.stockWarningThreshold ?? 5)}
+                            plantilla={settings.conversion?.urgencia?.stockBajo?.plantilla || settings.stockWarningTemplate || 'Quedan {n}'}
                           />
                           {promotionsForItem(appliedPromotions, item.id).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">

@@ -1,4 +1,5 @@
-import { CuadriculaAmpliable, lightboxActivo } from './FotosAmpliables'
+import { CuadriculaAmpliable } from './FotosAmpliables'
+import { lightboxActivo } from '@/lib/website/lightbox'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
 export const CONTENT_KEYS = ['title', 'subtitle', 'images', 'lightbox'] as const

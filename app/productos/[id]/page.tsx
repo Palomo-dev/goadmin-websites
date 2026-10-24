@@ -26,7 +26,8 @@ import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visi
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
-import { ContadoresDe, conversionManda } from '@/components/site/ContadorPublico'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
+import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
@@ -429,8 +430,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             </div>
             
             {/* Countdown */}
-            {conversionManda(organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }, 'producto') ? (
-              <ContadoresDe settings={organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
+            {conversionManda(organization.website_settings as { conversion?: ConversionSitio }, 'producto') ? (
+              <ContadoresDe settings={organization.website_settings as { conversion?: ConversionSitio }} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
             ) : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product ? (
               <CountdownBanner
                 config={organization.website_settings as any}

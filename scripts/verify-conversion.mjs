@@ -1,7 +1,7 @@
 /**
  * Sin `conversion` no hay contadores nuevos. El aviso exige stock real.
  */
-import { avisoStock, conversionDesdeColumnas, estadoContador, contadoresEn } from '../lib/website/conversion.ts'
+import { avisoStock, conversionDesdeColumnas, estadoContador, contadoresEn, conversionManda } from '../lib/website/conversion.ts'
 
 const problemas = []
 let casos = 0
@@ -12,6 +12,10 @@ const check = (cond, msg) => {
 
 check(conversionDesdeColumnas({ countdown_enabled: false }) === null, 'apagado no crea conversion')
 check(contadoresEn(null, 'topbar') === null, 'sin conversion la tienda sigue el camino legacy')
+check(contadoresEn({}, 'producto') === null, 'conversion sin contadores no corta el legacy')
+check(conversionManda(null, 'producto') === false, 'sin ajustes el contador legacy de la ficha sigue')
+check(conversionManda({}, 'producto') === false, 'ajustes vacíos no mandan conversion')
+check(conversionManda({ conversion: { contadores: [] } }, 'producto') === true, 'conversion presente apaga la columna legacy')
 const diaria = conversionDesdeColumnas({
   countdown_enabled: true,
   countdown_mode: 'daily_reset',
