@@ -20,12 +20,19 @@ import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadoresDe, conversionManda } from '@/components/site/ContadorPublico'
+import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
+
+function stockReal(product: { track_stock?: boolean | null; stock_levels?: { quantity?: number | null }[] | null }): number | null {
+  if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
+  return product.stock_levels.reduce((suma, nivel) => suma + Number(nivel?.quantity || 0), 0)
+}
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 
@@ -238,7 +245,14 @@ export function ProductDetailRenderer({
   )
 
   // Countdown
-  const countdownBlock = (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
+  const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio } | null
+  const stockProducto = stockReal(product)
+  const avisoProducto = ajustesProducto?.conversion?.urgencia.stockBajo.activo && ajustesProducto.conversion.urgencia.stockBajo.ubicaciones.includes('producto')
+    ? avisoStock(stockProducto, ajustesProducto.conversion.urgencia.stockBajo.umbral, ajustesProducto.conversion.urgencia.stockBajo.plantilla)
+    : null
+  const countdownBlock = conversionManda(ajustesProducto, 'producto') ? (
+    <ContadoresDe settings={ajustesProducto} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
+  ) : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
     <CountdownBanner
       config={organization.website_settings as any}
       primaryColor={primaryColor}
@@ -344,6 +358,7 @@ export function ProductDetailRenderer({
     <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
       {descPos === 'above_gallery' ? null : productInfoBlock}
       {descPos === 'below_title' && descriptionBlock}
+      {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
       {countdownBlock}
       {descPos === 'below_price' && descriptionBlock}
       {actionsBlock}
@@ -360,7 +375,8 @@ export function ProductDetailRenderer({
           {descPos === 'above_gallery' && descriptionBlock}
           {galleryBlock}
           {productInfoBlock}
-          {countdownBlock}
+          {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
+      {countdownBlock}
           {actionsBlock}
           {benefitsBlock}
         </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag, Tag } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
+import { ContadoresDe, conversionManda } from './ContadorPublico'
 import { Price, useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
@@ -353,7 +354,10 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             )}
 
             {/* Countdown */}
-            {countdownConfig?.countdown_enabled && countdownConfig?.countdown_show_in_cart && (
+            {conversionManda(countdownConfig, 'carrito') && (
+              <ContadoresDe settings={countdownConfig} ubicacion="carrito" primaryColor={primaryColor} variante="inline" />
+            )}
+            {!conversionManda(countdownConfig, 'carrito') && countdownConfig?.countdown_enabled && countdownConfig?.countdown_show_in_cart && (
               <CountdownBanner config={countdownConfig} primaryColor={primaryColor} variant="inline" />
             )}
 

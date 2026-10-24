@@ -1,6 +1,7 @@
 import type { WebsitePageSection } from '@/types/database'
 import type { OrganizationWithDetails } from '@/types/database'
 import { SectionWrapper } from './SectionWrapper'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
 
 // Secciones universales — Hero
 import { HeroFullscreen } from './hero/HeroFullscreen'
@@ -533,7 +534,7 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
 
   if (section.section_type === 'newsletter' && leerBoletin(content)) {
     return (
-      <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id}>
+      <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
         <NewsletterSection content={content} primaryColor={primaryColor} organization={organization} sectionId={section.id} />
       </SectionWrapper>
     )
@@ -541,6 +542,9 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
 
   return (
     <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
+      {section.section_type === 'hero' && (
+        <ContadoresDe settings={organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }} ubicacion="hero" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
+      )}
       <Component
         content={content}
         organization={organization}

@@ -1,6 +1,8 @@
 'use client'
 
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadoresDe } from '@/components/site/ContadorPublico'
+import { contadoresEn, type ConversionSitio } from '@/lib/website/conversion'
 
 interface CountdownSectionProps {
   content: {
@@ -18,6 +20,10 @@ interface CountdownSectionProps {
 
 export function CountdownSection({ content, primaryColor, organization, sectionVariant }: CountdownSectionProps) {
   const settings = organization?.website_settings || {}
+  const delDocumento = contadoresEn((settings as { conversion?: ConversionSitio }).conversion, 'seccion')
+  if (delDocumento?.length && !content.mode && !content.end_date && !content.title) {
+    return <ContadoresDe settings={settings} ubicacion="seccion" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
+  }
   
   // Usar config de la sección (content) con fallback a settings globales
   const config = {

@@ -163,6 +163,9 @@ export default async function CheckoutPage() {
     showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
     trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
     showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
+    stockWarningThreshold: Number(wsRow?.checkout_stock_warning_threshold ?? 5),
+    conversion: (organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio; conversionFines?: Record<string, string | null> } | null)?.conversion ?? null,
+    conversionFines: (organization.website_settings as { conversionFines?: Record<string, string | null> } | null)?.conversionFines ?? null,
     showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
     showCountdown: wsRow?.checkout_show_countdown ?? false,
     countdownConfig: {

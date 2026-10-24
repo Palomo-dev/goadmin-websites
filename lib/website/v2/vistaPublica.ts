@@ -111,6 +111,7 @@ export function ajustesPublicosDesdeDocumento(
   }
   const seccion = (documento.tema as { seccion?: unknown }).seccion
   if (seccion && typeof seccion === 'object') ajustes.section_style = structuredCloneSeguro(seccion)
+  if (documento.conversion) ajustes.conversion = structuredCloneSeguro(documento.conversion)
   return ajustes as unknown as WebsiteSettings
 }
 

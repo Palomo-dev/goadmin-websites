@@ -7,6 +7,7 @@ import { ZonaGlobalPreview } from './ZonaGlobalPreview'
 import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPreview'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
+import { ContadoresDe, conversionManda } from './ContadorPublico'
 import { CartEventTracker } from './CartEventTracker'
 import { PixelesSitio as PixelesDelSitio } from './PixelesSitio'
 import type { PixelesSitio } from '@/lib/seo/pixelesSitio'
@@ -382,7 +383,10 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Countdown Banner (debajo del header, oculto si está congelada) */}
-      {!frozenReason && !modoMesa && settings?.countdown_enabled && settings?.countdown_show_in_header && (
+      {!frozenReason && !modoMesa && conversionManda(settings, 'topbar') && (
+        <ContadoresDe settings={settings} ubicacion="topbar" primaryColor={primaryColor} variante="banner" />
+      )}
+      {!frozenReason && !modoMesa && !conversionManda(settings, 'topbar') && settings?.countdown_enabled && settings?.countdown_show_in_header && (
         <CountdownBanner
           config={settings}
           primaryColor={primaryColor}
@@ -440,7 +444,7 @@ export function OrganizationLayoutCliente({
             enableShipping: settings?.enable_shipping ?? true
           }}
           taxSettings={taxSettings}
-          countdownConfig={settings?.countdown_enabled ? settings : undefined}
+          countdownConfig={settings?.countdown_enabled || (settings as { conversion?: unknown } | null)?.conversion ? settings : undefined}
           cartButtonConfig={{
             mode: settings?.cart_button_mode || 'dynamic',
             texts: settings?.cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
