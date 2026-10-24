@@ -26,6 +26,7 @@ import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
 import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
 
@@ -223,17 +224,19 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
   const [couponError, setCouponError] = useState<string | null>(null)
 
   // Promociones automáticas: mismo hook que el drawer y /carrito, y mismo
-  // motor que /api/orders, así el total que ve el cliente es el que se cobra.
-  // La sucursal sigue la misma regla que el envío del pedido (outlet explícito
-  // o la que traiga el carrito).
-  const promoBranchId = typeof branchId === 'number'
-    ? branchId
-    : (typeof (cartItems[0] as any)?.branchId === 'number' ? (cartItems[0] as any).branchId as number : null)
+  // motor que /api/orders. La sede es la del pedido (outlet, mesa o la que
+  // ya resolvió la página), nunca la sucursal pegada al primer ítem.
+  const sedePromocion = sedeDePedidoWeb(undefined, {
+    outletId: typeof branchId === 'number' ? branchId : null,
+    sedeElegidaId: orderType === 'dine_in' && typeof mesa?.sede === 'number'
+      ? mesa.sede
+      : (typeof sedePedido?.id === 'number' ? sedePedido.id : (typeof sedeActualId === 'number' ? sedeActualId : null)),
+  })
   const {
     promotions: appliedPromotions,
     totalDiscount: promoDiscount,
     itemDiscounts: promoItemDiscounts,
-  } = useCartPromotions({ organizationId, branchId: promoBranchId, items: cartItems })
+  } = useCartPromotions({ organizationId, branchId: sedePromocion, items: cartItems })
 
   // Dynamic shipping states
   const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null }[]>([])
@@ -538,12 +541,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
 
     try {
       // 1. Crear la orden
-      // F5: branchId explícito del outlet activo. Si es undefined (sitio global
-      // sin outlet), se omite y el backend usa el fallback.
-      const finalBranchId = branchId ?? (cartItems.length > 0 ? (cartItems[0] as any).branchId : undefined)
+      // La misma sede con la que se calcularon las promociones. Sin ella, el
+      // servidor usa la sede por defecto del pedido web.
       const orderPayload: any = {
         organizationId,
-        ...(typeof finalBranchId === 'number' ? { branchId: finalBranchId } : {}),
+        ...(sedePromocion != null ? { branchId: sedePromocion } : {}),
         customer: customerData,
         ...(customerId ? { customerId } : {}),
         items: cartItems.map(item => ({

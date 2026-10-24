@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppliedPromotion, PromotionEvaluation } from '@/lib/promotions'
+import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 
 export type { AppliedPromotion }
 
@@ -15,7 +16,14 @@ interface PromoLine {
 
 interface UseCartPromotionsOptions {
   organizationId?: number | null
+  /** Outlet explícito. Gana sobre `sedeElegidaId`. */
   branchId?: number | null
+  /**
+   * Sede ya resuelta cuando no hay outlet: la mesa de «comer aquí» o la sede
+   * del pedido que calculó la página. Sin las dos, el servidor usa la sede
+   * por defecto (`sedeDePedidoWeb`).
+   */
+  sedeElegidaId?: number | null
   items: PromoLine[]
   /** Espera antes de consultar tras un cambio del carrito (ms). */
   debounceMs?: number
@@ -29,15 +37,17 @@ const EMPTY: PromotionEvaluation = { promotions: [], totalDiscount: 0, itemDisco
  * checkout para que los tres muestren el mismo descuento.
  *
  *   const { promotions, totalDiscount, itemDiscounts, loading } =
- *     useCartPromotions({ organizationId, branchId, items })
+ *     useCartPromotions({ organizationId, branchId, sedeElegidaId, items })
  *
  * `itemDiscounts` va por id de línea de carrito (string) para pintar el badge
  * y el precio tachado en cada item.
  */
-export function useCartPromotions({ organizationId, branchId, items, debounceMs = 250 }: UseCartPromotionsOptions) {
+export function useCartPromotions({ organizationId, branchId, sedeElegidaId = null, items, debounceMs = 250 }: UseCartPromotionsOptions) {
   const [result, setResult] = useState<PromotionEvaluation>(EMPTY)
   const [loading, setLoading] = useState(false)
   const requestSeq = useRef(0)
+  // Misma regla que /api/orders. Sin id, el servidor completa la sede por defecto.
+  const sede = sedeDePedidoWeb(undefined, { outletId: branchId, sedeElegidaId })
 
   // Clave estable: solo lo que afecta al cálculo, así no se repite la llamada
   // por cambios de imagen, notas, etc.
@@ -62,7 +72,7 @@ export function useCartPromotions({ organizationId, branchId, items, debounceMs 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             organizationId,
-            ...(typeof branchId === 'number' ? { branchId } : {}),
+            ...(sede != null ? { branchId: sede } : {}),
             items: items.map(i => ({ id: i.id, productId: i.productId ?? null, name: i.name, price: i.price, quantity: i.quantity })),
           }),
         })
@@ -83,7 +93,7 @@ export function useCartPromotions({ organizationId, branchId, items, debounceMs 
 
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, branchId, itemsKey, debounceMs])
+  }, [organizationId, sede, itemsKey, debounceMs])
 
   return { ...result, loading }
 }
