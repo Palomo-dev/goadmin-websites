@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import CatchAllPage from '@/app/[[...slug]]/page'
+import ProductoDetailPage from '@/app/productos/[id]/page'
+import CategoriaPage from '@/app/categorias/[slug]/page'
+import CarritoPage from '@/app/carrito/page'
+import CheckoutPage from '@/app/checkout/page'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { createAdminClient } from '@/lib/supabase/server'
 import { urlEditorSegura, verificarTokenVistaPrevia } from '@/lib/website/v2/enlaceVistaPrevia'
@@ -113,11 +117,21 @@ export default async function VistaPreviaBorradorPage({
 
   // ── Capa interior: el sitio armado con el borrador ──
   if (busqueda.marco === '1') {
-    fijarSitioVistaPrevia(carga.o, borrador.sitio)
-    // Sitio de una sede: su prefijo de ruta, para que productos, stock y carta salgan de esa sede.
     const sede = borrador.sitio.branchId !== null ? sedes.get(borrador.sitio.branchId) : undefined
-    const conSede = sede?.slug && sede.is_web_published ? [sede.slug, ...ruta] : ruta
-    return CatchAllPage({ params: Promise.resolve({ slug: conSede }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
+    // La sede ya fue leída con organization_id y el sitio ya pertenece al token validado.
+    // Se transmite por el almacén de ESTA petición; nunca por una cabecera del navegador.
+    fijarSitioVistaPrevia(carga.o, borrador.sitio, sede ? {
+      branchId: sede.id, branchSlug: sede.slug ?? '', branchName: sede.name,
+      branchType: null, customDomain: null, isWebPublished: sede.is_web_published === true,
+    } : null)
+    // Estas rutas tienen páginas propias en App Router y nunca pasan por CatchAllPage.
+    // Despacharlas aquí conserva el mismo documento borrador y el mismo bloque base.
+    if (ruta[0] === 'productos' && ruta.length === 2) return ProductoDetailPage({ params: Promise.resolve({ id: ruta[1] }) })
+    if (ruta[0] === 'categorias' && ruta.length === 2) return CategoriaPage({ params: Promise.resolve({ slug: ruta[1] }), searchParams: Promise.resolve(busqueda) })
+    if (ruta[0] === 'carrito' && ruta.length === 1) return CarritoPage()
+    if (ruta[0] === 'checkout' && ruta.length === 1) return CheckoutPage()
+    // getOrgContext ya conoce la sede del almacén firmado; la ruta no lleva un prefijo adicional.
+    return CatchAllPage({ params: Promise.resolve({ slug: ruta }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
   }
 
   // ── Capa exterior: barra + iframe ──

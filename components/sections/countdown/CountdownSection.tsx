@@ -20,8 +20,7 @@ interface CountdownSectionProps {
 
 export function CountdownSection({ content, primaryColor, organization, sectionVariant }: CountdownSectionProps) {
   const settings = organization?.website_settings || {}
-  const delDocumento = contadoresEn((settings as { conversion?: ConversionSitio }).conversion, 'seccion')
-  if (delDocumento?.length && !content.mode && !content.end_date && !content.title) {
+  if (contadoresEn((settings as { conversion?: ConversionSitio }).conversion, 'seccion')?.length && !content.mode && !content.end_date && !content.title) {
     return <ContadoresDe settings={settings} ubicacion="seccion" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
   }
   

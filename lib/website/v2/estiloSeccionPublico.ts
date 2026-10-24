@@ -84,7 +84,8 @@ export function presentacionSeccion(
   const fondoViejo = !vacio(settings?.bg_color)
   if (e.fondo && e.fondo !== 'tema' && !avanzadoConFondo && !fondoViejo) {
     if (e.fondo === 'imagen') {
-      // La imagen es la de la sección (`bg_image` del Avanzado); sin imagen, queda el del tema.
+      // El Avanzado prevalece; la imagen elegida en Estilo rellena el fondo.
+      if (vacio(contenido.bg_image) && e.imagenFondo) contenido.bg_image = e.imagenFondo;
       if (typeof contenido.bg_image === 'string' && contenido.bg_image) contenido.bg_type = 'image'
     } else {
       datos['data-seccion-fondo'] = e.fondo

@@ -7,6 +7,8 @@ import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePric
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+import { ordenarListado, recorteListado, columnasEscritorio } from '@/lib/products/limiteListado'
+import { PaginacionListado } from './PaginacionListado'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
@@ -49,7 +51,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
   const branchId = (data?.branchId as number | null | undefined) ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
-  const maxItems = content.max_items || 12
+  const [paginaListado, setPaginaListado] = useState(1)
   // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
   const filtered = filtrarProductosPorCategorias(
     unirProductosDeCategoria(allProducts, data?.productosCategoria, content.selected_category_ids),
@@ -58,17 +60,11 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
     incluirSubcategorias(content.include_subcategories, 'products_carousel'),
   )
 
-  // Ordenar
-  const sortOrder = content.sort_order || 'default'
-  const sorted = [...filtered]
-  if (sortOrder === 'price_asc') sorted.sort((a, b) => (getProductPrice(a) ?? 0) - (getProductPrice(b) ?? 0))
-  else if (sortOrder === 'price_desc') sorted.sort((a, b) => (getProductPrice(b) ?? 0) - (getProductPrice(a) ?? 0))
-  else if (sortOrder === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  else if (sortOrder === 'sales') sorted.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-
-  // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
-  const filtros = useFiltrosProductos(sorted)
-  const products = maxItems > 0 ? filtros.filtrados.slice(0, maxItems) : filtros.filtrados
+  const sorted = ordenarListado(filtered, content.sort_order)
+  const filtros = useFiltrosProductos(sorted, () => setPaginaListado(1))
+  const listaPropia = listaDelInspector(content)
+  const recorte = recorteListado(filtros.filtrados.length, paginaListado, { max_items: content.products_limit ? undefined : 12, show_pagination: false, ...content, ...(listaPropia ? { pagination: 'none' } : {}) })
+  const products = filtros.filtrados.slice(recorte.desde, recorte.hasta)
 
   // slides_per_view responsive: puede ser número o { desktop, tablet, mobile }
   const spv = content.slides_per_view
@@ -323,6 +319,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
           <p>No hay productos disponibles</p>
         </div>
       )}
+      {!listaPropia && <PaginacionListado recorte={recorte} pagina={paginaListado} onPagina={setPaginaListado} content={content} color={primaryColor} />}
     </div>
   )
 }

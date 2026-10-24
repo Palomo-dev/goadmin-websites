@@ -15,6 +15,7 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { resolveOutletBySubSubdomain, resolveOutletByCustomDomain, resolveOutletFromPath, type ResolvedOutlet } from '@/lib/outlet/resolver'
 import { getEffectiveSettings, getOrgSettings } from '@/lib/outlet/theme-merge'
 import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorPublico'
+import { outletVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
 import {
   ajustesPublicosDesdeDocumento,
   idsCategoriasDeMenus,
@@ -132,6 +133,12 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     }
   } catch {
     outlet = null
+  }
+  const sedePrevia = outletVistaPreviaDe(organization.id)
+  if (sedePrevia) {
+    outlet = sedePrevia.outlet
+    pathPrefixConsumed = false
+    sedePorPrefijo = !!outlet?.branchSlug
   }
   const branchId = outlet?.branchId ?? undefined
 

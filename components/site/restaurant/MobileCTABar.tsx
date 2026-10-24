@@ -31,7 +31,7 @@ export function rutaConBarraMovil(pathname: string): boolean {
   )
 }
 
-export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBarraMovil; primaryColor: string }) {
+export function MobileCTABar({ acciones, primaryColor, onCartClick }: { acciones: AccionesBarraMovil; primaryColor: string; onCartClick?: () => void }) {
   const items = [
     acciones.reservar && { clave: 'reservar', href: acciones.reservar, texto: 'Reservar', Icono: CalendarDays, externo: false },
     acciones.llamar && { clave: 'llamar', href: acciones.llamar, texto: 'Llamar', Icono: Phone, externo: false },
@@ -72,7 +72,9 @@ export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBar
             )
             return (
               <li key={clave} className="flex flex-1">
-                {clave === 'llamar' ? (
+                {clave === 'pedir' ? (
+                  <button type="button" onClick={onCartClick ?? (() => window.dispatchEvent(new Event('open-cart')))} className={clase} style={estilo}>{contenido}</button>
+                ) : clave === 'llamar' ? (
                   // tel: no es una ruta de Next: <a> simple, en la misma pestaña.
                   <a href={href} className={clase} style={estilo}>
                     {contenido}

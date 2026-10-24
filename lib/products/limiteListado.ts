@@ -26,6 +26,10 @@ export function columnasEscritorio(columns: unknown, fallback = 4): number {
 }
 
 export interface ContenidoListado {
+  products_limit?: unknown
+  per_page?: unknown
+  pagination?: unknown
+  paginacion?: unknown
   max_items?: unknown
   rows?: unknown
   columns?: unknown
@@ -38,7 +42,9 @@ export interface ContenidoListado {
  * con el menor. Sin ninguno, no hay tope (null) y la lista pagina como antes.
  */
 export function topeProductos(content: ContenidoListado | null | undefined, columnasPorDefecto = 4): number | null {
-  const max = enteroPositivo(content?.max_items)
+  const viejo = enteroPositivo(content?.max_items)
+  const nuevo = enteroPositivo(content?.products_limit)
+  const max = viejo && nuevo ? Math.min(viejo, nuevo) : viejo ?? nuevo
   const filas = enteroPositivo(content?.rows)
   const porFilas = filas ? filas * columnasEscritorio(content?.columns, columnasPorDefecto) : null
   if (max && porFilas) return Math.min(max, porFilas)
@@ -48,13 +54,17 @@ export function topeProductos(content: ContenidoListado | null | undefined, colu
 export function recorteListado(total: number, pagina: number, content: ContenidoListado | null | undefined, porPaginaForzado?: number) {
   const tope = topeProductos(content)
   const universo = tope ? Math.min(Math.max(0, total), tope) : Math.max(0, total)
-  const paginar = content?.show_pagination !== false
-  const forzado = porPaginaForzado && porPaginaForzado > 0 ? Math.round(porPaginaForzado) : null
-  const porPagina = forzado ?? (paginar ? 12 : Math.max(universo, 1))
+  const modo = content?.pagination
+  const paginar = modo === 'none' || modo === 'full' ? false : ['pages', 'load_more', 'infinite'].includes(String(modo)) ? true : content?.show_pagination !== false
+  const forzado = enteroPositivo(porPaginaForzado)
+  const configuracion = content?.paginacion && typeof content.paginacion === 'object' ? content.paginacion as Record<string, unknown> : {}
+  const cantidad = forzado ?? enteroPositivo(content?.per_page) ?? enteroPositivo(configuracion.porPaginaEscritorio) ?? 12
+  const porPagina = forzado ?? (paginar ? Math.min(cantidad, 100) : Math.max(universo, 1))
   const paginas = Math.max(1, Math.ceil(universo / porPagina) || 1)
   const p = Math.min(Math.max(1, Math.round(pagina) || 1), paginas)
-  const desde = (p - 1) * porPagina
-  const hasta = Math.min(desde + porPagina, universo)
+  const acumular = modo === 'load_more' || modo === 'infinite'
+  const desde = acumular ? 0 : (p - 1) * porPagina
+  const hasta = Math.min(acumular ? p * porPagina : desde + porPagina, universo)
   return { desde, hasta, paginas, universo }
 }
 

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DynamicLucideIcon } from './DynamicLucideIcon'
 import {
   claseAjuste,
   planBento,
@@ -123,7 +124,7 @@ function Minimo({ cat, color, content }: { cat: any; color: string; content: Con
       className={`group block px-4 py-5 text-center ${sombra} ${bordeHover ? 'border border-transparent transition hover:border-gray-400' : ''} ${content.card_hover === 'lift' ? 'hover:-translate-y-1' : ''}`}
       style={{ borderRadius: radio, backgroundColor: fondoSuave(color, content.image_bg) }}
     >
-      <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="mx-auto h-24 w-24 bg-transparent" fondo="transparent" />
+      <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-xl" style={{ color }}><DynamicLucideIcon name={cat.icon} fallback="Tag" className="h-10 w-10" /></span>
       <p className="mt-3 font-bold text-gray-900 dark:text-white">{cat.name}</p>
       {content.show_count && cat.product_count != null && (
         <p className="text-xs text-gray-500">{cat.product_count} productos</p>
@@ -132,12 +133,12 @@ function Minimo({ cat, color, content }: { cat: any; color: string; content: Con
   )
 }
 
-function CeldaBento({ cat, color, content, grande }: { cat: any; color: string; content: Contenido; grande: boolean }) {
+function CeldaBento({ cat, color, content, grande, ancha = false }: { cat: any; color: string; content: Contenido; grande: boolean; ancha?: boolean }) {
   const radio = radioTarjeta(content.card_radius, 16)
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group relative block overflow-hidden ${grande ? 'col-span-2 row-span-2 min-h-[220px]' : 'min-h-[104px]'}`}
+      className={`group relative block overflow-hidden ${grande ? 'col-span-2 row-span-2 min-h-[220px]' : ancha ? 'col-span-2 min-h-[104px]' : 'min-h-[104px]'}`}
       style={{ borderRadius: radio }}
     >
       <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="absolute inset-0" fondo={fondoSuave(color, content.image_bg)} />
@@ -177,7 +178,7 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
     cuerpo = (
       <>
         <div className="grid grid-cols-2 gap-3 md:hidden">
-          {categorias.slice(0, usados).map((cat, i) => (
+          {categorias.map((cat, i) => (
             <div key={cat.id ?? i} className={i % 5 === 0 ? 'col-span-2' : ''}>
               <CeldaBento cat={cat} color={color} content={content} grande={false} />
             </div>
@@ -190,11 +191,12 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
             return (
               <div key={grupo} className="grid grid-cols-4 gap-3">
                 {trozo.map((cat, i) => (
-                  <CeldaBento key={cat.id ?? i} cat={cat} color={color} content={content} grande={tamano === 5 && i === 0} />
+                  <CeldaBento key={cat.id ?? i} cat={cat} color={color} content={content} grande={i === 0} ancha={tamano === 8 && i === 7} />
                 ))}
               </div>
             )
           })}
+          {usados < categorias.length && <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(4, categorias.length - usados)}, minmax(0, 1fr))` }}>{categorias.slice(usados).map(cat => <CeldaBento key={cat.id} cat={cat} color={color} content={content} grande={false} />)}</div>}
         </div>
       </>
     )
@@ -223,9 +225,9 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
   }
 
   return (
-    <div>
+    <div data-category-style={estilo}>
       {content.title && (
-        <h2 className="mb-3 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{content.title}</h2>
+        <h2 className="titulo-legado mb-3 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{content.title}</h2>
       )}
       {content.subtitle && <p className="mb-8 text-center text-gray-600 dark:text-gray-300">{content.subtitle}</p>}
       {cuerpo}

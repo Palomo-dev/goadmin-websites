@@ -6,11 +6,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
 import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
-import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
+import { ordenarListado, recorteListado, topeProductos } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
-import { clasesColumnasListado, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
+import { clasesColumnasListado, leerPresentacion, pedidoServidor } from '@/lib/products/fuenteListado'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { SiLista } from '../ListRenderer'
 import { isOutOfStock } from '@/lib/stock'
@@ -151,7 +151,8 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       : ordenados
   }, [products, data?.productosCategoria, categories, content.selected_category_ids, content.include_subcategories, content.sort_order, content.exclude_out_of_stock, listado])
   const filtros = useFiltrosProductos(baseProducts, () => irRef.current(1))
-  const filteredProducts = filtros.filtrados
+  const limiteTotal = topeProductos(content)
+  const filteredProducts = limiteTotal ? filtros.filtrados.slice(0, limiteTotal) : filtros.filtrados
   const selectedCategory = filtros.estado.categoria
   const onlyOffers = filtros.estado.soloOfertas
   const busqueda = filtros.estado.busqueda.trim()
@@ -205,8 +206,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
 
   const presentacion = leerPresentacion(content)
   const paginaCliente = ajusteLista ? lista.pagina : currentPage
-  const recorteCliente = listado || ajusteLista ? null : recortePresentacion(filteredProducts.length, paginaCliente, presentacion)
-  const recorte = recorteCliente ?? recorteListado(
+  const recorte = recorteListado(
     filteredProducts.length,
     paginaCliente,
     content,
@@ -282,7 +282,8 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   }
 
   const cargarMas = async () => {
-    if (!listado || cargando.current) return
+    if (!listado) { setCurrentPage(p => p + 1); return }
+    if (cargando.current) return
     const ya = products.length + extra.length
     if ((totalRemoto ?? listado.total) <= ya) return
     cargando.current = true
@@ -417,7 +418,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {/* Paginación */}
-      {!listaShell && !ajusteLista && verMas && (totalRemoto ?? listado?.total ?? 0) > mostrados.length && (
+      {!listaShell && !ajusteLista && verMas && (totalRemoto ?? listado?.total ?? recorte.universo) > mostrados.length && (
         <div className="mt-8 flex justify-center">
           <button type="button" onClick={cargarMas} className="rounded-full px-5 py-2 text-sm font-medium text-white" style={{ backgroundColor: primaryColor }}>Ver más</button>
           {presentacion?.pagination === 'infinite' && <div ref={sentinel} className="h-px w-full" aria-hidden="true" />}
