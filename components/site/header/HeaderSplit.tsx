@@ -20,6 +20,7 @@ import {
   estiloDivisor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
+import { barraSiCromo } from './BuscadorCromo';
 
 export default function HeaderSplit({
   organization,
@@ -55,7 +56,7 @@ export default function HeaderSplit({
             )}
 
             {/* Search bar central */}
-            {showSearchBar && (
+            {barraSiCromo(settings, showSearchBar ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -63,7 +64,7 @@ export default function HeaderSplit({
                 size="lg"
                 icon={SearchIconComp}
               />
-            )}
+            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' })}
 
             {/* Nav derecha */}
             {rightNav.length > 0 && (

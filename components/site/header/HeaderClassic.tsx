@@ -20,6 +20,7 @@ import {
   estiloDivisor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
+import { barraSiCromo } from './BuscadorCromo';
 
 export default function HeaderClassic({
   organization,
@@ -48,7 +49,7 @@ export default function HeaderClassic({
     <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
   ) : null;
 
-  const renderSearchBar = showSearchBar ? (
+  const renderSearchBar = barraSiCromo(settings, showSearchBar ? (
     <SearchBarInline
       primaryColor={primaryColor}
       organizationId={organizationId}
@@ -56,7 +57,7 @@ export default function HeaderClassic({
       size="lg"
       icon={SearchIconComp}
     />
-  ) : null;
+  ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-4' });
 
   const renderActions = (
     <div className="flex items-center gap-3 flex-shrink-0">

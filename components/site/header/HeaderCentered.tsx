@@ -20,6 +20,7 @@ import {
   estiloDivisor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
+import { barraSiCromo } from './BuscadorCromo';
 
 export default function HeaderCentered({
   organization,
@@ -49,7 +50,7 @@ export default function HeaderCentered({
               <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
             </div>
             <div className="flex-1 flex items-center justify-end gap-3">
-              {showSearchBar && (
+              {barraSiCromo(settings, showSearchBar ? (
                 <SearchBarInline
                   primaryColor={primaryColor}
                   organizationId={organizationId}
@@ -57,7 +58,7 @@ export default function HeaderCentered({
                   size="md"
                   icon={SearchIconComp}
                 />
-              )}
+              ) : null, { primaryColor, organizationId, className: 'w-64' })}
               <HeaderActions
                 settings={settings}
                 showCart={showCart}
@@ -85,7 +86,7 @@ export default function HeaderCentered({
             {navItems.length > 0 && (
               <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} />
             )}
-            {showSearchBar && (
+            {barraSiCromo(settings, showSearchBar ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -93,7 +94,7 @@ export default function HeaderCentered({
                 size="sm"
                 icon={SearchIconComp}
               />
-            )}
+            ) : null, { primaryColor, organizationId, className: 'w-56' })}
           </div>
         </div>
       </div>

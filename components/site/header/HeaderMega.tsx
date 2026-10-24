@@ -27,6 +27,7 @@ import {
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
+import { barraSiCromo } from './BuscadorCromo';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 /**
@@ -91,7 +92,7 @@ export default function HeaderMega({
             />
 
             {/* Barra de búsqueda grande (siempre visible a menos que search_style='hidden') */}
-            {showSearchBar && (
+            {barraSiCromo(settings, showSearchBar ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -99,7 +100,7 @@ export default function HeaderMega({
                 size="lg"
                 icon={SearchIconComp}
               />
-            )}
+            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-2xl mx-auto' })}
 
             {/* Acciones derecha (sin icono de búsqueda, la barra ya está visible) */}
             <div className="flex items-center gap-3 flex-shrink-0">

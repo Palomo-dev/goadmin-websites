@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
+import { BuscadorCromo } from './BuscadorCromo';
+import { leerConstructor } from '@/lib/website/constructorEncabezado';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -20,6 +22,7 @@ import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
 import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
+import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 
@@ -451,10 +454,30 @@ export function HeaderActions({
     return ['search', 'currency', 'cart', 'auth'];
   })();
 
-  // Construir elementos de acción según el orden
+  // Construir elementos de acción según el orden.
+  // Sin contenedor, el círculo de acento y las clases de hoy.
+  const leido = leerConstructor(settings)
+  const cromoOverlay = leido?.buscador
+  const contenedor = leido?.contenedor
+  const coloresCaja = {
+    primary: primaryColor,
+    accent: settings?.accent_color || primaryColor,
+    secondary: settings?.secondary_color || '#1E40AF',
+  }
+  const iconoCuenta = (Icono: typeof User, sesion: boolean) => contenedor ? (
+    <ContenedorIcono base={contenedor} clave="account" colores={coloresCaja}>
+      <Icono style={trazoContenedor(contenedor, 'account', estiloIconos.relleno)} />
+    </ContenedorIcono>
+  ) : (
+    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
+      <Icono className={claseIconoAccion} style={sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined} {...trazo} />
+    </IconoConCirculo>
+  )
   const actionElements: Record<string, React.ReactNode | null> = {
-    search: showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} />
+    search: cromoOverlay?.tipo === 'icon_overlay' ? (
+      <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
+    ) : showSearchIcon && searchStyle === 'icon' ? (
+      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
       <CurrencySelector
@@ -463,7 +486,9 @@ export function HeaderActions({
         icon={CurrencyIconComp}
         heredarColor={heredarColor}
         relleno={estiloIconos.relleno}
-        circulo={estiloIconos.circulo}
+        circulo={contenedor ? false : estiloIconos.circulo}
+        contenedor={contenedor}
+        colores={coloresCaja}
       />
     ) : null,
     cart: showHeaderCart ? (
@@ -477,21 +502,19 @@ export function HeaderActions({
         branchId={branchId}
         heredarColor={heredarColor}
         relleno={estiloIconos.relleno}
-        circulo={estiloIconos.circulo}
+        circulo={contenedor ? false : estiloIconos.circulo}
+        contenedor={contenedor}
+        colores={coloresCaja}
       />
     ) : null,
     auth: !isMobile && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
-          <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
-            <AuthLoggedInIconComp className={claseIconoAccion} style={heredarColor || estiloIconos.circulo ? undefined : { color: primaryColor }} {...trazo} />
-          </IconoConCirculo>
+          {iconoCuenta(AuthLoggedInIconComp, true)}
         </Link>
       ) : (
         <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">
-          <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
-            <AuthIconComp className={claseIconoAccion} {...trazo} />
-          </IconoConCirculo>
+          {iconoCuenta(AuthIconComp, false)}
         </Link>
       )
     ) : null,

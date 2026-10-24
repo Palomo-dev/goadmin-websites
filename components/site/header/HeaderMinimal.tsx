@@ -27,6 +27,7 @@ import {
   headerTextColor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
+import { barraSiCromo } from './BuscadorCromo';
 import {
   Drawer,
   DrawerContent,
@@ -125,7 +126,7 @@ export default function HeaderMinimal({
             />
 
             {/* Search bar inline (si search_style === 'bar') */}
-            {searchStyle === 'bar' && (
+            {barraSiCromo(settings, searchStyle === 'bar' ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -133,7 +134,7 @@ export default function HeaderMinimal({
                 size="lg"
                 icon={SearchIconComp}
               />
-            )}
+            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' })}
 
             {/* Acciones derecha: search icon + cart + CTA + botón menú */}
             <div className="flex items-center gap-3 flex-shrink-0">

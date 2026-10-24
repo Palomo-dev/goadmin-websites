@@ -35,6 +35,8 @@ import { MobileBottomNav, useUnidadesBarra } from './header/mobile/MobileBottomN
 import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
+import { HeaderPorZonas } from './header/HeaderPorZonas'
+import { leerConstructor } from '@/lib/website/constructorEncabezado'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -416,6 +418,15 @@ export default function SiteHeader({
     posicionLogo: logoMovil(settings),
   }
 
+  const constructor = leerConstructor(settings)
+  if (constructor?.zonas || constructor?.menus) {
+    return (
+      <HeaderPorZonas
+        {...variantProps}
+        constructor={constructor}
+      />
+    )
+  }
   const variante = elegirVariante()
   // Hotel: barra de reserva con fechas bajo el encabezado (header_booking_bar). Sin la opción,
   // la variante sola, como siempre. Sin scroll nuevo, el árbol es el de hoy.

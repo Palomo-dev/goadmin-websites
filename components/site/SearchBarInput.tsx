@@ -15,6 +15,18 @@ interface SearchBarInputProps {
   size?: 'sm' | 'md' | 'lg';
   /** Icono de búsqueda personalizable (Fase 12B) */
   icon?: any;
+  /**
+   * Cromo opcional (borde, esquinas, lado del ícono). Ausente: el input de siempre.
+   */
+  cromo?: {
+    radius?: 'square' | 'rounded' | 'semi' | 'pill' | 'circle'
+    border?: 'none' | 'thin' | 'thick'
+    borderColor?: string
+    background?: string
+    iconSide?: 'left' | 'right'
+    iconColor?: string
+    iconBackground?: string
+  }
 }
 
 interface SearchResult {
@@ -54,6 +66,7 @@ export function SearchBarInput({
   placeholder = 'Buscar productos...',
   size = 'md',
   icon: SearchIconComp = Search,
+  cromo,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
   const [query, setQuery] = useState('');
@@ -124,7 +137,10 @@ export function SearchBarInput({
       {/* Input visible tipo marketplace */}
       <div className="relative">
         <SearchIconComp
-          className={`absolute left-3 top-1/2 -translate-y-1/2 ${cfg.icon} text-gray-400 pointer-events-none`}
+          className={cromo
+            ? `absolute top-1/2 -translate-y-1/2 ${cfg.icon} pointer-events-none ${cromo.iconSide === 'right' ? 'right-3' : 'left-3'} ${cromo.iconColor ? '' : 'text-gray-400'}`
+            : `absolute left-3 top-1/2 -translate-y-1/2 ${cfg.icon} text-gray-400 pointer-events-none`}
+          style={cromo?.iconColor || cromo?.iconBackground ? { color: cromo.iconColor, backgroundColor: cromo.iconBackground, borderRadius: 999 } : undefined}
         />
         <input
           ref={inputRef}
@@ -143,8 +159,10 @@ export function SearchBarInput({
             }
           }}
           placeholder={placeholder}
-          className={`w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
-          style={{ ['--tw-border-color' as string]: primaryColor }}
+          className={cromo
+            ? `w-full ${cfg.input} ${cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`
+            : `w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
+          style={{ ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
           onFocusCapture={(e) => {
             (e.target as HTMLInputElement).style.borderColor = primaryColor;
           }}

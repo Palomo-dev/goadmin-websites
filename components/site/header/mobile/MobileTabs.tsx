@@ -9,6 +9,8 @@ import { contarUnidadesCarrito } from '@/lib/cart';
 import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { IconoConCirculo, propsTrazoIcono } from '../IconoEncabezado';
+import { ContenedorIcono, trazoContenedor } from '../ContenedorIcono';
+import { contenedorDe, leerConstructor } from '@/lib/website/constructorEncabezado';
 import {
   HeaderLogo,
   HeaderActions,
@@ -57,10 +59,20 @@ export default function MobileTabs({
   // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
   const estiloIconos = estiloIconosEncabezado(settings);
   const trazo = propsTrazoIcono(estiloIconos.relleno);
+  const contenedor = leerConstructor(settings)?.contenedor ?? null
+  const coloresCaja = {
+    primary: primaryColor,
+    accent: settings?.accent_color || primaryColor,
+    secondary: settings?.secondary_color || '#1E40AF',
+  }
   const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
   const CartTabIcon = getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag);
   const AuthTabIcon = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User);
-  const iconoTab = (Icono: typeof ShoppingBag) => (
+  const iconoTab = (Icono: typeof ShoppingBag, clave: 'cart' | 'account') => contenedor ? (
+    <ContenedorIcono base={contenedor} clave={clave} colores={coloresCaja}>
+      <Icono style={trazoContenedor(contenedor, clave, estiloIconos.relleno)} />
+    </ContenedorIcono>
+  ) : (
     <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor} tamano="sm">
       <Icono className="h-5 w-5" {...trazo} />
     </IconoConCirculo>
@@ -121,18 +133,26 @@ export default function MobileTabs({
           />
           <TabButton
             onClick={() => setShowSearch(true)}
-            icon={<SearchTabIcon className="h-5 w-5" />}
+            icon={contenedor ? (
+              <ContenedorIcono base={contenedor} clave="search" colores={coloresCaja}>
+                <SearchTabIcon style={trazoContenedor(contenedor, 'search')} />
+              </ContenedorIcono>
+            ) : (
+              <SearchTabIcon className="h-5 w-5" />
+            )}
             label="Buscar"
           />
           <TabButton
             onClick={() => onCartClick?.()}
             icon={
               <span className="relative">
-                {iconoTab(CartTabIcon)}
+                {iconoTab(CartTabIcon, 'cart')}
                 {unidadesCarrito > 0 && (
                   <span
-                    className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center"
-                    style={{ backgroundColor: primaryColor }}
+                    className={contenedor && (contenedorDe(contenedor, 'cart').badgeShape || contenedorDe(contenedor, 'cart').badgePosition)
+                      ? `absolute ${contenedorDe(contenedor, 'cart').badgePosition === 'top-left' ? '-top-2 -left-2.5' : '-top-2 -right-2.5'} ${contenedorDe(contenedor, 'cart').badgeShape === 'pill' ? 'min-w-[16px] h-4 px-1 rounded-full' : 'min-w-[16px] h-4 px-1 rounded-full'} text-white text-[10px] leading-4 font-bold text-center`
+                      : 'absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center'}
+                    style={{ backgroundColor: (contenedor && contenedorDe(contenedor, 'cart').badgeColor) || primaryColor }}
                   >
                     {unidadesCarrito > 99 ? '99+' : unidadesCarrito}
                   </span>
@@ -142,7 +162,7 @@ export default function MobileTabs({
             label="Carrito"
             ariaLabel={unidadesCarrito > 0 ? `Carrito, ${unidadesCarrito}` : 'Carrito'}
           />
-          <TabButton href="/auth" icon={iconoTab(AuthTabIcon)} label="Cuenta" />
+          <TabButton href="/auth" icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
         </div>
       </nav>
 
