@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
+import { EstilosCategoria } from './EstilosCategoria'
+import { estiloCategoria } from '@/lib/website/estiloCategoria'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
 import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 
@@ -25,6 +27,12 @@ interface CategoriesGridProps {
     mobile_rows?: number
     mobile_layout?: 'grid' | 'list' | 'carousel' | 'inherit'
     selected_category_ids?: number[]
+    category_style?: string
+    show_view_all?: boolean
+    view_all_url?: string
+    view_all_label?: string
+    image_bg?: string
+    image_ratio?: string
     enable_search?: boolean
     enable_pagination?: boolean
     page_size?: number
@@ -478,6 +486,18 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   const desktopGrid = desktopColumns > 0
     ? `grid-cols-${desktopColumns}`
     : getGridClass(maxItems || categories.length)
+
+  const estiloNuevo = estiloCategoria(content.category_style)
+  if (estiloNuevo) {
+    return (
+      <EstilosCategoria
+        categorias={categories}
+        estilo={estiloNuevo}
+        primaryColor={primaryColor || '#111827'}
+        content={content}
+      />
+    )
+  }
 
   return (
     <div>

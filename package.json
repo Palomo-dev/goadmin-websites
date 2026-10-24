@@ -37,7 +37,8 @@
     "verify:altura-hero": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-altura-hero.mjs",
     "verify:logo-encabezado": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-logo-encabezado.mjs",
     "verify:tarjeta-beneficio": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-tarjeta-beneficio.mjs",
-    "verify:fila-beneficio": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-fila-beneficio.mjs"
+    "verify:fila-beneficio": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-fila-beneficio.mjs",
+    "verify:estilo-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-estilo-categoria.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
