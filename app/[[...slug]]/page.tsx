@@ -24,8 +24,10 @@ import {
   getProductsByCategoryIds,
   getProductsByIdsCatalog,
   getWebsitePagesByIds,
-  getMenuCatalogProducts
+  getMenuCatalogProducts,
+  getOrganizationProductsInCategories,
 } from '@/lib/supabase/queries'
+import { idsParaCargarProductos } from '@/lib/products/filtrosProductos'
 import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
 import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
@@ -344,6 +346,20 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     }
     if (sectionTypes.includes('categories_grid') || sectionTypes.includes('categories') || needsCategories) {
       data.categories = await getOrganizationCategories(organization.id, branchId)
+    }
+    // Secciones con categorías elegidas: sus productos no pueden depender del tope de 500
+    // (ordenados por id). `parent_id` viene en el select de categorías y sirve para las hijas.
+    const seccionesConSeleccion = page.website_page_sections.some((s) => {
+      if (s.section_type !== 'featured_products' && s.section_type !== 'products_grid') return false
+      const ids = (s.content as { selected_category_ids?: unknown } | null)?.selected_category_ids
+      return Array.isArray(ids) && ids.length > 0
+    })
+    if (seccionesConSeleccion) {
+      if (!data.categories) data.categories = await getOrganizationCategories(organization.id, branchId)
+      const idsCategoria = idsParaCargarProductos(page.website_page_sections, data.categories)
+      if (idsCategoria.length > 0) {
+        data.productosCategoria = await getOrganizationProductsInCategories(organization.id, idsCategoria, branchId)
+      }
     }
     if (sectionTypes.includes('offers')) {
       data.offerProducts = await getOfferProducts(organization.id, 500, branchId)

@@ -75,6 +75,130 @@ export function hayFiltrosActivos(estado: EstadoFiltros): boolean {
  * Categorías a ofrecer en los chips: las de `data.categories` (o, si no vinieron, las que traen
  * los productos), limitadas a las elegidas en la sección y en ese orden.
  */
+export interface NodoCategoria {
+  id: number
+  parent_id?: number | null
+}
+
+/** Ids numéricos positivos, sin repetir y en el orden en que llegaron. */
+export function normalizarIdsCategoria(ids: unknown): number[] {
+  if (!Array.isArray(ids)) return []
+  const vistos = new Set<number>()
+  const salida: number[] = []
+  for (const id of ids) {
+    const n = Number(id)
+    if (!Number.isInteger(n) || n <= 0 || vistos.has(n)) continue
+    vistos.add(n)
+    salida.push(n)
+  }
+  return salida
+}
+
+/**
+ * Ids elegidos más sus descendientes (`parent_id`). El orden es el de la selección
+ * y, dentro de cada una, el de `categories`. Sin selección, lista vacía.
+ */
+export function expandirCategorias(ids: readonly number[] | unknown, categories: readonly NodoCategoria[] | null | undefined): number[] {
+  const semillas = normalizarIdsCategoria(ids)
+  if (semillas.length === 0) return []
+  const hijos = new Map<number, number[]>()
+  for (const c of categories || []) {
+    const id = Number(c?.id)
+    const padre = c?.parent_id == null ? null : Number(c.parent_id)
+    if (!Number.isInteger(id) || id <= 0 || padre == null || !Number.isInteger(padre)) continue
+    const lista = hijos.get(padre) ?? []
+    lista.push(id)
+    hijos.set(padre, lista)
+  }
+  const vistos = new Set<number>()
+  const salida: number[] = []
+  const cola = [...semillas]
+  while (cola.length > 0) {
+    const id = cola.shift()!
+    if (vistos.has(id)) continue
+    vistos.add(id)
+    salida.push(id)
+    for (const hijo of hijos.get(id) || []) cola.push(hijo)
+  }
+  return salida
+}
+
+export type SeccionConCategorias = 'featured_products' | 'products_grid' | 'products_carousel' | 'products_list' | 'offers'
+
+/**
+ * `include_subcategories` ausente: en destacados entran las hijas; en grilla,
+ * carrusel, lista y ofertas no, para no cambiar lo que ya filtraban por id exacto.
+ */
+export function incluirSubcategorias(valor: unknown, seccion: SeccionConCategorias): boolean {
+  if (valor === true) return true
+  if (valor === false) return false
+  return seccion === 'featured_products'
+}
+
+/** Ids que de verdad limitan el listado. Vacío = no hay límite de categoría. */
+export function idsDeSeleccion(
+  ids: unknown,
+  categories: readonly NodoCategoria[] | null | undefined,
+  incluirHijas: boolean,
+): number[] {
+  const limpios = normalizarIdsCategoria(ids)
+  if (limpios.length === 0) return []
+  return incluirHijas ? expandirCategorias(limpios, categories) : limpios
+}
+
+/**
+ * Productos de las categorías de la sección. Sin selección devuelve la lista igual
+ * (la clave ausente no cambia el render).
+ */
+export function filtrarProductosPorCategorias<T extends { category_id?: number | null }>(
+  productos: T[],
+  ids: unknown,
+  categories: readonly NodoCategoria[] | null | undefined,
+  incluirHijas: boolean,
+): T[] {
+  const efectivos = idsDeSeleccion(ids, categories, incluirHijas)
+  if (efectivos.length === 0) return productos
+  const set = new Set(efectivos)
+  return productos.filter((p) => p.category_id != null && set.has(Number(p.category_id)))
+}
+
+/**
+ * Une el listado general (tope 500) con los productos pedidos por categoría.
+ * Sin selección no se unen: las demás secciones siguen viendo solo los 500.
+ */
+export function unirProductosDeCategoria<T extends { id?: number }>(
+  generales: T[] | undefined,
+  deCategoria: T[] | undefined,
+  seleccion: unknown,
+): T[] {
+  const base = generales || []
+  if (normalizarIdsCategoria(seleccion).length === 0 || !deCategoria || deCategoria.length === 0) return base
+  const vistos = new Set(base.map((p) => p.id))
+  return base.concat(deCategoria.filter((p) => p.id != null && !vistos.has(p.id)))
+}
+
+const SECCIONES_CON_SELECCION = new Set(['featured_products', 'products_grid'])
+
+/**
+ * Categorías cuyos productos hay que pedir aparte del tope de 500.
+ * Ofertas no entra: esa sección lee `offerProducts`, no este listado.
+ */
+export function idsParaCargarProductos(
+  secciones: readonly { section_type?: string; content?: unknown }[],
+  categories: readonly NodoCategoria[] | null | undefined,
+): number[] {
+  const set = new Set<number>()
+  for (const s of secciones) {
+    const tipo = s.section_type
+    if (!tipo || !SECCIONES_CON_SELECCION.has(tipo)) continue
+    const content = (s.content ?? {}) as { selected_category_ids?: unknown; include_subcategories?: unknown }
+    const seccion: SeccionConCategorias = tipo === 'featured_products' ? 'featured_products' : 'products_grid'
+    const incluir = incluirSubcategorias(content.include_subcategories, seccion)
+    for (const id of idsDeSeleccion(content.selected_category_ids, categories, incluir)) set.add(id)
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
 export function categoriasDisponibles(productos: any[], categorias: any[] | undefined, seleccionadas: number[] | undefined) {
   const todas = categorias && categorias.length > 0
     ? categorias

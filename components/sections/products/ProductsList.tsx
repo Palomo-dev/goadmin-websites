@@ -6,7 +6,7 @@ import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePric
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
-import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -23,12 +23,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
   const maxItems = content.max_items || 12
-  const selectedIds: number[] = content.selected_category_ids || []
-
-  // Filtrar por categorías seleccionadas
-  const filtered = selectedIds.length > 0
-    ? allProducts.filter((p) => selectedIds.includes(p.category_id))
-    : allProducts
+  // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
+  const filtered = filtrarProductosPorCategorias(
+    unirProductosDeCategoria(allProducts, data?.productosCategoria, content.selected_category_ids),
+    content.selected_category_ids,
+    data?.categories,
+    incluirSubcategorias(content.include_subcategories, 'products_list'),
+  )
 
   // Ordenar
   const sortOrder = content.sort_order || 'default'

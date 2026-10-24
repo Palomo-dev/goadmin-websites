@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
@@ -7,7 +8,7 @@ import { textoPlano } from '@/lib/texto/textoPlano'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
-import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
+import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -34,13 +35,21 @@ function getComparePrice(product: any): number | null {
 interface FeaturedProductsHeroProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { products?: any[]; categories?: any[] }
+  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[] }
 }
 
 export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }: FeaturedProductsHeroProps) {
   const { ruta } = useRutaSitio()
   const title = content.title || 'Productos Destacados'
-  const allProducts = data?.products || []
+  const allProducts = useMemo(() => {
+    const fuente = unirProductosDeCategoria(data?.products, data?.productosCategoria, content.selected_category_ids)
+    return filtrarProductosPorCategorias(
+      fuente,
+      content.selected_category_ids,
+      data?.categories,
+      incluirSubcategorias(content.include_subcategories, 'featured_products'),
+    )
+  }, [data?.products, data?.productosCategoria, data?.categories, content.selected_category_ids, content.include_subcategories])
   const maxItems = content.max_items || 5
   // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
   const showDescription = content.show_description !== false

@@ -745,6 +745,69 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
 }
 
 /**
+ * Productos activos de unas categorías, sin el tope de 500 del listado general.
+ * Mismo select, stock y carta que `getOrganizationProducts`. Tope 1000 para no
+ * repetir el incidente de cargar el catálogo entero en la portada.
+ */
+const getOrganizationProductsInCategoriesUncached = async (
+  organizationId: number,
+  categoryIds: number[],
+  branchId?: number | null,
+) => {
+  const pedidos = [...new Set(categoryIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+  if (pedidos.length === 0) return []
+  const supabase = getSupabaseForPublicRead()
+
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return []
+  const efectivos = allowedCategoryIds
+    ? pedidos.filter((id) => allowedCategoryIds.includes(id))
+    : pedidos
+  if (efectivos.length === 0) return []
+
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  let query = supabase
+    .from('products')
+    .select(`
+      ${PRODUCT_LIST_COLUMNS},
+      product_prices (id, price, compare_price, effective_to),
+      product_images (
+        id,
+        storage_path,
+        is_primary,
+        display_order,
+        shared_image_id,
+        shared_images (
+          storage_path
+        )
+      ),
+      stock_levels (
+        branch_id,
+        qty_on_hand,
+        qty_reserved
+      )
+    `)
+    .is('product_prices.effective_to', null)
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+    .in('category_id', efectivos)
+
+  query = excluirNoListados(query, cartaSede)
+  const { data, error } = await query.order('id', { ascending: true }).limit(1000)
+  if (error) return []
+
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+
+  return aplicarCartaSede(filterStockByBranches(
+    normalizeProductPrices(await enrichListing(supabase, organizationId, data || [])),
+    stockBranchIds,
+  ), cartaSede)
+}
+
+/**
  * Obtiene productos en oferta (compare_price > price), ordenados por ventas.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
@@ -3655,6 +3718,9 @@ export const getMenuById = cacheStructural('getMenuById', getMenuByIdUncached, C
 
 export const getOrganizationProducts = cache(
   cacheCatalog('getOrganizationProducts', getOrganizationProductsUncached, (...args) => args[0])
+)
+export const getOrganizationProductsInCategories = cache(
+  cacheCatalog('getOrganizationProductsInCategories', getOrganizationProductsInCategoriesUncached, (...args) => args[0])
 )
 export const getOfferProducts = cache(
   cacheCatalog('getOfferProducts', getOfferProductsUncached, (...args) => args[0])
