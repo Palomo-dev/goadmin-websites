@@ -76,13 +76,14 @@ export function CategoryDetailRenderer({
   if (hasSections && templatePage) {
     return (
       <div className="container mx-auto px-4 py-8">
-        {templatePage.website_page_sections.map((section) => (
+        {templatePage.website_page_sections.map((section, i) => (
           <SectionRenderer
             key={section.id}
             section={section}
             organization={organization}
             primaryColor={primaryColor}
             data={sectionData}
+            isFirst={i === 0 || templatePage.website_page_sections.slice(0, i).every((s) => s.is_visible === false)}
           />
         ))}
       </div>

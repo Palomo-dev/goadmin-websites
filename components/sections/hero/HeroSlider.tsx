@@ -8,6 +8,7 @@ import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 import { ajusteImagen, puntoFocal } from '@/lib/website/alturaHero'
 import { enlaceDeImagen } from '@/lib/website/presentacionTienda'
+import { heroSolapa, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 
 interface Slide {
   title?: string
@@ -328,7 +329,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const height = (content as any).height || 'auto'
   const customHeight = Number((content as any).custom_height) || 0
   const imageMaxHeight = (content as any).image_max_height || '85vh'
-  const overlapHeader = parseBool((content as any).overlap_header, true)
+  const overlapHeader = heroSolapa(organization?.website_settings, (content as any).overlap_header)
 
   const focal = puntoFocal((content as any).focal_point)
   const fitMovil = ajusteImagen((content as any).image_fit_mobile)
@@ -347,7 +348,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const heightStyle: React.CSSProperties =
     height === 'custom' && customHeight > 0 ? { minHeight: `${customHeight}px` } : {}
   const overlapStyle: React.CSSProperties = overlapHeader
-    ? { marginTop: 'calc(-1 * var(--header-h, 0px))', paddingTop: 'var(--header-h, 0px)' }
+    ? { paddingTop: `var(--header-h, ${RESPALDO_HEADER_PX}px)` }
     : {}
 
   // CAROUSEL_FIELDS con defaults que preservan el comportamiento heredado

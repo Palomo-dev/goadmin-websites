@@ -505,9 +505,11 @@ interface SectionRendererProps {
   organization: OrganizationWithDetails
   primaryColor?: string
   data?: Record<string, any>
+  /** Primera sección visible. Sin padding ni margen superiores propios, queda pegada al header. */
+  isFirst?: boolean
 }
 
-export function SectionRenderer({ section, organization, primaryColor, data }: SectionRendererProps) {
+export function SectionRenderer({ section, organization, primaryColor, data, isFirst = false }: SectionRendererProps) {
   const typeMap = SECTION_MAP[section.section_type]
   const Component = typeMap?.[section.section_variant]
 
@@ -528,7 +530,7 @@ export function SectionRenderer({ section, organization, primaryColor, data }: S
   const content = (section.content || {}) as Record<string, any>
 
   return (
-    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style}>
+    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
       <Component
         content={content}
         organization={organization}

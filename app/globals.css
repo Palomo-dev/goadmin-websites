@@ -377,6 +377,36 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-encabezado-no-fijo] header[class*='sticky']:not(main *) {
   position: relative;
 }
+/* Header transparente encima del hero. Sale del flujo (fijo) y el hero reserva
+   --header-h. Si la primera sección no es hero, el <main> compensa. El atributo
+   va dos veces para ganar a `data-encabezado-no-fijo` sin cambiar esa regla.
+   Al bajar (`data-header-solido`) vuelve el fondo propio del encabezado. */
+[data-header-sobre-hero][data-header-sobre-hero] header:not(main *),
+[data-raiz-sitio]:has([data-primera-hero]) header:not(main *) {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+}
+[data-header-sobre-hero]:not([data-header-solido]) header:not(main *) > div,
+[data-raiz-sitio]:has([data-primera-hero]):not([data-header-solido]) header:not(main *) > div {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #ffffff;
+}
+[data-header-sobre-hero] main {
+  padding-top: var(--header-h, 72px);
+}
+[data-header-sobre-hero] main:has(> [data-primera-hero]),
+[data-raiz-sitio]:has(main > [data-primera-hero]) main {
+  padding-top: 0;
+}
+/* Anclas: el encabezado fijo o sticky no tapa el destino. --header-h arranca en 72px y luego mide la altura real. */
+[data-raiz-sitio] section[data-section-id] {
+  scroll-margin-top: var(--header-h, 72px);
+}
 [data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: var(--encabezado-texto) !important;
 }

@@ -41,11 +41,12 @@ async function cargar(ruta, nombre, reemplazos = []) {
   await writeFile(join(dir, nombre), js)
   return import(pathToFileURL(join(dir, nombre)).href)
 }
-let m, ep, estilo
+let m, ep, estilo, espacio
 try {
   m = await cargar('lib/website/v2/mapeoAjustes.ts', 'mapeoAjustes.mjs')
   ep = await cargar('lib/website/encabezadoPie.ts', 'encabezadoPie.mjs', [["from './v2/mapeoAjustes'", "from './mapeoAjustes.mjs'"]])
   estilo = await cargar('lib/website/encabezadoEstilo.ts', 'encabezadoEstilo.mjs')
+  espacio = await cargar('lib/website/espacioHeader.ts', 'espacioHeader.mjs')
 } finally {
   // los módulos ya están en memoria
 }
@@ -53,7 +54,7 @@ await rm(dir, { recursive: true, force: true })
 
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
-check(nuevas.length === 25, `se esperaban 25 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 27, `se esperaban 27 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla, `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -160,6 +161,8 @@ const CONSUMIDORES = {
   header_icons_weight: ['components/site/header/HeaderShared.tsx', 'header_icons_weight'],
   header_cart_glyph: ['components/site/header/HeaderShared.tsx', 'header_cart_glyph'],
   header_icons_circle: ['components/site/header/HeaderShared.tsx', 'header_icons_circle'],
+  header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
+  first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],
   footer_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.colorTexto'],
   footer_show_dividers: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.separadores'],
 }
@@ -256,6 +259,21 @@ for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo
     check(src.includes("open ? 'z-[60]' : 'z-40'"), `${ruta}: abierta, la hoja queda bajo la barra fija del celular`)
   }
 }
+
+igual(espacio.offsetPrimeraPx(null), 0, 'sin ajustes el hueco de la primera sección es 0')
+igual(espacio.offsetPrimeraPx({ first_section_offset_px: 16 }), 16, 'el offset en px se respeta')
+igual(espacio.offsetPrimeraPx({ first_section_offset_px: 999 }), 0, 'un offset fuera de rango vuelve a 0')
+check(espacio.heroSolapa(null, undefined) === false, 'sin claves el hero no solapa')
+check(espacio.heroSolapa(null, true) === true, 'overlap_header true sigue siendo el alias')
+check(espacio.heroSolapa({ header_transparent_over_hero: false }, true) === false, 'el interruptor en falso apaga el alias')
+check(espacio.heroSolapa({ header_transparent_over_hero: true }, false) === false, 'la sección puede apagar el solape del sitio')
+check(espacio.heroSolapa({ header_style: 'transparent' }, undefined) === true, 'la variante transparente sigue solapando')
+check(espacio.heroSolapa({ header_style: 'transparent', header_transparent_over_hero: false }, undefined) === false, 'falso explícito apaga también la variante transparente')
+check(espacio.headerSobreHero({ header_transparent_over_hero: true }) === true, 'el interruptor saca el header del flujo')
+check(espacio.headerSobreHero({}) === false, 'sin interruptor el header sigue en el flujo')
+check(! (await fuente('components/sections/hero/HeroFullscreen.tsx')).includes('marginTop:'), 'el hero ya no sube con margen negativo')
+check((await fuente('components/sections/SectionWrapper.tsx')).includes('isFirst'), 'SectionWrapper recibe la primera sección')
+check((await fuente('app/globals.css')).includes('data-header-sobre-hero') && (await fuente('app/globals.css')).includes('data-encabezado-no-fijo'), 'el CSS del header transparente no borra data-encabezado-no-fijo')
 
 if (problemas.length > 0) {
   console.error(`✗ verify-encabezado-pie: ${problemas.length} problema(s) en ${casos} casos`)
