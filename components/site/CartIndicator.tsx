@@ -27,13 +27,15 @@ interface CartIndicatorProps {
   /** Caja nueva. Sin ella se conserva el círculo de acento. */
   contenedor?: ContenedorIconos | null
   colores?: ColoresCaja
+  /** Clase del ícono. En el celular, `--hdr-mobile-icon`. */
+  claseIcono?: string
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, contenedor = null, colores }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, contenedor = null, colores, claseIcono }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
   const trazo = propsTrazoIcono(relleno)
-  const claseIcono = circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300'
+  const clase = claseIcono ?? (circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300')
   const caja = contenedor ? contenedorDe(contenedor, 'cart') : null
   const icono = caja ? (
     <ContenedorIcono base={contenedor!} clave="cart" colores={colores || { primary: primaryColor, accent: primaryColor, secondary: primaryColor }}>
@@ -41,7 +43,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
     </ContenedorIcono>
   ) : (
     <IconoConCirculo circulo={circulo} primaryColor={primaryColor}>
-      <Icon className={claseIcono} {...trazo} />
+      <Icon className={clase} {...trazo} />
     </IconoConCirculo>
   )
   const [itemCount, setItemCount] = useState(0)

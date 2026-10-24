@@ -41,12 +41,17 @@ async function cargar(ruta, nombre, reemplazos = []) {
   await writeFile(join(dir, nombre), js)
   return import(pathToFileURL(join(dir, nombre)).href)
 }
-let m, ep, estilo, espacio
+let m, ep, estilo, espacio, contraste, colores
 try {
   m = await cargar('lib/website/v2/mapeoAjustes.ts', 'mapeoAjustes.mjs')
   ep = await cargar('lib/website/encabezadoPie.ts', 'encabezadoPie.mjs', [["from './v2/mapeoAjustes'", "from './mapeoAjustes.mjs'"]])
   estilo = await cargar('lib/website/encabezadoEstilo.ts', 'encabezadoEstilo.mjs')
   espacio = await cargar('lib/website/espacioHeader.ts', 'espacioHeader.mjs')
+  contraste = await cargar('lib/website/v2/contrasteColor.ts', 'contrasteColor.mjs')
+  colores = await cargar('lib/headerColors.ts', 'headerColors.mjs', [
+    ["from './website/v2/contrasteColor'", "from './contrasteColor.mjs'"],
+    ["from './website/encabezadoEstilo'", "from './encabezadoEstilo.mjs'"],
+  ])
 } finally {
   // los módulos ya están en memoria
 }
@@ -54,14 +59,16 @@ await rm(dir, { recursive: true, force: true })
 
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
-check(nuevas.length === 27, `se esperaban 27 opciones nuevas y hay ${nuevas.length}`)
+// JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
+const JSON_SIN_REGLA = new Set(['mobile_header', 'header_builder'])
+check(nuevas.length === 48, `se esperaban 48 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
-  check(!!def.regla, `${col} no declara regla`)
+  check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
   check(!m.COLUMNAS_IMPORTADAS.includes(col), `${col} está en COLUMNAS_IMPORTADAS (rompe el select legacy sin migración)`)
   igual(m.normalizarOpcionShell(col, undefined), def.porDefecto, `${col} ausente`)
   igual(m.normalizarOpcionShell(col, null), def.porDefecto, `${col} nulo`)
-  igual(m.normalizarOpcionShell(col, { basura: 1 }), def.porDefecto, `${col} con un objeto`)
+  if (def.regla) igual(m.normalizarOpcionShell(col, { basura: 1 }), def.porDefecto, `${col} con un objeto`)
 }
 const n = m.normalizarOpcionShell
 igual(n('mobile_bottom_bar', 'reservar'), ['reservar'], 'una sola acción en la columna legacy')
@@ -82,6 +89,10 @@ igual(n('site_locales', ['es-CO', 'en']), ['es-CO', 'en'], 'idiomas válidos')
 igual(n('site_locales', ['de']), ['es-CO'], 'idioma desconocido')
 igual(n('header_text_color', '#fff'), '#fff', 'color corto')
 igual(n('header_text_color', 'red; x'), null, 'color con CSS inyectado')
+igual(n('mobile_menu_text_color', '#fff'), '#fff', 'color de menú corto')
+igual(n('mobile_menu_text_color', 'red; x'), null, 'color de menú con CSS inyectado')
+igual(n('mobile_menu_text_color', 'expression(alert(1))'), null, 'color de menú con expresión')
+igual(n('header_mobile_icon_color', '#101010;background:url(//x)'), null, 'ícono móvil con CSS inyectado')
 igual(n('header_style', 'transparent'), 'transparent', 'header_style transparent')
 igual(n('footer_background', 'tema'), 'tema', 'footer_background tema')
 igual(n('footer_background', 'otro'), 'dark', 'footer_background desconocido')
@@ -161,12 +172,38 @@ const CONSUMIDORES = {
   header_icons_weight: ['components/site/header/HeaderShared.tsx', 'header_icons_weight'],
   header_cart_glyph: ['components/site/header/HeaderShared.tsx', 'header_cart_glyph'],
   header_icons_circle: ['components/site/header/HeaderShared.tsx', 'header_icons_circle'],
+  mobile_logo_position: ['lib/website/logoEncabezado.ts', 'mobile_logo_position'],
+  header_layout: ['components/site/SiteHeader.tsx', 'header_layout'],
+  header_scroll: ['components/site/SiteHeader.tsx', 'header_scroll'],
+  mobile_header: ['lib/website/menuMovil.ts', 'mobile_header'],
+  header_builder: ['lib/website/constructorEncabezado.ts', 'header_builder'],
   header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
   first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],
+  mobile_menu_bg_color: ['lib/headerColors.ts', 'mobile_menu_bg_color'],
+  mobile_menu_text_color: ['lib/headerColors.ts', 'mobile_menu_text_color'],
+  mobile_menu_link_hover_color: ['lib/headerColors.ts', 'mobile_menu_link_hover_color'],
+  mobile_menu_link_active_color: ['lib/headerColors.ts', 'mobile_menu_link_active_color'],
+  mobile_menu_title_color: ['lib/headerColors.ts', 'mobile_menu_title_color'],
+  mobile_menu_divider_color: ['lib/headerColors.ts', 'mobile_menu_divider_color'],
+  mobile_menu_currency_text_color: ['lib/headerColors.ts', 'mobile_menu_currency_text_color'],
+  mobile_menu_currency_border_color: ['lib/headerColors.ts', 'mobile_menu_currency_border_color'],
+  mobile_menu_currency_bg_color: ['lib/headerColors.ts', 'mobile_menu_currency_bg_color'],
+  mobile_menu_login_bg_color: ['lib/headerColors.ts', 'mobile_menu_login_bg_color'],
+  mobile_menu_login_text_color: ['lib/headerColors.ts', 'mobile_menu_login_text_color'],
+  mobile_menu_register_border_color: ['lib/headerColors.ts', 'mobile_menu_register_border_color'],
+  mobile_menu_register_text_color: ['lib/headerColors.ts', 'mobile_menu_register_text_color'],
+  mobile_menu_logout_color: ['lib/headerColors.ts', 'mobile_menu_logout_color'],
+  header_mobile_icon_color: ['lib/headerColors.ts', 'header_mobile_icon_color'],
   footer_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.colorTexto'],
   footer_show_dividers: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.separadores'],
 }
-for (const [col] of nuevas) {
+// El editor la guarda. El default `icono` es el encabezado de hoy y ninguna pantalla lee otro valor.
+const SIN_PINTOR = new Set(['header_actions_style'])
+for (const [col, def] of nuevas) {
+  if (SIN_PINTOR.has(col)) {
+    check(def.porDefecto === 'icono', `${col} cambió su default; hace falta quien lo pinte`)
+    continue
+  }
   const c = CONSUMIDORES[col]
   if (!c) {
     problemas.push(`${col}: opción nueva sin consumidor registrado en este verify`)
@@ -200,7 +237,8 @@ igual(
 igual(estilo.estiloIconosEncabezado({ header_cart_glyph: 'otro' }).forma, null, 'una forma desconocida no pisa cart_icon')
 igual(estilo.estiloIconosEncabezado({ header_icons_weight: 'contorno', header_cart_glyph: 'bolsa' }), { relleno: false, circulo: false, forma: 'bolsa' }, 'bolsa en contorno')
 const cssVars = await fuente('app/globals.css')
-check(cssVars.includes('--header-hover') && cssVars.includes('--header-divider') && cssVars.includes('data-fondo-encabezado'), 'el CSS declara el hover, el divisor y el fondo del menú')
+check(cssVars.includes('--header-hover') && cssVars.includes('--header-divider') && cssVars.includes('--mm-bg') && cssVars.includes('--hdr-mobile-icon'), 'el CSS declara el hover, el divisor y los colores del menú móvil')
+check(!cssVars.includes(':not(.bg-white *)'), 'la regla rota que dependía de no estar dentro de .bg-white sigue en el CSS')
 for (const ruta of [
   'components/site/header/HeaderCentered.tsx',
   'components/site/header/HeaderMega.tsx',
@@ -219,7 +257,7 @@ for (const ruta of [
   'components/site/header/mobile/MobileBottomSheet.tsx',
 ]) {
   const src = await fuente(ruta)
-  check(src.includes('estiloBarraEncabezado(settings)') && src.includes('variablesEncabezado(settings)'), `${ruta} no pinta el fondo del encabezado`)
+  check(src.includes('estiloBarraEncabezado(settings') && src.includes('variablesEncabezado(settings') && src.includes('estiloPanelMenu(settings'), `${ruta} no pinta el fondo del encabezado ni el contraste del menú`)
   check(!src.includes('bg-white'), `${ruta} sigue con fondo blanco fijo`)
 }
 for (const ruta of ['components/site/ProductSearch.tsx', 'components/site/CartIndicator.tsx']) {
@@ -230,6 +268,69 @@ for (const ruta of ['components/site/ProductSearch.tsx', 'components/site/CartIn
 const css = await fuente('app/globals.css')
 for (const atributo of ['data-encabezado-transparente', 'data-encabezado-no-fijo', 'data-encabezado-texto', 'data-pie-texto', 'data-pie-sin-separadores']) {
   check(css.includes(atributo), `app/globals.css sin reglas para [${atributo}]`)
+}
+
+// ─── 3b. Contraste del menú móvil ──────────────────────────────────────────────────────────────
+{
+  const razon = (a, b) => contraste.contraste(a, b)
+  const pasa = (a, b, msg) => check((razon(a, b) ?? 0) >= 4.5, `${msg}: ${razon(a, b)} (${a} sobre ${b})`)
+  const temaClaro = { fondo: '#ffffff', oscuro: false, primario: '#111827' }
+  const hoy = colores.resolverColoresMenuMovil(null, temaClaro)
+  const varsHoy = colores.variablesMenuMovil(null, temaClaro)
+  check(hoy.fijar === false, 'sin colores ni fondo propio no se fijan variables')
+  igual(hoy.texto, '#374151', 'texto claro = gray-700')
+  igual(hoy.titulo, '#111827', 'título claro = gray-900')
+  igual(hoy.textoSuave, '#4b5563', 'enlace hijo = gray-600')
+  igual(hoy.divisor, '#f3f4f6', 'divisor claro = gray-100')
+  igual(hoy.monedaTexto, '#6b7280', 'rótulo Moneda = gray-500')
+  igual(hoy.monedaValor, '#111827', 'select de moneda = gray-900')
+  igual(hoy.iconoBarra, '#374151', 'ícono de la barra = gray-700')
+  igual(varsHoy, {}, 'sin colores el CSS conserva los grises (el modo oscuro puede cambiarlos)')
+  const otra = colores.variablesMenuMovil(null, temaClaro)
+  igual(varsHoy, otra, 'el resolvedor es estable')
+
+  const oscuro = colores.resolverColoresMenuMovil({ header_bg_color: '#101010', header_opacity: 95 }, temaClaro)
+  check(oscuro.fijar === true, 'encabezado #101010 fija el menú')
+  pasa(oscuro.texto, oscuro.fondo, 'texto sobre #101010')
+  pasa(oscuro.titulo, oscuro.fondo, 'título sobre #101010')
+  pasa(oscuro.textoSuave, oscuro.fondo, 'enlace hijo sobre #101010')
+  pasa(oscuro.monedaTexto, oscuro.fondo, 'Moneda sobre #101010')
+  pasa(oscuro.monedaValor, oscuro.fondo, 'select sobre #101010')
+  pasa(oscuro.iconoBarra, oscuro.fondoBarra, 'hamburguesa sobre la barra')
+  pasa(oscuro.loginTexto, oscuro.loginFondo, 'entrar sobre su botón')
+  pasa(oscuro.registroTexto, oscuro.fondo, 'registrarse sobre el menú')
+  pasa(oscuro.salir, oscuro.fondo, 'cerrar sesión sobre el menú')
+  const varsOscuro = colores.variablesMenuMovil({ header_bg_color: '#101010' }, temaClaro)
+  check(typeof varsOscuro['--mm-fg'] === 'string' && typeof varsOscuro['--hdr-mobile-icon'] === 'string', 'el encabezado oscuro publica --mm-fg y --hdr-mobile-icon')
+
+  const inyectado = colores.resolverColoresMenuMovil({ header_bg_color: '#101010', mobile_menu_text_color: 'red; x' }, temaClaro)
+  igual(inyectado.texto, oscuro.texto, 'CSS inyectado no pinta el texto')
+  const verde = colores.resolverColoresMenuMovil({ header_bg_color: '#101010', mobile_menu_text_color: '#00ff00' }, temaClaro)
+  pasa(verde.texto, verde.fondo, 'un verde pedido sigue legible')
+  check(verde.texto.toUpperCase() !== oscuro.texto.toUpperCase(), 'un color pedido no se ignora')
+
+  const claro = colores.resolverColoresMenuMovil({ header_bg_color: '#ffffff' }, temaClaro)
+  pasa(claro.texto, claro.fondo, 'encabezado blanco')
+  check(!esOscuroTexto(claro.texto, claro.fondo), 'encabezado blanco no invierte a texto claro')
+
+  const opaco = colores.resolverColoresMenuMovil({ header_bg_color: '#101010', header_opacity: 40 }, { fondo: '#ffffff', primario: '#111827' })
+  pasa(opaco.texto, opaco.fondo, 'encabezado oscuro al 40 %')
+  const lavado = colores.resolverColoresMenuMovil({ header_bg_color: '#000000', header_opacity: 0 }, { fondo: '#ffffff', primario: '#111827' })
+  pasa(lavado.texto, lavado.fondo, 'opacidad 0 queda sobre el fondo claro')
+
+  const temaOscuro = colores.variablesMenuMovil(null, { fondo: '#0E0E0E', oscuro: true, primario: '#C8A97E' })
+  check(!('--mm-fg' in temaOscuro), 'el tema oscuro sin encabezado propio lo pinta el CSS')
+  pasa(temaOscuro['--mm-login-text'] || '#FFFFFF', '#C8A97E', 'entrar sobre un acento claro')
+
+  const menuClaro = colores.resolverColoresMenuMovil({ header_bg_color: '#101010', mobile_menu_bg_color: '#ffffff', mobile_menu_text_color: '#111827' }, temaClaro)
+  pasa(menuClaro.texto, menuClaro.fondo, 'menú claro sobre barra oscura')
+  pasa(menuClaro.iconoBarra, menuClaro.fondoBarra, 'la hamburguesa sigue la barra, no el menú')
+}
+function esOscuroTexto(texto, fondo) {
+  const r = contraste.contraste(texto, fondo) ?? 0
+  const lumTexto = estilo.luminanciaHex(texto) ?? 1
+  const lumFondo = estilo.luminanciaHex(fondo) ?? 1
+  return r >= 4.5 && lumTexto > lumFondo && lumFondo > 0.5
 }
 
 // ─── 4. Hojas del menú del celular ─────────────────────────────────────────────────────────────

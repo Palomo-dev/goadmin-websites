@@ -228,6 +228,26 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_cart_glyph: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: FORMA_CARRITO_ENCABEZADO }, nueva: true },
   /** Círculo del color de la marca detrás de moneda, carrito y cuenta. */
   header_icons_circle: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
+  /**
+   * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
+   * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.
+   */
+  mobile_menu_bg_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_link_hover_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_link_active_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_title_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_divider_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_currency_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_currency_border_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_currency_bg_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_login_bg_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_login_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_register_border_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_register_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  mobile_menu_logout_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Hamburguesa, búsqueda, carrito, cuenta y moneda de la barra del celular. `null` = texto del encabezado o contraste. */
+  header_mobile_icon_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Si falta, el encabezado sigue el `header_style` de hoy. */
   header_layout: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LAYOUTS_ENCABEZADO }, nueva: true },
   /** `fijo` es lo de hoy: el encabezado no se esconde ni se encoge. */

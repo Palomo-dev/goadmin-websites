@@ -133,7 +133,7 @@ export function SearchBarInput({
   };
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${className}`} data-superficie-propia="">
       {/* Input visible tipo marketplace */}
       <div className="relative">
         <SearchIconComp
