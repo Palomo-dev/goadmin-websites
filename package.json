@@ -32,7 +32,8 @@
     "verify:paginacion-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-paginacion-categoria.mjs",
     "verify:carrito-pendiente": "node --disable-warning=ExperimentalWarning scripts/verify-carrito-pendiente.mjs",
     "verify:promo-minimo": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-minimo.mjs",
-    "verify:destacados-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-destacados-categoria.mjs"
+    "verify:destacados-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-destacados-categoria.mjs",
+    "verify:marco-imagen": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-marco-imagen.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 
 interface CategoriesGridProps {
   content: {
@@ -37,6 +38,9 @@ interface CategoriesGridProps {
     card_padding?: number
     card_hover?: 'none' | 'zoom' | 'lift' | 'glow' | 'border'
     image_fit?: 'cover' | 'contain' | 'fill'
+    image_ratio?: string
+    image_padding?: number
+    image_bg?: string
     text_align?: 'left' | 'center' | 'right'
     text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
     title_size?: 'sm' | 'md' | 'lg'
@@ -110,6 +114,9 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   if (content.card_padding != null) style.card_padding = content.card_padding
   if (content.card_hover) style.card_hover = content.card_hover
   if (content.image_fit) style.image_fit = content.image_fit
+  if (content.image_ratio) style.image_ratio = content.image_ratio
+  if (content.image_padding != null) style.image_padding = content.image_padding
+  if (content.image_bg) style.image_bg = content.image_bg
   if (content.text_align) style.text_align = content.text_align
   if (content.text_position) style.text_position = content.text_position
   if (content.title_size) style.title_size = content.title_size
@@ -117,8 +124,8 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   return style
 }
 
-function MobileListCard({ cat, isRound, showCount, primaryColor }: {
-  cat: any; isRound: boolean; showCount?: boolean; primaryColor?: string
+function MobileListCard({ cat, isRound, showCount, primaryColor, imageFit }: {
+  cat: any; isRound: boolean; showCount?: boolean; primaryColor?: string; imageFit?: string
 }) {
   return (
     <Link
@@ -127,7 +134,7 @@ function MobileListCard({ cat, isRound, showCount, primaryColor }: {
     >
       <div className={`w-16 h-16 shrink-0 overflow-hidden ${isRound ? 'rounded-full' : 'rounded-lg'}`}>
         {cat.image_url ? (
-          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
+          <img src={cat.image_url} alt={cat.name} className={`w-full h-full ${claseAjusteImagen(imageFit)}`} loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: `${primaryColor || '#8B6914'}15` }}>
             <span className="text-2xl">🏷️</span>
@@ -203,9 +210,9 @@ function ListCard({ cat, cardStyle, primaryColor }: {
           <img
             src={cat.image_url}
             alt={cat.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full ${claseAjusteImagen(cardStyle.image_fit)}`}
             loading="lazy"
-            style={{ borderRadius: isRound ? '9999px' : radius }}
+            style={{ borderRadius: isRound ? '9999px' : radius, ...estiloMarcoImagen(cardStyle) }}
           />
         ) : wantIcon ? (
           <DynamicLucideIcon name={cat.icon} fallback="Tag" className="w-6 h-6" style={{ color: accent }} />
