@@ -5,7 +5,14 @@
  * componente sigue pintando lo de hoy. Una clave presente (global o de la
  * sección, con «usar el global» apagado) activa el componente nuevo.
  * La sección pisa al global solo en las claves que ella misma trae.
+ *
+ * `tema.paginacion` y `tema.carrusel` no se escriben hasta que el sitio publicado
+ * acepte esas claves. El ajuste de una sección vive en su contenido y sí se puede
+ * guardar: el sitio actual lo ignora.
  */
+export function paginacionTemaDisponible(): boolean {
+  return process.env.NEXT_PUBLIC_WEBSITE_PAGINACION === '1'
+}
 
 export const ESTILOS_PAGINACION = ['numerada', 'compacta', 'cargar_mas', 'infinito', 'anterior_siguiente'] as const
 export type EstiloPaginacion = (typeof ESTILOS_PAGINACION)[number]

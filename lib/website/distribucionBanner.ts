@@ -112,6 +112,7 @@ export interface ConfigBanners {
 const CLAVES_BANNER_NUEVAS = [
   'image_url_mobile',
   'focal_point',
+  'alt',
   'kicker',
   'show_overlay_text',
   'image_url_hover',

@@ -33,6 +33,7 @@ const MODULOS = {
   temaPublico: 'lib/website/v2/temaPublico.ts',
   tokensDiseno: 'lib/website/v2/tokensDiseno.ts',
   estiloSeccionPublico: 'lib/website/v2/estiloSeccionPublico.ts',
+  paginacionCarrusel: 'lib/website/v2/paginacionCarrusel.ts',
 }
 
 function aMjs(ts) {
@@ -153,7 +154,7 @@ const { validarDocumentoSitio } = m.documentoSitio
   check(v.ok, `documento con tokens nuevos válido para el contrato: ${JSON.stringify(v.errores ?? [])}`)
   const principal = v.ok ? v.documento : null
   const t = temaPublicoDesdeDocumento(principal, false, null)
-  igual(t, { fondo: '#FAF7F2', texto: '#1B1B1B', fuenteTitulos: 'Playfair Display', fuenteCuerpo: 'Lato', radio: 12, estiloBoton: 'pastilla', movimiento: 'bajo', tokens: null }, 'tema del principal')
+  igual(t, { fondo: '#FAF7F2', texto: '#1B1B1B', fuenteTitulos: 'Playfair Display', fuenteCuerpo: 'Lato', radio: 12, estiloBoton: 'pastilla', movimiento: 'bajo', tokens: null, tarjetaProducto: null, paginacion: null, carrusel: null }, 'tema del principal')
   const a = atributosTema(t)
   igual(a.variables['--radio-boton'], '9999px', 'pastilla = radio máximo')
   igual(a.datos['data-movimiento'], 'bajo', 'movimiento')

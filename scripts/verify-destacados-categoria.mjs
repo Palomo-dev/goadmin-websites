@@ -8,13 +8,28 @@
  * incluye esas hijas y las dos selecciones devuelven productos distintos y no vacíos.
  * En grilla, carrusel, lista y ofertas la clave ausente no expande (el id exacto de hoy).
  */
-import {
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { stripTypeScriptTypes } from 'node:module'
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const dir = join(ROOT, '.verify-destacados-tmp')
+await rm(dir, { recursive: true, force: true })
+await mkdir(dir)
+const fuente = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/products/filtrosProductos.ts'), 'utf8'), { mode: 'strip' })
+  .replace(/^import\s+type[^\n]*\n/gm, '')
+  .replace("from '@/lib/stock'", "from './stock.mjs'")
+await writeFile(join(dir, 'stock.mjs'), 'export function isOutOfStock() { return false }\n')
+await writeFile(join(dir, 'filtros.mjs'), fuente)
+const {
   expandirCategorias,
   filtrarProductosPorCategorias,
   idsParaCargarProductos,
   incluirSubcategorias,
   unirProductosDeCategoria,
-} from '../lib/products/filtrosProductos.ts'
+} = await import(pathToFileURL(join(dir, 'filtros.mjs')).href)
+await rm(dir, { recursive: true, force: true })
 
 const problemas = []
 let casos = 0

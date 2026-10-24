@@ -51,9 +51,7 @@ interface CategoriesGridProps {
     card_padding?: number
     card_hover?: 'none' | 'zoom' | 'lift' | 'glow' | 'border'
     image_fit?: 'cover' | 'contain' | 'fill'
-    image_ratio?: string
     image_padding?: number
-    image_bg?: string
     text_align?: 'left' | 'center' | 'right'
     text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
     title_size?: 'sm' | 'md' | 'lg'

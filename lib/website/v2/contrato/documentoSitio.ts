@@ -246,17 +246,6 @@ export const esquemaAjustePaginacion = z
   .strict();
 
 /**
- * `product_card_style` del sitio. Objeto plano con botones y etiquetas anidados
- * un nivel. Ausente = la tarjeta de hoy. La sección lo reemplaza con la misma forma.
- */
-const primitivoTarjeta = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
-export const esquemaTarjetaProducto = z.record(
-  z.string().max(64),
-  z.union([primitivoTarjeta, z.record(z.string().max(64), primitivoTarjeta)]),
-);
-export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
-
-/**
  * Controles de carrusel. Opcional: sin el objeto, cada carrusel conserva sus
  * flechas y sus puntos actuales.
  */
@@ -288,6 +277,17 @@ export const esquemaAjusteCarrusel = z
     avance: z.number().int().min(1).max(8).optional(),
   })
   .strict();
+
+/**
+ * `product_card_style` del sitio. Objeto plano con botones y etiquetas anidados
+ * un nivel. Ausente = la tarjeta de hoy. La sección lo reemplaza con la misma forma.
+ */
+const primitivoTarjeta = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
+export const esquemaTarjetaProducto = z.record(
+  z.string().max(64),
+  z.union([primitivoTarjeta, z.record(z.string().max(64), primitivoTarjeta)]),
+);
+export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
 
 /** Tokens de tema (D12 grupo «tema»). */
 export const esquemaTema = z
@@ -345,6 +345,11 @@ export const esquemaTema = z
      * con su título de hoy. Lo lee el cascarón (`section_style` público).
      */
     seccion: z.record(z.string().max(40), z.unknown()).optional(),
+    /**
+     * Paginación y carrusel del sitio. Ausentes = lo de hoy. El editor solo los
+     * escribe con NEXT_PUBLIC_WEBSITE_PAGINACION=1: el sitio publicado rechaza
+     * estas claves hasta que su contrato las acepte.
+     */
     paginacion: esquemaCampo(esquemaAjustePaginacion).optional(),
     carrusel: esquemaCampo(esquemaAjusteCarrusel).optional(),
   })

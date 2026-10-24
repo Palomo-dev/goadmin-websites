@@ -8,6 +8,15 @@
  * Código puro: sin React ni alias, para que el script de verificación lo cargue.
  */
 
+/**
+ * El sitio público rechaza `tema.tarjetaProducto` hasta que su contrato lo acepte
+ * (cae a legacy). Apagado: el editor no escribe esa clave. El estilo de una sección
+ * vive en `contenido.product_card_style` y el sitio actual lo ignora.
+ */
+export function tarjetaProductoTemaDisponible(): boolean {
+  return process.env.NEXT_PUBLIC_WEBSITE_TARJETA_PRODUCTO === '1'
+}
+
 export const PRESETS_TARJETA = ['actual', 'minimal', 'boxed', 'overlay', 'compact', 'rich'] as const
 export type PresetTarjeta = (typeof PRESETS_TARJETA)[number]
 
