@@ -29,6 +29,9 @@ export const COPIAS = [
   ['lib/website/v2/contrato/seccionesMesa.ts', 'src/lib/website/contrato/seccionesMesa.ts'],
   ['lib/website/v2/mapeoAjustes.ts', 'src/lib/website/v2/mapeoAjustes.ts'],
   ['lib/website/v2/estiloSeccion.ts', 'src/lib/website/v2/estiloSeccion.ts'],
+  ['lib/website/v2/tokensDiseno.ts', 'src/lib/website/v2/tokensDiseno.ts'],
+  ['lib/website/v2/presetsDiseno.ts', 'src/lib/website/v2/presetsDiseno.ts'],
+  ['lib/website/v2/iconosEncabezado.ts', 'src/lib/website/v2/iconosEncabezado.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
   // Contraste WCAG: lo usa textoSobreAcento (texto del botón del encabezado y modo del fondo).

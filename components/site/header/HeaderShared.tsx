@@ -18,6 +18,7 @@ import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
 import { colorDivisorEfectivo, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
+import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
@@ -429,16 +430,13 @@ export function HeaderActions({
     header_icons_circle: settings?.header_icons_circle,
   });
   const trazo = propsTrazoIcono(estiloIconos.relleno);
-  const CartIconComp =
-    estiloIconos.forma === 'carrito'
-      ? ShoppingCart
-      : estiloIconos.forma === 'bolsa'
-        ? ShoppingBag
-        : getLucideIcon(settings?.cart_icon as string, ShoppingBag);
-  const AuthIconComp = getLucideIcon(settings?.auth_icon as string, User);
-  const AuthLoggedInIconComp = getLucideIcon(settings?.auth_icon as string, UserCircle);
-  const CurrencyIconComp = getLucideIcon(settings?.currency_icon as string, Globe);
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const iconoDe = (accion: 'search' | 'cart' | 'account' | 'currency', respaldo: typeof ShoppingBag) =>
+    getLucideIcon(resolverIconoEncabezado(accion, settings).nombre, respaldo);
+  const CartIconComp = iconoDe('cart', ShoppingBag);
+  const AuthIconComp = iconoDe('account', User);
+  const AuthLoggedInIconComp = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, UserCircle);
+  const CurrencyIconComp = iconoDe('currency', Globe);
+  const SearchIconComp = iconoDe('search', Search);
   const claseIconoAccion = estiloIconos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`;
 
   // Fase 12B: Orden de acciones configurable
