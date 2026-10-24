@@ -133,6 +133,16 @@
   }
 }
 
+/* Barra inferior tipo app (`mobile_header.bottom_nav`). Sin la clase, el alto y el chat no cambian. */
+@media (max-width: 1023px) {
+  body.con-barra-app [data-raiz-sitio] {
+    padding-bottom: calc(var(--barra-app-h, 4.5rem) + env(safe-area-inset-bottom));
+  }
+  body.con-barra-app #go-chat-btn {
+    bottom: calc(var(--barra-app-h, 4.5rem) + 0.75rem + env(safe-area-inset-bottom)) !important;
+  }
+}
+
 /* Barra fija «Ver pedido de la mesa» de la Carta QR (components/sections/restaurant/mesa/PedidoMesa.tsx):
    mientras se ve, publica su alto real (botón + área segura de iOS) en --barra-pedido-mesa-h y
    marca el body; la raíz del sitio reserva ese alto al final de la página (con su fondo, no el del

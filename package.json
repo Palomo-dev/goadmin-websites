@@ -41,7 +41,8 @@
     "verify:estilo-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-estilo-categoria.mjs",
     "verify:tarjeta-producto": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-tarjeta-producto.mjs",
     "verify:distribucion-banner": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-distribucion-banner.mjs",
-    "verify:cascaron-listado": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-cascaron-listado.mjs"
+    "verify:cascaron-listado": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-cascaron-listado.mjs",
+    "verify:menu-movil": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-menu-movil.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

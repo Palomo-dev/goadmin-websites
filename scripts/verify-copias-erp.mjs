@@ -28,6 +28,7 @@ export const COPIAS = [
   // Carta QR en la mesa: tipos, variantes, campos y defaults de las secciones de mesa (lámina 18).
   ['lib/website/v2/contrato/seccionesMesa.ts', 'src/lib/website/contrato/seccionesMesa.ts'],
   ['lib/website/v2/mapeoAjustes.ts', 'src/lib/website/v2/mapeoAjustes.ts'],
+  ['lib/website/menuMovil.ts', 'src/lib/website/menuMovil.ts'],
   ['lib/website/v2/estiloSeccion.ts', 'src/lib/website/v2/estiloSeccion.ts'],
   ['lib/website/v2/tokensDiseno.ts', 'src/lib/website/v2/tokensDiseno.ts'],
   ['lib/website/v2/presetsDiseno.ts', 'src/lib/website/v2/presetsDiseno.ts'],
