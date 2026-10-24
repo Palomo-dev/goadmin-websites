@@ -6,14 +6,21 @@ interface ImageTextLeftProps {
 }
 
 export function ImageTextLeft({ content, primaryColor = '#3B82F6' }: ImageTextLeftProps) {
-  const { title, body, image_url, cta_text, cta_url } = content
+  const { title, body, image_url, image_url_mobile, cta_text, cta_url } = content
 
   return (
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-        {image_url && (
+        {(image_url || image_url_mobile) && (
           <div className="rounded-xl overflow-hidden aspect-[4/3] bg-gray-100 dark:bg-gray-700">
-            <img src={image_url} alt={title || ''} className="w-full h-full object-cover" />
+            {image_url_mobile && image_url_mobile !== image_url ? (
+              <picture className="block h-full w-full">
+                <source media="(max-width: 767px)" srcSet={image_url_mobile} />
+                <img src={image_url || image_url_mobile} alt={title || ''} className="w-full h-full object-cover" />
+              </picture>
+            ) : (
+              <img src={image_url || image_url_mobile} alt={title || ''} className="w-full h-full object-cover" />
+            )}
           </div>
         )}
         <div>
