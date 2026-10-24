@@ -1,6 +1,7 @@
 'use client';
 
 import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
+import { barraSiCromo } from '../BuscadorCromo';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import {
   HeaderActions,
   HeaderTopbar,
   HeaderCTAMovil,
+  HeaderCTA2,
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
@@ -87,6 +89,7 @@ export default function MobileBottomSheet({
                   showSearchIcon={searchStyle === 'icon'}
                   isMobile={true}
                 />
+                <HeaderCTA2 settings={settings} />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               </>
             }
@@ -152,14 +155,16 @@ export default function MobileBottomSheet({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-full"
-                size="sm"
-                icon={SearchIconComp}
-                placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined}
-              />
+              {barraSiCromo(settings, (
+                <SearchBarInline
+                  primaryColor={primaryColor}
+                  organizationId={organizationId}
+                  className="w-full"
+                  size="sm"
+                  icon={SearchIconComp}
+                  placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined}
+                />
+              ), { primaryColor, organizationId, className: 'w-full' })}
             </div>
           )}
         </div>

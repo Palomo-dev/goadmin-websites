@@ -97,10 +97,14 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   const sinRelleno = SIN_RELLENO_POR_DEFECTO.has(sectionType ?? '') || SIN_RELLENO_POR_DEFECTO.has(`${sectionType}:${sectionVariant}`)
   // La carta «qr» empieza pegada a la barra de la mesa.
   const cartaQr = sectionType === 'menu_full' && sectionVariant === 'qr'
-  const ptExplicito = paddingExplicito(content?.padding_top)
+  const guardado = (contentGuardado || {}) as Record<string, unknown>
+  const espaciadoGuardado = !!(settings && typeof settings === 'object' && (settings as { estilo?: { espaciado?: unknown } }).estilo?.espaciado)
+  const ptExplicito = paddingExplicito(guardado.padding_top) || espaciadoGuardado
+  const pxExplicito = paddingExplicito(guardado.padding_x)
   const mtExplicito = margenExplicito(content?.margin_top)
-  const ptPx = pxEnRango(content?.padding_top_px, 0, 480)
+  const ptPx = pxEnRango(guardado.padding_top_px, 0, 480)
   const pbPx = pxEnRango(content?.padding_bottom_px, 0, 480)
+  const pegado = isFirst && !ptExplicito && !pxExplicito && ptPx == null && (sectionType === 'hero' || sectionType === 'restaurant_hero' || sectionType === 'promo_banners')
   const paddingTop = ptExplicito ? String(content.padding_top) : (sinRelleno || cartaQr ? 'none' : 'lg')
   const paddingBottom = content?.padding_bottom || (sinRelleno ? 'none' : 'lg')
   const paddingX = content?.padding_x || (sinRelleno ? 'none' : 'md')
@@ -145,7 +149,7 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   const mb = mbMap[marginBottom] || ''
   if (ptPx != null) pt = ''
   if (pbPx != null) pb = ''
-  if (isFirst && !ptExplicito && ptPx == null && !solapa) pt = ''
+  if ((isFirst && !ptExplicito && ptPx == null && !solapa) || pegado) pt = ''
   if (isFirst && !mtExplicito) mt = ''
 
   // ---- Contrato de estilo (F2.1) ----
@@ -198,9 +202,16 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
   // no quede pegado a los bordes.
   const containerWidth = content?.container_width || 'lg'
   const sangria = anchoForzado == null ? isFullBleed : anchoForzado
-  const innerClass = sangria
+  const innerClass = pegado
+    ? 'w-full'
+    : sangria
     ? (isHero ? 'w-full' : `w-full ${px}`)
     : `w-full mx-auto ${CONTAINER_MAX[containerWidth] || CONTAINER_MAX.lg} ${px}`
+  const tituloShell = Boolean(
+    encabezado
+    && encabezado.show_title !== false
+    && (encabezado.title || (typeof content?.title === 'string' && content.title)),
+  )
   const encabezadoNodo = encabezado ? (
     <EncabezadoSeccion
       encabezado={encabezado}
@@ -219,8 +230,10 @@ export function SectionWrapper({ settings, content: contentGuardado, primaryColo
       style={style}
       data-section-id={sectionId}
       data-encabezado-shell={encabezado ? '' : undefined}
+      data-encabezado-titulo={tituloShell ? '' : undefined}
       data-fondo-movil={fondoNuevo?.image_url_mobile ? '' : undefined}
       data-primera-hero={isFirst && solapa ? '' : undefined}
+      data-pegado={pegado ? '' : undefined}
       {...presentacion.datos}
     >
       {hojaFuentes && <link rel="stylesheet" href={hojaFuentes} />}

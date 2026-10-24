@@ -1,6 +1,7 @@
 'use client';
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
+import { barraSiCromo } from '../BuscadorCromo';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import {
   HeaderActions,
   HeaderTopbar,
   HeaderCTAMovil,
+  HeaderCTA2,
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
@@ -106,6 +108,7 @@ export default function MobileDrawer({
                   showSearchIcon={searchStyle === 'icon'}
                   isMobile={true}
                 />
+                <HeaderCTA2 settings={settings} />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
               </>
             }
@@ -122,13 +125,15 @@ export default function MobileDrawer({
 
           {showSearchBar && (
             <div className="pb-3">
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-full"
-                size="sm"
-                icon={SearchIconComp}
-              />
+              {barraSiCromo(settings, (
+                <SearchBarInline
+                  primaryColor={primaryColor}
+                  organizationId={organizationId}
+                  className="w-full"
+                  size="sm"
+                  icon={SearchIconComp}
+                />
+              ), { primaryColor, organizationId, className: 'w-full' })}
             </div>
           )}
         </div>

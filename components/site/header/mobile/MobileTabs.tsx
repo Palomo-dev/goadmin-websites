@@ -1,6 +1,7 @@
 'use client';
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
+import { barraSiCromo } from '../BuscadorCromo';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
@@ -111,13 +112,15 @@ export default function MobileTabs({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-full"
-                size="sm"
-                icon={SearchTabIcon}
-              />
+              {barraSiCromo(settings, (
+                <SearchBarInline
+                  primaryColor={primaryColor}
+                  organizationId={organizationId}
+                  className="w-full"
+                  size="sm"
+                  icon={SearchTabIcon}
+                />
+              ), { primaryColor, organizationId, className: 'w-full' })}
             </div>
           )}
         </div>

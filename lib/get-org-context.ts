@@ -169,6 +169,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
       logoFondoClaroV2 = logoFondoClaroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
       const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
       menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
+      ;(ajustesV2 as { menus_catalogo?: unknown }).menus_catalogo = menusV2.catalogo
       effectiveSettings = ajustesV2
     } catch (error) {
       console.error('[sitio-v2] Error aplicando el documento V2 al contexto; se sirve legacy', {

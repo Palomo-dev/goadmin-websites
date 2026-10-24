@@ -27,10 +27,15 @@ export function columnasEscritorio(columns: unknown, fallback = 4): number {
 
 export interface ContenidoListado {
   max_items?: unknown
+  /** Tope alterno del editor (`Cantidad`). Si `max_items` existe, ese gana. */
+  products_limit?: unknown
   rows?: unknown
   columns?: unknown
   show_pagination?: unknown
   sort_order?: unknown
+  /** `long` muestra el tope de una vez. `pages` pagina. Ausente: el comportamiento de hoy. */
+  list_mode?: unknown
+  per_page?: unknown
 }
 
 /**
@@ -38,11 +43,45 @@ export interface ContenidoListado {
  * con el menor. Sin ninguno, no hay tope (null) y la lista pagina como antes.
  */
 export function topeProductos(content: ContenidoListado | null | undefined, columnasPorDefecto = 4): number | null {
-  const max = enteroPositivo(content?.max_items)
+  const max = enteroPositivo(content?.max_items) ?? enteroPositivo(content?.products_limit)
   const filas = enteroPositivo(content?.rows)
   const porFilas = filas ? filas * columnasEscritorio(content?.columns, columnasPorDefecto) : null
   if (max && porFilas) return Math.min(max, porFilas)
   return max ?? porFilas
+}
+
+export type ModoLista = 'long' | 'pages'
+
+/** `null` si el editor no eligió lista larga ni paginación. */
+export function modoLista(valor: unknown): ModoLista | null {
+  return valor === 'long' || valor === 'pages' ? valor : null
+}
+
+/**
+ * Recorta una lista ya cargada.
+ * Sin tope y sin modo, devuelve la lista entera (la paginación de hoy sigue afuera).
+ * Con tope, nunca pasa de ese número, tampoco en la variante lista.
+ */
+export function recortarPorModo<T>(items: T[], content: ContenidoListado | null | undefined, pagina = 1): {
+  items: T[]
+  paginas: number
+  modo: ModoLista | null
+  porPagina: number
+} {
+  const tope = topeProductos(content)
+  const modo = modoLista(content?.list_mode)
+  const universo = tope != null ? items.slice(0, tope) : items
+  const porPagina = enteroPositivo(content?.per_page) ?? 12
+  if (modo === 'pages') {
+    const paginas = Math.max(1, Math.ceil(universo.length / porPagina) || 1)
+    const p = Math.min(Math.max(1, Math.round(pagina) || 1), paginas)
+    const desde = (p - 1) * porPagina
+    return { items: universo.slice(desde, desde + porPagina), paginas, modo, porPagina }
+  }
+  if (modo === 'long' || tope != null) {
+    return { items: universo, paginas: 1, modo, porPagina }
+  }
+  return { items, paginas: 1, modo: null, porPagina }
 }
 
 export function recorteListado(total: number, pagina: number, content: ContenidoListado | null | undefined, porPaginaForzado?: number) {

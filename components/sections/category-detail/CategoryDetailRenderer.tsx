@@ -16,6 +16,11 @@ import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import {
+  completarBloqueBase,
+  TIPO_BASE_CATEGORIA,
+  TIPOS_ENCIMA_CATEGORIA,
+} from '@/lib/website/bloqueBase'
 
 interface CategoryDetailRendererProps {
   organization: OrganizationWithDetails
@@ -74,16 +79,21 @@ export function CategoryDetailRenderer({
 
   // ---- Modo plantilla: renderizar secciones ----
   if (hasSections && templatePage) {
+    const secciones = completarBloqueBase(
+      templatePage.website_page_sections,
+      [TIPO_BASE_CATEGORIA],
+      TIPOS_ENCIMA_CATEGORIA,
+    )
     return (
       <div className="container mx-auto px-4 py-8">
-        {templatePage.website_page_sections.map((section, i) => (
+        {secciones.map((section, i) => (
           <SectionRenderer
             key={section.id}
             section={section}
             organization={organization}
             primaryColor={primaryColor}
             data={sectionData}
-            isFirst={i === 0 || templatePage.website_page_sections.slice(0, i).every((s) => s.is_visible === false)}
+            isFirst={i === 0 || secciones.slice(0, i).every((s) => s.is_visible === false)}
           />
         ))}
       </div>

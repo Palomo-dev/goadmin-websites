@@ -448,8 +448,8 @@ const BADGE_SHAPE_CLASS: Record<string, string> = {
   rounded: 'rounded-lg',
   semi: 'rounded-[14px]',
   circle: 'rounded-full',
-  ribbon: 'rounded-l-none',
-  corner: 'rounded-none',
+  ribbon: 'rounded-r-md rounded-l-none pl-3 [clip-path:polygon(8px_0,100%_0,100%_100%,8px_100%,0_50%)]',
+  corner: 'rounded-none [clip-path:polygon(0_0,100%_0,100%_62%,62%_100%,0_100%)]',
 };
 
 const BADGE_SIZE_CLASS: Record<string, string> = {

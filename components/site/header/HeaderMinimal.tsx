@@ -28,6 +28,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { alineacionBuscador } from '@/lib/website/constructorEncabezado';
 import {
   Drawer,
   DrawerContent,
@@ -61,6 +62,7 @@ export default function HeaderMinimal({
   const menuRef = useRef<HTMLDivElement>(null);
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
+  const alignBusqueda = alineacionBuscador(settings);
   const ctaText = settings?.header_cta_text ?? '';
   const ctaHref = settings?.header_cta_url ?? undefined;
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
@@ -117,7 +119,7 @@ export default function HeaderMinimal({
       {/* Barra principal */}
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+          <div className="hidden md:flex items-center justify-between gap-4" data-busqueda={alignBusqueda ?? undefined} style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {/* Logo izquierda */}
             <HeaderLogo
               organization={organization}
@@ -125,8 +127,13 @@ export default function HeaderMinimal({
               height={settings?.logo_height || 48}
             />
 
-            {/* Search bar inline (si search_style === 'bar') */}
-            {barraSiCromo(settings, searchStyle === 'bar' ? (
+            {alignBusqueda === 'left' ? barraSiCromo(settings, searchStyle === 'bar' ? (
+              <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full max-w-md" size="lg" icon={SearchIconComp} />
+            ) : null, { primaryColor, organizationId, className: 'w-full max-w-md' }) : null}
+            {alignBusqueda === 'right' ? <div className="flex-1" /> : null}
+
+            {/* Search bar inline (si search_style === 'bar'). Centro y sin elegir quedan en el medio. */}
+            {alignBusqueda == null || alignBusqueda === 'center' ? barraSiCromo(settings, searchStyle === 'bar' ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -134,7 +141,7 @@ export default function HeaderMinimal({
                 size="lg"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' })}
+            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' }) : null}
 
             {/* Acciones derecha: search icon + cart + CTA + botón menú */}
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -193,6 +200,9 @@ export default function HeaderMinimal({
                 )}
               </div>
             </div>
+            {alignBusqueda === 'right' ? barraSiCromo(settings, searchStyle === 'bar' ? (
+              <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full max-w-md" size="lg" icon={SearchIconComp} />
+            ) : null, { primaryColor, organizationId, className: 'w-full max-w-md' }) : null}
           </div>
 
           {/* Fila móvil: logo + botón hamburguesa */}

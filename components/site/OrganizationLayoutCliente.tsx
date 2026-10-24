@@ -448,7 +448,7 @@ export function OrganizationLayoutCliente({
             enableShipping: settings?.enable_shipping ?? true
           }}
           taxSettings={taxSettings}
-          countdownConfig={settings?.countdown_enabled || (settings as { conversion?: unknown } | null)?.conversion ? settings : undefined}
+          countdownConfig={settings?.countdown_enabled || (settings as { conversion?: unknown; urgencia_viendo?: unknown } | null)?.conversion || (settings as { urgencia_viendo?: unknown } | null)?.urgencia_viendo ? settings : undefined}
           cartButtonConfig={{
             mode: settings?.cart_button_mode || 'dynamic',
             texts: settings?.cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
@@ -474,9 +474,9 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
-      {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
+      {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} onPedir={() => setCartOpen(true)} />}
       {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
-      {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} />}
+      {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} onPedir={() => setCartOpen(true)} />}
 
       {/* Chat Widget (oculto si la cuenta está congelada) */}
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (

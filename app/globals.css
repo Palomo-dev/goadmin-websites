@@ -13,8 +13,9 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-/* El encabezado nuevo reemplaza el h2 de la sección. Sin el atributo, la clase no hace nada. */
-[data-encabezado-shell] .titulo-legado {
+/* El encabezado nuevo reemplaza el h2 solo cuando de verdad pinta un título.
+   Si el shell existe pero oculta el título, el h2 de la sección sigue visible. */
+[data-encabezado-titulo] .titulo-legado {
   display: none;
 }
 }

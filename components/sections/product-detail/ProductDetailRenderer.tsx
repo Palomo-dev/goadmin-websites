@@ -22,12 +22,15 @@ import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
+import { AvisoViendo } from '@/components/site/AvisoViendo'
+import { leerAvisoViendo } from '@/lib/website/urgenciaSeccion'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
+import { completarBloqueBase, TIPOS_BASE_PRODUCTO } from '@/lib/website/bloqueBase'
 
 function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
@@ -135,7 +138,8 @@ export function ProductDetailRenderer({
   // monolítico: galería a la izquierda, info/actions/benefits/description a la
   // derecha, y relacionadas/reviews a full width abajo.
   if (hasSections && templatePage) {
-    const visibleSections = templatePage.website_page_sections.filter((s) => s.is_visible !== false)
+    const conBase = completarBloqueBase(templatePage.website_page_sections, TIPOS_BASE_PRODUCTO)
+    const visibleSections = conBase.filter((s) => s.is_visible !== false)
 
     // Tipos que van en la columna izquierda (galería)
     const LEFT_TYPES = new Set(['product_gallery'])
@@ -245,7 +249,7 @@ export function ProductDetailRenderer({
   )
 
   // Countdown
-  const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio } | null
+  const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio; urgencia_viendo?: unknown } | null
   const stockProducto = stockReal(product)
   const stockBajo = ajustesProducto?.conversion?.urgencia?.stockBajo
   const avisoProducto = stockBajo?.activo && stockBajo.ubicaciones?.includes('producto')
@@ -360,6 +364,7 @@ export function ProductDetailRenderer({
       {descPos === 'above_gallery' ? null : productInfoBlock}
       {descPos === 'below_title' && descriptionBlock}
       {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
+      <AvisoViendo config={leerAvisoViendo(ajustesProducto?.urgencia_viendo)} semilla={String(product.id)} className="text-sm text-gray-500" />
       {countdownBlock}
       {descPos === 'below_price' && descriptionBlock}
       {actionsBlock}
@@ -377,6 +382,7 @@ export function ProductDetailRenderer({
           {galleryBlock}
           {productInfoBlock}
           {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
+      <AvisoViendo config={leerAvisoViendo(ajustesProducto?.urgencia_viendo)} semilla={String(product.id)} className="text-sm text-gray-500" />
       {countdownBlock}
           {actionsBlock}
           {benefitsBlock}

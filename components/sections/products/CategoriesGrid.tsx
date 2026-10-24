@@ -59,6 +59,8 @@ interface CategoriesGridProps {
   }
   primaryColor?: string
   data?: { categories?: any[] }
+  /** Variante de la sección. Los diseños nuevos (círculo, tarjeta, pastilla, mosaico, ícono) se pintan aquí. `grid`, `horizontal` e `icons` siguen como hoy. */
+  sectionVariant?: string
 }
 
 const PAGE_SIZE_OPTIONS = [24, 48, 100]
@@ -263,7 +265,7 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   )
 }
 
-export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridProps) {
+export function CategoriesGrid({ content, primaryColor, data, sectionVariant }: CategoriesGridProps) {
   const maxItems = content.max_items || 0
   const shape = content.shape || 'square'
   const desktopLayout = content.desktop_layout || 'grid'
@@ -504,7 +506,7 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
     ? `grid-cols-${desktopColumns}`
     : getGridClass(maxItems || categories.length)
 
-  const estiloNuevo = estiloCategoria(content.category_style)
+  const estiloNuevo = estiloCategoria(content.category_style) ?? estiloCategoria(sectionVariant)
   if (estiloNuevo) {
     return (
       <EstilosCategoria
