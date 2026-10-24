@@ -95,6 +95,7 @@ export default function MobileTabs({
             minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
             logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
             acciones={
+              <>
               <HeaderActions
                 settings={settings}
                 showCart={showCart}
@@ -108,6 +109,7 @@ export default function MobileTabs({
                 branchId={branchId}
               />
               <HeaderCTA2 settings={settings} movil />
+              </>
             }
           />
 

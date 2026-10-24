@@ -7,7 +7,7 @@
       "geometry": {
         "left": 0,
         "right": 390,
-        "top": 0,
+        "top": -0.29567307233810425,
         "width": 390,
         "height": 236
       }
@@ -20,8 +20,8 @@
       "test": "drawer_left",
       "status": "passed",
       "geometry": {
-        "left": 0,
-        "right": 331.5,
+        "left": -0.41217342019081116,
+        "right": 331.0878265798092,
         "top": 0,
         "width": 331.5,
         "height": 844
@@ -35,8 +35,8 @@
       "test": "drawer_right",
       "status": "passed",
       "geometry": {
-        "left": 58.5,
-        "right": 390,
+        "left": 58.913177490234375,
+        "right": 390.4131774902344,
         "top": 0,
         "width": 331.5,
         "height": 844

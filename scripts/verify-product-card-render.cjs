@@ -128,4 +128,13 @@ check(temaPublicoDesdeTema(branchTheme, true, siteTheme).tarjetaProducto.card_ra
 check(temaPublicoDesdeTema({ ...branchTheme, tarjetaProducto: { mode: 'clear' } }, true, siteTheme).tarjetaProducto === null, 'la sede puede vaciar el estilo global')
 check(temaPublicoDesdeTema({ colores: {}, tipografia: {} }, false, null).tarjetaProducto === null, 'tema antiguo sigue sin parche de tarjeta')
 check(temaPublicoDesdeMensaje({ tema: siteTheme, esSede: false }).tarjetaProducto.card_gap === 24, 'el mensaje de vista previa admite y conserva la misma configuración global')
+const { JSDOM } = require('jsdom')
+for (const icon of ['Truck', 'Shield', 'ShieldCheck', 'Package', 'Star', 'Heart', 'Check', 'CheckCircle', 'Clock', 'Zap', 'Flame', 'Leaf', 'Award', 'Gift', 'ShoppingCart', 'ShoppingBag', 'Utensils', 'Coffee', 'Pizza', 'Phone', 'MessageCircle', 'MapPin', 'Search', 'User', 'Globe', 'CreditCard', 'Sparkles', 'Layers']) {
+  const doc = new JSDOM(render({ badges: [{ type: 'custom', label: 'Etiqueta', icon }], cardButtons: [{ action: 'add_to_cart', label: 'Acción', icon }] })).window.document
+  const esperado = new JSDOM(renderToStaticMarkup(React.createElement(require('lucide-react')[icon]))).window.document.querySelector('svg').innerHTML
+  const boton = [...doc.querySelectorAll('button')].find((b) => b.textContent.includes('Acción'))
+  const etiqueta = [...doc.querySelectorAll('span')].find((b) => b.textContent.trim() === 'Etiqueta')
+  check(boton?.querySelector('svg')?.innerHTML === esperado, `ícono ${icon} del botón tiene un render efectivo`)
+  check(etiqueta?.querySelector('svg')?.innerHTML === esperado, `ícono ${icon} de la etiqueta tiene un render efectivo`)
+}
 console.log(`verify:product-card-render ok (${cases} casos)`)

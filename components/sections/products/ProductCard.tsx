@@ -36,6 +36,8 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Check, Package, Layers, ShoppingBag, ShoppingCart, Heart, Eye, Share2,
   MessageCircle, Star, TrendingUp, Zap, ArrowRight,
+  Truck, Shield, ShieldCheck, CheckCircle, Clock, Flame, Leaf, Award, Gift,
+  Utensils, Coffee, Pizza, Phone, MapPin, Search, User, Globe, CreditCard, Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -82,6 +84,14 @@ export {
 }
 
 const ProductChoiceDialog = dynamic(() => import('@/components/site/ProductChoiceDialog').then((m) => m.ProductChoiceDialog), { ssr: false })
+
+/** Los mismos nombres configurables en el inspector, tanto en botones como etiquetas. */
+const ICONOS_TARJETA: Record<string, typeof Star> = {
+  Plus, Check, Package, Layers, ShoppingBag, ShoppingCart, Heart, Eye, Share2,
+  MessageCircle, Star, TrendingUp, Zap, ArrowRight, Truck, Shield, ShieldCheck,
+  CheckCircle, Clock, Flame, Leaf, Award, Gift, Utensils, Coffee, Pizza, Phone,
+  MapPin, Search, User, Globe, CreditCard, Sparkles,
+}
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -449,10 +459,7 @@ function BadgeRenderer({
     colores.text,
   ), ...badge.extra_style }
 
-  const Icon = badge.icon === 'Layers' ? Layers :
-    badge.icon === 'TrendingUp' ? TrendingUp :
-    badge.icon === 'Zap' ? Zap :
-    badge.icon === 'Star' ? Star : null
+  const Icon = badge.icon ? ICONOS_TARJETA[badge.icon] ?? null : null
 
   return (
     <span className={classes} style={style}>
@@ -565,10 +572,7 @@ function CardButtonRenderer({
   }
 
   // Mapa de iconos Lucide por nombre (para soportar button.icon personalizado)
-  const ICON_MAP: Record<string, any> = {
-    Plus, Check, ShoppingBag, ShoppingCart, ArrowRight, Heart, Eye, Share2, MessageCircle,
-    Layers, Package, Star, TrendingUp, Zap,
-  }
+  const ICON_MAP = ICONOS_TARJETA
 
   // Tamaño de iconos según el size configurado en el ERP
   const iconSizeClass = size === 'xl' || size === 'lg' ? 'h-5 w-5' : size === 'md' ? 'h-4 w-4' : 'h-3 w-3 sm:h-4 sm:w-4'

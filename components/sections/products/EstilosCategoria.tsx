@@ -133,12 +133,12 @@ function Minimo({ cat, color, content }: { cat: any; color: string; content: Con
   )
 }
 
-function CeldaBento({ cat, color, content, grande }: { cat: any; color: string; content: Contenido; grande: boolean }) {
+function CeldaBento({ cat, color, content, grande, ancha = false }: { cat: any; color: string; content: Contenido; grande: boolean; ancha?: boolean }) {
   const radio = radioTarjeta(content.card_radius, 16)
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group relative block overflow-hidden ${grande ? 'col-span-2 row-span-2 min-h-[220px]' : 'min-h-[104px]'}`}
+      className={`group relative block overflow-hidden ${grande ? 'col-span-2 row-span-2 min-h-[220px]' : ancha ? 'col-span-2 min-h-[104px]' : 'min-h-[104px]'}`}
       style={{ borderRadius: radio }}
     >
       <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="absolute inset-0" fondo={fondoSuave(color, content.image_bg)} />
@@ -191,7 +191,7 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
             return (
               <div key={grupo} className="grid grid-cols-4 gap-3">
                 {trozo.map((cat, i) => (
-                  <CeldaBento key={cat.id ?? i} cat={cat} color={color} content={content} grande={tamano === 5 && i === 0} />
+                  <CeldaBento key={cat.id ?? i} cat={cat} color={color} content={content} grande={i === 0} ancha={tamano === 8 && i === 7} />
                 ))}
               </div>
             )

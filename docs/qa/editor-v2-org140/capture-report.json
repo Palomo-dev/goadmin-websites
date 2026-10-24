@@ -12,7 +12,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -28,7 +28,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -44,7 +44,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -60,7 +60,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -76,7 +76,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -92,7 +92,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -108,7 +108,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -124,7 +124,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -134,13 +134,13 @@
       "phase": "before",
       "id": "17-above_title",
       "width": 360,
-      "height": 581.5,
+      "height": 609.5,
       "scrollWidth": 358,
       "clientWidth": 358,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -156,7 +156,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -172,7 +172,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -188,7 +188,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -204,7 +204,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -220,7 +220,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -230,7 +230,7 @@
       "phase": "before",
       "id": "21-circle",
       "width": 1050,
-      "height": 259.5,
+      "height": 481.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -241,7 +241,7 @@
       "phase": "before",
       "id": "21-card_bottom",
       "width": 1050,
-      "height": 259.5,
+      "height": 781.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -252,7 +252,7 @@
       "phase": "before",
       "id": "21-pill",
       "width": 1050,
-      "height": 259.5,
+      "height": 269.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -263,7 +263,7 @@
       "phase": "before",
       "id": "21-minimal_icon",
       "width": 1050,
-      "height": 259.5,
+      "height": 521.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -274,7 +274,7 @@
       "phase": "before",
       "id": "21-bento",
       "width": 1050,
-      "height": 259.5,
+      "height": 369.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -285,13 +285,13 @@
       "phase": "before",
       "id": "12-hero_plus_2",
       "width": 1050,
-      "height": 520.515625,
+      "height": 585.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -301,13 +301,13 @@
       "phase": "before",
       "id": "12-split_50",
       "width": 1050,
-      "height": 520.515625,
+      "height": 537.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -317,13 +317,13 @@
       "phase": "before",
       "id": "12-triple_center",
       "width": 1050,
-      "height": 520.515625,
+      "height": 465.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -333,13 +333,13 @@
       "phase": "before",
       "id": "12-full_stack",
       "width": 1050,
-      "height": 520.515625,
+      "height": 665.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -349,13 +349,13 @@
       "phase": "before",
       "id": "12-circles",
       "width": 1050,
-      "height": 520.515625,
+      "height": 305.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -376,7 +376,7 @@
       "phase": "before",
       "id": "7-multiple-menus",
       "width": 1050,
-      "height": 166.5,
+      "height": 190.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -387,7 +387,7 @@
       "phase": "before",
       "id": "1-product-base",
       "width": 1050,
-      "height": 520.5,
+      "height": 456.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -398,7 +398,7 @@
       "phase": "before",
       "id": "1-category-base",
       "width": 1050,
-      "height": 441.5,
+      "height": 377.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -409,7 +409,7 @@
       "phase": "before",
       "id": "5-mini",
       "width": 1050,
-      "height": 145.5,
+      "height": 141.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -420,7 +420,7 @@
       "phase": "before",
       "id": "5-bar",
       "width": 1050,
-      "height": 145.5,
+      "height": 149.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -431,7 +431,7 @@
       "phase": "before",
       "id": "5-mega",
       "width": 1050,
-      "height": 145.5,
+      "height": 149.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -442,7 +442,7 @@
       "phase": "before",
       "id": "5-pill_floating",
       "width": 1050,
-      "height": 145.5,
+      "height": 149.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -453,7 +453,7 @@
       "phase": "before",
       "id": "5-outlined",
       "width": 1050,
-      "height": 145.5,
+      "height": 137.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -464,7 +464,7 @@
       "phase": "before",
       "id": "5-underline",
       "width": 1050,
-      "height": 145.5,
+      "height": 137.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -475,7 +475,7 @@
       "phase": "before",
       "id": "5-icon_overlay",
       "width": 1050,
-      "height": 145.5,
+      "height": 137.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -486,7 +486,7 @@
       "phase": "before",
       "id": "6-circle",
       "width": 1050,
-      "height": 138.5,
+      "height": 132.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -497,7 +497,7 @@
       "phase": "before",
       "id": "6-square",
       "width": 1050,
-      "height": 138.5,
+      "height": 132.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -508,7 +508,7 @@
       "phase": "before",
       "id": "6-semi",
       "width": 1050,
-      "height": 138.5,
+      "height": 132.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -519,7 +519,7 @@
       "phase": "before",
       "id": "6-none",
       "width": 1050,
-      "height": 138.5,
+      "height": 132.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -574,7 +574,7 @@
       "phase": "before",
       "id": "24-producto",
       "width": 1050,
-      "height": 101.5,
+      "height": 157.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -585,7 +585,7 @@
       "phase": "before",
       "id": "24-carrito",
       "width": 1050,
-      "height": 101.5,
+      "height": 157.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -596,7 +596,7 @@
       "phase": "before",
       "id": "24-checkout",
       "width": 1050,
-      "height": 101.5,
+      "height": 157.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -613,7 +613,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -629,7 +629,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -645,7 +645,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -661,7 +661,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -677,7 +677,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -693,7 +693,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -709,7 +709,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -725,7 +725,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -741,7 +741,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -757,7 +757,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -773,7 +773,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -789,7 +789,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -805,7 +805,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -821,7 +821,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -831,7 +831,7 @@
       "phase": "after",
       "id": "21-circle",
       "width": 1050,
-      "height": 630.5,
+      "height": 481.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -842,7 +842,7 @@
       "phase": "after",
       "id": "21-card_bottom",
       "width": 1050,
-      "height": 630.5,
+      "height": 781.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -853,7 +853,7 @@
       "phase": "after",
       "id": "21-pill",
       "width": 1050,
-      "height": 261.5,
+      "height": 269.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -864,7 +864,7 @@
       "phase": "after",
       "id": "21-minimal_icon",
       "width": 1050,
-      "height": 441.5,
+      "height": 521.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -875,7 +875,7 @@
       "phase": "after",
       "id": "21-bento",
       "width": 1050,
-      "height": 717.5,
+      "height": 485.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [],
@@ -886,13 +886,13 @@
       "phase": "after",
       "id": "12-hero_plus_2",
       "width": 1050,
-      "height": 609.5,
+      "height": 521.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -902,13 +902,13 @@
       "phase": "after",
       "id": "12-split_50",
       "width": 1050,
-      "height": 609.5,
+      "height": 537.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -924,7 +924,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -934,13 +934,13 @@
       "phase": "after",
       "id": "12-full_stack",
       "width": 1050,
-      "height": 853.5,
+      "height": 665.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -950,13 +950,13 @@
       "phase": "after",
       "id": "12-circles",
       "width": 1050,
-      "height": 377.5,
+      "height": 305.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -994,7 +994,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1004,29 +1004,29 @@
       "phase": "after",
       "id": "1-category-base",
       "width": 1050,
-      "height": 1293.5,
+      "height": 1229.5,
       "scrollWidth": 1048,
       "clientWidth": 1048,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/96a692caa84f6b2c.webp"
+          "url": "http://127.0.0.1:40687/images/96a692caa84f6b2c.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/b66f8635e722fd96.webp"
+          "url": "http://127.0.0.1:40687/images/b66f8635e722fd96.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/2b3c641aaace464d.webp"
+          "url": "http://127.0.0.1:40687/images/2b3c641aaace464d.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/1ec4ad49f428774f.webp"
+          "url": "http://127.0.0.1:40687/images/1ec4ad49f428774f.webp"
         }
       ],
       "errors": []
@@ -1240,7 +1240,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1256,7 +1256,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1272,7 +1272,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1288,7 +1288,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1304,7 +1304,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1320,7 +1320,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1336,7 +1336,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1352,7 +1352,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1362,13 +1362,13 @@
       "phase": "before",
       "id": "17-above_title",
       "width": 360,
-      "height": 557.5,
+      "height": 585.5,
       "scrollWidth": 358,
       "clientWidth": 358,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1384,7 +1384,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1400,7 +1400,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1416,7 +1416,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1432,7 +1432,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1448,7 +1448,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1458,7 +1458,7 @@
       "phase": "before",
       "id": "21-circle",
       "width": 366,
-      "height": 517,
+      "height": 301.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1469,7 +1469,7 @@
       "phase": "before",
       "id": "21-card_bottom",
       "width": 366,
-      "height": 517,
+      "height": 899.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1480,7 +1480,7 @@
       "phase": "before",
       "id": "21-pill",
       "width": 366,
-      "height": 517,
+      "height": 187.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1491,7 +1491,7 @@
       "phase": "before",
       "id": "21-minimal_icon",
       "width": 366,
-      "height": 517,
+      "height": 731.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1502,7 +1502,7 @@
       "phase": "before",
       "id": "21-bento",
       "width": 366,
-      "height": 517,
+      "height": 465.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1513,13 +1513,13 @@
       "phase": "before",
       "id": "12-hero_plus_2",
       "width": 366,
-      "height": 634.34375,
+      "height": 773.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -1529,13 +1529,13 @@
       "phase": "before",
       "id": "12-split_50",
       "width": 366,
-      "height": 634.34375,
+      "height": 773.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -1545,13 +1545,13 @@
       "phase": "before",
       "id": "12-triple_center",
       "width": 366,
-      "height": 634.34375,
+      "height": 733.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -1561,13 +1561,13 @@
       "phase": "before",
       "id": "12-full_stack",
       "width": 366,
-      "height": 634.34375,
+      "height": 725.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -1577,13 +1577,13 @@
       "phase": "before",
       "id": "12-circles",
       "width": 366,
-      "height": 634.34375,
+      "height": 285.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -1604,7 +1604,7 @@
       "phase": "before",
       "id": "7-multiple-menus",
       "width": 366,
-      "height": 109,
+      "height": 165,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1615,7 +1615,7 @@
       "phase": "before",
       "id": "1-product-base",
       "width": 366,
-      "height": 556.5,
+      "height": 508.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1626,7 +1626,7 @@
       "phase": "before",
       "id": "1-category-base",
       "width": 366,
-      "height": 389.5,
+      "height": 341.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1637,7 +1637,7 @@
       "phase": "before",
       "id": "5-mini",
       "width": 366,
-      "height": 129.5,
+      "height": 125.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1648,7 +1648,7 @@
       "phase": "before",
       "id": "5-bar",
       "width": 366,
-      "height": 129.5,
+      "height": 133.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1659,7 +1659,7 @@
       "phase": "before",
       "id": "5-mega",
       "width": 366,
-      "height": 129.5,
+      "height": 133.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1670,7 +1670,7 @@
       "phase": "before",
       "id": "5-pill_floating",
       "width": 366,
-      "height": 129.5,
+      "height": 133.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1681,7 +1681,7 @@
       "phase": "before",
       "id": "5-outlined",
       "width": 366,
-      "height": 129.5,
+      "height": 121.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1692,7 +1692,7 @@
       "phase": "before",
       "id": "5-underline",
       "width": 366,
-      "height": 129.5,
+      "height": 121.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1703,7 +1703,7 @@
       "phase": "before",
       "id": "5-icon_overlay",
       "width": 366,
-      "height": 129.5,
+      "height": 121.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1714,7 +1714,7 @@
       "phase": "before",
       "id": "6-circle",
       "width": 366,
-      "height": 122.5,
+      "height": 116.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1725,7 +1725,7 @@
       "phase": "before",
       "id": "6-square",
       "width": 366,
-      "height": 122.5,
+      "height": 116.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1736,7 +1736,7 @@
       "phase": "before",
       "id": "6-semi",
       "width": 366,
-      "height": 122.5,
+      "height": 116.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1747,7 +1747,7 @@
       "phase": "before",
       "id": "6-none",
       "width": 366,
-      "height": 122.5,
+      "height": 116.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1802,7 +1802,7 @@
       "phase": "before",
       "id": "24-producto",
       "width": 366,
-      "height": 108,
+      "height": 204,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1813,7 +1813,7 @@
       "phase": "before",
       "id": "24-carrito",
       "width": 366,
-      "height": 108,
+      "height": 204,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1824,7 +1824,7 @@
       "phase": "before",
       "id": "24-checkout",
       "width": 366,
-      "height": 108,
+      "height": 204,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -1841,7 +1841,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1857,7 +1857,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1873,7 +1873,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1889,7 +1889,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1905,7 +1905,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1921,7 +1921,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1937,7 +1937,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1953,7 +1953,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1969,7 +1969,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -1985,7 +1985,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2001,7 +2001,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2017,7 +2017,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2033,7 +2033,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2049,7 +2049,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2059,7 +2059,7 @@
       "phase": "after",
       "id": "21-circle",
       "width": 366,
-      "height": 729,
+      "height": 301.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -2070,7 +2070,7 @@
       "phase": "after",
       "id": "21-card_bottom",
       "width": 366,
-      "height": 729,
+      "height": 899.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -2081,7 +2081,7 @@
       "phase": "after",
       "id": "21-pill",
       "width": 366,
-      "height": 505.5,
+      "height": 187.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -2092,7 +2092,7 @@
       "phase": "after",
       "id": "21-minimal_icon",
       "width": 366,
-      "height": 625.5,
+      "height": 731.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -2103,7 +2103,7 @@
       "phase": "after",
       "id": "21-bento",
       "width": 366,
-      "height": 893.5,
+      "height": 581.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [],
@@ -2114,13 +2114,13 @@
       "phase": "after",
       "id": "12-hero_plus_2",
       "width": 366,
-      "height": 849.5,
+      "height": 549.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -2130,13 +2130,13 @@
       "phase": "after",
       "id": "12-split_50",
       "width": 366,
-      "height": 849.5,
+      "height": 773.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -2146,13 +2146,13 @@
       "phase": "after",
       "id": "12-triple_center",
       "width": 366,
-      "height": 849.5,
+      "height": 733.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -2162,13 +2162,13 @@
       "phase": "after",
       "id": "12-full_stack",
       "width": 366,
-      "height": 849.5,
+      "height": 725.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -2178,13 +2178,13 @@
       "phase": "after",
       "id": "12-circles",
       "width": 366,
-      "height": 1169.5,
+      "height": 285.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/898363c5dec5c6f2.jpg"
+          "url": "http://127.0.0.1:40687/images/898363c5dec5c6f2.jpg"
         }
       ],
       "errors": []
@@ -2222,7 +2222,7 @@
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         }
       ],
       "errors": []
@@ -2232,29 +2232,29 @@
       "phase": "after",
       "id": "1-category-base",
       "width": 366,
-      "height": 1331.5,
+      "height": 1283.5,
       "scrollWidth": 364,
       "clientWidth": 364,
       "images": [
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/e2b08c7c325b911c.webp"
+          "url": "http://127.0.0.1:40687/images/e2b08c7c325b911c.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/96a692caa84f6b2c.webp"
+          "url": "http://127.0.0.1:40687/images/96a692caa84f6b2c.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/b66f8635e722fd96.webp"
+          "url": "http://127.0.0.1:40687/images/b66f8635e722fd96.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/2b3c641aaace464d.webp"
+          "url": "http://127.0.0.1:40687/images/2b3c641aaace464d.webp"
         },
         {
           "loaded": true,
-          "url": "http://127.0.0.1:41683/images/1ec4ad49f428774f.webp"
+          "url": "http://127.0.0.1:40687/images/1ec4ad49f428774f.webp"
         }
       ],
       "errors": []

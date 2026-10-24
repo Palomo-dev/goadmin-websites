@@ -1,6 +1,6 @@
 # Galería de render local: org 140
 
-46 escenarios antes/después en escritorio y celular. Los enlaces abren PNG; `index.html` permite ver las parejas juntas al abrir la carpeta con un navegador. [Método y límites](TESTER.md). Sin comprobación desplegada ni sesión autenticada del ERP.
+Comparación actual: main `7717631` frente al árbol sobre `5f2e57d` y sus correcciones de integración posteriores. 46 escenarios antes/después en escritorio y celular. Algunas opciones ya existen en main y pueden verse iguales. [Método y límites](TESTER.md) · [Procedencia y hashes](round.json). Sin sesión autenticada ni publicación live. La ronda anterior se conserva fuera del repositorio.
 
 ## 14-below
 
@@ -418,7 +418,7 @@
 
 ## Interacciones móviles
 
-Se ejecutan sobre componentes reales. El diálogo de carrito es un fixture, no un pedido ni checkout.
+Componentes reales; el diálogo del callback de carrito es un fixture, no el carrito completo ni checkout.
 
 - [Dropdown superior](screenshots/interacciones/8-top_dropdown-mobile.png)
 - [Lateral izquierdo](screenshots/interacciones/8-drawer_left-mobile.png)

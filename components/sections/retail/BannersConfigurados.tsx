@@ -72,8 +72,7 @@ function radioForma(estilo: EstiloBanners): string {
 
 function degradado(estilo: EstiloBanners): string | undefined {
   if (estilo.overlay === 'none' || !estilo.overlay) return undefined
-  const op = (estilo.overlay_opacity ?? 55) / 100
-  const c1 = estilo.overlay_color || `rgb(0 0 0 / ${op})`
+  const c1 = estilo.overlay_color || '#000000'
   const c2 = estilo.overlay_color_2 || 'transparent'
   const ang = estilo.overlay_angle ?? (estilo.overlay_position === 'left' ? 90 : 180)
   if (estilo.overlay === 'solid') return `linear-gradient(${ang}deg, ${c1}, ${c1})`
@@ -383,15 +382,17 @@ function Tarjeta(props: {
   const zoom = estilo.hover === 'zoom' ? ' transition-transform duration-300 group-hover:scale-105' : ''
   const oscuro = estilo.hover === 'darken' ? ' transition duration-300 group-hover:brightness-75' : ''
   const elevar = estilo.hover === 'lift' ? ' transition-transform duration-300 group-hover:-translate-y-1' : ''
+  const circular = estilo.banner_shape === 'circle' || layout === 'circles'
   const forma = radioForma(estilo)
-  const radio = estilo.banner_radius != null ? { borderRadius: layout === 'circles' ? 9999 : estilo.banner_radius } : undefined
+  const radio = circular ? { borderRadius: '50%' } : estilo.banner_radius != null ? { borderRadius: estilo.banner_radius } : undefined
   const borde = estilo.border_width
     ? { borderWidth: estilo.border_width, borderStyle: 'solid' as const, borderColor: estilo.border_color || '#E5E7EB' }
     : undefined
   const sombra = estilo.shadow ? SOMBRA[estilo.shadow] : ''
-  const altoNatural = (props.aspecto === 'h-auto' && layout === 'grid' && !movil) || layout === 'masonry'
-  const claseFoto = layout === 'circles'
-    ? `h-full w-full object-cover${zoom}${oscuro}`
+  const aspecto = circular ? 'aspect-square' : props.aspecto
+  const altoNatural = !circular && ((props.aspecto === 'h-auto' && layout === 'grid' && !movil) || layout === 'masonry')
+  const claseFoto = circular
+    ? `absolute inset-0 h-full w-full object-cover${zoom}${oscuro}`
     : altoNatural
       ? `block w-full h-auto${zoom}${oscuro}`
       : `${claseImagenBanner(fit, content.image_position)}${zoom}${oscuro}`
@@ -431,9 +432,10 @@ function Tarjeta(props: {
         ? 'w-28 shrink-0 text-center'
         : layout === 'side_text'
           ? ''
-          : `relative overflow-hidden ${forma} ${sombra} ${altoNatural ? 'w-full' : `${props.aspecto} flex flex-col ${vertical} p-8 w-full`} ${props.destacada ? 'min-h-[240px] md:min-h-[320px]' : ''}`}
+          : `relative overflow-hidden ${forma} ${sombra} ${altoNatural ? 'w-full' : `${aspecto} flex flex-col ${vertical} p-8 w-full`} ${props.destacada && !circular ? 'min-h-[240px] md:min-h-[320px]' : ''}`}
       style={{
         backgroundColor: banner.bg_color || (escritorio ? undefined : primaryColor),
+        ...(props.extra && !circular ? { height: '100%' } : {}),
         ...radio,
         ...borde,
         ...(layout !== 'circles' && layout !== 'side_text' && !altoNatural ? {} : {}),
@@ -449,7 +451,7 @@ function Tarjeta(props: {
       ) : (
         <>
           {media}
-          {scrim && textoVisible && <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: scrim }} />}
+          {scrim && textoVisible && <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: scrim, opacity: (estilo.overlay_opacity ?? 55) / 100 }} />}
           {textoVisible && (
             <div className={`${altoNatural ? 'absolute inset-0 z-10 flex flex-col p-8' : 'relative z-10'} ${vertical} ${alinear} ${claseRevelar ? '' : ''}`}>
               {textos}
@@ -470,7 +472,7 @@ function Tarjeta(props: {
 
   const pieza = layout === 'side_text' ? (
     <div className="grid items-center gap-6 md:grid-cols-2">
-      <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl ${sombra} ${forma} ${(props.indice ?? 0) % 2 === 1 ? 'md:order-2' : ''}`} style={{ ...radio, ...borde }}>{media}</div>
+      <div className={`relative ${circular ? 'aspect-square' : 'aspect-[4/3]'} overflow-hidden rounded-2xl ${sombra} ${forma} ${(props.indice ?? 0) % 2 === 1 ? 'md:order-2' : ''}`} style={{ ...radio, ...borde }}>{media}</div>
       <div className={alinear}>
         {textos && <div style={{ color: banner.text_color || estilo.text_color || '#111827' }}>{textos}</div>}
         {boton}
@@ -478,12 +480,18 @@ function Tarjeta(props: {
     </div>
   ) : cuerpo
 
-  const marcado = (
-    <div className={`group ${elevar}`} style={props.extra} data-banner-index={props.indice}>
+  // Las coordenadas pertenecen al hijo directo de CSS grid, que puede ser el enlace.
+  // Colocarlas dentro del enlace deja el banner en el flujo automático y rompe el patrón.
+  const colocacion: CSSProperties | undefined = props.extra ? { ...props.extra, height: '100%' } : undefined
+  return href ? (
+    <Link href={href} className={`block group ${elevar}`} style={colocacion} data-banner-index={props.indice}>
+      {pieza}
+    </Link>
+  ) : (
+    <div className={`group ${elevar}`} style={colocacion} data-banner-index={props.indice}>
       {pieza}
     </div>
   )
-  return href ? <Link href={href} className="block">{marcado}</Link> : marcado
 }
 
 function botonDe(banner: BannerItem, estilo: EstiloBanners, primaryColor: string) {
@@ -492,6 +500,7 @@ function botonDe(banner: BannerItem, estilo: EstiloBanners, primaryColor: string
   if (!texto && estilo.button_on !== true) return null
   const etiqueta = texto || 'Ver más'
   const variante = estilo.button_style || banner.button_style || 'solid'
+  const hoverStyle = estilo.button_hover ? { '--banner-button-hover': estilo.button_hover } as CSSProperties : undefined
   const clasico = !estilo.button_style && !estilo.button_bg && !estilo.button_shape && !estilo.button_position
   if (clasico) {
     const clases = {
@@ -499,11 +508,11 @@ function botonDe(banner: BannerItem, estilo: EstiloBanners, primaryColor: string
       outline: 'border border-white text-white hover:bg-white hover:text-gray-900',
       ghost: 'text-white hover:underline',
     }[variante as 'solid' | 'outline' | 'ghost'] || 'bg-white text-gray-900'
-    return <span className={`inline-block px-5 py-2 rounded-lg font-medium transition-colors ${clases}`}>{etiqueta}</span>
+    return <span data-banner-button-hover={estilo.button_hover ? '' : undefined} style={hoverStyle} className={`inline-block px-5 py-2 rounded-lg font-medium transition-colors ${clases}`}>{etiqueta}</span>
   }
   const soloIcono = variante === 'icon_only'
   const radio = radioBotonBanner(estilo.button_shape, soloIcono)
-  const style: CSSProperties = { borderRadius: radio }
+  const style: CSSProperties = { borderRadius: radio, ...hoverStyle }
   const bg = estilo.button_bg || primaryColor
   const colorTexto = estilo.button_color || (variante === 'outline' || variante === 'ghost' ? bg : '#ffffff')
   if (variante === 'gradient' && estilo.button_gradient_1 && estilo.button_gradient_2) {
@@ -522,7 +531,7 @@ function botonDe(banner: BannerItem, estilo: EstiloBanners, primaryColor: string
   }
   const tam = estilo.button_size === 'lg' ? 'px-6 py-3 text-base' : estilo.button_size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-5 py-2 text-sm'
   return (
-    <span className={`inline-flex items-center justify-center font-medium ${tam}`} style={style}>
+    <span data-banner-button-hover={estilo.button_hover ? '' : undefined} className={`inline-flex items-center justify-center font-medium ${tam}`} style={style}>
       {soloIcono ? <ArrowRight className="h-4 w-4" /> : etiqueta}
     </span>
   )

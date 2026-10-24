@@ -59,7 +59,7 @@ export function recorteListado(total: number, pagina: number, content: Contenido
   const forzado = enteroPositivo(porPaginaForzado)
   const configuracion = content?.paginacion && typeof content.paginacion === 'object' ? content.paginacion as Record<string, unknown> : {}
   const cantidad = forzado ?? enteroPositivo(content?.per_page) ?? enteroPositivo(configuracion.porPaginaEscritorio) ?? 12
-  const porPagina = paginar ? Math.min(cantidad, 100) : Math.max(universo, 1)
+  const porPagina = forzado ?? (paginar ? Math.min(cantidad, 100) : Math.max(universo, 1))
   const paginas = Math.max(1, Math.ceil(universo / porPagina) || 1)
   const p = Math.min(Math.max(1, Math.round(pagina) || 1), paginas)
   const acumular = modo === 'load_more' || modo === 'infinite'

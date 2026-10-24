@@ -581,3 +581,9 @@ header a[data-categoria-activa][data-categoria-activa] {
     bottom: calc(var(--barra-app-h, 4.5rem) + 0.75rem + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* Color configurado del botón promocional: conserva el aspecto anterior si la clave no existe. */
+[data-banner-button-hover]:hover,
+a:focus-visible [data-banner-button-hover] {
+  background: var(--banner-button-hover) !important;
+}
