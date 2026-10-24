@@ -39,7 +39,8 @@
     "verify:tarjeta-beneficio": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-tarjeta-beneficio.mjs",
     "verify:fila-beneficio": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-fila-beneficio.mjs",
     "verify:estilo-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-estilo-categoria.mjs",
-    "verify:tarjeta-producto": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-tarjeta-producto.mjs"
+    "verify:tarjeta-producto": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-tarjeta-producto.mjs",
+    "verify:distribucion-banner": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-distribucion-banner.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

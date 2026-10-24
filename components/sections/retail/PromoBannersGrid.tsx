@@ -1,7 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
-import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
+import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner } from '@/lib/website/presentacionTienda'
+import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
+import { usarDistribucionNueva } from '@/lib/website/distribucionBanner'
+import { BannersConfigurados } from './BannersConfigurados'
+
+export type { BannerItem }
+export { resolveBannerHref }
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -17,27 +23,6 @@ function getProductImageUrl(product: any): string | null {
   const path = image.storage_path || image.shared_images?.storage_path
   if (!path) return null
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
-}
-
-interface BannerItem {
-  title?: string
-  subtitle?: string
-  image_url?: string
-  bg_color?: string
-  text_color?: string
-  // Campos heredados (retrocompatibilidad con banners escritos a mano).
-  cta_text?: string
-  cta_url?: string
-  // Destino tipado (F7.1).
-  link_type?: 'category' | 'product' | 'url' | 'page' | 'none'
-  link_category_id?: number | string
-  link_product_id?: number | string
-  link_url?: string
-  link_page_id?: string
-  show_category_products?: boolean
-  max_preview_products?: number
-  button_text?: string
-  button_style?: 'solid' | 'outline' | 'ghost'
 }
 
 interface PromoBannersGridProps {
@@ -69,45 +54,11 @@ interface PromoBannersGridProps {
   }
 }
 
-/**
- * Resuelve el `href` final de un banner según su `link_type`.
- * Si el banner no tiene `link_type` (banners heredados) cae a `cta_url` / `link_url`.
- */
-function resolveBannerHref(
-  banner: BannerItem,
-  data: PromoBannersGridProps['data'],
-): string | null {
-  // Retrocompatibilidad: banners sin link_type usan cta_url / link_url.
-  if (!banner.link_type) {
-    return banner.cta_url || banner.link_url || null
-  }
-
-  switch (banner.link_type) {
-    case 'none':
-      return null
-    case 'url':
-      return banner.link_url || banner.cta_url || null
-    case 'category': {
-      if (!banner.link_category_id) return null
-      const cat = data?.categories?.find((c) => mismoId(c.id, banner.link_category_id))
-      return cat?.slug ? `/categorias/${cat.slug}` : null
-    }
-    case 'product': {
-      if (!banner.link_product_id) return null
-      const prod = data?.products?.find((p) => mismoId(p.id, banner.link_product_id))
-      return prod?.uuid ? `/productos/${prod.uuid}` : null
-    }
-    case 'page': {
-      if (!banner.link_page_id) return null
-      const page = data?.bannerPages?.[banner.link_page_id]
-      return page?.slug ? hrefDeSlug(page.slug) : null
-    }
-    default:
-      return null
-  }
-}
-
 export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: PromoBannersGridProps) {
+  const nuevo = usarDistribucionNueva(content)
+  if (nuevo) {
+    return <BannersConfigurados content={content} config={nuevo} primaryColor={primaryColor} data={data} />
+  }
   const banners = content.banners || []
   const layout = content.layout || 'grid'
 
