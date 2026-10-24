@@ -8,6 +8,8 @@ import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProduc
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
@@ -36,6 +38,7 @@ function getComparePrice(product: any): number | null {
 
 interface ProductsGridProps {
   content: {
+    product_card_style?: unknown
     title?: string
     subtitle?: string
     show_filters?: boolean
@@ -83,6 +86,7 @@ interface ProductsGridProps {
 
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = data?.branchId ?? null
@@ -187,7 +191,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       )}
 
       {paginatedProducts.length > 0 ? (
-        <div className={clasesColumnasProductos(content.columns)}>
+        <div className={clasesColumnasProductos(content.columns)} style={separacion}>
           {paginatedProducts.map((product: any) => {
             const isAdded = addedToCart.has(product.id)
             return (

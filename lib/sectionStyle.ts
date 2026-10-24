@@ -393,6 +393,7 @@ export function buildCardStyle(content: CardContent | null | undefined): StyleRe
  */
 const IMAGE_RATIO_CLASS: Record<string, string> = {
   '1:1': 'aspect-square',
+  '4:5': 'aspect-[4/5]',
   '4:3': 'aspect-[4/3]',
   '3:4': 'aspect-[3/4]',
   '16:9': 'aspect-[16/9]',
@@ -430,6 +431,8 @@ export interface BadgeConfig {
   shape?: string | null;
   icon?: string | null;
   size?: string | null;
+  /** Estilo extra (contorno, degradado). Ausente = el fondo y el texto de siempre. */
+  extra_style?: Record<string, string> | null;
 }
 
 const BADGE_POSITION_CLASS: Record<string, string> = {
@@ -442,6 +445,9 @@ const BADGE_POSITION_CLASS: Record<string, string> = {
 const BADGE_SHAPE_CLASS: Record<string, string> = {
   pill: 'rounded-full',
   square: 'rounded-none',
+  rounded: 'rounded-lg',
+  semi: 'rounded-[14px]',
+  circle: 'rounded-full',
   ribbon: 'rounded-l-none',
   corner: 'rounded-none',
 };
@@ -455,7 +461,8 @@ const BADGE_SIZE_CLASS: Record<string, string> = {
 export function resolveBadgeClasses(badge: BadgeConfig): string {
   const shape = BADGE_SHAPE_CLASS[badge.shape ?? 'pill'] ?? BADGE_SHAPE_CLASS.pill;
   const size = BADGE_SIZE_CLASS[badge.size ?? 'sm'] ?? BADGE_SIZE_CLASS.sm;
-  return `font-bold ${shape} ${size}`;
+  const base = `font-bold ${shape} ${size}`;
+  return badge.shape === 'circle' ? `${base} inline-flex items-center justify-center min-w-[1.5rem]` : base;
 }
 
 // Mapa de clases de posición por esquina (usado por contenedores agrupados)

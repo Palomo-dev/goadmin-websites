@@ -9,6 +9,8 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado } from '@/lib/products/limiteListado'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -35,6 +37,7 @@ function getComparePrice(product: any): number | null {
 
 interface FeaturedProductsProps {
   content: {
+    product_card_style?: unknown
     title?: string
     subtitle?: string
     max_items?: number
@@ -76,6 +79,7 @@ interface FeaturedProductsProps {
 
 export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const branchId = data?.branchId ?? null
@@ -190,7 +194,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
             ref={scrollRef}
             onScroll={updatePagination}
             className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', ...separacion }}
           >
             {products.map((product: any) => {
               const isAdded = addedToCart.has(product.id)

@@ -14,6 +14,8 @@ import { useState } from 'react'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
 
@@ -50,6 +52,7 @@ function getProductImageUrl(product: any): string | null {
 
 export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: CategoryProductsProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta((content as { product_card_style?: unknown } | undefined)?.product_card_style))
   const router = useRouter()
   const products = data?.products || []
   const categorySlug = data?.categorySlug || ''
@@ -138,7 +141,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
   return (
     <>
       {view === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6" style={separacion}>
           {products.map((product: any) => (
             <ProductCard
               key={product.id}
@@ -155,7 +158,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" style={separacion}>
           {products.map((product: any) => (
             <ProductCard
               key={product.id}

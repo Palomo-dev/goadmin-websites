@@ -10,6 +10,8 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
 import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda, filtrarProductosPorCategorias, incluirSubcategorias } from '@/lib/products/filtrosProductos'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -31,6 +33,7 @@ function getDiscount(product: any): number {
 
 interface OffersGridProps {
   content: {
+    product_card_style?: unknown
     title?: string
     subtitle?: string
     selected_category_ids?: number[]
@@ -66,6 +69,7 @@ interface OffersGridProps {
 
 export function OffersGrid({ content, primaryColor = '#3B82F6', organization, data, branchId }: OffersGridProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const manualOffers = content.offers || []
@@ -222,7 +226,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
 
           {/* Grid */}
           {paginatedProducts.length > 0 ? (
-            <div className={clasesColumnasProductos(content.columns)}>
+            <div className={clasesColumnasProductos(content.columns)} style={separacion}>
               {paginatedProducts.map((product: any) => {
                 const isAdded = addedToCart.has(product.id)
                 return (

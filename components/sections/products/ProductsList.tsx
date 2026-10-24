@@ -7,6 +7,8 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -17,6 +19,7 @@ interface ProductsListProps {
 
 export function ProductsList({ content, primaryColor = '#3B82F6', data, organization }: ProductsListProps) {
   const { ruta } = useRutaSitio()
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = (data?.branchId as number | null | undefined) ?? null
@@ -114,7 +117,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
           return (
             <div
               className={isGrid ? 'grid gap-4 max-w-6xl mx-auto' : 'space-y-4 max-w-4xl mx-auto'}
-              style={isGrid ? { gridTemplateColumns: `repeat(${Math.min(cols, 4)}, minmax(0, 1fr))` } : undefined}
+              style={isGrid ? { gridTemplateColumns: `repeat(${Math.min(cols, 4)}, minmax(0, 1fr))`, ...separacion } : separacion}
             >
               {visibleProducts.map((product: any) => {
                 const isAdded = addedToCart.has(product.id)

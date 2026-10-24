@@ -35,6 +35,11 @@ export interface TemaPublico {
   movimiento: MovimientoSitio | null
   /** Perillas combinables. `null` = la tienda no eligió ninguna. */
   tokens: TokensCrudos | null
+  /**
+   * `product_card_style` del sitio. `null` = la tarjeta de hoy. La sección lo
+   * reemplaza; el lector no pinta nada si el objeto no trae claves útiles.
+   */
+  tarjetaProducto: Record<string, unknown> | null
 }
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -84,6 +89,7 @@ export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): 
   const radio = resolver(t, p, (x) => x.radio, esSede)
   const boton = resolver(t, p, (x) => x.estiloBoton, esSede)
   const movimiento = resolver(t, p, (x) => x.movimiento, esSede)
+  const tarjeta = resolver(t, p, (x) => x.tarjetaProducto, esSede)
   return {
     fondo: color(resolver(t, p, (x) => x.colores.fondo, esSede)),
     texto: color(resolver(t, p, (x) => x.colores.texto, esSede)),
@@ -93,6 +99,7 @@ export function temaPublicoDesdeTema(t: Tema, esSede: boolean, p: Tema | null): 
     estiloBoton: typeof boton === 'string' && BOTONES.includes(boton) ? (boton as EstiloBotonSitio) : null,
     movimiento: typeof movimiento === 'string' && MOVIMIENTOS.includes(movimiento) ? (movimiento as MovimientoSitio) : null,
     tokens: ((t.tokens ?? (esSede ? p?.tokens : undefined)) as TokensCrudos | undefined) ?? null,
+    tarjetaProducto: tarjeta && typeof tarjeta === 'object' && !Array.isArray(tarjeta) ? tarjeta : null,
   }
 }
 
