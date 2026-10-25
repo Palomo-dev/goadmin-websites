@@ -24,6 +24,7 @@
  */
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
+import { normalizarDocumentoPublico } from './normalizarDocumento'
 import { createAdminClient } from '@/lib/supabase/server'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import type { WebsitePageWithSections } from '@/types/database'
@@ -114,7 +115,14 @@ async function leerRevisionSinCache(
   if (data.schema_version !== VERSION_ESQUEMA_DOCUMENTO) {
     return { ok: false, errores: [{ ruta: 'schema_version', codigo: `schema_version_no_soportada:${data.schema_version}` }] }
   }
-  const validacion = validarDocumentoSitio(data.document)
+  // Repara detalles menores (ítems de menú sin etiqueta) antes del contrato; ver normalizarDocumento.ts.
+  const normalizado = normalizarDocumentoPublico(data.document)
+  if (normalizado.reparados > 0) {
+    console.warn('[sitio-v2] Revisión publicada con ítems de menú sin etiqueta; se repararon al servir', {
+      organizationId, siteStateId, revisionId, reparados: normalizado.reparados,
+    })
+  }
+  const validacion = validarDocumentoSitio(normalizado.documento)
   return validacion.ok ? { ok: true, documento: validacion.documento } : { ok: false, errores: validacion.errores }
 }
 
@@ -173,6 +181,8 @@ export const getSitioPublicoV2 = cache(
           organizationId, siteStateId: elegido.id, revisionId: elegido.published_revision_id,
           errores: revision.errores.slice(0, 10),
         })
+        // TODO(sentry): alertar a Sentry aquí (contrato inválido → legacy). El SDK de Sentry no está
+        // instalado en goadmin-websites; queda pendiente de que Juan apruebe agregarlo.
         return null
       }
 
