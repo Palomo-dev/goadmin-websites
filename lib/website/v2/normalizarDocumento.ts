@@ -1,9 +1,11 @@
 /**
  * Tolera detalles menores ANTES de validar con el contrato, para que un dato mal guardado no
  * tumbe todo el sitio a legacy (org 341, 25-oct-2026: 5 ítems del menú «Legales» con
- * `etiqueta: null`). Hoy solo repara eso: ítems de menú con etiqueta nula o vacía toman el
- * título de la página a la que apuntan (`paginaId` → `paginas[].titulo`) o, si no, 'Legal'.
- * Es puro: no muta la entrada. Cualquier otro error sigue llegando al contrato.
+ * `etiqueta: null`). Solo repara ítems de menú (y sus `hijos`) cuya etiqueta es null/ausente o
+ * la cadena vacía real (igual que el contrato: textoCorto.min(1); solo-espacios es válida):
+ * toman el título de la página a la que apuntan (`paginaId`/`pagina_id` → `paginas[].titulo`).
+ * Si no resuelve, solo se usa 'Legal' dentro de un menú llamado «Legales»/«Legal»; en otro
+ * caso la etiqueta queda como está. Es puro: no muta la entrada.
  */
 export function normalizarDocumentoPublico(documento: unknown): { documento: unknown; reparados: number } {
   if (!documento || typeof documento !== 'object') return { documento, reparados: 0 }
@@ -16,21 +18,36 @@ export function normalizarDocumentoPublico(documento: unknown): { documento: unk
     }
   }
   let reparados = 0
-  const menus = (doc.menus as unknown[]).map((menu) => {
-    const m = menu as { items?: unknown } | null
-    if (!m || !Array.isArray(m.items)) return menu
+  const reparar = (lista: unknown[], esLegales: boolean): unknown[] | null => {
     let cambio = false
-    const items = (m.items as unknown[]).map((item) => {
-      const it = item as { etiqueta?: unknown; paginaId?: unknown } | null
+    const out = lista.map((item) => {
+      const it = item as { etiqueta?: unknown; paginaId?: unknown; pagina_id?: unknown; hijos?: unknown } | null
       if (!it || typeof it !== 'object') return item
-      if (typeof it.etiqueta === 'string' && it.etiqueta.trim()) return item
-      if (it.etiqueta !== null && it.etiqueta !== undefined && typeof it.etiqueta !== 'string') return item
-      const titulo = typeof it.paginaId === 'string' ? titulos.get(it.paginaId) : undefined
-      cambio = true
-      reparados++
-      return { ...it, etiqueta: titulo ?? 'Legal' }
+      let nuevo: Record<string, unknown> = it as Record<string, unknown>
+      if (Array.isArray(it.hijos)) {
+        const hijos = reparar(it.hijos as unknown[], esLegales)
+        if (hijos) nuevo = { ...nuevo, hijos }
+      }
+      const vacia = it.etiqueta === null || it.etiqueta === undefined || it.etiqueta === ''
+      if (vacia) {
+        const pid = typeof it.paginaId === 'string' ? it.paginaId : typeof it.pagina_id === 'string' ? it.pagina_id : undefined
+        const titulo = (pid ? titulos.get(pid) : undefined) ?? (esLegales ? 'Legal' : undefined)
+        if (titulo !== undefined) {
+          nuevo = { ...nuevo, etiqueta: titulo }
+          reparados++
+        }
+      }
+      if (nuevo !== it) cambio = true
+      return nuevo
     })
-    return cambio ? { ...m, items } : menu
+    return cambio ? out : null
+  }
+  const menus = (doc.menus as unknown[]).map((menu) => {
+    const m = menu as { items?: unknown; nombre?: unknown } | null
+    if (!m || !Array.isArray(m.items)) return menu
+    const esLegales = typeof m.nombre === 'string' && /^legal(es)?$/i.test(m.nombre.trim())
+    const items = reparar(m.items as unknown[], esLegales)
+    return items ? { ...m, items } : menu
   })
   return reparados > 0 ? { documento: { ...doc, menus }, reparados } : { documento, reparados: 0 }
 }
