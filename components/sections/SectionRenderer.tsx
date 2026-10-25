@@ -142,6 +142,7 @@ import { ParkingAvailabilitySummary } from './parking/ParkingAvailabilitySummary
 
 // Secciones countdown
 import { CountdownSection } from './countdown/CountdownSection'
+import { UrgenciaSection } from './countdown/UrgenciaSection'
 
 // Secciones detalle de producto (F9.2)
 import { ProductGallery } from './product-detail/ProductGallery'
@@ -270,6 +271,11 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     grid: CategoriesGrid,
     horizontal: CategoriesGrid,
     icons: CategoriesGrid,
+    circle: CategoriesGrid,
+    card_bottom: CategoriesGrid,
+    pill: CategoriesGrid,
+    minimal_icon: CategoriesGrid,
+    bento: CategoriesGrid,
   },
   featured_products: {
     grid: FeaturedProducts,
@@ -454,6 +460,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     inline: CountdownSection,
     compact: CountdownSection,
   },
+  urgency: { default: UrgenciaSection },
   // Detalle de producto (F9.2)
   product_gallery: {
     default: ProductGallery,
@@ -542,7 +549,7 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
 
   return (
     <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
-      {section.section_type === 'hero' && (
+      {(section.section_type === 'hero' || section.section_type === 'restaurant_hero') && (
         <ContadoresDe settings={organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }} ubicacion="hero" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
       )}
       <Component

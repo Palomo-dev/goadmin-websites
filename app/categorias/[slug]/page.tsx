@@ -7,7 +7,8 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CategoryDetailRenderer } from '@/components/sections/category-detail/CategoryDetailRenderer'
 import { JsonLd } from '@/components/site/JsonLd'
 import { Metadata } from 'next'
-import { TAMANO_PAGINA_CATEGORIA } from '@/lib/products/paginacionCategoria'
+import { tamanoPaginaCategoriaPlantilla, TAMANO_PAGINA_CATEGORIA } from '@/lib/products/paginacionCategoria'
+
 import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
 import { porPaginaDeCampo } from '@/lib/website/v2/paginacionCarrusel'
 
@@ -64,13 +65,21 @@ export default async function CategoriaSlugPage({
     if (sub) subcategoryId = sub.id
   }
 
+  // F9.4 — Buscar plantilla de detalle de categoría editable
+  // Sitio V2: la plantilla sale de la revisión publicada; legacy: igual que antes.
+  const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
+    () => getWebsitePageByType(organization.id, 'category_detail'))
+
   const sitio = await getSitioPublicoV2(organization.id, branchId)
-  const limite = porPaginaDeCampo(sitio?.documento?.tema?.paginacion, TAMANO_PAGINA_CATEGORIA)
+  const globalPorPagina = porPaginaDeCampo(sitio?.documento?.tema?.paginacion, TAMANO_PAGINA_CATEGORIA)
+  const seccionProductos = categoryDetailTemplate?.website_page_sections.find((s) => s.section_type === 'category_products' && s.is_visible !== false)
+  const tieneLimite = seccionProductos?.content && typeof seccionProductos.content === 'object' && 'max_items' in seccionProductos.content && seccionProductos.content.max_items != null
+  const porPagina = tieneLimite ? tamanoPaginaCategoriaPlantilla(categoryDetailTemplate?.website_page_sections) : globalPorPagina
 
   // Obtener productos paginados
   const { products, total } = await getProductsByCategoryPaginated(organization.id, category.id, {
     page,
-    limit: limite,
+    limit: porPagina,
     sort,
     subcategoryId,
     branchId
@@ -82,12 +91,7 @@ export default async function CategoriaSlugPage({
     parentCategory = await getParentCategory(organization.id, category.parent_id)
   }
 
-  const totalPages = Math.ceil(total / limite)
-
-  // F9.4 — Buscar plantilla de detalle de categoría editable
-  // Sitio V2: la plantilla sale de la revisión publicada; legacy: igual que antes.
-  const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
-    () => getWebsitePageByType(organization.id, 'category_detail'))
+  const totalPages = Math.ceil(total / porPagina)
 
   // F9.5 — JSON-LD ItemList para categoría (URLs de la sede si la página es de una sede)
   const baseUrl = ctx.urlBase
@@ -97,7 +101,7 @@ export default async function CategoriaSlugPage({
     name: category.name,
     description: category.description || undefined,
     numberOfItems: total,
-    itemListElement: products.slice(0, limite).map((p: any, i: number) => ({
+    itemListElement: products.slice(0, porPagina).map((p: any, i: number) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: p.name,

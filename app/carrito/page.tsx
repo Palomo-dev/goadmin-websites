@@ -3,6 +3,8 @@ import { getMetaPixelId, getGoogleAdsConfig, getOrganizationProducts, getDefault
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CartPageClient } from './CartPageClient'
+import { UrgenciaDe } from '@/components/site/UrgenciaDe'
+import { UrgenciasUbicacion } from '@/components/sections/countdown/UrgenciasUbicacion'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -56,6 +58,8 @@ export default async function CarritoPage() {
       frozenReason={frozenReason}
       branchId={branchId}
     >
+      <UrgenciasUbicacion organization={organization} ubicacion="carrito" primaryColor={primaryColor} branchId={branchId} prefijoSede={ctx.prefijoSede} />
+      <div className="container mx-auto px-4"><UrgenciaDe settings={organization.website_settings} ubicacion="carrito" primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} /></div>
       <CartPageClient
         primaryColor={primaryColor}
         organizationSubdomain={organization.subdomain || ''}

@@ -563,3 +563,27 @@ header a[data-categoria-activa][data-categoria-activa] {
   --mesa-alerta-texto: #f2cb74;
   --mesa-error-texto: #f4a28f;
 }
+@media (max-width: 1023px) {
+  body.con-barra-constructor [data-raiz-sitio] {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+  body.con-barra-constructor #go-chat-btn {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Barra inferior tipo app (`mobile_header.bottom_nav`). Sin la clase, el alto y el chat no cambian. */
+@media (max-width: 1023px) {
+  body.con-barra-app [data-raiz-sitio] {
+    padding-bottom: calc(var(--barra-app-h, 4.5rem) + env(safe-area-inset-bottom));
+  }
+  body.con-barra-app #go-chat-btn {
+    bottom: calc(var(--barra-app-h, 4.5rem) + 0.75rem + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Color configurado del botón promocional: conserva el aspecto anterior si la clave no existe. */
+[data-banner-button-hover]:hover,
+a:focus-visible [data-banner-button-hover] {
+  background: var(--banner-button-hover) !important;
+}

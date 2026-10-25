@@ -179,23 +179,28 @@ async function sedeDelPrefijo(
   return coincide ? { slug: primero.toLowerCase(), resto: `/${resto.join('/')}` } : null
 }
 
-// Cabeceras de sede que SOLO este middleware puede poner. Las que traiga la petición se
-// descartan: si no, `curl -H 'x-outlet-path: <slug>' /checkout` hacía que getOrgContext
-// resolviera esa sede (y el branchId del pedido) sin que estuviera en la URL, y una CDN que
-// cachea por URL podía guardar la versión «de sede» de /checkout o de la home.
-// (En localhost la simulación con x-outlet-subdomain sigue: se lee de la petición original
-// y se vuelve a poner en la respuesta más abajo.)
-const CABECERAS_SEDE = ['x-outlet-path', 'x-outlet-subdomain', 'x-custom-outlet-domain'] as const
+// Las cabeceras internas de organización y sede salen exclusivamente del host y de
+// las rutas verificadas. Nunca se reenvían valores que haya enviado el visitante.
+const CABECERAS_TENANT = ['x-subdomain', 'x-custom-domain', 'x-outlet-path', 'x-outlet-subdomain', 'x-custom-outlet-domain'] as const
 
-function cabecerasSinSede(request: NextRequest): Headers {
+function cabecerasSinTenant(request: NextRequest): Headers {
   const cabeceras = new Headers(request.headers)
-  for (const nombre of CABECERAS_SEDE) cabeceras.delete(nombre)
+  for (const nombre of CABECERAS_TENANT) cabeceras.delete(nombre)
   return cabeceras
+}
+
+/** Conserva la sesión refrescada y las cabeceras de privacidad al recrear next/rewrite. */
+function conservarRespuesta(origen: NextResponse, destino: NextResponse): void {
+  origen.cookies.getAll().forEach((cookie) => destino.cookies.set(cookie))
+  origen.headers.forEach((valor, clave) => {
+    if (clave.startsWith('x-middleware-') || clave === 'set-cookie') return
+    destino.headers.set(clave, valor)
+  })
 }
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
-  const hostname = request.headers.get('host') || ''
+  const hostname = (request.headers.get('host') || '').toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '')
   
   // Ignorar rutas de assets estáticos (pero NO /api, para que auth funcione).
   // /sitemap.xml y /robots.txt sí pasan: son por organización y necesitan las cabeceras del host.
@@ -212,13 +217,13 @@ export async function middleware(request: NextRequest) {
     url.pathname.startsWith('/static') ||
     (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia && !esFavicon)
   ) {
-    return NextResponse.next()
+    return NextResponse.next({ request: { headers: cabecerasSinTenant(request) } })
   }
 
   // --- Refresco de sesión Supabase Auth ---
   // Esto mantiene las cookies de sesión JWT válidas entre requests
-  // Se reenvían las cabeceras de la petición sin las de sede (cabecerasSinSede).
-  let supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinSede(request) } })
+  // Se reenvían las cabeceras de la petición sin las de sede (cabecerasSinTenant).
+  let supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinTenant(request) } })
 
   // Usar service role key si disponible (la anon key falla en runtime de Vercel)
   // Sin service role, la resolución de dominios de sucursal no encuentra filas
@@ -241,7 +246,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinSede(request) } })
+          supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinTenant(request) } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -255,7 +260,7 @@ export async function middleware(request: NextRequest) {
 
   // --- Lógica de subdominios / dominios personalizados / outlets ---
   // Detectar si es un subdominio del sistema
-  const isLocalhost = hostname.includes('localhost')
+  const isLocalhost = process.env.NODE_ENV !== 'production' && /^(?:[a-z0-9-]+\.)*localhost$/.test(hostname)
   const systemDomain = matchSystemDomain(hostname)
 
   // Host efectivo sin www (para lookups en BD; branches.custom_domain y
@@ -290,7 +295,7 @@ export async function middleware(request: NextRequest) {
     // Extraer subdominio delante del system domain matcheado (sin asumir nº de etiquetas).
     //   tugranhotel.goadmin.io        → prefix = 'tugranhotel'        → org
     //   hotel.tugranhotel.goadmin.io  → prefix = 'hotel.tugranhotel'  → outlet + org
-    const prefix = hostname.slice(0, hostname.length - systemDomain.length - 1)
+    const prefix = hostname === systemDomain ? '' : hostname.slice(0, hostname.length - systemDomain.length - 1)
     const labels = prefix.split('.')
     if (labels.length >= 2) {
       // Sub-subdomain: outlet + org
@@ -333,64 +338,44 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // /favicon.ico → /api/favicon, con el tenant en la petición (no solo en la respuesta).
-  if (esFavicon) {
-    const destino = request.nextUrl.clone()
-    destino.pathname = '/api/favicon'
-    const cabeceras = cabecerasSinSede(request)
-    if (subdomain) cabeceras.set('x-subdomain', subdomain)
-    if (outletSubdomain) cabeceras.set('x-outlet-subdomain', outletSubdomain)
-    if (isCustomOutletDomain) {
-      cabeceras.set('x-custom-domain', subdomain!)
-      cabeceras.set('x-custom-outlet-domain', effectiveHost)
-    } else if (isCustomDomain) {
-      cabeceras.set('x-custom-domain', effectiveHost)
-    }
-    return NextResponse.rewrite(destino, { request: { headers: cabeceras } })
+  // El contexto se envía al REQUEST que recibirán los Server Components y las APIs.
+  // Las cabeceras de la respuesta por sí solas no reemplazan el contexto entrante.
+  const cabeceras = cabecerasSinTenant(request)
+  if (subdomain) cabeceras.set('x-subdomain', subdomain)
+  if (outletSubdomain) cabeceras.set('x-outlet-subdomain', outletSubdomain)
+  if (isCustomOutletDomain) {
+    cabeceras.set('x-custom-domain', subdomain!)
+    cabeceras.set('x-custom-outlet-domain', effectiveHost)
+  } else if (isCustomDomain) {
+    cabeceras.set('x-custom-domain', effectiveHost)
   }
 
-  // Sede por prefijo de ruta: solo en el host del sitio principal (con la sede ya resuelta
-  // por host —sub-subdominio o dominio propio de sede— el primer segmento es una página).
-  let respuesta: NextResponse = supabaseResponse
-  if (!outletSubdomain && !isCustomOutletDomain && !esArchivoPorHost) {
+  let destino: ReturnType<typeof request.nextUrl.clone> | null = null
+  if (esFavicon) {
+    destino = request.nextUrl.clone()
+    destino.pathname = '/api/favicon'
+  } else if (!outletSubdomain && !isCustomOutletDomain && !esArchivoPorHost) {
+    // Solo el prefijo de una sede publicada del host puede elegir una sede.
     const sede = await sedeDelPrefijo(supabase, url.pathname, {
       subdomain: isCustomDomain ? null : subdomain,
       customDomainHost: isCustomDomain ? effectiveHost : null,
     })
     if (sede) {
-      const destino = request.nextUrl.clone()
+      destino = request.nextUrl.clone()
       destino.pathname = sede.resto
-      respuesta = NextResponse.rewrite(destino, { request: { headers: cabecerasSinSede(request) } })
-      // Conservar las cookies de sesión que refrescó Supabase y las cabeceras ya puestas.
-      supabaseResponse.cookies.getAll().forEach((cookie) => respuesta.cookies.set(cookie))
-      supabaseResponse.headers.forEach((valor, clave) => {
-        if (clave.startsWith('x-middleware-') || clave === 'set-cookie') return
-        respuesta.headers.set(clave, valor)
-      })
-      respuesta.headers.set('x-outlet-path', sede.slug)
-    } else {
-      // Sin sede en la ruta: exactamente como antes.
+      cabeceras.set('x-outlet-path', sede.slug)
     }
   }
 
-  // Agregar headers con información del tenant al response
-  if (subdomain) {
-    respuesta.headers.set('x-subdomain', subdomain)
-  }
-
-  if (outletSubdomain) {
-    respuesta.headers.set('x-outlet-subdomain', outletSubdomain)
-  }
-
-  if (isCustomOutletDomain) {
-    // Dominio custom de BRANCH: x-custom-domain lleva el identificador de la org
-    // (resuelto vía lookup), NO el hostname del branch. El hostname del branch va
-    // en x-custom-outlet-domain para que getOrgContext lo valide contra branches.custom_domain.
-    respuesta.headers.set('x-custom-domain', subdomain!)
-    respuesta.headers.set('x-custom-outlet-domain', effectiveHost)
-  } else if (isCustomDomain) {
-    // Dominio custom de ORG: x-custom-domain lleva el hostname (sin www).
-    respuesta.headers.set('x-custom-domain', effectiveHost)
+  const respuesta = destino
+    ? NextResponse.rewrite(destino, { request: { headers: cabeceras } })
+    : NextResponse.next({ request: { headers: cabeceras } })
+  conservarRespuesta(supabaseResponse, respuesta)
+  // Se conservan las cabeceras de respuesta para compatibilidad y diagnóstico,
+  // siempre con los mismos valores de confianza que recibe el servidor.
+  for (const nombre of CABECERAS_TENANT) {
+    const valor = cabeceras.get(nombre)
+    if (valor !== null) respuesta.headers.set(nombre, valor)
   }
 
   return respuesta

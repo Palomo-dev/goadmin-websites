@@ -2,6 +2,7 @@
 
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { UrgenciaDe } from '@/components/site/UrgenciaDe'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { Price } from '@/components/site/CurrencyProvider'
 
@@ -90,13 +91,14 @@ export function ProductInfo({ content, primaryColor = '#3B82F6', data }: Product
         }
       })}
 
-      {content.show_countdown !== false && organization?.website_settings?.countdown_enabled && organization?.website_settings?.countdown_show_in_product && (
+      {!organization?.website_settings?.conversion && content.show_countdown !== false && organization?.website_settings?.countdown_enabled && organization?.website_settings?.countdown_show_in_product && (
         <CountdownBanner
           config={organization.website_settings}
           primaryColor={primaryColor}
           variant="inline"
         />
       )}
+      <UrgenciaDe settings={organization?.website_settings} ubicacion="producto" primaryColor={primaryColor} product={product} />
     </div>
   )
 }

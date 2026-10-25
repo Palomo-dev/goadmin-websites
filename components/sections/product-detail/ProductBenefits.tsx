@@ -2,6 +2,7 @@
 
 import { Truck, Shield, Package, Star } from 'lucide-react'
 import { buildCardStyle } from '@/lib/sectionStyle'
+import { BeneficioIcono, type EstiloIconoBeneficio } from '../BeneficioIcono'
 
 export const CONTENT_KEYS = ['items'] as const
 
@@ -20,16 +21,17 @@ const DEFAULT_BENEFITS = [
 ]
 
 interface ProductBenefitsProps {
-  content: {
+  content: EstiloIconoBeneficio & {
     items?: Array<{ icon?: string; title?: string; description?: string }>
     columns?: number
     gap?: number
+    item_layout?: 'stacked' | 'icon_left'
   }
   primaryColor?: string
   data?: { restaurante?: unknown }
 }
 
-export function ProductBenefits({ content, data }: ProductBenefitsProps) {
+export function ProductBenefits({ content, data, primaryColor = '#3B82F6' }: ProductBenefitsProps) {
   // Restaurante sin beneficios propios: los de e-commerce («Envío rápido 24-48 horas»,
   // «Garantía 30 días») no aplican a un plato. Con ítems configurados, se pintan.
   if (data?.restaurante && !content.items?.length) return null
@@ -44,7 +46,7 @@ export function ProductBenefits({ content, data }: ProductBenefitsProps) {
     4: 'grid-cols-4',
   }[columns] || 'grid-cols-2'
 
-  const { className: cardClassName, style: cardStyle } = buildCardStyle(content)
+  const { className: cardClassName, style: cardStyle } = buildCardStyle({ ...content })
 
   return (
     <div className={`grid ${gridColsClass}`} style={{ gap: `${gap}px` }}>
@@ -53,10 +55,14 @@ export function ProductBenefits({ content, data }: ProductBenefitsProps) {
         const colors = ['green', 'blue', 'purple', 'yellow']
         const color = colors[i % colors.length]
         return (
-          <div key={i} className={`flex items-center gap-3 ${cardClassName}`} style={cardStyle}>
+          <div key={i} className={`flex ${content.item_layout === 'stacked' ? 'flex-col text-center' : 'items-center'} gap-3 ${cardClassName}`} style={cardStyle}>
+            {content.icon_size != null || content.icon_color || content.icon_background || content.icon_shape ? (
+              <BeneficioIcono name={item.icon || 'Star'} color={primaryColor} content={content} />
+            ) : (
             <div className={`w-10 h-10 rounded-full bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center`}>
               <Icon className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`} />
             </div>
+            )}
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>

@@ -114,7 +114,7 @@ try {
   const iFallback = catchAll.indexOf('if (fallback) return fallback')
   check(iFallback !== -1 && iVacia > iFallback, 'page.tsx: los fallbacks de siempre (p. ej. /menu) van antes que la página vacía')
   const almacen = await leer('lib/website/v2/vistaPreviaBorrador.ts')
-  const quienesFijan = (await leer('app/vista-previa/[token]/[[...slug]]/page.tsx')).includes('fijarSitioVistaPrevia(carga.o, borrador.sitio)')
+  const quienesFijan = (await leer('app/vista-previa/[token]/[[...slug]]/page.tsx')).match(/fijarSitioVistaPrevia\(carga\.o,\s*borrador\.sitio(?:,|\))/)
   check(quienesFijan && /cache\(/.test(almacen), 'el borrador solo se fija en la vista previa firmada, por petición')
 
   // ─── 4. ERP al lado ─────────────────────────────────────────────────────────────────────────

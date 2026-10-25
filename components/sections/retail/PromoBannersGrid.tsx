@@ -38,6 +38,8 @@ interface PromoBannersGridProps {
     image_fit?: unknown
     image_position?: unknown
     banners?: BannerItem[]
+    banner_layout?: unknown
+    banner_style?: unknown
   }
   primaryColor?: string
   /**

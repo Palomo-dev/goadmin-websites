@@ -381,7 +381,7 @@ export function buildCardStyle(content: CardContent | null | undefined): StyleRe
   classes.push(CARD_LAYOUT_CLASS[layout] ?? CARD_LAYOUT_CLASS.vertical);
 
   // --- Alineación de texto ---
-  const textAlign = (c.text_align as string) ?? 'left';
+  const textAlign = ((c.text_align as string) ?? 'left').split('-').at(-1) ?? 'left';
   classes.push(TEXT_ALIGN_CLASS[textAlign] ?? TEXT_ALIGN_CLASS.left);
 
   return { className: classes.join(' '), style };
@@ -445,9 +445,9 @@ const BADGE_POSITION_CLASS: Record<string, string> = {
 const BADGE_SHAPE_CLASS: Record<string, string> = {
   pill: 'rounded-full',
   square: 'rounded-none',
-  rounded: 'rounded-lg',
-  semi: 'rounded-[14px]',
-  circle: 'rounded-full',
+  rounded: 'rounded-xl',
+  semi: 'rounded-md',
+  circle: 'rounded-full aspect-square inline-flex items-center justify-center',
   ribbon: 'rounded-l-none',
   corner: 'rounded-none',
 };
@@ -478,7 +478,7 @@ export function resolveBadgeStyle(
   else if (fallbackBg) s.backgroundColor = fallbackBg;
   if (badge.text_color) s.color = badge.text_color;
   else if (fallbackText) s.color = fallbackText;
-  return s;
+  return { ...s, ...badge.extra_style };
 }
 
 /**

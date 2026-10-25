@@ -1,0 +1,38 @@
+{
+  "baseline": "77176316af25f2b1fba465b472bb09b3cfa32175",
+  "afterHead": "5f2e57d65e2b7c4caf020d4aba5cb5ecc0be28fb",
+  "afterSource": "árbol de trabajo sobre afterHead con correcciones de integración posteriores; hashes debajo",
+  "capturedAtUtc": "2026-10-24T20:07:54.221492+00:00",
+  "sameConfigurations": true,
+  "note": "main ya contiene varias opciones; las capturas iguales son legítimas. Esta ronda reemplaza la comparativa anterior, conservada fuera del repositorio. No acredita sesión autenticada ni publicación live.",
+  "integrationCorrections": [
+    "Coordenadas CSS grid aplicadas al enlace como hijo directo y altura de la tarjeta para las celdas que abarcan varias filas",
+    "Opacidad de degradado explícita, hover del botón y proporción de círculos con fotografía horizontal",
+    "Inicialización circular antes de calcular su radio",
+    "Mosaico conserva categorías y su celda grande en grupos completos e incompletos",
+    "Menús y barra móvil conservan el callback del carrito y la funcionalidad incorporada en main"
+  ],
+  "artifactSha256": {
+    "before.html": "dc017cb3d6d66dfc0a1674f4de03f7c00dd8991be046f1929382edc407a922f1",
+    "after.html": "d680fc34cdfff65eff322b8834d9b9cb215eaec3b1679da3f1a55cf4a2854253",
+    "baseline-styles.css": "f18cdcf2aaf2dd0833a436c5e81086632ffe38025f55f597411267f7eb494ed1",
+    "styles.css": "1b2d8f45c712dba273dd597d11f582a904afcb98e5c7a95d250795d3ba25ec90",
+    "capture-report.json": "ef8679f1cf81a23d4cc9ccac99a064ecda13ad0de0ba661c25d51c98b3133e72",
+    "interaction-report.json": "5c8f5e4c883984b511434d25cc7a31b68513a59f1d626e3af4199431d5bd7b97"
+  },
+  "runtimeFilesSha256": {
+    "app/globals.css": "3562736cfd283dc29a21f33bcd1a8ca1b04c7abda3b21dd713fb637de3d258ee",
+    "components/sections/products/ProductCard.tsx": "e689e4a416b8b91a75755c7e7fbced6b678b0c56479cc8060bbb1437af88efa1",
+    "components/site/ProductChoiceDialog.tsx": "7aa67c67e1195208d5d3b50ccaccad4fe5fe18589189eacf073f7d63c5586af9",
+    "components/sections/retail/BannersConfigurados.tsx": "9a5e1295732c746e80a9ab5d16c2232612bd23426dab1b24fb1fe08094bb2135",
+    "components/sections/products/EstilosCategoria.tsx": "db87abe4726747d1710c75866c66ac2c2ceffcc3d4a5e452a6833eb6a06a1825",
+    "components/site/header/mobile/MobileTabs.tsx": "e28c95e0f6efcd91f27e939240511d416f160c7eeae0cb8c05cfd2a276b1fb7f",
+    "components/site/header/mobile/MobileMenuShell.tsx": "bff9273b007767c218433899cc14c0b4e5b8905762e426d02ddbb914b41ac536",
+    "components/site/header/mobile/MobileBottomNav.tsx": "8db532665941235c03d23fd7df0d5fcf763eac3fab99cf5a0c48d9b533415b31"
+  },
+  "captures": 184,
+  "interactionScreenshots": 4,
+  "imagesLoaded": 88,
+  "overflowCases": 0,
+  "interactionTestsPassed": 8
+}

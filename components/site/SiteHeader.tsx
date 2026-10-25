@@ -36,7 +36,7 @@ import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
 import { HeaderPorZonas } from './header/HeaderPorZonas'
-import { leerConstructor } from '@/lib/website/constructorEncabezado'
+import { buscadorEnBarra, leerConstructor } from '@/lib/website/constructorEncabezado'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -404,12 +404,16 @@ export default function SiteHeader({
   const mobileBreakpoint = settings?.mobile_breakpoint || 1024
   const isMobile = useMobileHeader(mobileBreakpoint)
 
+  const constructor = leerConstructor(settings)
+  const ajustesMovil = constructor?.buscador
+    ? { ...settings, mobile_search_style: buscadorEnBarra(constructor.buscador.tipo) && constructor.buscador.mobile === 'bar' ? 'bar' : 'icon' } as typeof settings : settings
+
   // Props comunes para todas las variantes
   const variantProps = {
     organization,
     primaryColor,
     navTree,
-    settings,
+    settings: isMobile ? ajustesMovil : settings,
     showCart,
     onCartClick,
     menuCategories,
@@ -418,7 +422,6 @@ export default function SiteHeader({
     posicionLogo: logoMovil(settings),
   }
 
-  const constructor = leerConstructor(settings)
   if (constructor?.zonas || constructor?.menus) {
     return (
       <HeaderPorZonas

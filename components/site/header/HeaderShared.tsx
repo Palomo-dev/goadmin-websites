@@ -18,7 +18,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
-import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+import { esEnlaceExterno, hrefBoton, opcionesEncabezadoPie } from '@/lib/website/encabezadoPie';
 import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
@@ -522,7 +522,9 @@ export function HeaderActions({
   const actionElements: Record<string, React.ReactNode | null> = {
     search: cromoOverlay?.tipo === 'icon_overlay' ? (
       <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
-    ) : showSearchIcon && searchStyle === 'icon' ? (
+    ) : cromoOverlay && isMobile && cromoOverlay.mobile !== 'bar' ? (
+      <BuscadorCromo key="search" presentacion={{ ...cromoOverlay, tipo: 'icon_overlay' }} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
+    ) : !cromoOverlay && showSearchIcon && searchStyle === 'icon' ? (
       <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} claseIcono={isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
@@ -682,9 +684,9 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
  * principal (láminas de Figma «16 Sitio web»). Mismo tamaño y redondeo que el principal
  * (cta_padding_*, cta_border_radius). Sin texto o sin enlace (lo de hoy) no pinta nada.
  */
-export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settings'] }) {
+export function HeaderCTA2({ settings, movil = false }: { settings?: HeaderVariantProps['settings']; movil?: boolean }) {
   const { opciones, extras } = useEncabezadoPie();
-  const boton = opciones.boton2;
+  const boton = settings ? opcionesEncabezadoPie(settings).boton2 : opciones.boton2;
   if (!boton) return null;
   const href = hrefBoton(boton.url, extras.enlaces);
   if (!href) return null;
@@ -696,7 +698,7 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     padding: `${Math.max(0, paddingY - 1)}px ${Math.max(0, paddingX - 1)}px`,
     borderRadius: `${borderRadius}px`,
   };
-  const clase = 'hidden md:inline-flex items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
+  const clase = `${movil ? 'inline-flex' : 'hidden md:inline-flex'} items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80`;
   return externo ? (
     <a href={href} className={clase} style={estilo} data-boton-secundario="" {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
       {boton.texto}
@@ -985,7 +987,9 @@ export function SearchBarInline({
   size = 'md',
   icon,
   placeholder,
+  settings,
 }: {
+  settings?: HeaderVariantProps['settings'];
   primaryColor: string;
   /** Ya no se usa: el buscador resuelve la organización por el host. Se acepta por compatibilidad. */
   organizationId?: number;
@@ -995,6 +999,8 @@ export function SearchBarInline({
   /** Sin valor, el de siempre («Buscar productos...»). */
   placeholder?: string;
 }) {
+  const cromo = leerConstructor(settings)?.buscador
+  if (cromo && cromo.tipo !== 'icon_overlay') return <BuscadorCromo presentacion={cromo} primaryColor={primaryColor} className={className} colores={{ primary: primaryColor, accent: settings?.accent_color || primaryColor, secondary: settings?.secondary_color || primaryColor }} />
   return (
     <div className={className}>
       <SearchBarInput

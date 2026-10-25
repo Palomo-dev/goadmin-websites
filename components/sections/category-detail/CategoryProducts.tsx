@@ -11,18 +11,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import { tamanoPaginaCategoriaPlantilla } from '@/lib/products/paginacionCategoria'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
-export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
+export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message', 'product_card_style'] as const
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
 interface CategoryProductsProps {
   content: {
+    product_card_style?: unknown
     columns?: number
     max_items?: number
     empty_message?: string
@@ -52,9 +54,10 @@ function getProductImageUrl(product: any): string | null {
 
 export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: CategoryProductsProps) {
   const { ruta } = useRutaSitio()
-  const separacion = separacionTarjetas(useEstiloTarjeta((content as { product_card_style?: unknown } | undefined)?.product_card_style))
+  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
   const router = useRouter()
-  const products = data?.products || []
+  const limite = content.max_items == null ? undefined : tamanoPaginaCategoriaPlantilla([{ section_type: 'category_products', content }])
+  const products = limite == null ? (data?.products || []) : (data?.products || []).slice(0, limite)
   const categorySlug = data?.categorySlug || ''
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1

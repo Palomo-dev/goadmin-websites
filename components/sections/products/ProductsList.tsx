@@ -6,6 +6,8 @@ import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePric
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+import { ordenarListado, recorteListado, columnasEscritorio } from '@/lib/products/limiteListado'
+import { PaginacionListado } from './PaginacionListado'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
@@ -27,7 +29,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
   const branchId = (data?.branchId as number | null | undefined) ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
-  const maxItems = content.max_items || 12
+  const [paginaListado, setPaginaListado] = useState(1)
   // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
   const filtered = filtrarProductosPorCategorias(
     unirProductosDeCategoria(allProducts, data?.productosCategoria, content.selected_category_ids),
@@ -36,24 +38,11 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
     incluirSubcategorias(content.include_subcategories, 'products_list'),
   )
 
-  // Ordenar
-  const sortOrder = content.sort_order || 'default'
-  const sorted = [...filtered]
-  if (sortOrder === 'price_asc') sorted.sort((a, b) => (getProductPrice(a) ?? 0) - (getProductPrice(b) ?? 0))
-  else if (sortOrder === 'price_desc') sorted.sort((a, b) => (getProductPrice(b) ?? 0) - (getProductPrice(a) ?? 0))
-  else if (sortOrder === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  else if (sortOrder === 'sales') sorted.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-  else if (sortOrder === 'newest') {
-    const marca = (p: any) => {
-      const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
-      return Number.isFinite(t) ? t : 0
-    }
-    sorted.sort((a, b) => marca(b) - marca(a))
-  }
-
-  // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
-  const filtros = useFiltrosProductos(sorted)
-  const products = maxItems > 0 ? filtros.filtrados.slice(0, maxItems) : filtros.filtrados
+  const sorted = ordenarListado(filtered, content.sort_order)
+  const filtros = useFiltrosProductos(sorted, () => setPaginaListado(1))
+  const listaPropia = listaDelInspector(content)
+  const recorte = recorteListado(filtros.filtrados.length, paginaListado, { max_items: content.products_limit ? undefined : 12, show_pagination: false, ...content, columns: content.columns ?? content.desktop_columns ?? 1, rows: content.rows ?? content.desktop_rows, ...(listaPropia ? { pagination: 'none' } : {}) })
+  const products = filtros.filtrados.slice(recorte.desde, recorte.hasta)
 
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
 
@@ -111,16 +100,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
 
       {products.length > 0 ? (
         (() => {
-          const cols = content.columns || content.desktop_columns || 1
-          const rows = content.rows || content.desktop_rows
-          const maxItemsByRows = rows ? cols * rows : 0
-          const lista = listaDelInspector(content)
-          const visibleProducts = lista ? products : (maxItemsByRows > 0 ? products.slice(0, maxItemsByRows) : products)
+          const cols = columnasEscritorio(content.columns ?? content.desktop_columns, 1)
+          const visibleProducts = products
           const isGrid = cols > 1
           return (
             <SiLista
               content={content}
-              className={isGrid ? 'grid gap-4 max-w-6xl mx-auto' : 'space-y-4 max-w-4xl mx-auto'}
+              className={isGrid ? 'grid gap-4 max-w-6xl mx-auto' : separacion ? 'flex flex-col gap-4 max-w-4xl mx-auto' : 'space-y-4 max-w-4xl mx-auto'}
               style={isGrid ? { gridTemplateColumns: `repeat(${Math.min(cols, 4)}, minmax(0, 1fr))`, ...separacion } : separacion}
             >
               {visibleProducts.map((product: any) => {
@@ -158,6 +144,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
           <p>No hay productos disponibles</p>
         </div>
       )}
+      {!listaPropia && <PaginacionListado recorte={recorte} pagina={paginaListado} onPagina={setPaginaListado} content={content} color={primaryColor} />}
     </div>
   )
 }

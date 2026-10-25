@@ -314,7 +314,7 @@ const getCategoriasPorIdsSinCache = async (
   if (error) throw new Error(`categories: ${error.message || error.code}`)
   return (data || []) as CategoriaMenu[]
 }
-const getCategoriasPorIdsCacheada = cacheStructural('getCategoriasMenuV2', getCategoriasPorIdsSinCache, CONTENT_TTL)
+const getCategoriasPorIdsCacheada = cacheStructural('getCategoriasMenuV2', getCategoriasPorIdsSinCache, CONTENT_TTL, (org) => org)
 
 export async function getCategoriasMenuV2(organizationId: number, ids: number[]): Promise<Map<number, CategoriaMenu>> {
   if (ids.length === 0) return new Map()

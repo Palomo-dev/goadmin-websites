@@ -3,15 +3,16 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { ProductCard, getProductImageUrl, getProductPrice, getProductComparePrice } from './ProductCard'
+import { ProductCard } from './ProductCard'
+import { getProductImageUrl, getProductPrice, getProductComparePrice } from '@/lib/products/datosTarjeta'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
-import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
-import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
@@ -139,7 +140,8 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
     addToCart(product)
     router.push(ruta('/checkout'))
   }
-  const lista = listaDelInspector(content)
+  const listaBase = listaDelInspector(content)
+  const lista = listaBase && separacion ? { ...listaBase, gap: listaBase.gap ?? Number.parseFloat(separacion.gap) } : listaBase
 
   return (
     <div>

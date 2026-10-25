@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * ProductDetailRenderer (F9.2)
  *
@@ -10,6 +12,7 @@
  */
 
 import Link from 'next/link'
+import { PreviewBridge, useIsPreviewMode } from '@/components/sections/PreviewBridge'
 import type React from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { SectionRenderer } from '@/components/sections/SectionRenderer'
@@ -20,21 +23,16 @@ import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
-import { ContadoresDe } from '@/components/site/ContadorPublico'
-import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
+import { UrgenciaDe } from '@/components/site/UrgenciaDe'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
-
-function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
-  if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
-  return product.stock_levels.reduce((suma, nivel) => suma + Number(nivel?.qty_on_hand || 0), 0)
-}
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
+import { BLOQUES_BASE_PRODUCTO, completarBloquesBase } from '@/lib/website/bloquesBaseDetalle'
 
 interface ProductDetailRendererProps {
   organization: OrganizationWithDetails
@@ -59,7 +57,7 @@ interface ProductDetailRendererProps {
   ordenAtributos?: OrdenAtributos | null
 }
 
-export function ProductDetailRenderer({
+function ProductDetailRendererContenido({
   organization,
   primaryColor,
   templatePage,
@@ -135,19 +133,25 @@ export function ProductDetailRenderer({
   // monolítico: galería a la izquierda, info/actions/benefits/description a la
   // derecha, y relacionadas/reviews a full width abajo.
   if (hasSections && templatePage) {
-    const visibleSections = templatePage.website_page_sections.filter((s) => s.is_visible !== false)
+    const configuredSections = templatePage.website_page_sections.filter((s) => s.is_visible !== false)
+    const visibleSections = completarBloquesBase(configuredSections, BLOQUES_BASE_PRODUCTO)
+    const baseIncompleta = BLOQUES_BASE_PRODUCTO.some((tipo) => !configuredSections.some((s) => s.section_type === tipo))
+    const esExtra = (s: WebsitePageSection) => !(BLOQUES_BASE_PRODUCTO as readonly string[]).includes(s.section_type) && (baseIncompleta || ['before', 'after'].includes(String((s.content as Record<string, unknown>)?.detail_position)))
+    const antes = visibleSections.filter((s) => esExtra(s) && (s.content as Record<string, unknown>)?.detail_position === 'before')
+    const despues = visibleSections.filter((s) => esExtra(s) && (s.content as Record<string, unknown>)?.detail_position !== 'before')
+    const seccionesBase = visibleSections.filter((s) => !esExtra(s))
 
     // Tipos que van en la columna izquierda (galería)
     const LEFT_TYPES = new Set(['product_gallery'])
     // Tipos que van a full width (debajo del grid de 2 columnas)
     const FULL_WIDTH_TYPES = new Set(['related_products', 'product_reviews'])
 
-    const leftSections = visibleSections.filter((s) => LEFT_TYPES.has(s.section_type))
-    const rightSections = visibleSections.filter((s) => !LEFT_TYPES.has(s.section_type) && !FULL_WIDTH_TYPES.has(s.section_type))
-    const fullWidthSections = visibleSections.filter((s) => FULL_WIDTH_TYPES.has(s.section_type))
+    const leftSections = seccionesBase.filter((s) => LEFT_TYPES.has(s.section_type))
+    const rightSections = seccionesBase.filter((s) => !LEFT_TYPES.has(s.section_type) && !FULL_WIDTH_TYPES.has(s.section_type))
+    const fullWidthSections = seccionesBase.filter((s) => FULL_WIDTH_TYPES.has(s.section_type))
 
-    const ordenVisual = [...leftSections, ...rightSections, ...fullWidthSections]
-    const idPrimera = ordenVisual.find((s) => s.is_visible !== false)?.id
+    const ordenVisual = [...antes, ...leftSections, ...rightSections, ...despues, ...fullWidthSections]
+    const idPrimera = ordenVisual[0]?.id
     const renderSection = (section: WebsitePageSection) => (
       <SectionRenderer
         key={section.id}
@@ -178,6 +182,8 @@ export function ProductDetailRenderer({
           </div>
         )}
 
+        {antes.map(renderSection)}
+        <div data-product-base="true">
         {tplColumns === '1' ? (
           /* 1 columna: todo apilado verticalmente */
           <div className="space-y-12">
@@ -194,6 +200,8 @@ export function ProductDetailRenderer({
             </div>
           </div>
         )}
+        </div>
+        {despues.map(renderSection)}
 
         {/* Secciones full width (relacionados, reviews) */}
         <div className="mt-12 space-y-12">
@@ -245,15 +253,7 @@ export function ProductDetailRenderer({
   )
 
   // Countdown
-  const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio } | null
-  const stockProducto = stockReal(product)
-  const stockBajo = ajustesProducto?.conversion?.urgencia?.stockBajo
-  const avisoProducto = stockBajo?.activo && stockBajo.ubicaciones?.includes('producto')
-    ? avisoStock(stockProducto, stockBajo.umbral, stockBajo.plantilla)
-    : null
-  const countdownBlock = conversionManda(ajustesProducto, 'producto') ? (
-    <ContadoresDe settings={ajustesProducto} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
-  ) : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
+  const countdownBlock = (organization.website_settings as any)?.conversion ? <UrgenciaDe settings={organization.website_settings} ubicacion="producto" primaryColor={primaryColor} product={product} /> : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
     <CountdownBanner
       config={organization.website_settings as any}
       primaryColor={primaryColor}
@@ -359,7 +359,6 @@ export function ProductDetailRenderer({
     <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
       {descPos === 'above_gallery' ? null : productInfoBlock}
       {descPos === 'below_title' && descriptionBlock}
-      {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
       {countdownBlock}
       {descPos === 'below_price' && descriptionBlock}
       {actionsBlock}
@@ -376,8 +375,7 @@ export function ProductDetailRenderer({
           {descPos === 'above_gallery' && descriptionBlock}
           {galleryBlock}
           {productInfoBlock}
-          {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
-      {countdownBlock}
+          {countdownBlock}
           {actionsBlock}
           {benefitsBlock}
         </div>
@@ -413,6 +411,7 @@ export function ProductDetailRenderer({
         currentProductId={product.id}
         organizationSubdomain={organization.subdomain || ''}
         layout={relatedLayout}
+        branchId={branchId}
       />
 
       {/* Reviews */}
@@ -427,4 +426,12 @@ export function ProductDetailRenderer({
       </div>
     </div>
   )
+}
+
+/** El lienzo y la web comparten la composición; el bridge solo reemplaza secciones en vivo. */
+export function ProductDetailRenderer(props: ProductDetailRendererProps) {
+  const preview = useIsPreviewMode()
+  if (!preview || !props.templatePage) return <ProductDetailRendererContenido {...props} />
+  const templatePage = props.templatePage
+  return <PreviewBridge initialSections={templatePage.website_page_sections}>{(secciones) => <ProductDetailRendererContenido {...props} templatePage={{ ...templatePage, website_page_sections: secciones }} />}</PreviewBridge>
 }

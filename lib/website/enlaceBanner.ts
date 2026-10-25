@@ -5,6 +5,7 @@
 import { hrefDeSlug, mismoId } from './presentacionTienda'
 
 export interface BannerItem {
+  banner_style?: unknown
   title?: string
   subtitle?: string
   image_url?: string

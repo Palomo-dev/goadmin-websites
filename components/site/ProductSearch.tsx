@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { usePopularesBusqueda } from '@/lib/hooks/usePopularesBusqueda'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
@@ -44,9 +45,6 @@ interface SearchResult {
 }
 
 // Sugerencias de búsqueda (se muestran cuando no hay query)
-const popularSearches = [
-  'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
-]
 
 export function ProductSearch({
   primaryColor,
@@ -64,6 +62,7 @@ export function ProductSearch({
   const controlado = abierto !== undefined
   const [interno, setInterno] = useState(false)
   const isOpen = controlado ? abierto : interno
+  const popularSearches = usePopularesBusqueda(isOpen)
   const cerrar = () => {
     if (controlado) alCerrar?.()
     else setInterno(false)
@@ -249,7 +248,7 @@ export function ProductSearch({
           )}
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" /> Populares
+              <TrendingUp className="h-3 w-3" /> {popularSearches.length ? 'Populares' : 'Explora el catálogo con el buscador'}
             </p>
             <div className="flex flex-wrap gap-2">
               {popularSearches.map((term) => (
