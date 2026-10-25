@@ -299,6 +299,32 @@ export async function POST(request: NextRequest) {
     // 3. Mapear estado de Wompi → payment_status
     const paymentStatus = mapWompiStatus(wompiStatus)
 
+    // 3b. Idempotencia / nunca bajar de estado: si el pedido ya está pagado (por este webhook, por
+    //     /checkout/resultado o por el pago manual del POS) o ya tiene un pago completado, no se toca
+    //     NADA. Así un DECLINED/ERROR viejo o reenviado no cancela un pedido pagado ni duplica pagos.
+    const { data: pagosPrevios } = await (supabase as any)
+      .from('payments')
+      .select('id, reference, status')
+      .eq('organization_id', organizationId)
+      .eq('source', 'web_order')
+      .eq('source_id', String((webOrder as any).id))
+      .in('status', ['completed', 'paid'])
+      .limit(1)
+    const yaPagado =
+      (webOrder as any).payment_status === 'paid' ||
+      (Array.isArray(pagosPrevios) && pagosPrevios.length > 0)
+    if (yaPagado) {
+      console.log(
+        `[Wompi Webhook] Pedido ${reference} ya pagado; se ignora evento status=${paymentStatus} tx=${transactionId}`
+      )
+      return NextResponse.json({
+        received: true,
+        ignored: 'already_paid',
+        reference,
+        payment_status: 'paid',
+      })
+    }
+
     // 4. Actualizar web_order
     const camposPago = {
       payment_status: paymentStatus,
@@ -346,11 +372,13 @@ export async function POST(request: NextRequest) {
         // Transición hecha por este webhook: la fila ya quedó actualizada.
       }
     } else {
-      // Cualquier otro estado: exactamente la actualización de antes.
+      // Cualquier otro estado: condicionado a que no esté pagado (carrera con un APPROVED o con el
+      // pago manual entre la lectura de arriba y esta escritura): nunca se baja de «pagado».
       const { error } = await (supabase as any)
         .from('web_orders')
         .update(camposPago as any)
         .eq('id', (webOrder as any).id)
+        .or('payment_status.is.null,payment_status.neq.paid')
       updateError = error
     }
 
@@ -358,9 +386,18 @@ export async function POST(request: NextRequest) {
       console.error('[Wompi Webhook] Error actualizando orden:', updateError)
     }
 
-    // 5. Crear registro en payments
+    // 5. Crear registro en payments (sin duplicar si Wompi reenvía el mismo evento)
     const amountDecimal = amountInCents ? amountInCents / 100 : (webOrder as any).total
-    await (supabase as any).from('payments').insert({
+    const { data: mismoPago } = await (supabase as any)
+      .from('payments')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('source', 'web_order')
+      .eq('source_id', String((webOrder as any).id))
+      .eq('reference', transactionId)
+      .eq('status', paymentStatus)
+      .limit(1)
+    if (!(Array.isArray(mismoPago) && mismoPago.length > 0)) await (supabase as any).from('payments').insert({
       organization_id: organizationId,
       branch_id: (webOrder as any).branch_id,
       source: 'web_order',
