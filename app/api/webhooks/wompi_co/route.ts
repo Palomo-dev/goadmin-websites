@@ -299,24 +299,75 @@ export async function POST(request: NextRequest) {
     // 3. Mapear estado de Wompi → payment_status
     const paymentStatus = mapWompiStatus(wompiStatus)
 
+    // Evento de integración + fecha del último webhook: se registra SIEMPRE, también cuando el
+    // pedido ya estaba pagado y el evento no cambia nada.
+    const registrarEventoIntegracion = async () => {
+      const { data: conn } = await supabase
+        .from('integration_connections')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('connector_id', WOMPI_CONNECTOR_ID)
+        .limit(1)
+        .single()
+      await (supabase as any).from('integration_events').insert({
+        connection_id: (conn as any)?.id || null,
+        organization_id: organizationId,
+        source: 'webhook',
+        direction: 'inbound',
+        event_type: event,
+        external_event_id: transactionId,
+        payload: { provider: 'wompi', ...body },
+        status: 'processed',
+        processed_at: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
+      } as any)
+      if ((conn as any)?.id) {
+        await (supabase as any)
+          .from('integration_webhooks')
+          .update({ last_received_at: new Date().toISOString() })
+          .eq('connection_id', (conn as any).id)
+          .eq('direction', 'inbound')
+      }
+    }
+
     // 3b. Idempotencia / nunca bajar de estado: si el pedido ya está pagado (por este webhook, por
-    //     /checkout/resultado o por el pago manual del POS) o ya tiene un pago completado, no se toca
-    //     NADA. Así un DECLINED/ERROR viejo o reenviado no cancela un pedido pagado ni duplica pagos.
+    //     /checkout/resultado o por el pago manual del POS) o ya tiene un pago completado, un
+    //     APPROVED repetido o un DECLINED/ERROR/PENDING viejo NO cambia el pedido ni crea pagos.
+    //     EXCEPCIÓN: VOIDED (→ 'refunded') sí sigue: es el reembolso real y debe llegar a
+    //     notifyErpRefund (NC, devolución de stock y reverso del asiento).
     const { data: pagosPrevios } = await (supabase as any)
       .from('payments')
-      .select('id, reference, status')
+      .select('id, reference, status, processor_response')
       .eq('organization_id', organizationId)
       .eq('source', 'web_order')
       .eq('source_id', String((webOrder as any).id))
       .in('status', ['completed', 'paid'])
+      .order('created_at', { ascending: true })
       .limit(1)
-    const yaPagado =
-      (webOrder as any).payment_status === 'paid' ||
-      (Array.isArray(pagosPrevios) && pagosPrevios.length > 0)
-    if (yaPagado) {
+    const pagoPrevio = Array.isArray(pagosPrevios) && pagosPrevios.length > 0 ? pagosPrevios[0] : null
+    const yaPagado = (webOrder as any).payment_status === 'paid' || !!pagoPrevio
+    if (yaPagado && paymentStatus !== 'refunded') {
       console.log(
-        `[Wompi Webhook] Pedido ${reference} ya pagado; se ignora evento status=${paymentStatus} tx=${transactionId}`
+        `[Wompi Webhook] Pedido ${reference} ya pagado; evento status=${paymentStatus} tx=${transactionId} sin cambios en el pedido`
       )
+      // Adjuntar referencia y respuesta de Wompi al pago existente (sin crear otro pago ni pisar
+      // lo que ya tenga), solo con un APPROVED.
+      if (paymentStatus === 'paid' && pagoPrevio) {
+        const adjuntos: Record<string, unknown> = {}
+        if (!pagoPrevio.reference && transactionId) adjuntos.reference = transactionId
+        if (!pagoPrevio.processor_response) adjuntos.processor_response = transaction
+        if (Object.keys(adjuntos).length > 0) {
+          await (supabase as any).from('payments').update(adjuntos).eq('id', pagoPrevio.id)
+        }
+      }
+      if (paymentStatus === 'paid' && transactionId) {
+        await (supabase as any)
+          .from('web_orders')
+          .update({ payment_reference: transactionId })
+          .eq('id', (webOrder as any).id)
+          .is('payment_reference', null)
+      }
+      await registrarEventoIntegracion()
       return NextResponse.json({
         received: true,
         ignored: 'already_paid',
@@ -346,101 +397,65 @@ export async function POST(request: NextRequest) {
     // correo; /checkout/resultado hace lo mismo con `.eq('payment_status','pending')`, así que entre
     // los dos sale un solo «Pago confirmado» aunque lleguen a la vez. Siempre es UNA sola
     // actualización por evento (el trigger contable de web_orders corre una vez, como antes).
-    let updateError: unknown = null
-    let transicionAPagado = false
-    if (paymentStatus === 'paid') {
-      const condicionada = await (supabase as any)
-        .from('web_orders')
-        .update(camposPago as any)
-        .eq('id', (webOrder as any).id)
-        .or('payment_status.is.null,payment_status.neq.paid')
-        .select('id')
-      updateError = condicionada.error
-      transicionAPagado = !condicionada.error && Array.isArray(condicionada.data) && condicionada.data.length > 0
-      if (condicionada.error) {
-        console.error('[Wompi Webhook] Error en la actualización condicionada; se aplica la de siempre:', condicionada.error)
-      }
-      if (!transicionAPagado) {
-        // Ya estaba pagado (reintento del webhook o lo marcó /checkout/resultado), o falló la
-        // condicionada: la actualización de siempre, sin condición, y sin correo.
-        const { error } = await (supabase as any)
-          .from('web_orders')
-          .update(camposPago as any)
-          .eq('id', (webOrder as any).id)
-        updateError = error
-      } else {
-        // Transición hecha por este webhook: la fila ya quedó actualizada.
-      }
-    } else {
-      // Cualquier otro estado: condicionado a que no esté pagado (carrera con un APPROVED o con el
-      // pago manual entre la lectura de arriba y esta escritura): nunca se baja de «pagado».
-      const { error } = await (supabase as any)
-        .from('web_orders')
-        .update(camposPago as any)
-        .eq('id', (webOrder as any).id)
-        .or('payment_status.is.null,payment_status.neq.paid')
-      updateError = error
-    }
+    // Cada evento hace UNA actualización condicionada y solo si ESTE webhook hizo la transición
+    // actualiza e inserta el pago (BAJO: carrera entre la lectura de arriba y la escritura).
+    //   - paid: solo si aún no estaba pagado.
+    //   - refunded (VOIDED): desde cualquier estado salvo ya reembolsado.
+    //   - failed/pending: solo si no está pagado (nunca se baja de «pagado»).
+    const condicion =
+      paymentStatus === 'refunded'
+        ? 'payment_status.is.null,payment_status.neq.refunded'
+        : 'payment_status.is.null,payment_status.neq.paid'
+    const actualizacion = await (supabase as any)
+      .from('web_orders')
+      .update(camposPago as any)
+      .eq('id', (webOrder as any).id)
+      .or(condicion)
+      .select('id')
+    const updateError: unknown = actualizacion.error
+    const hizoTransicion =
+      !actualizacion.error && Array.isArray(actualizacion.data) && actualizacion.data.length > 0
+    const transicionAPagado = paymentStatus === 'paid' && hizoTransicion
 
     if (updateError) {
       console.error('[Wompi Webhook] Error actualizando orden:', updateError)
+    } else if (!hizoTransicion) {
+      console.log(
+        `[Wompi Webhook] Pedido ${reference} ya estaba en ${paymentStatus === 'refunded' ? 'refunded' : 'paid'} (carrera); no se actualiza ni se inserta pago`
+      )
     }
 
-    // 5. Crear registro en payments (sin duplicar si Wompi reenvía el mismo evento)
+    // 5. Crear registro en payments, solo si este webhook hizo la transición y sin duplicar si
+    //    Wompi reenvía el mismo evento (el trigger pasa 'paid' → 'completed').
     const amountDecimal = amountInCents ? amountInCents / 100 : (webOrder as any).total
-    const { data: mismoPago } = await (supabase as any)
-      .from('payments')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('source', 'web_order')
-      .eq('source_id', String((webOrder as any).id))
-      .eq('reference', transactionId)
-      .eq('status', paymentStatus)
-      .limit(1)
-    if (!(Array.isArray(mismoPago) && mismoPago.length > 0)) await (supabase as any).from('payments').insert({
-      organization_id: organizationId,
-      branch_id: (webOrder as any).branch_id,
-      source: 'web_order',
-      source_id: String((webOrder as any).id),
-      method: mapToPaymentMethodCode(paymentMethodType, 'wompi'),
-      amount: amountDecimal,
-      currency: currency || 'COP',
-      reference: transactionId,
-      processor_response: transaction,
-      status: paymentStatus,
-    } as any)
-
-    // 6. Registrar evento en integration_events
-    // Buscar connection_id para la org
-    const { data: conn } = await supabase
-      .from('integration_connections')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('connector_id', WOMPI_CONNECTOR_ID)
-      .limit(1)
-      .single()
-
-    await (supabase as any).from('integration_events').insert({
-      connection_id: (conn as any)?.id || null,
-      organization_id: organizationId,
-      source: 'webhook',
-      direction: 'inbound',
-      event_type: event,
-      external_event_id: transactionId,
-      payload: { provider: 'wompi', ...body },
-      status: 'processed',
-      processed_at: new Date().toISOString(),
-      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
-    } as any)
-
-    // 7. Actualizar last_received_at en integration_webhooks
-    if ((conn as any)?.id) {
-      await (supabase as any)
-        .from('integration_webhooks')
-        .update({ last_received_at: new Date().toISOString() })
-        .eq('connection_id', (conn as any).id)
-        .eq('direction', 'inbound')
+    if (hizoTransicion) {
+      const { data: mismoPago } = await (supabase as any)
+        .from('payments')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('source', 'web_order')
+        .eq('source_id', String((webOrder as any).id))
+        .eq('reference', transactionId)
+        .in('status', paymentStatus === 'paid' ? ['paid', 'completed'] : [paymentStatus])
+        .limit(1)
+      if (!(Array.isArray(mismoPago) && mismoPago.length > 0)) {
+        await (supabase as any).from('payments').insert({
+          organization_id: organizationId,
+          branch_id: (webOrder as any).branch_id,
+          source: 'web_order',
+          source_id: String((webOrder as any).id),
+          method: mapToPaymentMethodCode(paymentMethodType, 'wompi'),
+          amount: amountDecimal,
+          currency: currency || 'COP',
+          reference: transactionId,
+          processor_response: transaction,
+          status: paymentStatus,
+        } as any)
+      }
     }
+
+    // 6-7. Evento de integración y last_received_at
+    await registrarEventoIntegracion()
 
     // 8. Google Ads — subir conversión offline si pago exitoso
     if (paymentStatus === 'paid') {
@@ -477,14 +492,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Liberar stock reservado si el pago falló
-    if (paymentStatus === 'failed') {
+    if (paymentStatus === 'failed' && hizoTransicion) {
       notifyErpReleaseStock((webOrder as any).id).catch(err =>
         console.error('[Wompi Webhook] ERP release-stock error:', err)
       )
     }
 
     // Procesar reembolso (nota crédito + devolución de stock + asiento reversión)
-    if (paymentStatus === 'refunded') {
+    if (paymentStatus === 'refunded' && hizoTransicion) {
       notifyErpRefund((webOrder as any).id, {
         reason: `Reembolso procesado por Wompi: ${wompiStatus}`,
       }).catch(err =>
