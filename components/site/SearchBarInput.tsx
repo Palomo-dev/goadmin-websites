@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda';
+import { usePopulares } from './usePopulares';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -26,6 +27,7 @@ interface SearchBarInputProps {
     iconSide?: 'left' | 'right'
     iconColor?: string
     iconBackground?: string
+    variante?: 'outline' | 'pill' | 'soft' | 'underline' | 'filled'
   }
 }
 
@@ -39,8 +41,6 @@ interface SearchResult {
   category?: string | null;
   tag?: string | null;
 }
-
-const popularSearches = ['Ofertas', 'Nuevo', 'Tenis', 'Accesorios'];
 
 const sizeConfig = {
   sm: {
@@ -69,6 +69,7 @@ export function SearchBarInput({
   cromo,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
+  const popularSearches = usePopulares();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -160,7 +161,7 @@ export function SearchBarInput({
           }}
           placeholder={placeholder}
           className={cromo
-            ? `w-full ${cfg.input} ${cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`
+            ? `w-full ${cfg.input} ${cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.variante === 'underline' ? 'border-0 border-b-2 border-gray-900 rounded-none bg-transparent dark:border-white' : cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.variante === 'underline' ? '' : cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} ${cromo.variante === 'filled' ? 'shadow-md' : ''} outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`
             : `w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
           style={{ ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
           onFocusCapture={(e) => {
@@ -274,22 +275,24 @@ export function SearchBarInput({
                     </div>
                   </div>
                 )}
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Populares
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {popularSearches.map((term) => (
-                      <button
-                        key={term}
-                        onClick={() => setQuery(term)}
-                        className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-                      >
-                        {term}
-                      </button>
-                    ))}
+                {popularSearches.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" /> Populares
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {popularSearches.map((term) => (
+                        <button
+                          key={term}
+                          onClick={() => setQuery(term)}
+                          className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

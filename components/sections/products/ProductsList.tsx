@@ -8,6 +8,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { recortarPorModo, topeProductos } from '@/lib/products/limiteListado'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { SiLista } from '../ListRenderer'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
@@ -27,7 +28,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
   const branchId = (data?.branchId as number | null | undefined) ?? null
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const allProducts = (data?.products || []) as any[]
-  const maxItems = content.max_items || 12
+  const [paginaLista, setPaginaLista] = useState(1)
+  const modoExplicito = content.list_mode === 'pages' || content.list_mode === 'long'
+  const topeExplicito = topeProductos({
+    max_items: content.max_items ?? content.products_limit,
+    rows: content.rows || content.desktop_rows,
+    columns: content.columns || content.desktop_columns,
+  })
   // Sin `include_subcategories` el filtro sigue siendo el id exacto (lo de hoy).
   const filtered = filtrarProductosPorCategorias(
     unirProductosDeCategoria(allProducts, data?.productosCategoria, content.selected_category_ids),
@@ -53,7 +60,11 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
 
   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
   const filtros = useFiltrosProductos(sorted)
-  const products = maxItems > 0 ? filtros.filtrados.slice(0, maxItems) : filtros.filtrados
+  const contenidoLista = modoExplicito || topeExplicito != null
+    ? { max_items: content.max_items ?? content.products_limit, list_mode: content.list_mode, per_page: content.per_page, rows: content.rows || content.desktop_rows, columns: content.columns || content.desktop_columns }
+    : { max_items: 12, list_mode: content.list_mode, per_page: content.per_page }
+  const recorteLista = recortarPorModo(filtros.filtrados, contenidoLista, paginaLista)
+  const products = recorteLista.items
 
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
 
@@ -156,6 +167,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
           <p>No hay productos disponibles</p>
+        </div>
+      )}
+      {recorteLista.modo === 'pages' && recorteLista.paginas > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button type="button" onClick={() => setPaginaLista((p) => Math.max(1, p - 1))} disabled={paginaLista <= 1} className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-30">Anterior</button>
+          <span className="text-sm text-gray-500">{paginaLista} / {recorteLista.paginas}</span>
+          <button type="button" onClick={() => setPaginaLista((p) => Math.min(recorteLista.paginas, p + 1))} disabled={paginaLista >= recorteLista.paginas} className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-30">Siguiente</button>
         </div>
       )}
     </div>

@@ -142,6 +142,7 @@ import { ParkingAvailabilitySummary } from './parking/ParkingAvailabilitySummary
 
 // Secciones countdown
 import { CountdownSection } from './countdown/CountdownSection'
+import { UrgenciaSeccion } from './urgencia/UrgenciaSeccion'
 
 // Secciones detalle de producto (F9.2)
 import { ProductGallery } from './product-detail/ProductGallery'
@@ -270,6 +271,11 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     grid: CategoriesGrid,
     horizontal: CategoriesGrid,
     icons: CategoriesGrid,
+    circle: CategoriesGrid,
+    card_bottom: CategoriesGrid,
+    pill: CategoriesGrid,
+    bento: CategoriesGrid,
+    minimal_icon: CategoriesGrid,
   },
   featured_products: {
     grid: FeaturedProducts,
@@ -453,6 +459,10 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     banner: CountdownSection,
     inline: CountdownSection,
     compact: CountdownSection,
+  },
+  urgencia: {
+    inline: UrgenciaSeccion,
+    banner: UrgenciaSeccion,
   },
   // Detalle de producto (F9.2)
   product_gallery: {

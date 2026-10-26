@@ -8,6 +8,7 @@ import {
   HeaderActions,
   HeaderTopbar,
   HeaderCTAMovil,
+  HeaderCTA2,
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
@@ -20,6 +21,7 @@ import {
   marcaFondoEncabezado,
 } from '../HeaderShared'
 import { FilaSedeMovil } from '../SelectorSedeEncabezado'
+import { barraSiCromo } from '../BuscadorCromo'
 import { MobileMenuShell } from './MobileMenuShell'
 import { MobileBottomNav, useUnidadesBarra } from './MobileBottomNav'
 import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
@@ -98,6 +100,7 @@ export function HeaderMovilConfigurable({
         hideAuth={iconos?.showAccount === false}
         branchId={branchId}
       />
+      <HeaderCTA2 settings={settings} />
       <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
     </div>
   )
@@ -125,7 +128,9 @@ export function HeaderMovilConfigurable({
             </div>
             {buscador === 'bar' && (
               <div className="pb-3">
-                <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />
+                {barraSiCromo(settings, (
+                  <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />
+                ), { primaryColor, organizationId, className: 'w-full' })}
               </div>
             )}
           </div>
@@ -150,7 +155,9 @@ export function HeaderMovilConfigurable({
           <div className="mb-3 flex justify-end">
             <button type="button" aria-label="Cerrar búsqueda" onClick={() => setBuscar(false)} className="p-2"><X className="h-5 w-5" /></button>
           </div>
-          <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" icon={SearchIconComp} />
+          {barraSiCromo(settings, (
+            <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" icon={SearchIconComp} />
+          ), { primaryColor, organizationId, className: 'w-full' })}
         </div>
       )}
 
@@ -241,7 +248,9 @@ function ContenidoMenu({
       </div>
       {panel?.showSearch && (
         <div className="px-4 pb-2">
-          <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
+          {barraSiCromo(settings, (
+            <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
+          ), { primaryColor, organizationId: organization.id, className: 'w-full' })}
         </div>
       )}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">

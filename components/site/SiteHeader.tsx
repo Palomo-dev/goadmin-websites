@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe, ChevronDown } from 'lucide-react'
@@ -25,6 +25,7 @@ import HeaderCommerce from './header/HeaderCommerce'
 import { useScrollEncabezado } from './header/useScrollEncabezado'
 import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes'
 import { BarraReservaHotel } from './header/BarraReservaHotel'
+import { MenusExtra } from './header/MenusExtra'
 import { useEncabezadoPie } from './EncabezadoPieContext'
 import MobileDrawer from './header/mobile/MobileDrawer'
 import MobileBottomSheet from './header/mobile/MobileBottomSheet'
@@ -419,8 +420,20 @@ export default function SiteHeader({
   }
 
   const constructor = leerConstructor(settings)
-  if (constructor?.zonas || constructor?.menus) {
+  const conMenus = (nodo: ReactNode) => {
+    const ajustes = settings as Record<string, unknown> | null | undefined
+    if (!Array.isArray(ajustes?.header_menus) || ajustes.header_menus.length === 0) return nodo
     return (
+      <>
+        <MenusExtra settings={ajustes} zone="topbar" />
+        {nodo}
+        <MenusExtra settings={ajustes} zone="header" />
+        <MenusExtra settings={ajustes} zone="menu" />
+      </>
+    )
+  }
+  if (constructor?.zonas || constructor?.menus) {
+    return conMenus(
       <HeaderPorZonas
         {...variantProps}
         constructor={constructor}
@@ -438,10 +451,11 @@ export default function SiteHeader({
   ) : (
     variante
   )
-  if (!scroll.activo) return nodo
+  const visible = conMenus(nodo)
+  if (!scroll.activo) return visible
   return (
     <div className={scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : undefined}>
-      {nodo}
+      {visible}
     </div>
   )
 

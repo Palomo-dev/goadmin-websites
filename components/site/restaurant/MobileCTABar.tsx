@@ -31,7 +31,7 @@ export function rutaConBarraMovil(pathname: string): boolean {
   )
 }
 
-export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBarraMovil; primaryColor: string }) {
+export function MobileCTABar({ acciones, primaryColor, onPedir }: { acciones: AccionesBarraMovil; primaryColor: string; onPedir?: () => void }) {
   const items = [
     acciones.reservar && { clave: 'reservar', href: acciones.reservar, texto: 'Reservar', Icono: CalendarDays, externo: false },
     acciones.llamar && { clave: 'llamar', href: acciones.llamar, texto: 'Llamar', Icono: Phone, externo: false },
@@ -82,6 +82,10 @@ export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBar
                     {contenido}
                     <span className="sr-only"> (abre Google Maps)</span>
                   </a>
+                ) : clave === 'pedir' && onPedir ? (
+                  <button type="button" className={clase} style={estilo} onClick={onPedir}>
+                    {contenido}
+                  </button>
                 ) : (
                   <Link href={href} className={clase} style={estilo}>
                     {contenido}

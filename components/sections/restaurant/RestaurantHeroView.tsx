@@ -116,7 +116,7 @@ function Typographic(props: RestaurantHeroViewProps) {
   const hasActions = props.primaryCta || props.secondaryCta
 
   return (
-    <div ref={ref} {...motionProps} className="flex flex-col gap-6 pb-10 pt-14 md:gap-10 md:pb-24 md:pt-[120px]">
+    <div ref={ref} {...motionProps} className="flex flex-col gap-6 pb-10 pt-14 md:gap-10 md:pb-24 md:pt-[120px] [[data-pegado]_&]:pt-0 [[data-pegado]_&]:md:pt-0">
       {props.eyebrow ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Eyebrow>{props.eyebrow}</Eyebrow>
@@ -170,7 +170,7 @@ function SplitBento(props: RestaurantHeroViewProps) {
 
   return (
     <div ref={ref} {...motionProps} className="flex flex-col gap-4 md:h-[min(728px,85vh)] md:flex-row">
-      <div className="relative flex h-[460px] flex-col justify-end overflow-hidden rounded-xl bg-muted p-5 md:h-full md:flex-1 md:p-10" style={props.visual.media}>
+      <div className="relative flex h-[460px] flex-col justify-end overflow-hidden rounded-xl bg-muted p-5 md:h-full md:flex-1 md:p-10 [[data-pegado]_&]:rounded-t-none" style={props.visual.media}>
         <div ref={parallaxRef} className="absolute inset-0 will-change-transform">
           <SiteImage src={props.imageUrl} alt={props.imageAlt} sizes="(min-width: 768px) 66vw, 100vw" priority />
         </div>

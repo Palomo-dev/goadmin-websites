@@ -22,6 +22,8 @@ import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
 import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
+import { AvisoViendo } from '@/components/site/AvisoViendo'
+import { leerAvisoViendo } from '@/lib/website/urgenciaSeccion'
 import PhoneCountryInput from './PhoneCountryInput'
 import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
@@ -108,6 +110,7 @@ interface CheckoutSettings {
   showPaymentLogos?: boolean
   showCountdown?: boolean
   countdownConfig?: CountdownConfig
+  urgencia_viendo?: unknown
 }
 
 /** Sede del pedido (restaurante): la misma que usa /api/orders para validar el horario. */
@@ -984,6 +987,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
                           {item.notes && (
                             <p className="text-xs text-gray-400 italic truncate mt-0.5">📝 {item.notes}</p>
                           )}
+                          <AvisoViendo
+                            config={leerAvisoViendo(settings.urgencia_viendo)}
+                            semilla={String(item.productId ?? item.id)}
+                          />
                           <AvisoStockLinea
                             activo={!!settings.showStockWarning}
                             stock={item.stock}

@@ -27,7 +27,9 @@ import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
 import { CountdownBanner } from '@/components/site/CountdownBanner'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
-import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
+import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
+import { AvisoViendo } from '@/components/site/AvisoViendo'
+import { leerAvisoViendo } from '@/lib/website/urgenciaSeccion'
 import { Price } from '@/components/site/CurrencyProvider'
 import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
@@ -439,6 +441,22 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 variant="inline"
               />
             ) : null}
+            {(() => {
+              const ajustes = organization.website_settings as { conversion?: ConversionSitio; urgencia_viendo?: unknown } | null
+              const stockBajo = ajustes?.conversion?.urgencia?.stockBajo
+              const unidades = product.track_stock && Array.isArray(product.stock_levels)
+                ? product.stock_levels.reduce((suma: number, nivel: { qty_on_hand?: number | null }) => suma + Number(nivel?.qty_on_hand || 0), 0)
+                : null
+              const texto = stockBajo?.activo && stockBajo.ubicaciones?.includes('producto')
+                ? avisoStock(unidades, stockBajo.umbral, stockBajo.plantilla)
+                : null
+              return (
+                <>
+                  {texto ? <p className="text-sm font-medium text-orange-600">{texto}</p> : null}
+                  <AvisoViendo config={leerAvisoViendo(ajustes?.urgencia_viendo)} semilla={String(product.id)} className="text-sm text-gray-500" />
+                </>
+              )
+            })()}
 
             {product.description && (
               <div>

@@ -21,6 +21,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { alineacionBuscador } from '@/lib/website/constructorEncabezado';
 
 export default function HeaderClassic({
   organization,
@@ -42,6 +43,7 @@ export default function HeaderClassic({
   const organizationId = organization.id;
   const logoPosition = settings?.logo_position ?? 'left';
   const showSearchBar = settings?.search_style === 'bar';
+  const alignBusqueda = alineacionBuscador(settings);
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
@@ -117,8 +119,18 @@ export default function HeaderClassic({
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
-            {middle}
+          <div className="hidden md:flex items-center justify-between gap-4" data-busqueda={alignBusqueda ?? undefined} style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+            {alignBusqueda === 'left' ? (
+              <>{renderLogo}{renderSearchBar}{renderNav}{renderActions}</>
+            ) : alignBusqueda === 'right' ? (
+              <>{renderLogo}{renderNav}{renderActions}{renderSearchBar}</>
+            ) : alignBusqueda === 'center' ? (
+              <>
+                <div className="flex min-w-0 items-center gap-4">{renderLogo}{renderNav}</div>
+                <div className="flex min-w-0 flex-1 justify-center">{renderSearchBar}</div>
+                {renderActions}
+              </>
+            ) : middle}
           </div>
         </div>
       </div>

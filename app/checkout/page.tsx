@@ -146,6 +146,10 @@ export default async function CheckoutPage() {
     .is('branch_id', null)
     .maybeSingle()
 
+  const stockDocumento = (organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio } | null)?.conversion?.urgencia?.stockBajo
+  const avisoStockCheckout = wsRow?.checkout_show_stock_warning === true
+    || !!(stockDocumento?.activo && stockDocumento.ubicaciones?.includes('checkout'))
+
   const checkoutSettings = {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
@@ -162,10 +166,11 @@ export default async function CheckoutPage() {
     shippingDescription: wsRow?.shipping_flat_rate_description || '',
     showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
     trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
-    showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
-    stockWarningThreshold: Number(wsRow?.checkout_stock_warning_threshold ?? 5),
+    showStockWarning: avisoStockCheckout,
+    stockWarningThreshold: stockDocumento?.activo ? stockDocumento.umbral : Number(wsRow?.checkout_stock_warning_threshold ?? 5),
     conversion: (organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio; conversionFines?: Record<string, string | null> } | null)?.conversion ?? null,
     conversionFines: (organization.website_settings as { conversionFines?: Record<string, string | null> } | null)?.conversionFines ?? null,
+    urgencia_viendo: (organization.website_settings as { urgencia_viendo?: unknown } | null)?.urgencia_viendo ?? null,
     showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
     showCountdown: wsRow?.checkout_show_countdown ?? false,
     countdownConfig: {

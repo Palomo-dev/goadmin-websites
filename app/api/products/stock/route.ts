@@ -1,50 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Disponible (en mano − reservado) de los productos del carrito.
+ * La organización sale del host. Los ids vienen de la query y se cruzan con esa organización.
+ */
 export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const organizationId = searchParams.get('organizationId')
-    const productIds = searchParams.get('productIds')
+  const orgId = await getOrgIdDelHost()
+  if (!orgId) return NextResponse.json({ stock: {} })
 
-    if (!organizationId || !productIds) {
-      return NextResponse.json({ error: 'Se requiere organizationId y productIds' }, { status: 400 })
-    }
+  const crudo = new URL(request.url).searchParams.get('ids') ?? ''
+  const ids = [...new Set(
+    crudo.split(',').map((parte) => Number(parte)).filter((n) => Number.isInteger(n) && n > 0),
+  )].slice(0, 40)
+  if (ids.length === 0) return NextResponse.json({ stock: {} })
 
-    const ids = productIds.split(',').map(id => parseInt(id)).filter(id => !isNaN(id))
-    if (ids.length === 0) {
-      return NextResponse.json({ data: {} })
-    }
+  const supabase = createAdminClient() || createPublicClient()
+  if (!supabase) return NextResponse.json({ stock: {} })
 
-    const supabase = createAdminClient() || createPublicClient()
-    const { data, error } = await (supabase as any)
-      .from('stock_levels')
-      .select('product_id, qty_on_hand')
-      .eq('branch_id', (await (supabase as any)
-        .from('branches')
-        .select('id')
-        .eq('organization_id', parseInt(organizationId))
-        .eq('is_main', true)
-        .single()
-      ).data?.id)
-      .in('product_id', ids)
+  const { data: propios } = await supabase.from('products').select('id').eq('organization_id', orgId).in('id', ids)
+  const idsOk = ((propios ?? []) as { id: number }[]).map((fila) => fila.id)
+  if (idsOk.length === 0) return NextResponse.json({ stock: {} })
 
-    if (error) {
-      console.error('Stock API error:', error)
-      return NextResponse.json({ data: {} })
-    }
+  const { data } = await supabase
+    .from('stock_levels')
+    .select('product_id, qty_on_hand, qty_reserved')
+    .in('product_id', idsOk)
 
-    const stockMap: Record<number, number> = {}
-    for (const row of (data || [])) {
-      const pid = row.product_id
-      stockMap[pid] = (stockMap[pid] || 0) + Number(row.qty_on_hand || 0)
-    }
-
-    return NextResponse.json({ data: stockMap })
-  } catch (error) {
-    console.error('Stock API error:', error)
-    return NextResponse.json({ data: {} })
+  const stock: Record<string, number> = {}
+  for (const fila of (data ?? []) as { product_id: number; qty_on_hand: number | null; qty_reserved: number | null }[]) {
+    const id = String(fila.product_id)
+    const disponible = Number(fila.qty_on_hand ?? 0) - Number(fila.qty_reserved ?? 0)
+    stock[id] = (stock[id] ?? 0) + (Number.isFinite(disponible) ? disponible : 0)
   }
+  return NextResponse.json({ stock }, { headers: { 'Cache-Control': 'private, max-age=30' } })
 }

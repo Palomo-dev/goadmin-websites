@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
+import { usePopulares } from './usePopulares'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
 import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 
@@ -43,11 +44,6 @@ interface SearchResult {
   tag?: string | null
 }
 
-// Sugerencias de búsqueda (se muestran cuando no hay query)
-const popularSearches = [
-  'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
-]
-
 export function ProductSearch({
   primaryColor,
   icon: SearchIconComp = Search,
@@ -61,6 +57,7 @@ export function ProductSearch({
   claseIcono,
 }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
+  const popularSearches = usePopulares()
   const controlado = abierto !== undefined
   const [interno, setInterno] = useState(false)
   const isOpen = controlado ? abierto : interno
@@ -247,22 +244,24 @@ export function ProductSearch({
               </div>
             </div>
           )}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" /> Populares
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {popularSearches.map((term) => (
-                <button
-                  key={term}
-                  onClick={() => setQuery(term)}
-                  className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 transition-colors"
-                >
-                  {term}
-                </button>
-              ))}
+          {popularSearches.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> Populares
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {popularSearches.map((term) => (
+                  <button
+                    key={term}
+                    onClick={() => setQuery(term)}
+                    className="px-3 py-1.5 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 transition-colors"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

@@ -275,6 +275,8 @@ export interface MenusPublicos {
   footer: WebsiteMenuWithItems[]
   /** Menú derivado de `show_in_footer`, que legacy pintaba como navegación del pie. */
   footerPaginas: WebsiteMenuWithItems | null
+  /** Todos los menús del documento, para pintar más de uno en el encabezado. */
+  catalogo: WebsiteMenuWithItems[]
 }
 
 /** Ids de categoría que referencian los menús (para resolver su slug con una sola consulta). */
@@ -429,5 +431,6 @@ export function menusPublicosDesdeDocumento(
     mega: menuMega ? menuAPublico(menuMega, 0, paginas, categorias, organizationId, 'header') : null,
     footer: pie,
     footerPaginas,
+    catalogo: documento.menus.map((menu, i) => menuAPublico(menu, i, paginas, categorias, organizationId, 'header')),
   }
 }
