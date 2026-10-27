@@ -1,4 +1,5 @@
 'use client'
+import { IconoConCirculo } from './header/IconoEncabezado'
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -30,6 +31,8 @@ interface ProductSearchProps {
   colores?: ColoresCaja
   /** Clase del ícono disparador. En el celular, `--hdr-mobile-icon`. */
   claseIcono?: string
+  /** «Círculo acento» del encabezado, igual que moneda, carrito y cuenta. */
+  circulo?: boolean
 }
 
 interface SearchResult {
@@ -59,6 +62,7 @@ export function ProductSearch({
   contenedor = null,
   colores,
   claseIcono,
+  circulo = false,
 }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
   const controlado = abierto !== undefined
@@ -281,7 +285,9 @@ export function ProductSearch({
               <SearchIconComp style={trazoContenedor(contenedor, 'search')} />
             </ContenedorIcono>
           ) : (
-            <SearchIconComp className={claseIcono ?? (heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300')} />
+            <IconoConCirculo circulo={circulo} primaryColor={primaryColor}>
+              <SearchIconComp className={claseIcono ?? (circulo || heredarColor ? 'h-5 w-5 text-current' : 'h-5 w-5 text-gray-700 dark:text-gray-300')} />
+            </IconoConCirculo>
           )}
         </button>
       )}

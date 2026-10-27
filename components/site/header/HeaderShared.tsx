@@ -23,6 +23,7 @@ import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncend
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
+import { colorGuardado, iconoSobreFondo } from '@/lib/website/colorCirculoIconos';
 import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
@@ -219,6 +220,11 @@ export function variablesEncabezado(
     vars['--header-fg'] = color
     vars.color = 'var(--header-fg)'
   }
+  // «Círculo acento»: fondo propio (B4) y color del ícono propio o automático sobre ese fondo (B1).
+  const fondoCirculo = colorGuardado(settings?.header_icons_circle_bg)
+  const iconoCirculo = colorGuardado(settings?.header_icons_circle_fg)
+  if (fondoCirculo) vars['--hdr-circle-bg'] = fondoCirculo
+  if (iconoCirculo || fondoCirculo) vars['--hdr-circle-fg'] = iconoCirculo ?? iconoSobreFondo(fondoCirculo)
   return { ...vars, ...variablesMenuMovil(settings, tema) }
 }
 
@@ -433,6 +439,7 @@ export function HeaderActions({
   isMobile = false,
   hideCurrency = false,
   hideAuth = false,
+  mostrarCuentaMovil = false,
   branchId,
 }: {
   settings: HeaderVariantProps['settings'];
@@ -446,6 +453,8 @@ export function HeaderActions({
   isMobile?: boolean;
   hideCurrency?: boolean;
   hideAuth?: boolean;
+  /** Celular: muestra la cuenta (barra configurable con «Cuenta» activa). Default: oculta, como antes. */
+  mostrarCuentaMovil?: boolean;
   branchId?: number | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -505,6 +514,8 @@ export function HeaderActions({
   const leido = leerConstructor(settings)
   const cromoOverlay = leido?.buscador
   const contenedor = leido?.contenedor
+  // Círculo acento sin caja del constructor: el color del ícono lo pone el círculo, no la barra móvil.
+  const circuloSimple = !contenedor && estiloIconos.circulo
   const coloresCaja = {
     primary: primaryColor,
     accent: settings?.accent_color || primaryColor,
@@ -523,7 +534,7 @@ export function HeaderActions({
     search: cromoOverlay?.tipo === 'icon_overlay' ? (
       <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
     ) : showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} claseIcono={isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
+      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} circulo={circuloSimple} claseIcono={circuloSimple ? 'h-5 w-5 text-current' : isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
       <CurrencySelector
@@ -551,10 +562,10 @@ export function HeaderActions({
         circulo={contenedor ? false : estiloIconos.circulo}
         contenedor={contenedor}
         colores={coloresCaja}
-        claseIcono={isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
+        claseIcono={circuloSimple ? 'h-6 w-6 text-current' : isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
       />
     ) : null,
-    auth: !isMobile && showHeaderAuth && !hideAuth ? (
+    auth: (!isMobile || mostrarCuentaMovil) && showHeaderAuth && !hideAuth ? (
       isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
           {iconoCuenta(AuthLoggedInIconComp, true)}

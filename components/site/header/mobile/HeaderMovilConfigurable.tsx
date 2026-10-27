@@ -96,6 +96,7 @@ export function HeaderMovilConfigurable({
         showSearchIcon={iconos?.showSearch !== false && (buscador === 'icon' || buscador === 'fullscreen')}
         isMobile
         hideAuth={iconos?.showAccount === false}
+        mostrarCuentaMovil={!!iconos && iconos.showAccount !== false}
         branchId={branchId}
       />
       <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />

@@ -203,6 +203,10 @@ export interface Database {
           header_cart_glyph?: string | null
           /** Círculo del color de la marca detrás de esos iconos. */
           header_icons_circle?: boolean
+          /** Fondo del círculo (#hex). Vacío = color de la marca. */
+          header_icons_circle_bg?: string | null
+          /** Color del ícono dentro del círculo (#hex). Vacío = automático por contraste. */
+          header_icons_circle_fg?: string | null
           /** Menú móvil. Ausentes = automáticos (heredan el encabezado o el contraste). */
           mobile_menu_bg_color?: string | null
           mobile_menu_text_color?: string | null

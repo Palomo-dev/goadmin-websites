@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
-import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { iconoSobreFondo } from '@/lib/website/colorCirculoIconos'
 
 /** Trazo de Lucide: el relleno no apaga el borde, si no el icono desaparece. */
 export function propsTrazoIcono(relleno: boolean): { fill: 'currentColor' | 'none'; strokeWidth: number } {
   return relleno ? { fill: 'currentColor', strokeWidth: 1.25 } : { fill: 'none', strokeWidth: 2 }
 }
 
-/** Círculo del color de la marca. Sin círculo, el icono se pinta igual que antes. */
+/**
+ * Círculo del color de la marca. Sin círculo, el icono se pinta igual que antes.
+ * Fondo y color del ícono salen de `--hdr-circle-bg` / `--hdr-circle-fg` (los pone
+ * `variablesEncabezado` solo si el sitio los guardó); sin ellos, la marca y su contraste.
+ */
 export function IconoConCirculo({
   circulo,
   primaryColor,
@@ -23,7 +27,7 @@ export function IconoConCirculo({
   return (
     <span
       className={`inline-flex ${caja} items-center justify-center rounded-full`}
-      style={{ backgroundColor: primaryColor, color: textoSobreAcentoSiHex(primaryColor) || '#FFFFFF' }}
+      style={{ backgroundColor: `var(--hdr-circle-bg, ${primaryColor})`, color: `var(--hdr-circle-fg, ${iconoSobreFondo(primaryColor)})` }}
     >
       {children}
     </span>
