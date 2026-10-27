@@ -3,6 +3,9 @@ import { listadosDeSecciones } from '@/lib/products/listadosSeccion'
 import { notFound } from 'next/navigation'
 import { 
   getOrganizationProducts, 
+  getOrganizationProductsConEstado,
+  contarProductosListado,
+  PRODUCT_LIST_MAX,
   getOrganizationCategories,
   getOrganizationSpaceTypes,
   getOrganizationSpaces,
@@ -264,7 +267,10 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     )
     const needsCategories = needsProducts || sectionTypes.some((t) => t === 'menu_full' || t === 'menu_preview')
     if (needsProducts) {
-      data.products = await getOrganizationProducts(organization.id, 500, branchId)
+      // Paquete 5-nov E: si la consulta falla, la sección no dice «No hay productos» (productsError).
+      const r = await getOrganizationProductsConEstado(organization.id, 500, branchId)
+      data.products = r.products
+      if (r.error) data.productsError = true
     }
     // Carta completa: sin el corte de 500 del listado general (cartas de cientos de platos).
     // Solo en páginas con carta; las demás secciones siguen con `data.products`. Si alguna
@@ -649,10 +655,14 @@ async function renderSlugFallback(
         gym: 'Membresías', transport: 'Rutas Disponibles', parking: 'Tarifas', services: 'Planes'
       }[businessType.type] || 'Productos'
 
-      const [products, categories] = await Promise.all([
-        getOrganizationProducts(organization.id, 500, branchId),
-        getOrganizationCategories(organization.id, branchId)
+      // Paquete 5-nov E: el catálogo completo hasta PRODUCT_LIST_MAX (lotes de 500) y el total
+      // real con count exact; antes, tope silencioso de 500 («500 productos» con 600).
+      const [resultado, categories, totalCatalogo] = await Promise.all([
+        getOrganizationProductsConEstado(organization.id, PRODUCT_LIST_MAX, branchId),
+        getOrganizationCategories(organization.id, branchId),
+        contarProductosListado(organization.id, branchId),
       ])
+      const products = resultado.products
 
       return (
         <Layout>
@@ -671,6 +681,8 @@ async function renderSlugFallback(
               organizationId={organization.id}
               showBuyNow={organization.website_settings?.show_buy_now_button !== false}
               branchId={branchId}
+              totalCatalogo={totalCatalogo != null && totalCatalogo > PRODUCT_LIST_MAX ? totalCatalogo : null}
+              errorCarga={resultado.error}
             />
           </div>
         </Layout>

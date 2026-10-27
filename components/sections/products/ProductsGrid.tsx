@@ -94,7 +94,7 @@ interface ProductsGridProps {
     products_limit?: number
   }
   primaryColor?: string
-  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[]; branchId?: number | null; listados?: Record<string, { products: any[]; total: number }> }
+  data?: { products?: any[]; productsError?: boolean; productosCategoria?: any[]; categories?: any[]; branchId?: number | null; listados?: Record<string, { products: any[]; total: number }> }
   organization?: { subdomain?: string; website_settings?: any }
   sectionId?: string
 }
@@ -409,7 +409,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
       ) : (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">📦</p>
-          <p>{selectedCategory || onlyOffers || busqueda ? 'No hay productos con estos filtros' : 'No hay productos disponibles aún'}</p>
+          <p>{selectedCategory || onlyOffers || busqueda ? 'No hay productos con estos filtros' : data?.productsError && !listado ? 'No pudimos cargar los productos. Intenta de nuevo en unos segundos.' : 'No hay productos disponibles aún'}</p>
           {(selectedCategory || onlyOffers || busqueda) && (
             <button onClick={filtros.limpiar} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>
           )}

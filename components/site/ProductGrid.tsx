@@ -79,11 +79,15 @@ interface ProductGridProps {
   organizationId?: number
   showBuyNow?: boolean
   branchId?: number | null
+  /** Total real del catálogo (count exact). Si es mayor que lo cargado, se avisa «Mostrando N de M». */
+  totalCatalogo?: number | null
+  /** La consulta falló: no se dice «No hay productos». */
+  errorCarga?: boolean
 }
 
 const ITEMS_PER_PAGE = 12
 
-export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId }: ProductGridProps) {
+export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId, totalCatalogo = null, errorCarga = false }: ProductGridProps) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
@@ -237,7 +241,11 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
             <option value="price_desc">Precio: mayor a menor</option>
             <option value="name">Nombre A-Z</option>
           </select>
-          <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} productos</span>
+          <span className="text-xs text-gray-400 ml-auto">
+            {!selectedCategory && !onlyOffers && totalCatalogo != null && totalCatalogo > products.length
+              ? `Mostrando ${filteredProducts.length} de ${totalCatalogo} productos`
+              : `${filteredProducts.length} productos`}
+          </span>
         </div>
       </div>
       
@@ -401,7 +409,9 @@ export function ProductGrid({ products, categories, primaryColor, organizationSu
           <p className="text-gray-500 text-lg">
             {selectedCategory || onlyOffers
               ? 'No hay productos con estos filtros' 
-              : 'No hay productos disponibles en este momento.'}
+              : errorCarga
+                ? 'No pudimos cargar los productos. Intenta de nuevo en unos segundos.'
+                : 'No hay productos disponibles en este momento.'}
           </p>
           {(selectedCategory || onlyOffers) && (
             <button onClick={() => { setSelectedCategory(null); setOnlyOffers(false); setSortBy('default'); resetPage() }} className="mt-2 text-sm underline" style={{ color: primaryColor }}>Limpiar filtros</button>

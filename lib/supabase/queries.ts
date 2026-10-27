@@ -688,6 +688,13 @@ export const getWebStockBranchIds = cache(async (organizationId: number): Promis
  * Obtiene los productos de una organización para mostrar en el sitio.
  * F3: acepta `branchId` opcional para filtrar por categorías visibles del outlet.
  */
+/** Lote por consulta y tope del listado general (/productos pide el tope; la portada, 500). */
+const PRODUCT_LIST_PAGE = 500
+export const PRODUCT_LIST_MAX = 2000
+
+/** Error de consulta del catálogo: se lanza dentro de la caché para que no se guarde un vacío. */
+class ErrorConsultaCatalogo extends Error {}
+
 const getOrganizationProductsUncached = async (organizationId: number, limit = 12, branchId?: number | null) => {
   const supabase = getSupabaseForPublicRead()
 
@@ -697,41 +704,59 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
   // Carta por sede: null sin sede (sin cambios).
   const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
 
-  let query = supabase
-    .from('products')
-    .select(`
-      ${PRODUCT_LIST_COLUMNS},
-      product_prices (id, price, compare_price, effective_to),
-      product_images (
-        id,
-        storage_path,
-        is_primary,
-        display_order,
-        shared_image_id,
-        shared_images (
-          storage_path
+  // Paquete 5-nov E: con `limit` > 500 se pagina por id en lotes de 500 (antes un solo
+  // `.limit(limit)`); el listado /productos ya no se corta en silencio en 500.
+  const consulta = () => {
+    let query = supabase
+      .from('products')
+      .select(`
+        ${PRODUCT_LIST_COLUMNS},
+        product_prices (id, price, compare_price, effective_to),
+        product_images (
+          id,
+          storage_path,
+          is_primary,
+          display_order,
+          shared_image_id,
+          shared_images (
+            storage_path
+          )
+        ),
+        stock_levels (
+          branch_id,
+          qty_on_hand,
+          qty_reserved
         )
-      ),
-      stock_levels (
-        branch_id,
-        qty_on_hand,
-        qty_reserved
-      )
-    `)
-    .is('product_prices.effective_to', null)
-    .eq('organization_id', organizationId)
-    .eq('status', 'active')
-    .is('parent_product_id', null)
+      `)
+      .is('product_prices.effective_to', null)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
 
-  if (allowedCategoryIds) {
-    query = query.in('category_id', allowedCategoryIds)
+    if (allowedCategoryIds) {
+      query = query.in('category_id', allowedCategoryIds)
+    }
+    return excluirNoListados(query, cartaSede)
+
   }
-  query = excluirNoListados(query, cartaSede)
 
   // Orden estable antes del límite: con más productos que el límite, siempre salen los mismos.
-  const { data, error } = await query.order('id', { ascending: true }).limit(limit)
-
-  if (error) return []
+  const tope = Math.max(1, Math.min(Math.floor(limit) || 12, PRODUCT_LIST_MAX))
+  const data: any[] = []
+  for (let desde = 0; desde < tope; desde += PRODUCT_LIST_PAGE) {
+    const hasta = Math.min(desde + PRODUCT_LIST_PAGE, tope) - 1
+    const { data: lote, error } = await consulta().order('id', { ascending: true }).range(desde, hasta)
+    if (error) {
+      // Antes: `if (error) return []` mudo, y ese vacío quedaba 30 s en la caché del catálogo
+      // («No hay productos disponibles aún» en la portada). Ahora se registra y se lanza:
+      // unstable_cache no guarda los errores y quien llama decide qué mostrar.
+      console.error('[queries] getOrganizationProducts falló', { organizationId, limit, branchId, desde, error: error.message, code: (error as any).code })
+      throw new ErrorConsultaCatalogo(error.message)
+    }
+    const filas = (lote || []) as any[]
+    data.push(...filas)
+    if (filas.length < hasta - desde + 1) break
+  }
 
   // F3: cuando hay outlet activo, el stock se filtra solo por ese branch.
   const stockBranchIds = (branchId !== undefined && branchId !== null)
@@ -3853,9 +3878,63 @@ export const getMenuById = cacheStructural('getMenuById', getMenuByIdUncached, C
 // que el ERP invalida al editar productos, precios o stock.
 // ---------------------------------------------------------------------------
 
-export const getOrganizationProducts = cache(
+const getOrganizationProductsCached = cache(
   cacheCatalog('getOrganizationProducts', getOrganizationProductsUncached, (...args) => args[0])
 )
+
+/**
+ * Productos del listado con estado de la consulta (paquete 5-nov E). `error: true` = la consulta
+ * falló (ya registrada en el log); `products` vacío NO significa que la tienda no tenga productos.
+ */
+export async function getOrganizationProductsConEstado(
+  organizationId: number,
+  limit = 12,
+  branchId?: number | null,
+): Promise<{ products: any[]; error: boolean }> {
+  try {
+    return { products: await getOrganizationProductsCached(organizationId, limit, branchId), error: false }
+  } catch (e) {
+    if (!(e instanceof ErrorConsultaCatalogo)) {
+      console.error('[queries] getOrganizationProducts falló', { organizationId, limit, branchId, error: e instanceof Error ? e.message : String(e) })
+    }
+    return { products: [], error: true }
+  }
+}
+
+/** Misma firma pública que antes: con error devuelve [] (registrado, sin cachear el vacío). */
+export const getOrganizationProducts = async (organizationId: number, limit = 12, branchId?: number | null) =>
+  (await getOrganizationProductsConEstado(organizationId, limit, branchId)).products
+
+/**
+ * Total real de productos del listado general (padres activos, categorías y carta de la sede):
+ * `count: 'exact'` sin traer filas. `null` si la consulta falla.
+ */
+const contarProductosListadoUncached = async (organizationId: number, branchId?: number | null): Promise<number | null> => {
+  const supabase = getSupabaseForPublicRead()
+  const allowedCategoryIds = await getAllowedCategoryIds(organizationId, branchId)
+  if (allowedCategoryIds !== null && allowedCategoryIds.length === 0) return 0
+  const cartaSede = await getCartaSedeParaListado(organizationId, branchId)
+  let query = supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .is('parent_product_id', null)
+  if (allowedCategoryIds) query = query.in('category_id', allowedCategoryIds)
+  query = excluirNoListados(query, cartaSede)
+  const { count, error } = await query
+  if (error) {
+    console.error('[queries] contarProductosListado falló', { organizationId, branchId, error: error.message })
+    throw new ErrorConsultaCatalogo(error.message)
+  }
+  return count ?? 0
+}
+const contarProductosListadoCached = cache(
+  cacheCatalog('contarProductosListado', contarProductosListadoUncached, (...args) => args[0])
+)
+export async function contarProductosListado(organizationId: number, branchId?: number | null): Promise<number | null> {
+  try { return await contarProductosListadoCached(organizationId, branchId) } catch { return null }
+}
 export const getOrganizationProductsInCategories = cache(
   cacheCatalog('getOrganizationProductsInCategories', getOrganizationProductsInCategoriesUncached, (...args) => args[0])
 )
