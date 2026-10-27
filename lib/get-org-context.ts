@@ -238,7 +238,13 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
 
   // Si hay menú mega nombrado, usarlo como megaMenuItems (NavItem[])
   // Si no, fallback a menuCategories (backward compat)
+  // Si el menú mega solo trae páginas/políticas (sin categorías ni enlaces) y la tienda
+  // tiene categorías reales, se muestran las categorías: un mega menú de solo páginas
+  // deja el panel vacío de catálogo (paquete 5-nov C1).
+  const soloPaginas = (items: WebsiteMenuItemWithChildren[]): boolean =>
+    items.every(i => (i.item_type === 'page' || i.item_type === 'policy') && soloPaginas(i.children ?? []))
   const megaMenuItems = namedMegaMenu && namedMegaMenu.items.length > 0
+    && !(menuCategories.length > 0 && soloPaginas(namedMegaMenu.items))
     ? namedMegaMenu.items.map(item => menuItemToNavItem(item))
     : null
 
