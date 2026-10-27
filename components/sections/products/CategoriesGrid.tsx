@@ -54,6 +54,8 @@ interface CategoriesGridProps {
     image_padding?: number
     text_align?: 'left' | 'center' | 'right'
     text_position?: 'below' | 'inside' | 'overlay' | 'on_hover'
+    overlay_color?: string
+    overlay_opacity?: number
     title_size?: 'sm' | 'md' | 'lg'
     badge?: string
   }
@@ -117,6 +119,9 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
     show_image: content.show_image,
     show_color: content.show_color,
   }
+  // Gradiente de «Superpuesto»: sin clave, negro al 60 % como siempre (CategoryCard).
+  if (typeof content.overlay_color === 'string' && content.overlay_color) style.overlay_color = content.overlay_color
+  if (typeof content.overlay_opacity === 'number') style.overlay_opacity = content.overlay_opacity
   if (content.card_radius != null) style.card_radius = content.card_radius
   if (content.card_shadow) style.card_shadow = content.card_shadow
   if (content.card_border_width != null) style.card_border_width = content.card_border_width
