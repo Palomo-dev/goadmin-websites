@@ -4,6 +4,7 @@ import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
+import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link';
 import { Menu as MenuIcon, ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -57,14 +58,14 @@ export default function MobileBottomSheet({
   const temaColores = useTemaColores();
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
-  const searchStyle = settings?.mobile_search_style ?? 'icon';
+  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
     <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={variablesEncabezado(settings, temaMenu)}>
-      {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
+      {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
         <div className="px-4">

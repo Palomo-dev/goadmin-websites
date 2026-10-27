@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link'
 import { Menu as MenuIcon, MoreHorizontal, LayoutGrid, Minus, Search, X } from 'lucide-react'
 import {
@@ -48,7 +49,7 @@ export function HeaderMovilConfigurable({
   const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
   const navItems = buildNavItems(navTree)
   const organizationId = organization.id
-  const buscador = presentacion.buscador ?? (settings?.mobile_search_style === 'bar' ? 'bar' : settings?.mobile_search_style === 'hidden' ? 'hidden' : 'icon')
+  const buscador = presentacion.buscador ?? buscadorMovil(settings as Record<string, unknown>)
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
   const transparente = !!layout?.transparentHero && !scrolled
@@ -114,7 +115,7 @@ export function HeaderMovilConfigurable({
         style={variablesEncabezado(settings)}
         data-header-movil={presentacion.estilo}
       >
-        {settings?.mobile_show_topbar && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
+        {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
         <div
           className={transparente ? '' : CLASE_FONDO_ENCABEZADO}
           style={transparente ? undefined : estiloBarraEncabezado(settings, 'bottom')}
