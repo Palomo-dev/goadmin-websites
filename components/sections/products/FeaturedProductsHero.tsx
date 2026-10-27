@@ -7,6 +7,9 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { textoPlano } from '@/lib/texto/textoPlano'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
+import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { ProductCard } from './ProductCard'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 
@@ -35,11 +38,15 @@ function getComparePrice(product: any): number | null {
 interface FeaturedProductsHeroProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[] }
+  data?: { products?: any[]; productosCategoria?: any[]; categories?: any[]; branchId?: number | null }
+  organization?: { subdomain?: string; website_settings?: { show_buy_now_button?: boolean } }
 }
 
-export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }: FeaturedProductsHeroProps) {
+export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsHeroProps) {
   const { ruta } = useRutaSitio()
+  // Paquete 5-nov D7: con estilo de tarjeta del sitio o de la sección, las tarjetas usan ProductCard
+  // (mismos botones, insignias y estilo que el resto). Sin estilo guardado, el diseño de siempre.
+  const estiloTarjeta = useEstiloTarjeta(content.product_card_style)
   const title = content.title || 'Productos Destacados'
   const allProducts = useMemo(() => {
     const fuente = unirProductosDeCategoria(data?.products, data?.productosCategoria, content.selected_category_ids)
@@ -98,6 +105,40 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
   const heroImg = getImageUrl(hero)
   const heroPrice = getPrice(hero)
   const heroCompare = showCompare ? getComparePrice(hero) : null
+
+  if (estiloTarjeta) {
+    const tarjeta = (product: any, className?: string) => (
+      <ProductCard
+        key={product.id}
+        product={product}
+        primaryColor={primaryColor}
+        variant="grid"
+        cardStyle={{ ...content, show_compare_price: showCompare }}
+        showDescription={showDescription}
+        badges={content.badges}
+        cardButtons={content.card_buttons}
+        buttonsPosition={content.buttons_position}
+        buttonsLayout={content.buttons_layout}
+        buttonsFullWidth={content.buttons_full_width !== false}
+        iconOnly={content.icon_only}
+        showBuyNow={organization?.website_settings?.show_buy_now_button !== false}
+        organizationSubdomain={organization?.subdomain}
+        branchId={data?.branchId ?? null}
+        className={className}
+      />
+    )
+    const separacion = separacionTarjetas(estiloTarjeta)
+    return (
+      <div>
+        {title && <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
+        {barra}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={separacion}>
+          {tarjeta(hero, 'h-full')}
+          {rest.length > 0 && <div className="grid grid-cols-2 gap-4 content-start" style={separacion}>{rest.map((p: any) => tarjeta(p))}</div>}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
