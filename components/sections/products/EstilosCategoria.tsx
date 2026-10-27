@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DynamicLucideIcon } from './DynamicLucideIcon'
 import {
   claseAjuste,
   planBento,
@@ -24,6 +25,9 @@ interface Contenido {
   card_hover?: string
   desktop_columns?: number
   desktop_layout?: string
+  media_source?: string
+  show_icon?: boolean
+  show_image?: boolean
 }
 
 interface Props {
@@ -38,16 +42,41 @@ function fondoSuave(color: string, explicito?: string): string {
   return `color-mix(in srgb, ${color} 14%, white)`
 }
 
-function Foto({ cat, fit, zoom, clase, fondo }: { cat: any; fit: string; zoom: boolean; clase: string; fondo: string }) {
+/**
+ * Medio de la categoría (paquete 5-nov D2). Respeta «Origen del medio» (`media_source`):
+ * - `icon`: el ícono de la categoría (`cat.icon`); `image`: la foto; `initial`: la inicial;
+ *   `color`: solo el fondo.
+ * - `auto` (o vacío): la foto si hay (y `show_image` no está apagado); si no, el ícono; si
+ *   tampoco, la etiqueta de siempre. `preferirIcono` («Ícono suave») pone el ícono primero.
+ */
+function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = false }: { cat: any; fit: string; zoom: boolean; clase: string; fondo: string; content?: Contenido; color?: string; preferirIcono?: boolean }) {
+  const origen = content?.media_source || 'auto'
+  const hayImagen = Boolean(cat.image_url) && content?.show_image !== false
+  const hayIcono = typeof cat.icon === 'string' && cat.icon.trim() !== ''
+  let medio: 'imagen' | 'icono' | 'inicial' | 'nada' | 'etiqueta'
+  if (origen === 'icon') medio = 'icono'
+  else if (origen === 'image') medio = cat.image_url ? 'imagen' : hayIcono ? 'icono' : 'etiqueta'
+  else if (origen === 'initial') medio = 'inicial'
+  else if (origen === 'color') medio = 'nada'
+  else if (preferirIcono && hayIcono) medio = 'icono'
+  else if (hayImagen) medio = 'imagen'
+  else if (hayIcono) medio = 'icono'
+  else if (preferirIcono && cat.image_url) medio = 'imagen'
+  else medio = 'etiqueta'
+  const tamanoIcono = /h-(10|7|8)\b/.test(clase) ? 'h-5 w-5' : 'h-1/3 w-1/3 min-h-6 min-w-6 max-h-12 max-w-12'
   return (
     <span className={`relative flex items-center justify-center overflow-hidden ${clase}`} style={{ backgroundColor: fondo }}>
-      {cat.image_url ? (
+      {medio === 'imagen' ? (
         <img
           src={cat.image_url}
           alt=""
           className={`h-full w-full ${claseAjuste(fit)} ${zoom ? 'transition-transform duration-300 group-hover:scale-105' : ''}`}
         />
-      ) : (
+      ) : medio === 'icono' ? (
+        <DynamicLucideIcon name={cat.icon} fallback="Tag" className={tamanoIcono} style={{ color: cat.color || color }} aria-hidden />
+      ) : medio === 'inicial' ? (
+        <span className="text-xl font-bold" style={{ color: cat.color || color }} aria-hidden>{String(cat.name || '?').trim().charAt(0).toUpperCase()}</span>
+      ) : medio === 'nada' ? null : (
         <span className="text-2xl" aria-hidden>🏷️</span>
       )}
     </span>
@@ -60,6 +89,8 @@ function Circulo({ cat, color, content }: { cat: any; color: string; content: Co
   return (
     <Link href={`/categorias/${cat.slug}`} className={`group flex w-36 shrink-0 flex-col items-center text-center ${content.card_hover === 'lift' ? 'transition-transform hover:-translate-y-1' : ''}`}>
       <Foto
+        content={content}
+        color={color}
         cat={cat}
         fit={content.image_fit || 'contain'}
         zoom={zoom}
@@ -87,7 +118,7 @@ function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; conten
       className={`group block overflow-hidden bg-white ${sombra} ${content.card_hover === 'lift' ? 'transition-transform hover:-translate-y-1' : ''}`}
       style={{ borderRadius: radio, ...(borde ? { border: borde } : {}) }}
     >
-      <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase={`${ratio} p-4`} fondo={fondoSuave(color, content.image_bg)} />
+      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase={`${ratio} p-4`} fondo={fondoSuave(color, content.image_bg)} />
       <div className="bg-gray-50 px-4 py-3 dark:bg-gray-800">
         <p className="font-semibold text-gray-900 dark:text-white">{cat.name}</p>
         <p className="mt-1 text-sm" style={{ color }}>Ver productos →</p>
@@ -107,7 +138,7 @@ function Pastilla({ cat, color, content }: { cat: any; color: string; content: C
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = '#fff' }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = '' }}
     >
-      <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
+      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
       <span className="text-sm font-medium group-hover:text-white">{cat.name}</span>
     </Link>
   )
@@ -123,7 +154,7 @@ function Minimo({ cat, color, content }: { cat: any; color: string; content: Con
       className={`group block px-4 py-5 text-center ${sombra} ${bordeHover ? 'border border-transparent transition hover:border-gray-400' : ''} ${content.card_hover === 'lift' ? 'hover:-translate-y-1' : ''}`}
       style={{ borderRadius: radio, backgroundColor: fondoSuave(color, content.image_bg) }}
     >
-      <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="mx-auto h-24 w-24 bg-transparent" fondo="transparent" />
+      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="mx-auto h-24 w-24 bg-transparent" fondo="transparent" preferirIcono />
       <p className="mt-3 font-bold text-gray-900 dark:text-white">{cat.name}</p>
       {content.show_count && cat.product_count != null && (
         <p className="text-xs text-gray-500">{cat.product_count} productos</p>
@@ -140,7 +171,7 @@ function CeldaBento({ cat, color, content, grande }: { cat: any; color: string; 
       className={`group relative block overflow-hidden ${grande ? 'col-span-2 row-span-2 min-h-[220px]' : 'min-h-[104px]'}`}
       style={{ borderRadius: radio }}
     >
-      <Foto cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="absolute inset-0" fondo={fondoSuave(color, content.image_bg)} />
+      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="absolute inset-0" fondo={fondoSuave(color, content.image_bg)} />
       <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/0" />
       <span className="absolute bottom-3 left-3 right-3 text-sm font-semibold text-white">{cat.name}</span>
     </Link>
