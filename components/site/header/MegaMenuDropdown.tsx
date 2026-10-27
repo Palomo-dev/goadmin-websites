@@ -22,18 +22,21 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
   // Sitio de una sede por prefijo de ruta: las categorías de la sede.
   const { ruta } = useRutaSitio();
   const colCount = Math.min(Math.max(columns || 4, 2), 6);
+  // Hasta `colCount` columnas de al menos 10rem; si no caben, el grid baja de columnas
+  // en vez de apretar o salirse del panel (paquete 5-nov C3).
+  const columnasGrid = `repeat(auto-fill, minmax(max(10rem, calc((100% - ${colCount - 1} * 1.5rem) / ${colCount})), 1fr))`;
 
   // Si hay items nombrados (sistema nuevo), renderizarlos
   if (items && items.length > 0) {
     return (
       <div
-        className="absolute left-0 right-0 top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg shadow-2xl p-6 max-h-[70vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
+        className="absolute left-0 right-0 mx-auto w-[min(56rem,100%)] overflow-x-hidden top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg shadow-2xl p-6 max-h-[70vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
         role="menu"
         aria-label="Menú"
       >
         <div
           className="grid gap-6"
-          style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+          style={{ gridTemplateColumns: columnasGrid }}
         >
           {items.map((item, i) => {
             const visibleChildren = (item.children || []).slice(0, 6);
@@ -107,13 +110,13 @@ export function MegaMenuDropdown({ categories, items, columns, primaryColor }: M
 
   return (
     <div
-      className="absolute left-0 right-0 top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg shadow-2xl p-6 max-h-[70vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
+      className="absolute left-0 right-0 mx-auto w-[min(56rem,100%)] overflow-x-hidden top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg shadow-2xl p-6 max-h-[70vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
       role="menu"
       aria-label="Categorías"
     >
       <div
         className="grid gap-6"
-        style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+        style={{ gridTemplateColumns: columnasGrid }}
       >
         {categories.map((category) => {
           const visibleChildren = category.children.slice(0, 6);
