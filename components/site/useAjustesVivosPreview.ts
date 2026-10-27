@@ -40,6 +40,8 @@ const CLAVES_PERMITIDAS = new Set([
   'social_links', 'business_hours',
   // Encabezado y pie por plantilla: idiomas del selector (el resto entra por los prefijos).
   'site_locales',
+  // Espacio encima de la primera sección (SectionWrapper).
+  'first_section_offset_px',
 ])
 /** Nunca en vivo: cambian qué datos se cargan, eso sí necesita guardar. */
 const CLAVES_EXCLUIDAS = new Set(['header_menu_id', 'header_mega_menu_id'])

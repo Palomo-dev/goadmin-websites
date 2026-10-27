@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { ZonaGlobalPreview } from './ZonaGlobalPreview'
+import { AjustesVivosProvider } from './AjustesVivosContext'
 import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPreview'
 import { CartDrawer } from './CartDrawer'
 import { CountdownBanner } from './CountdownBanner'
@@ -322,6 +323,7 @@ export function OrganizationLayoutCliente({
   } as React.CSSProperties
   
   return (
+    <AjustesVivosProvider value={vivos?.ajustes ?? null}>
     <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
     <ProveedorListaCarrusel paginacion={temaEfectivo?.paginacion ?? null} carrusel={temaEfectivo?.carrusel ?? null}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
@@ -497,5 +499,6 @@ export function OrganizationLayoutCliente({
     </RutaSitioProvider>
     </ProveedorListaCarrusel>
     </CurrencyProvider>
+    </AjustesVivosProvider>
   )
 }
