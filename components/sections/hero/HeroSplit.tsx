@@ -1,4 +1,5 @@
 'use client'
+import { capaPersonalizada, estiloTitulo } from '@/lib/website/capaHero'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -88,12 +89,13 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
   const showCta = (content as any).show_cta !== false
   const contentPosition = content.content_position || 'middle-center'
   const alignClass = verticalAlignClass(contentPosition)
+  const capaSplit = (content as any).show_overlay === false ? null : capaPersonalizada(content as any, 40)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-0 md:min-h-[60vh]">
       <div className={alignClass}>
         {showTitle && content.title && (
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 dark:text-white">{content.title}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 dark:text-white" style={estiloTitulo(content as any)}>{content.title}</h1>
         )}
         {showTitle && content.subtitle && (
           <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">{content.subtitle}</p>
@@ -131,7 +133,7 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
           </div>
         ) : null}
       </div>
-      <div className={`order-first md:order-last ${claseCaja}`}>
+      <div className={`relative order-first md:order-last ${claseCaja}`}>
         {imageUrl || imageUrlMobile ? (
           imageUrlMobile && imageUrlMobile !== imageUrl ? (
             <picture>
@@ -141,7 +143,12 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
           ) : (
             <img src={imageUrl || imageUrlMobile || ''} alt={content.title || ''} className={claseImagen} style={estiloImagen} loading="eager" />
           )
-        ) : logo ? (
+        ) : null}
+        {(imageUrl || imageUrlMobile) && capaSplit && (
+          // Paquete 5-nov D4: capa de color opcional sobre la foto (sin guardar, no hay capa).
+          <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl" style={capaSplit} />
+        )}
+        {imageUrl || imageUrlMobile ? null : logo ? (
           <img src={logo} alt={content.title || ''} className="w-full rounded-2xl shadow-lg" loading="eager" />
         ) : (
           <div className="w-full aspect-square rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${primaryColor}10` }}>

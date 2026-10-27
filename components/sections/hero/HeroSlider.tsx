@@ -1,4 +1,5 @@
 'use client'
+import { capaPersonalizada, estiloTitulo } from '@/lib/website/capaHero'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
@@ -322,6 +323,9 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const carrusel = resolverCarrusel(BASE_CARRUSEL_HERO, globalLista.carrusel, (content as { carrusel?: unknown }).carrusel, movil)
   const showBooking = parseBool((content as any).show_booking_widget, organization?.website_settings?.show_hero_booking ?? false)
   const showOverlay = parseBool((content as any).show_overlay, true)
+  // Paquete 5-nov D4: capa y título propios; sin guardar, negro 40 % y blanco como siempre.
+  const capa = capaPersonalizada(content as any, 40)
+  const tituloEstilo = estiloTitulo(content as any)
   const showTitle = parseBool((content as any).show_title, true)
   const showCta = parseBool((content as any).show_cta, true)
   const fullWidth = parseBool((content as any).full_width, true)
@@ -455,7 +459,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       >
         <CapaEnlace href={enlace} etiqueta={content.title || 'Ver más'} />
         <div className="relative z-10 pointer-events-none">
-          {showTitle && content.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{content.title}</h1>}
+          {showTitle && content.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4" style={tituloEstilo}>{content.title}</h1>}
           {showTitle && content.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{content.subtitle}</p>}
           <div className="pointer-events-auto">
             {showBooking ? (
@@ -492,7 +496,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       <div className="relative z-10 pointer-events-none min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           {showTitle && slide.title && (
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 drop-shadow-lg">{slide.title}</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 drop-shadow-lg" style={tituloEstilo}>{slide.title}</h1>
           )}
           {showTitle && slide.subtitle && (
             <p className="text-lg md:text-xl opacity-90 mb-8 drop-shadow-md">{slide.subtitle}</p>
@@ -546,7 +550,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
             loop
             playsInline
           />
-          {showOverlay && <div className="absolute inset-0 bg-black/40" />}
+          {showOverlay && (capa ? <div className="absolute inset-0" style={capa} /> : <div className="absolute inset-0 bg-black/40" />)}
           <CapaEnlace href={enlace} etiqueta={etiqueta} />
           {renderSlideText(slide)}
         </div>
@@ -565,7 +569,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
               )}
               <img src={fotoSlide} alt={slide.title || ''} className={`w-full h-full ${claseObjeto}`} style={estiloObjeto} loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
             </picture>
-            {showOverlay && <div className="absolute inset-0 bg-black/40" />}
+            {showOverlay && (capa ? <div className="absolute inset-0" style={capa} /> : <div className="absolute inset-0 bg-black/40" />)}
             <CapaEnlace href={enlace} etiqueta={etiqueta} />
             {renderSlideText(slide)}
           </div>
@@ -599,7 +603,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
       <div className={`relative min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`} style={{ backgroundColor: primaryColor, ...heightStyle }}>
         <CapaEnlace href={enlace} etiqueta={etiqueta} />
         <div className="relative z-10 pointer-events-none max-w-4xl mx-auto">
-          {showTitle && slide.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{slide.title}</h1>}
+          {showTitle && slide.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4" style={tituloEstilo}>{slide.title}</h1>}
           {showTitle && slide.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{slide.subtitle}</p>}
           <div className="pointer-events-auto">
             {showBooking ? (

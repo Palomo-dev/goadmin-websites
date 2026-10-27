@@ -1,4 +1,5 @@
 'use client'
+import { estiloTitulo } from '@/lib/website/capaHero'
 
 import { useEffect, useId, useState } from 'react'
 import { heroSolapa, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
@@ -195,7 +196,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
       )}
       <div className={`relative z-10 ${showBooking ? 'max-w-4xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 py-8 ${alignClass}`}>
         {showTitle && (
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight" style={estiloTitulo(content as any)}>
             {title}
           </h1>
         )}
