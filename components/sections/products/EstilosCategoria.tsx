@@ -204,11 +204,12 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
   } else if (estilo === 'bento') {
     const plan = planBento(categorias.length)
     const usados = plan.reduce((s, n) => s + n, 0)
+    const resto = categorias.slice(usados)
     let cursor = 0
     cuerpo = (
       <>
         <div className="grid grid-cols-2 gap-3 md:hidden">
-          {categorias.slice(0, usados).map((cat, i) => (
+          {categorias.map((cat, i) => (
             <div key={cat.id ?? i} className={i % 5 === 0 ? 'col-span-2' : ''}>
               <CeldaBento cat={cat} color={color} content={content} grande={false} />
             </div>
@@ -226,6 +227,15 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
               </div>
             )
           })}
+          {resto.length > 0 && (
+            // Paquete 5-nov D3: las que no completan un grupo de 5 u 8 van en un bloque final
+            // de celdas chicas; nunca se esconden.
+            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(resto.length, 2))}, minmax(0, 1fr))` }}>
+              {resto.map((cat, i) => (
+                <CeldaBento key={cat.id ?? `resto-${i}`} cat={cat} color={color} content={content} grande={false} />
+              ))}
+            </div>
+          )}
         </div>
       </>
     )

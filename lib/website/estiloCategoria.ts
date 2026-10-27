@@ -25,7 +25,7 @@ export function claseAjuste(valor: unknown): string {
   return 'object-contain'
 }
 
-/** Grupos completos de 5 (1 grande + 4) u 8 (1 grande + 7). El resto no se pinta. */
+/** Grupos completos de 5 (1 grande + 4) u 8 (1 grande + 7). El resto va en un bloque final de celdas chicas (EstilosCategoria). */
 export function planBento(total: number): Array<5 | 8> {
   let mejor: Array<5 | 8> = []
   let mejorSuma = 0
