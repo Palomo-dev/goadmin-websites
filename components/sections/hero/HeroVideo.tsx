@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
+import { OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'
 
 interface HeroVideoProps {
   content: {
@@ -23,7 +24,7 @@ interface HeroVideoProps {
 export function HeroVideo({ content, organization, primaryColor }: HeroVideoProps) {
   // overlay_opacity: si viene del catálogo (0-100) se normaliza; si es heredado (0-1) se respeta
   const rawOpacity = content.overlay_opacity
-  const overlayOpacity = rawOpacity != null ? (rawOpacity > 1 ? rawOpacity / 100 : rawOpacity) : 0.6
+  const overlayOpacity = rawOpacity != null ? (rawOpacity > 1 ? rawOpacity / 100 : rawOpacity) : OPACIDAD_CAPA_POR_DEFECTO.video / 100
   const overlayColor = content.overlay_color || '#000000'
   // Interruptores del inspector (pestaña Contenido). Ausente = encendido, como antes de leerlos:
   // un sitio que nunca tocó el interruptor se ve igual. `show_title` oculta título y subtítulo,

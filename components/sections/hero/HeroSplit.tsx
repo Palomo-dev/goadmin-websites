@@ -1,5 +1,5 @@
 'use client'
-import { capaPersonalizada, estiloTitulo } from '@/lib/website/capaHero'
+import { capaPersonalizada, estiloTitulo, OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -89,7 +89,9 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
   const showCta = (content as any).show_cta !== false
   const contentPosition = content.content_position || 'middle-center'
   const alignClass = verticalAlignClass(contentPosition)
-  const capaSplit = (content as any).show_overlay === false ? null : capaPersonalizada(content as any, 40)
+  // QA 27-oct: con color guardado pero sin opacidad, la opacidad es la del editor (0 = sin capa).
+  const capaBase = (content as any).show_overlay === false ? null : capaPersonalizada(content as any, OPACIDAD_CAPA_POR_DEFECTO.split)
+  const capaSplit = capaBase && capaBase.opacity > 0 ? capaBase : null
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center py-8 md:py-0 md:min-h-[60vh]">

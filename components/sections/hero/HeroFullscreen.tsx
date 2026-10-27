@@ -1,5 +1,5 @@
 'use client'
-import { estiloTitulo } from '@/lib/website/capaHero'
+import { estiloTitulo, OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'
 
 import { useEffect, useId, useState } from 'react'
 import { heroSolapa, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
@@ -190,7 +190,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
           style={{
             backgroundColor: overlayColor,
             // Si overlay_opacity está definido, usarlo; si no, preservar 0.7 con imagen / 1 sin imagen (heredado)
-            opacity: overlayOpacity != null ? overlayOpacity : imageUrl || imageUrlMobile ? 0.7 : 1,
+            opacity: overlayOpacity != null ? overlayOpacity : imageUrl || imageUrlMobile ? OPACIDAD_CAPA_POR_DEFECTO.fullscreen / 100 : 1,
           }}
         />
       )}

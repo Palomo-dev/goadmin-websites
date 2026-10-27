@@ -1,5 +1,5 @@
 'use client'
-import { capaPersonalizada, estiloTitulo } from '@/lib/website/capaHero'
+import { capaPersonalizada, estiloTitulo, OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
@@ -324,7 +324,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const showBooking = parseBool((content as any).show_booking_widget, organization?.website_settings?.show_hero_booking ?? false)
   const showOverlay = parseBool((content as any).show_overlay, true)
   // Paquete 5-nov D4: capa y título propios; sin guardar, negro 40 % y blanco como siempre.
-  const capa = capaPersonalizada(content as any, 40)
+  const capa = capaPersonalizada(content as any, OPACIDAD_CAPA_POR_DEFECTO.slider)
   const tituloEstilo = estiloTitulo(content as any)
   const showTitle = parseBool((content as any).show_title, true)
   const showCta = parseBool((content as any).show_cta, true)

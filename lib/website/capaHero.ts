@@ -18,6 +18,14 @@ function opacidad(valor: unknown): number | undefined {
 }
 
 /** Capa propia `{ backgroundColor, opacity }` o `null` si el contenido no la configuró. */
+/**
+ * Opacidad (%) de la capa de la portada cuando no hay `overlay_opacity` guardado, por variante
+ * (QA 27-oct, D4). Es lo que la tienda pintaba antes de D4 y lo que el editor del ERP muestra
+ * (DEFAULT_POR_VARIANTE.hero.overlay_opacity en go-admin-erp interruptoresSitio.ts): si cambia
+ * aquí, cambiarlo allá. Dividido = 0: sin valor guardado no hay capa.
+ */
+export const OPACIDAD_CAPA_POR_DEFECTO = { fullscreen: 70, video: 60, slider: 40, split: 0 } as const
+
 export function capaPersonalizada(
   content: { overlay_color?: unknown; overlay_opacity?: unknown } | null | undefined,
   opacidadPorDefecto = 40,
