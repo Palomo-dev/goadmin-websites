@@ -5,7 +5,6 @@ import {
   getOrganizationProducts, 
   getOrganizationProductsConEstado,
   contarProductosListado,
-  PRODUCT_LIST_MAX,
   getOrganizationCategories,
   getOrganizationSpaceTypes,
   getOrganizationSpaces,
@@ -268,8 +267,14 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     const needsCategories = needsProducts || sectionTypes.some((t) => t === 'menu_full' || t === 'menu_preview')
     if (needsProducts) {
       // Paquete 5-nov E: si la consulta falla, la sección no dice «No hay productos» (productsError).
-      const r = await getOrganizationProductsConEstado(organization.id, 500, branchId)
+      // QA 27-oct: primera página (500, una entrada de caché < 2 MB) + total real; la grilla
+      // pide el resto por partes (/api/catalogo/productos). Antes: «500 productos» con 600.
+      const [r, total] = await Promise.all([
+        getOrganizationProductsConEstado(organization.id, 500, branchId),
+        sectionTypes.includes('products_grid') ? contarProductosListado(organization.id, branchId) : Promise.resolve(null),
+      ])
       data.products = r.products
+      if (total != null) data.productsTotal = total
       if (r.error) data.productsError = true
     }
     // Carta completa: sin el corte de 500 del listado general (cartas de cientos de platos).
@@ -655,10 +660,10 @@ async function renderSlugFallback(
         gym: 'Membresías', transport: 'Rutas Disponibles', parking: 'Tarifas', services: 'Planes'
       }[businessType.type] || 'Productos'
 
-      // Paquete 5-nov E: el catálogo completo hasta PRODUCT_LIST_MAX (lotes de 500) y el total
+      // Paquete 5-nov E (QA 27-oct): primera página de 500 desde el servidor; ProductGrid pide el resto por partes. Total
       // real con count exact; antes, tope silencioso de 500 («500 productos» con 600).
       const [resultado, categories, totalCatalogo] = await Promise.all([
-        getOrganizationProductsConEstado(organization.id, PRODUCT_LIST_MAX, branchId),
+        getOrganizationProductsConEstado(organization.id, 500, branchId),
         getOrganizationCategories(organization.id, branchId),
         contarProductosListado(organization.id, branchId),
       ])
@@ -681,7 +686,7 @@ async function renderSlugFallback(
               organizationId={organization.id}
               showBuyNow={organization.website_settings?.show_buy_now_button !== false}
               branchId={branchId}
-              totalCatalogo={totalCatalogo != null && totalCatalogo > PRODUCT_LIST_MAX ? totalCatalogo : null}
+              totalCatalogo={totalCatalogo}
               errorCarga={resultado.error}
             />
           </div>

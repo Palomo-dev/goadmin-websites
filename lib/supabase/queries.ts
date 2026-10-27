@@ -695,7 +695,7 @@ export const PRODUCT_LIST_MAX = 2000
 /** Error de consulta del catálogo: se lanza dentro de la caché para que no se guarde un vacío. */
 class ErrorConsultaCatalogo extends Error {}
 
-const getOrganizationProductsUncached = async (organizationId: number, limit = 12, branchId?: number | null) => {
+const getOrganizationProductsUncached = async (organizationId: number, limit = 12, branchId?: number | null, offset = 0) => {
   const supabase = getSupabaseForPublicRead()
 
   // F3: filtrar categorías permitidas según la regla de branch_id.
@@ -743,8 +743,9 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
   // Orden estable antes del límite: con más productos que el límite, siempre salen los mismos.
   const tope = Math.max(1, Math.min(Math.floor(limit) || 12, PRODUCT_LIST_MAX))
   const data: any[] = []
-  for (let desde = 0; desde < tope; desde += PRODUCT_LIST_PAGE) {
-    const hasta = Math.min(desde + PRODUCT_LIST_PAGE, tope) - 1
+  const inicio = Math.max(0, Math.floor(offset) || 0)
+  for (let desde = inicio; desde < inicio + tope; desde += PRODUCT_LIST_PAGE) {
+    const hasta = Math.min(desde + PRODUCT_LIST_PAGE, inicio + tope) - 1
     const { data: lote, error } = await consulta().order('id', { ascending: true }).range(desde, hasta)
     if (error) {
       // Antes: `if (error) return []` mudo, y ese vacío quedaba 30 s en la caché del catálogo
@@ -3896,6 +3897,31 @@ export async function getOrganizationProductsConEstado(
   } catch (e) {
     if (!(e instanceof ErrorConsultaCatalogo)) {
       console.error('[queries] getOrganizationProducts falló', { organizationId, limit, branchId, error: e instanceof Error ? e.message : String(e) })
+    }
+    return { products: [], error: true }
+  }
+}
+
+/** Tamaño de página del listado general que se carga por partes (cada página es una entrada de caché < 2 MB). */
+export const PAGINA_LISTADO_GENERAL = PRODUCT_LIST_PAGE
+
+/**
+ * Una página (500) del listado general a partir de `desde` (paquete 5-nov E, QA 27-oct).
+ * Misma consulta, orden por id, stock y carta que `getOrganizationProducts`; cada página se
+ * cachea por separado, así ninguna respuesta pasa el tope de 2 MB de unstable_cache.
+ */
+export async function getOrganizationProductsPagina(
+  organizationId: number,
+  desde: number,
+  branchId?: number | null,
+): Promise<{ products: any[]; error: boolean }> {
+  const inicio = Math.max(0, Math.floor(desde) || 0)
+  if (inicio === 0) return getOrganizationProductsConEstado(organizationId, PRODUCT_LIST_PAGE, branchId)
+  try {
+    return { products: await getOrganizationProductsCached(organizationId, PRODUCT_LIST_PAGE, branchId ?? null, inicio), error: false }
+  } catch (e) {
+    if (!(e instanceof ErrorConsultaCatalogo)) {
+      console.error('[queries] getOrganizationProductsPagina falló', { organizationId, desde: inicio, branchId, error: e instanceof Error ? e.message : String(e) })
     }
     return { products: [], error: true }
   }

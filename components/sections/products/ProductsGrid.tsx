@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCatalogoCompleto } from '@/lib/products/useCatalogoCompleto'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from './ProductCard'
@@ -94,10 +95,12 @@ interface ProductsGridProps {
     products_limit?: number
   }
   primaryColor?: string
-  data?: { products?: any[]; productsError?: boolean; productosCategoria?: any[]; categories?: any[]; branchId?: number | null; listados?: Record<string, { products: any[]; total: number }> }
+  data?: { products?: any[]; productsTotal?: number | null; productsError?: boolean; productosCategoria?: any[]; categories?: any[]; branchId?: number | null; listados?: Record<string, { products: any[]; total: number }> }
   organization?: { subdomain?: string; website_settings?: any }
   sectionId?: string
 }
+
+const SIN_PRODUCTOS: any[] = []
 
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization, sectionId }: ProductsGridProps) {
   const { ruta } = useRutaSitio()
@@ -116,7 +119,9 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const saltoFiltro = useRef(true)
   const irRef = useRef<(n: number) => void>(() => {})
   const listado = sectionId ? data?.listados?.[sectionId] : undefined
-  const products = vistos ?? listado?.products ?? data?.products ?? []
+  // Sin listado del servidor: listado general completo por partes (primera página del servidor).
+  const general = useCatalogoCompleto(data?.products ?? SIN_PRODUCTOS, data?.productsTotal ?? null, !listado)
+  const products = vistos ?? listado?.products ?? general.productos
   const categories = data?.categories || []
   const globalLista = useListaCarrusel()
   const movil = useEsMovilLista()

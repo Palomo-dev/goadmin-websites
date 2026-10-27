@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useCatalogoCompleto } from '@/lib/products/useCatalogoCompleto'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,8 +88,9 @@ interface ProductGridProps {
 
 const ITEMS_PER_PAGE = 12
 
-export function ProductGrid({ products, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId, totalCatalogo = null, errorCarga = false }: ProductGridProps) {
+export function ProductGrid({ products: productosIniciales, categories, primaryColor, organizationSubdomain, organizationId, showBuyNow = true, branchId, totalCatalogo = null, errorCarga = false }: ProductGridProps) {
   const router = useRouter()
+  const { productos: products } = useCatalogoCompleto(productosIniciales, totalCatalogo)
   const { ruta } = useRutaSitio()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())

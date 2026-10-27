@@ -1,30 +1,8 @@
-import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
-import { resolveOutletByCustomDomain, resolveOutletBySubSubdomain, resolveOutletFromPath } from '@/lib/outlet/resolver'
+import { sedeDeLaPeticion } from '@/lib/catalogo/sedeDeLaPeticion'
 import { getListadoSeccion, getOrganizationCategories } from '@/lib/supabase/queries'
 import { pedidoServidor } from '@/lib/products/fuenteListado'
-
-/** Sede de esta petición, por las mismas cabeceras que el resto del sitio. Sin sede: null. */
-async function sedeDeLaPeticion(orgId: number): Promise<number | null> {
-  const cabeceras = await headers()
-  const dominio = cabeceras.get('x-custom-outlet-domain')
-  if (dominio) {
-    const resuelta = await resolveOutletByCustomDomain(dominio)
-    if (resuelta && resuelta.organizationId === orgId) return resuelta.outlet.branchId
-  }
-  const sub = cabeceras.get('x-outlet-subdomain')
-  if (sub) {
-    const sede = await resolveOutletBySubSubdomain(sub, orgId)
-    if (sede) return sede.branchId
-  }
-  const prefijo = cabeceras.get('x-outlet-path')
-  if (prefijo) {
-    const result = await resolveOutletFromPath(orgId, [prefijo])
-    if (result.outlet) return result.outlet.branchId
-  }
-  return null
-}
 
 /**
  * Página siguiente del listado de una sección. La organización sale del host.
