@@ -8,6 +8,7 @@ import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/d
 import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
 import { leerConstructor } from '@/lib/website/constructorEncabezado';
+import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -225,7 +226,11 @@ export function variablesEncabezado(
   const iconoCirculo = colorGuardado(settings?.header_icons_circle_fg)
   if (fondoCirculo) vars['--hdr-circle-bg'] = fondoCirculo
   if (iconoCirculo || fondoCirculo) vars['--hdr-circle-fg'] = iconoCirculo ?? iconoSobreFondo(fondoCirculo)
-  return { ...vars, ...variablesMenuMovil(settings, tema) }
+  // «Fijo al bajar» (header_sticky). Sin clave o `true` = sticky, lo de siempre. `false` deja el
+  // encabezado en el flujo; el transparente sobre la portada no se toca (necesita ir pegado arriba).
+  const noFijo = (settings as Record<string, unknown> | undefined)?.header_sticky === false
+    && !headerSobreHero(settings as Parameters<typeof headerSobreHero>[0])
+  return { ...vars, ...variablesMenuMovil(settings, tema), ...(noFijo ? { position: 'relative' as const } : {}) }
 }
 
 /** Tema que el menú móvil usa para mezclar la opacidad y el contraste de los botones. */
