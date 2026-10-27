@@ -1,10 +1,15 @@
+import { icons } from 'lucide-react'
+import { DynamicLucideIcon } from '../products/DynamicLucideIcon'
+
 interface WhyChooseUsIconsProps {
   content: {
     title?: string
     subtitle?: string
     items?: Array<{
       icon?: string
-      label: string
+      label?: string
+      /** El editor v2 guarda `title` (no `label`). */
+      title?: string
       description?: string
     }>
   }
@@ -36,9 +41,14 @@ export function WhyChooseUsIcons({ content, primaryColor }: WhyChooseUsIconsProp
               className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mx-auto mb-3"
               style={{ backgroundColor: `${primaryColor}15` }}
             >
-              {ICON_MAP[item.icon || ''] || '✨'}
+              {ICON_MAP[item.icon || '']
+                ?? (item.icon && (icons as Record<string, unknown>)[item.icon]
+                  ? <DynamicLucideIcon name={item.icon} className="h-7 w-7" style={{ color: primaryColor }} aria-hidden />
+                  : '✨')}
             </div>
-            <h3 className="font-semibold mb-1 text-gray-900 dark:text-white">{item.label}</h3>
+            {(item.label || item.title) && (
+              <h3 className="font-semibold mb-1 text-gray-900 dark:text-white">{item.label || item.title}</h3>
+            )}
             {item.description && (
               <p className="text-gray-500 dark:text-gray-400 text-sm">{item.description}</p>
             )}
