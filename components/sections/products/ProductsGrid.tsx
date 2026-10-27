@@ -217,6 +217,16 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
     content,
     ajusteLista ? paginacion.porPagina : undefined,
   )
+  // QA 27-oct (E): mientras el listado general se completa por partes, el contador muestra el
+  // total real del servidor desde el primer render (no 500 → 600). Solo sin filtros del
+  // visitante ni de la sección y sin tope de la presentación, donde ese total es exacto.
+  const totalGeneral = data?.productsTotal ?? null
+  const totalContador =
+    !listado && !vistos && totalGeneral != null && totalGeneral > filteredProducts.length &&
+    recorte.universo === filteredProducts.length && !filtros.activos &&
+    !(content.selected_category_ids?.length) && content.exclude_out_of_stock !== true
+      ? totalGeneral
+      : recorte.universo
   const porPagina = ajusteLista
     ? paginacion.porPagina
     : presentacion?.perPage ?? pedidoServidor(content)?.limit ?? 12
@@ -362,7 +372,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           categorias={categoriasChips}
           estado={filtros.estado}
           cambiar={filtros.cambiar}
-          total={totalRemoto ?? listado?.total ?? recorte.universo}
+          total={totalRemoto ?? listado?.total ?? totalContador}
           primaryColor={primaryColor}
           mostrarFiltros={content.show_filters !== false}
           mostrarCategorias={content.show_categories !== false}
@@ -375,7 +385,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           categorias={categoriasChips}
           estado={filtros.estado}
           cambiar={filtros.cambiar}
-          total={recorte.universo}
+          total={totalContador}
           primaryColor={primaryColor}
           mostrarFiltros={content.show_filters !== false}
           mostrarBuscador={content.show_search === true}
