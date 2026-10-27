@@ -744,7 +744,10 @@ function CardButtonRenderer({
     // El ícono del botón normal (Plus, etc.) no se reutiliza: «Elegir» lleva Layers.
     // La excepción es «Sin icono» (`''`): tampoco lleva Layers.
     const sinIcono = iconoVacio(button.icon)
-    const ChooseIcon = ICON_MAP.Layers || Layers
+    // «Solo ícono»: el ícono es todo el botón y el usuario lo eligió en el editor, así que se
+    // respeta (el enlace sigue yendo al detalle para elegir variante). Con texto, Layers como siempre.
+    const iconoElegido = btnIconOnly && button.icon ? ICON_MAP[button.icon as string] : undefined
+    const ChooseIcon = iconoElegido || ICON_MAP.Layers || Layers
     return (
       <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
         <Button
