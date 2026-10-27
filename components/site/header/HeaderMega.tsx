@@ -61,12 +61,19 @@ export default function HeaderMega({
   const { opciones } = useEncabezadoPie();
 
   // Construir nav items desde el árbol de páginas
-  const navItems: NavItem[] = buildNavItems(navTree);
+  const navItemsBase: NavItem[] = buildNavItems(navTree);
 
   // Agregar item "Categorías" si hay categorías o megaMenuItems y la configuración lo habilita
   const showCategories =
     (!!menuCategories && menuCategories.length > 0 && settings?.show_categories_in_header === true) ||
     (!!megaMenuItems && megaMenuItems.length > 0);
+
+  // «Categorías» una sola vez: si el mega menú ya pone su ítem, se quita el enlace
+  // a /categorias que venga de las páginas (paquete 5-nov C2).
+  const esEnlaceCategorias = (href: string) => /(^|\/)categorias\/?$/.test(href.split(/[?#]/)[0]);
+  const navItems: NavItem[] = showCategories
+    ? navItemsBase.filter((it) => !(esEnlaceCategorias(it.href) && !(it.children && it.children.length > 0)))
+    : navItemsBase;
 
   const megaColumns = settings?.mega_menu_columns ?? 4;
 
@@ -130,7 +137,7 @@ export default function HeaderMega({
         {/* Fila inferior: nav items con border-top — z-10 para que el dropdown del buscador superior se vea encima */}
         <div className="relative z-10 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
           <div className="max-w-7xl mx-auto px-4">
-            <nav className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
+            <nav className="relative hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
               {/* Nav items de páginas (con NavDropdown automático si tienen children) */}
               {navItems.map((item, i) => (
                 <NavLink
@@ -144,7 +151,7 @@ export default function HeaderMega({
               {/* Item "Categorías" con MegaMenuDropdown */}
               {showCategories && (
                 <div
-                  className="relative"
+                  className="static"
                   onMouseEnter={() => setMegaOpen(true)}
                   onMouseLeave={() => setMegaOpen(false)}
                 >
