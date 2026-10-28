@@ -1,6 +1,7 @@
 // Verifica el arreglo del scroll horizontal del encabezado de escritorio (768/1024) y del pie en grilla.
 import { readFileSync } from 'node:fs'
 import { debeDeslizar, bordeOculto } from '../components/site/header/menuDeslizable.ts'
+const hook = readFileSync(new URL('../components/site/header/menuDeslizable.ts', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8')
 const pie = readFileSync(new URL('../components/site/footer/PieTema.tsx', import.meta.url), 'utf8')
 const nav = readFileSync(new URL('../components/site/header/NavDropdown.tsx', import.meta.url), 'utf8')
@@ -14,6 +15,7 @@ ok(/nav\[data-nav-desliza\]\.justify-end \{\s*justify-content: flex-start/.test(
 ok(!/\.hidden\.md\\:flex > nav,\s*header nav\.hidden\.md\\:flex \{\s*min-width: 0/.test(b), 'el menú que cabe no cede ancho (como antes de 0ee7dcd)')
 ok(!debeDeslizar(1280, 600, 600) && !debeDeslizar(1024, 601, 600) && debeDeslizar(1024, 700, 600) && !debeDeslizar(700, 900, 600), 'debeDeslizar: solo ≥768 y si no cabe')
 ok(debeDeslizar(768, 600, 600, { primerIzq: -6, navIzq: 10 }) && debeDeslizar(768, 600, 600, { contenido: 640 }) && debeDeslizar(768, 600, 600, { vecinosDesbordan: true }) && !debeDeslizar(768, 600, 600, { primerIzq: 10, navIzq: 10, contenido: 590 }), 'debeDeslizar: desborde a la izquierda (justify-end), suma de anchos y vecinos empujados')
+ok(/if \(tenia\) nav\.removeAttribute\(ATRIBUTO_DESLIZA\)\s*\n\s*const si = debeDeslizar/.test(hook) && hook.includes("window.addEventListener('resize', medir)"), 'O1: se mide sin la marca y se decide otra vez (también al cambiar el tamaño de la ventana)')
 ok(bordeOculto(false, 0, 900, 600) === null && bordeOculto(true, 0, 900, 600) === 'der' && bordeOculto(true, 150, 900, 600) === 'ambos' && bordeOculto(true, 300, 900, 600) === 'izq', 'bordeOculto: aviso solo si desliza y en el borde con enlaces escondidos')
 ok(css.includes("header nav[data-nav-desliza][data-nav-oculto='der'] {\n    -webkit-mask-image"), 'degradado solo con data-nav-desliza')
 ok(nav.includes('style={posPanel}') && nav.includes('ref={ancla}'), 'NavDropdown se coloca bajo su enlace al deslizar')

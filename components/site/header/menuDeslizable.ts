@@ -67,8 +67,17 @@ export function useMenuDeslizable(): void {
     if (typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return
     const medir = () => {
       document.querySelectorAll<HTMLElement>(SELECTOR_MENU_ESCRITORIO).forEach((nav) => {
+        // Se decide siempre sin la marca (QA O1: al pasar de 768 a 1280 quedaba marcada): se quita,
+        // se mide el menú como es y se vuelve a poner solo si no cabe. Mismo frame: no parpadea.
+        const tenia = nav.hasAttribute(ATRIBUTO_DESLIZA)
+        const pos = nav.scrollLeft
+        if (tenia) nav.removeAttribute(ATRIBUTO_DESLIZA)
         const si = debeDeslizar(window.innerWidth, nav.scrollWidth, nav.clientWidth, medidasMenu(nav))
-        if (si !== nav.hasAttribute(ATRIBUTO_DESLIZA)) nav.toggleAttribute(ATRIBUTO_DESLIZA, si)
+        if (si) {
+          nav.setAttribute(ATRIBUTO_DESLIZA, '')
+          if (pos) nav.scrollLeft = pos
+        }
+        else if (tenia) nav.removeAttribute(ATRIBUTO_BORDE)
         marcarBorde(nav)
       })
     }
