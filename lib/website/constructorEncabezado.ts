@@ -574,6 +574,25 @@ export function buscadorEnBarra(tipo: BuscadorNuevo | undefined): boolean {
   return !!tipo && tipo !== 'icon_overlay'
 }
 
+/** Claves de Encabezado que reemplazan al Constructor (las lee este archivo). */
+export const CLAVES_ENCABEZADO_SIN_CONSTRUCTOR = [
+  'header_cta3_text',
+  'header_cta3_url',
+  'header_cta4_text',
+  'header_cta4_url',
+  'header_cta5_text',
+  'header_cta5_url',
+  'header_cta6_text',
+  'header_cta6_url',
+  'header_menu2_label',
+  'header_menu2_links',
+  'header_menu3_label',
+  'header_menu3_links',
+  'header_menu4_label',
+  'header_menu4_links',
+  'header_icons_box',
+] as const
+
 /**
  * Caja de los íconos que pinta el encabezado: la de Encabezado (`header_icons_box`) y, sin ella,
  * la del Constructor (`header_builder.icon_container`, p. ej. el borrador de la org 134).

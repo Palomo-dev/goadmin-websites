@@ -60,8 +60,8 @@ await rm(dir, { recursive: true, force: true })
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
-const JSON_SIN_REGLA = new Set(['mobile_header', 'header_builder'])
-check(nuevas.length === 52, `se esperaban 52 opciones nuevas y hay ${nuevas.length}`)
+const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
+check(nuevas.length === 67, `se esperaban 67 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -181,6 +181,21 @@ const CONSUMIDORES = {
   header_scroll: ['components/site/SiteHeader.tsx', 'header_scroll'],
   mobile_header: ['lib/website/menuMovil.ts', 'mobile_header'],
   header_builder: ['lib/website/constructorEncabezado.ts', 'header_builder'],
+  header_cta3_text: ['lib/website/constructorEncabezado.ts', 'header_cta3_text'],
+  header_cta3_url: ['lib/website/constructorEncabezado.ts', 'header_cta3_url'],
+  header_cta4_text: ['lib/website/constructorEncabezado.ts', 'header_cta4_text'],
+  header_cta4_url: ['lib/website/constructorEncabezado.ts', 'header_cta4_url'],
+  header_cta5_text: ['lib/website/constructorEncabezado.ts', 'header_cta5_text'],
+  header_cta5_url: ['lib/website/constructorEncabezado.ts', 'header_cta5_url'],
+  header_cta6_text: ['lib/website/constructorEncabezado.ts', 'header_cta6_text'],
+  header_cta6_url: ['lib/website/constructorEncabezado.ts', 'header_cta6_url'],
+  header_menu2_label: ['lib/website/constructorEncabezado.ts', 'header_menu2_label'],
+  header_menu2_links: ['lib/website/constructorEncabezado.ts', 'header_menu2_links'],
+  header_menu3_label: ['lib/website/constructorEncabezado.ts', 'header_menu3_label'],
+  header_menu3_links: ['lib/website/constructorEncabezado.ts', 'header_menu3_links'],
+  header_menu4_label: ['lib/website/constructorEncabezado.ts', 'header_menu4_label'],
+  header_menu4_links: ['lib/website/constructorEncabezado.ts', 'header_menu4_links'],
+  header_icons_box: ['lib/website/constructorEncabezado.ts', 'header_icons_box'],
   header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
   first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],
   mobile_menu_bg_color: ['lib/headerColors.ts', 'mobile_menu_bg_color'],
