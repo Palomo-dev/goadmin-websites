@@ -187,10 +187,10 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   const hasExplicitBg = cardStyle.card_bg && cardStyle.card_bg.length > 0
   const bg = hasExplicitBg ? cardStyle.card_bg : undefined
   const isRound = cardStyle.shape === 'circle' || cardStyle.shape === 'round'
-  // Origen del medio: `icon` fuerza el ícono, `image` la foto (o el ícono si no hay), `color`/`initial` la inicial.
+  // Origen del medio (igual que CategoryCard): `icon` el ícono, `image` la foto (sin foto, el respaldo), `color`/`initial` la inicial.
   const origen = cardStyle.media_source || 'auto'
   const wantImage = origen === 'auto' ? cardStyle.show_image !== false && cat.image_url : origen === 'image' ? cat.image_url : null
-  const wantIcon = origen === 'auto' ? cardStyle.show_icon : origen === 'icon' || origen === 'image'
+  const wantIcon = origen === 'auto' ? cardStyle.show_icon : origen === 'icon'
   const wantColor = origen === 'auto' ? cardStyle.show_color && cat.color : origen === 'color' || origen === 'initial' ? (cat.color || primaryColor || '#6366f1') : false
   const accent = typeof wantColor === 'string' && wantColor ? wantColor : (primaryColor || '#6366f1')
   // Ancho máximo del medio en la lista: sin valor, 56 px como siempre.
