@@ -439,8 +439,10 @@ export default function SiteHeader({
     variante
   )
   if (!scroll.activo) return nodo
+  const fijoEnvoltorio = (settings as Record<string, unknown> | null | undefined)?.header_sticky !== false
   return (
-    <div className={scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : undefined}>
+    // El envoltorio rompe el `sticky` del <header> interno: el envoltorio toma el fijo (header_sticky).
+    <div className={[fijoEnvoltorio ? 'sticky top-0 z-40' : '', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ') || undefined}>
       {nodo}
     </div>
   )
