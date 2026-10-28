@@ -11,7 +11,7 @@ export function urlConEstilo(url: string, content: unknown): string {
   if (estilo !== 'satellite' || !url || !/^https:\/\/(www\.)?maps\.google\.[a-z.]+\/|^https:\/\/(www\.)?google\.[a-z.]+\/maps/.test(url)) return url
   // Enlace `maps/embed?pb=…`: el tipo de mapa va dentro de pb (`!5e0` calle, `!5e1` satélite).
   if (/\/maps\/embed\?/.test(url) && /[?&]pb=/.test(url)) {
-    return /!5e\d/.test(url) ? url.replace(/!5e\d/, '!5e1') : url
+    return /!5e\d/.test(url) ? url.replace(/!5e\d/, '!5e1') : url.replace(/([?&]pb=[^&]*)/, '$1!5e1')
   }
   return /[?&]t=/.test(url) ? url.replace(/([?&])t=[^&]*/, '$1t=k') : `${url}${url.includes('?') ? '&' : '?'}t=k`
 }

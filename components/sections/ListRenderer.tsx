@@ -78,7 +78,7 @@ export const SiLista = forwardRef<HTMLDivElement, {
     && lista.columnsTablet == null
     && lista.columnsMobile == null
   return (
-    <ListRenderer lista={lista} className={conserva ? className : undefined} style={conserva ? style : undefined} celda={proporcionCeldas && !conserva && lista.mode === 'grid' ? proporcionEnvoltorio(content) : undefined}>
+    <ListRenderer lista={lista} className={conserva ? className : undefined} style={conserva ? style : undefined} celda={proporcionCeldas && !conserva && (lista.mode === 'grid' || lista.mode === 'carousel') ? proporcionEnvoltorio(content) : undefined}>
       {children}
     </ListRenderer>
   )

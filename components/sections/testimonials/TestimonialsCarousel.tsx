@@ -94,6 +94,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
         </div>
       ) : (
       <SiLista
+        proporcionCeldas
         content={content}
         className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 ${proporcionHijos(content)}`}
         style={{ gap: `${gap}px` }}
