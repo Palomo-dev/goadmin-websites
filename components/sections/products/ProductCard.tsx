@@ -35,6 +35,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Check, Package, Layers, ShoppingBag, ShoppingCart, Heart, Eye, Share2,
   MessageCircle, Star, TrendingUp, Zap, ArrowRight,
+  BadgeCheck, ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -71,7 +72,7 @@ import {
   type EstiloBotonTarjeta,
   type EstiloTarjetaProducto,
 } from '@/lib/website/tarjetaProducto'
-import { useEstiloTarjeta, useVendidosTarjeta } from '@/components/site/TarjetaProductoContext'
+import { useEstiloTarjeta, useVendidosTarjeta, useEtiquetasPropiasTarjeta } from '@/components/site/TarjetaProductoContext'
 import {
   getProductComparePrice,
   getProductDiscount,
@@ -522,7 +523,11 @@ function BadgeRenderer({
   const Icon = badge.icon === 'Layers' ? Layers :
     badge.icon === 'TrendingUp' ? TrendingUp :
     badge.icon === 'Zap' ? Zap :
-    badge.icon === 'Star' ? Star : null
+    badge.icon === 'Star' || badge.icon === 'star' ? Star :
+    badge.icon === 'zap' ? Zap :
+    badge.icon === 'trending' ? TrendingUp :
+    badge.icon === 'check' ? BadgeCheck :
+    badge.icon === 'shield' ? ShieldCheck : null
 
   return (
     <span className={classes} style={style}>
@@ -836,6 +841,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const estiloTarjeta = useEstiloTarjeta(cardStyle?.product_card_style)
   const vendidos = useVendidosTarjeta(cardStyle?.product_card_style)
+  const etiquetasPropias = useEtiquetasPropiasTarjeta(cardStyle?.product_card_style)
   const router = useRouter()
   const { ruta } = useRutaSitio()
   const [internalAdded, setInternalAdded] = useState(false)
@@ -980,6 +986,8 @@ export function ProductCard({
   if (vendidos && !(variant === 'list' && !estiloTarjeta) && !effectiveBadges.some((b) => b.type === 'sales_count')) {
     effectiveBadges = [...effectiveBadges, ...DEFAULT_BADGES.filter((b) => b.type === 'sales_count')]
   }
+  // Etiquetas propias («Originales»…): para todos los productos, al final de su esquina (se apilan).
+  if (etiquetasPropias.length > 0) effectiveBadges = [...effectiveBadges, ...etiquetasPropias]
 
   const precio = estiloPrecio(mergedCardStyle, primaryColor)
   const colorAnterior = colorPrecioAnterior(mergedCardStyle)

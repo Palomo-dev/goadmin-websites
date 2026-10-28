@@ -17,6 +17,9 @@ import {
   separacionTarjetas,
   valoresDePreset,
   vendidosEnTarjeta,
+  etiquetasPropiasEnTarjeta,
+  textoContraste,
+  normalizarTarjeta,
   vistaEditorTarjeta,
 } from '../lib/website/tarjetaProducto.ts'
 
@@ -116,6 +119,24 @@ check(guardarCambioTarjeta({}, 'show_sales_count', true).show_sales_count === tr
 check(guardarCambioTarjeta({ show_sales_count: true }, 'show_sales_count', undefined).show_sales_count === undefined, 'apagarla borra la clave')
 check(vistaEditorTarjeta(null, { show_sales_count: true }).show_sales_count === true, 'el inspector la ve heredada')
 check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mode: 'value', value: { show_sales_count: true } } }).success, 'el contrato acepta show_sales_count')
+
+// Etiquetas propias («Originales»): lista; sola no activa el estilo.
+const orig = { labels_custom: [{ id: 'o', label: '  Originales ', bg: '#FACC15' }] }
+check(aplicarEstiloTarjeta(orig) === null && resolverTarjetaProducto(orig, null) === null, 'etiquetas propias solas: tarjeta de hoy')
+check(normalizarTarjeta(orig).labels_custom[0].label === 'Originales', 'texto recortado')
+check(normalizarTarjeta({ labels_custom: [{ label: '' }, 3, { label: 'x'.repeat(40) }] }).labels_custom.length === 1, 'sin texto se descarta')
+check(normalizarTarjeta({ labels_custom: Array.from({ length: 9 }, (_, i) => ({ label: 'e' + i })) }).labels_custom.length === 6, 'máximo 6')
+check(normalizarTarjeta({ labels_custom: [] }) === null, 'lista vacía = nada')
+const pint = etiquetasPropiasEnTarjeta({ show_sales_count: true, ...orig }, null)
+check(pint.length === 1 && pint[0].type === 'custom' && pint[0].position === 'top-right' && pint[0].text_color === '#111827', 'pinta Originales arriba a la derecha con contraste oscuro sobre amarillo')
+check(textoContraste('#111827') === '#FFFFFF', 'contraste claro sobre oscuro')
+check(etiquetasPropiasEnTarjeta(orig, { labels_custom: [{ label: 'B', show: false }] }).length === 0, 'la sección reemplaza la lista del sitio')
+check(etiquetasPropiasEnTarjeta(null, null).length === 0, 'sin lista: como hoy')
+check(guardarCambioTarjeta({ show_sales_count: true }, 'labels_custom', orig.labels_custom).show_sales_count === true, 'guardar la lista conserva vendidos')
+check(guardarCambioTarjeta(orig, 'labels_custom', []).labels_custom === undefined, 'quitar todas borra la clave')
+check(vistaEditorTarjeta(null, orig).labels_custom?.length === 1, 'el inspector ve la lista heredada')
+
+check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mode: 'value', value: { show_sales_count: true, labels_custom: [{ id: 'o', label: 'Originales', bg: '#FACC15' }] } } }).success, 'el contrato acepta labels_custom')
 
 if (problemas.length) {
   console.error(problemas.join('\n'))
