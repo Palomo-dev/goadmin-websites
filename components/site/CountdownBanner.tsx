@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { instanteFin, objetivoVigente, proximoReinicio } from '@/lib/website/contadorColumnas'
+import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+
+/**
+ * Texto y dígitos sobre el primario: `--texto-sobre-primario` (lo emite el layout de la tienda) y,
+ * donde no existe (checkout, fuera del layout), el mismo cálculo aquí; blanco si el color no es hex.
+ */
+export function colorSobrePrimario(primario: string): string {
+  return `var(--texto-sobre-primario, ${textoSobreAcentoSiHex(primario) ?? '#ffffff'})`
+}
 
 export interface CountdownConfig {
   countdown_enabled?: boolean
@@ -99,8 +108,8 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
   if (variant === 'full') {
     return (
       <div
-        className={`w-full py-8 sm:py-12 px-4 text-white relative overflow-hidden ${className}`}
-        style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc, ${primaryColor}ee)` }}
+        className={`w-full py-8 sm:py-12 px-4 relative overflow-hidden ${className}`}
+        style={{ color: colorSobrePrimario(primaryColor), background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc, ${primaryColor}ee)` }}
       >
         {/* Decoración de fondo */}
         <div className="absolute inset-0 opacity-10">
@@ -118,28 +127,28 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
           <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 tracking-tight">
             {title}
           </h3>
-          <p className="text-white/80 text-sm sm:text-base mb-6">¡No te pierdas esta oportunidad!</p>
+          <p className="opacity-80 text-sm sm:text-base mb-6">¡No te pierdas esta oportunidad!</p>
           
           <div className="flex items-center justify-center gap-3 sm:gap-4">
             <div className="flex flex-col items-center">
               <span className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 sm:px-6 sm:py-4 font-mono font-bold text-3xl sm:text-4xl md:text-5xl shadow-lg border border-white/10">
                 {pad(timeLeft.hours)}
               </span>
-              <span className="text-xs sm:text-sm mt-2 text-white/70 font-medium uppercase tracking-wider">Horas</span>
+              <span className="text-xs sm:text-sm mt-2 opacity-70 font-medium uppercase tracking-wider">Horas</span>
             </div>
-            <span className="text-2xl sm:text-3xl font-bold text-white/60 -mt-6">:</span>
+            <span className="text-2xl sm:text-3xl font-bold opacity-60 -mt-6">:</span>
             <div className="flex flex-col items-center">
               <span className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 sm:px-6 sm:py-4 font-mono font-bold text-3xl sm:text-4xl md:text-5xl shadow-lg border border-white/10">
                 {pad(timeLeft.minutes)}
               </span>
-              <span className="text-xs sm:text-sm mt-2 text-white/70 font-medium uppercase tracking-wider">Minutos</span>
+              <span className="text-xs sm:text-sm mt-2 opacity-70 font-medium uppercase tracking-wider">Minutos</span>
             </div>
-            <span className="text-2xl sm:text-3xl font-bold text-white/60 -mt-6">:</span>
+            <span className="text-2xl sm:text-3xl font-bold opacity-60 -mt-6">:</span>
             <div className="flex flex-col items-center">
               <span className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 sm:px-6 sm:py-4 font-mono font-bold text-3xl sm:text-4xl md:text-5xl shadow-lg border border-white/10">
                 {pad(timeLeft.seconds)}
               </span>
-              <span className="text-xs sm:text-sm mt-2 text-white/70 font-medium uppercase tracking-wider">Segundos</span>
+              <span className="text-xs sm:text-sm mt-2 opacity-70 font-medium uppercase tracking-wider">Segundos</span>
             </div>
           </div>
         </div>
@@ -147,24 +156,27 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
     )
   }
 
-  // Variante banner (barra delgada debajo del header)
+  // Variante banner (barra delgada debajo del header). Siempre una línea: en celular se oculta el 🔥
+  // final, baja la letra y el título se recorta con «…» si no cabe.
   if (variant === 'banner') {
+    const sobre = colorSobrePrimario(primaryColor)
     return (
       <div
-        className={`w-full py-2 px-4 text-center text-white text-sm font-medium ${className}`}
-        style={{ backgroundColor: primaryColor }}
+        className={`w-full py-2 px-3 sm:px-4 text-center text-[13px] sm:text-sm font-medium ${className}`}
+        style={{ backgroundColor: primaryColor, color: sobre }}
+        data-contador="banner"
       >
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          <span className="animate-pulse">🔥</span>
-          <span>{title}</span>
-          <div className="flex items-center gap-1 font-mono font-bold text-base">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-nowrap">
+          <span className="animate-pulse shrink-0">🔥</span>
+          <span className="min-w-0 truncate">{title}</span>
+          <div className="flex shrink-0 items-center gap-1 font-mono font-bold text-sm sm:text-base">
             <span className="bg-white/20 rounded px-1.5 py-0.5">{pad(timeLeft.hours)}</span>
             <span>:</span>
             <span className="bg-white/20 rounded px-1.5 py-0.5">{pad(timeLeft.minutes)}</span>
             <span>:</span>
             <span className="bg-white/20 rounded px-1.5 py-0.5">{pad(timeLeft.seconds)}</span>
           </div>
-          <span className="animate-pulse">🔥</span>
+          <span className="animate-pulse hidden sm:inline">🔥</span>
         </div>
       </div>
     )
@@ -175,12 +187,13 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
     return (
       <div
         className={`rounded-lg p-3 text-center ${className}`}
+        data-contador="inline"
         style={{ backgroundColor: `${primaryColor}10`, borderColor: `${primaryColor}30`, borderWidth: '1px' }}
       >
-        <p className="text-xs font-medium mb-1" style={{ color: primaryColor }}>
+        <p className="text-xs font-medium mb-1 text-gray-900 dark:text-gray-100">
           ⏰ {title}
         </p>
-        <div className="flex items-center justify-center gap-1 font-mono font-bold text-lg" style={{ color: primaryColor }}>
+        <div className="flex items-center justify-center gap-1 font-mono font-bold text-lg text-gray-900 dark:text-gray-100">
           <span className="bg-white dark:bg-gray-800 rounded px-2 py-0.5 shadow-sm">{pad(timeLeft.hours)}</span>
           <span>:</span>
           <span className="bg-white dark:bg-gray-800 rounded px-2 py-0.5 shadow-sm">{pad(timeLeft.minutes)}</span>
