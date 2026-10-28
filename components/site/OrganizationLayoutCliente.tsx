@@ -218,7 +218,7 @@ export function OrganizationLayoutCliente({
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
   // En modo mesa la barra del sitio (Reservar / Pedir) no va: la mesa tiene su propia barra.
   const menuInferiorV2 = leerMenuInferior(settings)
-  const rutaAdmiteBarra = !menuInferiorV2 && !frozenReason && !modoMesa && settings?.mobile_menu_style !== 'tabs'
+  const rutaAdmiteBarra = !frozenReason && !modoMesa && !menuInferiorV2 && settings?.mobile_menu_style !== 'tabs'
     && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
   // `auto` (default): la de hoy, «Reservar · Llamar · Cómo llegar · Pedir» del restaurante.
   const barraMovil = rutaAdmiteBarra && opcionesShell.barraMovil === 'auto' && datosSede?.barraMovil
@@ -484,7 +484,12 @@ export function OrganizationLayoutCliente({
       {menuInferiorV2 && !frozenReason && !modoMesa && (
         <MenuInferior
           menu={menuInferiorV2}
-          destinos={{ ...extras.enlaces, ...(extras.destinosMenu ?? { pedir: null, reservar: null }) }}
+          destinos={{
+            ...extras.enlaces,
+            ...(extras.destinosMenu ?? { pedir: null, reservar: null }),
+            // Restaurante: los mismos Reservar y Pedir de la barra automática de hoy (sedeLayout).
+            ...(datosSede?.barraMovil ? { pedir: datosSede.barraMovil.pedir, reservar: datosSede.barraMovil.reservar } : {}),
+          }}
           organization={organizacionEncabezado as OrganizationWithDetails}
           primaryColor={primaryColor}
           navTree={arbolEncabezado ?? []}

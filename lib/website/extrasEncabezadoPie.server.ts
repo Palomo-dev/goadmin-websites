@@ -22,7 +22,6 @@ import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { getBranchesByOrg, getOrganizationCategories } from '@/lib/supabase/queries'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
 import { DIAS, horarioDeSede, horarioRevisado, parseHorario, normalizarDias, turnosDe, type HorarioSemana, type Tramo } from '@/lib/restaurant/horario'
-import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
@@ -158,10 +157,9 @@ export const getExtrasEncabezadoPie = cache(async (
     }
     const umbral = Number((settings as any)?.free_shipping_threshold)
 
-    // Menú inferior v2 (lib/website/menuInferior.ts): Reservar y Pedir del restaurante salen de sus
-    // páginas. También en restaurantes sin v2 guardado, para que el lienzo del editor los muestre.
+    // Sin consultas nuevas: el menú inferior v2 del restaurante toma Reservar y Pedir de la barra
+    // automática (sedeLayout), que ya se lee en cada petición.
     const necesitaPaginas = Array.isArray(op.barraMovil) || op.fuenteMenu === 'categorias_carta'
-      || tipo === TIPO_RESTAURANTE || leerMenuInferior(ajustes) !== null
     const paginas = necesitaPaginas ? await getPaginasPublicas(organization.id, datosSede.sedeActualId) : []
     const rutaCarta = conPrefijo(rutaDePaginaCon(paginas, ['menu_full', 'menu_preview']) ?? '/menu', prefijo)
 

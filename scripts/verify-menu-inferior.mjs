@@ -4,7 +4,8 @@
  *
  *   node --disable-warning=ExperimentalWarning scripts/verify-menu-inferior.mjs
  */
-import { leerMenuInferior, menuInicial, aGuardar, destinoBoton, botonesVisibles, telDe, whatsappDe } from '../lib/website/menuInferior.ts'
+import { leerMenuInferior, menuInicial, aGuardar, destinoBoton, botonesVisibles, telDe, whatsappDe, barraGuardada } from '../lib/website/menuInferior.ts'
+import { normalizarOpcionShell } from '../lib/website/v2/mapeoAjustes.ts'
 
 const problemas = []
 let casos = 0
@@ -46,6 +47,19 @@ check(destinoBoton({ id: 'c', action: 'call', label: 'L', icon: 'phone', visible
 check(destinoBoton({ id: 'p', action: 'page', label: 'P', icon: 'link', visible: true, target: 'nosotros' }, D) === null, 'página sin / no sale')
 check(destinoBoton({ id: 'u', action: 'url', label: 'U', icon: 'link', visible: true, target: 'https://x.co' }, D)?.tipo === 'externo', 'enlace externo')
 check(destinoBoton({ id: 's', action: 'search', label: 'B', icon: 'search', visible: true }, D)?.evento === 'search', 'buscar abre el panel')
+
+// Columna legacy en texto: el primer guardado de v2 da la barra de hoy (normalizarOpcionShell).
+const txt1 = menuInicial({ mobile_bottom_bar: 'reservar' })
+check(txt1.fuente === 'acciones' && txt1.menu.items.map((b) => b.action).join() === 'booking', '«reservar» (texto) → un botón Reservar')
+const txt2 = menuInicial({ mobile_bottom_bar: 'whatsapp,llamar' })
+check(txt2.fuente === 'acciones' && txt2.menu.items.map((b) => b.action).join() === 'whatsapp,call', '«whatsapp,llamar» (texto) → WhatsApp y Llamar')
+check(menuInicial({ mobile_bottom_bar: 'whatsapp,llamar' }, { restaurante: true }).fuente === 'acciones', 'texto en restaurante: la lista manda')
+check(menuInicial({ mobile_bottom_bar: 'xx,llamar' }, { restaurante: true }).fuente === 'restaurante', 'lista inválida = auto, como la tienda')
+for (const v of [undefined, null, 'auto', 'ninguna', 'reservar', 'whatsapp,llamar', ' llamar , como_llegar ', 'xx', 'llamar,llamar', 'a,b,c,d,e', '', [], ['pedir'], ['pedir', 'x'], ['pedir', 'reservar', 'llamar', 'whatsapp', 'agendar'], 42]) {
+  check(JSON.stringify(barraGuardada(v)) === JSON.stringify(normalizarOpcionShell('mobile_bottom_bar', v)), `barraGuardada = normalizarOpcionShell para ${JSON.stringify(v)}`)
+}
+check(telDe('573000000000') === 'tel:+573000000000', '12 dígitos con 57 → tel:+57…')
+check(telDe('+57 300 000 0000') === 'tel:+573000000000', 'con + se respeta')
 
 if (problemas.length) { console.error(`verify-menu-inferior: ${problemas.length} de ${casos} fallan`); for (const p of problemas) console.error(' -', p); process.exit(1) }
 console.log(`verify-menu-inferior: ${casos} casos OK`)

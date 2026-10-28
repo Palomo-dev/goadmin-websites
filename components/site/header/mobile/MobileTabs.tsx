@@ -200,7 +200,7 @@ export function BarraPestanas({
             label="Carrito"
             ariaLabel={unidadesCarrito > 0 ? `Carrito, ${unidadesCarrito}` : 'Carrito'}
           />
-          <TabButton href="/auth" icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
+          <TabButton href={ruta('/auth')} icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
         </div>
       </nav>
 
