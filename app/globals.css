@@ -577,8 +577,9 @@ header a[data-categoria-activa][data-categoria-activa] {
  * para no quedar recortados. Si cabe, nada cambia.
  */
 @media (min-width: 768px) {
-  header .hidden.md\:flex > nav,
-  header nav.hidden.md\:flex {
+  /* Solo el menú que se desliza cede ancho; el que cabe queda como antes de 0ee7dcd. */
+  header .hidden.md\:flex:has(> nav[data-nav-desliza]),
+  header nav[data-nav-desliza] {
     min-width: 0;
   }
   header nav[data-nav-desliza] {
@@ -598,11 +599,10 @@ header a[data-categoria-activa][data-categoria-activa] {
   header :has(> nav[data-nav-desliza]) {
     position: relative;
   }
-  header nav[data-nav-desliza].justify-center {
-    justify-content: safe center;
-  }
+  /* Al deslizar se arranca por el primer enlace (centrado o a la derecha desbordaban a la izquierda). */
+  header nav[data-nav-desliza].justify-center,
   header nav[data-nav-desliza].justify-end {
-    justify-content: safe flex-end;
+    justify-content: flex-start;
   }
   /* Aviso de enlaces escondidos: el borde que aún se puede deslizar se desvanece. */
   header nav[data-nav-desliza][data-nav-oculto='der'] {

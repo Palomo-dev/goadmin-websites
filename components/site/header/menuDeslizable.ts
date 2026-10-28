@@ -26,9 +26,40 @@ function marcarBorde(nav: HTMLElement): void {
   else if (nav.getAttribute(ATRIBUTO_BORDE) !== b) nav.setAttribute(ATRIBUTO_BORDE, b)
 }
 
-/** Decide si un menú debe deslizarse: solo en computador (≥768) y si su contenido no cabe. */
-export function debeDeslizar(anchoVentana: number, scrollWidth: number, clientWidth: number): boolean {
-  return anchoVentana >= 768 && clientWidth > 0 && scrollWidth > clientWidth + 1
+/**
+ * Decide si un menú debe deslizarse: solo en computador (≥768) y si su contenido no cabe. Además
+ * de scrollWidth (desborde a la derecha), `extra` cubre lo que scrollWidth no ve: el primer enlace
+ * empieza antes que el menú (justify-end / centrado que desborda a la izquierda), la suma de anchos
+ * y gaps supera el ancho, o el menú empuja fuera a sus vecinos (una caja del encabezado desborda).
+ */
+export function debeDeslizar(
+  anchoVentana: number,
+  scrollWidth: number,
+  clientWidth: number,
+  extra?: { primerIzq?: number; navIzq?: number; contenido?: number; vecinosDesbordan?: boolean },
+): boolean {
+  if (anchoVentana < 768 || clientWidth <= 0) return false
+  if (scrollWidth > clientWidth + 1) return true
+  if (!extra) return false
+  if (extra.primerIzq !== undefined && extra.navIzq !== undefined && extra.primerIzq < extra.navIzq - 1) return true
+  if (extra.contenido !== undefined && extra.contenido > clientWidth + 1) return true
+  return !!extra.vecinosDesbordan
+}
+
+/** Ancho de los hijos más sus gaps, posición del primero y si alguna caja del encabezado desborda. */
+function medidasMenu(nav: HTMLElement) {
+  const hijos = Array.from(nav.children).filter((c): c is HTMLElement => c instanceof HTMLElement && c.offsetParent !== null)
+  const cs = getComputedStyle(nav)
+  const gap = parseFloat(cs.columnGap || cs.gap || '0') || 0
+  const contenido = hijos.reduce((t, h) => t + h.getBoundingClientRect().width, 0) + gap * Math.max(0, hijos.length - 1)
+  let vecinosDesbordan = false
+  if (!nav.hasAttribute(ATRIBUTO_DESLIZA)) {
+    for (let a = nav.parentElement; a && a.tagName !== 'BODY'; a = a.parentElement) {
+      if (a.scrollWidth > a.clientWidth + 1 && getComputedStyle(a).overflowX === 'visible') { vecinosDesbordan = true; break }
+      if (a.tagName === 'HEADER') break
+    }
+  }
+  return { primerIzq: hijos[0]?.getBoundingClientRect().left, navIzq: nav.getBoundingClientRect().left, contenido, vecinosDesbordan }
 }
 
 export function useMenuDeslizable(): void {
@@ -36,7 +67,7 @@ export function useMenuDeslizable(): void {
     if (typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return
     const medir = () => {
       document.querySelectorAll<HTMLElement>(SELECTOR_MENU_ESCRITORIO).forEach((nav) => {
-        const si = debeDeslizar(window.innerWidth, nav.scrollWidth, nav.clientWidth)
+        const si = debeDeslizar(window.innerWidth, nav.scrollWidth, nav.clientWidth, medidasMenu(nav))
         if (si !== nav.hasAttribute(ATRIBUTO_DESLIZA)) nav.toggleAttribute(ATRIBUTO_DESLIZA, si)
         marcarBorde(nav)
       })
