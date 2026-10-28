@@ -29,7 +29,18 @@ const ACCION: Record<AccionBarra['accion'], { texto: string; Icono: typeof Phone
   como_llegar: { texto: 'Cómo llegar', Icono: Navigation },
 }
 
-export function BarraMovilGiro({ acciones, primaryColor }: { acciones: AccionBarra[]; primaryColor: string }) {
+/**
+ * Corte de la barra: sin breakpoint o con 768 (la columna por defecto de todas las tiendas) sigue
+ * `lg:hidden` (1024, como siempre desde 33d6711: ninguna tienda cambia). Con 640 o 1024 elegidos
+ * sigue al encabezado.
+ */
+export function clasesCorteBarra(breakpoint?: number | null): { clase: string; css: string | null } {
+  if (breakpoint == null || breakpoint === 768) return { clase: 'lg:hidden', css: null }
+  return { clase: '', css: `@media (min-width:${breakpoint}px){[data-barra-giro]{display:none}}` }
+}
+
+export function BarraMovilGiro({ acciones, primaryColor, breakpoint }: { acciones: AccionBarra[]; primaryColor: string; breakpoint?: number | null }) {
+  const corte = clasesCorteBarra(breakpoint)
   const visible = acciones.length > 0
   // La burbuja del chat sube mientras hay barra (misma clase que la barra del restaurante).
   useEffect(() => {
@@ -42,11 +53,13 @@ export function BarraMovilGiro({ acciones, primaryColor }: { acciones: AccionBar
 
   return (
     <>
-      <div className="h-[calc(4.5rem+env(safe-area-inset-bottom))] lg:hidden" aria-hidden="true" />
+      {corte.css && <style>{corte.css}</style>}
+      <div data-barra-giro="" className={`h-[calc(4.5rem+env(safe-area-inset-bottom))] ${corte.clase}`} aria-hidden="true" />
       <nav
         aria-label="Acciones rápidas"
         data-barra-movil-giro=""
-        className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden"
+        data-barra-giro=""
+        className={`fixed inset-x-0 bottom-0 z-40 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] ${corte.clase}`}
         style={{
           backgroundColor: 'var(--background-color, #ffffff)',
           color: 'var(--text-color, #111827)',

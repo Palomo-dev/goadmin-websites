@@ -478,7 +478,7 @@ export function OrganizationLayoutCliente({
       {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
       {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
       {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
-      {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} />}
+      {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} breakpoint={(settings as { mobile_breakpoint?: number | null } | undefined)?.mobile_breakpoint ?? null} />}
 
       {/* Chat Widget (oculto si la cuenta está congelada) */}
       {!frozenReason && settings?.chat_widget_enabled && settings?.chat_widget_public_key && (
