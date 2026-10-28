@@ -171,6 +171,10 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   // Fallback: si el contrato no aplicó bg/text (bg_type ausente), usar formato viejo de settings
   if (!hasContractBg && settings.bg_color) (style as any)['--section-bg'] = settings.bg_color
   if (!hasContractText && settings.text_color) (style as any)['--section-text'] = settings.text_color
+  // ESTILO-07: el borde de la sección sin color propio toma «Color del borde» de Estilo (una sola opción).
+  if (typeof content?.border_width === 'number' && content.border_width > 0 && !content?.border_color && presentacion.variables['--seccion-color-borde']) {
+    style.borderColor = 'var(--seccion-color-borde)'
+  }
   if (ptPx != null) style.paddingTop = ptPx
   else if (isFirst && !ptExplicito && !solapa && offset > 0) style.paddingTop = offset
   if (pbPx != null) style.paddingBottom = pbPx
