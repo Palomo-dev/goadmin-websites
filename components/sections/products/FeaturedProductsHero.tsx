@@ -61,7 +61,10 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data, 
   // «Mostrar descripción» del inspector. Ausente = se muestra, como antes de leerlo.
   const showDescription = content.show_description !== false
   // «Mostrar precio tachado». Ausente = sin precio anterior, como antes de leerlo.
-  const showCompare = mostrarPrecioAnterior(content)
+  // «Precio anterior tachado» del panel Tarjeta (product_card_style de la sección) manda; sin él,
+  // la clave suelta de siempre (solo con `true`). Sin claves guardadas, igual que hoy: sin tachado.
+  const tachadoTarjeta = (content.product_card_style as { show_compare_price?: unknown } | undefined)?.show_compare_price
+  const showCompare = typeof tachadoTarjeta === 'boolean' ? tachadoTarjeta : mostrarPrecioAnterior(content)
   // Filtros y buscador del visitante sobre los ya cargados; el límite (y el principal) va después.
   const filtros = useFiltrosProductos(allProducts)
   const products = filtros.filtrados.slice(0, maxItems)
