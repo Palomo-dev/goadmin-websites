@@ -1,6 +1,7 @@
 import type { Json } from '@/types/database'
 import { buildSectionStyle } from '@/lib/sectionStyle'
 import { heroSolapa, margenExplicito, offsetPrimeraPx, paddingExplicito, pxEnRango } from '@/lib/website/espacioHeader'
+import { leerMargenPropio } from '@/lib/website/espacioSeccion'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
@@ -193,6 +194,23 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
     // El alto del header ya va en el padding: no repetirlo como margen (espacio viejo + nuevo).
     if (!mtExplicito) style.marginTop = undefined
   }
+  // Margen en px por dispositivo (Cascarón › Fondo y espaciado). Sin él, las clases de siempre.
+  const margenPropio = leerMargenPropio(content)
+  let mtCaja = mt
+  let mbCaja = mb
+  if (margenPropio.margin_top != null || margenPropio.margin_top_mobile != null) {
+    const base = pxDeClaseMargen(mt)
+    ;(style as Record<string, unknown>)['--sec-mt'] = `${margenPropio.margin_top ?? base}px`
+    ;(style as Record<string, unknown>)['--sec-mt-m'] = `${margenPropio.margin_top_mobile ?? margenPropio.margin_top ?? base}px`
+    style.marginTop = undefined
+    mtCaja = 'mt-[var(--sec-mt-m)] md:mt-[var(--sec-mt)]'
+  }
+  if (margenPropio.margin_bottom != null || margenPropio.margin_bottom_mobile != null) {
+    const base = pxDeClaseMargen(mb)
+    ;(style as Record<string, unknown>)['--sec-mb'] = `${margenPropio.margin_bottom ?? base}px`
+    ;(style as Record<string, unknown>)['--sec-mb-m'] = `${margenPropio.margin_bottom_mobile ?? margenPropio.margin_bottom ?? base}px`
+    mbCaja = 'mb-[var(--sec-mb-m)] md:mb-[var(--sec-mb)]'
+  }
   const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
   const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
   const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
@@ -227,8 +245,8 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   return (
     <section
       className={fondoNuevo?.overlay_opacity
-        ? `w-full relative ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`
-        : `w-full ${ptCaja} ${pbCaja} ${mt} ${mb} ${bgClass} ${textClass} ${visualClasses}`}
+        ? `w-full relative ${ptCaja} ${pbCaja} ${mtCaja} ${mbCaja} ${bgClass} ${textClass} ${visualClasses}`
+        : `w-full ${ptCaja} ${pbCaja} ${mtCaja} ${mbCaja} ${bgClass} ${textClass} ${visualClasses}`}
       style={style}
       data-section-id={sectionId}
       data-encabezado-shell={encabezado ? '' : undefined}
@@ -269,6 +287,12 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
       )}
     </section>
   )
+}
+
+/** px de una clase mt-N / mb-N de este archivo ('' = 0). */
+function pxDeClaseMargen(clase: string): number {
+  const n = Number(/-(\d+)$/.exec(clase)?.[1])
+  return Number.isFinite(n) ? n * 4 : 0
 }
 
 function CuerpoSeccion({

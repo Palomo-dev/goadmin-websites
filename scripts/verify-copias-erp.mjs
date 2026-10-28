@@ -50,6 +50,9 @@ export const COPIAS = [
   ['lib/website/relojContador.ts', 'src/lib/website/relojContador.ts'],
   // Estilo del contador (countdown_style): mismo lector y mismos valores en la vista previa y la tienda.
   ['lib/website/estiloContador.ts', 'src/lib/website/estiloContador.ts'],
+  // Espacio de la sección: el editor muestra el relleno y el margen que la tienda aplica (mismo cálculo).
+  ['lib/website/espacioHeader.ts', 'src/lib/website/espacioHeader.ts'],
+  ['lib/website/espacioSeccion.ts', 'src/lib/website/espacioSeccion.ts'],
 ]
 
 /**
