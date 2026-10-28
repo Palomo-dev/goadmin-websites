@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface FaqAccordionProps {
   content: {
@@ -26,7 +27,7 @@ export function FaqAccordion({ content, primaryColor }: FaqAccordionProps) {
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
-      <div className="max-w-3xl mx-auto divide-y dark:divide-gray-700">
+      <div className={`max-w-3xl mx-auto divide-y dark:divide-gray-700 ${proporcionHijos(content)}`}>
         {items.map((item, i) => (
           <div key={i}>
             <button

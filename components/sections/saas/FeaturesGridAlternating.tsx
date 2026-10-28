@@ -1,3 +1,4 @@
+import { proporcionHijos } from '../proporcionCeldas'
 import { DynamicLucideIcon } from '@/components/sections/products/DynamicLucideIcon'
 import { clasesGridCaracteristicas } from '@/lib/website/presentacionTienda'
 import { clasesImagenBeneficio, estiloMarcoImagen } from '@/lib/website/marcoImagen'
@@ -166,7 +167,7 @@ export function FeaturesGridAlternating({ content, primaryColor = '#3B82F6' }: F
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-12">{content.subtitle}</p>
       )}
-      <div className={apilado ? clasesGridCaracteristicas(content.columns) : clasesRejillaBeneficios(content.columns, layout)}>
+      <div className={`${apilado ? clasesGridCaracteristicas(content.columns) : clasesRejillaBeneficios(content.columns, layout)} ${proporcionHijos(content)}`}>
         {items.map((item, i) => {
           const titulo = item.title || item.label || ''
           const colorDeMarca = content.icon_color == null || content.icon_color === '' || content.icon_color === 'primary'

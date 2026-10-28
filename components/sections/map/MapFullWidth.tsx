@@ -1,5 +1,7 @@
 'use client'
 
+import { filtroMapa, urlConEstilo } from './estiloMapa'
+
 interface MapFullWidthProps {
   content: Record<string, any>
   organization?: any
@@ -13,7 +15,8 @@ export function MapFullWidth({ content, organization, primaryColor = '#3B82F6' }
   return (
     <section className="w-full">
       <iframe
-        src={`https://maps.google.com/maps?q=${query}&output=embed`}
+        src={urlConEstilo(`https://maps.google.com/maps?q=${query}&output=embed`, content)}
+            style={filtroMapa(content)}
         className="w-full h-[400px] md:h-[500px] border-0"
         allowFullScreen
         loading="lazy"

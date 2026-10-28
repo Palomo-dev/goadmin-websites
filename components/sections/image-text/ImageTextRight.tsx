@@ -4,6 +4,9 @@ interface ImageTextRightProps {
     text?: string
     image_url?: string | null
     image_url_mobile?: string | null
+    body?: string
+    cta_text?: string
+    cta_url?: string
   }
   primaryColor?: string
 }
@@ -17,8 +20,16 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
             {content.title}
           </h2>
         )}
-        {content.text && (
+        {/* «Contenido» (body) y botón, como en «Imagen a la izquierda». Sin body: el texto de siempre. */}
+        {content.body ? (
+          <div className="text-gray-600 dark:text-gray-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: content.body }} />
+        ) : content.text ? (
           <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{content.text}</p>
+        ) : null}
+        {content.cta_text && content.cta_url && (
+          <a href={content.cta_url} className="mt-6 inline-block px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: primaryColor || '#3B82F6' }}>
+            {content.cta_text}
+          </a>
         )}
       </div>
       <div className="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-[4/3]">

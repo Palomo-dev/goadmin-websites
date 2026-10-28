@@ -1,5 +1,6 @@
 import { icons } from 'lucide-react'
 import { DynamicLucideIcon } from '../products/DynamicLucideIcon'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface WhyChooseUsIconsProps {
   content: {
@@ -34,7 +35,7 @@ export function WhyChooseUsIcons({ content, primaryColor }: WhyChooseUsIconsProp
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-10">{content.subtitle}</p>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+      <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 ${proporcionHijos(content)}`}>
         {items.map((item, i) => (
           <div key={i} className="text-center">
             <div

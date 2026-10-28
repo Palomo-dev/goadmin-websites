@@ -1,5 +1,7 @@
 'use client'
 
+import { filtroMapa, urlConEstilo } from './estiloMapa'
+
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { filasHorario, normalizarDias, parseHorario } from '@/lib/restaurant/horario'
 import { urlMapaEmbebido } from '@/lib/maps/comoLlegar'
@@ -28,7 +30,8 @@ export function MapEmbedded({ content, organization, primaryColor = '#3B82F6' }:
         <div className="lg:col-span-2 rounded-xl overflow-hidden min-h-[350px]">
           {mapa ? (
             <iframe
-              src={mapa}
+              src={urlConEstilo(mapa, content)}
+            style={filtroMapa(content)}
               title={`Mapa: ${address}`}
               className="w-full h-full min-h-[350px] border-0"
               allowFullScreen

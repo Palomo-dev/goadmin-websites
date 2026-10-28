@@ -1,5 +1,7 @@
 'use client'
 
+import { filtroMapa, urlConEstilo } from './estiloMapa'
+
 interface MapWithDirectionsProps {
   content: Record<string, any>
   organization?: any
@@ -20,7 +22,8 @@ export function MapWithDirections({ content, organization, primaryColor = '#3B82
         <div className="rounded-xl overflow-hidden min-h-[400px]">
           {fullAddress ? (
             <iframe
-              src={`https://maps.google.com/maps?q=${query}&output=embed`}
+              src={urlConEstilo(`https://maps.google.com/maps?q=${query}&output=embed`, content)}
+            style={filtroMapa(content)}
               className="w-full h-full min-h-[400px] border-0"
               allowFullScreen
               loading="lazy"

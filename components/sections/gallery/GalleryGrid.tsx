@@ -2,6 +2,7 @@
 
 import { CuadriculaAmpliable, lightboxActivo } from './FotosAmpliables'
 import { SiLista } from '../ListRenderer'
+import { proporcionCelda } from '../proporcionCeldas'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
 export const CONTENT_KEYS = ['title', 'images', 'lightbox'] as const
@@ -24,13 +25,13 @@ export function GalleryGrid({ content, primaryColor = '#3B82F6' }: GalleryGridPr
           <CuadriculaAmpliable
             imagenes={images}
             contenedor="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-            item="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
+            item={`${proporcionCelda(content, 'aspect-square')} rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700`}
             imagen="w-full h-full object-cover hover:scale-105 transition-transform"
           />
         ) : (
         <SiLista content={content} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img: any, i: number) => (
-            <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+            <div key={i} className={`${proporcionCelda(content, 'aspect-square')} rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700`}>
               <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover hover:scale-105 transition-transform" loading="lazy" />
             </div>
           ))}

@@ -1,3 +1,4 @@
+import { filtroMapa, urlConEstilo } from './estiloMapa'
 interface MapDefaultProps {
   content: {
     title?: string
@@ -18,7 +19,8 @@ export function MapDefault({ content, organization }: MapDefaultProps) {
       {address ? (
         <div className="rounded-xl overflow-hidden border dark:border-gray-700" style={{ height: '400px' }}>
           <iframe
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
+            src={urlConEstilo(`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`, content)}
+            style={filtroMapa(content)}
             className="w-full h-full border-0"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"

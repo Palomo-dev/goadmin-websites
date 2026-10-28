@@ -1,4 +1,5 @@
 'use client'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface StatsCardsProps {
   content: Record<string, any>
@@ -13,7 +14,7 @@ export function StatsCards({ content, primaryColor = '#3B82F6' }: StatsCardsProp
     <section className="py-16 px-4">
       <div className="max-w-6xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-6 ${proporcionHijos(content)}`}>
           {items.map((item: any, i: number) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 text-center hover:shadow-md transition-shadow">
               {item.icon && <p className="text-3xl mb-3">{item.icon}</p>}

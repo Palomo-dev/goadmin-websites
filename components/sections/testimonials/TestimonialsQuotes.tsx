@@ -10,11 +10,20 @@ import {
   type TestimonialsData,
 } from './testimonialsUtils'
 import { SiLista } from '../ListRenderer'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface TestimonialsQuotesProps {
   content: TestimonialsContent
   primaryColor?: string
   data?: TestimonialsData
+}
+
+
+/** TESTIM-12: «Tamaño de comillas» (`quote_mark_size`, px). Sin clave, el tamaño de siempre. */
+function tamanoComillas(contenido: unknown): { fontSize?: string } {
+  const content = (contenido ?? {}) as { quote_mark_size?: unknown }
+  const n = Number(content.quote_mark_size)
+  return content.quote_mark_size != null && content.quote_mark_size !== '' && Number.isFinite(n) && n >= 8 && n <= 200 ? { fontSize: `${n}px` } : {}
 }
 
 export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: TestimonialsQuotesProps) {
@@ -52,7 +61,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
-        <SiLista content={content} className="space-y-10">
+        <SiLista content={content} className={`space-y-10 ${proporcionHijos(content)}`}>
           {items.map((item) => {
             const stars = ratingStars(item.rating)
             const srcLabel = sourceLabel(item.source)
@@ -79,7 +88,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
                 {showRating && ratingPosition === 'top' && ratingStyle === 'compact' && (
                   <div className="text-xs text-gray-500 mb-4 text-center">{item.rating.toFixed(1)} / 5</div>
                 )}
-                <span className="text-5xl font-serif leading-none" style={{ color: quoteMarkColor }}>&ldquo;</span>
+                <span className="text-5xl font-serif leading-none" style={{ color: quoteMarkColor, ...tamanoComillas(content) }}>&ldquo;</span>
                 <p className={`text-gray-700 dark:text-gray-300 italic mb-4 ${textSizeClass(textSize)}`}>
                   {item.content}
                 </p>

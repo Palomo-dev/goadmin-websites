@@ -24,11 +24,20 @@ import {
   type NormalizedTestimonial,
 } from './testimonialsUtils'
 import { SiLista } from '../ListRenderer'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface TestimonialsCarouselProps {
   content: TestimonialsContent
   primaryColor?: string
   data?: TestimonialsData
+}
+
+
+/** TESTIM-12: «Tamaño de comillas» (`quote_mark_size`, px). Sin clave, el tamaño de siempre. */
+function tamanoComillas(contenido: unknown): { fontSize?: string } {
+  const content = (contenido ?? {}) as { quote_mark_size?: unknown }
+  const n = Number(content.quote_mark_size)
+  return content.quote_mark_size != null && content.quote_mark_size !== '' && Number.isFinite(n) && n >= 8 && n <= 200 ? { fontSize: `${n}px` } : {}
 }
 
 export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }: TestimonialsCarouselProps) {
@@ -86,7 +95,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
       ) : (
       <SiLista
         content={content}
-        className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0`}
+        className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 ${proporcionHijos(content)}`}
         style={{ gap: `${gap}px` }}
       >
         {lista.map((item) => {
@@ -123,7 +132,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
               {quoteMarks === 'background' && (
                 <span
                   className="absolute text-6xl leading-none opacity-10 select-none"
-                  style={{ color: quoteMarkColor, top: 8, right: 12 }}
+                  style={{ color: quoteMarkColor, top: 8, right: 12, ...tamanoComillas(content) }}
                   aria-hidden
                 >
                   &rdquo;
@@ -132,7 +141,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
 
               <div className="relative mb-4">
                 {quoteMarks === 'before' && (
-                  <span style={{ color: quoteMarkColor }} className="text-2xl">&ldquo;</span>
+                  <span style={{ color: quoteMarkColor, ...tamanoComillas(content) }} className="text-2xl">&ldquo;</span>
                 )}
                 <p className={`text-gray-600 dark:text-gray-300 italic ${textCls} ${isExpanded ? '' : clampCls}`}>
                   {quoteMarks === 'around' ? `\u201C${item.content}\u201D` : item.content}

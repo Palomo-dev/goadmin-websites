@@ -1,4 +1,5 @@
 'use client'
+import { proporcionHijos } from '../proporcionCeldas'
 
 interface FaqTwoColumnsProps {
   content: Record<string, any>
@@ -23,7 +24,7 @@ export function FaqTwoColumns({ content, primaryColor = '#3B82F6' }: FaqTwoColum
     <section className="py-16 px-4">
       <div className="max-w-5xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 ${proporcionHijos(content)}`}>
           <div>{left.map(renderItem)}</div>
           <div>{right.map(renderItem)}</div>
         </div>
