@@ -103,6 +103,14 @@ eq(contadorEn({ countdown_enabled: true, countdown_show_in_cart: true }, 'countd
   eq(iso(instanteFin('2026-03-29T01:00', 'Europe/Madrid')), '2026-03-29T00:00:00.000Z')
   eq(iso(instanteFin('2026-03-29T04:00', 'Europe/Madrid')), '2026-03-29T02:00:00.000Z')
   eq(iso(instanteFin('2026-10-25T02:30', 'Europe/Madrid')), '2026-10-25T01:30:00.000Z', 'otoño: la 02:30 repetida sigue igual que antes (la segunda)')
+  // Hora repetida: SIEMPRE la segunda ocurrencia, en cualquier zona.
+  eq(iso(instanteFin('2026-11-01T01:00', 'America/New_York')), '2026-11-01T06:00:00.000Z', 'Nueva York 01:00 repetida → la 2.ª (EST)')
+  eq(iso(instanteFin('2026-11-01T01:30', 'America/New_York')), '2026-11-01T06:30:00.000Z', 'Nueva York 01:30 repetida → la 2.ª (EST)')
+  eq(iso(instanteFin('2026-11-01T00:30', 'America/New_York')), '2026-11-01T04:30:00.000Z', 'Nueva York 00:30 no se mueve')
+  eq(iso(instanteFin('2026-11-01T02:00', 'America/New_York')), '2026-11-01T07:00:00.000Z', 'Nueva York 02:00 no se mueve')
+  eq(iso(instanteFin('2026-10-25T02:00', 'Europe/Madrid')), '2026-10-25T01:00:00.000Z', 'Madrid 02:00 repetida → la 2.ª')
+  eq(iso(proximoReinicio(new Date('2026-11-01T04:00:00Z'), 'America/New_York', 1)), '2026-11-01T06:00:00.000Z', 'reinicio NY a la 1 el día del cambio → la 2.ª')
+  eq(iso(proximoReinicio(new Date('2026-11-01T05:30:00Z'), 'America/New_York', 1)), '2026-11-01T06:00:00.000Z', 'entre las dos 01:00 de NY → la 2.ª, sin saltar al día siguiente')
   // Cruce del reinicio el día del cambio, segundo a segundo, sin recargar: nunca negativo ni 0.
   let t = Date.parse('2026-09-06T03:59:58Z'); let obj = proximoReinicio(new Date(t), 'America/Santiago', 0)
   for (let i = 0; i < 4; i++, t += 1000) { obj = objetivoVigente(obj, new Date(t), { countdown_mode: 'daily_reset', countdown_timezone: 'America/Santiago', countdown_reset_hour: 0 }); ok(obj.getTime() > t, 'cruce DST') }
