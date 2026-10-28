@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { instanteFin, proximoReinicio } from '@/lib/website/contadorColumnas'
+import { instanteFin, objetivoVigente, proximoReinicio } from '@/lib/website/contadorColumnas'
 
 export interface CountdownConfig {
   countdown_enabled?: boolean
@@ -66,7 +66,7 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ hours: 0, minutes: 0, seconds: 0, expired: true })
   const [mounted, setMounted] = useState(false)
 
-  const targetDate = useMemo(() => getTargetDate(config), [
+  const objetivoInicial = useMemo(() => getTargetDate(config), [
     config.countdown_enabled,
     config.countdown_mode,
     config.countdown_end_date,
@@ -76,13 +76,19 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
 
   useEffect(() => {
     setMounted(true)
-    if (!targetDate) return
+    if (!objetivoInicial) return
 
-    const update = () => setTimeLeft(calculateTimeLeft(targetDate))
+    // Reinicio diario: al cruzar la hora se toma el siguiente objetivo y sigue contando sin recargar.
+    let objetivo: Date | null = objetivoInicial
+    const update = () => {
+      objetivo = objetivoVigente(objetivo, new Date(), config)
+      setTimeLeft(calculateTimeLeft(objetivo))
+    }
     update()
     const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
-  }, [targetDate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- la config relevante ya está en objetivoInicial
+  }, [objetivoInicial])
 
   if (!mounted || !config.countdown_enabled || timeLeft.expired) return null
 

@@ -87,3 +87,17 @@ export function proximoReinicio(ahora: Date, zona: string | undefined, hora: num
   if (deHoy && deHoy.getTime() > ahora.getTime()) return deHoy
   return instanteFin(dia(1), tz)
 }
+
+/**
+ * Objetivo vigente en cada tic: en el reinicio diario, al llegar la hora se calcula el siguiente y se
+ * sigue contando sin recargar; en «hasta una fecha» se deja tal cual (al pasar, el contador se oculta).
+ */
+export function objetivoVigente(
+  objetivo: Date | null,
+  ahora: Date,
+  config: { countdown_mode?: string | null; countdown_timezone?: string | null; countdown_reset_hour?: number | null },
+): Date | null {
+  if (config.countdown_mode !== 'daily_reset') return objetivo
+  if (objetivo && objetivo.getTime() > ahora.getTime()) return objetivo
+  return proximoReinicio(ahora, config.countdown_timezone ?? undefined, config.countdown_reset_hour ?? 0)
+}

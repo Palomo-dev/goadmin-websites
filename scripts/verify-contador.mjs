@@ -31,7 +31,7 @@ try {
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
-const { proximoReinicio, instanteFin, zonaContador, partesEnZona, contadorEn } = m
+const { proximoReinicio, instanteFin, zonaContador, partesEnZona, contadorEn, objetivoVigente } = m
 const iso = (d) => d?.toISOString() ?? null
 let n = 0
 const ok = (c, msg) => { assert.ok(c, msg); n++ }
@@ -64,4 +64,23 @@ eq(instanteFin('no', 'America/Bogota'), null)
 // Ubicación: NULL = apagada.
 eq(contadorEn({ countdown_enabled: true, countdown_show_in_cart: null }, 'countdown_show_in_cart'), false)
 eq(contadorEn({ countdown_enabled: true, countdown_show_in_cart: true }, 'countdown_show_in_cart'), true)
+// Cruce del reinicio sin recargar: se simula el intervalo de 1 s de CountdownBanner.
+{
+  const diario = { countdown_mode: 'daily_reset', countdown_timezone: 'America/Bogota', countdown_reset_hour: 0 }
+  let t = Date.parse('2026-10-29T04:59:57Z') // 23:59:57 en Bogotá
+  let obj = proximoReinicio(new Date(t), 'America/Bogota', 0)
+  const restantes = []
+  for (let i = 0; i < 6; i++, t += 1000) {
+    obj = objetivoVigente(obj, new Date(t), diario)
+    restantes.push(Math.round((obj.getTime() - t) / 1000))
+  }
+  // 3, 2, 1 s y luego 24 h, 24 h − 1 s, …: nunca 0 ni oculto.
+  eq(JSON.stringify(restantes), JSON.stringify([3, 2, 1, 86400, 86399, 86398]), 'reinicio cruza sin recargar')
+  eq(iso(obj), '2026-10-30T05:00:00.000Z')
+  // Hasta una fecha: al pasar, el objetivo no cambia (el contador se oculta).
+  const fin = instanteFin('2026-10-29T10:00', 'America/Bogota')
+  const custom = { countdown_mode: 'custom', countdown_timezone: 'America/Bogota' }
+  eq(objetivoVigente(fin, new Date('2026-10-29T16:00:00Z'), custom), fin, 'fecha pasada se mantiene')
+  ok(objetivoVigente(fin, new Date('2026-10-29T16:00:00Z'), custom).getTime() < Date.parse('2026-10-29T16:00:00Z'), 'queda expirado')
+}
 console.log(`verify-contador: ${n} comprobaciones OK (TZ=${process.env.TZ ?? 'local'})`)
