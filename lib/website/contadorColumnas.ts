@@ -71,7 +71,12 @@ export function instanteFin(fin: string, zona: string | undefined): Date | null 
   }
   const d1 = desfase(comoUtc)
   const d2 = desfase(comoUtc - d1)
-  return new Date(comoUtc - d2)
+  // La hora pedida existe si el instante, visto en la zona, da esa misma hora de pared.
+  const existe = (t: number) => desfase(t) + t === comoUtc
+  if (existe(comoUtc - d2)) return new Date(comoUtc - d2)
+  if (existe(comoUtc - d1)) return new Date(comoUtc - d1)
+  // Hueco del cambio de horario (esa hora no existe ese día): la siguiente hora válida, nunca una antes.
+  return new Date(Math.max(comoUtc - d1, comoUtc - d2))
 }
 
 /** Próximo reinicio diario a `hora` (0–23) en `zona`, estrictamente después de `ahora`. */

@@ -83,4 +83,24 @@ eq(contadorEn({ countdown_enabled: true, countdown_show_in_cart: true }, 'countd
   eq(objetivoVigente(fin, new Date('2026-10-29T16:00:00Z'), custom), fin, 'fecha pasada se mantiene')
   ok(objetivoVigente(fin, new Date('2026-10-29T16:00:00Z'), custom).getTime() < Date.parse('2026-10-29T16:00:00Z'), 'queda expirado')
 }
+// Cambio de horario: reinicio a una hora que no existe ese día → la siguiente hora válida, no una antes.
+{
+  const pared = (d, z) => { const q = partesEnZona(d, z); return `${q.y}-${String(q.mo).padStart(2, '0')}-${String(q.d).padStart(2, '0')} ${String(q.h).padStart(2, '0')}:${String(q.mi).padStart(2, '0')}` }
+  // Chile: 2026-09-06 a las 00:00 pasa a 01:00 (00:xx no existe).
+  eq(iso(instanteFin('2026-09-06T00:00', 'America/Santiago')), '2026-09-06T04:00:00.000Z', 'Santiago 00:00 inexistente → 01:00')
+  const santiago = proximoReinicio(new Date('2026-09-06T02:00:00Z'), 'America/Santiago', 0) // 22:00 del 5-sep
+  eq(pared(santiago, 'America/Santiago'), '2026-09-06 01:00', 'reinicio Santiago 0 h el día del cambio')
+  ok(santiago.getTime() > Date.parse('2026-09-06T02:00:00Z'), 'no queda en el pasado')
+  // España: 2026-03-29 a las 02:00 pasa a 03:00.
+  eq(iso(instanteFin('2026-03-29T02:00', 'Europe/Madrid')), '2026-03-29T01:00:00.000Z', 'Madrid 02:00 inexistente → 03:00')
+  eq(iso(instanteFin('2026-03-29T02:30', 'Europe/Madrid')), '2026-03-29T01:30:00.000Z', 'Madrid 02:30 → 03:30')
+  eq(pared(proximoReinicio(new Date('2026-03-28T23:00:00Z'), 'Europe/Madrid', 2), 'Europe/Madrid'), '2026-03-29 03:00')
+  // Horas normales alrededor del cambio no se mueven; la hora repetida (otoño) no cambia.
+  eq(iso(instanteFin('2026-03-29T01:00', 'Europe/Madrid')), '2026-03-29T00:00:00.000Z')
+  eq(iso(instanteFin('2026-03-29T04:00', 'Europe/Madrid')), '2026-03-29T02:00:00.000Z')
+  eq(iso(instanteFin('2026-10-25T02:30', 'Europe/Madrid')), '2026-10-25T01:30:00.000Z', 'otoño: la 02:30 repetida sigue igual que antes (la segunda)')
+  // Cruce del reinicio el día del cambio, segundo a segundo, sin recargar: nunca negativo ni 0.
+  let t = Date.parse('2026-09-06T03:59:58Z'); let obj = proximoReinicio(new Date(t), 'America/Santiago', 0)
+  for (let i = 0; i < 4; i++, t += 1000) { obj = objetivoVigente(obj, new Date(t), { countdown_mode: 'daily_reset', countdown_timezone: 'America/Santiago', countdown_reset_hour: 0 }); ok(obj.getTime() > t, 'cruce DST') }
+}
 console.log(`verify-contador: ${n} comprobaciones OK (TZ=${process.env.TZ ?? 'local'})`)
