@@ -1,5 +1,6 @@
 'use client';
 
+import { esPreviewErpVercel } from '@/lib/website/origenPreviewErp';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { WebsitePageSection } from '@/types/database';
 import type { AvisoLienzo } from './SeccionVaciaLienzo';
@@ -91,7 +92,7 @@ interface PreviewSection {
 
 /** ¿El mensaje viene del editor? (orígenes del ERP y de desarrollo). */
 export function esOrigenEditor(origin: string): boolean {
-  return ALLOWED_EDITOR_ORIGINS.includes(origin);
+  return ALLOWED_EDITOR_ORIGINS.includes(origin) || esPreviewErpVercel(origin);
 }
 
 /** Aviso bien formado del editor, o `undefined`. */
