@@ -16,6 +16,8 @@ import {
   resolverTarjetaProducto,
   separacionTarjetas,
   valoresDePreset,
+  vendidosEnTarjeta,
+  vistaEditorTarjeta,
 } from '../lib/website/tarjetaProducto.ts'
 
 const problemas = []
@@ -102,6 +104,18 @@ const temaNuevo = esquemaTema.safeParse({
 })
 check(temaNuevo.success, 'el tema acepta product_card_style')
 check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaInventada: { mode: 'value', value: 1 } }).success === false, 'el tema sigue estricto')
+
+// «Unidades vendidas»: una sola bandera, sola no activa el estilo de la tarjeta.
+check(aplicarEstiloTarjeta({ show_sales_count: true }) === null, 'vendidos sola no cambia el resto de la tarjeta')
+check(resolverTarjetaProducto({ show_sales_count: true }, null) === null, 'vendidos del sitio sola: tarjeta de hoy')
+check(aplicarEstiloTarjeta({ card_radius: 8, show_sales_count: true })?.show_sales_count === undefined, 'el estilo no lleva la bandera')
+check(vendidosEnTarjeta({ show_sales_count: true }, null) === true, 'vendidos desde el sitio')
+check(vendidosEnTarjeta(null, { show_sales_count: true }) === true, 'vendidos desde la sección')
+check(vendidosEnTarjeta(null, null) === false && vendidosEnTarjeta({ show_sales_count: 'si' }, {}) === false, 'sin bandera (o inválida): como hoy')
+check(guardarCambioTarjeta({}, 'show_sales_count', true).show_sales_count === true, 'el editor la guarda')
+check(guardarCambioTarjeta({ show_sales_count: true }, 'show_sales_count', undefined).show_sales_count === undefined, 'apagarla borra la clave')
+check(vistaEditorTarjeta(null, { show_sales_count: true }).show_sales_count === true, 'el inspector la ve heredada')
+check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mode: 'value', value: { show_sales_count: true } } }).success, 'el contrato acepta show_sales_count')
 
 if (problemas.length) {
   console.error(problemas.join('\n'))

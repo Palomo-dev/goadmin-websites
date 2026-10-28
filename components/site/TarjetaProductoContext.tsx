@@ -5,7 +5,7 @@
  * lo reemplaza con `content.product_card_style`. Sin ninguno, la tarjeta de hoy.
  */
 import { createContext, useContext, type ReactNode } from 'react'
-import { resolverTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto'
+import { resolverTarjetaProducto, vendidosEnTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto'
 
 const TarjetaProductoSitio = createContext<unknown>(null)
 
@@ -15,4 +15,9 @@ export function TarjetaProductoProvider({ valor, children }: { valor: unknown; c
 
 export function useEstiloTarjeta(seccion?: unknown): EstiloTarjetaProducto | null {
   return resolverTarjetaProducto(useContext(TarjetaProductoSitio), seccion)
+}
+
+/** «Unidades vendidas» del estilo de tarjeta (sitio o sección). */
+export function useVendidosTarjeta(seccion?: unknown): boolean {
+  return vendidosEnTarjeta(useContext(TarjetaProductoSitio), seccion)
 }

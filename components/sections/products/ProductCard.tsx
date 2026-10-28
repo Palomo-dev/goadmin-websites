@@ -71,7 +71,7 @@ import {
   type EstiloBotonTarjeta,
   type EstiloTarjetaProducto,
 } from '@/lib/website/tarjetaProducto'
-import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { useEstiloTarjeta, useVendidosTarjeta } from '@/components/site/TarjetaProductoContext'
 import {
   getProductComparePrice,
   getProductDiscount,
@@ -835,6 +835,7 @@ export function ProductCard({
   branchId,
 }: ProductCardProps) {
   const estiloTarjeta = useEstiloTarjeta(cardStyle?.product_card_style)
+  const vendidos = useVendidosTarjeta(cardStyle?.product_card_style)
   const router = useRouter()
   const { ruta } = useRutaSitio()
   const [internalAdded, setInternalAdded] = useState(false)
@@ -972,6 +973,12 @@ export function ProductCard({
       const extras = effectiveBadges.filter((b) => b.type === 'variants' || b.type === 'sales_count')
       effectiveBadges = [...propias, ...extras]
     }
+  }
+
+  // «Unidades vendidas» del estilo de tarjeta: la misma etiqueta en toda variante y plantilla,
+  // aunque la sección tenga su propia lista de etiquetas. La lista horizontal de hoy ya la escribe.
+  if (vendidos && !(variant === 'list' && !estiloTarjeta) && !effectiveBadges.some((b) => b.type === 'sales_count')) {
+    effectiveBadges = [...effectiveBadges, ...DEFAULT_BADGES.filter((b) => b.type === 'sales_count')]
   }
 
   const precio = estiloPrecio(mergedCardStyle, primaryColor)
