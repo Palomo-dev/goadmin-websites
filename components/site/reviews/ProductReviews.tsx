@@ -17,7 +17,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Filter, Send, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ReviewItem, ReviewsResult, ReviewsConfig } from './types'
-import { resolveReviewsConfig } from './types'
+import { resolveReviewsConfig, textosEstadoVacio } from './types'
 import { getGeneratedReviews, getSessionSeed } from './providers/generatedReviews'
 import { getRealReviews } from './providers/realReviews'
 import { getMixedReviews, getAutoReviews } from './providers/mixedReviews'
@@ -31,6 +31,8 @@ interface ProductReviewsProps {
   primaryColor: string
   /** Config de reseñas desde el editor (opcional — default = generated). */
   reviewsConfig?: Partial<ReviewsConfig> | null
+  /** PRODUC-88..90: textos del estado vacío (sección product_reviews). Vacío = el texto de siempre. */
+  estadoVacio?: { titulo?: unknown; mensaje?: unknown; boton?: unknown } | null
   /** Agregados del producto (rating_avg, reviews_count) para modo real/auto. */
   productStats?: { rating_avg?: number | null; reviews_count?: number | null } | null
 }
@@ -40,8 +42,10 @@ export function ProductReviews({
   productName,
   primaryColor,
   reviewsConfig,
+  estadoVacio,
   productStats,
 }: ProductReviewsProps) {
+  const vacio = textosEstadoVacio(estadoVacio)
   const config = useMemo(() => resolveReviewsConfig(reviewsConfig), [reviewsConfig])
 
   const [filterRating, setFilterRating] = useState<number | null>(null)
@@ -142,7 +146,7 @@ export function ProductReviews({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Opiniones de clientes</h2>
-            <p className="text-gray-500 mt-1">Aún no hay opiniones para este producto</p>
+            <p className="text-gray-500 mt-1">{vacio.titulo}</p>
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
@@ -150,13 +154,13 @@ export function ProductReviews({
             className="text-white"
           >
             <Send className="h-4 w-4 mr-2" />
-            Escribir una opinión
+            {vacio.boton}
           </Button>
         </div>
         {showForm && <ReviewForm primaryColor={primaryColor} />}
         {!showForm && (
           <div className="p-8 text-center bg-gray-50 rounded-xl">
-            <p className="text-gray-500">Sé el primero en compartir tu experiencia con este producto.</p>
+            <p className="text-gray-500">{vacio.mensaje}</p>
           </div>
         )}
       </div>

@@ -82,3 +82,13 @@ export function shouldEmitAggregateRating(config: ReviewsConfig, hasRealData: bo
   // real / mixed / auto → emite si hay datos reales
   return hasRealData
 }
+
+/** PRODUC-88..90: textos del estado vacío en modo «real». Texto vacío o sin clave = el de siempre. */
+export function textosEstadoVacio(v?: { titulo?: unknown; mensaje?: unknown; boton?: unknown } | null) {
+  const t = (x: unknown, d: string) => (typeof x === 'string' && x.trim() ? x.trim() : d)
+  return {
+    titulo: t(v?.titulo, 'Aún no hay opiniones para este producto'),
+    mensaje: t(v?.mensaje, 'Sé el primero en compartir tu experiencia con este producto.'),
+    boton: t(v?.boton, 'Escribir una opinión'),
+  }
+}
