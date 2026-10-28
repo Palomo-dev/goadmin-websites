@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { useAutoplayCarrusel, useDeslizar } from '@/lib/carrusel/useCarrusel'
+import { animarCambio, leerAparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
 
 interface PartnersCarouselProps {
@@ -11,7 +12,7 @@ interface PartnersCarouselProps {
 }
 
 /** Logos a la vista a la vez. */
-const VISIBLES = 5
+const VISIBLES_HOY = 5
 
 /**
  * Lo que hacía «Aliados · Carrusel» antes de leer los interruptores: con más de 4 logos avanzaba
@@ -24,8 +25,17 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
   const items = content.items || []
   const [offset, setOffset] = useState(0)
   const o = leerOpcionesCarrusel(content, HOY)
+  const ap = leerAparienciaCarrusel(content)
+  // «Elementos visibles»: sin clave, los 5 de siempre.
+  const VISIBLES = ap.porVista?.escritorio ?? VISIBLES_HOY
+  const fila = useRef<HTMLDivElement>(null)
+  const primera = useRef(true)
+  useEffect(() => {
+    if (primera.current) { primera.current = false; return }
+    animarCambio(fila.current, ap.transicionMs)
+  }, [offset, ap.transicionMs])
   // Con bucle, cada logo es una posición (como siempre); sin bucle, hasta que el último queda a la vista.
-  const posiciones = items.length > 4 ? (o.bucle ? items.length : Math.max(1, items.length - (VISIBLES - 1))) : 1
+  const posiciones = items.length > VISIBLES - 1 ? (o.bucle ? items.length : Math.max(1, items.length - (VISIBLES - 1))) : 1
   const movible = posiciones > 1
 
   const irSiguiente = useCallback(() => {
@@ -44,7 +54,7 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
   const flechas = o.flechas && movible
 
   const logos = (
-    <div className={`flex gap-8 items-center justify-center overflow-hidden${flechas ? ' flex-1 min-w-0' : ''}${o.deslizar ? ' touch-pan-y' : ''}`} {...deslizar}>
+    <div ref={fila} className={`flex gap-8 items-center justify-center overflow-hidden${flechas ? ' flex-1 min-w-0' : ''}${o.deslizar ? ' touch-pan-y' : ''}`} {...deslizar}>
       {items.slice(offset, offset + VISIBLES).map((item: any, i: number) => (
         <div key={i} className="flex-shrink-0">
           {item.logo_url ? (
@@ -63,15 +73,15 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         {flechas ? (
           <div className="flex items-center gap-4">
-            <FlechaCarrusel direccion="anterior" etiqueta="Aliados anteriores" onClick={irAnterior} disabled={indiceAnterior(offset, posiciones, o.bucle) === null} color={primaryColor} className="flex-shrink-0" />
+            <FlechaCarrusel direccion="anterior" etiqueta="Aliados anteriores" onClick={irAnterior} disabled={indiceAnterior(offset, posiciones, o.bucle) === null} color={primaryColor} apariencia={ap} className="flex-shrink-0" />
             {logos}
-            <FlechaCarrusel direccion="siguiente" etiqueta="Más aliados" onClick={irSiguiente} disabled={indiceSiguiente(offset, posiciones, o.bucle) === null} color={primaryColor} className="flex-shrink-0" />
+            <FlechaCarrusel direccion="siguiente" etiqueta="Más aliados" onClick={irSiguiente} disabled={indiceSiguiente(offset, posiciones, o.bucle) === null} color={primaryColor} apariencia={ap} className="flex-shrink-0" />
           </div>
         ) : (
           logos
         )}
         {o.puntos && movible && (
-          <PuntosCarrusel total={posiciones} actual={offset} onSelect={setOffset} color={primaryColor} etiqueta={(i) => `Ir a la posición ${i + 1} de ${posiciones}`} className="mt-6" />
+          <PuntosCarrusel total={posiciones} actual={offset} onSelect={setOffset} color={primaryColor} estilo={ap.estiloPuntos} etiqueta={(i) => `Ir a la posición ${i + 1} de ${posiciones}`} className="mt-6" />
         )}
       </div>
     </section>

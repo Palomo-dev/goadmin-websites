@@ -8,6 +8,7 @@
  */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { botonFlecha, flechaPersonalizada, type AparienciaCarrusel, type EstiloPuntos } from '@/lib/carrusel/aparienciaCarrusel'
 import { clasesFlecha, clasesPunto, posicionFlecha, type CarruselResuelto } from '@/lib/website/v2/paginacionCarrusel'
 
 const FOCO = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
@@ -19,6 +20,7 @@ export function FlechaCarrusel({
   disabled,
   etiqueta,
   className = '',
+  apariencia,
 }: {
   direccion: 'anterior' | 'siguiente'
   onClick: () => void
@@ -27,8 +29,26 @@ export function FlechaCarrusel({
   /** Nombre accesible; por defecto «Anterior» / «Siguiente». */
   etiqueta?: string
   className?: string
+  /** Estilo, tamaño y colores elegidos en el editor; sin claves se ve como siempre. */
+  apariencia?: AparienciaCarrusel
 }) {
   const Icono = direccion === 'anterior' ? ChevronLeft : ChevronRight
+  if (flechaPersonalizada(apariencia)) {
+    const b = botonFlecha(apariencia!, color)
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={etiqueta ?? (direccion === 'anterior' ? 'Anterior' : 'Siguiente')}
+        className={`${b.className} transition-transform hover:scale-110 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed ${FOCO} ${className}`}
+        style={b.style}
+        data-flecha-estilo={apariencia!.estiloFlecha ?? 'circle'}
+      >
+        <Icono style={{ width: b.icono, height: b.icono }} aria-hidden="true" />
+      </button>
+    )
+  }
   return (
     <button
       type="button"
@@ -50,6 +70,7 @@ export function PuntosCarrusel({
   color,
   etiqueta = (i) => `Ir a la diapositiva ${i + 1}`,
   className = '',
+  estilo,
 }: {
   total: number
   actual: number
@@ -57,8 +78,28 @@ export function PuntosCarrusel({
   color?: string
   etiqueta?: (i: number) => string
   className?: string
+  /** «Puntos» (hoy), «Barras» o «Números»; sin clave, como siempre. */
+  estilo?: EstiloPuntos
 }) {
   if (total <= 1) return null
+  if (estilo === 'bars' || estilo === 'numbers') {
+    return (
+      <div className={`flex justify-center items-center gap-1.5 ${className}`} data-carrusel-puntos={estilo}>
+        {Array.from({ length: total }).map((_, i) => {
+          const activo = i === actual
+          return estilo === 'bars' ? (
+            <button key={i} type="button" onClick={() => onSelect(i)} aria-label={etiqueta(i)} aria-current={activo ? 'true' : undefined}
+              className={`h-1 w-8 rounded-sm transition-all ${FOCO} ${activo ? '' : 'bg-gray-300 dark:bg-gray-600'}`}
+              style={activo ? { backgroundColor: color ?? '#111827' } : {}} />
+          ) : (
+            <button key={i} type="button" onClick={() => onSelect(i)} aria-label={etiqueta(i)} aria-current={activo ? 'true' : undefined}
+              className={`min-w-6 h-6 px-1 rounded text-xs font-medium transition-all ${FOCO} ${activo ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}
+              style={activo ? { backgroundColor: color ?? '#111827' } : {}}>{i + 1}</button>
+          )
+        })}
+      </div>
+    )
+  }
   return (
     <div className={`flex justify-center gap-1.5 ${className}`} data-carrusel-puntos="">
       {Array.from({ length: total }).map((_, i) => (

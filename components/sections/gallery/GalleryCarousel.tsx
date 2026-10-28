@@ -1,12 +1,14 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { animarCambio, flechaPersonalizada, leerAparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { useAutoplayCarrusel, useDeslizar } from '@/lib/carrusel/useCarrusel'
 import { aFotosLightbox, etiquetaAmpliar, FOCO_FOTO, lightboxActivo, useLightbox } from './FotosAmpliables'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
-export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe', 'lightbox'] as const
+export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe', 'lightbox', 'arrow_style', 'arrow_size', 'arrow_color', 'arrow_bg_color', 'dot_style', 'transition_ms'] as const
 
 interface GalleryCarouselProps {
   content: Record<string, any>
@@ -29,6 +31,13 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
   const [current, setCurrent] = useState(0)
   const o = leerOpcionesCarrusel(content, HOY)
   const total = images.length
+  const ap = leerAparienciaCarrusel(content)
+  const marco = useRef<HTMLDivElement>(null)
+  const primera = useRef(true)
+  useEffect(() => {
+    if (primera.current) { primera.current = false; return }
+    animarCambio(marco.current?.querySelector('img') ?? null, ap.transicionMs)
+  }, [current, ap.transicionMs])
   const anterior = indiceAnterior(current, total, o.bucle)
   const siguiente = indiceSiguiente(current, total, o.bucle)
 
@@ -57,6 +66,7 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
       <div className="max-w-4xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div
+          ref={marco}
           className={`relative rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-700${o.deslizar ? ' touch-pan-y' : ''}`}
           {...deslizar}
         >
@@ -70,7 +80,13 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
           {images[current]?.caption && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-3 text-sm">{images[current].caption}</div>
           )}
-          {images.length > 1 && o.flechas && (
+          {images.length > 1 && o.flechas && flechaPersonalizada(ap) && (
+            <>
+              <FlechaCarrusel direccion="anterior" etiqueta="Foto anterior" disabled={anterior === null} onClick={irAnterior} color={primaryColor} apariencia={ap} className="absolute left-3 top-1/2 -translate-y-1/2" />
+              <FlechaCarrusel direccion="siguiente" etiqueta="Foto siguiente" disabled={siguiente === null} onClick={irSiguiente} color={primaryColor} apariencia={ap} className="absolute right-3 top-1/2 -translate-y-1/2" />
+            </>
+          )}
+          {images.length > 1 && o.flechas && !flechaPersonalizada(ap) && (
             <>
               <button type="button" aria-label="Foto anterior" disabled={anterior === null} onClick={irAnterior} className={`absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white disabled:opacity-40 ${FOCO}`}>‹</button>
               <button type="button" aria-label="Foto siguiente" disabled={siguiente === null} onClick={irSiguiente} className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white disabled:opacity-40 ${FOCO}`}>›</button>
@@ -78,7 +94,14 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
           )}
         </div>
         {/* Las miniaturas son la paginación de esta variante: «Mostrar puntos» las muestra u oculta. */}
-        {images.length > 1 && o.puntos && (
+        {/* «Estilo de puntos»: barras o números cambian las miniaturas por esa paginación. */}
+        {images.length > 1 && o.puntos && (ap.estiloPuntos === 'bars' || ap.estiloPuntos === 'numbers') && (
+          <PuntosCarrusel total={total} actual={current} onSelect={setCurrent} color={primaryColor} estilo={ap.estiloPuntos} etiqueta={(i) => `Ver foto ${i + 1} de ${total}`} className="mt-4" />
+        )}
+        {images.length > 1 && o.puntos && ap.estiloPuntos === 'dots' && (
+          <PuntosCarrusel total={total} actual={current} onSelect={setCurrent} color={primaryColor} etiqueta={(i) => `Ver foto ${i + 1} de ${total}`} className="mt-4" />
+        )}
+        {images.length > 1 && o.puntos && !ap.estiloPuntos && (
           <div className="flex gap-2 justify-center mt-4" data-carrusel-puntos="">
             {images.map((_: any, i: number) => (
               <button key={i} type="button" aria-label={`Ver foto ${i + 1} de ${total}`} aria-current={i === current ? 'true' : undefined} onClick={() => setCurrent(i)} className={`w-16 h-12 rounded overflow-hidden border-2 transition-all ${FOCO}`} style={{ borderColor: i === current ? primaryColor : 'transparent' }}>

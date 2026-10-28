@@ -563,3 +563,9 @@ header a[data-categoria-activa][data-categoria-activa] {
   --mesa-alerta-texto: #f2cb74;
   --mesa-error-texto: #f4a28f;
 }
+
+/* Carrusel de marcas: «Elementos visibles» (slides_per_view) por dispositivo. Gap 2rem / 3rem (md). */
+.ancho-por-vista { width: calc((100% - (var(--pv-m) - 1) * 2rem) / var(--pv-m)); }
+@media (min-width: 640px) { .ancho-por-vista { width: calc((100% - (var(--pv-t) - 1) * 2rem) / var(--pv-t)); } }
+@media (min-width: 768px) { .ancho-por-vista { width: calc((100% - (var(--pv-t) - 1) * 3rem) / var(--pv-t)); } }
+@media (min-width: 1024px) { .ancho-por-vista { width: calc((100% - (var(--pv-d) - 1) * 3rem) / var(--pv-d)); } }

@@ -1,11 +1,12 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { atributosCarrusel, leerOpcionesCarrusel, type OpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
-import { PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
+import { flechaPersonalizada, leerAparienciaCarrusel, type AparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
 
@@ -68,7 +69,7 @@ export function BrandsLogos({ content, primaryColor }: BrandsLogosProps) {
             ))}
           </ListRenderer>
         ) : layout === 'carousel' ? (
-          <BrandsCarousel items={items} sizeClass={sizeClass} grayscaleClass={grayscaleClass} opciones={leerOpcionesCarrusel(content as Record<string, unknown>, HOY_CARRUSEL)} primaryColor={primaryColor} />
+          <BrandsCarousel items={items} sizeClass={sizeClass} grayscaleClass={grayscaleClass} opciones={leerOpcionesCarrusel(content as Record<string, unknown>, HOY_CARRUSEL)} apariencia={leerAparienciaCarrusel(content as Record<string, unknown>)} primaryColor={primaryColor} />
         ) : layout === 'grid' ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 items-center justify-items-center">
             {items.map((item, i) => (
@@ -121,11 +122,12 @@ const HOY_CARRUSEL: OpcionesCarrusel = { autoplay: false, intervaloMs: 5000, buc
 
 const FOCO = 'focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
 
-function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, primaryColor }: {
+function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, apariencia: ap, primaryColor }: {
   items: Array<{ id?: string; name: string; logo_url?: string; url?: string }>
   sizeClass: string
   grayscaleClass: string
   opciones: OpcionesCarrusel
+  apariencia: AparienciaCarrusel
   primaryColor?: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -173,7 +175,10 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, primary
 
   return (
     <div className="relative group" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>
-      {flechaIzq && (
+      {flechaIzq && flechaPersonalizada(ap) && (
+        <FlechaCarrusel direccion="anterior" etiqueta="Marcas anteriores" onClick={() => scroll('left')} color={primaryColor} apariencia={ap} className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
+      )}
+      {flechaIzq && !flechaPersonalizada(ap) && (
         <button
           type="button"
           aria-label="Marcas anteriores"
@@ -186,15 +191,18 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, primary
       <div
         ref={scrollRef}
         className={`flex items-center gap-8 md:gap-12 ${o.deslizar ? 'overflow-x-auto' : 'overflow-x-hidden touch-pan-y'} scrollbar-hide py-4 px-2`}
-        style={{ scrollbarWidth: 'none' }}
+        style={{ scrollbarWidth: 'none', ...(ap.porVista ? ({ '--pv-m': ap.porVista.movil, '--pv-t': ap.porVista.tableta, '--pv-d': ap.porVista.escritorio } as React.CSSProperties) : {}) }}
       >
         {items.map((item, i) => (
-          <div key={item.id || i} className="flex-shrink-0">
+          <div key={item.id || i} className={`flex-shrink-0${ap.porVista ? ' flex justify-center ancho-por-vista' : ''}`}>
             <BrandLogo item={item} sizeClass={sizeClass} grayscaleClass={grayscaleClass} />
           </div>
         ))}
       </div>
-      {flechaDer && (
+      {flechaDer && flechaPersonalizada(ap) && (
+        <FlechaCarrusel direccion="siguiente" etiqueta="Más marcas" onClick={() => scroll('right')} color={primaryColor} apariencia={ap} className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
+      )}
+      {flechaDer && !flechaPersonalizada(ap) && (
         <button
           type="button"
           aria-label="Más marcas"
@@ -205,7 +213,7 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, primary
         </button>
       )}
       {o.puntos && (
-        <PuntosCarrusel total={paginas} actual={pagina} onSelect={irAPagina} color={primaryColor} etiqueta={(i) => `Ir a la página ${i + 1} de marcas`} className="mt-2" />
+        <PuntosCarrusel total={paginas} actual={pagina} onSelect={irAPagina} color={primaryColor} estilo={ap.estiloPuntos} etiqueta={(i) => `Ir a la página ${i + 1} de marcas`} className="mt-2" />
       )}
     </div>
   )
