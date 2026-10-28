@@ -1,7 +1,8 @@
 'use client'
 
 import { ContactFormFeedback } from './ContactFormFeedback'
-import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm, type ContactFormValues } from './useContactForm'
+import { CamposPropios, camposFormulario, useCamposPropios } from './CamposPropios'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ContactFormSplitProps {
@@ -16,9 +17,17 @@ interface ContactFormSplitProps {
   primaryColor?: string
 }
 
-export function ContactFormSplit({ content, organization, primaryColor }: ContactFormSplitProps) {
+export function ContactFormSplit({ content, organization, primaryColor, sectionId }: ContactFormSplitProps & { sectionId?: string | number }) {
+  // CONTAC-04: campos del formulario (form_fields). Sin la clave, los de siempre.
+  const campos = camposFormulario((content as { form_fields?: unknown }).form_fields)
+  const propios = useCamposPropios(campos)
   const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
-    useContactForm({ organizationId: organization?.id, sourceForm: 'contact_form_split' })
+    useContactForm({
+      organizationId: organization?.id,
+      sourceForm: 'contact_form_split',
+      sectionId,
+      ...(campos ? { requireMessage: false, composeMessage: (v: ContactFormValues) => propios.componer(v) } : {}),
+    })
 
   // Interruptores «Mostrar teléfono / email / dirección» del inspector. Ausente = se muestra,
   // como antes de leerlos. Con los tres apagados no queda nada que informar: se quita la columna.
@@ -36,7 +45,7 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
         {content.title && (
           <h2 className="titulo-legado text-2xl font-bold mb-6 text-gray-900 dark:text-white">{content.title}</h2>
         )}
-        <form className="space-y-4" onSubmit={submit} noValidate>
+        <form className="space-y-4" onSubmit={campos ? propios.alEnviar(submit, values) : submit} noValidate>
           <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />
 
           {/* Campo trampa anti-bots */}
@@ -45,6 +54,10 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
             value={values.website}
             onChange={(e) => setField('website', e.target.value)}
           />
+          {campos ? (
+            <CamposPropios campos={campos} values={values} setField={setField} propios={propios} status={status} disabled={isSubmitting} inputClass={inputClass} />
+          ) : (
+          <>
 
           <input
             type="text"
@@ -85,6 +98,8 @@ export function ContactFormSplit({ content, organization, primaryColor }: Contac
             disabled={isSubmitting}
             className={`${inputClass} resize-none`}
           />
+          </>
+          )}
           <button
             type="submit"
             disabled={isSubmitting}

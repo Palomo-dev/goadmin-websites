@@ -3,6 +3,8 @@ import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import { correoDestinoContacto } from '@/lib/website/correoDestinoContacto'
+import { sendContactNotice } from '@/lib/email/send-contact-notice'
 
 export const dynamic = 'force-dynamic'
 
@@ -266,6 +268,22 @@ export async function POST(request: NextRequest) {
         `[contact] org ${organization.id}: contacto guardado (customer ${result.customer_id}) ` +
           `pero SIN lead en el pipeline (${result.crm_warning}). Configura el CRM.`
       )
+    }
+
+    // ── 6. CONTAC-03: copia al «Email de destino» de la sección (si lo tiene). Best-effort:
+    // el mensaje ya quedó guardado; un fallo del correo no cambia la respuesta.
+    const destino = await correoDestinoContacto(supabase, Number(organization.id), (body as any).sectionId, branchId)
+    if (destino.length > 0) {
+      await sendContactNotice({
+        destinatarios: destino,
+        organizacion: String((organization as { name?: unknown }).name ?? identifier),
+        nombre: name,
+        email,
+        telefono: phone || null,
+        asunto: subject || null,
+        empresa: company || null,
+        mensaje: message,
+      })
     }
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 'use client'
 
+import { BotonesAdicionales } from './BotonesAdicionales'
 import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 
 interface CtaSplitProps {
@@ -22,6 +23,7 @@ export function CtaSplit({ content, primaryColor = '#3B82F6' }: CtaSplitProps) {
             {cta_text}
           </a>
         )}
+        <BotonesAdicionales buttons={(content as { buttons?: unknown }).buttons} primaryColor={primaryColor} className="flex-shrink-0" />
       </div>
     </section>
   )

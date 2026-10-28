@@ -66,6 +66,8 @@ interface UseContactFormOptions {
    * y los detalles del evento privado). El servidor valida la sede contra la
    * organización del host y sanea `details` con una lista blanca.
    */
+  /** Id de la sección: el servidor lee ahí su «Email de destino» (email_to) para avisar por correo. */
+  sectionId?: string | number | null
   extraPayload?: (values: ContactFormValues) => { branchId?: number | null; details?: Record<string, unknown> } | undefined
 }
 
@@ -76,6 +78,7 @@ export function useContactForm({
   initialValues,
   composeMessage,
   extraPayload,
+  sectionId,
 }: UseContactFormOptions) {
   // Sin dependencias reactivas a propósito: los valores de partida son fijos.
   const [baseValues] = useState<ContactFormValues>(() => ({ ...EMPTY, ...initialValues }))
@@ -144,6 +147,7 @@ export function useContactForm({
             company: values.company.trim() || undefined,
             message,
             sourceForm,
+            ...(sectionId !== undefined && sectionId !== null && sectionId !== '' ? { sectionId: String(sectionId) } : {}),
             ...(extra?.branchId ? { branchId: extra.branchId } : {}),
             ...(extra?.details ? { details: extra.details } : {}),
             website: values.website, // honeypot
@@ -168,7 +172,7 @@ export function useContactForm({
         setErrorMessage('No hay conexión con el servidor. Inténtalo de nuevo.')
       }
     },
-    [baseValues, composeMessage, extraPayload, organizationId, requireMessage, sourceForm, status, values]
+    [baseValues, composeMessage, extraPayload, organizationId, requireMessage, sectionId, sourceForm, status, values]
   )
 
   return {

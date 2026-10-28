@@ -1,7 +1,8 @@
 'use client'
 
 import { ContactFormFeedback } from './ContactFormFeedback'
-import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm, type ContactFormValues } from './useContactForm'
+import { CamposPropios, camposFormulario, useCamposPropios } from './CamposPropios'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
 
 interface ContactFormWithMapProps {
@@ -10,15 +11,23 @@ interface ContactFormWithMapProps {
   primaryColor?: string
 }
 
-export function ContactFormWithMap({ content, organization, primaryColor = '#3B82F6' }: ContactFormWithMapProps) {
+export function ContactFormWithMap({ content, organization, primaryColor = '#3B82F6', sectionId }: ContactFormWithMapProps & { sectionId?: string | number }) {
   const { title, subtitle, show_phone, show_email, show_address } = content
   // «Mostrar mapa» del inspector. Ausente = se muestra: es la variante «Con mapa».
   const showMap = content.show_map !== false
   const address = organization?.address || ''
   const query = encodeURIComponent(address)
 
+  // CONTAC-04: campos del formulario (form_fields). Sin la clave, los de siempre.
+  const campos = camposFormulario((content as { form_fields?: unknown }).form_fields)
+  const propios = useCamposPropios(campos)
   const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
-    useContactForm({ organizationId: organization?.id, sourceForm: 'contact_form_with_map' })
+    useContactForm({
+      organizationId: organization?.id,
+      sourceForm: 'contact_form_with_map',
+      sectionId,
+      ...(campos ? { requireMessage: false, composeMessage: (v: ContactFormValues) => propios.componer(v) } : {}),
+    })
 
   const inputClass =
     'px-4 py-2 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none disabled:opacity-60'
@@ -31,7 +40,7 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
         <div className={`grid grid-cols-1 ${showMap ? 'lg:grid-cols-2' : 'max-w-2xl mx-auto'} gap-8`}>
           <form
             className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4"
-            onSubmit={submit}
+            onSubmit={campos ? propios.alEnviar(submit, values) : submit}
             noValidate
           >
             <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />
@@ -42,6 +51,10 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
               value={values.website}
               onChange={(e) => setField('website', e.target.value)}
             />
+            {campos ? (
+              <CamposPropios campos={campos} values={values} setField={setField} propios={propios} status={status} disabled={isSubmitting} inputClass={inputClass} />
+            ) : (
+            <>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
@@ -84,6 +97,8 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
               disabled={isSubmitting}
               className={`w-full ${inputClass} resize-none`}
             />
+            </>
+            )}
             <button
               type="submit"
               disabled={isSubmitting}

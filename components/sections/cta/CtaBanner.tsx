@@ -1,3 +1,4 @@
+import { BotonesAdicionales } from './BotonesAdicionales'
 import Link from 'next/link'
 import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 
@@ -26,6 +27,7 @@ export function CtaBanner({ content, primaryColor }: CtaBannerProps) {
           {content.cta_text}
         </Link>
       )}
+      <BotonesAdicionales buttons={(content as { buttons?: unknown }).buttons} primaryColor={primaryColor || '#8B6914'} className="mt-4 justify-center" />
     </div>
   )
 }

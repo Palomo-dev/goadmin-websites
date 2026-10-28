@@ -1,7 +1,8 @@
 'use client'
 
 import { ContactFormFeedback } from './ContactFormFeedback'
-import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm } from './useContactForm'
+import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm, type ContactFormValues } from './useContactForm'
+import { CamposPropios, camposFormulario, useCamposPropios } from './CamposPropios'
 
 interface ContactFormDefaultProps {
   content: {
@@ -12,9 +13,17 @@ interface ContactFormDefaultProps {
   primaryColor?: string
 }
 
-export function ContactFormDefault({ content, organization, primaryColor }: ContactFormDefaultProps) {
+export function ContactFormDefault({ content, organization, primaryColor, sectionId }: ContactFormDefaultProps & { sectionId?: string | number }) {
+  // CONTAC-04: campos del formulario (form_fields). Sin la clave, los de siempre.
+  const campos = camposFormulario((content as { form_fields?: unknown }).form_fields)
+  const propios = useCamposPropios(campos)
   const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
-    useContactForm({ organizationId: organization?.id, sourceForm: 'contact_form_default' })
+    useContactForm({
+      organizationId: organization?.id,
+      sourceForm: 'contact_form_default',
+      sectionId,
+      ...(campos ? { requireMessage: false, composeMessage: (v: ContactFormValues) => propios.componer(v) } : {}),
+    })
 
   const inputClass =
     'w-full px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-60'
@@ -27,7 +36,7 @@ export function ContactFormDefault({ content, organization, primaryColor }: Cont
       {content.subtitle && (
         <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>
       )}
-      <form className="space-y-4" onSubmit={submit} noValidate>
+      <form className="space-y-4" onSubmit={campos ? propios.alEnviar(submit, values) : submit} noValidate>
         <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />
 
         {/* Campo trampa anti-bots */}
@@ -36,6 +45,10 @@ export function ContactFormDefault({ content, organization, primaryColor }: Cont
           value={values.website}
           onChange={(e) => setField('website', e.target.value)}
         />
+        {campos ? (
+          <CamposPropios campos={campos} values={values} setField={setField} propios={propios} status={status} disabled={isSubmitting} inputClass={inputClass} />
+        ) : (
+        <>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
@@ -82,6 +95,8 @@ export function ContactFormDefault({ content, organization, primaryColor }: Cont
           disabled={isSubmitting}
           className={`${inputClass} resize-none`}
         />
+        </>
+        )}
         <button
           type="submit"
           disabled={isSubmitting}
