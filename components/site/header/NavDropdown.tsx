@@ -175,6 +175,17 @@ function DesplegableFlotante({ item, primaryColor, disparador }: NavDropdownProp
                 <Link href={child.href} onClick={() => setAbierto(false)} className="block px-3 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
                   {child.name}
                 </Link>
+                {child.children && child.children.length > 0 && (
+                  <ul className="flex flex-col ml-3 border-l border-gray-100 dark:border-gray-800">
+                    {child.children.map((grandchild, j) => (
+                      <li key={j}>
+                        <Link href={grandchild.href} onClick={() => setAbierto(false)} className="block pl-3 pr-3 py-1.5 rounded-md text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+                          {grandchild.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

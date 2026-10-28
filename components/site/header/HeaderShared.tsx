@@ -1073,13 +1073,15 @@ export function NavLink({
 
   // Item con children → renderizar con NavDropdown al hover
   // Menús adicionales de Encabezado: el nombre va en la barra (con la flecha) y abre el desplegable.
-  // Las páginas con subpáginas siguen igual que siempre (sin enlace propio en la barra).
-  const disparador = item.conEnlace ? (
-    <button type="button" className={clase} style={{ '--hover-color': primaryColor } as React.CSSProperties} aria-haspopup="menu" data-menu-adicional="">
+  // Páginas con subpáginas: igual, su nombre va en la barra y abre el mismo desplegable flotante.
+  const marca = item.conEnlace ? { 'data-menu-adicional': '' } : { 'data-subpaginas': '' };
+  const disparador = (
+    <button type="button" className={clase} style={{ '--hover-color': primaryColor } as React.CSSProperties} aria-haspopup="menu" {...marca}>
+      {item.icon && <span className="text-base">{item.icon}</span>}
       <span>{item.name}</span>
       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
     </button>
-  ) : null;
+  );
   return <NavDropdown item={item} primaryColor={primaryColor} disparador={disparador} />;
 }
 
