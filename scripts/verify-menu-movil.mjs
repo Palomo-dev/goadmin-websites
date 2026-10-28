@@ -33,11 +33,33 @@ for (const estilo of ['fullscreen', 'bottom_sheet', 'tabs']) {
 }
 check(ordenMovil({ mobile_header: { layout: { arrangement: 'acciones-sobre-logo' } } }) === 'acciones-sobre-logo', 'el orden se lee')
 check(ordenMovil({}) === 'logo-acciones-menu', 'sin orden, el de hoy')
-check(leerPresentacionMovil({ mobile_header: { layout: { header_height: 70 } } })?.usarHeaderNuevo === true, 'el alto sí usa el configurable')
+// QA 28-oct: una opción suelta nunca cambia de encabezado; lo decide solo el estilo del menú.
+const SUELTAS = {
+  logo: { layout: { logo: 'center' } },
+  orden: { layout: { arrangement: 'menu-logo-acciones' } },
+  tamano: { layout: { logo_size: 40 } },
+  alto: { layout: { header_height: 70 } },
+  fijo: { layout: { sticky: false } },
+  ocultar: { layout: { hide_on_scroll: true } },
+  transparente: { layout: { transparent_hero: true } },
+  glifo: { icons: { menu: 'dots' } },
+  borde: { icons: { style: 'border' } },
+  circulo: { icons: { style: 'circle' } },
+  color: { icons: { color: '#ff0000' } },
+  sinMenu: { icons: { show_menu: false } },
+  sinBuscar: { icons: { show_search: false } },
+  sinCarrito: { icons: { show_cart: false } },
+  cuenta: { icons: { show_account: true } },
+}
+for (const estilo of ['drawer', 'fullscreen', 'bottom_sheet', 'tabs']) {
+  for (const [nombre, mh] of Object.entries(SUELTAS)) {
+    check(leerPresentacionMovil({ mobile_menu_style: estilo, mobile_header: mh })?.usarHeaderNuevo === false, `${estilo} + ${nombre}: sigue el encabezado de la plantilla`)
+    check(leerPresentacionMovil({ mobile_menu_style: estilo, mobile_sticky_header: false, mobile_header: mh })?.usarHeaderNuevo === false, `${estilo} + ${nombre} + fijo propio: igual`)
+  }
+}
 
 // Run Sneak (org 345, plantilla retail_bold): pestañas + círculo acento siguen en MobileTabs.
 check(leerPresentacionMovil({ mobile_menu_style: 'tabs', header_icons_circle: true, mobile_header: { icons: { style: 'circle' } } })?.usarHeaderNuevo === false, 'tabs con círculo acento: las pestañas de la plantilla')
-check(leerPresentacionMovil({ mobile_menu_style: 'tabs', mobile_header: { icons: { style: 'border' } } })?.usarHeaderNuevo === true, 'borde sí usa el configurable')
 
 const soloBarra = leerPresentacionMovil({ mobile_header: { bottom_nav: { enabled: true } } })
 check(soloBarra?.usarHeaderNuevo === false && soloBarra?.barra?.items.length === 4, 'la barra, sola, no reemplaza el header de hoy')

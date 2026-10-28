@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X } from 'lucide-react';
@@ -9,6 +10,8 @@ import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
 import { leerConstructor } from '@/lib/website/constructorEncabezado';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
+import { leerPresentacionMovil } from '@/lib/website/menuMovil';
+import { MoreHorizontal, LayoutGrid, Minus } from 'lucide-react';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -247,6 +250,64 @@ export function posicionMovil(settings: unknown): { position?: 'sticky' | 'relat
   const valor = propio ?? viejo
   if (valor === null) return {}
   return { position: valor ? 'sticky' : 'relative' }
+}
+
+/**
+ * Opciones sueltas del celular que pintan también los 4 encabezados de plantilla (drawer,
+ * pantalla completa, hoja inferior, pestañas). Una opción nunca cambia de encabezado: el
+ * encabezado lo decide solo el estilo del menú (QA 28-oct, mismo caso que el orden en P2).
+ * Sin claves, todo da lo de hoy.
+ */
+export function movilPlantilla(settings: unknown) {
+  const s = (settings ?? {}) as Record<string, unknown>
+  const p = leerPresentacionMovil(s)
+  const L = p?.layout
+  const I = p?.iconos
+  const crudo = (s.mobile_header as { icons?: Record<string, unknown> } | null | undefined)?.icons
+  const base = Math.max(36, Math.round((Number(s.logo_height) || 48) * 0.85))
+  const altoLogo = L?.logoSize ?? base
+  const colorPropio = I?.color && !colorHexValido(s.header_mobile_icon_color) ? I.color : null
+  return {
+    altoLogo,
+    altoFila: L?.headerHeight ?? Math.max(56, altoLogo + 16),
+    verMenu: I?.showMenu !== false,
+    verBuscar: I?.showSearch !== false,
+    verCarrito: I?.showCart !== false,
+    /** En el celular de plantilla la cuenta no sale si no se pidió (lo de hoy). */
+    verCuenta: crudo?.show_account === true,
+    glifo: I?.menu ?? 'lines3',
+    claseBorde: I?.style === 'border' ? ' rounded-full border border-current' : '',
+    estilo: (colorPropio ? { ['--hdr-mobile-icon']: colorPropio } : {}) as React.CSSProperties,
+  }
+}
+
+/** Glifo del botón del menú (`mobile_header.icons.menu`). Tres líneas = el de siempre. */
+export function GlifoMenu({ glifo, className = 'h-6 w-6' }: { glifo: string; className?: string }) {
+  if (glifo === 'text') return <span className="text-sm font-semibold">Menú</span>
+  if (glifo === 'dots') return <MoreHorizontal className={className} />
+  if (glifo === 'grid') return <LayoutGrid className={className} />
+  if (glifo === 'lines2') return <Minus className={className} />
+  return <MenuIcon className={className} />
+}
+
+/**
+ * Transparente sobre la portada en el celular: la misma opción de computador («Sobre portada»);
+ * un `layout.transparent_hero` guardado en el celular se sigue respetando. Deja de serlo al bajar.
+ */
+export function useTransparenteMovil(settings: unknown): React.CSSProperties {
+  const s = (settings ?? {}) as Record<string, unknown>
+  const L = leerPresentacionMovil(s)?.layout
+  const activo = headerSobreHero(s as Parameters<typeof headerSobreHero>[0]) || L?.transparentHero === true
+  const [bajo, setBajo] = useState(false)
+  useEffect(() => {
+    if (!activo || typeof window === 'undefined') return
+    const f = () => setBajo(window.scrollY > 24)
+    f()
+    window.addEventListener('scroll', f, { passive: true })
+    return () => window.removeEventListener('scroll', f)
+  }, [activo])
+  if (!activo || bajo) return {}
+  return { ['--header-bg-light' as string]: 'transparent', ['--header-bg-dark' as string]: 'transparent' } as React.CSSProperties
 }
 
 /** Tema que el menú móvil usa para mezclar la opacidad y el contraste de los botones. */

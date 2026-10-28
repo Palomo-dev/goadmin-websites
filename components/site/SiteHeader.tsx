@@ -399,12 +399,17 @@ export default function SiteHeader({
   const headerStyle = estiloDeHeaderLayout(extra?.header_layout) || settings?.header_style || 'default'
   // «Al bajar» solo existe con encabezado fijo: con header_sticky false el editor dice «Se va con
   // la página» y la tienda tampoco anima (datos viejos con header_scroll quedan quietos).
-  const scroll = useScrollEncabezado(extra?.header_sticky === false ? null : extra?.header_scroll)
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
   // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
   // así que se usa el menú móvil hasta llegar a lg.
   const mobileBreakpoint = settings?.mobile_breakpoint || 1024
   const isMobile = useMobileHeader(mobileBreakpoint)
+  // «Al bajar» es una sola opción para computador y celular. Un `layout.hide_on_scroll` guardado
+  // en el celular (encabezado de plantilla) se sigue respetando ahí.
+  const ocultarMovilPropio = isMobile && !leerPresentacionMovil(settings)?.usarHeaderNuevo && leerPresentacionMovil(settings)?.layout?.hideOnScroll === true
+  const scroll = useScrollEncabezado(
+    extra?.header_sticky === false ? null : ocultarMovilPropio && (!extra?.header_scroll || extra.header_scroll === 'normal') ? 'ocultar_al_bajar' : extra?.header_scroll,
+  )
 
   // Props comunes para todas las variantes
   const variantProps = {

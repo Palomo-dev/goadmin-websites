@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link'
-import { Menu as MenuIcon, MoreHorizontal, LayoutGrid, Minus, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
+import { headerSobreHero } from '@/lib/website/espacioHeader'
 import {
   HeaderLogo,
   HeaderActions,
@@ -20,6 +21,7 @@ import {
   estiloBarraEncabezado,
   marcaFondoEncabezado,
   posicionMovil,
+  GlifoMenu,
 } from '../HeaderShared'
 import { FilaSedeMovil } from '../SelectorSedeEncabezado'
 import { MobileMenuShell } from './MobileMenuShell'
@@ -60,7 +62,9 @@ export function HeaderMovilConfigurable({
   const buscador = presentacion.buscador ?? buscadorMovil(settings as Record<string, unknown>)
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
-  const transparente = !!layout?.transparentHero && !scrolled
+  // «Sobre portada» es una sola opción para computador y celular; el `transparent_hero` del celular se respeta.
+  const transparenteHero = !!layout?.transparentHero || headerSobreHero(settings as Parameters<typeof headerSobreHero>[0])
+  const transparente = transparenteHero && !scrolled
   // Con «tabs» el botón de menú no se pinta: sin menú inferior guardado van las pestañas de la
   // plantilla (MobileTabs), para que el celular nunca se quede sin navegación (QA 28-oct P1).
   const barra = presentacion.barra
@@ -68,17 +72,17 @@ export function HeaderMovilConfigurable({
   const showMenu = iconos?.showMenu !== false && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs'
 
   useEffect(() => {
-    if (!layout?.hideOnScroll && !layout?.transparentHero) return
+    if (!layout?.hideOnScroll && !transparenteHero) return
     let ultimo = window.scrollY
     const al = () => {
       const y = window.scrollY
       if (layout?.hideOnScroll) setOculto(y > ultimo && y > 64)
-      if (layout?.transparentHero) setScrolled(y > 24)
+      if (transparenteHero) setScrolled(y > 24)
       ultimo = y
     }
     window.addEventListener('scroll', al, { passive: true })
     return () => window.removeEventListener('scroll', al)
-  }, [layout?.hideOnScroll, layout?.transparentHero])
+  }, [layout?.hideOnScroll, transparenteHero])
 
   const logo = (
     <div className={alineacionLogo(layout?.logo)}>
@@ -228,13 +232,6 @@ function claseIcono(iconos: IconosMovil | null) {
   return `${base} rounded-lg hover:bg-[var(--header-hover)]`
 }
 
-function GlifoMenu({ glifo }: { glifo: string }) {
-  if (glifo === 'text') return <span className="text-sm font-semibold">Menú</span>
-  if (glifo === 'dots') return <MoreHorizontal className="h-6 w-6" />
-  if (glifo === 'grid') return <LayoutGrid className="h-6 w-6" />
-  if (glifo === 'lines2') return <Minus className="h-6 w-6" />
-  return <MenuIcon className="h-6 w-6" />
-}
 
 function ContenidoMenu({
   navItems, menuCategories, settings, organization, primaryColor, panel, onCerrar,

@@ -6,7 +6,7 @@ import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
 import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link';
-import { Menu as MenuIcon, ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import {
@@ -21,7 +21,7 @@ import {
   type HeaderVariantProps,
   type NavItem,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado, posicionMovil,
+  variablesEncabezado, posicionMovil, movilPlantilla, useTransparenteMovil, GlifoMenu,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -54,6 +54,8 @@ export default function MobileBottomSheet({
   // del encabezado: encabezado altísimo y la hoja recortada a la derecha.
   const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
   const temaMenu = useTemaMenuMovil(primaryColor);
+  const mp = movilPlantilla(settings);
+  const transparente = useTransparenteMovil(settings);
   const { opciones: opcionesShell } = useEncabezadoPie();
   const temaColores = useTemaColores();
   const navItems = buildNavItems(navTree);
@@ -64,7 +66,7 @@ export default function MobileBottomSheet({
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
-    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
+    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -73,19 +75,20 @@ export default function MobileBottomSheet({
           <FilaLogoMovil
             ajustes={settings}
             posicion={posicionLogo}
-            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
-            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            minHeight={mp.altoFila}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} />}
             acciones={
               <>
                 <HeaderActions
                   settings={settings}
-                  showCart={showCart}
                   onCartClick={onCartClick}
                   searchStyle={searchStyle}
                   organizationId={organizationId}
                   primaryColor={primaryColor}
                   organizationSubdomain={organization.subdomain || ''}
-                  showSearchIcon={searchStyle === 'icon'}
+                  showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
+                  showCart={showCart && mp.verCarrito}
+                  mostrarCuentaMovil={mp.verCuenta}
                   isMobile={true}
                 />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
@@ -95,9 +98,9 @@ export default function MobileBottomSheet({
               <Drawer.Trigger asChild>
                 <button
                   aria-label="Abrir menú"
-                  className="p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors"
+                  className={`p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors${mp.claseBorde}${mp.verMenu ? "" : " hidden"}`}
                 >
-                  <MenuIcon className="h-5 w-5" />
+                  <GlifoMenu glifo={mp.glifo} className="h-5 w-5" />
                 </button>
               </Drawer.Trigger>
             }

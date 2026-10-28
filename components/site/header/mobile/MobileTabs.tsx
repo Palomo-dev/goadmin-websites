@@ -23,7 +23,7 @@ import {
   type HeaderVariantProps,
   type NavItem,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado, posicionMovil,
+  variablesEncabezado, posicionMovil, movilPlantilla, useTransparenteMovil, GlifoMenu,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -52,12 +52,14 @@ export default function MobileTabs({
   branchId,
 }: HeaderVariantProps) {
   const temaMenu = useTemaMenuMovil(primaryColor);
+  const mp = movilPlantilla(settings);
+  const transparente = useTransparenteMovil(settings);
   const organizationId = organization.id;
   const searchStyle = buscadorMovil(settings as Record<string, unknown>);
   const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -65,18 +67,19 @@ export default function MobileTabs({
           <FilaLogoMovil
             ajustes={settings}
             posicion={posicionLogo}
-            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
-            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            minHeight={mp.altoFila}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} />}
             acciones={
               <HeaderActions
                 settings={settings}
-                showCart={showCart}
                 onCartClick={onCartClick}
                 searchStyle={searchStyle}
                 organizationId={organizationId}
                 primaryColor={primaryColor}
                 organizationSubdomain={organization.subdomain || ''}
-                showSearchIcon={searchStyle === 'icon'}
+                showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
+                  showCart={showCart && mp.verCarrito}
+                  mostrarCuentaMovil={mp.verCuenta}
                 isMobile={true}
                 branchId={branchId}
               />

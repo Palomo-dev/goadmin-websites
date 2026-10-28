@@ -5,7 +5,7 @@ import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
 import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, Search } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -21,7 +21,7 @@ import {
   type NavItem,
   type MenuCategory,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado, posicionMovil,
+  variablesEncabezado, posicionMovil, movilPlantilla, useTransparenteMovil, GlifoMenu,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -50,6 +50,8 @@ export default function MobileFullscreen({
   const [open, setOpen] = useState(false);
   const isLoggedIn = useAuthState();
   const temaMenu = useTemaMenuMovil(primaryColor);
+  const mp = movilPlantilla(settings);
+  const transparente = useTransparenteMovil(settings);
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = buscadorMovil(settings as Record<string, unknown>);
@@ -76,7 +78,7 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -84,19 +86,20 @@ export default function MobileFullscreen({
           <FilaLogoMovil
             ajustes={settings}
             posicion={posicionLogo}
-            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
-            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            minHeight={mp.altoFila}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} />}
             acciones={
               <>
                 <HeaderActions
                   settings={settings}
-                  showCart={showCart}
                   onCartClick={onCartClick}
                   searchStyle={searchStyle}
                   organizationId={organizationId}
                   primaryColor={primaryColor}
                   organizationSubdomain={organization.subdomain || ''}
-                  showSearchIcon={searchStyle === 'icon'}
+                  showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
+                  showCart={showCart && mp.verCarrito}
+                  mostrarCuentaMovil={mp.verCuenta}
                   isMobile={true}
                 />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
@@ -106,9 +109,9 @@ export default function MobileFullscreen({
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-                className="p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors"
+                className={`p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors${mp.claseBorde}${mp.verMenu ? "" : " hidden"}`}
               >
-                {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+                {open ? <X className="h-5 w-5" /> : <GlifoMenu glifo={mp.glifo} className="h-5 w-5" />}
               </button>
             }
           />
@@ -130,7 +133,7 @@ export default function MobileFullscreen({
       {/* Overlay fullscreen */}
       {open && (
         <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto shadow-2xl`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
-          <div className="flex items-center justify-between px-4 border-b border-[color:var(--mm-divider)]" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
+          <div className="flex items-center justify-between px-4 border-b border-[color:var(--mm-divider)]" style={{ minHeight: mp.altoFila }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(32, Math.round((settings?.logo_height || 48) * 0.7))} />
             <button
               onClick={() => setOpen(false)}

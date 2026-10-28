@@ -5,7 +5,7 @@ import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
 import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import Link from 'next/link';
-import { Menu as MenuIcon, X, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
+import { X, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
 import {
   HeaderLogo,
   HeaderActions,
@@ -20,7 +20,7 @@ import {
   type NavItem,
   type MenuCategory,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado, posicionMovil,
+  variablesEncabezado, posicionMovil, movilPlantilla, useTransparenteMovil, GlifoMenu,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -54,6 +54,8 @@ export default function MobileDrawer({
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const temaMenu = useTemaMenuMovil(primaryColor);
+  const mp = movilPlantilla(settings);
+  const transparente = useTransparenteMovil(settings);
   const isLoggedIn = useAuthState();
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
@@ -84,7 +86,7 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -92,19 +94,20 @@ export default function MobileDrawer({
           <FilaLogoMovil
             ajustes={settings}
             posicion={posicionLogo}
-            minHeight={Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16)}
-            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />}
+            minHeight={mp.altoFila}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} />}
             acciones={
               <>
                 <HeaderActions
                   settings={settings}
-                  showCart={showCart}
                   onCartClick={onCartClick}
                   searchStyle={searchStyle}
                   organizationId={organizationId}
                   primaryColor={primaryColor}
                   organizationSubdomain={organization.subdomain || ''}
-                  showSearchIcon={searchStyle === 'icon'}
+                  showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
+                  showCart={showCart && mp.verCarrito}
+                  mostrarCuentaMovil={mp.verCuenta}
                   isMobile={true}
                 />
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
@@ -114,9 +117,9 @@ export default function MobileDrawer({
               <button
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"
-                className="p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors"
+                className={`p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors${mp.claseBorde}${mp.verMenu ? "" : " hidden"}`}
               >
-                <MenuIcon className="h-6 w-6" />
+                <GlifoMenu glifo={mp.glifo} className="h-6 w-6" />
               </button>
             }
           />
