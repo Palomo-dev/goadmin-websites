@@ -128,6 +128,11 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   if (content.card_border_color) style.card_border_color = content.card_border_color
   if (content.card_bg) style.card_bg = content.card_bg
   if (content.card_padding != null) style.card_padding = content.card_padding
+  // CATEGO-24/25/26: origen del medio (imagen o ícono), respaldo y ancho máximo; sin clave, como antes.
+  const extra = content as Record<string, any>
+  if (extra.media_source) style.media_source = extra.media_source
+  if (extra.fallback_media) style.fallback_media = extra.fallback_media
+  if (extra.media_max_width != null && extra.media_max_width !== '') style.media_max_width = extra.media_max_width
   if (content.card_hover) style.card_hover = content.card_hover
   if (content.image_fit) style.image_fit = content.image_fit
   if (content.image_ratio) style.image_ratio = content.image_ratio
@@ -182,10 +187,14 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   const hasExplicitBg = cardStyle.card_bg && cardStyle.card_bg.length > 0
   const bg = hasExplicitBg ? cardStyle.card_bg : undefined
   const isRound = cardStyle.shape === 'circle' || cardStyle.shape === 'round'
-  const wantImage = cardStyle.show_image !== false && cat.image_url
-  const wantIcon = cardStyle.show_icon
-  const wantColor = cardStyle.show_color && cat.color
-  const accent = wantColor ? cat.color : (primaryColor || '#6366f1')
+  // Origen del medio: `icon` fuerza el ícono, `image` la foto (o el ícono si no hay), `color`/`initial` la inicial.
+  const origen = cardStyle.media_source || 'auto'
+  const wantImage = origen === 'auto' ? cardStyle.show_image !== false && cat.image_url : origen === 'image' ? cat.image_url : null
+  const wantIcon = origen === 'auto' ? cardStyle.show_icon : origen === 'icon' || origen === 'image'
+  const wantColor = origen === 'auto' ? cardStyle.show_color && cat.color : origen === 'color' || origen === 'initial' ? (cat.color || primaryColor || '#6366f1') : false
+  const accent = typeof wantColor === 'string' && wantColor ? wantColor : (primaryColor || '#6366f1')
+  // Ancho máximo del medio en la lista: sin valor, 56 px como siempre.
+  const ladoMedio = Number(cardStyle.media_max_width) > 0 ? Math.min(240, Number(cardStyle.media_max_width)) : undefined
 
   // Sombra base según card_shadow (si no se define, sin sombra)
   const shadowClass =
@@ -220,7 +229,7 @@ function ListCard({ cat, cardStyle, primaryColor }: {
       {/* Media: imagen | icono | color | inicial */}
       <div
         className={`w-14 h-14 shrink-0 overflow-hidden flex items-center justify-center ${isRound ? 'rounded-full' : 'rounded-lg'}`}
-        style={wantColor ? { backgroundColor: `${accent}20` } : undefined}
+        style={{ ...(wantColor ? { backgroundColor: `${accent}20` } : {}), ...(ladoMedio ? { width: ladoMedio, height: ladoMedio } : {}) }}
       >
         {wantImage ? (
           <img
@@ -233,6 +242,10 @@ function ListCard({ cat, cardStyle, primaryColor }: {
         ) : wantIcon ? (
           <DynamicLucideIcon name={cat.icon} fallback="Tag" className="w-6 h-6" style={{ color: accent }} />
         ) : wantColor ? (
+          <span className="text-lg font-bold" style={{ color: accent }}>
+            {cat.name?.charAt(0)?.toUpperCase() || '?'}
+          </span>
+        ) : cardStyle.fallback_media === 'initial' ? (
           <span className="text-lg font-bold" style={{ color: accent }}>
             {cat.name?.charAt(0)?.toUpperCase() || '?'}
           </span>
