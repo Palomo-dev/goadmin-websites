@@ -56,7 +56,7 @@ export function ContadorConEstilo({
     <div className="flex shrink-0 items-center font-mono font-bold" style={{ gap: Math.round(4 * escala), fontSize: Math.round(r.px.digitos * escala), color: r.colorDigitos }} data-contador-digitos="">
       {unidades.map((u, i) => (
         <span key={u.etiqueta} className="flex items-center" style={{ gap: Math.round(4 * escala) }}>
-          {i > 0 && estilo.temporizador.separadores && <span aria-hidden>:</span>}
+          {i > 0 && estilo.temporizador.separadores && <span aria-hidden style={{ color: r.colorTexto }}>:</span>}
           <span className="flex flex-col items-center leading-tight">
             <span style={caja}>{u.valor}</span>
             {estilo.temporizador.etiquetas && (
