@@ -573,3 +573,66 @@ export function leerConstructor(settings: unknown): ConstructorEncabezado | null
 export function buscadorEnBarra(tipo: BuscadorNuevo | undefined): boolean {
   return !!tipo && tipo !== 'icon_overlay'
 }
+
+/**
+ * Caja de los íconos que pinta el encabezado: la de Encabezado (`header_icons_box`) y, sin ella,
+ * la del Constructor (`header_builder.icon_container`, p. ej. el borrador de la org 134).
+ */
+export function cajaIconosEncabezado(settings: unknown): ContenedorIconos | null {
+  const s = objeto(settings) ?? {}
+  return leerContenedor(s.header_icons_box) ?? leerContenedor(objeto(s.header_builder)?.icon_container)
+}
+
+export interface MenuAdicional {
+  id: string
+  label: string
+  links: { label: string; href: string }[]
+}
+
+/**
+ * Menús adicionales de Encabezado (`header_menu2..4_*`). Lectura retrocompatible: sin ninguno,
+ * los menús guardados en el Constructor (`header_builder.menus`) se pintan igual, como desplegables.
+ */
+export function menusAdicionales(settings: unknown): MenuAdicional[] {
+  const s = objeto(settings) ?? {}
+  const propios: MenuAdicional[] = []
+  for (const n of [2, 3, 4]) {
+    const label = texto(s[`header_menu${n}_label`], 40)
+    const crudos = Array.isArray(s[`header_menu${n}_links`]) ? (s[`header_menu${n}_links`] as unknown[]) : []
+    const links = crudos
+      .map((l) => objeto(l))
+      .map((l) => (l ? { label: texto(l.label, 60), href: texto(l.href, 300) } : null))
+      .filter((l): l is { label: string; href: string } => !!l?.label && !!l.href)
+      .slice(0, 12)
+    if (label && links.length) propios.push({ id: `menu${n}`, label, links })
+  }
+  if (propios.length) return propios
+  const builder = objeto(s.header_builder)
+  const viejos = Array.isArray(builder?.menus) ? builder.menus.map(leerMenu).filter((x): x is MenuConstruido => !!x) : []
+  return viejos
+    .map((m) => ({ id: m.id, label: m.name, links: m.items.map((i) => ({ label: i.label, href: i.href })) }))
+    .filter((m) => m.links.length > 0)
+    .slice(0, 6)
+}
+
+/**
+ * Botones 3 a 6 de Encabezado. Lectura retrocompatible: sin ninguno, los botones con enlace o
+ * WhatsApp del Constructor (`header_builder.buttons`) a partir del tercero.
+ */
+export function botonesExtraEncabezado(settings: unknown): { texto: string; url: string }[] {
+  const s = objeto(settings) ?? {}
+  const propios: { texto: string; url: string }[] = []
+  for (const n of [3, 4, 5, 6]) {
+    const t = texto(s[`header_cta${n}_text`], 40)
+    const u = texto(s[`header_cta${n}_url`], 500)
+    if (t && u) propios.push({ texto: t, url: u })
+  }
+  if (propios.length) return propios
+  const builder = objeto(s.header_builder)
+  const viejos = Array.isArray(builder?.buttons) ? builder.buttons.map(leerBoton).filter((x): x is BotonHeader => !!x) : []
+  return viejos
+    .slice(2)
+    .map((b) => ({ texto: b.text, url: b.action === 'whatsapp' ? 'whatsapp' : b.href ?? '' }))
+    .filter((b) => b.texto && b.url)
+    .slice(0, 4)
+}

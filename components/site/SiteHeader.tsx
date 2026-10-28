@@ -36,9 +36,8 @@ import { MobileBottomNav, useUnidadesBarra } from './header/mobile/MobileBottomN
 import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
-import { HeaderPorZonas } from './header/HeaderPorZonas'
 import { useMenuDeslizable } from './header/menuDeslizable'
-import { leerConstructor } from '@/lib/website/constructorEncabezado'
+import { menusAdicionales } from '@/lib/website/constructorEncabezado'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -392,7 +391,7 @@ export default function SiteHeader({
         children: [],
         level: 0,
       }) as unknown as WebsitePageWithChildren)
-    : navTreeSitio
+    : conMenusAdicionales(navTreeSitio, menusAdicionales(settings), organization.id)
   // Categoría activa al hacer scroll por la carta: resalta su enlace del encabezado.
   useCategoriaActiva(categoriasCarta && categoriasCarta.length > 0 ? categoriasCarta.map((c) => c.href) : null)
 
@@ -428,15 +427,9 @@ export default function SiteHeader({
     posicionLogo: logoMovil(settings),
   }
 
-  const constructor = leerConstructor(settings)
-  if (constructor?.zonas || constructor?.menus) {
-    return envolverScroll(
-      <HeaderPorZonas
-        {...variantProps}
-        constructor={constructor}
-      />,
-    )
-  }
+  // El Constructor ya no cambia de encabezado (HeaderPorZonas): ninguna fila guardada tiene zonas
+  // ni menús propios. Lo que sí traiga (menús, botones, caja de íconos, buscador) se lee en los
+  // encabezados normales, igual que las opciones de Encabezado.
   const varianteBase = elegirVariante()
   const cssBp = cssBreakpointHeader(mobileBreakpoint, isMobile ? 'movil' : 'escritorio')
   const variante = cssBp ? (
@@ -590,4 +583,24 @@ function useCategoriaActiva(hrefs: string[] | null) {
       window.removeEventListener('resize', calcular)
     }
   }, [clave])
+}
+
+/**
+ * Menús adicionales de Encabezado (y los del Constructor guardados): un desplegable cada uno,
+ * después del menú principal. Sin menús, el mismo árbol (misma referencia).
+ */
+function conMenusAdicionales(
+  arbol: WebsitePageWithChildren[],
+  menus: { id: string; label: string; links: { label: string; href: string }[] }[],
+  organizationId: number,
+): WebsitePageWithChildren[] {
+  if (menus.length === 0) return arbol
+  const nodo = (id: string, title: string, href: string, children: WebsitePageWithChildren[], level: number) =>
+    ({ id, organization_id: organizationId, title, slug: href.replace(/^\/+/, ''), children, level, is_published: true, show_in_header: true }) as unknown as WebsitePageWithChildren
+  return [
+    ...arbol,
+    ...menus.map((m) =>
+      nodo(`hdr-${m.id}`, m.label, m.links[0].href, m.links.map((l, i) => nodo(`hdr-${m.id}-${i}`, l.label, l.href, [], 1)), 0),
+    ),
+  ]
 }

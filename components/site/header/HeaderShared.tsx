@@ -8,7 +8,7 @@ import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, P
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
-import { leerConstructor } from '@/lib/website/constructorEncabezado';
+import { botonesExtraEncabezado, cajaIconosEncabezado, leerConstructor } from '@/lib/website/constructorEncabezado';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { leerPresentacionMovil } from '@/lib/website/menuMovil';
 import { MoreHorizontal, LayoutGrid, Minus } from 'lucide-react';
@@ -595,7 +595,8 @@ export function HeaderActions({
   // Sin contenedor, el círculo de acento y las clases de hoy.
   const leido = leerConstructor(settings)
   const cromoOverlay = leido?.buscador
-  const contenedor = leido?.contenedor
+  // Caja de los íconos de Encabezado; sin ella, la del Constructor (lectura retrocompatible).
+  const contenedor = cajaIconosEncabezado(settings)
   // Círculo acento sin caja del constructor: el color del ícono lo pone el círculo, no la barra móvil.
   const circuloSimple = !contenedor && estiloIconos.circulo
   const coloresCaja = {
@@ -777,28 +778,34 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
  */
 export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settings'] }) {
   const { opciones, extras } = useEncabezadoPie();
-  const boton = opciones.boton2;
-  if (!boton) return null;
-  const href = hrefBoton(boton.url, extras.enlaces);
-  if (!href) return null;
+  // Botones 3 a 6 (antes solo en el Constructor): mismo estilo que el segundo, después de él.
+  const botones = [opciones.boton2, ...botonesExtraEncabezado(settings)].filter((b): b is { texto: string; url: string } => !!b);
+  if (botones.length === 0) return null;
   const paddingX = settings?.cta_padding_x ?? 16;
   const paddingY = settings?.cta_padding_y ?? 8;
   const borderRadius = settings?.cta_border_radius ?? 8;
-  const externo = esEnlaceExterno(href) || href.startsWith('tel:') || href.startsWith('mailto:');
   const estilo: React.CSSProperties = {
     padding: `${Math.max(0, paddingY - 1)}px ${Math.max(0, paddingX - 1)}px`,
     borderRadius: `${borderRadius}px`,
   };
   const clase = 'hidden md:inline-flex items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
-  return externo ? (
-    <a href={href} className={clase} style={estilo} data-boton-secundario="" {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-      {boton.texto}
-    </a>
-  ) : (
-    <Link href={href} className={clase} style={estilo} data-boton-secundario="">
-      {boton.texto}
-    </Link>
-  );
+  const nodos = botones.map((boton, i) => {
+    const href = hrefBoton(boton.url, extras.enlaces);
+    if (!href) return null;
+    const externo = esEnlaceExterno(href) || href.startsWith('tel:') || href.startsWith('mailto:');
+    const marca = i === 0 && opciones.boton2 ? { 'data-boton-secundario': '' } : { 'data-boton-extra': String(i + 2) };
+    return externo ? (
+      <a key={i} href={href} className={clase} style={estilo} {...marca} {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+        {boton.texto}
+      </a>
+    ) : (
+      <Link key={i} href={href} className={clase} style={estilo} {...marca}>
+        {boton.texto}
+      </Link>
+    );
+  });
+  // Un solo botón: el mismo nodo de siempre (sin envoltorio).
+  return nodos.length === 1 ? nodos[0] : <>{nodos}</>;
 }
 
 export function HeaderTopbar({
