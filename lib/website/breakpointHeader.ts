@@ -23,6 +23,14 @@ export function cssBreakpointHeader(breakpoint: number, modo: ModoBreakpoint): s
     // Computador elegido aunque el ancho sea <768: lo `hidden md:*` se ve y lo `md:hidden` no.
     for (const d of DISPLAYS) reglas.push(`${s} .hidden.md\\:${d}{display:${d}}`)
     reglas.push(`${s} .md\\:hidden{display:none}`)
+    // Computador por debajo de 768 (breakpoint 640): las filas de escritorio fueron pensadas para
+    // ≥768. El menú cede ancho y se desliza en vez de empujar los íconos fuera de la pantalla.
+    if (breakpoint < BREAKPOINT_HEADER_HOY) {
+      reglas.push(
+        `@media (max-width:${BREAKPOINT_HEADER_HOY - 0.02}px){${s} header nav,${s} header .flex-1{min-width:0}` +
+          `${s} header nav{overflow-x:auto;scrollbar-width:none}${s} header nav>*{flex-shrink:0}}`,
+      )
+    }
   }
   return reglas.join('\n')
 }
