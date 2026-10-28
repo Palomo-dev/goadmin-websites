@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe, ChevronDown } from 'lucide-react'
@@ -395,9 +395,11 @@ export default function SiteHeader({
   useCategoriaActiva(categoriasCarta && categoriasCarta.length > 0 ? categoriasCarta.map((c) => c.href) : null)
 
   // Determinar variante de header
-  const extra = settings as { header_layout?: unknown; header_scroll?: unknown } | null | undefined
+  const extra = settings as { header_layout?: unknown; header_scroll?: unknown; header_sticky?: unknown } | null | undefined
   const headerStyle = estiloDeHeaderLayout(extra?.header_layout) || settings?.header_style || 'default'
-  const scroll = useScrollEncabezado(extra?.header_scroll)
+  // «Al bajar» solo existe con encabezado fijo: con header_sticky false el editor dice «Se va con
+  // la página» y la tienda tampoco anima (datos viejos con header_scroll quedan quietos).
+  const scroll = useScrollEncabezado(extra?.header_sticky === false ? null : extra?.header_scroll)
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
   // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
   // así que se usa el menú móvil hasta llegar a lg.
@@ -420,11 +422,11 @@ export default function SiteHeader({
 
   const constructor = leerConstructor(settings)
   if (constructor?.zonas || constructor?.menus) {
-    return (
+    return envolverScroll(
       <HeaderPorZonas
         {...variantProps}
         constructor={constructor}
-      />
+      />,
     )
   }
   const variante = elegirVariante()
@@ -438,14 +440,17 @@ export default function SiteHeader({
   ) : (
     variante
   )
-  if (!scroll.activo) return nodo
-  const fijoEnvoltorio = (settings as Record<string, unknown> | null | undefined)?.header_sticky !== false
-  return (
-    // El envoltorio rompe el `sticky` del <header> interno: el envoltorio toma el fijo (header_sticky).
-    <div className={[fijoEnvoltorio ? 'sticky top-0 z-40' : '', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ') || undefined}>
-      {nodo}
-    </div>
-  )
+  return envolverScroll(nodo)
+
+  /** Sin «Al bajar» activo, el árbol de hoy. Con él, el envoltorio toma el fijo del <header>. */
+  function envolverScroll(contenido: ReactNode) {
+    if (!scroll.activo) return contenido
+    return (
+      <div className={['sticky top-0 z-40', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ')}>
+        {contenido}
+      </div>
+    )
+  }
 
   function menuLegado() {
     switch (mobileMenuStyle) {

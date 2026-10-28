@@ -56,13 +56,16 @@ export function contenidoAvisoContacto(a: AvisoContacto): { asunto: string; html
 export async function sendContactNotice(aviso: AvisoContacto): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey || aviso.destinatarios.length === 0) return false
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'reservas@goadmin.io'
+  // Remitente propio de contacto; RESEND_FROM_EMAIL ya no se usa aquí (es el de reservas).
+  const fromEmail = process.env.RESEND_CONTACT_FROM_EMAIL || 'GO Admin <contacto@goadmin.io>'
   const { asunto, html, texto } = contenidoAvisoContacto(aviso)
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ from: fromEmail, to: aviso.destinatarios, subject: asunto, html, text: texto, reply_to: aviso.email }),
+      // Un Resend lento no debe colgar la respuesta al visitante.
+      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) {
       console.error('[Email] Aviso de contacto no enviado:', res.status)

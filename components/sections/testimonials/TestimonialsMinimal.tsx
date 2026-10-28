@@ -10,7 +10,6 @@ import {
   type TestimonialsData,
 } from './testimonialsUtils'
 import { SiLista } from '../ListRenderer'
-import { proporcionHijos } from '../proporcionCeldas'
 
 interface TestimonialsMinimalProps {
   content: TestimonialsContent
@@ -45,7 +44,7 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6', data }:
           </div>
         )}
         {items.length > 0 && (
-        <SiLista content={content} className={`space-y-6 ${proporcionHijos(content)}`}>
+        <SiLista content={content} className={`space-y-6`}>
           {items.map((item) => {
             const stars = ratingStars(item.rating)
             const srcLabel = sourceLabel(item.source)

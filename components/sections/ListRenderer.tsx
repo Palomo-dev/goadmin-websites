@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react'
 import { listaDelInspector, type ListaVisual } from '@/lib/website/cascaronSeccion'
+import { proporcionEnvoltorio } from './proporcionCeldas'
 
 type ApiCarrusel = { prev: () => void; next: () => void }
 
@@ -64,8 +65,10 @@ export const SiLista = forwardRef<HTMLDivElement, {
   className?: string
   style?: CSSProperties
   onScroll?: () => void
+  /** Rejillas: con la lista del inspector, la «Proporción» va en cada celda. */
+  proporcionCeldas?: boolean
   children: ReactNode
-}>(function SiLista({ content, className, style, onScroll, children }, ref) {
+}>(function SiLista({ content, className, style, onScroll, proporcionCeldas, children }, ref) {
   const lista = listaDelInspector(content)
   if (!lista) {
     return <div ref={ref} className={className} style={style} onScroll={onScroll}>{children}</div>
@@ -75,7 +78,7 @@ export const SiLista = forwardRef<HTMLDivElement, {
     && lista.columnsTablet == null
     && lista.columnsMobile == null
   return (
-    <ListRenderer lista={lista} className={conserva ? className : undefined} style={conserva ? style : undefined}>
+    <ListRenderer lista={lista} className={conserva ? className : undefined} style={conserva ? style : undefined} celda={proporcionCeldas && !conserva && lista.mode === 'grid' ? proporcionEnvoltorio(content) : undefined}>
       {children}
     </ListRenderer>
   )
@@ -85,10 +88,12 @@ export function ListRenderer({
   lista,
   className,
   style,
+  celda,
   children,
 }: {
   lista: ListaVisual
   className?: string
+  celda?: string
   style?: CSSProperties
   children: ReactNode
 }) {
@@ -214,7 +219,7 @@ export function ListRenderer({
           onPointerUp={() => { arrastre.current = null }}
         >
           {visibles.map((nodo, i) => (
-            <div key={i} data-lista-item="" className={lista.mode === 'masonry' ? 'mb-4 break-inside-avoid' : ''}>
+            <div key={i} data-lista-item="" className={lista.mode === 'masonry' ? 'mb-4 break-inside-avoid' : celda ?? ''}>
               {nodo}
             </div>
           ))}

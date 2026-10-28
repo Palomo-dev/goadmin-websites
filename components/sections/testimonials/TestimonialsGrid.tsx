@@ -81,7 +81,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
             <p>No hay testimonios disponibles aún</p>
           </div>
         ) : (
-        <SiLista content={content} className={`grid ${gridCls} ${proporcionHijos(content)}`} style={{ gap: `${gap}px` }}>
+        <SiLista content={content} proporcionCeldas className={`grid ${gridCls} ${proporcionHijos(content)}`} style={{ gap: `${gap}px` }}>
           {items.map((item) => {
             const isExpanded = expanded[item.id]
             const stars = ratingStars(item.rating)

@@ -75,8 +75,18 @@ export function useCamposPropios(campos: CampoPropio[] | null) {
       const extra = (campos ?? [])
         .filter((c) => !c.estandar && (valores[c.name] ?? '').trim() !== '')
         .map((c) => `${c.label}: ${c.type === 'checkbox' ? 'Sí' : valores[c.name].trim()}`)
-      const message = [v.message.trim(), ...(extra.length > 0 ? ['', ...extra] : [])].join('\n').trim().slice(0, CONTACT_MAX_LENGTHS.message)
-      return { subject: v.subject, message }
+      let message = [v.message.trim(), ...(extra.length > 0 ? ['', ...extra] : [])].join('\n').trim()
+      // Sin «mensaje» ni «asunto» en el formulario: el mensaje son los campos llenos (si no, el
+      // servidor respondería «Escribe un mensaje»).
+      if (!message && !v.subject.trim()) {
+        message = [
+          `Nombre: ${v.name.trim()}`,
+          `Correo: ${v.email.trim()}`,
+          ...(v.phone.trim() ? [`Teléfono: ${v.phone.trim()}`] : []),
+          ...(v.company.trim() ? [`Empresa: ${v.company.trim()}`] : []),
+        ].join('\n')
+      }
+      return { subject: v.subject, message: message.slice(0, CONTACT_MAX_LENGTHS.message) }
     },
     [campos, valores]
   )
