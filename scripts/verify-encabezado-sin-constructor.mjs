@@ -1,7 +1,7 @@
 // (e) Constructor → Encabezado: lo que solo hacía el Constructor se lee de opciones de Encabezado,
 // con lectura retrocompatible de header_builder; sin valores, nada cambia.
 import { readFileSync } from 'node:fs'
-import { cajaIconosEncabezado, menusAdicionales, botonesExtraEncabezado, leerConstructor } from '../lib/website/constructorEncabezado.ts'
+import { cajaIconosEncabezado, menusAdicionales, botonesExtraEncabezado, leerConstructor, estiloBotonesExtra } from '../lib/website/constructorEncabezado.ts'
 let fallos = 0
 const ok = (c, m) => { console.log((c ? 'ok: ' : 'FALLA: ') + m); if (!c) fallos++ }
 const org134 = { header_builder: { icon_container: { icon: 22, scope: 'all', shape: 'none', stroke: 2, weight: 'contorno' } } }
@@ -29,4 +29,7 @@ const mt = readFileSync(new URL('../components/site/header/mobile/MobileTabs.tsx
 ok(mt.includes('leerConstructor(settings)?.contenedor'), 'MobileTabs sin tocar')
 const mapa = readFileSync(new URL('../lib/website/v2/mapeoAjustes.ts', import.meta.url), 'utf8')
 ok(['header_icons_box', 'header_cta3_text', 'header_cta6_url', 'header_menu2_label', 'header_menu4_links'].every((k) => new RegExp(`  ${k}: \\{ zona: 'header', porDefecto: null`).test(mapa)), 'claves nuevas sin valor por defecto')
+ok(estiloBotonesExtra({}) === 'outline' && estiloBotonesExtra({ header_extra_buttons_style: null }) === 'outline' && estiloBotonesExtra({ header_extra_buttons_style: 'raro' }) === 'outline', 'botones 3-6 sin valor: con borde (como hoy)')
+ok(estiloBotonesExtra({ header_extra_buttons_style: 'solid' }) === 'solid' && estiloBotonesExtra({ header_extra_buttons_style: 'text' }) === 'text', 'botones 3-6: relleno y solo texto')
+ok(hs.includes('esSegundo ? claseBase : claseExtra') && hs.includes("data-estilo-extra"), 'HeaderShared: el estilo solo toca los botones 3 a 6')
 if (fallos) { console.error(fallos + ' fallos'); process.exit(1) }

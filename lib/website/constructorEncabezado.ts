@@ -591,6 +591,7 @@ export const CLAVES_ENCABEZADO_SIN_CONSTRUCTOR = [
   'header_menu4_label',
   'header_menu4_links',
   'header_icons_box',
+  'header_extra_buttons_style',
 ] as const
 
 /**
@@ -654,4 +655,12 @@ export function botonesExtraEncabezado(settings: unknown): { texto: string; url:
     .map((b) => ({ texto: b.text, url: b.action === 'whatsapp' ? 'whatsapp' : b.href ?? '' }))
     .filter((b) => b.texto && b.url)
     .slice(0, 4)
+}
+
+export type EstiloBotonesExtra = 'outline' | 'solid' | 'text'
+
+/** Estilo de los botones 3 a 6 (`header_extra_buttons_style`); sin valor o desconocido = «Con borde». */
+export function estiloBotonesExtra(settings: unknown): EstiloBotonesExtra {
+  const v = objeto(settings)?.header_extra_buttons_style
+  return v === 'solid' || v === 'text' ? v : 'outline'
 }

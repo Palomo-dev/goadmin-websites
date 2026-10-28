@@ -61,7 +61,7 @@ await rm(dir, { recursive: true, force: true })
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
-check(nuevas.length === 67, `se esperaban 67 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 68, `se esperaban 68 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -195,6 +195,7 @@ const CONSUMIDORES = {
   header_menu3_links: ['lib/website/constructorEncabezado.ts', 'header_menu3_links'],
   header_menu4_label: ['lib/website/constructorEncabezado.ts', 'header_menu4_label'],
   header_menu4_links: ['lib/website/constructorEncabezado.ts', 'header_menu4_links'],
+  header_extra_buttons_style: ['lib/website/constructorEncabezado.ts', 'header_extra_buttons_style'],
   header_icons_box: ['lib/website/constructorEncabezado.ts', 'header_icons_box'],
   header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
   first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],

@@ -8,7 +8,7 @@ import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, P
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
-import { botonesExtraEncabezado, cajaIconosEncabezado, leerConstructor } from '@/lib/website/constructorEncabezado';
+import { botonesExtraEncabezado, cajaIconosEncabezado, estiloBotonesExtra, leerConstructor } from '@/lib/website/constructorEncabezado';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { leerPresentacionMovil } from '@/lib/website/menuMovil';
 import { MoreHorizontal, LayoutGrid, Minus } from 'lucide-react';
@@ -789,11 +789,27 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     borderRadius: `${borderRadius}px`,
   };
   const clase = 'hidden md:inline-flex items-center whitespace-nowrap border border-current text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80';
+  const claseBase = clase;
+  const estiloBase = estilo;
+  // Botones 3 a 6: «Con borde» (sin valor, lo de hoy), «Relleno» o «Solo texto». El segundo no cambia.
+  const estiloExtra = estiloBotonesExtra(settings);
+  const fondoRelleno = settings?.cta_bg_color ?? 'var(--primary-color, #111827)';
+  const claseExtra = estiloExtra === 'solid'
+    ? 'hidden md:inline-flex items-center whitespace-nowrap border border-transparent text-sm font-semibold transition-opacity hover:opacity-90'
+    : estiloExtra === 'text'
+      ? 'hidden md:inline-flex items-center whitespace-nowrap border border-transparent text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80 hover:underline'
+      : clase;
+  const estiloDeExtra: React.CSSProperties = estiloExtra === 'solid'
+    ? { ...estilo, backgroundColor: fondoRelleno, color: settings?.cta_text_color ?? '#ffffff' }
+    : estilo;
   const nodos = botones.map((boton, i) => {
     const href = hrefBoton(boton.url, extras.enlaces);
     if (!href) return null;
     const externo = esEnlaceExterno(href) || href.startsWith('tel:') || href.startsWith('mailto:');
-    const marca = i === 0 && opciones.boton2 ? { 'data-boton-secundario': '' } : { 'data-boton-extra': String(i + 2) };
+    const esSegundo = i === 0 && !!opciones.boton2;
+    const marca = esSegundo ? { 'data-boton-secundario': '' } : { 'data-boton-extra': String(i + 2), ...(estiloExtra !== 'outline' ? { 'data-estilo-extra': estiloExtra } : {}) };
+    const clase = esSegundo ? claseBase : claseExtra;
+    const estilo = esSegundo ? estiloBase : estiloDeExtra;
     return externo ? (
       <a key={i} href={href} className={clase} style={estilo} {...marca} {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         {boton.texto}
