@@ -188,8 +188,19 @@ export function atributosTema(t: TemaPublico | null): AtributosTema {
  * Hoja de Google Fonts para las familias pedidas (sin repetir, máximo 6), o `null` si no hay
  * ninguna. Solo familias que pasan `familiaSegura`. Pesos 400-700 (los del estilo por sección).
  */
+/** Fuentes que ya trae el sistema: no se piden a Google Fonts (la hoja no existe). */
+const FUENTES_SISTEMA = new Set([
+  'arial', 'helvetica', 'helvetica neue', 'georgia', 'times', 'times new roman', 'verdana', 'tahoma', 'trebuchet ms',
+  'courier', 'courier new', 'system-ui', '-apple-system', 'blinkmacsystemfont', 'segoe ui', 'sans-serif', 'serif',
+  'monospace', 'cursive', 'ui-sans-serif', 'ui-serif', 'ui-monospace', 'impact', 'garamond', 'palatino', 'site',
+])
+
+export function esFuenteSistema(f: string): boolean {
+  return FUENTES_SISTEMA.has(f.trim().replace(/^['"]|['"]$/g, '').toLowerCase())
+}
+
 export function urlGoogleFonts(familias: (string | null | undefined)[]): string | null {
-  const unicas = Array.from(new Set(familias.flatMap((f) => (f && f.includes('_') ? familiasDePar(f) : [familiaSegura(f)])).filter((f): f is string => !!f))).slice(0, 6)
+  const unicas = Array.from(new Set(familias.flatMap((f) => (f && f.includes('_') ? familiasDePar(f) : [familiaSegura(f)])).filter((f): f is string => !!f && !esFuenteSistema(f)))).slice(0, 6)
   if (unicas.length === 0) return null
   const partes = unicas.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700`)
   return `https://fonts.googleapis.com/css2?${partes.join('&')}&display=swap`
