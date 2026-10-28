@@ -156,7 +156,7 @@ export function BarraPestanas({
       {/* Espaciador para la barra inferior fija */}
       {/* Hueco para la barra fija: va al final de la página (padding del body), no dentro del
           encabezado, donde dejaba 56 px en blanco entre el encabezado y el banner. */}
-      <style>{'@media (max-width: 767.98px) { body { padding-bottom: 3.5rem; } }'}</style>
+      <style>{`@media (max-width: ${((settings as { mobile_breakpoint?: number | null } | null | undefined)?.mobile_breakpoint ?? 768) - 0.02}px) { body { padding-bottom: 3.5rem; } }`}</style>
 
       {/* Barra inferior fija */}
       <nav className={`fixed bottom-0 left-0 right-0 z-40 ${CLASE_FONDO_ENCABEZADO}`} style={{ ...estiloBarraEncabezado(settings, 'top'), color: 'var(--hdr-mobile-icon)' }} {...marcaFondoEncabezado(settings)}>

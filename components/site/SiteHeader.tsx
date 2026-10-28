@@ -1,5 +1,6 @@
 'use client'
 
+import { cssBreakpointHeader } from '@/lib/website/breakpointHeader'
 import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -400,8 +401,7 @@ export default function SiteHeader({
   // «Al bajar» solo existe con encabezado fijo: con header_sticky false el editor dice «Se va con
   // la página» y la tienda tampoco anima (datos viejos con header_scroll quedan quietos).
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
-  // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
-  // así que se usa el menú móvil hasta llegar a lg.
+  // Sin valor guardado, 768 como siempre. 640/1024 se aplican con cssBreakpointHeader.
   const mobileBreakpoint = settings?.mobile_breakpoint ?? 768
   const isMobile = useMobileHeader(mobileBreakpoint)
   // «Al bajar» es una sola opción para computador y celular. Un `layout.hide_on_scroll` guardado
@@ -434,7 +434,16 @@ export default function SiteHeader({
       />,
     )
   }
-  const variante = elegirVariante()
+  const varianteBase = elegirVariante()
+  const cssBp = cssBreakpointHeader(mobileBreakpoint, isMobile ? 'movil' : 'escritorio')
+  const variante = cssBp ? (
+    <div data-hdr-bp={isMobile ? 'movil' : 'escritorio'} style={{ display: 'contents' }}>
+      <style>{cssBp}</style>
+      {varianteBase}
+    </div>
+  ) : (
+    varianteBase
+  )
   // Hotel: barra de reserva con fechas bajo el encabezado (header_booking_bar). Sin la opción,
   // la variante sola, como siempre. Sin scroll nuevo, el árbol es el de hoy.
   const nodo = opcionesShell.barraReserva ? (
