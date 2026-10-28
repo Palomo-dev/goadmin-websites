@@ -30,7 +30,6 @@ export const COPIAS = [
   ['lib/website/v2/mapeoAjustes.ts', 'src/lib/website/v2/mapeoAjustes.ts'],
   ['lib/website/menuMovil.ts', 'src/lib/website/menuMovil.ts'],
   ['lib/website/menuInferior.ts', 'src/lib/website/menuInferior.ts'],
-  ['lib/website/constructorEncabezado.ts', 'src/lib/website/constructorEncabezado.ts'],
   ['lib/website/v2/estiloSeccion.ts', 'src/lib/website/v2/estiloSeccion.ts'],
   ['lib/website/v2/tokensDiseno.ts', 'src/lib/website/v2/tokensDiseno.ts'],
   ['lib/website/v2/presetsDiseno.ts', 'src/lib/website/v2/presetsDiseno.ts'],
