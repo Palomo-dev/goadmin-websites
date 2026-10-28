@@ -1,3 +1,4 @@
+import { esColumnaAusente } from '@/lib/payments/metodosPorSucursal'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -24,18 +25,23 @@ async function getWebsitePaymentMethods(organizationId: number) {
   const supabase = createAdminClient() || createPublicClient()
 
   // 1. Métodos de pago nativos (cash, transfer, card, etc.) habilitados para website
-  const { data: orgMethods, error: orgError } = await (supabase as any)
+  // `branch_ids` (métodos por sucursal, ERP 20261028180000) solo si la columna ya existe.
+  const leer = (extra: string) => (supabase as any)
     .from('organization_payment_methods')
     .select(`
       id, payment_method_code, is_active, show_on_website,
       website_display_order, website_display_name, website_description, website_icon,
       integration_connection_id,
-      payment_methods (name, requires_reference)
+      payment_methods (name, requires_reference)${extra}
     `)
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .eq('show_on_website', true)
     .order('website_display_order', { ascending: true, nullsFirst: false })
+  let { data: orgMethods, error: orgError } = await leer(', branch_ids')
+  if (orgError && esColumnaAusente(orgError, 'branch_ids')) {
+    ({ data: orgMethods, error: orgError } = await leer(''))
+  }
 
   const methods = (orgMethods || []).map((m: any) => ({
     code: m.payment_method_code,
@@ -45,6 +51,7 @@ async function getWebsitePaymentMethods(organizationId: number) {
     requiresReference: m.payment_methods?.requires_reference || false,
     connectionId: m.integration_connection_id || null,
     type: m.integration_connection_id ? 'gateway' as const : 'native' as const,
+    branchIds: Array.isArray(m.branch_ids) && m.branch_ids.length > 0 ? (m.branch_ids as number[]) : null,
   }))
 
   // 2. Pasarelas de pago online (integration_connections activas/conectadas)

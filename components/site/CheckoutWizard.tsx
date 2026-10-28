@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -70,6 +71,8 @@ interface WebsitePaymentMethod {
   requiresReference: boolean
   connectionId?: string | null
   type: 'native' | 'gateway'
+  /** Sucursales donde se acepta (null/ausente = todas). */
+  branchIds?: number[] | null
 }
 
 interface TrustBadge {
@@ -183,7 +186,7 @@ function AvisoStockLinea({ activo, stock, umbral, plantilla }: { activo: boolean
   return <p className="text-xs text-orange-600 font-medium mt-1">{texto}</p>
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: availableMethods, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: todosLosMetodos, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
   const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
@@ -233,6 +236,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
       ? mesa.sede
       : (typeof sedePedido?.id === 'number' ? sedePedido.id : (typeof sedeActualId === 'number' ? sedeActualId : null)),
   })
+  // Métodos de pago habilitados en la sede del pedido (branch_ids del ERP; NULL = todas).
+  const availableMethods = useMemo(() => filtrarMetodosPorSede(todosLosMetodos, sedePromocion), [todosLosMetodos, sedePromocion])
   const {
     promotions: appliedPromotions,
     totalDiscount: promoDiscount,
