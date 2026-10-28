@@ -25,6 +25,7 @@ export interface CategoryCardStyle {
   shape?: 'square' | 'rounded' | 'circle' | 'card' | 'round'
   card_radius?: number
   card_shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
+  card_shadow_hover?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
   card_border_width?: number
   card_border_color?: string
   card_bg?: string
@@ -148,6 +149,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     shape,
     card_radius,
     card_shadow,
+    card_shadow_hover,
     card_border_width,
     card_border_color,
     card_bg,
@@ -282,7 +284,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   // --- Composición según text_position ---
   const hoverClass = card_hover ? HOVER_EFFECT_CLASS[card_hover] : 'hover:shadow-lg transition-shadow'
   const shadowClass = card_shadow ? SHADOW_CLASS[card_shadow] : ''
-  const shadowHover = card_shadow ? SHADOW_HOVER_CLASS[card_shadow] : 'hover:shadow-lg'
+  const shadowHover = (card_shadow_hover ? SHADOW_HOVER_CLASS[card_shadow_hover] : undefined) ?? (card_shadow ? SHADOW_HOVER_CLASS[card_shadow] : 'hover:shadow-lg')
 
   const linkClass = [
     'block group relative overflow-hidden bg-gray-100 dark:bg-gray-800',

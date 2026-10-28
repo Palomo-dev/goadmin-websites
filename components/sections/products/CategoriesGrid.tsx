@@ -45,6 +45,7 @@ interface CategoriesGridProps {
     // CARD_FIELDS (inyectados desde el catálogo del ERP)
     card_radius?: number
     card_shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
+    card_shadow_hover?: 'none' | 'sm' | 'md' | 'lg' | 'xl'
     card_border_width?: number
     card_border_color?: string
     card_bg?: string
@@ -124,6 +125,8 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   if (typeof content.overlay_opacity === 'number') style.overlay_opacity = content.overlay_opacity
   if (content.card_radius != null) style.card_radius = content.card_radius
   if (content.card_shadow) style.card_shadow = content.card_shadow
+  // Sombra al pasar el mouse (CATEGO-42): sin clave, la de siempre.
+  if (content.card_shadow_hover) style.card_shadow_hover = content.card_shadow_hover
   if (content.card_border_width != null) style.card_border_width = content.card_border_width
   if (content.card_border_color) style.card_border_color = content.card_border_color
   if (content.card_bg) style.card_bg = content.card_bg
@@ -210,6 +213,13 @@ function ListCard({ cat, cardStyle, primaryColor }: {
     cardStyle.card_hover === 'glow' ? 'hover:shadow-lg' :
     cardStyle.card_hover === 'border' ? 'hover:border-2' :
     'hover:shadow-sm'
+  const sombraHover =
+    cardStyle.card_shadow_hover === 'none' ? 'hover:shadow-none' :
+    cardStyle.card_shadow_hover === 'sm' ? 'hover:shadow-sm' :
+    cardStyle.card_shadow_hover === 'md' ? 'hover:shadow-md' :
+    cardStyle.card_shadow_hover === 'lg' ? 'hover:shadow-lg' :
+    cardStyle.card_shadow_hover === 'xl' ? 'hover:shadow-xl' :
+    ''
 
   // Fondo por defecto: gris suave (preserva el aspecto anterior)
   const bgClass = !hasExplicitBg ? 'bg-gray-50 dark:bg-gray-800/50' : ''
@@ -217,7 +227,7 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group flex items-center gap-3 transition-all ${shadowClass} ${hoverClass} ${bgClass}`}
+      className={`group flex items-center gap-3 transition-all ${shadowClass} ${sombraHover && !cardStyle.card_hover ? "" : hoverClass} ${sombraHover} ${bgClass}`}
       style={{
         borderRadius: radius,
         padding,
