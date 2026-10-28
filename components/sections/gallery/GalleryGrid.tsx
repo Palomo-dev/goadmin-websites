@@ -29,7 +29,7 @@ export function GalleryGrid({ content, primaryColor = '#3B82F6' }: GalleryGridPr
             imagen="w-full h-full object-cover hover:scale-105 transition-transform"
           />
         ) : (
-        <SiLista content={content} proporcionCeldas className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <SiLista content={content} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img: any, i: number) => (
             <div key={i} className={`${proporcionCelda(content, 'aspect-square')} rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700`}>
               <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover hover:scale-105 transition-transform" loading="lazy" />

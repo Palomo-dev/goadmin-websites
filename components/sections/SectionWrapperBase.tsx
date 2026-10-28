@@ -93,7 +93,6 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
   if (presentacion.oculta) return null
   const content = presentacion.contenido as Record<string, any>
-  const hojaFuentes = urlGoogleFonts(presentacion.fuentes)
   const sinRelleno = SIN_RELLENO_POR_DEFECTO.has(sectionType ?? '') || SIN_RELLENO_POR_DEFECTO.has(`${sectionType}:${sectionVariant}`)
   // La carta «qr» empieza pegada a la barra de la mesa.
   const cartaQr = sectionType === 'menu_full' && sectionVariant === 'qr'
@@ -178,6 +177,9 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   if (isFirst && !mtExplicito && offset > 0 && (ptExplicito || ptPx != null || solapa)) style.marginTop = offset
 
   const encabezado = combinarEncabezado(content, estiloGlobal)
+  // ENCABE-93/97: la fuente elegida para el título o la descripción del encabezado también se carga.
+  const fuentesEncabezado = [encabezado?.title_font, encabezado?.description_font].filter((f) => f && f !== 'site')
+  const hojaFuentes = urlGoogleFonts([...presentacion.fuentes, ...fuentesEncabezado])
   const flechasArriba = listaDelInspector(content)?.arrows === 'top'
   const fondoNuevo = leerFondo(content)
   if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
