@@ -37,6 +37,7 @@ import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
 import { HeaderPorZonas } from './header/HeaderPorZonas'
+import { useMenuDeslizable } from './header/menuDeslizable'
 import { leerConstructor } from '@/lib/website/constructorEncabezado'
 
 interface SiteHeaderProps {
@@ -407,6 +408,8 @@ export default function SiteHeader({
   // «Al bajar» es una sola opción para computador y celular. Un `layout.hide_on_scroll` guardado
   // en el celular (encabezado de plantilla) se sigue respetando ahí.
   const ocultarMovilPropio = isMobile && !leerPresentacionMovil(settings)?.usarHeaderNuevo && leerPresentacionMovil(settings)?.layout?.hideOnScroll === true
+  // Menú de escritorio que no cabe: se desliza (solo entonces). Sin desborde, nada cambia.
+  useMenuDeslizable()
   const scroll = useScrollEncabezado(
     extra?.header_sticky === false ? null : ocultarMovilPropio && (!extra?.header_scroll || extra.header_scroll === 'normal') ? 'ocultar_al_bajar' : extra?.header_scroll,
   )

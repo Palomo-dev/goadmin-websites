@@ -571,30 +571,37 @@ header a[data-categoria-activa][data-categoria-activa] {
 @media (min-width: 1024px) { .ancho-por-vista { width: calc((100% - (var(--pv-d) - 1) * 3rem) / var(--pv-d)); } }
 
 /*
- * Computador entre 768 y 1023 px (QA 28-oct): la fila del encabezado de escritorio (logo + menú +
- * íconos) no cabía y empujaba los íconos fuera de la pantalla (scroll horizontal). El menú cede
- * ancho y se desliza; centrado/derecha se conservan cuando cabe (`safe`). ≥1024 no cambia.
+ * Menú del encabezado de escritorio que no cabe (QA 28-oct, 768/1024): cede ancho y, solo cuando
+ * sus enlaces no caben (`data-nav-desliza`, lo marca useMenuDeslizable), se desliza en vez de
+ * empujar los íconos fuera de la pantalla. Los submenús se anclan fuera de la caja que se desliza
+ * para no quedar recortados. Si cabe, nada cambia.
  */
-@media (min-width: 768px) and (max-width: 1023.98px) {
+@media (min-width: 768px) {
   header .hidden.md\:flex > nav,
   header nav.hidden.md\:flex {
     min-width: 0;
+  }
+  header nav[data-nav-desliza] {
     overflow-x: auto;
     scrollbar-width: none;
+    position: static;
   }
-  header .hidden.md\:flex > nav::-webkit-scrollbar,
-  header nav.hidden.md\:flex::-webkit-scrollbar {
+  header nav[data-nav-desliza]::-webkit-scrollbar {
     display: none;
   }
-  header .hidden.md\:flex > nav > *,
-  header nav.hidden.md\:flex > * {
+  header nav[data-nav-desliza] > * {
     flex-shrink: 0;
   }
-  header .hidden.md\:flex > nav.justify-center,
-  header nav.hidden.md\:flex.justify-center {
+  header nav[data-nav-desliza] .relative {
+    position: static;
+  }
+  header :has(> nav[data-nav-desliza]) {
+    position: relative;
+  }
+  header nav[data-nav-desliza].justify-center {
     justify-content: safe center;
   }
-  header .hidden.md\:flex > nav.justify-end {
+  header nav[data-nav-desliza].justify-end {
     justify-content: safe flex-end;
   }
 }

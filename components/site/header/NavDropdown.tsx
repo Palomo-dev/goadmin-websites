@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { usePanelBajoEnlace } from './menuDeslizable';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { NavItem } from './HeaderShared';
@@ -17,17 +18,24 @@ interface NavDropdownProps {
  */
 export function NavDropdown({ item, primaryColor }: NavDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const ancla = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  // Menú que se desliza (no cabe): el panel va bajo su enlace sin quedar recortado. Si cabe, {}.
+  const posPanel = usePanelBajoEnlace(isOpen, ancla, panel);
 
   if (!item.children || item.children.length === 0) return null;
 
   return (
     <div
+      ref={ancla}
       className="relative"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
       {isOpen && (
         <div
+          ref={panel}
+          style={posPanel}
           className="absolute left-0 top-full z-50 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 animate-in fade-in slide-in-from-top-1 duration-150"
           role="menu"
           aria-label={`Sub-menú de ${item.name}`}
