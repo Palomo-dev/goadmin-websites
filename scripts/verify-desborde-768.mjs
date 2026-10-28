@@ -1,6 +1,6 @@
 // Verifica el arreglo del scroll horizontal del encabezado de escritorio (768/1024) y del pie en grilla.
 import { readFileSync } from 'node:fs'
-import { debeDeslizar } from '../components/site/header/menuDeslizable.ts'
+import { debeDeslizar, bordeOculto } from '../components/site/header/menuDeslizable.ts'
 const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8')
 const pie = readFileSync(new URL('../components/site/footer/PieTema.tsx', import.meta.url), 'utf8')
 const nav = readFileSync(new URL('../components/site/header/NavDropdown.tsx', import.meta.url), 'utf8')
@@ -12,5 +12,7 @@ ok(/header nav\[data-nav-desliza\] \{\s*overflow-x: auto;/.test(b), 'solo el men
 ok(b.includes('header nav[data-nav-desliza] .relative {\n    position: static;') && b.includes('header :has(> nav[data-nav-desliza])'), 'submenús anclados fuera de la caja que se desliza')
 ok(b.includes('justify-content: safe center') && b.includes('justify-content: safe flex-end'), 'centrado/derecha se conservan')
 ok(!debeDeslizar(1280, 600, 600) && !debeDeslizar(1024, 601, 600) && debeDeslizar(1024, 700, 600) && !debeDeslizar(700, 900, 600), 'debeDeslizar: solo ≥768 y si no cabe')
+ok(bordeOculto(false, 0, 900, 600) === null && bordeOculto(true, 0, 900, 600) === 'der' && bordeOculto(true, 150, 900, 600) === 'ambos' && bordeOculto(true, 300, 900, 600) === 'izq', 'bordeOculto: aviso solo si desliza y en el borde con enlaces escondidos')
+ok(css.includes("header nav[data-nav-desliza][data-nav-oculto='der'] {\n    -webkit-mask-image"), 'degradado solo con data-nav-desliza')
 ok(nav.includes('style={posPanel}') && nav.includes('ref={ancla}'), 'NavDropdown se coloca bajo su enlace al deslizar')
 ok(/key=\{c\.clave\} style=\{\{ overflowWrap: 'anywhere' \}\}/.test(pie), 'columnas del pie parten palabras largas solo si no caben')

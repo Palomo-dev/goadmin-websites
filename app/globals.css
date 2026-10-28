@@ -604,4 +604,17 @@ header a[data-categoria-activa][data-categoria-activa] {
   header nav[data-nav-desliza].justify-end {
     justify-content: safe flex-end;
   }
+  /* Aviso de enlaces escondidos: el borde que aún se puede deslizar se desvanece. */
+  header nav[data-nav-desliza][data-nav-oculto='der'] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  header nav[data-nav-desliza][data-nav-oculto='izq'] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+    mask-image: linear-gradient(to right, transparent, #000 32px);
+  }
+  header nav[data-nav-desliza][data-nav-oculto='ambos'] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  }
 }

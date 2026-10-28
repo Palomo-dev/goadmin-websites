@@ -9,6 +9,22 @@ import { useEffect, useLayoutEffect, useState, type RefObject, type CSSPropertie
  */
 export const SELECTOR_MENU_ESCRITORIO = 'header .hidden.md\\:flex > nav, header nav.hidden.md\\:flex'
 export const ATRIBUTO_DESLIZA = 'data-nav-desliza'
+/** Bordes con enlaces escondidos (degradado de aviso): 'izq', 'der' o 'ambos'. */
+export const ATRIBUTO_BORDE = 'data-nav-oculto'
+
+/** Qué bordes esconden enlaces según la posición del deslizamiento; null si no desliza. */
+export function bordeOculto(desliza: boolean, scrollLeft: number, scrollWidth: number, clientWidth: number): 'izq' | 'der' | 'ambos' | null {
+  if (!desliza) return null
+  const izq = scrollLeft > 1
+  const der = scrollLeft + clientWidth < scrollWidth - 1
+  return izq && der ? 'ambos' : izq ? 'izq' : der ? 'der' : null
+}
+
+function marcarBorde(nav: HTMLElement): void {
+  const b = bordeOculto(nav.hasAttribute(ATRIBUTO_DESLIZA), nav.scrollLeft, nav.scrollWidth, nav.clientWidth)
+  if (b === null) nav.removeAttribute(ATRIBUTO_BORDE)
+  else if (nav.getAttribute(ATRIBUTO_BORDE) !== b) nav.setAttribute(ATRIBUTO_BORDE, b)
+}
 
 /** Decide si un menú debe deslizarse: solo en computador (≥768) y si su contenido no cabe. */
 export function debeDeslizar(anchoVentana: number, scrollWidth: number, clientWidth: number): boolean {
@@ -22,8 +38,14 @@ export function useMenuDeslizable(): void {
       document.querySelectorAll<HTMLElement>(SELECTOR_MENU_ESCRITORIO).forEach((nav) => {
         const si = debeDeslizar(window.innerWidth, nav.scrollWidth, nav.clientWidth)
         if (si !== nav.hasAttribute(ATRIBUTO_DESLIZA)) nav.toggleAttribute(ATRIBUTO_DESLIZA, si)
+        marcarBorde(nav)
       })
     }
+    const alDeslizar = (e: Event) => {
+      const t = e.target
+      if (t instanceof HTMLElement && t.hasAttribute(ATRIBUTO_DESLIZA)) marcarBorde(t)
+    }
+    document.addEventListener('scroll', alDeslizar, { capture: true, passive: true })
     const ro = new ResizeObserver(medir)
     const observar = () => {
       ro.disconnect()
@@ -42,6 +64,7 @@ export function useMenuDeslizable(): void {
       ro.disconnect()
       mo.disconnect()
       window.removeEventListener('resize', medir)
+      document.removeEventListener('scroll', alDeslizar, { capture: true })
     }
   }, [])
 }
