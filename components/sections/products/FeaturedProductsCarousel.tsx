@@ -180,7 +180,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
             <button
               type="button"
               onClick={() => scroll('left')}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity -translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-0 md:-translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
               style={{ color: primaryColor }}
               aria-label="Anterior"
             >
@@ -191,7 +191,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
             <button
               type="button"
               onClick={() => scroll('right')}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity translate-x-0 md:translate-x-1/2 hover:scale-110 ${FOCO_FLECHA}`}
               style={{ color: primaryColor }}
               aria-label="Siguiente"
             >
