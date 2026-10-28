@@ -20,7 +20,7 @@ import {
   type NavItem,
   type MenuCategory,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado,
+  variablesEncabezado, posicionMovil,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -84,7 +84,7 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>

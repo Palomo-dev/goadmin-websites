@@ -233,6 +233,22 @@ export function variablesEncabezado(
   return { ...vars, ...variablesMenuMovil(settings, tema), ...(noFijo ? { position: 'relative' as const } : {}) }
 }
 
+/**
+ * «Fijo al desplazar» del celular (apartado Celular). Fuente única: `mobile_sticky_header`
+ * booleano manda; `null`/ausente = sigue «Fijo al bajar» de computador (lo de hoy, sin estilo
+ * extra). El `layout.sticky` viejo del encabezado configurable sigue leyéndose si existía.
+ */
+export function posicionMovil(settings: unknown): { position?: 'sticky' | 'relative' } {
+  const s = (settings ?? {}) as Record<string, unknown>
+  if (headerSobreHero(s as Parameters<typeof headerSobreHero>[0])) return {}
+  const propio = typeof s.mobile_sticky_header === 'boolean' ? s.mobile_sticky_header : null
+  const layout = (s.mobile_header as { layout?: { sticky?: unknown } } | null | undefined)?.layout
+  const viejo = typeof layout?.sticky === 'boolean' ? layout.sticky : null
+  const valor = propio ?? viejo
+  if (valor === null) return {}
+  return { position: valor ? 'sticky' : 'relative' }
+}
+
 /** Tema que el menú móvil usa para mezclar la opacidad y el contraste de los botones. */
 export function useTemaMenuMovil(primario?: string): TemaMenuMovil {
   const { fondoTema, fondoTemaOscuro } = useEncabezadoPie()

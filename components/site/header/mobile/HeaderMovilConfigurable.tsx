@@ -19,6 +19,7 @@ import {
   variablesEncabezado,
   estiloBarraEncabezado,
   marcaFondoEncabezado,
+  posicionMovil,
 } from '../HeaderShared'
 import { FilaSedeMovil } from '../SelectorSedeEncabezado'
 import { MobileMenuShell } from './MobileMenuShell'
@@ -48,6 +49,11 @@ export function HeaderMovilConfigurable({
   const [scrolled, setScrolled] = useState(false)
   const layout = presentacion.layout
   const iconos = presentacion.iconos
+  // Color de los íconos: uno solo para todos los encabezados del celular (header_mobile_icon_color);
+  // el `icons.color` viejo del configurable sigue mandando si estaba guardado.
+  const colorIconos = iconos?.color
+    ? { color: iconos.color }
+    : (settings as Record<string, unknown> | undefined)?.header_mobile_icon_color ? { color: 'var(--hdr-mobile-icon)' } : undefined
   const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
   const navItems = buildNavItems(navTree)
   const organizationId = organization.id
@@ -85,7 +91,7 @@ export function HeaderMovilConfigurable({
       onClick={() => setAbierto(true)}
       aria-label="Abrir menú"
       className={claseIcono(iconos)}
-      style={iconos?.color ? { color: iconos.color } : undefined}
+      style={colorIconos}
     >
       <GlifoMenu glifo={iconos?.menu ?? 'lines3'} />
     </button>
@@ -121,8 +127,8 @@ export function HeaderMovilConfigurable({
   return (
     <>
       <header
-        className={`${layout?.sticky === false ? 'relative' : 'sticky top-0'} z-40 w-full transition-transform duration-200 ${oculto ? '-translate-y-full' : ''}`}
-        style={variablesEncabezado(settings)}
+        className={`sticky top-0 z-40 w-full transition-transform duration-200 ${oculto ? '-translate-y-full' : ''}`}
+        style={{ ...variablesEncabezado(settings), ...posicionMovil(settings) }}
         data-header-movil={presentacion.estilo}
       >
         {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}

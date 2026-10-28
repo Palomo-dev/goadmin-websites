@@ -21,7 +21,7 @@ import {
   type HeaderVariantProps,
   type NavItem,
   CLASE_FONDO_ENCABEZADO,
-  variablesEncabezado,
+  variablesEncabezado, posicionMovil,
   estiloBarraEncabezado,
   estiloPanelMenu,
   atributosMenuMovil,
@@ -64,7 +64,7 @@ export default function MobileBottomSheet({
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
-    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={variablesEncabezado(settings, temaMenu)}>
+    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings) }}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
