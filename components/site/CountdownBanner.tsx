@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { instanteFin } from '@/lib/website/contadorColumnas'
+import { instanteFin, proximoReinicio } from '@/lib/website/contadorColumnas'
 
 export interface CountdownConfig {
   countdown_enabled?: boolean
@@ -39,58 +39,8 @@ function getTargetDate(config: CountdownConfig): Date | null {
   }
 
   if (config.countdown_mode === 'daily_reset') {
-    const tz = config.countdown_timezone || 'America/Bogota'
-    const resetHour = config.countdown_reset_hour ?? 0
-
-    // Obtener la hora actual en la zona horaria configurada
-    const now = new Date()
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-    const parts = formatter.formatToParts(now)
-    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0'
-    
-    const currentHourInTz = parseInt(getPart('hour'))
-    
-    // Si la hora actual ya pasó la hora de reset, el target es mañana a esa hora
-    // Si no ha pasado, el target es hoy a esa hora
-    const todayInTz = `${getPart('year')}-${getPart('month')}-${getPart('day')}`
-    
-    let targetDate: Date
-    if (currentHourInTz >= resetHour) {
-      // Target es mañana a la hora de reset
-      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-      const tomorrowFormatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour12: false,
-      })
-      const tParts = tomorrowFormatter.formatToParts(tomorrow)
-      const tGetPart = (type: string) => tParts.find(p => p.type === type)?.value || '0'
-      const tomorrowStr = `${tGetPart('year')}-${tGetPart('month')}-${tGetPart('day')}T${String(resetHour).padStart(2, '0')}:00:00`
-      targetDate = new Date(new Date(tomorrowStr).toLocaleString('en-US', { timeZone: tz }))
-      // Crear fecha en la timezone correcta
-      const tomorrowTarget = new Date(`${tGetPart('year')}-${tGetPart('month')}-${tGetPart('day')}T${String(resetHour).padStart(2, '0')}:00:00`)
-      // Ajustar al offset de la timezone
-      const offset = now.getTime() - new Date(todayInTz + 'T' + getPart('hour') + ':' + getPart('minute') + ':' + getPart('second')).getTime()
-      targetDate = new Date(tomorrowTarget.getTime() + offset)
-    } else {
-      // Target es hoy a la hora de reset
-      const todayTarget = new Date(`${todayInTz}T${String(resetHour).padStart(2, '0')}:00:00`)
-      const offset = now.getTime() - new Date(todayInTz + 'T' + getPart('hour') + ':' + getPart('minute') + ':' + getPart('second')).getTime()
-      targetDate = new Date(todayTarget.getTime() + offset)
-    }
-    
-    return targetDate
+    // Zona inválida → Bogotá; medianoche como 00 (antes Chrome daba «24» y se ocultaba de 00:00 a 00:59).
+    return proximoReinicio(new Date(), config.countdown_timezone, config.countdown_reset_hour ?? 0)
   }
 
   return null
