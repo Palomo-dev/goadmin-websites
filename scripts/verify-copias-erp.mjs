@@ -48,6 +48,8 @@ export const COPIAS = [
   ['lib/data/countryPhoneCodes.ts', 'src/lib/data/countryPhoneCodes.ts'],
   // Contador regresivo: el editor (vista previa) y la tienda calculan el mismo objetivo, con cambio de horario.
   ['lib/website/relojContador.ts', 'src/lib/website/relojContador.ts'],
+  // Estilo del contador (countdown_style): mismo lector y mismos valores en la vista previa y la tienda.
+  ['lib/website/estiloContador.ts', 'src/lib/website/estiloContador.ts'],
 ]
 
 /**

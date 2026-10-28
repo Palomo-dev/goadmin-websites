@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { instanteFin, objetivoVigente, proximoReinicio } from '@/lib/website/contadorColumnas'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { leerEstiloContador } from '@/lib/website/estiloContador'
+import { ContadorConEstilo } from './ContadorConEstilo'
 
 /**
  * Texto y dígitos sobre el primario: `--texto-sobre-primario` (lo emite el layout de la tienda) y,
@@ -23,6 +25,8 @@ export interface CountdownConfig {
   countdown_show_in_cart?: boolean
   countdown_show_in_product?: boolean
   countdown_show_in_hero?: boolean
+  /** Estilo personalizado (jsonb). Ausente/NULL/{} = el contador de siempre. */
+  countdown_style?: unknown
 }
 
 interface CountdownBannerProps {
@@ -103,6 +107,14 @@ export function CountdownBanner({ config, primaryColor, variant = 'banner', clas
 
   const title = config.countdown_title || '¡Oferta por tiempo limitado!'
   const pad = (n: number) => String(n).padStart(2, '0')
+
+  // Estilo personalizado: una sola configuración para todas las ubicaciones; cambia solo la forma.
+  const estilo = leerEstiloContador(config.countdown_style)
+  if (estilo) {
+    const forma = variant === 'banner' ? 'barra' : variant === 'full' ? 'grande' : variant === 'compact' ? 'compacto' : 'tarjeta'
+    const segundos = timeLeft.hours * 3600 + timeLeft.minutes * 60 + timeLeft.seconds
+    return <ContadorConEstilo estilo={estilo} primaryColor={primaryColor} titulo={title} segundos={segundos} forma={forma} className={className} />
+  }
 
   // Variante full (sección de página grande y llamativa)
   if (variant === 'full') {

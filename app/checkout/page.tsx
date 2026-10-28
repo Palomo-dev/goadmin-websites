@@ -176,6 +176,9 @@ export default async function CheckoutPage() {
       countdown_reset_hour: wsRow?.countdown_reset_hour ?? 0,
       countdown_title: wsRow?.countdown_title || '',
       countdown_show_in_cart: wsRow?.countdown_show_in_cart ?? false,
+      // Estilo del contador: se lee de la fila completa (select('*')) y no del select de arriba, para
+      // que el pago no falle mientras la columna `countdown_style` no exista en la base.
+      countdown_style: (organization.website_settings as { countdown_style?: unknown } | null)?.countdown_style ?? null,
     },
   }
 
