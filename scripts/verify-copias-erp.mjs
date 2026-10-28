@@ -46,6 +46,8 @@ export const COPIAS = [
   // Teléfono con país: parseo, validación por país y E.164 (los usa components/site/TelefonoPais.tsx).
   ['lib/utils/telefono.ts', 'src/lib/utils/telefono.ts'],
   ['lib/data/countryPhoneCodes.ts', 'src/lib/data/countryPhoneCodes.ts'],
+  // Contador regresivo: el editor (vista previa) y la tienda calculan el mismo objetivo, con cambio de horario.
+  ['lib/website/relojContador.ts', 'src/lib/website/relojContador.ts'],
 ]
 
 /**

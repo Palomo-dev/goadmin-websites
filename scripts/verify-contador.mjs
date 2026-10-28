@@ -14,10 +14,14 @@ import { stripTypeScriptTypes } from 'node:module'
 import assert from 'node:assert/strict'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const MODULOS = { horario: 'lib/restaurant/horario.ts', contadorColumnas: 'lib/website/contadorColumnas.ts' }
+const MODULOS = { horario: 'lib/restaurant/horario.ts', contadorColumnas: 'lib/website/contadorColumnas.ts', relojContador: 'lib/website/relojContador.ts' }
 const aMjs = (ts) =>
   stripTypeScriptTypes(ts, { mode: 'strip' })
     .replace(/from\s+'@\/lib\/[a-z]+\/([A-Za-z]+)'/g, (_, n) => {
+      if (!MODULOS[n]) throw new Error(`import no puro: ${n}`)
+      return `from './${n}.mjs'`
+    })
+    .replace(/from\s+'\.\/([A-Za-z]+)'/g, (_, n) => {
       if (!MODULOS[n]) throw new Error(`import no puro: ${n}`)
       return `from './${n}.mjs'`
     })

@@ -1,4 +1,5 @@
 import { ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
+import { instanteFinEnZona, partesEnZona, proximoReinicioEnZona } from './relojContador'
 
 /**
  * Contador regresivo «clásico»: las columnas `countdown_*` / `checkout_show_countdown` de
@@ -43,54 +44,20 @@ export function zonaContador(zona: unknown): string {
   return ZONA_POR_DEFECTO
 }
 
-/** Fecha y hora de pared en `zona` (hourCycle h23: la medianoche es 00, nunca 24). */
-export function partesEnZona(instante: Date, zona: string): { y: number; mo: number; d: number; h: number; mi: number; s: number } {
-  const p = new Intl.DateTimeFormat('en-US', { timeZone: zona, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(instante)
-  const v = (t: string) => Number(p.find((x) => x.type === t)?.value ?? 0)
-  return { y: v('year'), mo: v('month'), d: v('day'), h: v('hour') % 24, mi: v('minute'), s: v('second') }
-}
+export { partesEnZona }
 
 /**
  * Fin «AAAA-MM-DDTHH:mm[:ss]» sin desfase (lo que guarda el `datetime-local` del editor) se lee en
  * `zona` (inválida → Bogotá); con Z o desfase, tal cual. `null` si no es una fecha.
+ * La lógica vive en relojContador.ts, copia idéntica del ERP (vista previa del editor).
  */
 export function instanteFin(fin: string, zona: string | undefined): Date | null {
-  const texto = (fin ?? '').trim()
-  if (!texto) return null
-  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(texto)
-  if (!m) {
-    const d = new Date(texto)
-    return Number.isNaN(d.getTime()) ? null : d
-  }
-  const tz = zonaContador(zona)
-  const [y, mo, d, h, mi, s] = [m[1], m[2], m[3], m[4] ?? '23', m[5] ?? '59', m[6] ?? '00'].map(Number)
-  const comoUtc = Date.UTC(y, mo - 1, d, h, mi, s)
-  const desfase = (utc: number): number => {
-    const q = partesEnZona(new Date(utc), tz)
-    return Date.UTC(q.y, q.mo - 1, q.d, q.h, q.mi, q.s) - utc
-  }
-  const d1 = desfase(comoUtc)
-  const d2 = desfase(comoUtc - d1)
-  // La hora pedida existe si el instante, visto en la zona, da esa misma hora de pared.
-  const existe = (t: number) => desfase(t) + t === comoUtc
-  if (existe(comoUtc - d2)) return new Date(comoUtc - d2)
-  if (existe(comoUtc - d1)) return new Date(comoUtc - d1)
-  // Hueco del cambio de horario (esa hora no existe ese día): la siguiente hora válida, nunca una antes.
-  return new Date(Math.max(comoUtc - d1, comoUtc - d2))
+  return instanteFinEnZona(fin, zonaContador(zona))
 }
 
 /** Próximo reinicio diario a `hora` (0–23) en `zona`, estrictamente después de `ahora`. */
 export function proximoReinicio(ahora: Date, zona: string | undefined, hora: number | null | undefined): Date | null {
-  const tz = zonaContador(zona)
-  const h = Number.isInteger(hora) && (hora as number) >= 0 && (hora as number) <= 23 ? (hora as number) : 0
-  const hoy = partesEnZona(ahora, tz)
-  const dia = (desplazo: number) => {
-    const f = new Date(Date.UTC(hoy.y, hoy.mo - 1, hoy.d + desplazo))
-    return `${f.getUTCFullYear()}-${String(f.getUTCMonth() + 1).padStart(2, '0')}-${String(f.getUTCDate()).padStart(2, '0')}T${String(h).padStart(2, '0')}:00:00`
-  }
-  const deHoy = instanteFin(dia(0), tz)
-  if (deHoy && deHoy.getTime() > ahora.getTime()) return deHoy
-  return instanteFin(dia(1), tz)
+  return proximoReinicioEnZona(ahora, zonaContador(zona), hora)
 }
 
 /**
