@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { logoMovil, type AjustesLogo, type LadoLogo } from '@/lib/website/logoEncabezado'
+import { ordenMovil } from '@/lib/website/menuMovil'
 
 /**
  * Fila del encabezado en el celular.
@@ -26,6 +27,21 @@ export function FilaLogoMovil({
 }) {
   const lado = posicion ?? logoMovil(ajustes)
   const alto = { minHeight }
+  const orden = ordenMovil(ajustes)
+  const logoAlineado = <div className={lado === 'center' ? 'flex justify-center' : lado === 'right' ? 'flex justify-end' : 'flex justify-start'}>{logo}</div>
+
+  // Orden elegido en «Celular» (sin clave, las filas de siempre de abajo).
+  if (orden === 'menu-logo-acciones') {
+    return <div className="flex w-full items-center gap-2" style={alto}>{menu}<div className="min-w-0 flex-1">{logoAlineado}</div><div className="flex items-center gap-2 flex-shrink-0">{acciones}</div></div>
+  }
+  if (orden === 'logo-sobre-acciones' || orden === 'acciones-sobre-logo') {
+    const filaAcciones = <div className="flex items-center justify-between gap-2">{menu}<div className="flex items-center gap-2">{acciones}</div></div>
+    return (
+      <div className="flex w-full flex-col justify-center gap-2 py-2" style={alto}>
+        {orden === 'logo-sobre-acciones' ? <>{logoAlineado}{filaAcciones}</> : <>{filaAcciones}{logoAlineado}</>}
+      </div>
+    )
+  }
 
   if (lado === 'center') {
     return (

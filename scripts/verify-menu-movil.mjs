@@ -3,7 +3,7 @@
  *
  *   npm run verify:menu-movil
  */
-import { leerPresentacionMovil, leerBarra } from '../lib/website/menuMovil.ts'
+import { leerPresentacionMovil, leerBarra, ordenMovil } from '../lib/website/menuMovil.ts'
 
 const problemas = []
 let casos = 0
@@ -26,6 +26,14 @@ check(izquierda?.usarHeaderNuevo === true && izquierda.estilo === 'drawer_left',
 check(leerPresentacionMovil({ mobile_menu_style: 'drawer_right' })?.estilo === 'drawer_right', 'el cajón derecho')
 check(leerPresentacionMovil({ mobile_menu_style: 'top_dropdown' })?.estilo === 'top_dropdown', 'la cortina superior')
 check(leerPresentacionMovil({ mobile_menu_style: 'none' })?.estilo === 'none', 'sin menú, solo la barra si se pide')
+
+for (const estilo of ['fullscreen', 'bottom_sheet', 'tabs']) {
+  const p = leerPresentacionMovil({ mobile_menu_style: estilo, mobile_header: { layout: { arrangement: 'menu-logo-acciones', logo: 'center' } } })
+  check(p?.usarHeaderNuevo === false, `${estilo}: el orden solo no cambia el encabezado de siempre (QA P2)`)
+}
+check(ordenMovil({ mobile_header: { layout: { arrangement: 'acciones-sobre-logo' } } }) === 'acciones-sobre-logo', 'el orden se lee')
+check(ordenMovil({}) === 'logo-acciones-menu', 'sin orden, el de hoy')
+check(leerPresentacionMovil({ mobile_header: { layout: { header_height: 70 } } })?.usarHeaderNuevo === true, 'el alto sí usa el configurable')
 
 const soloBarra = leerPresentacionMovil({ mobile_header: { bottom_nav: { enabled: true } } })
 check(soloBarra?.usarHeaderNuevo === false && soloBarra?.barra?.items.length === 4, 'la barra, sola, no reemplaza el header de hoy')
