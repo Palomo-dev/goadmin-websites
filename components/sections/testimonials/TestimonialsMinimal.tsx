@@ -4,7 +4,7 @@ import {
   resolveTestimonialItems,
   useShuffledTestimonials,
   ratingStars,
-  sourceLabel,
+  sourceLabel, clasesBadgeOrigen,
   textSizeClass,
   type TestimonialsContent,
   type TestimonialsData,
@@ -77,7 +77,7 @@ export function TestimonialsMinimal({ content, primaryColor = '#3B82F6', data }:
                     {(item.role || item.company) ? ` · ${item.role || item.company}` : ''}
                   </p>
                   {showSource && srcLabel && (
-                    <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    <span className={`inline-block mt-1 ${clasesBadgeOrigen(content.source_badge_style)}`}>
                       {srcLabel}
                     </span>
                   )}

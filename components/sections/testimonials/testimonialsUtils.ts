@@ -247,6 +247,13 @@ export function sourceLabel(source?: string): string | null {
   }
 }
 
+/** TESTIM-20: estilo del badge de origen. «plain» = texto sin fondo; cualquier otro valor, la píldora de siempre. */
+export function clasesBadgeOrigen(estilo?: unknown): string {
+  return estilo === 'plain'
+    ? 'text-[10px] font-medium text-gray-500 dark:text-gray-400'
+    : 'text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+}
+
 /** Trunca texto a N líneas vía CSS line-clamp. */
 export function lineClampClass(maxLines: any): string {
   const n = Number(maxLines)

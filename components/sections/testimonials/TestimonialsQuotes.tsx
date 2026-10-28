@@ -4,7 +4,7 @@ import {
   resolveTestimonialItems,
   useShuffledTestimonials,
   ratingStars,
-  sourceLabel,
+  sourceLabel, clasesBadgeOrigen,
   textSizeClass,
   type TestimonialsContent,
   type TestimonialsData,
@@ -114,7 +114,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
                   — <strong>{item.name}</strong>
                   {(item.role || item.company) ? `, ${item.role || item.company}` : ''}
                   {showSource && srcLabel && (
-                    <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    <span className={`ml-2 ${clasesBadgeOrigen(content.source_badge_style)}`}>
                       {srcLabel}
                     </span>
                   )}
