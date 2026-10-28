@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import type React from 'react';
 import { usePanelBajoEnlace } from './menuDeslizable';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
@@ -9,6 +10,8 @@ import type { NavItem } from './HeaderShared';
 interface NavDropdownProps {
   item: NavItem;
   primaryColor: string;
+  /** Lo que se ve en la barra (menús adicionales). Sin él, como siempre. */
+  disparador?: React.ReactNode;
 }
 
 /**
@@ -16,7 +19,7 @@ interface NavDropdownProps {
  * Se abre al hover (desktop) sobre el wrapper div que contiene el item de nav.
  * Soporta children anidados hasta nivel 2 (indentados).
  */
-export function NavDropdown({ item, primaryColor }: NavDropdownProps) {
+export function NavDropdown({ item, primaryColor, disparador }: NavDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ancla = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -31,7 +34,9 @@ export function NavDropdown({ item, primaryColor }: NavDropdownProps) {
       className="relative"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
+      onFocus={disparador ? () => setIsOpen(true) : undefined}
     >
+      {disparador}
       {isOpen && (
         <div
           ref={panel}

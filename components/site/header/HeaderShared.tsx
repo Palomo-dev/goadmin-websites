@@ -66,6 +66,8 @@ export interface NavItem {
   children?: NavItem[];
   icon?: string | null;
   badge?: string | null;
+  /** Menú adicional de Encabezado (header_menu2..4): su nombre se ve en la barra y abre el desplegable. */
+  conEnlace?: boolean;
 }
 
 // ============================================================
@@ -104,6 +106,7 @@ export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
     children: page.children.length > 0 ? page.children.map(pageToNavItem) : undefined,
     icon: page.menu_icon,
     badge: page.menu_badge,
+    ...((page as { menu_adicional?: unknown }).menu_adicional === true ? { conEnlace: true } : {}),
   };
 }
 
@@ -1069,7 +1072,15 @@ export function NavLink({
   }
 
   // Item con children → renderizar con NavDropdown al hover
-  return <NavDropdown item={item} primaryColor={primaryColor} />;
+  // Menús adicionales de Encabezado: el nombre va en la barra (con la flecha) y abre el desplegable.
+  // Las páginas con subpáginas siguen igual que siempre (sin enlace propio en la barra).
+  const disparador = item.conEnlace ? (
+    <button type="button" className={clase} style={{ '--hover-color': primaryColor } as React.CSSProperties} aria-haspopup="menu" data-menu-adicional="">
+      <span>{item.name}</span>
+      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+    </button>
+  ) : null;
+  return <NavDropdown item={item} primaryColor={primaryColor} disparador={disparador} />;
 }
 
 export function NavList({

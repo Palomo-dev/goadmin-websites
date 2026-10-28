@@ -602,7 +602,7 @@ function conMenusAdicionales(
   return [
     ...arbol,
     ...menus.map((m) =>
-      nodo(`hdr-${m.id}`, m.label, m.links[0].href, m.links.map((l, i) => nodo(`hdr-${m.id}-${i}`, l.label, l.href, [], 1)), 0),
+      ({ ...nodo(`hdr-${m.id}`, m.label, m.links[0].href, m.links.map((l, i) => nodo(`hdr-${m.id}-${i}`, l.label, l.href, [], 1)), 0), menu_adicional: true }) as WebsitePageWithChildren,
     ),
   ]
 }
