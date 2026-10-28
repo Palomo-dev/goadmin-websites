@@ -317,6 +317,11 @@ function parseBool(val: unknown, fallback: boolean): boolean {
   return !!val
 }
 
+const ESTILO_PORTADA: Record<string, string> = { circulo: 'circle', cuadrado: 'square', minimo: 'minimal', chevron: 'chevron' }
+const POSICION_PORTADA: Record<string, string> = { lados_dentro: 'inside', lados_fuera: 'outside', arriba_derecha: 'top-right', abajo: 'bottom' }
+const PUNTOS_PORTADA: Record<string, string> = { puntos: 'dots', barra: 'bars', numeros: 'numbers' }
+const PX_TAMANO: Record<string, number> = { sm: 32, md: 40, lg: 48 }
+
 export function HeroSlider({ content, organization, primaryColor }: HeroSliderProps) {
   const globalLista = useListaCarrusel()
   const movil = useEsMovilLista()
@@ -368,14 +373,20 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
   const loop = carrusel.activo ? carrusel.loop : (content.loop ?? true)
   const transition = content.transition || 'slide'
   const transitionMs = Number(content.transition_ms) || 500
-  const showArrows = carrusel.activo ? false : (content.show_arrows ?? false)
-  const arrowStyle = content.arrow_style || 'circle'
-  const arrowPosition = content.arrow_position || 'inside'
-  const arrowSize = Number(content.arrow_size) || 40
-  const arrowColor = content.arrow_color
-  const arrowBgColor = content.arrow_bg_color
-  const showDots = carrusel.activo ? false : (content.show_dots ?? true)
-  const dotStyle = content.dot_style || 'dots'
+  // Panel «Carrusel» con las piezas de la portada (lo que se migró de las claves anteriores):
+  // mismas flechas y puntos de siempre, con los valores elegidos en el panel.
+  const portada = carrusel.activo && carrusel.controlesPortada === true
+    && ESTILO_PORTADA[carrusel.estiloFlechas] != null && POSICION_PORTADA[carrusel.posicionFlechas] != null
+    && (carrusel.indicador === 'ninguno' || PUNTOS_PORTADA[carrusel.indicador] != null)
+  const showArrows = portada ? carrusel.flechas : carrusel.activo ? false : (content.show_arrows ?? false)
+  const arrowStyle = portada ? ESTILO_PORTADA[carrusel.estiloFlechas] : (content.arrow_style || 'circle')
+  const arrowPosition = portada ? POSICION_PORTADA[carrusel.posicionFlechas] : (content.arrow_position || 'inside')
+  const arrowSize = portada ? (carrusel.tamanoFlechaPx ?? PX_TAMANO[carrusel.tamanoFlecha] ?? 40) : (Number(content.arrow_size) || 40)
+  const arrowColor = portada ? carrusel.colorIcono : content.arrow_color
+  const arrowBgColor = portada ? carrusel.fondoFlecha : content.arrow_bg_color
+  const showDots = portada ? carrusel.indicador !== 'ninguno' : carrusel.activo ? false : (content.show_dots ?? true)
+  const dotStyle = portada ? (PUNTOS_PORTADA[carrusel.indicador] ?? 'dots') : (content.dot_style || 'dots')
+  const controlesNuevos = carrusel.activo && !portada
   const enableSwipe = carrusel.activo ? carrusel.arrastre : (content.enable_swipe ?? true)
 
   const [current, setCurrent] = useState(0)
@@ -638,7 +649,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
           </div>
           <SliderArrows show={showArrows} style={arrowStyle} position={arrowPosition} size={arrowSize} color={arrowColor} bgColor={arrowBgColor} onPrev={goPrev} onNext={goNext} />
           <SliderDots show={showDots} style={dotStyle} count={slides.length} current={current} onSelect={goTo} />
-          {carrusel.activo && (
+          {controlesNuevos && (
             <ControlesCarrusel
               resuelta={carrusel}
               forzar
@@ -683,7 +694,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
         </div>
         <SliderArrows show={showArrows} style={arrowStyle} position={arrowPosition} size={arrowSize} color={arrowColor} bgColor={arrowBgColor} onPrev={goPrev} onNext={goNext} />
         <SliderDots show={showDots} style={dotStyle} count={slides.length} current={current} onSelect={goTo} />
-        {carrusel.activo && (
+        {controlesNuevos && (
           <ControlesCarrusel
             resuelta={carrusel}
             forzar

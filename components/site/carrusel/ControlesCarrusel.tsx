@@ -178,6 +178,7 @@ export function ControlesCarrusel({
         className={`${clasesFlecha(estilo, tamano, sombra)} ${clasePos} disabled:opacity-40 disabled:cursor-not-allowed`}
         style={{
           color: colorIcono,
+          ...(r?.activo && r.tamanoFlechaPx ? { width: r.tamanoFlechaPx, height: r.tamanoFlechaPx } : {}),
           backgroundColor: r?.activo && r.fondoFlecha && estilo !== 'chevron' ? r.fondoFlecha : undefined,
           borderColor: r?.bordeFlecha,
         }}

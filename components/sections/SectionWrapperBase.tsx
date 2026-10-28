@@ -184,7 +184,11 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   const fondoNuevo = leerFondo(content)
   if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
   // Margen superior propio en la primera sección: se suma al alto del header (si no, 0 la tapaba).
-  if (fondoNuevo?.padding_top != null && isFirst && !solapa && offset > 0) style.paddingTop = offset + fondoNuevo.padding_top
+  if (fondoNuevo?.padding_top != null && isFirst && !solapa && offset > 0) {
+    style.paddingTop = offset + fondoNuevo.padding_top
+    // El alto del header ya va en el padding: no repetirlo como margen (espacio viejo + nuevo).
+    if (!mtExplicito) style.marginTop = undefined
+  }
   const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
   const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
   const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
