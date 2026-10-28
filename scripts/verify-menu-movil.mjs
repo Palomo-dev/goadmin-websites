@@ -35,6 +35,10 @@ check(ordenMovil({ mobile_header: { layout: { arrangement: 'acciones-sobre-logo'
 check(ordenMovil({}) === 'logo-acciones-menu', 'sin orden, el de hoy')
 check(leerPresentacionMovil({ mobile_header: { layout: { header_height: 70 } } })?.usarHeaderNuevo === true, 'el alto sí usa el configurable')
 
+// Run Sneak (org 345, plantilla retail_bold): pestañas + círculo acento siguen en MobileTabs.
+check(leerPresentacionMovil({ mobile_menu_style: 'tabs', header_icons_circle: true, mobile_header: { icons: { style: 'circle' } } })?.usarHeaderNuevo === false, 'tabs con círculo acento: las pestañas de la plantilla')
+check(leerPresentacionMovil({ mobile_menu_style: 'tabs', mobile_header: { icons: { style: 'border' } } })?.usarHeaderNuevo === true, 'borde sí usa el configurable')
+
 const soloBarra = leerPresentacionMovil({ mobile_header: { bottom_nav: { enabled: true } } })
 check(soloBarra?.usarHeaderNuevo === false && soloBarra?.barra?.items.length === 4, 'la barra, sola, no reemplaza el header de hoy')
 check(leerPresentacionMovil({ mobile_menu_style: 'tabs', mobile_header: { bottom_nav: { enabled: true } } })?.usarHeaderNuevo === true, 'con pestañas, la barra nueva reemplaza la de hoy para no duplicarla')
