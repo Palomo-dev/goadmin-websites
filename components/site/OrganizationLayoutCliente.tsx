@@ -1,5 +1,7 @@
 'use client'
 
+import { leerMenuInferior } from '@/lib/website/menuInferior'
+import { MenuInferior } from './MenuInferior'
 import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
@@ -215,7 +217,8 @@ export function OrganizationLayoutCliente({
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
   // En modo mesa la barra del sitio (Reservar / Pedir) no va: la mesa tiene su propia barra.
-  const rutaAdmiteBarra = !frozenReason && !modoMesa && settings?.mobile_menu_style !== 'tabs'
+  const menuInferiorV2 = leerMenuInferior(settings)
+  const rutaAdmiteBarra = !menuInferiorV2 && !frozenReason && !modoMesa && settings?.mobile_menu_style !== 'tabs'
     && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
   // `auto` (default): la de hoy, «Reservar · Llamar · Cómo llegar · Pedir» del restaurante.
   const barraMovil = rutaAdmiteBarra && opcionesShell.barraMovil === 'auto' && datosSede?.barraMovil
@@ -476,6 +479,22 @@ export function OrganizationLayoutCliente({
       )}
       
       {/* Barra fija móvil del restaurante: «Reservar · Cómo llegar · Pedir» */}
+      {/* Menú inferior v2 (lib/website/menuInferior.ts): solo con `v: 2` guardado; entonces reemplaza
+          las barras de abajo. Sin él, todo como antes. */}
+      {menuInferiorV2 && !frozenReason && !modoMesa && (
+        <MenuInferior
+          menu={menuInferiorV2}
+          destinos={{ ...extras.enlaces, ...(extras.destinosMenu ?? { pedir: null, reservar: null }) }}
+          organization={organizacionEncabezado as OrganizationWithDetails}
+          primaryColor={primaryColor}
+          navTree={arbolEncabezado ?? []}
+          settings={settings}
+          menuCategories={menuCategories}
+          branchId={branchId}
+          onCartClick={() => setCartOpen(true)}
+          rutaAdmiteAcciones={rutaConBarraMovil(quitarPrefijo(pathname, prefijo))}
+        />
+      )}
       {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
       {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
       {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} breakpoint={(settings as { mobile_breakpoint?: number | null } | undefined)?.mobile_breakpoint ?? null} />}

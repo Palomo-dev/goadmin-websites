@@ -22,6 +22,7 @@ import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { getBranchesByOrg, getOrganizationCategories } from '@/lib/supabase/queries'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
 import { DIAS, horarioDeSede, horarioRevisado, parseHorario, normalizarDias, turnosDe, type HorarioSemana, type Tramo } from '@/lib/restaurant/horario'
+import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
@@ -157,7 +158,10 @@ export const getExtrasEncabezadoPie = cache(async (
     }
     const umbral = Number((settings as any)?.free_shipping_threshold)
 
+    // Menú inferior v2 (lib/website/menuInferior.ts): Reservar y Pedir del restaurante salen de sus
+    // páginas. También en restaurantes sin v2 guardado, para que el lienzo del editor los muestre.
     const necesitaPaginas = Array.isArray(op.barraMovil) || op.fuenteMenu === 'categorias_carta'
+      || tipo === TIPO_RESTAURANTE || leerMenuInferior(ajustes) !== null
     const paginas = necesitaPaginas ? await getPaginasPublicas(organization.id, datosSede.sedeActualId) : []
     const rutaCarta = conPrefijo(rutaDePaginaCon(paginas, ['menu_full', 'menu_preview']) ?? '/menu', prefijo)
 
@@ -169,16 +173,19 @@ export const getExtrasEncabezadoPie = cache(async (
         : Promise.resolve(null),
     ])
 
+    const reservaRestaurante = rutaDePaginaCon(paginas, ['reservation', 'reservation_cta'])
+    const destinosMenu = {
+      pedir: tipo === TIPO_RESTAURANTE
+        ? ((settings as any)?.enable_online_ordering === true ? rutaCarta : null)
+        : conPrefijo('/productos', prefijo),
+      reservar: tipo === TIPO_RESTAURANTE
+        ? (reservaRestaurante ? conPrefijo(reservaRestaurante, prefijo) : null)
+        : conPrefijo('/reservas', prefijo),
+    }
     let barraMovil: AccionBarra[] | null = null
     if (Array.isArray(op.barraMovil)) {
-      const reservaRestaurante = rutaDePaginaCon(paginas, ['reservation', 'reservation_cta'])
       const destinos: Record<AccionBarraMovil, string | null> = {
-        pedir: tipo === TIPO_RESTAURANTE
-          ? ((settings as any)?.enable_online_ordering === true ? rutaCarta : null)
-          : conPrefijo('/productos', prefijo),
-        reservar: tipo === TIPO_RESTAURANTE
-          ? (reservaRestaurante ? conPrefijo(reservaRestaurante, prefijo) : null)
-          : conPrefijo('/reservas', prefijo),
+        ...destinosMenu,
         agendar: conPrefijo('/agendar', prefijo),
         prueba: conPrefijo('/membresias', prefijo),
         llamar: enlaces.llamar,
@@ -211,6 +218,7 @@ export const getExtrasEncabezadoPie = cache(async (
       categoriasCarta,
       rutaReservas: conPrefijo('/reservas', prefijo),
       barraMovil,
+      destinosMenu,
     }
   } catch (error) {
     console.error('[encabezado-pie] Error armando los datos del encabezado y el pie; se pinta lo de antes', {

@@ -1,5 +1,6 @@
 'use client'
 
+import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { cssBreakpointHeader } from '@/lib/website/breakpointHeader'
 import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
@@ -483,7 +484,8 @@ export default function SiteHeader({
       return <HeaderMovilConfigurable {...variantProps} presentacion={presentacion} />
     }
     const legado = menuLegado()
-    if (presentacion?.barra) {
+    // Con menú inferior v2 guardado la barra la pinta MenuInferior (OrganizationLayoutCliente).
+    if (presentacion?.barra && leerMenuInferior(settings) === null) {
       return (
         <>
           {legado}

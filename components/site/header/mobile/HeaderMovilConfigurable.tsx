@@ -28,6 +28,7 @@ import { MobileMenuShell } from './MobileMenuShell'
 import { MobileBottomNav, useUnidadesBarra } from './MobileBottomNav'
 import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
 import { BarraPestanas } from './MobileTabs'
+import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { ProductSearch } from '../../ProductSearch'
 
 /**
@@ -68,7 +69,9 @@ export function HeaderMovilConfigurable({
   // Con «tabs» el botón de menú no se pinta: sin menú inferior guardado van las pestañas de la
   // plantilla (MobileTabs), para que el celular nunca se quede sin navegación (QA 28-oct P1).
   const barra = presentacion.barra
-  const pestanasPlantilla = !barra && presentacion.estilo === 'tabs'
+  // Menú inferior v2 guardado: lo pinta MenuInferior (OrganizationLayoutCliente), no estas barras.
+  const menuV2 = leerMenuInferior(settings) !== null
+  const pestanasPlantilla = !menuV2 && !barra && presentacion.estilo === 'tabs'
   const showMenu = iconos?.showMenu !== false && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs'
 
   useEffect(() => {
@@ -181,7 +184,7 @@ export function HeaderMovilConfigurable({
       {pestanasPlantilla && (
         <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />
       )}
-      {barra && (
+      {barra && !menuV2 && (
         <MobileBottomNav
           barra={barra}
           primaryColor={primaryColor}
