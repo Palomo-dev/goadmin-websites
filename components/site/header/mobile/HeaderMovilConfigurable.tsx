@@ -24,6 +24,7 @@ import { FilaSedeMovil } from '../SelectorSedeEncabezado'
 import { MobileMenuShell } from './MobileMenuShell'
 import { MobileBottomNav, useUnidadesBarra } from './MobileBottomNav'
 import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
+import { leerBarra } from '@/lib/website/menuMovil'
 
 /**
  * Header de celular cuando hay estilo, panel, disposición o íconos nuevos.
@@ -53,6 +54,9 @@ export function HeaderMovilConfigurable({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
   const transparente = !!layout?.transparentHero && !scrolled
+  // Con «tabs» el botón de menú no se pinta: sin menú inferior guardado va la barra por defecto,
+  // para que el celular nunca se quede sin navegación (QA 28-oct P1, org 345).
+  const barra = presentacion.barra ?? (presentacion.estilo === 'tabs' ? leerBarra({ enabled: true }) : null)
   const showMenu = iconos?.showMenu !== false && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs'
 
   useEffect(() => {
@@ -156,9 +160,9 @@ export function HeaderMovilConfigurable({
         </div>
       )}
 
-      {presentacion.barra && (
+      {barra && (
         <MobileBottomNav
-          barra={presentacion.barra}
+          barra={barra}
           primaryColor={primaryColor}
           unidades={unidades}
           onMenu={() => setAbierto(true)}
