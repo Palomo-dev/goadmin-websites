@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { instanteFin } from '@/lib/website/contadorColumnas'
 
 export interface CountdownConfig {
   countdown_enabled?: boolean
@@ -33,7 +34,8 @@ function getTargetDate(config: CountdownConfig): Date | null {
   if (!config.countdown_enabled) return null
 
   if (config.countdown_mode === 'custom' && config.countdown_end_date) {
-    return new Date(config.countdown_end_date)
+    // «AAAA-MM-DDTHH:mm» (datetime-local del editor) se lee en la zona elegida, no en la del visitante.
+    return instanteFin(config.countdown_end_date, config.countdown_timezone)
   }
 
   if (config.countdown_mode === 'daily_reset') {

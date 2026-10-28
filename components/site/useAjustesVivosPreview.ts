@@ -32,7 +32,7 @@ export interface AjustesVivos {
 }
 
 /** Columnas que el editor puede cambiar en vivo (encabezado, pie y tema). */
-const PREFIJOS_PERMITIDOS = ['header_', 'footer_', 'mobile_', 'topbar_', 'cta_', 'nav_', 'show_', 'logo_']
+const PREFIJOS_PERMITIDOS = ['header_', 'footer_', 'mobile_', 'topbar_', 'cta_', 'nav_', 'show_', 'logo_', 'countdown_']
 const CLAVES_PERMITIDAS = new Set([
   'menu_position', 'search_style', 'categories_menu_style', 'mega_menu_columns', 'accent_color',
   'cart_icon', 'search_icon', 'auth_icon', 'currency_icon', 'minimal_menu_style', 'actions_order',
@@ -42,6 +42,8 @@ const CLAVES_PERMITIDAS = new Set([
   'site_locales',
   // Espacio encima de la primera sección (SectionWrapper).
   'first_section_offset_px',
+  // Contador regresivo en el pago (el resto entra por el prefijo `countdown_`).
+  'checkout_show_countdown',
 ])
 /** Nunca en vivo: cambian qué datos se cargan, eso sí necesita guardar. */
 const CLAVES_EXCLUIDAS = new Set(['header_menu_id', 'header_mega_menu_id'])
@@ -81,9 +83,15 @@ function menuValido(valor: unknown, profundidad = 0): ItemMenuVivo[] | null {
   return items
 }
 
+/**
+ * Último mensaje del editor en este iframe: un componente que monta después (el pago, la ficha de
+ * producto) arranca con lo que se está editando sin esperar al siguiente cambio. Solo en memoria.
+ */
+let ultimoVivo: AjustesVivos | null = null
+
 export function useAjustesVivosPreview(): AjustesVivos | null {
   const isPreview = useIsPreviewMode()
-  const [vivos, setVivos] = useState<AjustesVivos | null>(null)
+  const [vivos, setVivos] = useState<AjustesVivos | null>(() => ultimoVivo)
 
   useEffect(() => {
     if (!isPreview) return
@@ -97,7 +105,8 @@ export function useAjustesVivosPreview(): AjustesVivos | null {
           if (clavePermitida(clave) && valorSimple(valor)) ajustes[clave] = valor
         }
       }
-      setVivos({ ajustes, menuEncabezado: menuValido(e.data.menuEncabezado), tema: temaPublicoDesdeMensaje(e.data.tema) })
+      ultimoVivo = { ajustes, menuEncabezado: menuValido(e.data.menuEncabezado), tema: temaPublicoDesdeMensaje(e.data.tema) }
+      setVivos(ultimoVivo)
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)

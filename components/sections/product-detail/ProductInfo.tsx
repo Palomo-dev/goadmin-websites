@@ -1,7 +1,8 @@
 'use client'
 
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadorColumnas } from '@/components/site/ContadorColumnas'
+import { soloContador } from '@/lib/website/contadorColumnas'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { Price } from '@/components/site/CurrencyProvider'
 
@@ -90,12 +91,8 @@ export function ProductInfo({ content, primaryColor = '#3B82F6', data }: Product
         }
       })}
 
-      {content.show_countdown !== false && organization?.website_settings?.countdown_enabled && organization?.website_settings?.countdown_show_in_product && (
-        <CountdownBanner
-          config={organization.website_settings}
-          primaryColor={primaryColor}
-          variant="inline"
-        />
+      {content.show_countdown !== false && (
+        <ContadorColumnas settings={soloContador(organization?.website_settings)} columna="countdown_show_in_product" primaryColor={primaryColor} variant="inline" />
       )}
     </div>
   )

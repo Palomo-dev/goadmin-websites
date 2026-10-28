@@ -19,7 +19,8 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadorColumnas } from '@/components/site/ContadorColumnas'
+import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -253,12 +254,8 @@ export function ProductDetailRenderer({
     : null
   const countdownBlock = conversionManda(ajustesProducto, 'producto') ? (
     <ContadoresDe settings={ajustesProducto} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
-  ) : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product && (
-    <CountdownBanner
-      config={organization.website_settings as any}
-      primaryColor={primaryColor}
-      variant="inline"
-    />
+  ) : (
+    <ContadorColumnas settings={soloContador(organization.website_settings)} columna="countdown_show_in_product" primaryColor={primaryColor} variant="inline" />
   )
 
   // Acciones

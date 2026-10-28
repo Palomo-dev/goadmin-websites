@@ -18,7 +18,7 @@ import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { SelectorSede, type SedeSelector } from '@/components/site/header/SelectorSede'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { leerMesaGuardada, limpiar as limpiarMesa, type MesaGuardada } from '@/lib/restaurant/useMesaQR'
-import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
 import { avisoStock, type ConversionSitio } from '@/lib/website/conversion'
@@ -863,14 +863,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: a
         <div className="mb-6">
           <ContadoresDe settings={settings} ubicacion="checkout" primaryColor={primaryColor} variante="inline" />
         </div>
-      ) : settings.showCountdown && settings.countdownConfig ? (
-        <div className="mb-6">
-          <CountdownBanner
-            config={{ ...settings.countdownConfig, countdown_enabled: true }}
-            primaryColor={primaryColor}
-            variant="inline"
-          />
-        </div>
+      ) : settings.countdownConfig ? (
+        <ContadorColumnas
+          settings={{ ...settings.countdownConfig, checkout_show_countdown: settings.showCountdown === true }}
+          columna="checkout_show_countdown"
+          primaryColor={primaryColor}
+          variant="inline"
+          envoltorio="mb-6"
+        />
       ) : null}
 
       {/* Sede del pedido (restaurante): «Pides en Sede Norte · Cambiar sede» */}

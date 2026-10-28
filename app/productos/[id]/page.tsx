@@ -25,7 +25,8 @@ import { filterStockByBranches } from '@/lib/stock'
 import { SELECT_PADRE_ESTADO, esProductoVisibleEnWeb } from '@/lib/products/visibilidad-web'
 import { ProductDetailActions } from './ProductDetailActions'
 import { MetaPixelViewContent } from '@/components/site/MetaPixelEvents'
-import { CountdownBanner } from '@/components/site/CountdownBanner'
+import { ContadorColumnas } from '@/components/site/ContadorColumnas'
+import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -432,13 +433,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
             {/* Countdown */}
             {conversionManda(organization.website_settings as { conversion?: ConversionSitio }, 'producto') ? (
               <ContadoresDe settings={organization.website_settings as { conversion?: ConversionSitio }} ubicacion="producto" primaryColor={primaryColor} variante="inline" />
-            ) : (organization.website_settings as any)?.countdown_enabled && (organization.website_settings as any)?.countdown_show_in_product ? (
-              <CountdownBanner
-                config={organization.website_settings as any}
-                primaryColor={primaryColor}
-                variant="inline"
-              />
-            ) : null}
+            ) : (
+              <ContadorColumnas settings={soloContador(organization.website_settings)} columna="countdown_show_in_product" primaryColor={primaryColor} variant="inline" />
+            )}
 
             {product.description && (
               <div>
