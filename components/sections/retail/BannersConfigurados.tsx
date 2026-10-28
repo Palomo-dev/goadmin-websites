@@ -137,7 +137,7 @@ export function BannersConfigurados({ content, config, primaryColor, data }: Pro
         <style>{`@media (max-width:767px){[data-banners-movil="stack"]{display:flex !important;flex-direction:column !important}[data-banners-movil="stack"]>*{width:100% !important}}`}</style>
       )}
       {content.title && (
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">{content.title}</h2>
+        <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">{content.title}</h2>
       )}
       {content.subtitle && <p className="text-gray-600 dark:text-gray-300 text-center mb-8">{content.subtitle}</p>}
       {banners.length === 0 ? (
