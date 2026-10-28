@@ -42,3 +42,16 @@ export function proporcionEnvoltorio(content: unknown): string {
   const k = clave(content)
   return k ? `${CELDA[k]} [&>*]:h-full` : ''
 }
+
+/** Igual que `proporcionHijos`, pero solo desde `md` (rejillas que en celular son una columna). */
+const HIJOS_MD: Record<string, string> = {
+  '1/1': 'md:[&>*]:aspect-square md:[&>*]:min-h-min',
+  '4/3': 'md:[&>*]:aspect-[4/3] md:[&>*]:min-h-min',
+  '3/4': 'md:[&>*]:aspect-[3/4] md:[&>*]:min-h-min',
+  '16/9': 'md:[&>*]:aspect-video md:[&>*]:min-h-min',
+  '3/1': 'md:[&>*]:aspect-[3/1] md:[&>*]:min-h-min',
+}
+export function proporcionHijosDesdeMd(content: unknown): string {
+  const k = clave(content)
+  return k ? HIJOS_MD[k] : ''
+}
