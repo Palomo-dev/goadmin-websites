@@ -12,6 +12,7 @@ import { ordenarPorVentasEstable, paginarIds, TAMANO_PAGINA_CATEGORIA, ventasCon
 import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
 import { normalizarNombre, type OrdenAtributos } from '@/lib/products/ordenAtributos'
+import { descendientesPorNivel, fotosDeRespaldo, hijasPorPadre, type NodoCategoria } from '@/lib/website/fotoCategoria'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -435,7 +436,9 @@ const FALLBACK_IMAGE_CANDIDATES = 8
 
 /**
  * Para categorías sin image_url, obtiene la imagen del primer producto
- * activo de esa categoría y la usa como fallback.
+ * activo de esa categoría y la usa como fallback; si no tiene productos con
+ * foto, la de un producto de sus subcategorías (cualquier profundidad).
+ * Las categorías con image_url no cambian.
  */
 async function enrichCategoriesWithFallbackImage(
   supabase: any,
@@ -469,12 +472,58 @@ async function enrichCategoriesWithFallbackImage(
 
   const categoryIds = withoutImage.map(c => c.id)
 
+  // 1) Foto de un producto directo (igual que antes).
+  const fallbackMap: Record<number, string> = await directProductPhotoByCategory(supabase, categoryIds)
+
+  // 2) Sin foto propia ni de productos directos: un producto de sus descendientes,
+  //    a cualquier profundidad (p. ej. «Joyería» sin productos y «Joyería Hombre» con).
+  //    El árbol de la org se trae UNA vez; luego una consulta de productos y otra de imágenes.
+  const pending = withoutImage.filter(c => !fallbackMap[c.id])
+  const orgIds = [...new Set(pending.map(c => c.organization_id).filter((o: any) => o != null))]
+  if (pending.length > 0 && orgIds.length > 0) {
+    const { data: tree } = await supabase
+      .from('categories')
+      .select('id, parent_id')
+      .in('organization_id', orgIds)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('rank', { ascending: true })
+      .order('id', { ascending: true })
+
+    const children = hijasPorPadre((tree || []) as NodoCategoria[])
+    const alreadyQueried = new Set(categoryIds)
+    const extraIds = new Set<number>()
+    for (const c of pending) {
+      for (const d of descendientesPorNivel(children, c.id)) {
+        if (!alreadyQueried.has(d)) extraIds.add(d)
+      }
+    }
+    if (extraIds.size > 0) {
+      Object.assign(fallbackMap, await directProductPhotoByCategory(supabase, [...extraIds]))
+    }
+    Object.assign(fallbackMap, fotosDeRespaldo(pending, fallbackMap, children))
+  }
+
+  return categories.map(c =>
+    !c.image_url && fallbackMap[c.id]
+      ? { ...c, image_url: fallbackMap[c.id], product_count: countMap[c.id] || 0 }
+      : { ...c, product_count: countMap[c.id] || 0 }
+  )
+}
+
+/**
+ * category_id → foto del primer producto directo (activo, sin padre, por nombre) que tenga
+ * imagen. Dos consultas en total, sin importar cuántas categorías.
+ */
+async function directProductPhotoByCategory(
+  supabase: any,
+  categoryIds: number[]
+): Promise<Record<number, string>> {
+  const fallbackMap: Record<number, string> = {}
+  if (categoryIds.length === 0) return fallbackMap
+
   // Candidatos a imagen de respaldo, en el mismo orden que antes (nombre asc).
-  //
-  // Antes esta consulta traía TODOS los productos de esas categorías CON TODAS
-  // sus imágenes embebidas, para acabar usando como mucho UNA imagen por
-  // categoría. Ahora solo se piden id y category_id, y las imágenes se piden
-  // aparte para un puñado de candidatos por categoría.
+  // Solo id y category_id; las imágenes se piden aparte para un puñado de candidatos.
   const { data: products } = await supabase
     .from('products')
     .select('id, category_id')
@@ -510,8 +559,6 @@ async function enrichCategoriesWithFallbackImage(
     }
   }
 
-  // Construir mapa: category_id → primera imagen disponible
-  const fallbackMap: Record<number, string> = {}
   for (const [catId, productIds] of Object.entries(candidatesByCategory)) {
     for (const productId of productIds) {
       const images = imagesByProduct[productId] || []
@@ -525,12 +572,7 @@ async function enrichCategoriesWithFallbackImage(
       break
     }
   }
-
-  return categories.map(c =>
-    !c.image_url && fallbackMap[c.id]
-      ? { ...c, image_url: fallbackMap[c.id], product_count: countMap[c.id] || 0 }
-      : { ...c, product_count: countMap[c.id] || 0 }
-  )
+  return fallbackMap
 }
 
 /**
