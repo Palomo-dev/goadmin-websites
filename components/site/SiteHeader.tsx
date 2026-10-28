@@ -402,7 +402,7 @@ export default function SiteHeader({
   const mobileMenuStyle = settings?.mobile_menu_style || 'drawer'
   // Default 1024 (lg): en 768-1023px el menú desktop no cabe cómodamente,
   // así que se usa el menú móvil hasta llegar a lg.
-  const mobileBreakpoint = settings?.mobile_breakpoint || 1024
+  const mobileBreakpoint = settings?.mobile_breakpoint ?? 768
   const isMobile = useMobileHeader(mobileBreakpoint)
   // «Al bajar» es una sola opción para computador y celular. Un `layout.hide_on_scroll` guardado
   // en el celular (encabezado de plantilla) se sigue respetando ahí.
