@@ -569,3 +569,32 @@ header a[data-categoria-activa][data-categoria-activa] {
 @media (min-width: 640px) { .ancho-por-vista { width: calc((100% - (var(--pv-t) - 1) * 2rem) / var(--pv-t)); } }
 @media (min-width: 768px) { .ancho-por-vista { width: calc((100% - (var(--pv-t) - 1) * 3rem) / var(--pv-t)); } }
 @media (min-width: 1024px) { .ancho-por-vista { width: calc((100% - (var(--pv-d) - 1) * 3rem) / var(--pv-d)); } }
+
+/*
+ * Computador entre 768 y 1023 px (QA 28-oct): la fila del encabezado de escritorio (logo + menú +
+ * íconos) no cabía y empujaba los íconos fuera de la pantalla (scroll horizontal). El menú cede
+ * ancho y se desliza; centrado/derecha se conservan cuando cabe (`safe`). ≥1024 no cambia.
+ */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  header .hidden.md\:flex > nav,
+  header nav.hidden.md\:flex {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  header .hidden.md\:flex > nav::-webkit-scrollbar,
+  header nav.hidden.md\:flex::-webkit-scrollbar {
+    display: none;
+  }
+  header .hidden.md\:flex > nav > *,
+  header nav.hidden.md\:flex > * {
+    flex-shrink: 0;
+  }
+  header .hidden.md\:flex > nav.justify-center,
+  header nav.hidden.md\:flex.justify-center {
+    justify-content: safe center;
+  }
+  header .hidden.md\:flex > nav.justify-end {
+    justify-content: safe flex-end;
+  }
+}

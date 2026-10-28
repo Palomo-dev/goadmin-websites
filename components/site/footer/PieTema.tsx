@@ -335,7 +335,8 @@ export function PieTema(p: PieTemaProps) {
             >
               {marca}
               {columnas.map((c) => (
-                <div key={c.clave}>
+                // Una palabra larga se parte solo si no cabe (768-1023 desbordaba la página).
+                <div key={c.clave} style={{ overflowWrap: 'anywhere' }}>
                   <h3 className={tituloColumna} style={{ fontFamily: 'var(--font-body)' }}>{c.titulo}</h3>
                   {c.contenido}
                 </div>
