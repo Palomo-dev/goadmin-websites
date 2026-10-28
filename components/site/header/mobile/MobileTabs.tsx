@@ -32,6 +32,7 @@ import {
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { FilaLogoMovil } from './FilaLogoMovil';
+import { leerMenuInferior } from '@/lib/website/menuInferior';
 
 /**
  * MobileTabs
@@ -100,7 +101,8 @@ export default function MobileTabs({
         </div>
       </div>
 
-      <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />
+      {/* Con menú inferior v2 guardado lo pinta MenuInferior (OrganizationLayoutCliente). */}
+      {leerMenuInferior(settings) === null && <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />}
       <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );
@@ -204,51 +206,7 @@ export function BarraPestanas({
 
       {/* Modal de categorías */}
       {showCategories && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowCategories(false)}
-            aria-hidden="true"
-          />
-          <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
-            <div className="flex items-center justify-between px-4 h-14 border-b border-[color:var(--mm-divider)]">
-              <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
-              <button
-                onClick={() => setShowCategories(false)}
-                aria-label="Cerrar"
-                className="p-2 rounded-lg text-[var(--mm-title)] hover:bg-[var(--mm-hover-bg)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-4 space-y-1">
-              {menuCategories && menuCategories.length > 0
-                ? menuCategories.map((cat) => (
-                    <Link
-                      key={cat.id}
-                      href={ruta(`/categorias/${cat.slug}`)}
-                      className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
-                      onClick={() => setShowCategories(false)}
-                    >
-                      {cat.icon && <span className="text-xl">{cat.icon}</span>}
-                      <span className="text-sm font-medium text-[var(--mm-fg)]">
-                        {cat.name}
-                      </span>
-                    </Link>
-                  ))
-                : navItems.map((item, i) => (
-                    <CategoryNavItem
-                      key={i}
-                      item={item}
-                      primaryColor={primaryColor}
-                      onNavigate={() => setShowCategories(false)}
-                    />
-                  ))}
-            </div>
-
-            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
-          </div>
-        </div>
+        <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setShowCategories(false)} />
       )}
 
       {/* El mismo buscador del encabezado: resultados en vivo, no el formulario a /search. */}
@@ -266,7 +224,69 @@ export function BarraPestanas({
   );
 }
 
-function useUnidadesCarrito(subdomain: string, branchId?: number | null) {
+/**
+ * Hoja de categorías de la barra de pestañas (también la abre «Categorías» del menú inferior v2).
+ */
+export function ModalCategorias({
+  settings,
+  primaryColor,
+  navTree,
+  menuCategories,
+  onClose,
+}: Pick<HeaderVariantProps, 'settings' | 'primaryColor' | 'navTree' | 'menuCategories'> & { onClose: () => void }) {
+  const temaMenu = useTemaMenuMovil(primaryColor);
+  const navItems = buildNavItems(navTree);
+  const { ruta } = useRutaSitio();
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+        <div className="flex items-center justify-between px-4 h-14 border-b border-[color:var(--mm-divider)]">
+          <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="p-2 rounded-lg text-[var(--mm-title)] hover:bg-[var(--mm-hover-bg)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-4 space-y-1">
+          {menuCategories && menuCategories.length > 0
+            ? menuCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={ruta(`/categorias/${cat.slug}`)}
+                  className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
+                  onClick={onClose}
+                >
+                  {cat.icon && <span className="text-xl">{cat.icon}</span>}
+                  <span className="text-sm font-medium text-[var(--mm-fg)]">
+                    {cat.name}
+                  </span>
+                </Link>
+              ))
+            : navItems.map((item, i) => (
+                <CategoryNavItem
+                  key={i}
+                  item={item}
+                  primaryColor={primaryColor}
+                  onNavigate={() => onClose()}
+                />
+              ))}
+        </div>
+
+        <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
+      </div>
+    </div>
+  );
+}
+
+export function useUnidadesCarrito(subdomain: string, branchId?: number | null) {
   const [unidades, setUnidades] = useState(0);
 
   useEffect(() => {
