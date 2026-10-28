@@ -1,7 +1,7 @@
 import type { Json } from '@/types/database'
 import { buildSectionStyle } from '@/lib/sectionStyle'
 import { heroSolapa, margenExplicito, offsetPrimeraPx, paddingExplicito, pxEnRango } from '@/lib/website/espacioHeader'
-import { leerMargenPropio } from '@/lib/website/espacioSeccion'
+import { espacioSeccion, leerMargenPropio, rellenoPorDispositivo } from '@/lib/website/espacioSeccion'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
@@ -211,8 +211,26 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
     ;(style as Record<string, unknown>)['--sec-mb-m'] = `${margenPropio.margin_bottom_mobile ?? margenPropio.margin_bottom ?? base}px`
     mbCaja = 'mb-[var(--sec-mb-m)] md:mb-[var(--sec-mb)]'
   }
-  const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
-  const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
+  let ptCaja = fondoNuevo?.padding_top != null ? '' : pt
+  let pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
+  // Relleno en px por dispositivo (Estilo › Espaciado). Solo con `padding_*_mobile`; sin él, todo como antes.
+  if (rellenoPorDispositivo(content)) {
+    const bruto = (content?.section_background ?? {}) as Record<string, unknown>
+    const e = espacioSeccion(content, { tipo: sectionType, variante: sectionVariant, primera: isFirst, ajustesSitio })
+    const v = style as Record<string, unknown>
+    if (bruto.padding_top_mobile != null) {
+      v['--sec-pt'] = `${e.rellenoArriba.computador}px`
+      v['--sec-pt-m'] = `${e.rellenoArriba.celular}px`
+      style.paddingTop = undefined
+      ptCaja = 'pt-[var(--sec-pt-m)] md:pt-[var(--sec-pt)]'
+    }
+    if (bruto.padding_bottom_mobile != null) {
+      v['--sec-pb'] = `${e.rellenoAbajo.computador}px`
+      v['--sec-pb-m'] = `${e.rellenoAbajo.celular}px`
+      style.paddingBottom = undefined
+      pbCaja = 'pb-[var(--sec-pb-m)] md:pb-[var(--sec-pb)]'
+    }
+  }
   const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
 
   const bgClass = !hasContractBg && settings.bg_color && !fondoNuevo?.color && !fondoNuevo?.gradient_1 && !fondoNuevo?.image_url
