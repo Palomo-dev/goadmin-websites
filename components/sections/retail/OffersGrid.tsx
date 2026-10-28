@@ -16,6 +16,7 @@ import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas 
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { SiLista } from '../ListRenderer'
 import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { conInterruptorPaginacion } from '@/lib/website/v2/interruptorPaginacion'
 import { Paginacion } from '@/components/site/Paginacion'
 import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 
@@ -84,7 +85,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
   const [currentPage, setCurrentPage] = useState(1)
   const globalLista = useListaCarrusel()
   const movil = useEsMovilLista()
-  const paginacion = resolverPaginacion({ legado: 'grilla', porPagina: 12 }, globalLista.paginacion, (content as { paginacion?: unknown }).paginacion, movil)
+  const paginacion = conInterruptorPaginacion(content.show_pagination, resolverPaginacion({ legado: 'grilla', porPagina: 12 }, globalLista.paginacion, (content as { paginacion?: unknown }).paginacion, movil))
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [ordenVisitante, setOrdenVisitante] = useState<OrdenOfertas | null>(null)
   const sortBy = ordenVisitante ?? ordenInicialOfertas(content.sort_order)

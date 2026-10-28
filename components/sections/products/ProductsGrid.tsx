@@ -17,6 +17,7 @@ import { SiLista } from '../ListRenderer'
 import { isOutOfStock } from '@/lib/stock'
 import { BarraListado } from './BarraListado'
 import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
+import { conInterruptorPaginacion } from '@/lib/website/v2/interruptorPaginacion'
 import { Paginacion } from '@/components/site/Paginacion'
 import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
 import { getCartKey } from '@/lib/utils'
@@ -125,12 +126,12 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const categories = data?.categories || []
   const globalLista = useListaCarrusel()
   const movil = useEsMovilLista()
-  const paginacion = resolverPaginacion(
+  const paginacion = conInterruptorPaginacion(content.show_pagination, resolverPaginacion(
     { legado: 'grilla', porPagina: 12 },
     globalLista.paginacion,
     (content as { paginacion?: unknown }).paginacion,
     movil,
-  )
+  ))
   // Categorías únicas de los productos
   const availableCategories = useMemo(
     () => categoriasDisponibles(products, categories, content.selected_category_ids),
