@@ -183,6 +183,8 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   const flechasArriba = listaDelInspector(content)?.arrows === 'top'
   const fondoNuevo = leerFondo(content)
   if (fondoNuevo) Object.assign(style, estilosFondo(fondoNuevo))
+  // Margen superior propio en la primera sección: se suma al alto del header (si no, 0 la tapaba).
+  if (fondoNuevo?.padding_top != null && isFirst && !solapa && offset > 0) style.paddingTop = offset + fondoNuevo.padding_top
   const ptCaja = fondoNuevo?.padding_top != null ? '' : pt
   const pbCaja = fondoNuevo?.padding_bottom != null ? '' : pb
   const anchoForzado = fondoNuevo?.width === 'full' ? true : fondoNuevo?.width === 'content' ? false : null
@@ -206,8 +208,9 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   const encabezadoNodo = encabezado ? (
     <EncabezadoSeccion
       encabezado={encabezado}
-      titulo={typeof content?.title === 'string' ? content.title : undefined}
-      descripcion={typeof content?.subtitle === 'string' ? content.subtitle : undefined}
+      // La portada pinta su propio título y subtítulo: el encabezado no los repite (HERO-01/02).
+      titulo={!isHero && typeof content?.title === 'string' ? content.title : undefined}
+      descripcion={!isHero && typeof content?.subtitle === 'string' ? content.subtitle : undefined}
       primaryColor={primaryColor}
       controles={flechasArriba ? <HuecoFlechas /> : undefined}
     />
