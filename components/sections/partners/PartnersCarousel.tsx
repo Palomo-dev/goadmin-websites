@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
-import { useAutoplayCarrusel, useDeslizar } from '@/lib/carrusel/useCarrusel'
+import { useAutoplayCarrusel, useDeslizar, usePorVista } from '@/lib/carrusel/useCarrusel'
 import { animarCambio, leerAparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
 
@@ -26,8 +26,8 @@ export function PartnersCarousel({ content, primaryColor = '#3B82F6' }: Partners
   const [offset, setOffset] = useState(0)
   const o = leerOpcionesCarrusel(content, HOY)
   const ap = leerAparienciaCarrusel(content)
-  // «Elementos visibles»: sin clave, los 5 de siempre.
-  const VISIBLES = ap.porVista?.escritorio ?? VISIBLES_HOY
+  // «Elementos visibles» (computador / tableta / celular): sin clave, los 5 de siempre.
+  const VISIBLES = usePorVista(ap.porVista) ?? VISIBLES_HOY
   const fila = useRef<HTMLDivElement>(null)
   const primera = useRef(true)
   useEffect(() => {

@@ -83,3 +83,42 @@ export function animarCambio(el: HTMLElement | null, ms?: number) {
   if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   el.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: ms, easing: 'ease-out' })
 }
+
+/** Cortes de ancho de «Elementos visibles» (los mismos de `.ancho-por-vista` en globals.css). */
+export const CORTE_TABLETA = 640
+export const CORTE_ESCRITORIO = 1024
+
+/** Elementos visibles para un ancho de ventana dado (celular < 640 ≤ tableta < 1024 ≤ escritorio). */
+export function porVistaParaAncho(pv: AparienciaCarrusel['porVista'], ancho: number): number | undefined {
+  if (!pv) return undefined
+  if (ancho >= CORTE_ESCRITORIO) return pv.escritorio
+  if (ancho >= CORTE_TABLETA) return pv.tableta
+  return pv.movil
+}
+
+/**
+ * Desplazamiento horizontal con la velocidad elegida («Velocidad de transición»). Sin `ms` (clave
+ * ausente) se usa el `smooth` del navegador, como hoy.
+ */
+export function desplazarConVelocidad(el: HTMLElement, destino: number, ms?: number) {
+  const max = Math.max(0, el.scrollWidth - el.clientWidth)
+  const fin = Math.min(max, Math.max(0, destino))
+  const reducido = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (ms === undefined || typeof requestAnimationFrame !== 'function') {
+    el.scrollTo({ left: fin, behavior: 'smooth' })
+    return
+  }
+  if (ms === 0 || reducido) {
+    el.scrollTo({ left: fin })
+    return
+  }
+  const inicio = el.scrollLeft
+  const t0 = performance.now()
+  const paso = (t: number) => {
+    const p = Math.min(1, (t - t0) / ms)
+    const e = 1 - Math.pow(1 - p, 3)
+    el.scrollLeft = inicio + (fin - inicio) * e
+    if (p < 1) requestAnimationFrame(paso)
+  }
+  requestAnimationFrame(paso)
+}

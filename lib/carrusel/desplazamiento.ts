@@ -4,6 +4,7 @@
  * Funciones puras sobre las medidas del contenedor, para poder probarlas sin navegador.
  */
 
+import { desplazarConVelocidad } from './aparienciaCarrusel'
 export interface MedidasDesplazamiento {
   scrollLeft: number
   scrollWidth: number
@@ -47,11 +48,14 @@ export function desplazar(
   direccion: 'siguiente' | 'anterior',
   bucle: boolean,
   fraccion: number,
+  /** «Velocidad de transición» en ms; ausente = `smooth` del navegador, como siempre. */
+  ms?: number,
 ): boolean {
   if (!el) return false
   const d = destinoDesplazamiento(el, direccion, bucle, fraccion)
   if (!d) return false
-  if ('por' in d) el.scrollBy({ left: d.por, behavior: 'smooth' })
+  if (ms !== undefined) desplazarConVelocidad(el, 'por' in d ? el.scrollLeft + d.por : d.a, ms)
+  else if ('por' in d) el.scrollBy({ left: d.por, behavior: 'smooth' })
   else el.scrollTo({ left: d.a, behavior: 'smooth' })
   return true
 }

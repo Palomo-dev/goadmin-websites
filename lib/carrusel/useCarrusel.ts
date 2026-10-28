@@ -7,7 +7,8 @@
  * primer elemento como siempre.
  */
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { porVistaParaAncho } from './aparienciaCarrusel'
 import type { FocusEvent, TouchEvent } from 'react'
 import { crearControlAutoplay, type ControlAutoplay } from './controlAutoplay'
 
@@ -99,4 +100,22 @@ export function useDeslizar({ activo, alSiguiente, alAnterior }: { activo: boole
     [alSiguiente, alAnterior],
   )
   return activo ? { onTouchStart, onTouchEnd } : {}
+}
+
+/**
+ * «Elementos visibles» por dispositivo: con la clave ausente devuelve `undefined` (cada carrusel
+ * conserva su número de hoy). En el servidor y en el primer pintado usa el de escritorio y luego
+ * sigue el ancho de la ventana (en la vista previa, el del marco de tableta/celular).
+ */
+export function usePorVista(pv: { escritorio: number; tableta: number; movil: number } | undefined): number | undefined {
+  const [ancho, setAncho] = useState<number | null>(null)
+  useEffect(() => {
+    if (!pv || typeof window === 'undefined') return
+    const medir = () => setAncho(window.innerWidth)
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [!!pv])
+  if (!pv) return undefined
+  return ancho === null ? pv.escritorio : porVistaParaAncho(pv, ancho)
 }

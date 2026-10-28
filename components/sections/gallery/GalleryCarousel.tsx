@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
 import { animarCambio, flechaPersonalizada, leerAparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
-import { useAutoplayCarrusel, useDeslizar } from '@/lib/carrusel/useCarrusel'
+import { useAutoplayCarrusel, useDeslizar, usePorVista } from '@/lib/carrusel/useCarrusel'
 import { aFotosLightbox, etiquetaAmpliar, FOCO_FOTO, lightboxActivo, useLightbox } from './FotosAmpliables'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
@@ -36,17 +36,25 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
   const primera = useRef(true)
   useEffect(() => {
     if (primera.current) { primera.current = false; return }
-    animarCambio(marco.current?.querySelector('img') ?? null, ap.transicionMs)
-  }, [current, ap.transicionMs])
+    animarCambio(varias ? (marco.current?.querySelector('[data-carrusel-varias]') as HTMLElement | null) : (marco.current?.querySelector('img') ?? null), ap.transicionMs)
+  }, [current, ap.transicionMs]) // eslint-disable-line react-hooks/exhaustive-deps
+  // «Elementos visibles»: sin clave, una foto a la vez como siempre. Con N > 1, N fotos lado a
+  // lado desde la actual; sin bucle, se avanza hasta que la última queda a la vista.
+  const visibles = Math.max(1, Math.min(usePorVista(ap.porVista) ?? 1, total || 1))
+  const varias = visibles > 1
+  const indicesVista = varias
+    ? Array.from({ length: visibles }, (_, k) => (o.bucle ? (current + k) % total : current + k)).filter((i) => i < total)
+    : [current]
+  const ultimoInicio = varias && !o.bucle ? Math.max(0, total - visibles) : total - 1
   const anterior = indiceAnterior(current, total, o.bucle)
   const siguiente = indiceSiguiente(current, total, o.bucle)
 
   const irSiguiente = useCallback(() => {
     const n = indiceSiguiente(current, total, o.bucle)
-    if (n === null) return false
+    if (n === null || (!o.bucle && n > ultimoInicio)) return false
     setCurrent(n)
     return true
-  }, [current, total, o.bucle])
+  }, [current, total, o.bucle, ultimoInicio])
   const irAnterior = useCallback(() => {
     const n = indiceAnterior(current, total, o.bucle)
     if (n !== null) setCurrent(n)
@@ -67,9 +75,28 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{title}</h2>}
         <div
           ref={marco}
-          className={`relative rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-700${o.deslizar ? ' touch-pan-y' : ''}`}
+          className={`relative rounded-xl overflow-hidden ${varias ? 'aspect-[32/9] max-md:aspect-video' : 'aspect-video'} bg-gray-100 dark:bg-gray-700${o.deslizar ? ' touch-pan-y' : ''}`}
           {...deslizar}
         >
+          {varias ? (
+            <div className="grid h-full gap-3" style={{ gridTemplateColumns: `repeat(${visibles}, minmax(0, 1fr))` }} data-carrusel-varias="">
+              {indicesVista.map((idx) => (
+                <div key={idx} className="relative h-full overflow-hidden rounded-lg">
+                  {ampliar ? (
+                    <button type="button" onClick={(e) => lightbox.abrir(idx, e.currentTarget)} aria-label={etiquetaAmpliar(fotos[idx], idx)} className={`block w-full h-full cursor-zoom-in ${FOCO_FOTO}`} data-lightbox="">
+                      <img src={images[idx]?.url} alt={images[idx]?.alt || ''} className="w-full h-full object-cover" />
+                    </button>
+                  ) : (
+                    <img src={images[idx]?.url} alt={images[idx]?.alt || ''} className="w-full h-full object-cover" />
+                  )}
+                  {images[idx]?.caption && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">{images[idx].caption}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
           {ampliar ? (
             <button type="button" onClick={(e) => lightbox.abrir(current, e.currentTarget)} aria-label={etiquetaAmpliar(fotos[current], current)} className={`block w-full h-full cursor-zoom-in ${FOCO_FOTO}`} data-lightbox="">
               <img src={images[current]?.url} alt={images[current]?.alt || ''} className="w-full h-full object-cover" />
@@ -80,16 +107,18 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
           {images[current]?.caption && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-3 text-sm">{images[current].caption}</div>
           )}
+            </>
+          )}
           {images.length > 1 && o.flechas && flechaPersonalizada(ap) && (
             <>
               <FlechaCarrusel direccion="anterior" etiqueta="Foto anterior" disabled={anterior === null} onClick={irAnterior} color={primaryColor} apariencia={ap} className="absolute left-3 top-1/2 -translate-y-1/2" />
-              <FlechaCarrusel direccion="siguiente" etiqueta="Foto siguiente" disabled={siguiente === null} onClick={irSiguiente} color={primaryColor} apariencia={ap} className="absolute right-3 top-1/2 -translate-y-1/2" />
+              <FlechaCarrusel direccion="siguiente" etiqueta="Foto siguiente" disabled={siguiente === null || (!o.bucle && siguiente > ultimoInicio)} onClick={irSiguiente} color={primaryColor} apariencia={ap} className="absolute right-3 top-1/2 -translate-y-1/2" />
             </>
           )}
           {images.length > 1 && o.flechas && !flechaPersonalizada(ap) && (
             <>
               <button type="button" aria-label="Foto anterior" disabled={anterior === null} onClick={irAnterior} className={`absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white disabled:opacity-40 ${FOCO}`}>‹</button>
-              <button type="button" aria-label="Foto siguiente" disabled={siguiente === null} onClick={irSiguiente} className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white disabled:opacity-40 ${FOCO}`}>›</button>
+              <button type="button" aria-label="Foto siguiente" disabled={siguiente === null || (!o.bucle && siguiente > ultimoInicio)} onClick={irSiguiente} className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-800/80 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white disabled:opacity-40 ${FOCO}`}>›</button>
             </>
           )}
         </div>

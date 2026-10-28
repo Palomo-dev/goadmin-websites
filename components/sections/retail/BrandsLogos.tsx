@@ -6,7 +6,7 @@ import { atributosCarrusel, leerOpcionesCarrusel, type OpcionesCarrusel } from '
 import { desplazar } from '@/lib/carrusel/desplazamiento'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 import { FlechaCarrusel, PuntosCarrusel } from '@/components/site/carrusel/ControlesCarrusel'
-import { flechaPersonalizada, leerAparienciaCarrusel, type AparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
+import { desplazarConVelocidad, flechaPersonalizada, leerAparienciaCarrusel, type AparienciaCarrusel } from '@/lib/carrusel/aparienciaCarrusel'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
 
@@ -153,19 +153,19 @@ function BrandsCarousel({ items, sizeClass, grayscaleClass, opciones: o, aparien
     return () => { if (el) el.removeEventListener('scroll', checkScroll) }
   }, [items])
 
-  const scroll = (dir: 'left' | 'right') => desplazar(scrollRef.current, dir === 'left' ? 'anterior' : 'siguiente', o.bucle, 0.6)
+  const scroll = (dir: 'left' | 'right') => desplazar(scrollRef.current, dir === 'left' ? 'anterior' : 'siguiente', o.bucle, 0.6, ap.transicionMs)
 
   const autoplay = useAutoplayCarrusel({
     activo: o.autoplay && items.length > 1,
     intervaloMs: o.intervaloMs,
     pausarAlPasar: o.pausarAlPasar,
-    avanzar: () => desplazar(scrollRef.current, 'siguiente', o.bucle, 0.6),
+    avanzar: () => desplazar(scrollRef.current, 'siguiente', o.bucle, 0.6, ap.transicionMs),
   })
 
   const irAPagina = (i: number) => {
     const el = scrollRef.current
     if (!el) return
-    el.scrollTo({ left: (i / Math.max(1, paginas - 1)) * (el.scrollWidth - el.clientWidth), behavior: 'smooth' })
+    desplazarConVelocidad(el, (i / Math.max(1, paginas - 1)) * (el.scrollWidth - el.clientWidth), ap.transicionMs)
   }
 
   // Con bucle, la flecha sigue en el borde para dar la vuelta (si hay algo que desplazar).
