@@ -15,7 +15,7 @@ export function NewsletterWithImage({ content, primaryColor = '#3B82F6' }: Newsl
           {title && <h2 className="titulo-legado text-3xl font-bold mb-3 text-gray-900 dark:text-white">{title}</h2>}
           {subtitle && <p className="text-gray-600 dark:text-gray-300 mb-6">{subtitle}</p>}
           <div className="flex gap-2">
-            <input type="email" placeholder="tu@email.com" className="flex-1 px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
+            <input type="email" placeholder="tu@email.com" className="flex-1 min-w-0 px-4 py-3 border dark:border-gray-700 rounded-lg bg-transparent dark:text-white dark:placeholder-gray-500 focus:ring-2 focus:outline-none" />
             <button className="px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity flex-shrink-0" style={{ backgroundColor: primaryColor }}>
               {button_text || 'Suscribirme'}
             </button>
