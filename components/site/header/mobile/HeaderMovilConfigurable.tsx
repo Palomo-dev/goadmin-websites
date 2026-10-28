@@ -24,7 +24,8 @@ import { FilaSedeMovil } from '../SelectorSedeEncabezado'
 import { MobileMenuShell } from './MobileMenuShell'
 import { MobileBottomNav, useUnidadesBarra } from './MobileBottomNav'
 import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
-import { leerBarra } from '@/lib/website/menuMovil'
+import { BarraPestanas } from './MobileTabs'
+import { ProductSearch } from '../../ProductSearch'
 
 /**
  * Header de celular cuando hay estilo, panel, disposición o íconos nuevos.
@@ -54,9 +55,10 @@ export function HeaderMovilConfigurable({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
   const transparente = !!layout?.transparentHero && !scrolled
-  // Con «tabs» el botón de menú no se pinta: sin menú inferior guardado va la barra por defecto,
-  // para que el celular nunca se quede sin navegación (QA 28-oct P1, org 345).
-  const barra = presentacion.barra ?? (presentacion.estilo === 'tabs' ? leerBarra({ enabled: true }) : null)
+  // Con «tabs» el botón de menú no se pinta: sin menú inferior guardado van las pestañas de la
+  // plantilla (MobileTabs), para que el celular nunca se quede sin navegación (QA 28-oct P1).
+  const barra = presentacion.barra
+  const pestanasPlantilla = !barra && presentacion.estilo === 'tabs'
   const showMenu = iconos?.showMenu !== false && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs'
 
   useEffect(() => {
@@ -108,8 +110,12 @@ export function HeaderMovilConfigurable({
     </div>
   )
 
+  // «Buscar» del menú inferior: el mismo panel del buscador del encabezado (ProductSearch).
+  // Antes solo abría con el buscador a pantalla completa y en los demás casos no hacía nada.
+  const [panelBuscar, setPanelBuscar] = useState(false)
   const abrirBuscar = () => {
     if (buscador === 'fullscreen') setBuscar(true)
+    else setPanelBuscar(true)
   }
 
   return (
@@ -160,6 +166,12 @@ export function HeaderMovilConfigurable({
         </div>
       )}
 
+      {panelBuscar && (
+        <ProductSearch primaryColor={primaryColor} icon={SearchIconComp} abierto sinDisparador pantallaCompleta alCerrar={() => setPanelBuscar(false)} />
+      )}
+      {pestanasPlantilla && (
+        <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />
+      )}
       {barra && (
         <MobileBottomNav
           barra={barra}

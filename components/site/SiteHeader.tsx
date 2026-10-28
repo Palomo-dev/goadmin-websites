@@ -514,8 +514,10 @@ function BarraSobreLegado({
   onCartClick?: () => void
 }) {
   const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
+  const [buscar, setBuscar] = useState(false)
   if (!barra) return null
   return (
+    <>
     <MobileBottomNav
       barra={barra}
       primaryColor={primaryColor}
@@ -524,12 +526,13 @@ function BarraSobreLegado({
         const boton = document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')
         boton?.click()
       }}
-      onSearch={() => {
-        const boton = document.querySelector<HTMLButtonElement>('header button[aria-label="Buscar"], header button[aria-label="Abrir búsqueda"]')
-        boton?.click()
-      }}
+      // El mismo panel del buscador del encabezado; antes buscaba un botón del encabezado por
+      // aria-label y, sin ese botón (buscador en barra u oculto), no hacía nada.
+      onSearch={() => setBuscar(true)}
       onCart={onCartClick}
     />
+    {buscar && <ProductSearch primaryColor={primaryColor} abierto sinDisparador pantallaCompleta alCerrar={() => setBuscar(false)} />}
+    </>
   )
 }
 

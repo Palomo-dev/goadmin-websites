@@ -51,37 +51,10 @@ export default function MobileTabs({
   menuCategories,
   branchId,
 }: HeaderVariantProps) {
-  const [showCategories, setShowCategories] = useState(false);
   const temaMenu = useTemaMenuMovil(primaryColor);
-  const [showSearch, setShowSearch] = useState(false);
-  const navItems = buildNavItems(navTree);
-  const { ruta } = useRutaSitio();
   const organizationId = organization.id;
   const searchStyle = buscadorMovil(settings as Record<string, unknown>);
-  const unidadesCarrito = useUnidadesCarrito(organization.subdomain || '', branchId);
-
-  // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno
-  // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
-  const estiloIconos = estiloIconosEncabezado(settings);
-  const trazo = propsTrazoIcono(estiloIconos.relleno);
-  const contenedor = leerConstructor(settings)?.contenedor ?? null
-  const coloresCaja = {
-    primary: primaryColor,
-    accent: settings?.accent_color || primaryColor,
-    secondary: settings?.secondary_color || '#1E40AF',
-  }
   const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
-  const CartTabIcon = getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag);
-  const AuthTabIcon = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User);
-  const iconoTab = (Icono: typeof ShoppingBag, clave: 'cart' | 'account') => contenedor ? (
-    <ContenedorIcono base={contenedor} clave={clave} colores={coloresCaja}>
-      <Icono style={trazoContenedor(contenedor, clave, estiloIconos.relleno)} />
-    </ContenedorIcono>
-  ) : (
-    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor} tamano="sm">
-      <Icono className="h-5 w-5" {...trazo} />
-    </IconoConCirculo>
-  );
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full" style={variablesEncabezado(settings, temaMenu)}>
@@ -124,6 +97,59 @@ export default function MobileTabs({
         </div>
       </div>
 
+      <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />
+      <FilaSedeMovil primaryColor={primaryColor} />
+    </header>
+  );
+}
+
+/**
+ * Barra inferior fija de la plantilla con pestañas (Inicio, Categorías, Buscar, Carrito, Cuenta).
+ * La usan MobileTabs y el encabezado configurable con «tabs» sin menú inferior guardado.
+ */
+export function BarraPestanas({
+  organization,
+  primaryColor,
+  navTree,
+  settings,
+  onCartClick,
+  menuCategories,
+  branchId,
+}: Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'onCartClick' | 'menuCategories' | 'branchId'>) {
+  const [showCategories, setShowCategories] = useState(false);
+  const temaMenu = useTemaMenuMovil(primaryColor);
+  const [showSearch, setShowSearch] = useState(false);
+  const navItems = buildNavItems(navTree);
+  const { ruta } = useRutaSitio();
+  const organizationId = organization.id;
+  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
+  const unidadesCarrito = useUnidadesCarrito(organization.subdomain || '', branchId);
+
+  // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno
+  // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
+  const estiloIconos = estiloIconosEncabezado(settings);
+  const trazo = propsTrazoIcono(estiloIconos.relleno);
+  const contenedor = leerConstructor(settings)?.contenedor ?? null
+  const coloresCaja = {
+    primary: primaryColor,
+    accent: settings?.accent_color || primaryColor,
+    secondary: settings?.secondary_color || '#1E40AF',
+  }
+  const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
+  const CartTabIcon = getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag);
+  const AuthTabIcon = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User);
+  const iconoTab = (Icono: typeof ShoppingBag, clave: 'cart' | 'account') => contenedor ? (
+    <ContenedorIcono base={contenedor} clave={clave} colores={coloresCaja}>
+      <Icono style={trazoContenedor(contenedor, clave, estiloIconos.relleno)} />
+    </ContenedorIcono>
+  ) : (
+    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor} tamano="sm">
+      <Icono className="h-5 w-5" {...trazo} />
+    </IconoConCirculo>
+  );
+
+  return (
+    <div className="contents" style={variablesEncabezado(settings, temaMenu)}>
       {/* Espaciador para la barra inferior fija */}
       <div className="h-14" aria-hidden="true" />
 
@@ -231,8 +257,7 @@ export default function MobileTabs({
           alCerrar={() => setShowSearch(false)}
         />
       )}
-      <FilaSedeMovil primaryColor={primaryColor} />
-    </header>
+    </div>
   );
 }
 
