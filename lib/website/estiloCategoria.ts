@@ -54,3 +54,20 @@ export function sombraTarjeta(valor: unknown, porDefecto: '' | 'shadow-sm' | 'sh
   if (valor === 'xl') return 'shadow-xl'
   return porDefecto
 }
+
+/**
+ * Contenedor de «Pastilla». `desktop_layout: 'carousel'` deja una sola fila con
+ * desplazamiento y flechas en escritorio; cualquier otro valor (o vacío) conserva
+ * las clases de siempre, que en escritorio parten en filas.
+ */
+export function clasesPastillas(desktopLayout: unknown): string {
+  if (desktopLayout === 'carousel') return 'flex gap-3 overflow-x-auto snap-x pb-2'
+  return 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap'
+}
+
+/** Desplaza un carril una página (el ancho visible), como las flechas de CategoriesGrid. */
+export function desplazarPagina(el: HTMLElement | null, dir: 'left' | 'right'): void {
+  if (!el) return
+  const amount = el.clientWidth
+  el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
+}

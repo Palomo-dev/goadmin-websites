@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { CarruselPastillas } from './CarruselPastillas'
 import {
   claseAjuste,
+  clasesPastillas,
   planBento,
   radioTarjeta,
   sombraTarjeta,
@@ -130,11 +132,11 @@ function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; conten
   )
 }
 
-function Pastilla({ cat, color, content }: { cat: any; color: string; content: Contenido }) {
+function Pastilla({ cat, color, content, snap = false }: { cat: any; color: string; content: Contenido; snap?: boolean }) {
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-4 text-gray-900 transition hover:border-transparent hover:text-white"
+      className={`group inline-flex shrink-0${snap ? ' snap-start' : ''} items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-4 text-gray-900 transition hover:border-transparent hover:text-white`}
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = '#fff' }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = '' }}
     >
@@ -196,8 +198,12 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
       </>
     )
   } else if (estilo === 'pill') {
-    cuerpo = (
-      <div className="flex gap-3 overflow-x-auto pb-2 md:flex-wrap" style={{ scrollbarWidth: 'none' }}>
+    cuerpo = carrusel ? (
+      <CarruselPastillas>
+        {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} snap />)}
+      </CarruselPastillas>
+    ) : (
+      <div className={clasesPastillas(content.desktop_layout)} style={{ scrollbarWidth: 'none' }}>
         {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} />)}
       </div>
     )

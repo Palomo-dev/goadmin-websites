@@ -3,7 +3,7 @@
  *
  *   npm run verify:estilo-categoria
  */
-import { ajusteImagenCategoria, estiloCategoria, planBento } from '../lib/website/estiloCategoria.ts'
+import { ajusteImagenCategoria, clasesPastillas, estiloCategoria, planBento } from '../lib/website/estiloCategoria.ts'
 
 const problemas = []
 let casos = 0
@@ -23,6 +23,10 @@ check(JSON.stringify(planBento(8)) === '[8]', '8 es un mosaico')
 check(JSON.stringify(planBento(10)) === '[5,5]', '10 son dos mosaicos de 5')
 check(planBento(13).reduce((s, n) => s + n, 0) === 13, '13 cuadra 5 y 8')
 check(planBento(9).reduce((s, n) => s + n, 0) === 8, '9 no deja un hueco: sobra 1')
+check(clasesPastillas(undefined) === 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap', 'pastilla sin layout: clases de siempre')
+check(clasesPastillas('grid') === 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap', 'pastilla en grid: clases de siempre')
+check(!clasesPastillas('carousel').includes('md:flex-wrap'), 'pastilla en carrusel: una sola fila en escritorio')
+check(clasesPastillas('carousel').includes('snap-x'), 'pastilla en carrusel: con snap')
 
 if (problemas.length) {
   console.error(`verify-estilo-categoria: ${problemas.length} fallo(s) de ${casos}`)

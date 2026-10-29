@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { EstilosCategoria } from './EstilosCategoria'
-import { estiloCategoria } from '@/lib/website/estiloCategoria'
+import { desplazarPagina, estiloCategoria } from '@/lib/website/estiloCategoria'
 import { DynamicLucideIcon } from './DynamicLucideIcon'
 import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
@@ -502,19 +502,9 @@ export function CategoriesGrid({ content, primaryColor, data }: CategoriesGridPr
   }, [mobileLayout, listScroll, attachDragHandlers, categories.length])
 
   // Flechas: mueven una página completa (100% del ancho visible) con snap
-  const scroll = (dir: 'left' | 'right') => {
-    const el = scrollRef.current
-    if (!el) return
-    const amount = el.clientWidth
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
-  }
+  const scroll = (dir: 'left' | 'right') => desplazarPagina(scrollRef.current, dir)
 
-  const scrollMobile = (dir: 'left' | 'right') => {
-    const el = mobileScrollRef.current
-    if (!el) return
-    const amount = el.clientWidth
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
-  }
+  const scrollMobile = (dir: 'left' | 'right') => desplazarPagina(mobileScrollRef.current, dir)
 
   const scrollMobileToIndex = (index: number) => {
     const el = mobileScrollRef.current
