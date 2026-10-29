@@ -187,6 +187,25 @@ function enFranjaHoraria(inicio: string | null | undefined, fin: string | null |
   return hora >= a! || hora <= b!
 }
 
+/** Día anterior de la semana (lunes → domingo). */
+function diaAnterior(dia: WeekDay): WeekDay {
+  const orden: WeekDay[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+  return orden[(orden.indexOf(dia) + 6) % 7]
+}
+
+/**
+ * Día contra el que se mira `applicable_days`. Con una franja que cruza la
+ * medianoche (inicio > fin), la madrugada (hora ≤ fin) es la cola de la
+ * franja del día ANTERIOR: «lunes a miércoles 18:00–02:00» sigue el jueves a
+ * la 01:00. Mismo criterio que `diaEfectivoDeFranja` del ERP.
+ */
+export function diaEfectivoDeFranja(inicio: string | null | undefined, fin: string | null | undefined, diaReloj: WeekDay, hora: string): WeekDay {
+  const a = horaNormalizada(inicio)
+  const b = horaNormalizada(fin)
+  if (!a || !b || a <= b) return diaReloj
+  return hora <= b && hora < a ? diaAnterior(diaReloj) : diaReloj
+}
+
 /** Día de la semana en la zona horaria del negocio (por defecto Colombia). */
 export function weekdayInTimezone(date: Date, timeZone = 'America/Bogota'): WeekDay {
   try {
@@ -245,8 +264,10 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
     if (p.start_date && new Date(p.start_date) > date) return false
     if (p.end_date && new Date(p.end_date) < date) return false
     if (p.usage_limit && Number(p.usage_count || 0) >= Number(p.usage_limit)) return false
-    if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !p.applicable_days.includes(dayName)) return false
-    if (!enFranjaHoraria(p.start_time, p.end_time, horaEnZona(date, ctx.timeZone))) return false
+    const hora = horaEnZona(date, ctx.timeZone)
+    const dia = diaEfectivoDeFranja(p.start_time, p.end_time, dayName, hora)
+    if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !(p.applicable_days as string[]).includes(dia)) return false
+    if (!enFranjaHoraria(p.start_time, p.end_time, hora)) return false
     // `branches` jsonb: null/[] = todas las sucursales.
     if (Array.isArray(p.branches) && p.branches.length > 0) {
       if (ctx.branchId == null) return false
