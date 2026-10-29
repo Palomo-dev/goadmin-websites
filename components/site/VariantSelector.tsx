@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
-import { getAvailableStock } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad } from '@/lib/stock'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
@@ -158,6 +158,11 @@ export function VariantSelector({
   const variantComparePrice = selectedVariant?.product_prices?.[0]?.compare_price
   const stock = selectedVariant ? getAvailableStock(selectedVariant) : null
   const outOfStock = stock !== null && stock <= 0
+
+  // Al cambiar de variante la cantidad vuelve a 1 (el tope cambia con cada variante).
+  useEffect(() => {
+    setQuantity(1)
+  }, [selectedVariant?.id])
   const imageUrl = selectedVariant ? getVariantImageUrl(selectedVariant) : null
   const hasAttributeGroups = Object.keys(attributeGroups).length > 0
 
@@ -325,8 +330,9 @@ export function VariantSelector({
           <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(q => q + 1)}
-            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+            onClick={() => setQuantity(q => siguienteCantidad(q, stock))}
+            disabled={stock !== null && quantity >= stock}
+            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
           </button>

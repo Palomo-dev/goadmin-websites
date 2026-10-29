@@ -8,7 +8,7 @@ import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
-import { isOutOfStock } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad } from '@/lib/stock'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useCurrency } from '@/components/site/CurrencyProvider'
@@ -106,7 +106,8 @@ export function ProductDetailActions({
   const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = price + modifiersExtraTotal
 
-  const outOfStock = isOutOfStock({ track_stock: trackStock, stock_levels: stockLevels })
+  const stockDisponible = getAvailableStock({ track_stock: trackStock, stock_levels: stockLevels })
+  const outOfStock = stockDisponible !== null && stockDisponible <= 0
 
   // Una sola escritura del carrito (lib/cart.ts) para variante, plato con opciones y producto
   // simple: id de línea, opciones y nota con el mismo formato que la carta.
@@ -246,8 +247,9 @@ export function ProductDetailActions({
           <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(q => q + 1)}
-            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+            onClick={() => setQuantity(q => siguienteCantidad(q, stockDisponible))}
+            disabled={stockDisponible !== null && quantity >= stockDisponible}
+            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
           </button>

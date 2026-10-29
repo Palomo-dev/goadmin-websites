@@ -58,3 +58,37 @@ export function filterStockByBranches<T extends { stock_levels?: StockLevel[] | 
     ),
   }))
 }
+
+/**
+ * Estado de stock para comprar desde la ficha (barra fija, selector, botones).
+ *
+ * - Producto padre con variantes: manda la variante elegida. Sin variante elegida,
+ *   solo está agotado si TODAS las variantes lo están. El stock del padre no cuenta
+ *   (suele ser 0 porque las existencias viven en los hijos).
+ * - Producto sin variantes: exactamente como antes, stock del propio producto.
+ *
+ * `stock = null` significa sin tope (no rastrea inventario).
+ */
+export function estadoStockCompra(opts: {
+  producto: StockTrackable
+  esPadre?: boolean
+  variantes?: StockTrackable[] | null
+  variante?: StockTrackable | null
+}): { stock: number | null; agotado: boolean } {
+  const variantes = opts.variantes || []
+  if (opts.esPadre && variantes.length > 0) {
+    if (opts.variante) {
+      const stock = getAvailableStock(opts.variante)
+      return { stock, agotado: stock !== null && stock <= 0 }
+    }
+    return { stock: null, agotado: variantes.every((v) => isOutOfStock(v)) }
+  }
+  const stock = getAvailableStock(opts.producto)
+  return { stock, agotado: stock !== null && stock <= 0 }
+}
+
+/** Siguiente cantidad al pulsar «+», sin pasar del stock (`null` = sin tope). */
+export function siguienteCantidad(actual: number, stock: number | null): number {
+  if (stock === null) return actual + 1
+  return Math.max(1, Math.min(actual + 1, stock))
+}

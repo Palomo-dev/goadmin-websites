@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { isOutOfStock } from '@/lib/stock'
+import { estadoStockCompra } from '@/lib/stock'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 
@@ -11,6 +11,8 @@ interface VariantData {
   id: number
   name: string
   variant_data?: Record<string, string>
+  track_stock?: boolean
+  stock_levels?: { qty_on_hand: number; qty_reserved: number }[] | null
   product_prices?: { price: number; compare_price?: number | null }[]
   product_images?: { storage_path: string | null; is_primary: boolean; shared_images?: { storage_path: string } | null }[]
 }
@@ -68,7 +70,13 @@ export function StickyAddToCart({
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
 
-  const outOfStock = isOutOfStock({ track_stock: trackStock, stock_levels: stockLevels })
+  // Padre con variantes: manda la variante elegida (el padre suele tener stock 0).
+  const { stock: stockDisponible, agotado: outOfStock } = estadoStockCompra({
+    producto: { track_stock: trackStock, stock_levels: stockLevels },
+    esPadre: isParent,
+    variantes: variants,
+    variante: selectedVariant,
+  })
 
   // Extraer grupos de atributos
   const attributeGroups = useMemo(() => {
@@ -144,6 +152,7 @@ export function StickyAddToCart({
         const variantImgUrl = getVariantImg(selectedVariant) || imageUrl
         const idx = cart.findIndex((c: any) => c.id === selectedVariant.id)
         if (idx >= 0) {
+          if (stockDisponible !== null && cart[idx].quantity >= stockDisponible) return
           cart[idx].quantity += 1
         } else {
           cart.push({
@@ -159,6 +168,7 @@ export function StickyAddToCart({
       } else {
         const idx = cart.findIndex((c: any) => c.id === productId)
         if (idx >= 0) {
+          if (stockDisponible !== null && cart[idx].quantity >= stockDisponible) return
           cart[idx].quantity += 1
         } else {
           cart.push({
