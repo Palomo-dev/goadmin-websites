@@ -55,7 +55,8 @@
     "verify:foto-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-foto-categoria.mjs",
     "verify:iconos-encabezado": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-iconos-encabezado.mjs",
     "verify:promo-grupos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-grupos.mjs",
-    "verify:buscador-movil": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-buscador-movil.mjs"
+    "verify:buscador-movil": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-buscador-movil.mjs",
+    "verify:contador-cantidad": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contador-cantidad.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

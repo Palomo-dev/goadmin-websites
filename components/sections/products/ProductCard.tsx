@@ -39,13 +39,14 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
-import { isOutOfStock } from '@/lib/stock'
+import { getAvailableStock, isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useFavorites } from '@/lib/hooks/useFavorites'
 import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
 import { ShareDialog } from '@/components/site/ShareDialog'
-import { addProductToCart } from '@/lib/cart'
+import { addProductToCart, useCartLineQty, type CartLineInput } from '@/lib/cart'
+import { CardQuantityStepper } from './CardQuantityStepper'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import {
   buildCardStyle,
@@ -68,6 +69,7 @@ import {
   fondoTarjeta,
   posicionBotonInterna,
   radioForma,
+  contadorCantidadActivo,
   separacionTarjetas,
   type EstiloBotonTarjeta,
   type EstiloTarjetaProducto,
@@ -556,6 +558,7 @@ function CardButtonRenderer({
   onToggleFavorite,
   onQuickView,
   onShare,
+  contador,
 }: {
   button: CardButtonConfig
   product: any
@@ -571,6 +574,8 @@ function CardButtonRenderer({
   onToggleFavorite?: (productId: number) => void
   onQuickView?: () => void
   onShare?: () => void
+  /** «Contador de cantidad»: solo llega con la opción encendida y un producto simple con stock. */
+  contador?: { subdomain: string; branchId?: number | null; line: CartLineInput; stock: number | null }
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -671,6 +676,21 @@ function CardButtonRenderer({
       case 'view_detail': return <Eye className={iconSizeClass} />
       default: return null
     }
+  }
+
+  if (contador && button.action === 'add_to_cart' && btnIconOnly) {
+    return (
+      <CardQuantityStepper
+        subdomain={contador.subdomain}
+        branchId={contador.branchId}
+        line={contador.line}
+        stock={contador.stock}
+        sizePx={parseInt(String(baseStyle.width), 10) || 40}
+        bg={bg}
+        textColor={textColor}
+        iconClass={iconSizeClass}
+      />
+    )
   }
 
   const defaultLabel = (action: string) => {
@@ -892,6 +912,20 @@ export function ProductCard({
   }
 
   const handleAdd = onAddToCart ? () => onAddToCart(product) : () => internalAddToCart(product)
+  // «Contador de cantidad» (`add.quantity_stepper`): solo con el carrito interno (sin `onAddToCart`
+  // externo: restaurante y mesa siguen igual), producto simple y con stock. Apagado: nada cambia.
+  const subCarrito = organizationSubdomain || (typeof window !== 'undefined' ? window.location.hostname.split('.')[0] : '')
+  const precioContador = getProductPrice(product)
+  const conContador = !!estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !onAddToCart && !isParent && !outOfStock && precioContador !== null
+  const qtyContador = useCartLineQty(subCarrito, branchId, product.id, conContador)
+  const contador = conContador
+    ? {
+        subdomain: subCarrito,
+        branchId,
+        stock: getAvailableStock(product),
+        line: { id: product.id, name: product.name, price: precioContador as number, sku: product.sku, imageUrl: getProductImageUrl(product), comparePrice: getProductComparePrice(product) },
+      }
+    : undefined
   const handleBuy = onBuyNow ? () => onBuyNow(product) : () => internalBuyNow(product)
 
   // Merge cardStyle con defaults. El estilo nuevo solo pisa las claves que trae.
@@ -1173,7 +1207,7 @@ export function ProductCard({
   const claseCuerpo = estiloTarjeta?.card_padding != null ? '' : 'p-2.5 sm:p-4'
   const padCuerpo = estiloTarjeta?.card_padding != null ? { padding: estiloTarjeta.card_padding } : undefined
   const revela = (pos: string) =>
-    effectiveButtons.some((b) => (b.position || 'below') === pos && b.hover_reveal) ? ` ${CLASE_BOTON_HOVER_MOVIL}` : ''
+    effectiveButtons.some((b) => (b.position || 'below') === pos && b.hover_reveal && !(contador && qtyContador > 0 && b.action === 'add_to_cart')) ? ` ${CLASE_BOTON_HOVER_MOVIL}` : ''
   const alinearBotones = estiloTarjeta?.text_align === 'left' ? 'justify-start' : estiloTarjeta?.text_align === 'right' ? 'justify-end' : 'justify-center'
   const marcas = [
     estiloTarjeta?.show_brand ? marcaProducto(product) : '',
@@ -1204,6 +1238,7 @@ export function ProductCard({
             onToggleFavorite={toggleFavorite}
             onQuickView={() => setQuickViewOpen(true)}
             onShare={() => setShareOpen(true)}
+            contador={contador}
           />
         ))}
     </div>

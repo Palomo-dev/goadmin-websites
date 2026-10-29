@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { getCartKey } from '@/lib/utils'
 
 /** Unidades del carrito en esta pestaña. La misma suma que el badge del encabezado. */
@@ -198,4 +199,75 @@ export function reemplazarCarrito(
   }
   localStorage.setItem(getCartKey(subdomain, branchId), JSON.stringify(cart))
   window.dispatchEvent(new CustomEvent('cart-updated'))
+}
+
+/** Cantidad de una línea del carrito (0 si no está). Solo lee localStorage. */
+export function getLineQty(subdomain: string, branchId: number | null | undefined, lineId: number | string): number {
+  if (typeof localStorage === 'undefined') return 0
+  try {
+    const cart = JSON.parse(localStorage.getItem(getCartKey(subdomain, branchId)) || '[]')
+    if (!Array.isArray(cart)) return 0
+    const linea = cart.find((item: { id: number | string }) => item.id === lineId)
+    return linea ? Number(linea.quantity) || 0 : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Deja una línea con esta cantidad (contador de la tarjeta). `qty <= 0` quita la línea. Si la
+ * línea no está y `qty > 0`, se crea con `line` (mismo formato que `addProductToCart`); sin `line`
+ * no se crea nada. Siempre dispara `cart-updated`.
+ */
+export function setLineQty(
+  subdomain: string,
+  branchId: number | null | undefined,
+  lineId: number | string,
+  qty: number,
+  line?: CartLineInput,
+): void {
+  const cartKey = getCartKey(subdomain, branchId)
+  let cart: Array<{ id: number | string; quantity: number }> = []
+  try {
+    const leido = JSON.parse(localStorage.getItem(cartKey) || '[]')
+    if (Array.isArray(leido)) cart = leido
+  } catch {
+    cart = []
+  }
+  const cantidad = Math.trunc(Number(qty)) || 0
+  const idx = cart.findIndex((item) => item.id === lineId)
+  if (cantidad <= 0) {
+    if (idx >= 0) cart.splice(idx, 1)
+  } else if (idx >= 0) {
+    cart[idx].quantity = cantidad
+  } else if (line) {
+    cart.push(objetoLinea({
+      productId: line.id,
+      name: line.name,
+      unitPrice: line.price,
+      quantity: cantidad,
+      sku: line.sku,
+      imageUrl: line.imageUrl,
+      comparePrice: line.comparePrice,
+    }, false))
+  }
+  localStorage.setItem(cartKey, JSON.stringify(cart))
+  window.dispatchEvent(new CustomEvent('cart-updated'))
+}
+
+/** Cantidad en vivo de una línea: escucha `cart-updated` (esta pestaña) y `storage` (otras). `activo = false`: no escucha y da 0. */
+export function useCartLineQty(subdomain: string, branchId: number | null | undefined, lineId: number | string, activo = true): number {
+  const [qty, setQty] = useState(0)
+  useEffect(() => {
+    if (!activo) return
+    const leer = () => setQty(getLineQty(subdomain, branchId, lineId))
+    leer()
+    window.addEventListener('cart-updated', leer)
+    window.addEventListener('storage', leer)
+    return () => {
+      window.removeEventListener('cart-updated', leer)
+      window.removeEventListener('storage', leer)
+    }
+  }, [subdomain, branchId, lineId, activo])
+  return activo ? qty : 0
 }
