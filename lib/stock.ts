@@ -100,3 +100,12 @@ export function siguienteCantidad(actual: number, stock: number | null): number 
 export function primeraVarianteDisponible<T extends StockTrackable>(variantes: T[]): T | undefined {
   return variantes.find((v) => !isOutOfStock(v)) ?? variantes[0]
 }
+
+/** Unidades que aún se pueden agregar: stock menos lo que ya está en el carrito (`null` = sin tope). */
+export function cupoDisponible(stock: number | null, enCarrito: number): number | null {
+  if (stock === null) return null
+  return Math.max(0, stock - Math.max(0, enCarrito))
+}
+
+/** Texto del aviso cuando el carrito ya tiene todo el stock disponible. */
+export const AVISO_TOPE_CARRITO = 'Ya tienes todas las unidades disponibles en el carrito'

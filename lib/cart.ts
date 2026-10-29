@@ -271,3 +271,43 @@ export function useCartLineQty(subdomain: string, branchId: number | null | unde
   }, [subdomain, branchId, lineId, activo])
   return activo ? qty : 0
 }
+
+/** Producto de una línea: `productId` si el id es compuesto (`123_4-5`), si no el id numérico. */
+function productoDeLinea(item: { id: number | string; productId?: number }): number {
+  if (typeof item.id === 'number') return item.id
+  return Number(item.productId ?? String(item.id).split('_')[0])
+}
+
+/**
+ * Unidades de un producto en el carrito sumando todas sus líneas (con y sin opciones o nota):
+ * el stock es del producto, no de la línea. Solo lee localStorage.
+ */
+export function getProductQtyInCart(subdomain: string, branchId: number | null | undefined, productId: number): number {
+  if (typeof localStorage === 'undefined') return 0
+  try {
+    const cart = JSON.parse(localStorage.getItem(getCartKey(subdomain, branchId)) || '[]')
+    if (!Array.isArray(cart)) return 0
+    return cart
+      .filter((item: { id: number | string; productId?: number }) => productoDeLinea(item) === Number(productId))
+      .reduce((t: number, item: { quantity: number }) => t + (Number(item.quantity) || 0), 0)
+  } catch {
+    return 0
+  }
+}
+
+/** Como `useCartLineQty`, pero suma todas las líneas del producto. `productId = null`: 0. */
+export function useCartProductQty(subdomain: string, branchId: number | null | undefined, productId: number | null): number {
+  const [qty, setQty] = useState(0)
+  useEffect(() => {
+    if (productId === null) return
+    const leer = () => setQty(getProductQtyInCart(subdomain, branchId, productId))
+    leer()
+    window.addEventListener('cart-updated', leer)
+    window.addEventListener('storage', leer)
+    return () => {
+      window.removeEventListener('cart-updated', leer)
+      window.removeEventListener('storage', leer)
+    }
+  }, [subdomain, branchId, productId])
+  return productId === null ? 0 : qty
+}

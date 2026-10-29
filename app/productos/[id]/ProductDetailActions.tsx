@@ -8,8 +8,8 @@ import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
-import { getAvailableStock, siguienteCantidad } from '@/lib/stock'
-import { agregarPlatoAlCarrito, MAX_NOTA_COCINA } from '@/lib/cart'
+import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 
@@ -108,6 +108,19 @@ export function ProductDetailActions({
 
   const stockDisponible = getAvailableStock({ track_stock: trackStock, stock_levels: stockLevels })
   const outOfStock = stockDisponible !== null && stockDisponible <= 0
+  const [subdominio, setSubdominio] = useState(organizationSubdomain || '')
+  useEffect(() => {
+    if (!organizationSubdomain) setSubdominio(window.location.hostname.split('.')[0])
+  }, [organizationSubdomain])
+  // Solo productos sin variantes: con variantes el tope lo lleva VariantSelector.
+  const enCarrito = useCartProductQty(subdominio, branchId, !(isParent && variants.length > 0) && subdominio ? Number(product.id) : null)
+  const cupo = cupoDisponible(stockDisponible, enCarrito)
+  const sinCupo = !outOfStock && cupo === 0
+
+  // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
+  useEffect(() => {
+    if (cupo !== null && quantity > Math.max(1, cupo)) setQuantity(Math.max(1, cupo))
+  }, [cupo, quantity])
 
   // Una sola escritura del carrito (lib/cart.ts) para variante, plato con opciones y producto
   // simple: id de línea, opciones y nota con el mismo formato que la carta.
@@ -197,6 +210,8 @@ export function ProductDetailActions({
           buyNowPending={comprando}
           modifierGroups={modifierGroups}
           ordenAtributos={ordenAtributos}
+          organizationSubdomain={organizationSubdomain}
+          branchId={branchId}
         />
         {campoNota}
       </div>
@@ -247,8 +262,8 @@ export function ProductDetailActions({
           <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(q => siguienteCantidad(q, stockDisponible))}
-            disabled={stockDisponible !== null && quantity >= stockDisponible}
+            onClick={() => setQuantity(q => siguienteCantidad(q, cupo))}
+            disabled={cupo !== null && quantity >= cupo}
             className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
@@ -267,6 +282,10 @@ export function ProductDetailActions({
         </div>
       )}
 
+      {puedePedir && sinCupo && (
+        <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
+      )}
+
       {/* Botones de acción */}
       {puedePedir && (
       <div className={buttonsLayout === 'inline' ? 'flex gap-3' : 'space-y-3'}>
@@ -280,7 +299,7 @@ export function ProductDetailActions({
           quantity={quantity}
           organizationSubdomain={organizationSubdomain}
           onClick={handleAddWithQuantity}
-          disabled={outOfStock}
+          disabled={outOfStock || sinCupo}
           className={buttonsLayout === 'inline' ? 'flex-1' : undefined}
           branchId={branchId}
         />

@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useId } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { estadoStockCompra, primeraVarianteDisponible } from '@/lib/stock'
+import { estadoStockCompra, primeraVarianteDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { getProductQtyInCart } from '@/lib/cart'
 import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
@@ -67,6 +68,7 @@ export function StickyAddToCart({
   ordenAtributos = null,
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [visible, setVisible] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
@@ -166,11 +168,18 @@ export function StickyAddToCart({
       const activePrice = getActivePrice()
       const activeCp = getActiveComparePrice()
 
+      // Tope: unidades del producto ya en el carrito (todas sus líneas) contra el stock disponible.
+      const idProducto = isParent && selectedVariant ? selectedVariant.id : productId
+      if (stockDisponible !== null && getProductQtyInCart(organizationSubdomain || window.location.hostname.split('.')[0], branchId, idProducto) >= stockDisponible) {
+        setAviso(AVISO_TOPE_CARRITO)
+        setTimeout(() => setAviso(null), 3000)
+        return
+      }
+
       if (isParent && selectedVariant) {
         const variantImgUrl = getVariantImg(selectedVariant) || imageUrl
         const idx = cart.findIndex((c: any) => c.id === selectedVariant.id)
         if (idx >= 0) {
-          if (stockDisponible !== null && cart[idx].quantity >= stockDisponible) return
           cart[idx].quantity += 1
         } else {
           cart.push({
@@ -186,7 +195,6 @@ export function StickyAddToCart({
       } else {
         const idx = cart.findIndex((c: any) => c.id === productId)
         if (idx >= 0) {
-          if (stockDisponible !== null && cart[idx].quantity >= stockDisponible) return
           cart[idx].quantity += 1
         } else {
           cart.push({
@@ -258,6 +266,10 @@ export function StickyAddToCart({
               </div>
             ))}
           </div>
+        )}
+
+        {aviso && (
+          <p role="status" className="px-4 pt-2 text-center text-sm text-amber-700">{aviso}</p>
         )}
 
         {/* Barra principal */}

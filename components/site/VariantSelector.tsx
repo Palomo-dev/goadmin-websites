@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
-import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { useCartProductQty } from '@/lib/cart'
 import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
 import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
@@ -55,6 +56,9 @@ interface VariantSelectorProps {
    * Sin él, las tallas usan XS…XXXL y los números van de menor a mayor.
    */
   ordenAtributos?: OrdenAtributos | null
+  /** Para descontar del tope lo que ya está en el carrito. Sin él, se deduce del host. */
+  organizationSubdomain?: string
+  branchId?: number | null
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -78,6 +82,8 @@ export function VariantSelector({
   mode = 'dialog',
   modifierGroups = [],
   ordenAtributos = null,
+  organizationSubdomain,
+  branchId,
 }: VariantSelectorProps) {
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [mods, setMods] = useState<SelectedModifier[]>([])
@@ -176,6 +182,18 @@ export function VariantSelector({
   const variantComparePrice = selectedVariant?.product_prices?.[0]?.compare_price
   const stock = selectedVariant ? getAvailableStock(selectedVariant) : null
   const outOfStock = stock !== null && stock <= 0
+  const [subdominio, setSubdominio] = useState(organizationSubdomain || '')
+  useEffect(() => {
+    if (!organizationSubdomain) setSubdominio(window.location.hostname.split('.')[0])
+  }, [organizationSubdomain])
+  const enCarrito = useCartProductQty(subdominio || organizationSubdomain || '', branchId, selectedVariant && subdominio ? Number(selectedVariant.id) : null)
+  const cupo = cupoDisponible(stock, enCarrito)
+  const sinCupo = !outOfStock && cupo === 0
+
+  // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
+  useEffect(() => {
+    if (cupo !== null && quantity > Math.max(1, cupo)) setQuantity(Math.max(1, cupo))
+  }, [cupo, quantity])
 
   // Al cambiar de variante la cantidad vuelve a 1 (el tope cambia con cada variante).
   useEffect(() => {
@@ -348,8 +366,8 @@ export function VariantSelector({
           <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity(q => siguienteCantidad(q, stock))}
-            disabled={stock !== null && quantity >= stock}
+            onClick={() => setQuantity(q => siguienteCantidad(q, cupo))}
+            disabled={cupo !== null && quantity >= cupo}
             className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
@@ -357,12 +375,16 @@ export function VariantSelector({
         </div>
       </div>
 
+      {sinCupo && (
+        <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
+      )}
+
       {/* Botón agregar */}
       <Button
         size="lg"
         className={`w-full text-lg py-6 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''}`}
         style={!added ? { backgroundColor: primaryColor } : {}}
-        disabled={!selectedVariant || !price || outOfStock}
+        disabled={!selectedVariant || !price || outOfStock || sinCupo}
         onClick={handleAddToCart}
       >
         {added ? (
