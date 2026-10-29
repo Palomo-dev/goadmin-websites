@@ -98,12 +98,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       organizationId, branchId, customer, customerId: authCustomerId, items: itemsCliente,
-      subtotal, shipping, total, paymentMethod,
+      subtotal, shipping, total, paymentMethod: paymentMethodCliente,
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount,
       promoDiscount, promotionIds, dinerLabel, roundKey
     } = body
+    // Mismo trim que /api/promotions/check: el código se valida, se evalúa en promociones y se guarda limpio.
+    const paymentMethod = typeof paymentMethodCliente === 'string' ? paymentMethodCliente.trim() : paymentMethodCliente
 
     // Límite de pedidos por IP y por correo (CLAUDE.md: /api/orders). Generoso por IP porque
     // en un restaurante muchos clientes piden en mesa desde la misma red; en memoria por

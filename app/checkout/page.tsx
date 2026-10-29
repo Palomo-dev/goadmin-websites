@@ -99,12 +99,18 @@ export default async function CheckoutPage() {
 
   const { organization, primaryColor, branchId, outlet, sedePorPrefijo } = ctx
   const isRestaurant = organization.type_id === 1
+  const metodosPromesa = getWebsitePaymentMethods(organization.id)
+  const conSedes = (ms: Awaited<typeof metodosPromesa>) => ms.some((m) => Array.isArray(m.branchIds) && m.branchIds.length > 0)
   const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede, pixeles, ajustesSitio] = await Promise.all([
-    getWebsitePaymentMethods(organization.id),
+    metodosPromesa,
     getMetaPixelId(organization.id),
     getGoogleAdsConfig(organization.id),
     // Lista cacheada (SETTINGS_TTL); solo restaurante la usa para el horario y la banda de sede.
-    isRestaurant ? getOrganizationBranches(organization.id) : Promise.resolve([]),
+    // También cuando algún método está limitado por sede (branch_ids): para filtrarlos con la sede
+    // por defecto de /api/orders. Sin branch_ids no se consulta nada nuevo.
+    isRestaurant
+      ? getOrganizationBranches(organization.id)
+      : metodosPromesa.then((ms) => (conSedes(ms) ? getOrganizationBranches(organization.id) : [])),
     // Sedes para «Cambiar sede» (SelectorSede de C, con el href de cada sede ya calculado) y el
     // aviso del carrito de otra sede. Mismas lecturas cacheadas que el layout de las demás páginas.
     isRestaurant ? getDatosSedeLayout(organization, outlet, (organization.website_settings as any) ?? null) : Promise.resolve(null),
@@ -123,6 +129,7 @@ export default async function CheckoutPage() {
   // Sede del pedido: la del sitio de sede o, en el sitio principal, la misma que elige
   // /api/orders (sedePorDefectoPedido). Su horario y su zona alimentan «¿Para cuándo?» con la
   // misma regla que valida el servidor.
+  const hayMetodosPorSede = conSedes(paymentMethods)
   const listaSedes = (sucursales || []) as any[]
   const sedeFila = typeof branchId === 'number'
     ? listaSedes.find((b) => Number(b.id) === branchId) ?? null
@@ -235,6 +242,7 @@ export default async function CheckoutPage() {
               branchId={branchId}
               sedePedido={sedePedido}
               sedesSelector={datosSede?.sedesSelector ?? []}
+              sedePorDefectoId={hayMetodosPorSede && typeof branchId !== 'number' ? (sedePorDefectoPedido(listaSedes)?.id ?? null) : null}
               sedeActualId={datosSede?.sedeActualId ?? (typeof branchId === 'number' ? branchId : null)}
               prefijoSede={datosSede?.prefijoSede ?? ctx.prefijoSede ?? ''}
               rutaSeguirPidiendo={ruta(isRestaurant ? '/menu' : '/productos')}

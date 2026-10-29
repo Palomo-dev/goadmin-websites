@@ -57,6 +57,19 @@ caso('columna ausente (migración sin aplicar) se detecta; otros errores no', ()
   assert.equal(esColumnaAusente({ code: '42501', message: 'permission denied' }, 'branch_ids'), false)
 })
 
+caso('sin sede elegida, el checkout filtra con la sede por defecto de /api/orders (sedeMetodos = sedePromocion ?? sedePorDefectoId)', () => {
+  const metodos = [{ code: 'cash', branchIds: null }, { code: 'didi_transferencia', branchIds: [117] }]
+  const sedeMetodos = (sedePromocion, sedePorDefectoId) => sedePromocion ?? sedePorDefectoId
+  // Por defecto San Javier (120): DIDI no se ofrece, igual que el 422 del servidor.
+  assert.deepEqual(m.filtrarMetodosPorSede(metodos, sedeMetodos(null, 120)).map((x) => x.code), ['cash'])
+  assert.equal(m.validarMetodoEnSede([{ branch_ids: [117] }], 'didi_transferencia', 120).ok, false)
+  // La sede elegida gana sobre la de por defecto.
+  assert.deepEqual(m.filtrarMetodosPorSede(metodos, sedeMetodos(117, 120)).map((x) => x.code), ['cash', 'didi_transferencia'])
+  // Sin branch_ids configurados (la página manda null): todo igual que hoy.
+  const sinSedes = [{ code: 'cash', branchIds: null }, { code: 'nequi', branchIds: null }]
+  assert.deepEqual(m.filtrarMetodosPorSede(sinSedes, sedeMetodos(null, null)).map((x) => x.code), ['cash', 'nequi'])
+})
+
 // ── Promociones por método de pago (promotions.payment_method_codes) ──
 const srcPromo = readFileSync(new URL('../lib/promotions.ts', import.meta.url), 'utf8')
 const P = await import('data:text/javascript,' + encodeURIComponent(stripTypeScriptTypes(srcPromo)))

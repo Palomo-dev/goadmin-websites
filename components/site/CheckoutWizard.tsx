@@ -135,6 +135,11 @@ interface CheckoutWizardProps {
   sedesSelector?: SedeSelector[]
   /** Sede de la petición (`null` en el sitio principal): la del carrito que se está cobrando. */
   sedeActualId?: number | null
+  /**
+   * Sede por defecto de /api/orders (sedePorDefectoPedido) cuando el cliente no eligió sede.
+   * Solo filtra los métodos de pago por sede; no se manda al servidor ni cambia carta ni promociones.
+   */
+  sedePorDefectoId?: number | null
   /** `''` o `'/<slug>'` si la sede se sirve por prefijo de ruta (rutaSitio). */
   prefijoSede?: string
   /** Carta o catálogo de esta sede, con su prefijo: «Seguir pidiendo» de la confirmación. */
@@ -186,7 +191,7 @@ function AvisoStockLinea({ activo, stock, umbral, plantilla }: { activo: boolean
   return <p className="text-xs text-orange-600 font-medium mt-1">{texto}</p>
 }
 
-export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: todosLosMetodos, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
+export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: todosLosMetodos, checkoutSettings, isRestaurant = false, organizationSubdomain, branchId, sedePedido = null, sedesSelector = [], sedeActualId = null, sedePorDefectoId = null, prefijoSede = '', rutaSeguirPidiendo }: CheckoutWizardProps) {
   const settings = { ...DEFAULT_SETTINGS, ...checkoutSettings }
   const isOnePage = settings.checkoutMode === 'one_page'
   const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()
@@ -237,7 +242,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       : (typeof sedePedido?.id === 'number' ? sedePedido.id : (typeof sedeActualId === 'number' ? sedeActualId : null)),
   })
   // Métodos de pago habilitados en la sede del pedido (branch_ids del ERP; NULL = todas).
-  const availableMethods = useMemo(() => filtrarMetodosPorSede(todosLosMetodos, sedePromocion), [todosLosMetodos, sedePromocion])
+  // Sin sede elegida, la misma sede por defecto con la que /api/orders valida (si no, el servidor
+  // rechazaría con 422 un método que aquí se ofrecía).
+  const sedeMetodos = sedePromocion ?? sedePorDefectoId
+  const availableMethods = useMemo(() => filtrarMetodosPorSede(todosLosMetodos, sedeMetodos), [todosLosMetodos, sedeMetodos])
   // 'gateway_code' o 'cash' o 'transfer'
   const [paymentMethod, setPaymentMethod] = useState<string>(
     availableMethods.length > 0 ? availableMethods[0].code : 'cash'
