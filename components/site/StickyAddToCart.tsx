@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo, useId } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { estadoStockCompra, primeraVarianteDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
-import { getProductQtyInCart } from '@/lib/cart'
-import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
+import { estadoStockCompra, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { getProductQtyInCart, useCartProductQty } from '@/lib/cart'
+import { emitirVariante, escucharVariante, escucharCantidad } from '@/lib/products/varianteSeleccionada'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
@@ -74,6 +74,13 @@ export function StickyAddToCart({
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
   const ORIGEN = useId()
+  // Cantidad elegida en el selector principal, por producto/variante (sin dato: 1, como antes).
+  const [cantidades, setCantidades] = useState<Record<number, number>>({})
+  useEffect(() => escucharCantidad(ORIGEN, (id, cantidad) => setCantidades((c) => ({ ...c, [id]: cantidad }))), [ORIGEN])
+  const [subdominio, setSubdominio] = useState(organizationSubdomain || '')
+  useEffect(() => {
+    if (!organizationSubdomain) setSubdominio(window.location.hostname.split('.')[0])
+  }, [organizationSubdomain])
   const { formatPrice } = useCurrency()
 
   // Padre con variantes: manda la variante elegida (el padre suele tener stock 0).
@@ -83,6 +90,11 @@ export function StickyAddToCart({
     variantes: variants,
     variante: selectedVariant,
   })
+
+  const idLinea = isParent && selectedVariant ? selectedVariant.id : productId
+  const enCarrito = useCartProductQty(subdominio, branchId, subdominio ? idLinea : null)
+  const cupo = cupoDisponible(stockDisponible, enCarrito)
+  const sinCupo = !outOfStock && cupo === 0
 
   // Extraer grupos de atributos
   const attributeGroups = useMemo(() => {
@@ -170,23 +182,28 @@ export function StickyAddToCart({
 
       // Tope: unidades del producto ya en el carrito (todas sus líneas) contra el stock disponible.
       const idProducto = isParent && selectedVariant ? selectedVariant.id : productId
-      if (stockDisponible !== null && getProductQtyInCart(organizationSubdomain || window.location.hostname.split('.')[0], branchId, idProducto) >= stockDisponible) {
+      const yaEnCarrito = getProductQtyInCart(organizationSubdomain || window.location.hostname.split('.')[0], branchId, idProducto)
+      const cupoAhora = cupoDisponible(stockDisponible, yaEnCarrito)
+      if (cupoAhora === 0) {
         setAviso(AVISO_TOPE_CARRITO)
         setTimeout(() => setAviso(null), 3000)
         return
       }
+      // La cantidad elegida arriba, sin pasar del cupo.
+      const elegida = Math.max(1, Math.trunc(cantidades[idProducto] ?? 1) || 1)
+      const n = cupoAhora === null ? elegida : Math.min(elegida, cupoAhora)
 
       if (isParent && selectedVariant) {
         const variantImgUrl = getVariantImg(selectedVariant) || imageUrl
         const idx = cart.findIndex((c: any) => c.id === selectedVariant.id)
         if (idx >= 0) {
-          cart[idx].quantity += 1
+          cart[idx].quantity += n
         } else {
           cart.push({
             id: selectedVariant.id,
             name: selectedVariant.name,
             price: activePrice,
-            quantity: 1,
+            quantity: n,
             ...(variantImgUrl && { imageUrl: variantImgUrl }),
             ...(activeCp && { comparePrice: activeCp }),
             ...(selectedVariant.variant_data && { variantAttributes: selectedVariant.variant_data })
@@ -195,13 +212,13 @@ export function StickyAddToCart({
       } else {
         const idx = cart.findIndex((c: any) => c.id === productId)
         if (idx >= 0) {
-          cart[idx].quantity += 1
+          cart[idx].quantity += n
         } else {
           cart.push({
             id: productId,
             name: productName,
             price: activePrice,
-            quantity: 1,
+            quantity: n,
             ...(imageUrl && { imageUrl }),
             ...(activeCp && { comparePrice: activeCp })
           })
@@ -268,8 +285,8 @@ export function StickyAddToCart({
           </div>
         )}
 
-        {aviso && (
-          <p role="status" className="px-4 pt-2 text-center text-sm text-amber-700">{aviso}</p>
+        {(aviso || sinCupo) && (
+          <p role="status" className="px-4 pt-2 text-center text-sm text-amber-700">{aviso || AVISO_TOPE_CARRITO}</p>
         )}
 
         {/* Barra principal */}
@@ -302,9 +319,9 @@ export function StickyAddToCart({
 
             <Button
               onClick={handleAddToCart}
-              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock ? 'opacity-50' : ''}`}
-              style={!added && !outOfStock ? { backgroundColor: primaryColor } : {}}
-              disabled={outOfStock}
+              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
+              style={!added && !outOfStock && !sinCupo ? { backgroundColor: primaryColor } : {}}
+              disabled={outOfStock || sinCupo}
             >
               {added ? (
                 <><Check className="h-4 w-4 mr-1" /> Agregado</>

@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
-import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
 import { useCartProductQty } from '@/lib/cart'
-import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
+import { emitirVariante, escucharVariante, emitirCantidad } from '@/lib/products/varianteSeleccionada'
 import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
@@ -189,6 +189,11 @@ export function VariantSelector({
   const enCarrito = useCartProductQty(subdominio || organizationSubdomain || '', branchId, selectedVariant && subdominio ? Number(selectedVariant.id) : null)
   const cupo = cupoDisponible(stock, enCarrito)
   const sinCupo = !outOfStock && cupo === 0
+  const enTope = !outOfStock && cupo !== null && cupo > 0 && quantity >= cupo
+  // La barra fija agrega la cantidad elegida aquí.
+  useEffect(() => {
+    if (selectedVariant) emitirCantidad(Number(selectedVariant.id), quantity, ORIGEN)
+  }, [selectedVariant?.id, quantity, ORIGEN])
 
   // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
   useEffect(() => {
@@ -375,6 +380,9 @@ export function VariantSelector({
         </div>
       </div>
 
+      {enTope && (
+        <p role="status" className="text-sm text-amber-700">{avisoCupo(cupo!, enCarrito)}</p>
+      )}
       {sinCupo && (
         <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
       )}

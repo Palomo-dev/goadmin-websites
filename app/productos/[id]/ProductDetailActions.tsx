@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,8 @@ import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
-import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
+import { emitirCantidad } from '@/lib/products/varianteSeleccionada'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useCurrency } from '@/components/site/CurrencyProvider'
@@ -116,6 +117,12 @@ export function ProductDetailActions({
   const enCarrito = useCartProductQty(subdominio, branchId, !(isParent && variants.length > 0) && subdominio ? Number(product.id) : null)
   const cupo = cupoDisponible(stockDisponible, enCarrito)
   const sinCupo = !outOfStock && cupo === 0
+  const enTope = !outOfStock && cupo !== null && cupo > 0 && quantity >= cupo
+  const ORIGEN = useId()
+  // La barra fija agrega la cantidad elegida aquí (solo producto sin variantes; con variantes la emite el selector).
+  useEffect(() => {
+    if (!(isParent && variants.length > 0)) emitirCantidad(Number(product.id), quantity, ORIGEN)
+  }, [product.id, quantity, isParent, variants.length, ORIGEN])
 
   // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
   useEffect(() => {
@@ -282,6 +289,9 @@ export function ProductDetailActions({
         </div>
       )}
 
+      {puedePedir && enTope && (
+        <p role="status" className="text-sm text-amber-700">{avisoCupo(cupo!, enCarrito)}</p>
+      )}
       {puedePedir && sinCupo && (
         <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
       )}

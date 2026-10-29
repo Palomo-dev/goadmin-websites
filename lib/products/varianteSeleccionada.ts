@@ -30,3 +30,31 @@ export function escucharVariante(origen: string, alRecibir: (variantId: number) 
   window.addEventListener(EVENTO_VARIANTE, manejar)
   return () => window.removeEventListener(EVENTO_VARIANTE, manejar)
 }
+
+/**
+ * Cantidad elegida en el selector principal (VariantSelector o ProductDetailActions) para un
+ * producto o variante. La barra fija la usa al agregar. Mismo patrón que la variante.
+ */
+export const EVENTO_CANTIDAD = 'goadmin:cantidad-seleccionada'
+
+export interface DetalleCantidad {
+  productId: number
+  cantidad: number
+  origen: string
+}
+
+export function emitirCantidad(productId: number, cantidad: number, origen: string): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent<DetalleCantidad>(EVENTO_CANTIDAD, { detail: { productId, cantidad, origen } }))
+}
+
+export function escucharCantidad(origen: string, alRecibir: (productId: number, cantidad: number) => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const manejar = (e: Event) => {
+    const d = (e as CustomEvent<DetalleCantidad>).detail
+    if (!d || d.origen === origen) return
+    alRecibir(Number(d.productId), Number(d.cantidad))
+  }
+  window.addEventListener(EVENTO_CANTIDAD, manejar)
+  return () => window.removeEventListener(EVENTO_CANTIDAD, manejar)
+}

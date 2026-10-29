@@ -109,3 +109,9 @@ export function cupoDisponible(stock: number | null, enCarrito: number): number 
 
 /** Texto del aviso cuando el carrito ya tiene todo el stock disponible. */
 export const AVISO_TOPE_CARRITO = 'Ya tienes todas las unidades disponibles en el carrito'
+
+/** Aviso cuando la cantidad elegida llega al cupo (con cupo > 0). */
+export function avisoCupo(cupo: number, enCarrito: number): string {
+  const base = cupo === 1 ? 'Solo queda 1 disponible' : `Solo quedan ${cupo} disponibles`
+  return enCarrito > 0 ? `${base} (ya tienes ${enCarrito} en el carrito)` : base
+}
