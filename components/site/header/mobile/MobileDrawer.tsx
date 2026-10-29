@@ -184,7 +184,7 @@ export default function MobileDrawer({
               )}
             </nav>
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-[color:var(--mm-divider)]" />
+            <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="p-4 border-t border-[color:var(--mm-divider)]" />
 
             {/* Auth buttons */}
             {showHeaderAuth && (

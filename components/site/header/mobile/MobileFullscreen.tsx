@@ -154,7 +154,7 @@ export default function MobileFullscreen({
               />
             ))}
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 py-4 border-t border-[color:var(--mm-divider)]" />
+            <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="px-4 py-4 border-t border-[color:var(--mm-divider)]" />
 
             <MobileAuthSection isLoggedIn={isLoggedIn} primaryColor={primaryColor} onNavigate={() => setOpen(false)} />
           </nav>

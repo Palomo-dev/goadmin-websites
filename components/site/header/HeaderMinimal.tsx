@@ -253,7 +253,7 @@ export default function HeaderMinimal({
               )}
             </nav>
 
-            <BloqueMonedaMovil primaryColor={primaryColor} className="p-4 border-t border-gray-200 dark:border-gray-800" />
+            <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="p-4 border-t border-gray-200 dark:border-gray-800" />
 
             {/* Auth buttons */}
             {showHeaderAuth && (

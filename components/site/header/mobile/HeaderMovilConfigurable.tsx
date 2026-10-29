@@ -283,7 +283,7 @@ function ContenidoMenu({
           {redes.map((r) => <a key={r.href} href={r.href} target="_blank" rel="noopener noreferrer">{r.nombre}</a>)}
         </div>
       )}
-      <BloqueMonedaMovil primaryColor={primaryColor} className="border-t p-4" />
+      <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="border-t p-4" />
     </>
   )
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X } from 'lucide-react';
+import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X, ShoppingBasket, Store, CircleUserRound, LogIn, CircleDollarSign, Languages } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
 import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
@@ -92,6 +92,12 @@ const ICON_MAP: Record<string, any> = {
   'wallet': Wallet,
   'banknote': Banknote,
   'dollar-sign': DollarSign,
+  'shopping-basket': ShoppingBasket,
+  'store': Store,
+  'circle-user-round': CircleUserRound,
+  'log-in': LogIn,
+  'circle-dollar-sign': CircleDollarSign,
+  'languages': Languages,
 };
 
 export function getLucideIcon(name: string | null | undefined, fallback: any): any {
@@ -1162,7 +1168,9 @@ export function MobileMenuButton({
 // Selector de moneda móvil con chips (restaurado del header original).
 // Sin `bg-gray-*`: con fondo de encabezado, esa clase saca el botón de la regla
 // que hereda el color del texto y el control queda oscuro sobre la barra oscura.
-export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string }) {
+export function MobileCurrencyChips({ primaryColor, settings }: { primaryColor?: string; settings?: HeaderVariantProps['settings'] }) {
+  // Mismo ícono que la moneda del computador (`resolverIconoEncabezado`); sin configurar, Globe.
+  const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
   const { currency, availableCurrencies, setCurrency, loading } = useCurrency();
   const [open, setOpen] = useState(false);
   const { opciones: opcionesShell } = useEncabezadoPie();
@@ -1179,7 +1187,7 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
         style={{ borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
       >
         <span className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-[var(--mm-cur-icon)]" />
+          <IconoMoneda className="h-4 w-4 text-[var(--mm-cur-icon)]" />
           {current ? `${current.code} — ${current.country}` : currency}
         </span>
         <ChevronDown className="h-4 w-4 text-[var(--mm-cur-icon)]" />
@@ -1234,20 +1242,24 @@ export function MobileCurrencyChips({ primaryColor }: { primaryColor?: string })
 export function BloqueMonedaMovil({
   primaryColor,
   className = 'p-4 border-t border-[color:var(--mm-divider)]',
+  settings,
 }: {
   primaryColor?: string;
   className?: string;
+  /** Ajustes del encabezado: el ícono de la moneda sale de aquí (sin configurar, Globe). */
+  settings?: HeaderVariantProps['settings'];
 }) {
   const { loading, availableCurrencies } = useCurrency();
   const { opciones: opcionesShell } = useEncabezadoPie();
+  const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
   if (!opcionesShell.moneda || loading || availableCurrencies.length <= 1) return null;
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-3 text-sm text-[var(--mm-cur-text)]">
-        <Globe className="h-4 w-4" />
+        <IconoMoneda className="h-4 w-4" />
         <span>Moneda</span>
       </div>
-      <MobileCurrencyChips primaryColor={primaryColor} />
+      <MobileCurrencyChips primaryColor={primaryColor} settings={settings} />
     </div>
   );
 }

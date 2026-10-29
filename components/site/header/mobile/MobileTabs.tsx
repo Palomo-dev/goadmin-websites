@@ -280,7 +280,7 @@ export function ModalCategorias({
               ))}
         </div>
 
-        <BloqueMonedaMovil primaryColor={primaryColor} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
+        <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
       </div>
     </div>
   );

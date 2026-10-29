@@ -134,7 +134,7 @@ export default function MobileBottomSheet({
                     {/* Selector de sede dentro de la hoja (header_show_branch_selector): sin fila aparte. */}
                     <SelectorSedeHoja primaryColor={primaryColor} />
 
-                    <BloqueMonedaMovil primaryColor={primaryColor} className="mt-4 pt-4 border-t border-[color:var(--mm-divider)]" />
+                    <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="mt-4 pt-4 border-t border-[color:var(--mm-divider)]" />
 
                     {/* V2 con tema y sin cuenta en el encabezado (Carta QR): sin «Mi Cuenta». Legacy: como siempre. */}
                     {!(temaColores && settings?.show_header_auth === false) && (
