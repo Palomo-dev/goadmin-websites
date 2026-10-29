@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
-import { getAvailableStock, siguienteCantidad } from '@/lib/stock'
+import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible } from '@/lib/stock'
+import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
+import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
@@ -84,6 +86,8 @@ export function VariantSelector({
   const [selectedVariant, setSelectedVariant] = useState<VariantProduct | null>(null)
   const [added, setAdded] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const ORIGEN = useId()
+  const { formatPrice } = useCurrency()
 
   // Grupos de la variante elegida: los suyos si tiene; si no, los del padre (regla del cobro).
   const mapaGrupos = useMemo(
@@ -125,10 +129,21 @@ export function VariantSelector({
   // Pre-seleccionar primera variante
   useEffect(() => {
     if (variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(variants[0])
-      setSelectedAttributes(variants[0].variant_data || {})
+      const inicial = primeraVarianteDisponible(variants)!
+      setSelectedVariant(inicial)
+      setSelectedAttributes(inicial.variant_data || {})
     }
   }, [variants])
+
+  // Sincroniza con el otro selector de la ficha (barra fija ⇄ selector principal).
+  useEffect(() => {
+    return escucharVariante(ORIGEN, (id) => {
+      const v = variants.find((x) => Number(x.id) === id)
+      if (!v) return
+      setSelectedVariant(v)
+      setSelectedAttributes(v.variant_data || {})
+    })
+  }, [variants, ORIGEN])
 
   const findMatchingVariant = (attrs: Record<string, string>) => {
     return variants.find(v => {
@@ -141,7 +156,10 @@ export function VariantSelector({
     const newAttrs = { ...selectedAttributes, [attrName]: value }
     setSelectedAttributes(newAttrs)
     const matching = findMatchingVariant(newAttrs)
-    if (matching) setSelectedVariant(matching)
+    if (matching) {
+      setSelectedVariant(matching)
+      emitirVariante(Number(matching.id), ORIGEN)
+    }
   }
 
   const handleAddToCart = () => {
@@ -224,7 +242,7 @@ export function VariantSelector({
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
                 style={isSelected ? { borderColor: primaryColor } : {}}
-                onClick={() => setSelectedVariant(variant)}
+                onClick={() => { setSelectedVariant(variant); emitirVariante(Number(variant.id), ORIGEN) }}
               >
                 <div className="flex justify-between items-center">
                   <div>
@@ -244,12 +262,12 @@ export function VariantSelector({
                     {(() => {
                       const vCp = variant.product_prices?.[0]?.compare_price
                       return vCp && Number(vCp) > Number(vPrice) ? (
-                        <span className="text-xs text-gray-400 line-through mr-2">${Number(vCp).toLocaleString('es-CO')}</span>
+                        <span className="text-xs text-gray-400 line-through mr-2">{formatPrice(Number(vCp))}</span>
                       ) : null
                     })()}
                     {vPrice && (
                       <span className="font-bold" style={{ color: primaryColor }}>
-                        ${Number(vPrice).toLocaleString('es-CO')}
+                        {formatPrice(Number(vPrice))}
                       </span>
                     )}
                   </div>
@@ -294,10 +312,10 @@ export function VariantSelector({
               {price ? (
                 <div>
                   {variantComparePrice && Number(variantComparePrice) > Number(price) && (
-                    <p className="text-sm text-gray-400 line-through">${Number(variantComparePrice).toLocaleString('es-CO')}</p>
+                    <p className="text-sm text-gray-400 line-through">{formatPrice(Number(variantComparePrice))}</p>
                   )}
                   <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                    ${Number(price).toLocaleString('es-CO')}
+                    {formatPrice(Number(price))}
                   </p>
                 </div>
               ) : (

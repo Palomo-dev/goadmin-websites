@@ -92,3 +92,11 @@ export function siguienteCantidad(actual: number, stock: number | null): number 
   if (stock === null) return actual + 1
   return Math.max(1, Math.min(actual + 1, stock))
 }
+
+/**
+ * Variante a preseleccionar: la primera que se puede comprar (con stock o sin control de
+ * inventario). Si ninguna, la primera. Misma regla en el selector y en la barra fija.
+ */
+export function primeraVarianteDisponible<T extends StockTrackable>(variantes: T[]): T | undefined {
+  return variantes.find((v) => !isOutOfStock(v)) ?? variantes[0]
+}

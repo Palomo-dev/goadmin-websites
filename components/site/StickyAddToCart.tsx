@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useId } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { estadoStockCompra } from '@/lib/stock'
+import { estadoStockCompra, primeraVarianteDisponible } from '@/lib/stock'
+import { emitirVariante, escucharVariante } from '@/lib/products/varianteSeleccionada'
+import { useCurrency } from '@/components/site/CurrencyProvider'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 
@@ -69,6 +71,8 @@ export function StickyAddToCart({
   const [expanded, setExpanded] = useState(false)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
+  const ORIGEN = useId()
+  const { formatPrice } = useCurrency()
 
   // Padre con variantes: manda la variante elegida (el padre suele tener stock 0).
   const { stock: stockDisponible, agotado: outOfStock } = estadoStockCompra({
@@ -99,10 +103,21 @@ export function StickyAddToCart({
   // Pre-seleccionar primera variante
   useEffect(() => {
     if (variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(variants[0])
-      setSelectedAttributes(variants[0].variant_data || {})
+      const inicial = primeraVarianteDisponible(variants)!
+      setSelectedVariant(inicial)
+      setSelectedAttributes(inicial.variant_data || {})
     }
   }, [variants])
+
+  // Sincroniza con el otro selector de la ficha (barra fija ⇄ selector principal).
+  useEffect(() => {
+    return escucharVariante(ORIGEN, (id) => {
+      const v = variants.find((x) => Number(x.id) === id)
+      if (!v) return
+      setSelectedVariant(v)
+      setSelectedAttributes(v.variant_data || {})
+    })
+  }, [variants, ORIGEN])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -123,7 +138,10 @@ export function StickyAddToCart({
     const newAttrs = { ...selectedAttributes, [attrName]: value }
     setSelectedAttributes(newAttrs)
     const matching = findMatchingVariant(newAttrs)
-    if (matching) setSelectedVariant(matching)
+    if (matching) {
+      setSelectedVariant(matching)
+      emitirVariante(Number(matching.id), ORIGEN)
+    }
   }
 
   const getActivePrice = () => {
@@ -248,10 +266,10 @@ export function StickyAddToCart({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 {activeCp && activeCp > activePrice && (
-                  <span className="text-xs text-gray-400 line-through">${activeCp.toLocaleString('es-CO')}</span>
+                  <span className="text-xs text-gray-400 line-through">{formatPrice(activeCp)}</span>
                 )}
                 <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                  ${activePrice.toLocaleString('es-CO')}
+                  {formatPrice(activePrice)}
                 </span>
               </div>
               {hasVariants && selectedVariant?.variant_data && (
