@@ -33,6 +33,12 @@ for (const f of ['HeaderMovilConfigurable', 'MobileDrawer', 'MobileTabs', 'Mobil
   check(src.includes('<SearchBarInline'), `${f} conserva la barra de siempre`)
 }
 const cromo = readFileSync(new URL('../components/site/header/BuscadorCromo.tsx', import.meta.url), 'utf8')
+check(cromo.includes("sinIcono: presentacion.button !== 'none' && !lupaEnCampo"), 'escritorio: sin lupa en el campo cuando hay botón de buscar')
+check(/<BuscadorCromo presentacion=\{\{ \.\.\.cromo[^\n]*lupaEnCampo \/>/.test(cromo), 'celular (igual a escritorio) conserva la lupa')
+const zonas = readFileSync(new URL('../components/site/header/HeaderPorZonas.tsx', import.meta.url), 'utf8')
+check(zonas.includes("lupaEnCampo={dispositivo === 'mobile'}"), 'HeaderPorZonas: el celular conserva la lupa')
+const campo = readFileSync(new URL('../components/site/SearchBarInput.tsx', import.meta.url), 'utf8')
+check(campo.includes('{!cromo?.sinIcono && <SearchIconComp') && campo.includes("cromo.sinIcono ? 'px-4'"), 'SearchBarInput: sin lupa y con px-4 solo con sinIcono')
 check(cromo.includes("cromo?.tipo === 'mega'") && cromo.includes('<BuscadorCromoCompacto'), 'Buscador grande usa el compacto con Todas')
 
 if (problemas.length) {

@@ -151,7 +151,7 @@ function Elemento(props: {
   else if (el.type === 'menu' && el.menuId === MENU_MOVIL) nodo = <MenusMovil menus={constructor.menus ?? []} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
   else if (el.type === 'menu' && menuPropio) nodo = <MenuBarra menu={menuPropio} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} />
   else if (el.type === 'menu') nodo = <MenuZona nav={nav} mega={constructor.mega} categorias={menuCategories} primaryColor={primaryColor} movil={dispositivo === 'mobile'} />
-  else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
+  else if (el.type === 'search' && constructor.buscador) nodo = <BuscadorCromo presentacion={constructor.buscador} primaryColor={primaryColor} className="w-full" lupaEnCampo={dispositivo === 'mobile'} categorias={(menuCategories ?? []).map((c) => ({ id: c.id, name: c.name }))} />
   else if (el.type === 'search') nodo = <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
   else if (el.type === 'cart' && showCart !== false) nodo = constructor.contenedor ? (
     <CartIndicator contenedor={constructor.contenedor} colores={colores} primaryColor={primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, ShoppingCart)} />

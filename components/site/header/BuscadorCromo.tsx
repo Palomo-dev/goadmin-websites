@@ -38,8 +38,11 @@ export function BuscadorCromo({
   categorias = [],
   contenedor = null,
   colores,
+  lupaEnCampo = false,
 }: {
   presentacion: CromoBuscador
+  /** El celular conserva la lupa dentro del campo aunque haya botón (se ve como hasta hoy). */
+  lupaEnCampo?: boolean
   primaryColor: string
   organizationId?: number
   className?: string
@@ -87,6 +90,8 @@ export function BuscadorCromo({
             iconSide: presentacion.iconSide,
             iconColor: presentacion.iconColor,
             iconBackground: presentacion.iconBackground,
+            // Con botón de buscar no se repite la lupa dentro del campo (escritorio).
+            sinIcono: presentacion.button !== 'none' && !lupaEnCampo,
           }}
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
         />
@@ -204,5 +209,5 @@ export function BuscadorMovilComoEscritorio(props: {
   const cromo = leerConstructor(props.settings)?.buscador
   if (cromo?.tipo === 'mega') return <BuscadorCromoCompacto {...props} categorias={props.categorias ?? []} />
   if (!cromo) return null
-  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} />
+  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} lupaEnCampo />
 }
