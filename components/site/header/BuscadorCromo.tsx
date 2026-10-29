@@ -5,6 +5,7 @@ import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
 
@@ -46,11 +47,26 @@ export function BuscadorCromo({
   primaryColor: string
   organizationId?: number
   className?: string
-  categorias?: { id: number; name: string }[]
+  categorias?: { id: number; name: string; slug?: string }[]
   contenedor?: ContenedorIconos | null
   colores?: ColoresCaja
 }) {
   const Icono = Search
+  const { ruta } = useRutaSitio()
+  const [categoria, setCategoria] = useState('')
+  const [texto, setTexto] = useState('')
+  const elegida = presentacion.tipo === 'mega' ? categorias.find((c) => String(c.id) === categoria) : undefined
+  const buscar = () => {
+    const q = texto.trim()
+    if (q) window.location.href = ruta(urlResultadosBusqueda(q, elegida?.slug))
+    else if (elegida?.slug) window.location.href = ruta(`/categorias/${elegida.slug}`)
+  }
+  const cambiarCategoria = (valor: string) => {
+    setCategoria(valor)
+    // Sin texto escrito, elegir la categoría lleva a ella (con texto se queda para filtrar).
+    const nueva = categorias.find((c) => String(c.id) === valor)
+    if (!texto.trim() && nueva?.slug) window.location.href = ruta(`/categorias/${nueva.slug}`)
+  }
   if (presentacion.tipo === 'icon_overlay') {
     return (
       <ProductSearch
@@ -71,7 +87,7 @@ export function BuscadorCromo({
       data-buscador={presentacion.tipo}
     >
       {presentacion.tipo === 'mega' && (
-        <select aria-label="Categoría" className="h-11 shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm">
+        <select aria-label="Categoría" value={categoria} onChange={(e) => cambiarCategoria(e.target.value)} className="h-11 shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm">
           <option value="">Todas</option>
           {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -94,11 +110,14 @@ export function BuscadorCromo({
             sinIcono: presentacion.button !== 'none' && !lupaEnCampo,
           }}
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
+          {...(elegida ? { filtroCategoria: elegida.name, categoriaSlug: elegida.slug } : {})}
+          onQueryChange={setTexto}
         />
       </div>
       {presentacion.button !== 'none' && (
         <button
           type="button"
+          onClick={buscar}
           className="inline-flex h-11 shrink-0 items-center gap-1 px-3 text-sm font-medium text-white"
           style={{ backgroundColor: primaryColor, borderRadius: presentacion.radius === 'pill' ? 999 : 8 }}
           aria-label="Buscar"
@@ -140,7 +159,7 @@ export function BuscadorCromoCompacto({
   const elegida = categorias.find((c) => String(c.id) === categoria)
   const buscar = () => {
     const q = texto.trim()
-    if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`
+    if (q) window.location.href = ruta(urlResultadosBusqueda(q, elegida?.slug))
     else if (elegida?.slug) window.location.href = ruta(`/categorias/${elegida.slug}`)
   }
   return (
@@ -170,6 +189,7 @@ export function BuscadorCromoCompacto({
             iconBackground: cromo?.iconBackground,
           }}
           filtroCategoria={elegida?.name}
+          categoriaSlug={elegida?.slug}
           onQueryChange={setTexto}
           {...(placeholder ? { placeholder } : {})}
         />

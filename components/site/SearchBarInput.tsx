@@ -5,7 +5,7 @@ import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
-import { urlBusquedaProductos } from '@/lib/products/urlBusqueda';
+import { urlBusquedaProductos, urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -34,6 +34,11 @@ interface SearchBarInputProps {
    * sugerencias se limitan a esa categoría. Ausente: todas (lo de siempre).
    */
   filtroCategoria?: string
+  /**
+   * Slug de la categoría elegida: las sugerencias las filtra el servidor (con subcategorías) y
+   * Enter abre /search con esa categoría. Ausente: lo de siempre.
+   */
+  categoriaSlug?: string
   /** Avisa el texto escrito (el botón «Buscar» del buscador compacto lo usa). */
   onQueryChange?: (q: string) => void
 }
@@ -77,6 +82,7 @@ export function SearchBarInput({
   icon: SearchIconComp = Search,
   cromo,
   filtroCategoria,
+  categoriaSlug,
   onQueryChange,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
@@ -88,7 +94,7 @@ export function SearchBarInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cfg = sizeConfig[size];
-  const visibles = filtroCategoria ? results.filter((r) => r.category === filtroCategoria) : results;
+  const visibles = filtroCategoria && !categoriaSlug ? results.filter((r) => r.category === filtroCategoria) : results;
 
   useEffect(() => {
     try {
@@ -117,7 +123,7 @@ export function SearchBarInput({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(urlBusquedaProductos(query));
+        const res = await fetch(urlBusquedaProductos(query, categoriaSlug));
         if (res.ok) {
           const data = await res.json();
           setResults(data.products || []);
@@ -128,7 +134,7 @@ export function SearchBarInput({
       setLoading(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, categoriaSlug]);
 
   const saveRecentSearch = (term: string) => {
     try {
@@ -163,7 +169,7 @@ export function SearchBarInput({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && query.trim()) {
               saveRecentSearch(query.trim());
-              window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+              window.location.href = ruta(urlResultadosBusqueda(query.trim(), categoriaSlug));
             }
             if (e.key === 'Escape') {
               setFocused(false);

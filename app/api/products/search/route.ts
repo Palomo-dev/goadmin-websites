@@ -6,6 +6,7 @@ import { getCartaSedeParaListado } from '@/lib/supabase/queries'
 import { aplicarCartaSede, excluirNoListados } from '@/lib/products/carta-sede'
 import { getAllowedCategoryIds } from '@/lib/outlet/catalog-helpers'
 import { resolverOrganizacionBusqueda } from '@/lib/products/organizacionBusqueda'
+import { idsCategoriaConSubcategorias, intersectarCategorias, limpiarSlugCategoria } from '@/lib/products/busquedaPublica'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
 
@@ -76,10 +77,18 @@ export async function GET(request: NextRequest) {
   // Misma regla de visibilidad que el catálogo público (getOrganizationProducts): activo, sin
   // variantes sueltas, categoría visible para la sede (sin sede: sin filtro) y no oculto en la
   // carta de la sede. `products` no tiene columna de publicación web propia.
-  const [categoriasPermitidas, carta] = await Promise.all([
+  // `categoria` (slug, opcional): limita las sugerencias a esa categoría y sus subcategorías.
+  // Sin el parámetro, todo igual que antes.
+  const slugCategoria = limpiarSlugCategoria(searchParams.get('categoria'))
+  const [permitidasSede, carta, filtroCategoria] = await Promise.all([
     getAllowedCategoryIds(orgId, ctx?.branchId),
     getCartaSedeParaListado(orgId, branchId),
+    slugCategoria ? idsCategoriaConSubcategorias(supabase, orgId, slugCategoria, ctx?.branchId) : Promise.resolve(null),
   ])
+  if (slugCategoria && filtroCategoria === null) {
+    return NextResponse.json({ products: [] })
+  }
+  const categoriasPermitidas = intersectarCategorias(permitidasSede, filtroCategoria)
   if (categoriasPermitidas !== null && categoriasPermitidas.length === 0) {
     return NextResponse.json({ products: [] })
   }
