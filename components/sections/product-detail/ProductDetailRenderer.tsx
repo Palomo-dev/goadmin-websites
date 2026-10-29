@@ -23,7 +23,7 @@ import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
-import { Price } from '@/components/site/CurrencyProvider'
+import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
@@ -226,21 +226,7 @@ export function ProductDetailRenderer({
       />
 
       {price && (
-        <div className="flex items-baseline gap-3">
-          {comparePrice && comparePrice > Number(price.price) && (
-            <Price value={comparePrice} className="text-xl text-gray-400 line-through" />
-          )}
-          <Price
-            value={Number(price.price)}
-            className="text-4xl font-bold"
-            style={{ color: primaryColor }}
-          />
-          {comparePrice && comparePrice > Number(price.price) && (
-            <span className="text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-              -{Math.round((1 - Number(price.price) / comparePrice) * 100)}%
-            </span>
-          )}
-        </div>
+        <PrecioFicha price={Number(price.price)} comparePrice={comparePrice} variants={isParent ? variants : []} primaryColor={primaryColor} />
       )}
     </div>
   )

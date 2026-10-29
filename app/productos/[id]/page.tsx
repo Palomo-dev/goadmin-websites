@@ -30,7 +30,7 @@ import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
-import { Price } from '@/components/site/CurrencyProvider'
+import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { textoPlanoONulo } from '@/lib/texto/textoPlano'
@@ -435,21 +435,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
               />
               
               {price && (
-                <div className="flex items-baseline gap-3">
-                  {comparePrice && comparePrice > Number(price.price) && (
-                    <Price value={comparePrice} className="text-xl text-gray-400 line-through" />
-                  )}
-                  <Price 
-                    value={Number(price.price)}
-                    className="text-4xl font-bold"
-                    style={{ color: primaryColor }}
-                  />
-                  {comparePrice && comparePrice > Number(price.price) && (
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                      -{Math.round((1 - Number(price.price) / comparePrice) * 100)}%
-                    </span>
-                  )}
-                </div>
+                <PrecioFicha price={Number(price.price)} comparePrice={comparePrice} variants={isParent ? variants : []} primaryColor={primaryColor} />
               )}
             </div>
             
