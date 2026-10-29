@@ -70,6 +70,8 @@ export interface PromotionRow {
   created_at?: string | null
   branches: number[] | null
   applies_to_web: boolean | null
+  /** ERP 20261028180000: métodos con los que aplica. NULL/[]/ausente = cualquier método. */
+  payment_method_codes?: string[] | null
   applicable_days: WeekDay[] | string[] | null
   /** `HH:mm` o `HH:mm:ss` en la zona del negocio. Nulo = todo el día. */
   start_time?: string | null
@@ -197,10 +199,33 @@ export function weekdayInTimezone(date: Date, timeZone = 'America/Bogota'): Week
 // Los precios del escaparate son enteros (COP); el descuento también.
 const round = (n: number) => Math.round(n)
 
+// ── Método de pago (ERP 20261028180000) ─────────────────────────────────────
+
+/** Códigos válidos de `payment_method_codes`; null si no restringe (NULL, [], ausente). */
+export function codigosMetodoPromocion(v: unknown): string[] | null {
+  if (!Array.isArray(v)) return null
+  const codigos = v.map((c) => String(c ?? '').trim()).filter(Boolean)
+  return codigos.length > 0 ? codigos : null
+}
+
+/** ¿La promoción aplica con este método? Sin restricción, siempre; con restricción, solo con uno de la lista. */
+export function promocionAplicaConMetodo(codigosPromocion: unknown, metodo: string | null | undefined): boolean {
+  const codigos = codigosMetodoPromocion(codigosPromocion)
+  if (!codigos) return true
+  if (typeof metodo !== 'string' || !metodo.trim()) return false
+  return codigos.includes(metodo.trim())
+}
+
 // ── Filtros de vigencia ──────────────────────────────────────────────────────
 
 export interface PromotionFilterContext {
   branchId?: number | null
+  /**
+   * Método de pago elegido (código de organization_payment_methods). Una
+   * promoción con `payment_method_codes` solo aplica con uno de ellos; sin
+   * método elegido (drawer, /carrito) todavía no aplica. NULL = cualquiera.
+   */
+  paymentMethod?: string | null
   date?: Date
   timeZone?: string
 }
@@ -227,6 +252,7 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
       if (ctx.branchId == null) return false
       if (!p.branches.map(Number).includes(Number(ctx.branchId))) return false
     }
+    if (!promocionAplicaConMetodo(p.payment_method_codes, ctx.paymentMethod)) return false
     return true
   })
 }
@@ -655,6 +681,8 @@ export function calculatePromotions(
 export interface EvaluateCartInput {
   organizationId: number
   branchId?: number | null
+  /** Método de pago elegido (ver PromotionFilterContext.paymentMethod). */
+  paymentMethod?: string | null
   items: PromoCartItem[]
   date?: Date
   timeZone?: string
@@ -666,7 +694,7 @@ export interface EvaluateCartInput {
  * `supabase` es un cliente de servidor (admin o público).
  */
 export async function evaluateCartPromotions(supabase: any, input: EvaluateCartInput): Promise<PromotionEvaluation> {
-  const { organizationId, branchId, items } = input
+  const { organizationId, branchId, items, paymentMethod } = input
   if (!organizationId || !Array.isArray(items) || items.length === 0) return EMPTY
 
   const cleanItems: PromoCartItem[] = items
@@ -716,5 +744,5 @@ export async function evaluateCartPromotions(supabase: any, input: EvaluateCartI
     return { ...i, product_id: pid, category_id: meta?.category_id ?? null, parent_product_id: meta?.parent_product_id ?? null }
   })
 
-  return calculatePromotions(promos as PromotionRow[], resolved, { branchId, date: input.date, timeZone: input.timeZone })
+  return calculatePromotions(promos as PromotionRow[], resolved, { branchId, paymentMethod, date: input.date, timeZone: input.timeZone })
 }

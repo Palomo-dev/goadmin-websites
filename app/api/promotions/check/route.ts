@@ -39,7 +39,7 @@ async function sedeDelCarrito(supabase: ReturnType<typeof getSupabase>, organiza
 /**
  * POST /api/promotions/check
  * Detecta y calcula promociones automáticas para los items del carrito.
- * Body: { organizationId, branchId?, items: { id, productId?, name, price, quantity }[] }
+ * Body: { organizationId, branchId?, paymentMethod?, items: { id, productId?, name, price, quantity }[] }
  * Returns: { promotions: AppliedPromotion[], totalDiscount, itemDiscounts }
  *
  * La lógica vive en `lib/promotions.ts` y es la misma que usa `/api/orders`
@@ -49,7 +49,7 @@ async function sedeDelCarrito(supabase: ReturnType<typeof getSupabase>, organiza
  */
 export async function POST(request: NextRequest) {
   try {
-    const { organizationId, branchId, items } = await request.json()
+    const { organizationId, branchId, items, paymentMethod } = await request.json()
 
     if (!organizationId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(EMPTY)
@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
     const result = await evaluateCartPromotions(supabase, {
       organizationId: orgId,
       branchId: sede,
+      // Promociones por método de pago (ERP 20261028180000): solo el checkout lo manda.
+      paymentMethod: typeof paymentMethod === 'string' && paymentMethod.trim() ? paymentMethod.trim() : null,
       items,
     })
 

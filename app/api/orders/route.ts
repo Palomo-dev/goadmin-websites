@@ -6,6 +6,7 @@ import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
+import { esColumnaAusente, validarMetodoEnSede } from '@/lib/payments/metodosPorSucursal'
 import { esSede, leerCartaSede, resolverSedeCarta, type CartaSede } from '@/lib/products/carta-sede'
 import { construirFilasPedido, lineasCorreoPedido } from '@/lib/orders/lineas-pedido'
 import { calcularImpuestoPedido } from '@/lib/orders/impuestoPedido'
@@ -253,6 +254,33 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Sin mesa o sin clave: exactamente como antes.
+    }
+
+    // ── Método de pago por sede (ERP 20261028180000: branch_ids NULL = todas) ──
+    // El checkout ya oculta los métodos de otra sede; aquí se impide que un cliente manipulado (o
+    // una pestaña vieja) cree el pedido con uno no habilitado en la sede donde queda el pedido.
+    // Sin columna, sin fila del método (pasarelas) o si la lectura falla: se acepta como antes.
+    if (typeof paymentMethod === 'string' && paymentMethod.trim() && Number.isFinite(Number(resolvedBranchId))) {
+      const { data: filasMetodo, error: errorMetodo } = await (supabase as any)
+        .from('organization_payment_methods')
+        .select('branch_ids, website_display_name, payment_methods (name)')
+        .eq('organization_id', contextOrgId)
+        .eq('payment_method_code', paymentMethod)
+      if (errorMetodo) {
+        if (!esColumnaAusente(errorMetodo, 'branch_ids')) {
+          console.error('[Orders] No se pudo validar el método de pago por sede; se acepta', {
+            organizationId: contextOrgId, branchId: resolvedBranchId, error: errorMetodo.message,
+          })
+        }
+      } else {
+        const validacion = validarMetodoEnSede(filasMetodo, paymentMethod, Number(resolvedBranchId))
+        if (!validacion.ok) {
+          console.warn('[Orders] Método de pago no habilitado en la sede', {
+            organizationId: contextOrgId, branchId: resolvedBranchId, paymentMethod,
+          })
+          return NextResponse.json({ error: validacion.error, code: validacion.code }, { status: 422 })
+        }
+      }
     }
 
     // ── Contexto del pedido: organización, ajustes de venta y sede (filtrados por la org del host) ──
@@ -505,6 +533,8 @@ export async function POST(request: NextRequest) {
       // la misma que resolvió /api/promotions/check. Una promo limitada a esa
       // sede aplica; una de otra sede, no. Sin sucursales sigue aplicando.
       branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
+      // Una promoción con payment_method_codes solo aplica con el método del pedido (NULL = cualquiera).
+      paymentMethod: typeof paymentMethod === 'string' ? paymentMethod : null,
       items: lineas.map((l) => ({
         id: l.productId, productId: l.productId, name: l.nombre, price: l.precioUnitario, quantity: l.cantidad,
       })),

@@ -238,11 +238,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   })
   // Métodos de pago habilitados en la sede del pedido (branch_ids del ERP; NULL = todas).
   const availableMethods = useMemo(() => filtrarMetodosPorSede(todosLosMetodos, sedePromocion), [todosLosMetodos, sedePromocion])
+  // 'gateway_code' o 'cash' o 'transfer'
+  const [paymentMethod, setPaymentMethod] = useState<string>(
+    availableMethods.length > 0 ? availableMethods[0].code : 'cash'
+  )
+  // Si la sede cambia y el método elegido no está habilitado en la nueva
+  // (branch_ids del ERP), se pasa al primero permitido. Sin métodos por sede
+  // configurados la lista no cambia y esto no hace nada.
+  useEffect(() => {
+    if (availableMethods.length === 0) return
+    if (!availableMethods.some((m) => m.code === paymentMethod)) setPaymentMethod(availableMethods[0].code)
+  }, [availableMethods, paymentMethod])
+
   const {
     promotions: appliedPromotions,
     totalDiscount: promoDiscount,
     itemDiscounts: promoItemDiscounts,
-  } = useCartPromotions({ organizationId, branchId: sedePromocion, items: cartItems })
+  } = useCartPromotions({ organizationId, branchId: sedePromocion, items: cartItems, paymentMethod })
 
   // Dynamic shipping states
   const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null }[]>([])
@@ -289,10 +301,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [customerId, setCustomerId] = useState<number | null>(null)
 
-  // 'gateway_code' o 'cash' o 'transfer'
-  const [paymentMethod, setPaymentMethod] = useState<string>(
-    availableMethods.length > 0 ? availableMethods[0].code : 'cash'
-  )
 
   useEffect(() => {
     try {

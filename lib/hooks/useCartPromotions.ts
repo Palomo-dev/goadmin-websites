@@ -25,6 +25,11 @@ interface UseCartPromotionsOptions {
    */
   sedeElegidaId?: number | null
   items: PromoLine[]
+  /**
+   * Método de pago elegido (solo el checkout). Las promociones con
+   * `payment_method_codes` se evalúan con él; sin método no aplican todavía.
+   */
+  paymentMethod?: string | null
   /** Espera antes de consultar tras un cambio del carrito (ms). */
   debounceMs?: number
 }
@@ -42,7 +47,7 @@ const EMPTY: PromotionEvaluation = { promotions: [], totalDiscount: 0, itemDisco
  * `itemDiscounts` va por id de línea de carrito (string) para pintar el badge
  * y el precio tachado en cada item.
  */
-export function useCartPromotions({ organizationId, branchId, sedeElegidaId = null, items, debounceMs = 250 }: UseCartPromotionsOptions) {
+export function useCartPromotions({ organizationId, branchId, sedeElegidaId = null, items, paymentMethod = null, debounceMs = 250 }: UseCartPromotionsOptions) {
   const [result, setResult] = useState<PromotionEvaluation>(EMPTY)
   const [loading, setLoading] = useState(false)
   const requestSeq = useRef(0)
@@ -73,6 +78,7 @@ export function useCartPromotions({ organizationId, branchId, sedeElegidaId = nu
           body: JSON.stringify({
             organizationId,
             ...(sede != null ? { branchId: sede } : {}),
+            ...(paymentMethod ? { paymentMethod } : {}),
             items: items.map(i => ({ id: i.id, productId: i.productId ?? null, name: i.name, price: i.price, quantity: i.quantity })),
           }),
         })
@@ -93,7 +99,7 @@ export function useCartPromotions({ organizationId, branchId, sedeElegidaId = nu
 
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, sede, itemsKey, debounceMs])
+  }, [organizationId, sede, itemsKey, paymentMethod, debounceMs])
 
   return { ...result, loading }
 }
