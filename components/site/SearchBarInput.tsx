@@ -27,6 +27,13 @@ interface SearchBarInputProps {
     iconColor?: string
     iconBackground?: string
   }
+  /**
+   * Nombre de categoría elegido en el desplegable del buscador compacto del celular: las
+   * sugerencias se limitan a esa categoría. Ausente: todas (lo de siempre).
+   */
+  filtroCategoria?: string
+  /** Avisa el texto escrito (el botón «Buscar» del buscador compacto lo usa). */
+  onQueryChange?: (q: string) => void
 }
 
 interface SearchResult {
@@ -67,6 +74,8 @@ export function SearchBarInput({
   size = 'md',
   icon: SearchIconComp = Search,
   cromo,
+  filtroCategoria,
+  onQueryChange,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
   const [query, setQuery] = useState('');
@@ -77,6 +86,7 @@ export function SearchBarInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cfg = sizeConfig[size];
+  const visibles = filtroCategoria ? results.filter((r) => r.category === filtroCategoria) : results;
 
   useEffect(() => {
     try {
@@ -146,7 +156,7 @@ export function SearchBarInput({
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); onQueryChange?.(e.target.value); }}
           onFocus={() => setFocused(true)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && query.trim()) {
@@ -197,9 +207,9 @@ export function SearchBarInput({
               </div>
             )}
 
-            {!loading && query && results.length > 0 && (
+            {!loading && query && visibles.length > 0 && (
               <div className="overflow-y-auto p-2 space-y-1">
-                {results.map((product) => (
+                {visibles.map((product) => (
                   <Link
                     key={product.id}
                     href={ruta(`/productos/${product.uuid}`)}
@@ -245,7 +255,7 @@ export function SearchBarInput({
               </div>
             )}
 
-            {!loading && query && results.length === 0 && (
+            {!loading && query && visibles.length === 0 && (
               <div className="text-center py-8 px-4">
                 <Package className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">

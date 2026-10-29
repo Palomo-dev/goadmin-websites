@@ -30,3 +30,12 @@ export function barraSuperiorMovil(ajustes: Ajustes): boolean {
   if (v === null) return ajustes?.show_topbar === true
   return false
 }
+
+/**
+ * «Categorías en el buscador del celular» (`mobile_search_bar_categories`). Solo `true`
+ * cambia algo: con la barra del celular visible, se pinta el buscador compacto con el
+ * desplegable de categorías. Ausente o `false`: la barra de siempre.
+ */
+export function categoriasEnBuscadorMovil(ajustes: Ajustes): boolean {
+  return ajustes?.mobile_search_bar_categories === true
+}

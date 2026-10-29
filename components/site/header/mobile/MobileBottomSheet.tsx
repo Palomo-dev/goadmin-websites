@@ -4,7 +4,8 @@ import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
-import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorCromoCompacto } from '../BuscadorCromo';
 import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -46,6 +47,7 @@ export default function MobileBottomSheet({
   onCartClick,
   branchId,
   posicionLogo,
+  menuCategories,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   // La hoja se monta dentro del propio <header> (portal) y no en la fila de botones: así queda
@@ -156,14 +158,18 @@ export default function MobileBottomSheet({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-full"
-                size="sm"
-                icon={SearchIconComp}
-                placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined}
-              />
+              {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
+                <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
+              ) : (
+                <SearchBarInline
+                  primaryColor={primaryColor}
+                  organizationId={organizationId}
+                  className="w-full"
+                  size="sm"
+                  icon={SearchIconComp}
+                  placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined}
+                />
+              )}
             </div>
           )}
         </div>

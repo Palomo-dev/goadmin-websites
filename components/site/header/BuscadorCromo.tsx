@@ -3,7 +3,8 @@
 import { Search } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
 
@@ -100,6 +101,68 @@ export function BuscadorCromo({
           {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * Buscador compacto del celular con el desplegable de categorías (`mobile_search_bar_categories`).
+ * Desplegable angosto + campo + botón, cabe en 360px. El desplegable limita las sugerencias a
+ * esa categoría; «Buscar» sin texto lleva a la categoría elegida y con texto a /search.
+ */
+export function BuscadorCromoCompacto({
+  primaryColor,
+  categorias,
+  icon,
+  placeholder,
+  className = '',
+}: {
+  primaryColor: string
+  categorias: { id: number; name: string; slug?: string }[]
+  icon?: any
+  placeholder?: string
+  className?: string
+}) {
+  const { ruta } = useRutaSitio()
+  const [categoria, setCategoria] = useState('')
+  const [texto, setTexto] = useState('')
+  const elegida = categorias.find((c) => String(c.id) === categoria)
+  const buscar = () => {
+    const q = texto.trim()
+    if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`
+    else if (elegida?.slug) window.location.href = ruta(`/categorias/${elegida.slug}`)
+  }
+  return (
+    <div className={`flex min-w-0 items-center gap-1.5 ${className}`} data-buscador="movil-categorias">
+      <select
+        aria-label="Categoría"
+        value={categoria}
+        onChange={(e) => setCategoria(e.target.value)}
+        className="h-10 w-[5.5rem] shrink-0 truncate rounded-l-md border border-gray-200 bg-white px-1.5 text-xs text-gray-900"
+      >
+        <option value="">Todas</option>
+        {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <div className="min-w-0 flex-1">
+        <SearchBarInput
+          primaryColor={primaryColor}
+          className="w-full"
+          size="sm"
+          icon={icon ?? Search}
+          filtroCategoria={elegida?.name}
+          onQueryChange={setTexto}
+          {...(placeholder ? { placeholder } : {})}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={buscar}
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
+        style={{ backgroundColor: primaryColor }}
+        aria-label="Buscar"
+      >
+        <Search className="h-4 w-4" />
+      </button>
     </div>
   )
 }

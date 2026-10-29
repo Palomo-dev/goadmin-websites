@@ -2,7 +2,8 @@
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useEffect, useState } from 'react';
-import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorCromoCompacto } from '../BuscadorCromo';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { ProductSearch } from '../../ProductSearch';
@@ -89,13 +90,17 @@ export default function MobileTabs({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-full"
-                size="sm"
-                icon={SearchTabIcon}
-              />
+              {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
+                <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchTabIcon} className="w-full" />
+              ) : (
+                <SearchBarInline
+                  primaryColor={primaryColor}
+                  organizationId={organizationId}
+                  className="w-full"
+                  size="sm"
+                  icon={SearchTabIcon}
+                />
+              )}
             </div>
           )}
         </div>

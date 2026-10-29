@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { buscadorMovil, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorCromoCompacto } from '../BuscadorCromo'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { headerSobreHero } from '@/lib/website/espacioHeader'
@@ -149,7 +150,9 @@ export function HeaderMovilConfigurable({
             </div>
             {buscador === 'bar' && (
               <div className="pb-3">
-                <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />
+                {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0
+                  ? <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
+                  : <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />}
               </div>
             )}
           </div>

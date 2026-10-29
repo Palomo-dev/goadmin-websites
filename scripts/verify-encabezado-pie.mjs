@@ -61,7 +61,7 @@ await rm(dir, { recursive: true, force: true })
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
-check(nuevas.length === 68, `se esperaban 68 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 69, `se esperaban 69 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -177,6 +177,7 @@ const CONSUMIDORES = {
   header_icons_circle_bg: ['lib/website/colorCirculoIconos.ts', 'header_icons_circle_bg'],
   header_icons_circle_fg: ['lib/website/colorCirculoIconos.ts', 'header_icons_circle_fg'],
   mobile_logo_position: ['lib/website/logoEncabezado.ts', 'mobile_logo_position'],
+  mobile_search_bar_categories: ['lib/website/opcionUnica.ts', 'mobile_search_bar_categories'],
   header_layout: ['components/site/SiteHeader.tsx', 'header_layout'],
   header_scroll: ['components/site/SiteHeader.tsx', 'header_scroll'],
   mobile_header: ['lib/website/menuMovil.ts', 'mobile_header'],
