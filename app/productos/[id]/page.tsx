@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Metadata } from 'next'
 import { cache } from 'react'
 import Link from 'next/link'
+import { permanentRedirect } from 'next/navigation'
 import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
@@ -174,6 +175,23 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
   return all.slice(0, limit)
 }
 
+/**
+ * Enlaces antiguos o externos con el id numérico (`/productos/133972`): la ficha solo se sirve
+ * por UUID. Devuelve el UUID del producto activo de la organización, o null.
+ */
+async function uuidDeIdNumerico(id: string, organizationId: number): Promise<string | null> {
+  if (!/^\d{1,12}$/.test(id)) return null
+  const supabase = createAdminClient() || createPublicClient()
+  const { data } = await (supabase as any)
+    .from('products')
+    .select('uuid')
+    .eq('id', Number(id))
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .maybeSingle()
+  return data?.uuid && isValidUUID(data.uuid) ? data.uuid : null
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const ctx = await getOrgContext()
   if (!ctx) return { title: 'Producto' }
@@ -191,7 +209,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
-  if (!isValidUUID(id)) return <NotFoundPage />
+  if (!isValidUUID(id)) {
+    // Id numérico: redirigir a la URL canónica por UUID. Lo demás, como antes.
+    const uuid = await uuidDeIdNumerico(id, ctx.organization.id)
+    if (uuid) permanentRedirect(conPrefijo(`/productos/${uuid}`, ctx.prefijoSede ?? ''))
+    return <NotFoundPage />
+  }
   const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
   // Sede servida por prefijo de ruta: los enlaces de la ficha se quedan en la sede (otra carta,
   // otro precio y otro carrito en la principal). Sin sede, `''` y todo queda igual.
