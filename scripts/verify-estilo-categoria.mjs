@@ -3,7 +3,7 @@
  *
  *   npm run verify:estilo-categoria
  */
-import { ajusteImagenCategoria, clasesPastillas, estiloCategoria, planBento } from '../lib/website/estiloCategoria.ts'
+import { MASCARA_CARRIL, ajusteImagenCategoria, clasesCirculosMovil, clasesPastillas, layoutMovilCategorias, estiloCategoria, planBento } from '../lib/website/estiloCategoria.ts'
 
 const problemas = []
 let casos = 0
@@ -23,8 +23,15 @@ check(JSON.stringify(planBento(8)) === '[8]', '8 es un mosaico')
 check(JSON.stringify(planBento(10)) === '[5,5]', '10 son dos mosaicos de 5')
 check(planBento(13).reduce((s, n) => s + n, 0) === 13, '13 cuadra 5 y 8')
 check(planBento(9).reduce((s, n) => s + n, 0) === 8, '9 no deja un hueco: sobra 1')
-check(clasesPastillas(undefined) === 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap', 'pastilla sin layout: clases de siempre')
-check(clasesPastillas('grid') === 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap', 'pastilla en grid: clases de siempre')
+check(clasesPastillas(undefined) === `flex gap-3 overflow-x-auto pb-2 md:flex-wrap ${MASCARA_CARRIL}`, 'pastilla sin layout: clases de siempre + degradado')
+check(clasesPastillas('grid') === `flex gap-3 overflow-x-auto pb-2 md:flex-wrap ${MASCARA_CARRIL}`, 'pastilla en grid: clases de siempre + degradado')
+check(MASCARA_CARRIL.includes('md:[mask-image:none]'), 'degradado solo en celular')
+check(clasesPastillas(undefined, 'list') === 'flex flex-col gap-2 md:flex-row md:flex-wrap', 'pastilla list en celular')
+check(clasesPastillas(undefined, 'grid') === 'grid grid-cols-2 gap-2 md:flex md:flex-wrap', 'pastilla grid en celular')
+check(clasesPastillas('carousel', 'list').includes('md:overflow-x-auto') && !clasesPastillas('carousel', 'list').includes('md:flex-wrap'), 'list + carrusel escritorio')
+check(clasesPastillas('carousel', 'grid').startsWith('grid grid-cols-2') && clasesPastillas('carousel', 'grid').includes('md:snap-x'), 'grid + carrusel escritorio')
+check(layoutMovilCategorias('inherit') === 'carousel' && layoutMovilCategorias('') === 'carousel', 'inherit/vacío = carril')
+check(clasesCirculosMovil('list').includes('flex-col') && clasesCirculosMovil('grid').includes('grid-cols-2') && clasesCirculosMovil(undefined).startsWith('flex gap-4 overflow-x-auto pb-2 md:hidden'), 'círculos en celular')
 check(!clasesPastillas('carousel').includes('md:flex-wrap'), 'pastilla en carrusel: una sola fila en escritorio')
 check(clasesPastillas('carousel').includes('snap-x'), 'pastilla en carrusel: con snap')
 

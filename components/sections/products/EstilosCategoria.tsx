@@ -3,7 +3,9 @@ import { DynamicLucideIcon } from './DynamicLucideIcon'
 import { CarruselPastillas } from './CarruselPastillas'
 import {
   claseAjuste,
+  clasesCirculosMovil,
   clasesPastillas,
+  layoutMovilCategorias,
   planBento,
   radioTarjeta,
   sombraTarjeta,
@@ -27,6 +29,9 @@ interface Contenido {
   card_hover?: string
   desktop_columns?: number
   desktop_layout?: string
+  mobile_layout?: string
+  card_bg?: string
+  overlay_text_color?: string
   media_source?: string
   show_icon?: boolean
   show_image?: boolean
@@ -85,24 +90,30 @@ function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = fa
   )
 }
 
-function Circulo({ cat, color, content }: { cat: any; color: string; content: Contenido }) {
+function Circulo({ cat, color, content, fila = false, ancho = false }: { cat: any; color: string; content: Contenido; fila?: boolean; ancho?: boolean }) {
   const zoom = content.card_hover === 'zoom'
   const anillo = content.card_hover !== 'none'
+  const colorTexto = content.overlay_text_color ? { color: content.overlay_text_color } : undefined
+  const caja = fila
+    ? 'group flex w-full min-w-0 flex-row items-center gap-3 text-left'
+    : `group flex ${ancho ? 'w-full min-w-0' : 'w-36 shrink-0'} flex-col items-center text-center`
   return (
-    <Link href={`/categorias/${cat.slug}`} className={`group flex w-36 shrink-0 flex-col items-center text-center ${content.card_hover === 'lift' ? 'transition-transform hover:-translate-y-1' : ''}`}>
+    <Link href={`/categorias/${cat.slug}`} className={`${caja} ${content.card_hover === 'lift' ? 'transition-transform [@media(hover:hover)]:hover:-translate-y-1' : ''}`}>
       <Foto
         content={content}
         color={color}
         cat={cat}
         fit={content.image_fit || 'contain'}
         zoom={zoom}
-        clase={`h-28 w-28 rounded-full ${anillo ? 'ring-2 ring-transparent transition group-hover:ring-[var(--accent-color)]' : ''}`}
+        clase={`${fila ? 'h-14 w-14 shrink-0' : 'h-28 w-28'} rounded-full ${anillo ? 'ring-2 ring-transparent transition [@media(hover:hover)]:group-hover:ring-[var(--accent-color)]' : ''}`}
         fondo={fondoSuave(color, content.image_bg)}
       />
-      <span className="mt-3 text-sm font-semibold text-gray-900 dark:text-white">{cat.name}</span>
-      {content.show_count && cat.product_count != null && (
-        <span className="text-xs text-gray-500">{cat.product_count} productos</span>
-      )}
+      <span className={fila ? 'min-w-0' : undefined}>
+        <span className={`${fila ? 'block truncate' : 'mt-3 block'} text-sm font-semibold text-gray-900 dark:text-white`} style={colorTexto}>{cat.name}</span>
+        {content.show_count && cat.product_count != null && (
+          <span className="block text-xs text-gray-500">{cat.product_count} productos</span>
+        )}
+      </span>
     </Link>
   )
 }
@@ -132,16 +143,21 @@ function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; conten
   )
 }
 
-function Pastilla({ cat, color, content, snap = false }: { cat: any; color: string; content: Contenido; snap?: boolean }) {
+function Pastilla({ cat, color, content, snap = false, bloque = false }: { cat: any; color: string; content: Contenido; snap?: boolean; bloque?: boolean }) {
+  // Hover solo con CSS y solo donde hay mouse (`hover:hover`): en el celular no queda pintada.
+  const estilo = {
+    '--pastilla-hover': color,
+    ...(content.card_bg ? { backgroundColor: content.card_bg } : {}),
+    ...(content.overlay_text_color ? { color: content.overlay_text_color } : {}),
+  } as React.CSSProperties
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group inline-flex shrink-0${snap ? ' snap-start' : ''} items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-4 text-gray-900 transition hover:border-transparent hover:text-white`}
-      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = color; e.currentTarget.style.color = '#fff' }}
-      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = '' }}
+      className={`group ${bloque ? 'flex w-full min-w-0 md:inline-flex md:w-auto' : 'inline-flex'} shrink-0${snap ? ' snap-start' : ''} items-center gap-2 rounded-full border border-gray-200 ${content.card_bg ? '' : 'bg-white '}py-1 pl-1 pr-4 ${content.overlay_text_color ? '' : 'text-gray-900 '}transition [@media(hover:hover)]:hover:border-transparent [@media(hover:hover)]:hover:!bg-[var(--pastilla-hover)] [@media(hover:hover)]:hover:!text-white`}
+      style={estilo}
     >
-      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
-      <span className="text-sm font-medium group-hover:text-white">{cat.name}</span>
+      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 shrink-0 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
+      <span className={`text-sm font-medium [@media(hover:hover)]:group-hover:text-white${bloque ? ' min-w-0 truncate' : ''}`}>{cat.name}</span>
     </Link>
   )
 }
@@ -184,13 +200,15 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
   const color = primaryColor || '#111827'
   const columnas = Math.min(6, Math.max(2, Number(content.desktop_columns) || 4))
   const carrusel = content.desktop_layout === 'carousel'
+  const movil = layoutMovilCategorias(content.mobile_layout)
+  const bloque = movil !== 'carousel'
   let cuerpo: React.ReactNode
 
   if (estilo === 'circle') {
     cuerpo = (
       <>
-        <div className="flex gap-4 overflow-x-auto pb-2 md:hidden" style={{ scrollbarWidth: 'none' }}>
-          {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} />)}
+        <div className={clasesCirculosMovil(content.mobile_layout)} style={{ scrollbarWidth: 'none' }}>
+          {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} fila={movil === 'list'} ancho={movil === 'grid'} />)}
         </div>
         <div className={carrusel ? 'hidden gap-4 overflow-x-auto md:flex' : 'hidden gap-6 md:grid'} style={carrusel ? { scrollbarWidth: 'none' } : { gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
           {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} />)}
@@ -199,12 +217,12 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
     )
   } else if (estilo === 'pill') {
     cuerpo = carrusel ? (
-      <CarruselPastillas>
-        {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} snap />)}
+      <CarruselPastillas clases={clasesPastillas('carousel', content.mobile_layout)}>
+        {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} snap bloque={bloque} />)}
       </CarruselPastillas>
     ) : (
-      <div className={clasesPastillas(content.desktop_layout)} style={{ scrollbarWidth: 'none' }}>
-        {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} />)}
+      <div className={clasesPastillas(content.desktop_layout, content.mobile_layout)} style={{ scrollbarWidth: 'none' }}>
+        {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} bloque={bloque} />)}
       </div>
     )
   } else if (estilo === 'bento') {

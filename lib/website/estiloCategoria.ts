@@ -55,14 +55,34 @@ export function sombraTarjeta(valor: unknown, porDefecto: '' | 'shadow-sm' | 'sh
   return porDefecto
 }
 
+/** `mobile_layout` de la rejilla: `list` y `grid` cambian el celular; el resto (vacío, `inherit`, `carousel`) es el carril de siempre. */
+export function layoutMovilCategorias(valor: unknown): 'list' | 'grid' | 'carousel' {
+  return valor === 'list' || valor === 'grid' ? valor : 'carousel'
+}
+
+/** Degradado a la derecha del carril del celular: deja claro que se desliza. En escritorio no hay máscara. */
+export const MASCARA_CARRIL = '[mask-image:linear-gradient(to_right,#000_85%,transparent)] md:[mask-image:none]'
+
 /**
- * Contenedor de «Pastilla». `desktop_layout: 'carousel'` deja una sola fila con
- * desplazamiento y flechas en escritorio; cualquier otro valor (o vacío) conserva
- * las clases de siempre, que en escritorio parten en filas.
+ * Contenedor de «Pastilla».
+ * - Celular: `list` = columna; `grid` = 2 columnas; vacío/`carousel` = carril con degradado.
+ * - Escritorio: `desktop_layout: 'carousel'` = una fila con desplazamiento (y flechas en
+ *   CarruselPastillas); cualquier otro valor = filas que se parten (lo de siempre).
  */
-export function clasesPastillas(desktopLayout: unknown): string {
-  if (desktopLayout === 'carousel') return 'flex gap-3 overflow-x-auto snap-x pb-2'
-  return 'flex gap-3 overflow-x-auto pb-2 md:flex-wrap'
+export function clasesPastillas(desktopLayout: unknown, mobileLayout?: unknown): string {
+  const movil = layoutMovilCategorias(mobileLayout)
+  const carrusel = desktopLayout === 'carousel'
+  if (movil === 'list') return carrusel ? 'flex flex-col gap-2 md:flex-row md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'flex flex-col gap-2 md:flex-row md:flex-wrap'
+  if (movil === 'grid') return carrusel ? 'grid grid-cols-2 gap-2 md:flex md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'grid grid-cols-2 gap-2 md:flex md:flex-wrap'
+  return carrusel ? `flex gap-3 overflow-x-auto snap-x pb-2 ${MASCARA_CARRIL}` : `flex gap-3 overflow-x-auto pb-2 md:flex-wrap ${MASCARA_CARRIL}`
+}
+
+/** Contenedor de «Círculo» en el celular (en escritorio va aparte). */
+export function clasesCirculosMovil(mobileLayout: unknown): string {
+  const movil = layoutMovilCategorias(mobileLayout)
+  if (movil === 'list') return 'flex flex-col gap-3 md:hidden'
+  if (movil === 'grid') return 'grid grid-cols-2 gap-4 md:hidden'
+  return `flex gap-4 overflow-x-auto pb-2 md:hidden ${MASCARA_CARRIL}`
 }
 
 /** Desplaza un carril una página (el ancho visible), como las flechas de CategoriesGrid. */
