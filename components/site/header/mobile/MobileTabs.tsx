@@ -91,7 +91,7 @@ export default function MobileTabs({
           {searchStyle === 'bar' && (
             <div className="pb-3">
               {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchTabIcon} className="w-full" />
+                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchTabIcon} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}

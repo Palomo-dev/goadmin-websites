@@ -116,14 +116,20 @@ export function BuscadorCromoCompacto({
   icon,
   placeholder,
   className = '',
+  settings,
 }: {
   primaryColor: string
   categorias: { id: number; name: string; slug?: string }[]
+  /** Ajustes del sitio: con cromo de buscador, la misma forma, borde y fondo que en computador. */
+  settings?: unknown
   icon?: any
   placeholder?: string
   className?: string
 }) {
   const { ruta } = useRutaSitio()
+  // Misma presentación que BuscadorCromo en computador; sin cromo, cuadrada con puntas redondeadas.
+  const cromo = leerConstructor(settings)?.buscador
+  const radio = cromo && cromo.radius !== 'pill' && cromo.radius !== 'circle' ? cromo.radius : 'rounded'
   const [categoria, setCategoria] = useState('')
   const [texto, setTexto] = useState('')
   const elegida = categorias.find((c) => String(c.id) === categoria)
@@ -138,7 +144,7 @@ export function BuscadorCromoCompacto({
         aria-label="Categoría"
         value={categoria}
         onChange={(e) => setCategoria(e.target.value)}
-        className="h-10 w-[5.5rem] shrink-0 truncate rounded-l-md border border-gray-200 bg-white px-1.5 text-xs text-gray-900"
+        className={`h-10 w-[5.5rem] shrink-0 truncate border border-gray-200 bg-white px-1.5 text-xs text-gray-900 ${RADIO[radio]}`}
       >
         <option value="">Todas</option>
         {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -149,6 +155,15 @@ export function BuscadorCromoCompacto({
           className="w-full"
           size="sm"
           icon={icon ?? Search}
+          cromo={{
+            radius: radio,
+            border: cromo?.border,
+            borderColor: cromo?.borderColor,
+            background: cromo?.background,
+            iconSide: cromo?.iconSide,
+            iconColor: cromo?.iconColor,
+            iconBackground: cromo?.iconBackground,
+          }}
           filtroCategoria={elegida?.name}
           onQueryChange={setTexto}
           {...(placeholder ? { placeholder } : {})}
@@ -157,7 +172,7 @@ export function BuscadorCromoCompacto({
       <button
         type="button"
         onClick={buscar}
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center text-white ${RADIO[radio]}`}
         style={{ backgroundColor: primaryColor }}
         aria-label="Buscar"
       >

@@ -151,7 +151,7 @@ export function HeaderMovilConfigurable({
             {buscador === 'bar' && (
               <div className="pb-3">
                 {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0
-                  ? <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
+                  ? <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
                   : <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />}
               </div>
             )}

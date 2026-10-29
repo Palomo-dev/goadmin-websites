@@ -159,7 +159,7 @@ export default function MobileBottomSheet({
           {searchStyle === 'bar' && (
             <div className="pb-3">
               {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
+                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}

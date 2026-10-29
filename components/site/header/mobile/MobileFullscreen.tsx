@@ -120,7 +120,7 @@ export default function MobileFullscreen({
           {searchStyle === 'bar' && (
             <div className="px-4 pb-3">
               {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
+                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}
