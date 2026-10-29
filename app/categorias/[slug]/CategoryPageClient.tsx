@@ -68,6 +68,12 @@ interface CategoryPageClientProps {
   organizationId: number
   showBuyNow?: boolean
   branchId?: number | null
+  /** Ruta de los enlaces de orden y página (la búsqueda usa `/search`). Ausente: la categoría. */
+  rutaBase?: string
+  /** Parámetros fijos de esa ruta (`q`, `categoria`). */
+  paramsBase?: Record<string, string>
+  /** Texto sin resultados. Ausente: el de la categoría. */
+  textoVacio?: string
 }
 
 function getProductImageUrl(product: Product): string | null {
@@ -102,7 +108,10 @@ export function CategoryPageClient({
   organizationSubdomain,
   organizationId,
   showBuyNow = true,
-  branchId
+  branchId,
+  rutaBase,
+  paramsBase,
+  textoVacio,
 }: CategoryPageClientProps) {
   const { ruta } = useRutaSitio()
   const separacion = separacionTarjetas(useEstiloTarjeta(undefined))
@@ -120,7 +129,7 @@ export function CategoryPageClient({
   const [showFilters, setShowFilters] = useState(false)
 
   const buildUrl = (overrides: Record<string, string | undefined>) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(paramsBase)
     const values = {
       orden: currentSort,
       page: String(currentPage),
@@ -134,7 +143,7 @@ export function CategoryPageClient({
       }
     })
     const qs = params.toString()
-    return `/categorias/${categorySlug}${qs ? `?${qs}` : ''}`
+    return `${rutaBase ?? `/categorias/${categorySlug}`}${qs ? `?${qs}` : ''}`
   }
 
   const handleSortChange = (newSort: string) => {
@@ -368,7 +377,7 @@ export function CategoryPageClient({
       ) : (
         <div className="text-center py-20 border-2 border-dashed dark:border-gray-700 rounded-xl">
           <Package className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg">No hay productos en esta categoría</p>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">{textoVacio ?? 'No hay productos en esta categoría'}</p>
           <Link
             href={ruta('/productos')}
             className="inline-block mt-4 text-sm font-medium hover:underline"
