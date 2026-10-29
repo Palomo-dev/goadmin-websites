@@ -3,7 +3,7 @@
 import { Search } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
@@ -106,7 +106,7 @@ export function BuscadorCromo({
 }
 
 /**
- * Buscador compacto del celular con el desplegable de categorías (`mobile_search_bar_categories`).
+ * Buscador compacto del celular con el desplegable de categorías (`mobile_search_same_as_desktop`).
  * Desplegable angosto + campo + botón, cabe en 360px. El desplegable limita las sugerencias a
  * esa categoría; «Buscar» sin texto lleva a la categoría elegida y con texto a /search.
  */
@@ -180,4 +180,29 @@ export function BuscadorCromoCompacto({
       </button>
     </div>
   )
+}
+
+/** Hay cromo de barra (mini, grande, píldora o barra con estilo) que el celular puede copiar. */
+export function hayCromoEnBarra(settings: unknown): boolean {
+  const cromo = leerConstructor(settings)?.buscador
+  return !!cromo && buscadorEnBarra(cromo.tipo)
+}
+
+/**
+ * Buscador del celular igual al de escritorio (`mobile_search_same_as_desktop`).
+ * «Buscador grande» → BuscadorCromoCompacto (mismas puntas, «Todas» y botón primario en 360px);
+ * mini, píldora y barra con estilo → el mismo BuscadorCromo a todo el ancho.
+ */
+export function BuscadorMovilComoEscritorio(props: {
+  settings: unknown
+  primaryColor: string
+  categorias?: { id: number; name: string; slug?: string }[]
+  icon?: ComponentProps<typeof BuscadorCromoCompacto>['icon']
+  className?: string
+  placeholder?: string
+}) {
+  const cromo = leerConstructor(props.settings)?.buscador
+  if (cromo?.tipo === 'mega') return <BuscadorCromoCompacto {...props} categorias={props.categorias ?? []} />
+  if (!cromo) return null
+  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} />
 }

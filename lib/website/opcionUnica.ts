@@ -32,10 +32,22 @@ export function barraSuperiorMovil(ajustes: Ajustes): boolean {
 }
 
 /**
- * «Categorías en el buscador del celular» (`mobile_search_bar_categories`). Solo `true`
- * cambia algo: con la barra del celular visible, se pinta el buscador compacto con el
- * desplegable de categorías. Ausente o `false`: la barra de siempre.
+ * «Buscador del celular igual al de escritorio» (`mobile_search_same_as_desktop`, reemplaza a la
+ * clave de prueba `mobile_search_bar_categories`, que nunca salió a main). Solo `true` cambia algo.
  */
-export function categoriasEnBuscadorMovil(ajustes: Ajustes): boolean {
-  return ajustes?.mobile_search_bar_categories === true
+export function buscadorIgualEscritorio(ajustes: Ajustes): boolean {
+  return ajustes?.mobile_search_same_as_desktop === true
+}
+
+/**
+ * Buscador del celular a pintar. Con «igual al de escritorio» sigue a `search_style`:
+ * barra, mini, grande y píldora → fila con barra; ícono e ícono-encima → ícono; oculto → nada.
+ * Sin la opción, `buscadorMovil` (lo de siempre).
+ */
+export function buscadorMovilEfectivo(ajustes: Ajustes): EstiloBuscador {
+  if (!buscadorIgualEscritorio(ajustes)) return buscadorMovil(ajustes)
+  const v = ajustes?.search_style
+  if (v === 'hidden') return 'hidden'
+  if (v === 'bar' || v === 'mini' || v === 'mega' || v === 'pill_floating') return 'bar'
+  return 'icon'
 }

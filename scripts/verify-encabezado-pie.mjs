@@ -177,7 +177,7 @@ const CONSUMIDORES = {
   header_icons_circle_bg: ['lib/website/colorCirculoIconos.ts', 'header_icons_circle_bg'],
   header_icons_circle_fg: ['lib/website/colorCirculoIconos.ts', 'header_icons_circle_fg'],
   mobile_logo_position: ['lib/website/logoEncabezado.ts', 'mobile_logo_position'],
-  mobile_search_bar_categories: ['lib/website/opcionUnica.ts', 'mobile_search_bar_categories'],
+  mobile_search_same_as_desktop: ['lib/website/opcionUnica.ts', 'mobile_search_same_as_desktop'],
   header_layout: ['components/site/SiteHeader.tsx', 'header_layout'],
   header_scroll: ['components/site/SiteHeader.tsx', 'header_scroll'],
   mobile_header: ['lib/website/menuMovil.ts', 'mobile_header'],

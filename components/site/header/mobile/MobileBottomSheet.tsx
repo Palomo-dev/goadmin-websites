@@ -4,8 +4,8 @@ import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
-import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
-import { BuscadorCromoCompacto } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
 import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -62,7 +62,7 @@ export default function MobileBottomSheet({
   const temaColores = useTemaColores();
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
-  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
+  const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
@@ -158,8 +158,8 @@ export default function MobileBottomSheet({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
+              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
+                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}

@@ -2,8 +2,8 @@
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useEffect, useState } from 'react';
-import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
-import { BuscadorCromoCompacto } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { ProductSearch } from '../../ProductSearch';
@@ -57,7 +57,7 @@ export default function MobileTabs({
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
   const organizationId = organization.id;
-  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
+  const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
 
   return (
@@ -90,8 +90,8 @@ export default function MobileTabs({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchTabIcon} className="w-full" />
+              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
+                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchTabIcon} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}
@@ -132,7 +132,7 @@ export function BarraPestanas({
   const navItems = buildNavItems(navTree);
   const { ruta } = useRutaSitio();
   const organizationId = organization.id;
-  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
+  const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const unidadesCarrito = useUnidadesCarrito(organization.subdomain || '', branchId);
 
   // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno

@@ -3,8 +3,8 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
-import { buscadorMovil, barraSuperiorMovil, categoriasEnBuscadorMovil } from '@/lib/website/opcionUnica';
-import { BuscadorCromoCompacto } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
 import Link from 'next/link';
 import { X, Search } from 'lucide-react';
 import {
@@ -55,7 +55,7 @@ export default function MobileFullscreen({
   const transparente = useTransparenteMovil(settings);
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
-  const searchStyle = buscadorMovil(settings as Record<string, unknown>);
+  const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   // Construir item "Categorías" si está habilitado
@@ -119,8 +119,8 @@ export default function MobileFullscreen({
 
           {searchStyle === 'bar' && (
             <div className="px-4 pb-3">
-              {categoriasEnBuscadorMovil(settings as Record<string, unknown>) && (menuCategories?.length ?? 0) > 0 ? (
-                <BuscadorCromoCompacto settings={settings} primaryColor={primaryColor} categorias={menuCategories!} icon={SearchIconComp} className="w-full" />
+              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
+                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}
