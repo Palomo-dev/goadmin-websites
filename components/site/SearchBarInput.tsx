@@ -97,6 +97,9 @@ export function SearchBarInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cfg = sizeConfig[size];
+  // Sugerencias en vivo solo desde 2 caracteres: con 1 no se pide nada ni se abre el panel.
+  // Enter y el botón de buscar no dependen de esto.
+  const sugiere = query.trim().length >= 2;
   // Al llegar a /search el campo muestra lo buscado (solo cuando cambia el valor de la URL).
   useEffect(() => {
     if (valorInicial) setQuery(valorInicial);
@@ -123,7 +126,7 @@ export function SearchBarInput({
   }, [focused]);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!sugiere) {
       setResults([]);
       setLoading(false);
       return;
@@ -219,7 +222,7 @@ export function SearchBarInput({
       </div>
 
       {/* Dropdown de resultados */}
-      {focused && (
+      {focused && (!query || sugiere) && (
         <div className="absolute left-0 right-0 top-full mt-2 z-[100]">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden">
             {loading && (
@@ -231,7 +234,7 @@ export function SearchBarInput({
               </div>
             )}
 
-            {!loading && query && visibles.length > 0 && (
+            {!loading && sugiere && visibles.length > 0 && (
               <div className="overflow-y-auto p-2 space-y-1">
                 {visibles.map((product) => (
                   <Link
@@ -279,7 +282,7 @@ export function SearchBarInput({
               </div>
             )}
 
-            {!loading && query && visibles.length === 0 && (
+            {!loading && sugiere && visibles.length === 0 && (
               <div className="text-center py-8 px-4">
                 <Package className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">
