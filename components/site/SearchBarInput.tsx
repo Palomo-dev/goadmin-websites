@@ -41,6 +41,8 @@ interface SearchBarInputProps {
   categoriaSlug?: string
   /** Avisa el texto escrito (el botón «Buscar» del buscador compacto lo usa). */
   onQueryChange?: (q: string) => void
+  /** Texto que trae la URL de /search: se muestra en el campo al llegar. Ausente: vacío. */
+  valorInicial?: string
 }
 
 interface SearchResult {
@@ -84,6 +86,7 @@ export function SearchBarInput({
   filtroCategoria,
   categoriaSlug,
   onQueryChange,
+  valorInicial,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
   const [query, setQuery] = useState('');
@@ -94,6 +97,10 @@ export function SearchBarInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cfg = sizeConfig[size];
+  // Al llegar a /search el campo muestra lo buscado (solo cuando cambia el valor de la URL).
+  useEffect(() => {
+    if (valorInicial) setQuery(valorInicial);
+  }, [valorInicial]);
   const visibles = filtroCategoria && !categoriaSlug ? results.filter((r) => r.category === filtroCategoria) : results;
 
   useEffect(() => {

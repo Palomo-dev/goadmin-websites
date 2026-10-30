@@ -3,7 +3,7 @@
 import { Search } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
-import { useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
@@ -70,12 +70,13 @@ export function BuscadorCromo({
     if (q) window.location.href = ruta(urlResultadosBusqueda(q, elegida?.slug))
     else if (elegida?.slug) window.location.href = ruta(`/categorias/${elegida.slug}`)
   }
-  const cambiarCategoria = (valor: string) => {
-    setCategoria(valor)
-    // Sin texto escrito, elegir la categoría lleva a ella (con texto se queda para filtrar).
-    const nueva = categorias.find((c) => String(c.id) === valor)
-    if (!texto.trim() && nueva?.slug) window.location.href = ruta(`/categorias/${nueva.slug}`)
-  }
+  // Elegir la categoría solo la selecciona; navegar es cosa del botón o de Enter.
+  const cambiarCategoria = (valor: string) => setCategoria(valor)
+  const desdeUrl = useBusquedaDeUrl(presentacion.tipo === 'mega' ? categorias : [])
+  useEffect(() => {
+    if (desdeUrl.categoriaId) setCategoria(desdeUrl.categoriaId)
+    if (desdeUrl.q) setTexto(desdeUrl.q)
+  }, [desdeUrl.categoriaId, desdeUrl.q])
   if (presentacion.tipo === 'icon_overlay') {
     return (
       <ProductSearch
@@ -121,6 +122,7 @@ export function BuscadorCromo({
           {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
           {...(elegida ? { filtroCategoria: elegida.name, categoriaSlug: elegida.slug } : {})}
           onQueryChange={setTexto}
+          {...(presentacion.tipo === 'mega' && desdeUrl.q ? { valorInicial: desdeUrl.q } : {})}
         />
       </div>
       {presentacion.button !== 'none' && (
@@ -166,6 +168,11 @@ export function BuscadorCromoCompacto({
   const [categoria, setCategoria] = useState('')
   const [texto, setTexto] = useState('')
   const elegida = categorias.find((c) => String(c.id) === categoria)
+  const desdeUrl = useBusquedaDeUrl(categorias)
+  useEffect(() => {
+    if (desdeUrl.categoriaId) setCategoria(desdeUrl.categoriaId)
+    if (desdeUrl.q) setTexto(desdeUrl.q)
+  }, [desdeUrl.categoriaId, desdeUrl.q])
   const buscar = () => {
     const q = texto.trim()
     if (q) window.location.href = ruta(urlResultadosBusqueda(q, elegida?.slug))
@@ -200,6 +207,7 @@ export function BuscadorCromoCompacto({
           filtroCategoria={elegida?.name}
           categoriaSlug={elegida?.slug}
           onQueryChange={setTexto}
+          {...(desdeUrl.q ? { valorInicial: desdeUrl.q } : {})}
           {...(placeholder ? { placeholder } : {})}
         />
       </div>
@@ -214,6 +222,34 @@ export function BuscadorCromoCompacto({
       </button>
     </div>
   )
+}
+
+/**
+ * En /search, el texto (`q`) y la categoría (`categoria`=slug → id del desplegable) que trae la
+ * URL, para que el buscador del encabezado los conserve. Fuera de /search: vacío. Se lee después
+ * de montar (sin desajuste de hidratación).
+ */
+export function leerBusquedaDeUrl(
+  pathname: string,
+  search: string,
+  categorias: { id: number; slug?: string }[],
+): { q: string; categoriaId: string } {
+  if (!/\/search\/?$/.test(pathname)) return { q: '', categoriaId: '' }
+  const params = new URLSearchParams(search)
+  const q = (params.get('q') ?? '').trim()
+  const slug = params.get('categoria') ?? ''
+  const cat = slug ? categorias.find((c) => c.slug === slug) : undefined
+  return { q, categoriaId: cat ? String(cat.id) : '' }
+}
+
+function useBusquedaDeUrl(categorias: { id: number; slug?: string }[]) {
+  const [valor, setValor] = useState({ q: '', categoriaId: '' })
+  const claves = categorias.map((c) => c.slug ?? '').join('|')
+  useEffect(() => {
+    setValor(leerBusquedaDeUrl(window.location.pathname, window.location.search, categorias))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claves])
+  return valor
 }
 
 /** Hay cromo de barra (mini, grande, píldora o barra con estilo) que el celular puede copiar. */
