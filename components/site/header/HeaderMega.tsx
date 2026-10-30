@@ -107,7 +107,7 @@ export default function HeaderMega({
                 size="lg"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-2xl mx-auto' })}
+            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-2xl mx-auto' })}
 
             {/* Acciones derecha (sin icono de búsqueda, la barra ya está visible) */}
             <div className="flex items-center gap-3 flex-shrink-0">

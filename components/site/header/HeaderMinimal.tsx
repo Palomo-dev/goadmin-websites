@@ -134,7 +134,7 @@ export default function HeaderMinimal({
                 size="lg"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' })}
+            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-auto' })}
 
             {/* Acciones derecha: search icon + cart + CTA + botón menú */}
             <div className="flex items-center gap-3 flex-shrink-0">

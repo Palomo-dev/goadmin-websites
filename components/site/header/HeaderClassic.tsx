@@ -27,6 +27,7 @@ export default function HeaderClassic({
   primaryColor,
   navTree,
   settings,
+  menuCategories,
   showCart,
   onCartClick,
   branchId,
@@ -57,7 +58,7 @@ export default function HeaderClassic({
       size="lg"
       icon={SearchIconComp}
     />
-  ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-4' });
+  ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-4' });
 
   const renderActions = (
     <div className="flex items-center gap-3 flex-shrink-0">

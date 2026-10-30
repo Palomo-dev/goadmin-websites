@@ -27,6 +27,7 @@ export default function HeaderCentered({
   primaryColor,
   navTree,
   settings,
+  menuCategories,
   showCart,
   onCartClick,
   branchId,
@@ -58,7 +59,7 @@ export default function HeaderCentered({
                   size="md"
                   icon={SearchIconComp}
                 />
-              ) : null, { primaryColor, organizationId, className: 'w-64' })}
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'w-64' })}
               <HeaderActions
                 settings={settings}
                 showCart={showCart}
@@ -94,7 +95,7 @@ export default function HeaderCentered({
                 size="sm"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'w-56' })}
+            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'w-56' })}
           </div>
         </div>
       </div>

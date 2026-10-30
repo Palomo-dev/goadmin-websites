@@ -27,6 +27,7 @@ export default function HeaderSplit({
   primaryColor,
   navTree,
   settings,
+  menuCategories,
   showCart,
   onCartClick,
   branchId,
@@ -64,7 +65,7 @@ export default function HeaderSplit({
                 size="lg"
                 icon={SearchIconComp}
               />
-            ) : null, { primaryColor, organizationId, className: 'flex-1 max-w-xl mx-auto' })}
+            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-auto' })}
 
             {/* Nav derecha */}
             {rightNav.length > 0 && (

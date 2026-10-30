@@ -13,11 +13,20 @@ import type { ColoresCaja } from './ContenedorIcono'
 export function barraSiCromo(
   settings: unknown,
   actual: ReactNode,
-  props: { primaryColor: string; organizationId?: number; className?: string },
+  props: {
+    primaryColor: string
+    organizationId?: number
+    className?: string
+    /** Categorías del menú: el «Buscador grande» (mega) las lista en su desplegable. */
+    categorias?: { id: number; name: string; slug?: string }[]
+  },
 ): ReactNode {
   const cromo = leerConstructor(settings)?.buscador
   if (!cromo || !buscadorEnBarra(cromo.tipo)) return actual
-  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} />
+  const categorias = cromo.tipo === 'mega'
+    ? (props.categorias ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
+    : undefined
+  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} />
 }
 
 const RADIO: Record<CromoBuscador['radius'], string> = {
