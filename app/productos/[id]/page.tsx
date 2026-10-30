@@ -223,7 +223,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const product = await getProduct(id, organization.id, branchId)
   if (!product) {
     return (
-      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId}>
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <p className="text-4xl mb-3">📦</p>
@@ -364,7 +364,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const hasTemplateSections = productDetailTemplate && productDetailTemplate.website_page_sections.length > 0
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
       {/* JSON-LD Product */}
       <script
         type="application/ld+json"

@@ -106,7 +106,7 @@ export default async function CategoriaSlugPage({
   }
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
       {/* F9.5 — JSON-LD ItemList */}
       <JsonLd data={itemListJsonLd} />
       <CategoryDetailRenderer
