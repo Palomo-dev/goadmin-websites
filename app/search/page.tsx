@@ -42,7 +42,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function BuscarPage({ searchParams }: { searchParams: Promise<Params> }) {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, branchId, menuCategories } = ctx
   const sp = await searchParams
   const qCrudo = texto(sp.q).trim().slice(0, 80)
   const q = limpiarTextoBusqueda(qCrudo)
@@ -92,7 +92,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: Promi
   const titulo = qCrudo ? `Resultados para «${qCrudo}»` : categoria ? categoria.name : 'Buscar productos'
 
   return (
-    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId}>
+    <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId} menuCategories={menuCategories}>
       <div className="container mx-auto px-4 py-8" data-pagina-busqueda="">
         <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">
           <Link href="/" className="flex items-center hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
