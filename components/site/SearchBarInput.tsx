@@ -125,22 +125,31 @@ export function SearchBarInput({
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setLoading(false);
       return;
     }
+    // «Buscando…» desde que cambia el texto o la categoría (no solo tras la espera de 300 ms), y
+    // se descartan respuestas viejas: antes una respuesta tardía o la espera mostraban
+    // «No se encontraron productos» aunque la búsqueda sí tenía resultados.
+    let vigente = true;
+    const control = new AbortController();
+    setLoading(true);
     const timer = setTimeout(async () => {
-      setLoading(true);
       try {
-        const res = await fetch(urlBusquedaProductos(query, categoriaSlug));
+        const res = await fetch(urlBusquedaProductos(query, categoriaSlug), { signal: control.signal });
+        if (!vigente) return;
         if (res.ok) {
           const data = await res.json();
+          if (!vigente) return;
           setResults(data.products || []);
         }
       } catch {
+        if (!vigente) return;
         setResults([]);
       }
       setLoading(false);
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { vigente = false; control.abort(); clearTimeout(timer); };
   }, [query, categoriaSlug]);
 
   const saveRecentSearch = (term: string) => {
