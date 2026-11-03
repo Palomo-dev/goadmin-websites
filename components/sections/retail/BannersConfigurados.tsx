@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 /**
  * Banners con `banner_layout` / `banner_style`. Solo se monta cuando esas claves
@@ -57,7 +58,7 @@ function fotoProducto(product: any): string | null {
   if (!product?.product_images?.length) return null
   const primary = product.product_images.find((img: any) => img.is_primary) || product.product_images[0]
   const path = primary?.storage_path || primary?.shared_images?.storage_path
-  return path ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}` : null
+  return path ? urlPublicaStorage(path, 'product-images', SUPABASE_URL) : null
 }
 
 function radioForma(estilo: EstiloBanners): string {

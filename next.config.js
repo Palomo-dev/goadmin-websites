@@ -29,6 +29,12 @@ const nextConfig = {
         hostname: '*.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      // Imágenes de producto recuperadas con URL completa (storage_path = https://...).
+      // Hosts sacados de product_images/shared_images el 3-nov-2026; si aparece otro, agregarlo aquí.
+      { protocol: 'https', hostname: '*.vteximg.com.br', pathname: '/arquivos/**' },
+      { protocol: 'https', hostname: 'media.falabella.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'cdn.shopify.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'cdn.dam.alkosto.com', pathname: '/**' },
     ],
   },
 }

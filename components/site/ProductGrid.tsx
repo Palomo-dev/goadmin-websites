@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useMemo } from 'react'
 import { useCatalogoCompleto } from '@/lib/products/useCatalogoCompleto'
@@ -63,7 +64,7 @@ function getProductImageUrl(product: Product): string | null {
   if (!storagePath) return null
   
   // Construir URL de Supabase Storage (bucket: product-images)
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
+  return urlPublicaStorage(storagePath, 'product-images', SUPABASE_URL)
 }
 
 interface Category {

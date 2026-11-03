@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -59,7 +60,7 @@ export function FavoriteProductCard({
   if (removed) return null
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const fullImageUrl = imagePath ? `${supabaseUrl}/storage/v1/object/public/${imagePath}` : undefined
+  const fullImageUrl = imagePath ? urlPublicaStorage(imagePath, '', supabaseUrl) : undefined
 
   // ProductCard espera un objeto product con la estructura estándar.
   const product = {

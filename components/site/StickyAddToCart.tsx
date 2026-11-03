@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useEffect, useMemo, useId } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
@@ -49,7 +50,7 @@ function getVariantImg(variant: VariantData): string | null {
   const primary = variant.product_images.find(img => img.is_primary) || variant.product_images[0]
   const path = primary.storage_path || primary.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
 }
 
 export function StickyAddToCart({

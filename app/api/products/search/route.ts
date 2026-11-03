@@ -1,3 +1,4 @@
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
@@ -27,7 +28,7 @@ function formatProduct(p: any) {
     const primary = p.product_images.find((img: any) => img.is_primary) || p.product_images[0]
     const path = primary.storage_path || primary.shared_images?.storage_path
     if (path) {
-      imageUrl = `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+      imageUrl = urlPublicaStorage(path, 'product-images', SUPABASE_URL)
     }
   }
   return {

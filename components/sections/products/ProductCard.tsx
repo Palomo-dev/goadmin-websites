@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 /**
  * ProductCard unificado (FASE 5).
@@ -116,7 +117,7 @@ function segundaImagenProducto(product: any): string | null {
   const otra = imgs.find((img: any) => img !== primary)
   const path = otra?.storage_path || otra?.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
 }
 
 function marcaProducto(product: any): string {

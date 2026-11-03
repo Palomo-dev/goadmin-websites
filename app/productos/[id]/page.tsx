@@ -1,3 +1,4 @@
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
@@ -305,7 +306,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const allImageUrls: string[] = sortedImages
     .map((img: any) => {
       const path = img.storage_path || img.shared_images?.storage_path
-      return path ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}` : null
+      return path ? urlPublicaStorage(path, 'product-images', SUPABASE_URL) : null
     })
     .filter(Boolean) as string[]
   const imageUrl = allImageUrls[0] || null

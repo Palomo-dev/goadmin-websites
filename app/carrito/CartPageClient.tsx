@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -81,7 +82,7 @@ function getProductImageUrl(product: SuggestedProduct): string | null {
   const image = primary || product.product_images[0]
   const path = image.storage_path || image.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
 }
 
 export function CartPageClient({

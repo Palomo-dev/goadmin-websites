@@ -1,3 +1,4 @@
+import { esUrlCompleta, urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { createPublicClient } from './server'
 
 const BUCKET_NAME = 'organization_images'
@@ -16,6 +17,7 @@ const BUCKET_NAME = 'organization_images'
  * Obtiene la URL pública de una imagen del storage
  */
 export function getPublicImageUrl(path: string): string {
+  if (esUrlCompleta(path)) return urlPublicaStorage(path, '', '')
   const supabase = createPublicClient()
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path)
   return data.publicUrl
@@ -120,6 +122,7 @@ export function getTransformedImageUrl(
   path: string, 
   options: { width?: number; height?: number; quality?: number } = {}
 ): string {
+  if (esUrlCompleta(path)) return urlPublicaStorage(path, '', '')
   const supabase = createPublicClient()
   
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path, {

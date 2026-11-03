@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { MENSAJE_PEDIDO_EN_LINEA_APAGADO } from '@/lib/orders/disponibilidadPedido'
 import { useState, useMemo, useRef } from 'react'
@@ -126,7 +127,7 @@ function getProductImageUrl(product: MenuProduct): string | null {
   const image = primaryImage || product.product_images[0]
   const storagePath = image.storage_path || image.shared_images?.storage_path
   if (!storagePath) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
+  return urlPublicaStorage(storagePath, 'product-images', SUPABASE_URL)
 }
 
 // ── Component ──

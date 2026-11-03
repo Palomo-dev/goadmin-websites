@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -12,7 +13,7 @@ function getImageUrl(product: any): string | null {
   const primary = product.product_images.find((img: any) => img.is_primary) || product.product_images[0]
   const path = primary.storage_path || primary.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
 }
 
 interface RelatedProductsProps {

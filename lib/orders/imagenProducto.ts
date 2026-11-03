@@ -36,7 +36,15 @@ export function atributosVariante(valor: unknown): Record<string, string> | null
 }
 
 export function urlImagenProducto(path: string | null | undefined, base = BASE_IMAGEN_PRODUCTO): string | null {
-  const limpio = (path || '').trim().replace(/^\/+/, '')
+  const crudo = (path || '').trim()
+  // URL completa (foto recuperada de otra tienda): tal cual, http pasa a https.
+  // Misma regla que lib/storage/urlPublica.ts; aquí sin import porque
+  // scripts/verify-carrito-pendiente.mjs carga este archivo suelto.
+  if (/^https?:\/\//i.test(crudo)) {
+    if (crudo.length > 2000 || /\s/.test(crudo)) return null
+    return crudo.replace(/^http:\/\//i, 'https://')
+  }
+  const limpio = crudo.replace(/^\/+/, '')
   if (!limpio || limpio.length > 500 || limpio.includes('..') || limpio.includes('\\') || limpio.includes('://')) return null
   const raiz = base.replace(/\/$/, '')
   return `${raiz}/storage/v1/object/public/product-images/${limpio}`

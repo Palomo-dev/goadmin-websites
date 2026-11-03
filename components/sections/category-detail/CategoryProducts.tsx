@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 /**
  * F9.4 — Sección category_products.
@@ -47,7 +48,7 @@ function getProductImageUrl(product: any): string | null {
   const image = primaryImage || product.product_images[0]
   const storagePath = image.storage_path || image.shared_images?.storage_path
   if (!storagePath) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`
+  return urlPublicaStorage(storagePath, 'product-images', SUPABASE_URL)
 }
 
 export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: CategoryProductsProps) {

@@ -1,4 +1,5 @@
 'use client'
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 /**
  * Hoja del plato (Figma «Detalle: variante + extras → pedir o reservar», F-flujos 1-2-3).
@@ -79,7 +80,7 @@ export interface PlatoSheetProps {
 function imagenVariante(v: VarianteApi): string | null {
   const img = v.product_images?.find((i) => i.is_primary) || v.product_images?.[0]
   const path = img?.storage_path || img?.shared_images?.storage_path
-  return path ? `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}` : null
+  return path ? urlPublicaStorage(path, 'product-images', SUPABASE_URL) : null
 }
 
 function precioVariante(v: VarianteApi, respaldo: number | null): number | null {

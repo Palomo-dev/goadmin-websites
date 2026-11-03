@@ -1,3 +1,4 @@
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 /**
  * Precio, foto y «es padre» de una tarjeta. Sin React: el servidor (la carta)
  * y el cliente (la tarjeta) leen lo mismo.
@@ -12,7 +13,7 @@ export function getProductImageUrl(product: any): string | null {
   const image = primary || product.product_images[0]
   const path = image.storage_path || image.shared_images?.storage_path
   if (!path) return null
-  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
 }
 
 export function getProductPrice(product: any): number | null {

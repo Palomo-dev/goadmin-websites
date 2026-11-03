@@ -1,3 +1,4 @@
+import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { cache } from 'react'
 import { createAdminClient, createPublicClient } from './server'
 import type { Organization, WebsiteSettings, OrganizationWithDetails, WebsitePage, WebsitePageWithSections, WebsitePageWithChildren, WebsiteMenu, WebsiteMenuItem, WebsiteMenuItemWithChildren, WebsiteMenuWithItems } from '@/types/database'
@@ -568,7 +569,7 @@ async function directProductPhotoByCategory(
       const path = primary.storage_path || primary.shared_images?.storage_path
       if (!path) continue
 
-      fallbackMap[Number(catId)] = `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`
+      fallbackMap[Number(catId)] = urlPublicaStorage(path, 'product-images', SUPABASE_URL)
       break
     }
   }
@@ -1819,7 +1820,7 @@ export async function getOrganizationSpaces(organizationId: number, branchId?: n
   const imgMap: Record<string, string> = {}
   for (const img of (images || []) as any[]) {
     if (!imgMap[img.space_id]) {
-      imgMap[img.space_id] = img.image_url || `https://taqjemqjtumhwptchcxk.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+      imgMap[img.space_id] = img.image_url || urlPublicaStorage(img.storage_path, 'space-images', 'https://taqjemqjtumhwptchcxk.supabase.co')
     }
   }
 
@@ -1878,7 +1879,7 @@ export async function getSpaceById(spaceId: string, organizationId: number) {
     .order('display_order', { ascending: true })
 
   const imageUrls = (images || []).map((img: any) =>
-    img.image_url || `https://taqjemqjtumhwptchcxk.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+    img.image_url || urlPublicaStorage(img.storage_path, 'space-images', 'https://taqjemqjtumhwptchcxk.supabase.co')
   )
 
   // Servicios
