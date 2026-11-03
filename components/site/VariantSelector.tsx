@@ -61,7 +61,7 @@ interface VariantSelectorProps {
   branchId?: number | null
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 function getVariantImageUrl(variant: VariantProduct): string | null {
   if (!variant.product_images || variant.product_images.length === 0) return null

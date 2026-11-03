@@ -41,7 +41,7 @@ import { useMesaQRStore } from '@/lib/restaurant/mesaStore'
 
 const ACCENT = 'var(--accent-color, var(--primary-color))'
 const PRIMARY = 'var(--primary-color)'
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 interface VarianteApi {
   id: number

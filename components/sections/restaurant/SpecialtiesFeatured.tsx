@@ -3,7 +3,7 @@ import { textoPlano } from '@/lib/texto/textoPlano'
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'
 import { mostrarPrecioAnterior, precioAnteriorValido } from '@/lib/products/precioAnterior'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 function getImageUrl(product: any): string | null {
   if (!product.product_images || product.product_images.length === 0) return null

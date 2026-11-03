@@ -14,7 +14,7 @@ import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 function getVariantImageUrl(variant: any): string | null {
   if (!variant.product_images || variant.product_images.length === 0) return null

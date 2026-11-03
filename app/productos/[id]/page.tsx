@@ -299,7 +299,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     () => getWebsitePageByType(organization.id, 'product_detail'))
 
   // Construir URLs de imágenes
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
   const sortedImages = (product.product_images || [])
     .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.display_order - b.display_order)
   const allImageUrls: string[] = sortedImages

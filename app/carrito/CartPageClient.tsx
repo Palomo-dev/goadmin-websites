@@ -16,7 +16,7 @@ import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProd
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 interface CartModifier {
   modifierId: number

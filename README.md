@@ -231,7 +231,7 @@ http://empresa.localhost:3000
 └─────────────────────┘     └──────────────────────────┘
 ```
 
-Ambos proyectos comparten la **misma base de datos Supabase** (Project ID: `jgmgphmzusbluqhuqihj`). El ERP es el panel de administración y `goadmin-websites` es la cara pública para los clientes finales.
+Ambos proyectos comparten la **misma base de datos Supabase** (Project ID: `taqjemqjtumhwptchcxk`). El ERP es el panel de administración y `goadmin-websites` es la cara pública para los clientes finales.
 
 ## Licencia
 

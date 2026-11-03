@@ -19,7 +19,7 @@ export function ChatWidget({ publicKey }: ChatWidgetProps) {
         }}
       />
       <Script
-        src="https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/chat-widget"
+        src="https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/chat-widget"
         strategy="afterInteractive"
       />
     </>

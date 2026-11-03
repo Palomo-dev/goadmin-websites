@@ -11,7 +11,7 @@ export type { BannerItem }
 export { resolveBannerHref }
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 /**
  * Resuelve la URL pública de la imagen principal de un producto.

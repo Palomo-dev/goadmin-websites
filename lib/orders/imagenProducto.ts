@@ -5,7 +5,7 @@
  * variante no tiene, la del padre. La URL es la misma que arma la ficha.
  */
 
-export const BASE_IMAGEN_PRODUCTO = 'https://jgmgphmzusbluqhuqihj.supabase.co'
+export const BASE_IMAGEN_PRODUCTO = 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 export interface FotoProducto {
   productId: number

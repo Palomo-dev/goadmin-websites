@@ -19,7 +19,7 @@ import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 
 export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 interface CategoryProductsProps {
   content: {

@@ -94,7 +94,7 @@ export {
 }
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 // Esquinas de badge compartidas entre variantes (evita superposición agrupando)
 const BADGE_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const

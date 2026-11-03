@@ -29,7 +29,7 @@ const HOY = { autoplay: false, intervaloMs: 5000, bucle: false, pausarAlPasar: t
 /** Las flechas aparecen al pasar el puntero; con el teclado, al recibir el foco. */
 const FOCO_FLECHA = 'focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 interface ProductsCarouselProps {
   content: Record<string, any>

@@ -37,7 +37,7 @@ interface StickyAddToCartProps {
   ordenAtributos?: OrdenAtributos | null
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 function getCartKey(orgSubdomain?: string, branchId?: number | null): string {
   const subdomain = orgSubdomain || window.location.hostname.split('.')[0]

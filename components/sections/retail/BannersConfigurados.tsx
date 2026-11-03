@@ -19,7 +19,7 @@ import {
 } from '@/lib/website/distribucionBanner'
 import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 const POS_BOTON: Record<string, string> = {
   tl: 'top-3 left-3',

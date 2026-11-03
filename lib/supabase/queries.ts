@@ -149,7 +149,7 @@ const ORG_PUBLIC_COLUMNS =
 const BRANCH_PUBLIC_COLUMNS =
   'id, organization_id, name, address, city, state, country, postal_code, latitude, longitude, phone, email, opening_hours, features, capacity, branch_type, is_main, is_active, slug, subdomain, custom_domain, website_logo_url, website_cover_url, is_web_published, is_web_stock_source, timezone, country_code, state_code'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 export interface VariantChildrenInfo {
   /** parent_product_id → número de variantes activas */
@@ -1819,7 +1819,7 @@ export async function getOrganizationSpaces(organizationId: number, branchId?: n
   const imgMap: Record<string, string> = {}
   for (const img of (images || []) as any[]) {
     if (!imgMap[img.space_id]) {
-      imgMap[img.space_id] = img.image_url || `https://jgmgphmzusbluqhuqihj.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+      imgMap[img.space_id] = img.image_url || `https://taqjemqjtumhwptchcxk.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
     }
   }
 
@@ -1878,7 +1878,7 @@ export async function getSpaceById(spaceId: string, organizationId: number) {
     .order('display_order', { ascending: true })
 
   const imageUrls = (images || []).map((img: any) =>
-    img.image_url || `https://jgmgphmzusbluqhuqihj.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
+    img.image_url || `https://taqjemqjtumhwptchcxk.supabase.co/storage/v1/object/public/space-images/${img.storage_path}`
   )
 
   // Servicios

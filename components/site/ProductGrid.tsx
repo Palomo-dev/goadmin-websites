@@ -48,7 +48,7 @@ interface Product {
   variant_data?: Record<string, string> | null
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
 function getProductImageUrl(product: Product): string | null {
   if (!product.product_images || product.product_images.length === 0) return null

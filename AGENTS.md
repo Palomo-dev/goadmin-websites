@@ -18,7 +18,7 @@ evidencia —porcentajes, conteos, importes— se conserva; la identidad no.
 
 ## Base de datos — siempre por MCP
 
-Proyecto Supabase: **`jgmgphmzusbluqhuqihj`** (Postgres 15), el mismo que el ERP.
+Proyecto Supabase: **`taqjemqjtumhwptchcxk`** (Postgres 17; desde el 2026-11-03 reemplaza a `jgmgphmzusbluqhuqihj`, que se borró por error), el mismo que el ERP.
 
 Todo cambio de esquema se aplica con las herramientas MCP de Supabase y se versiona en el
 repo del ERP según su `docs/POLITICA-MIGRACIONES.md` (`.sql` + rollback en el mismo

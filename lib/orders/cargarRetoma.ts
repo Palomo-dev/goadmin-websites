@@ -197,7 +197,7 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
 }
 
 function baseImagen(): string {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 }
 
 interface FichaProducto {
