@@ -9,13 +9,11 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Plus, Check, Package, Layers, ChevronLeft, ChevronRight, SlidersHorizontal, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { VariantSelector } from './VariantSelector'
+import { useDialogoVariantes } from './DialogoVariantes'
 import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
 import { isParentProduct, padreSinVariantes, requiereElegir, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
-import { agregarPlatoAlCarrito } from '@/lib/cart'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-import type { ModifierGroup, SelectedModifier } from './ProductModifierSelector'
 
 interface ProductImage {
   id: number
@@ -95,11 +93,8 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
   const { ruta } = useRutaSitio()
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
-  const [variantParent, setVariantParent] = useState<Product | null>(null)
-  const [variantChildren, setVariantChildren] = useState<any[]>([])
-  const [variantGroups, setVariantGroups] = useState<ModifierGroup[]>([])
-  const [ordenAtributos, setOrdenAtributos] = useState<Record<string, Record<string, number>> | null>(null)
-  const [loadingVariants, setLoadingVariants] = useState(false)
+  // Selector de variantes de un padre («Elegir»): el mismo diálogo que el «+» de la tarjeta.
+  const dialogoVariantes = useDialogoVariantes({ organizationId, organizationSubdomain, branchId, primaryColor, imagenDe: getProductImageUrl })
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default')
   const [onlyOffers, setOnlyOffers] = useState(false)
@@ -121,30 +116,7 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
   const resetPage = () => setCurrentPage(1)
   
-  const openVariantSelector = async (product: Product) => {
-    if (!organizationId) return
-    setVariantParent(product)
-    setLoadingVariants(true)
-    try {
-      // Con sede, la ruta aplica su carta (mismo precio que cobra /api/orders).
-      const sedeParam = typeof branchId === 'number' ? `&branchId=${branchId}` : ''
-      const res = await fetch(`/api/products/${product.id}/variants?organizationId=${organizationId}${sedeParam}`)
-      const data = await res.json()
-      // Cada variante lleva sus grupos propios (si tiene); las demás heredan los del padre
-      // (acompañante…), con la regla del cobro (`gruposDeProducto`, en VariantSelector).
-      const propios: Record<string, ModifierGroup[]> = data.variantModifierGroups || {}
-      setVariantChildren(((data.variants || []) as any[]).map((v) => (propios[String(v.id)] ? { ...v, modifier_groups: propios[String(v.id)] } : v)))
-      setVariantGroups(Array.isArray(data.modifierGroups) ? data.modifierGroups : [])
-      setOrdenAtributos(data.ordenAtributos && typeof data.ordenAtributos === 'object' ? data.ordenAtributos : null)
-    } catch (err) {
-      console.error('Error loading variants:', err)
-      setVariantChildren([])
-      setVariantGroups([])
-      setOrdenAtributos(null)
-    } finally {
-      setLoadingVariants(false)
-    }
-  }
+  const openVariantSelector = (product: Product) => dialogoVariantes.abrir(product)
 
   const buyNow = (product: Product) => {
     addToCart(product)
@@ -467,36 +439,7 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
       )}
 
       {/* Variant Selector Dialog */}
-      {variantParent && (
-        <VariantSelector
-          parentName={variantParent.name}
-          variants={variantChildren}
-          primaryColor={primaryColor}
-          mode="dialog"
-          modifierGroups={variantGroups}
-          ordenAtributos={ordenAtributos}
-          onClose={() => { setVariantParent(null); setVariantChildren([]); setVariantGroups([]); setOrdenAtributos(null) }}
-          onSelect={(variant, qty = 1, mods: SelectedModifier[] = []) => {
-            const v = variant as any
-            const base = Number(v.product_prices?.[0]?.price ?? variantParent.product_prices?.[0]?.price ?? 0)
-            agregarPlatoAlCarrito(organizationSubdomain, branchId, {
-              productId: Number(v.id),
-              name: v.name,
-              sku: v.sku ?? null,
-              unitPrice: base + mods.reduce((t, m) => t + (m.extraPrice || 0), 0),
-              quantity: qty,
-              imageUrl: getProductImageUrl(v),
-              comparePrice: mods.length === 0 && v.product_prices?.[0]?.compare_price ? Number(v.product_prices[0].compare_price) : null,
-              modifiers: mods,
-              variantAttributes: v.variant_data ?? null,
-            })
-            setVariantParent(null)
-            setVariantChildren([])
-            setVariantGroups([])
-            setOrdenAtributos(null)
-          }}
-        />
-      )}
+      {dialogoVariantes.dialogo}
     </div>
   )
 }

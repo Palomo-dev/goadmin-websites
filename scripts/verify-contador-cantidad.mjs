@@ -7,13 +7,18 @@
  * - getLineQty / setLineQty: qty <= 0 quita la línea, siempre dispara `cart-updated`.
  * - Bajar la cantidad no es un AddToCart (CartEventTracker solo cuenta lo que sube).
  * - ProductCard sin la clave no usa el contador.
+ * - Fusión sitio + sección (4-nov): el preset de una sección no borra el contador escrito en el sitio;
+ *   lo escrito en la sección sigue ganando.
+ * - Padres: el «+» abre el selector de variantes (DialogoVariantes, el mismo de ProductGrid).
+ * - `data-contador-razon` (estilo | carrito_externo | padre | sin_stock | sin_precio).
+ * - Prioridad card_buttons / product_card_style.add, documentada en ProductCard.
  */
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { stripTypeScriptTypes } from 'node:module'
-import { aplicarEstiloTarjeta, contadorCantidadActivo, resolverTarjetaProducto } from '../lib/website/tarjetaProducto.ts'
+import { aplicarEstiloTarjeta, contadorCantidadActivo, PRESETS_TARJETA, razonSinContador, resolverTarjetaProducto } from '../lib/website/tarjetaProducto.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const problemas = []
@@ -75,8 +80,61 @@ check(/if \(added <= 0\) continue/.test(tracker), 'CartEventTracker ignora bajas
 
 // ── Con la clave en false la tarjeta no cambia ──
 const tarjeta = await readFile(join(ROOT, 'components/sections/products/ProductCard.tsx'), 'utf8')
-check(/contadorCantidadActivo\(estiloTarjeta\.add\) && !onAddToCart && !isParent && !outOfStock/.test(tarjeta), 'el contador exige la clave, sin onAddToCart externo, no padre y con stock')
+check(tarjeta.includes("const conContador = !!estiloTarjeta && estiloTarjeta.add?.quantity_stepper === true && razonContador === null"), 'el contador exige la clave y ninguna razón en contra')
+check(tarjeta.includes('razonSinContador(estiloTarjeta.add, { esPadre: isParent, sinStock: outOfStock, sinPrecio: precioContador === null, carritoExterno: !!onAddToCart })'), 'la razón sale del estilo resuelto, padre, stock, precio y carrito externo')
 check(/useCartLineQty\(subCarrito, branchId, product\.id, conContador\)/.test(tarjeta), 'apagado no escucha el carrito')
+
+// ── Fusión sitio + sección: el preset de la sección no apaga el contador del sitio ──
+const PILDORA_SITIO = { add: { button_style: 'icon_only', button_shape: 'circle', button_position: 'over_image_corner', quantity_stepper: true } }
+for (const preset of PRESETS_TARJETA) {
+  const r = resolverTarjetaProducto(PILDORA_SITIO, { card_preset: preset, card_radius: 4 })
+  check(contadorCantidadActivo(r?.add), `sitio con contador + sección con preset «${preset}»: sigue el contador`)
+}
+{
+  const r = resolverTarjetaProducto(PILDORA_SITIO, { card_preset: 'boxed', add: { bg: '#ff0000' } })
+  check(contadorCantidadActivo(r?.add) && r.add.bg === '#ff0000', 'lo escrito en la sección se suma, clave por clave')
+  const r2 = resolverTarjetaProducto(PILDORA_SITIO, { add: { button_shape: 'rounded' } })
+  check(!contadorCantidadActivo(r2?.add) && r2.add.button_style === 'icon_only', 'lo escrito en la sección gana: sin círculo no hay contador')
+  const r3 = resolverTarjetaProducto({ card_preset: 'boxed' }, { add: { button_style: 'icon_only', button_shape: 'circle', quantity_stepper: true } })
+  check(contadorCantidadActivo(r3?.add), 'contador escrito en la sección sobre un sitio con preset')
+  const r4 = resolverTarjetaProducto({ add: { button_style: 'icon_only', button_shape: 'circle' } }, { add: { quantity_stepper: true } })
+  check(contadorCantidadActivo(r4?.add), 'la sección solo enciende el contador; forma y estilo vienen del sitio')
+  const r5 = resolverTarjetaProducto({ card_preset: 'minimal', add: { button_style: 'icon_only' } }, { card_preset: 'boxed' })
+  check(r5?.add?.button_style === 'icon_only', 'escrito en el sitio > preset de la sección (botones)')
+  const r6 = resolverTarjetaProducto({ card_preset: 'minimal' }, { card_preset: 'boxed' })
+  const boxed = aplicarEstiloTarjeta({ card_preset: 'boxed' })
+  check(JSON.stringify(r6?.add) === JSON.stringify({ ...aplicarEstiloTarjeta({ card_preset: 'minimal' }).add, ...boxed.add }), 'sin nada escrito: preset de la sección sobre preset del sitio (como antes)')
+  const r7 = resolverTarjetaProducto({ card_radius: 20 }, { card_preset: 'boxed' })
+  check(r7?.card_radius === boxed.card_radius, 'las claves de tarjeta siguen como antes: el preset de la sección gana al sitio')
+  check(resolverTarjetaProducto(null, null) === null && resolverTarjetaProducto({ card_preset: 'actual' }, { card_preset: 'actual' }) === null, 'sin estilo: la tarjeta de hoy')
+}
+
+// ── data-contador-razon ──
+const SIMPLE = { esPadre: false, sinStock: false, sinPrecio: false, carritoExterno: false }
+const ADD_OK = { button_style: 'icon_only', button_shape: 'circle', quantity_stepper: true }
+check(razonSinContador(undefined, SIMPLE) === null && razonSinContador({ button_style: 'icon_only', button_shape: 'circle' }, SIMPLE) === null, 'sin la clave: sin razón (no se pidió)')
+check(razonSinContador(ADD_OK, SIMPLE) === null, 'simple con stock y precio: sale el contador')
+check(razonSinContador({ ...ADD_OK, button_shape: 'rounded' }, SIMPLE) === 'estilo', 'estilo')
+check(razonSinContador({ ...ADD_OK, button_style: 'solid' }, { ...SIMPLE, esPadre: true }) === 'estilo', 'estilo antes que padre')
+check(razonSinContador(ADD_OK, { ...SIMPLE, carritoExterno: true }) === 'carrito_externo', 'carrito_externo')
+check(razonSinContador(ADD_OK, { ...SIMPLE, esPadre: true }) === 'padre', 'padre')
+check(razonSinContador(ADD_OK, { ...SIMPLE, sinStock: true }) === 'sin_stock', 'sin_stock')
+check(razonSinContador(ADD_OK, { ...SIMPLE, sinPrecio: true }) === 'sin_precio', 'sin_precio')
+check(tarjeta.includes("{...(razonContador ? { 'data-contador-razon': razonContador } : {})}"), 'la tarjeta deja data-contador-razon')
+
+// ── Padres: el «+» abre el selector de variantes ──
+check(tarjeta.includes("if (esPadre && contadorEnPadre && accion === 'add_to_cart') return estilo.add"), 'padre con contador: el «+» usa el estilo de «Agregar», no «Elegir»')
+check(tarjeta.includes("if (button.action === 'add_to_cart' && isParent && abrirVariantes && btnIconOnly)") && tarjeta.includes('abrirVariantes()'), 'el «+» del padre abre el selector')
+check(tarjeta.includes('const contadorEnPadre = !!estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !onAddToCart && isParent && !padreSinVariantes(product)'), 'solo con el contador, sin carrito externo y con variantes')
+check(tarjeta.includes('{contadorEnPadre && dialogoVariantes.dialogo}'), 'la tarjeta monta el diálogo solo con el contador en un padre')
+const dialogo = await readFile(join(ROOT, 'components/site/DialogoVariantes.tsx'), 'utf8')
+check(dialogo.includes('/api/products/${producto.id}/variants?organizationId=${organizationId}${sedeParam}') && dialogo.includes('agregarPlatoAlCarrito(organizationSubdomain, branchId, {'), 'DialogoVariantes: misma carga y misma línea de carrito de siempre')
+const grilla = await readFile(join(ROOT, 'components/site/ProductGrid.tsx'), 'utf8')
+check(grilla.includes('useDialogoVariantes(') && !grilla.includes('<VariantSelector'), 'ProductGrid usa el mismo diálogo (sin copia)')
+
+// ── Prioridad card_buttons / product_card_style.add ──
+check(tarjeta.includes("// Prioridad entre `card_buttons` (heredado, de la sección) y el estilo de tarjeta"), 'prioridad documentada en ProductCard')
+check(tarjeta.includes("if (estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !effectiveButtons.some((b) => b.action === 'add_to_cart'))"), 'con el contador, se agrega «Agregar» si card_buttons no lo trae')
 
 // ── Secciones de la portada: con el contador encendido no pasan su addToCart ──
 // La tarjeta solo pinta la píldora sin onAddToCart externo; FeaturedProducts («Lo más vendido»),

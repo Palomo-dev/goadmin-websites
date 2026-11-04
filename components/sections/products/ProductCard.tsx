@@ -45,6 +45,7 @@ import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useFavorites } from '@/lib/hooks/useFavorites'
 import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
+import { useDialogoVariantes } from '@/components/site/DialogoVariantes'
 import { ShareDialog } from '@/components/site/ShareDialog'
 import { addProductToCart, useCartLineQty, type CartLineInput } from '@/lib/cart'
 import { CardQuantityStepper } from './CardQuantityStepper'
@@ -71,6 +72,7 @@ import {
   posicionBotonInterna,
   radioForma,
   contadorCantidadActivo,
+  razonSinContador,
   separacionTarjetas,
   type EstiloBotonTarjeta,
   type EstiloTarjetaProducto,
@@ -191,7 +193,9 @@ function aplicarBotonTarjeta(btn: CardButtonConfig, cfg: EstiloBotonTarjeta | un
   }
 }
 
-function cfgBoton(estilo: EstiloTarjetaProducto, accion: string, esPadre: boolean): EstiloBotonTarjeta | undefined {
+function cfgBoton(estilo: EstiloTarjetaProducto, accion: string, esPadre: boolean, contadorEnPadre = false): EstiloBotonTarjeta | undefined {
+  // Con el contador encendido, el padre lleva el mismo «+» circular de «Agregar» (abre el selector de variantes).
+  if (esPadre && contadorEnPadre && accion === 'add_to_cart') return estilo.add
   if (esPadre && (accion === 'add_to_cart' || accion === 'buy_now')) return estilo.choose ?? estilo.add
   if (accion === 'add_to_cart') return estilo.add
   if (accion === 'buy_now') return estilo.buy
@@ -565,6 +569,7 @@ function CardButtonRenderer({
   onQuickView,
   onShare,
   contador,
+  abrirVariantes,
 }: {
   button: CardButtonConfig
   product: any
@@ -582,6 +587,8 @@ function CardButtonRenderer({
   onShare?: () => void
   /** «Contador de cantidad»: solo llega con la opción encendida y un producto simple con stock. */
   contador?: { subdomain: string; branchId?: number | null; line: CartLineInput; stock: number | null }
+  /** Contador encendido en un padre con variantes: el «+» abre el selector de variantes. */
+  abrirVariantes?: () => void
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -788,6 +795,27 @@ function CardButtonRenderer({
     )
   }
 
+  // Contador encendido en un padre con variantes: el mismo «+» circular, que abre el selector de
+  // variantes en un diálogo (sin salir de la página). Elegida la variante, se agrega al carrito.
+  if (button.action === 'add_to_cart' && isParent && abrirVariantes && btnIconOnly) {
+    return (
+      <Button
+        type="button"
+        size={size as any}
+        variant={variant === 'gradient' ? 'solid' : variant as any}
+        className={sizeTextClass}
+        style={baseStyle}
+        aria-label={`Elegir opciones de ${product.name}`}
+        data-contador-padre=""
+        onClick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); abrirVariantes() }}
+        onMouseEnter={alPasar ? (e) => alPasar(e, true) : undefined}
+        onMouseLeave={alPasar ? (e) => alPasar(e, false) : undefined}
+      >
+        <Plus className={iconSizeClass} />
+      </Button>
+    )
+  }
+
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
     const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
     // El ícono del botón normal (Plus, etc.) no se reutiliza: «Elegir» lleva Layers.
@@ -949,7 +977,20 @@ export function ProductCard({
   // externo: restaurante y mesa siguen igual), producto simple y con stock. Apagado: nada cambia.
   const subCarrito = organizationSubdomain || (typeof window !== 'undefined' ? window.location.hostname.split('.')[0] : '')
   const precioContador = getProductPrice(product)
-  const conContador = !!estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !onAddToCart && !isParent && !outOfStock && precioContador !== null
+  // Por qué no sale el contador, si se pidió (`data-contador-razon`). Sin razón: sale.
+  const razonContador = estiloTarjeta
+    ? razonSinContador(estiloTarjeta.add, { esPadre: isParent, sinStock: outOfStock, sinPrecio: precioContador === null, carritoExterno: !!onAddToCart })
+    : null
+  const conContador = !!estiloTarjeta && estiloTarjeta.add?.quantity_stepper === true && razonContador === null
+  // Padre con variantes y el contador encendido: el «+» abre el selector de variantes (DialogoVariantes).
+  const contadorEnPadre = !!estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !onAddToCart && isParent && !padreSinVariantes(product)
+  const dialogoVariantes = useDialogoVariantes({
+    organizationId: effectiveOrgId,
+    organizationSubdomain: subCarrito,
+    branchId,
+    primaryColor,
+    imagenDe: getProductImageUrl,
+  })
   const qtyContador = useCartLineQty(subCarrito, branchId, product.id, conContador)
   const contador = conContador
     ? {
@@ -1038,9 +1079,20 @@ export function ProductCard({
     }
   }
 
+  // Prioridad entre `card_buttons` (heredado, de la sección) y el estilo de tarjeta
+  // (`product_card_style` del sitio y de la sección, ya resueltos clave por clave):
+  // - El estilo manda en cómo se ven «Agregar», «Comprar» y «Elegir» (estilo, forma, tamaño,
+  //   posición, ícono, colores) y en si se muestran (`show`): `aplicarBotonTarjeta` pisa el botón.
+  // - `card_buttons` decide qué otras acciones hay (favorito, vista rápida, WhatsApp…) y el texto.
+  // - Con el contador encendido, si `card_buttons` no trae «Agregar», se agrega (el contador
+  //   vive en ese botón).
+  if (estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !effectiveButtons.some((b) => b.action === 'add_to_cart')) {
+    effectiveButtons = [{ action: 'add_to_cart', variant: 'solid', size: 'sm' }, ...effectiveButtons]
+  }
+
   if (estiloTarjeta) {
     effectiveButtons = effectiveButtons
-      .map((btn) => aplicarBotonTarjeta(btn, cfgBoton(estiloTarjeta, btn.action, isParent)))
+      .map((btn) => aplicarBotonTarjeta(btn, cfgBoton(estiloTarjeta, btn.action, isParent, contadorEnPadre)))
       .filter((btn): btn is CardButtonConfig => btn != null)
     const etiquetas = etiquetasDeEstilo(estiloTarjeta)
     if (etiquetas) {
@@ -1274,6 +1326,7 @@ export function ProductCard({
             onQuickView={() => setQuickViewOpen(true)}
             onShare={() => setShareOpen(true)}
             contador={contador}
+            abrirVariantes={contadorEnPadre ? () => { void dialogoVariantes.abrir(product) } : undefined}
           />
         ))}
     </div>
@@ -1301,6 +1354,7 @@ export function ProductCard({
     <div
       className={`group ${cardClassName} ${legacyDarkClasses.join(' ')} ${className}`}
       style={cardStyleObj}
+      {...(razonContador ? { 'data-contador-razon': razonContador } : {})}
     >
       <Link href={ruta(`/productos/${product.uuid}`)} className={horizontal ? 'relative w-28 shrink-0 self-stretch sm:w-40' : undefined}>
         <div
@@ -1463,6 +1517,9 @@ export function ProductCard({
           </div>
         </div>
       )}
+
+      {/* Selector de variantes del «+» de un padre (contador encendido) */}
+      {contadorEnPadre && dialogoVariantes.dialogo}
 
       {/* Vista rápida modal */}
       <ProductQuickView
