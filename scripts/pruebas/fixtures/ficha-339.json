@@ -1,0 +1,643 @@
+{
+  "org": 339,
+  "descripcion": "org 339 (retail, sitio V2): producto padre con 2 variantes de tamaño, 4 imágenes, precio comparado, stock por variante.",
+  "organization": {
+    "id": 339,
+    "name": "Tienda 339",
+    "subdomain": "tienda-339",
+    "custom_domain": null,
+    "logo_url": null,
+    "type_id": 3,
+    "timezone": "America/Bogota",
+    "primary_color": "#F9C11D",
+    "website_settings": {
+      "cart_button_mode": "dynamic",
+      "cart_button_texts": [
+        "Comprar Ahora",
+        "Aprovechar Oferta",
+        "Obtener Descuento",
+        "Comprar con Descuento"
+      ],
+      "countdown_mode": "daily_reset",
+      "countdown_style": null,
+      "countdown_title": "",
+      "countdown_end_date": "",
+      "countdown_timezone": "America/Bogota",
+      "countdown_reset_hour": 0,
+      "countdown_show_in_header": true,
+      "countdown_show_in_product": true,
+      "currency_position": "left",
+      "show_currency_code": false,
+      "show_buy_now_button": true,
+      "enable_online_ordering": true,
+      "checkout_stock_warning_threshold": 5,
+      "primary_color": "#F9C11D",
+      "secondary_color": "#000000",
+      "theme_mode": "light",
+      "countdown_enabled": false,
+      "checkout_show_stock_warning": false
+    }
+  },
+  "primaryColor": "#F9C11D",
+  "branchId": null,
+  "product": {
+    "status": "active",
+    "tag_id": null,
+    "tax_id": null,
+    "barcode": null,
+    "station": null,
+    "width_cm": null,
+    "height_cm": null,
+    "length_cm": null,
+    "sale_mode": "unit",
+    "scale_plu": null,
+    "unit_code": "UN  ",
+    "weight_kg": null,
+    "rating_avg": null,
+    "track_lots": false,
+    "is_composite": false,
+    "min_sale_qty": null,
+    "product_type": "product",
+    "qty_decimals": 0,
+    "service_type": null,
+    "track_serial": false,
+    "price_ref_qty": null,
+    "require_scale": false,
+    "reviews_count": 0,
+    "tare_required": false,
+    "serial_pattern": null,
+    "production_type": "simple",
+    "warranty_months": null,
+    "default_tare_qty": null,
+    "price_ref_unit_code": null,
+    "auto_generate_serial": false,
+    "id": 111412,
+    "uuid": "74ad2aa4-78a7-4501-b308-71d8e59fa627",
+    "sku": "EL-513",
+    "name": "Cama baúl lino fantasía",
+    "brand": "Fantasia",
+    "is_parent": true,
+    "reference": "CAMBAUL-LINO",
+    "category_id": 2074,
+    "description": "Cama baúl lino fantasía\n\nComplemento ideal para el colchón ya que ofrece la correcta sustentación y soporte adecuado evitando el uso de tablas, optimizando su duración y correcto funcionamiento, lo que garantiza estabilidad, solidez y ausencia de ruidos. Además, por su baúl brinda la capacidad de ahorrar espacio al poder almacenar objetos en su interior. Llévala en tipo cuero o lino gris.\n\nCaracterísticas:\n- Tamaño del producto en cm: 30 de altura\n- Tipo de producto: Muebles de alcoba",
+    "track_stock": true,
+    "variant_data": {},
+    "organization_id": 339,
+    "parent_product_id": null,
+    "product_prices": [
+      {
+        "id": 332098,
+        "price": 304980,
+        "compare_price": 2277800,
+        "effective_to": null
+      }
+    ],
+    "product_images": [
+      {
+        "id": 487228,
+        "storage_path": "fixtures/339/487228.jpg",
+        "is_primary": true,
+        "display_order": 0,
+        "shared_image_id": null,
+        "shared_images": null,
+        "archivo_disponible": true
+      },
+      {
+        "id": 487229,
+        "storage_path": "fixtures/339/487229.jpg",
+        "is_primary": false,
+        "display_order": 1,
+        "shared_image_id": null,
+        "shared_images": null,
+        "archivo_disponible": true
+      },
+      {
+        "id": 487230,
+        "storage_path": "fixtures/339/487230.jpg",
+        "is_primary": false,
+        "display_order": 2,
+        "shared_image_id": null,
+        "shared_images": null,
+        "archivo_disponible": true
+      },
+      {
+        "id": 487231,
+        "storage_path": "fixtures/339/487231.jpg",
+        "is_primary": false,
+        "display_order": 3,
+        "shared_image_id": null,
+        "shared_images": null,
+        "archivo_disponible": true
+      }
+    ],
+    "stock_levels": [
+      {
+        "branch_id": 544,
+        "qty_on_hand": 0,
+        "qty_reserved": 0
+      }
+    ]
+  },
+  "variants": [
+    {
+      "status": "active",
+      "tag_id": null,
+      "tax_id": null,
+      "barcode": null,
+      "station": null,
+      "width_cm": null,
+      "height_cm": null,
+      "length_cm": null,
+      "sale_mode": "unit",
+      "scale_plu": null,
+      "unit_code": "UN  ",
+      "weight_kg": null,
+      "rating_avg": null,
+      "track_lots": false,
+      "is_composite": false,
+      "min_sale_qty": null,
+      "product_type": "product",
+      "qty_decimals": 0,
+      "service_type": null,
+      "track_serial": false,
+      "price_ref_qty": null,
+      "require_scale": false,
+      "reviews_count": 0,
+      "tare_required": false,
+      "serial_pattern": null,
+      "production_type": "simple",
+      "warranty_months": null,
+      "default_tare_qty": null,
+      "price_ref_unit_code": null,
+      "auto_generate_serial": false,
+      "id": 144692,
+      "uuid": "2d346298-ac72-4f49-98ec-99224aad5a97",
+      "sku": "EL-513-120X190CM",
+      "name": "Cama baúl lino fantasía - 120x190cm",
+      "brand": "Fantasia",
+      "is_parent": false,
+      "reference": "CAMBAUL-LINO",
+      "category_id": 2074,
+      "description": "Cama baúl lino fantasía\n\nComplemento ideal para el colchón ya que ofrece la correcta sustentación y soporte adecuado evitando el uso de tablas, optimizando su duración y correcto funcionamiento, lo que garantiza estabilidad, solidez y ausencia de ruidos. Además, por su baúl brinda la capacidad de ahorrar espacio al poder almacenar objetos en su interior. Llévala en tipo cuero o lino gris.\n\nCaracterísticas:\n- Tamaño del producto en cm: 30 de altura\n- Tipo de producto: Muebles de alcoba",
+      "track_stock": true,
+      "variant_data": {
+        "Tamaño": "120x190cm"
+      },
+      "organization_id": 339,
+      "parent_product_id": 111412,
+      "product_prices": [
+        {
+          "id": 1446920,
+          "price": 304980,
+          "compare_price": 2277800,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 488025,
+          "storage_path": "fixtures/339/488025.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 488026,
+          "storage_path": "fixtures/339/488026.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "status": "active",
+      "tag_id": null,
+      "tax_id": null,
+      "barcode": null,
+      "station": null,
+      "width_cm": null,
+      "height_cm": null,
+      "length_cm": null,
+      "sale_mode": "unit",
+      "scale_plu": null,
+      "unit_code": "UN  ",
+      "weight_kg": null,
+      "rating_avg": null,
+      "track_lots": false,
+      "is_composite": false,
+      "min_sale_qty": null,
+      "product_type": "product",
+      "qty_decimals": 0,
+      "service_type": null,
+      "track_serial": false,
+      "price_ref_qty": null,
+      "require_scale": false,
+      "reviews_count": 0,
+      "tare_required": false,
+      "serial_pattern": null,
+      "production_type": "simple",
+      "warranty_months": null,
+      "default_tare_qty": null,
+      "price_ref_unit_code": null,
+      "auto_generate_serial": false,
+      "id": 144693,
+      "uuid": "473742cb-7066-4aea-8e5f-c17b3908e46a",
+      "sku": "EL-513-140X190CM",
+      "name": "Cama baúl lino fantasía - 140x190cm",
+      "brand": "Fantasia",
+      "is_parent": false,
+      "reference": "CAMBAUL-LINO",
+      "category_id": 2074,
+      "description": "Cama baúl lino fantasía\n\nComplemento ideal para el colchón ya que ofrece la correcta sustentación y soporte adecuado evitando el uso de tablas, optimizando su duración y correcto funcionamiento, lo que garantiza estabilidad, solidez y ausencia de ruidos. Además, por su baúl brinda la capacidad de ahorrar espacio al poder almacenar objetos en su interior. Llévala en tipo cuero o lino gris.\n\nCaracterísticas:\n- Tamaño del producto en cm: 30 de altura\n- Tipo de producto: Muebles de alcoba",
+      "track_stock": true,
+      "variant_data": {
+        "Tamaño": "140x190cm"
+      },
+      "organization_id": 339,
+      "parent_product_id": 111412,
+      "product_prices": [
+        {
+          "id": 1446930,
+          "price": 325980,
+          "compare_price": 2433700,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 488027,
+          "storage_path": "fixtures/339/488027.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 488028,
+          "storage_path": "fixtures/339/488028.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    }
+  ],
+  "modifierGroups": [],
+  "ordenAtributos": {
+    "Tamaño": {
+      "120x190cm": 0,
+      "140x190cm": 0
+    }
+  },
+  "relatedProducts": [
+    {
+      "id": 111413,
+      "uuid": "e4a4875a-250b-4bca-87f9-ae15e76eb9ea",
+      "name": "Cama tarima acolchada fantasía",
+      "is_parent": true,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114130,
+          "price": 331980,
+          "compare_price": 2474900,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487217,
+          "storage_path": "fixtures/339/487217.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487218,
+          "storage_path": "fixtures/339/487218.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 0,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111414,
+      "uuid": "eca9654c-4a0f-4fa9-aa1e-97a2b315cf5d",
+      "name": "Esquinero Racing Moon",
+      "is_parent": true,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114140,
+          "price": 669980,
+          "compare_price": 4926300,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 330534,
+          "storage_path": "fixtures/339/330534.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 0,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111415,
+      "uuid": "6facdc62-cc5e-45b0-9248-161a3b4e8b4e",
+      "name": "Silla reclinable turin fantasía",
+      "is_parent": true,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114150,
+          "price": 437980,
+          "compare_price": 3260100,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487220,
+          "storage_path": "fixtures/339/487220.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487221,
+          "storage_path": "fixtures/339/487221.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 0,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111416,
+      "uuid": "4aaf121d-75fd-43f4-8757-f4348dface62",
+      "name": "Sofá cama lisboa fantasía",
+      "is_parent": true,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114160,
+          "price": 408980,
+          "compare_price": 2044900,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487259,
+          "storage_path": "fixtures/339/487259.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487260,
+          "storage_path": "fixtures/339/487260.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 0,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111480,
+      "uuid": "673c80e9-4415-41f6-a837-5d7e71152509",
+      "name": "Comedor Imperial Inval 4 Puestos",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114800,
+          "price": 319980,
+          "compare_price": 2352800,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487525,
+          "storage_path": "fixtures/339/487525.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487526,
+          "storage_path": "fixtures/339/487526.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111481,
+      "uuid": "5849c8e4-f63d-495a-a1e6-11a9998614e8",
+      "name": "Comedor Inval Glienza 6 Puestos Wengue/Cafe",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114810,
+          "price": 359980,
+          "compare_price": 2646900,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487529,
+          "storage_path": "fixtures/339/487529.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487530,
+          "storage_path": "fixtures/339/487530.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111482,
+      "uuid": "8343ff45-8e9f-4d79-8ef9-ac5a8e5dfe7f",
+      "name": "Comedor Tramontino Inval 4 Puestos",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114820,
+          "price": 373980,
+          "compare_price": 2749900,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487527,
+          "storage_path": "fixtures/339/487527.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487528,
+          "storage_path": "fixtures/339/487528.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 111483,
+      "uuid": "60036a9e-9e38-4751-be84-0692be149223",
+      "name": "Silla reclinable porto fantasía",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 1114830,
+          "price": 355980,
+          "compare_price": 2646900,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 487547,
+          "storage_path": "fixtures/339/487547.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        },
+        {
+          "id": 487548,
+          "storage_path": "fixtures/339/487548.jpg",
+          "is_primary": false,
+          "display_order": 1,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 544,
+          "qty_on_hand": 100,
+          "qty_reserved": 0
+        }
+      ]
+    }
+  ]
+}

@@ -63,7 +63,9 @@
     "verify:franja": "node --disable-warning=ExperimentalWarning scripts/verify-franja.mjs",
     "verify:iconos-categoria": "node --disable-warning=ExperimentalWarning scripts/verify-iconos-categoria.mjs",
     "verify:contador-cantidad": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contador-cantidad.mjs",
-    "verify:vista-previa-referencias": "node --disable-warning=ExperimentalWarning scripts/verify-vista-previa-referencias.mjs"
+    "verify:vista-previa-referencias": "node --disable-warning=ExperimentalWarning scripts/verify-vista-previa-referencias.mjs",
+    "verify:ficha-diff": "node scripts/pruebas/ficha-diff.mjs",
+    "verify:opciones-ficha": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-opciones-ficha.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

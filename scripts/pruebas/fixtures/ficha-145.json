@@ -1,0 +1,383 @@
+{
+  "org": 145,
+  "descripcion": "org 145 (retail legacy, contador diario activo en la ficha): producto simple, 1 imagen, precio comparado, stock 99.",
+  "organization": {
+    "id": 145,
+    "name": "Tienda 145",
+    "subdomain": "tienda-145",
+    "custom_domain": null,
+    "logo_url": null,
+    "type_id": 3,
+    "timezone": "America/Bogota",
+    "primary_color": "#a0d241",
+    "website_settings": {
+      "cart_button_mode": "dynamic",
+      "cart_button_texts": [
+        "Comprar Ahora",
+        "Aprovechar Oferta",
+        "Obtener Descuento",
+        "Comprar con Descuento"
+      ],
+      "countdown_mode": "daily_reset",
+      "countdown_style": null,
+      "countdown_title": "",
+      "countdown_end_date": "",
+      "countdown_timezone": "America/Bogota",
+      "countdown_reset_hour": 0,
+      "countdown_show_in_header": true,
+      "countdown_show_in_product": true,
+      "currency_position": "left",
+      "show_currency_code": false,
+      "show_buy_now_button": true,
+      "enable_online_ordering": true,
+      "checkout_stock_warning_threshold": 5,
+      "primary_color": "#a0d241",
+      "secondary_color": "#093781",
+      "theme_mode": "light",
+      "countdown_enabled": true,
+      "checkout_show_stock_warning": true
+    }
+  },
+  "primaryColor": "#a0d241",
+  "branchId": null,
+  "product": {
+    "status": "active",
+    "tag_id": 788,
+    "tax_id": null,
+    "barcode": null,
+    "station": null,
+    "width_cm": null,
+    "height_cm": null,
+    "length_cm": null,
+    "sale_mode": "unit",
+    "scale_plu": null,
+    "unit_code": "UN  ",
+    "weight_kg": null,
+    "rating_avg": null,
+    "track_lots": false,
+    "is_composite": false,
+    "min_sale_qty": null,
+    "product_type": "product",
+    "qty_decimals": 0,
+    "service_type": null,
+    "track_serial": false,
+    "price_ref_qty": null,
+    "require_scale": false,
+    "reviews_count": 0,
+    "tare_required": false,
+    "serial_pattern": null,
+    "production_type": "simple",
+    "warranty_months": null,
+    "default_tare_qty": null,
+    "price_ref_unit_code": null,
+    "auto_generate_serial": false,
+    "id": 66268,
+    "uuid": "3b31860c-3e93-430f-b609-7f491d5852e3",
+    "sku": "0036339",
+    "name": "Set x 5 Bowls Ámbar / Home Elements",
+    "brand": "Home Elements",
+    "is_parent": false,
+    "reference": "0036339",
+    "category_id": 1097,
+    "description": "🥣 Prepara y sirve con estilo gracias al Set x 5 Bowls de Home Elements , de la colección ámbar.\n ✨ Su diseño texturizado tipo cuadrícula le da un toque decorativo único, perfecto para mezclar, hornear o servir directamente en la mesa.\n 🍫 Fabricados en vidrio refractario resistente, incluyen 1 bowl grande y 4 bowls pequeños, ideales para toda la familia o para hacer meal prep de tus recetas favoritas.\n CARACTERÍSTICAS \n \n• Fabricados en vidrio borosilicatado , resistente a choques térmicos de hasta 120°C\n• Incluye 1 bowl grande de 1.8 litros y 4 bowls pequeños de 300 ml cada uno\n• Diseño texturizado tipo cuadrícula que aporta un toque decorativo y elegante\n• Apto para horno convencional y microondas hasta 400°C (retirar tapa en microondas)\n• Apto para congelador , refrigerador y lavavajillas , facilitando su uso diario\n• No retiene bacterias, olores ni sabores, garantizando mayor higiene\n• \n ¿Para quién es ideal? Si buscas bowls versátiles para mezclar masas, organizar ingredientes de repostería o servir ensaladas y postres individuales, este set con un bowl grande y cuatro pequeños cubre desde la preparación hasta el servicio en una sola compra.\n• Somos distribuidores autorizados…",
+    "track_stock": true,
+    "variant_data": null,
+    "organization_id": 145,
+    "parent_product_id": null,
+    "product_prices": [
+      {
+        "id": 168386,
+        "price": 10800,
+        "compare_price": 61000,
+        "effective_to": null
+      }
+    ],
+    "product_images": [
+      {
+        "id": 170093,
+        "storage_path": "fixtures/145/170093.jpg",
+        "is_primary": true,
+        "display_order": 0,
+        "shared_image_id": null,
+        "shared_images": null,
+        "archivo_disponible": true
+      }
+    ],
+    "stock_levels": [
+      {
+        "branch_id": 125,
+        "qty_on_hand": 99,
+        "qty_reserved": 46
+      }
+    ]
+  },
+  "variants": [],
+  "modifierGroups": [],
+  "ordenAtributos": null,
+  "relatedProducts": [
+    {
+      "id": 66269,
+      "uuid": "a3aa9a5d-6d1c-4978-ba55-b49f3b9e13ec",
+      "name": "Set x 4 Mini Recipientes Refractarios Corazón / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662690,
+          "price": 5200,
+          "compare_price": 29000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170073,
+          "storage_path": "fixtures/145/170073.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 96,
+          "qty_reserved": 26
+        }
+      ]
+    },
+    {
+      "id": 66270,
+      "uuid": "98eb5ff8-5fac-4cf4-b507-d57882d3366c",
+      "name": "Taza Medidora 1 Litro Ámbar / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662700,
+          "price": 7800,
+          "compare_price": 44000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170096,
+          "storage_path": "fixtures/145/170096.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 49,
+          "qty_reserved": 2
+        }
+      ]
+    },
+    {
+      "id": 66271,
+      "uuid": "54fbff0a-bf6e-4bba-adca-795a3c3e3cba",
+      "name": "Set x 3 Refractarias Rectangulares Ámbar / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662710,
+          "price": 16700,
+          "compare_price": 94000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170085,
+          "storage_path": "fixtures/145/170085.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 96,
+          "qty_reserved": 4
+        }
+      ]
+    },
+    {
+      "id": 66272,
+      "uuid": "913501cc-4ee3-42a5-8dc6-687d57d09f1b",
+      "name": "Set x 4 Vasos 12 oz Ámbar / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662720,
+          "price": 8000,
+          "compare_price": 45000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170088,
+          "storage_path": "fixtures/145/170088.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 100,
+          "qty_reserved": 1
+        }
+      ]
+    },
+    {
+      "id": 66273,
+      "uuid": "c5a04199-3bdf-4a17-ad26-6a27c02b6f83",
+      "name": "Set x 4 Refractarias Tapa Verde / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662730,
+          "price": 11600,
+          "compare_price": 65000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170090,
+          "storage_path": "fixtures/145/170090.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 47,
+          "qty_reserved": 0
+        }
+      ]
+    },
+    {
+      "id": 66274,
+      "uuid": "33fd3c23-30a5-4b0b-8aa9-ee81f22916c2",
+      "name": "Set x 3 Refractarias Redondas Ámbar / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662740,
+          "price": 14300,
+          "compare_price": 81000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170080,
+          "storage_path": "fixtures/145/170080.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 48,
+          "qty_reserved": 1
+        }
+      ]
+    },
+    {
+      "id": 66275,
+      "uuid": "5eb7e861-ccde-4bfa-bc76-cfaa84d9fcd7",
+      "name": "Recipiente con división y Tapa en Vidrio Ámbar / Home Elements",
+      "is_parent": false,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 662750,
+          "price": 8200,
+          "compare_price": 47000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 170076,
+          "storage_path": "fixtures/145/170076.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 48,
+          "qty_reserved": 2
+        }
+      ]
+    },
+    {
+      "id": 66343,
+      "uuid": "971e074b-6985-472f-aeeb-470e482c3b17",
+      "name": "Set Sanduchera + Botilito Spiderman / Wantu",
+      "is_parent": true,
+      "track_stock": true,
+      "product_prices": [
+        {
+          "id": 663430,
+          "price": 3900,
+          "compare_price": 23000,
+          "effective_to": null
+        }
+      ],
+      "product_images": [
+        {
+          "id": 167428,
+          "storage_path": "fixtures/145/167428.jpg",
+          "is_primary": true,
+          "display_order": 0,
+          "shared_image_id": null,
+          "shared_images": null,
+          "archivo_disponible": true
+        }
+      ],
+      "stock_levels": [
+        {
+          "branch_id": 125,
+          "qty_on_hand": 50,
+          "qty_reserved": 0
+        }
+      ]
+    }
+  ]
+}

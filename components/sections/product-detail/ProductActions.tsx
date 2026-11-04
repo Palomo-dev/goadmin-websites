@@ -2,11 +2,13 @@
 
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 
-export const CONTENT_KEYS = ['sticky_mobile'] as const
+export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout'] as const
 
 interface ProductActionsProps {
   content: {
     sticky_mobile?: boolean
+    /** `page_settings.buttons_layout` de la ficha. Ausente = 'stacked', como siempre. */
+    buttons_layout?: 'stacked' | 'inline' | 'split'
   }
   primaryColor?: string
   data?: {
@@ -45,6 +47,7 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
         modifierGroups={data?.modifierGroups || []}
         trackStock={data?.trackStock}
         stockLevels={data?.stockLevels}
+        buttonsLayout={content.buttons_layout || 'stacked'}
         branchId={data?.branchId ?? null}
         restaurante={data?.restaurante ?? null}
         puedePedir={data?.puedePedir ?? true}
