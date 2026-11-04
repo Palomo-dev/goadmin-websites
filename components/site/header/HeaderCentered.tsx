@@ -80,22 +80,13 @@ export default function HeaderCentered({
         </div>
       </div>
 
-      {/* Fila inferior: nav centrado | search bar — z-10 para que el dropdown del buscador superior se vea encima */}
+      {/* Fila inferior: nav centrado */}
       <div className="relative z-10 backdrop-blur-md bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
             {navItems.length > 0 && (
               <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} />
             )}
-            {barraSiCromo(settings, showSearchBar ? (
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="w-56"
-                size="sm"
-                icon={SearchIconComp}
-              />
-            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'w-56' })}
           </div>
         </div>
       </div>

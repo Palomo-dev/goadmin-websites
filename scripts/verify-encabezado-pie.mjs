@@ -270,6 +270,10 @@ for (const ruta of [
   const src = await fuente(ruta)
   check(src.includes('estiloDivisor(settings') && src.includes('variablesEncabezado(settings)'), `${ruta} no usa el divisor configurable`)
   check(!src.includes('border-b border-gray-200'), `${ruta} sigue con el borde gris fijo`)
+  // Un solo buscador por encabezado de escritorio: «Logo centrado» lo pintaba en la fila del logo
+  // y otra vez en la fila del menú (dos barras con Barra visible, compacta, grande y Píldora).
+  const buscadores = (src.match(/barraSiCromo\(/g) || []).length
+  check(buscadores === 1, `${ruta} pinta el buscador ${buscadores} veces (debe ser 1)`)
 }
 for (const ruta of [
   'components/site/header/mobile/MobileDrawer.tsx',
