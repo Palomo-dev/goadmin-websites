@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 import {
@@ -28,6 +28,7 @@ import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
 import { barraSiCromo } from './BuscadorCromo';
+import { useBarraAbajo } from './barraEnFila';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 /**
@@ -81,6 +82,21 @@ export default function HeaderMega({
   // a menos que search_style === 'hidden'
   const showSearchBar = searchStyle !== 'hidden';
 
+  // Barra del buscador en la fila; si no cabe (menos de 240px, el menú recortaría o la fila
+  // desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
+  const barra = (clase: string, enFila = true) => barraSiCromo(settings, showSearchBar ? (
+              <SearchBarInline
+                primaryColor={primaryColor}
+                organizationId={organizationId}
+                className={clase}
+                size="lg"
+                icon={SearchIconComp}
+              />
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase, enFila });
+  const hayBarra = barra('') != null;
+  const filaRef = useRef<HTMLDivElement>(null);
+  const barraAbajo = useBarraAbajo(filaRef, hayBarra);
+
   return (
     <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {/* Topbar opcional */}
@@ -90,7 +106,7 @@ export default function HeaderMega({
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         {/* Fila superior: logo | BARRA DE BÚSQUEDA GRANDE | acciones */}
         <div className="relative z-20 max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 20}px` }}>
+          <div ref={filaRef} className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 20}px` }}>
             {/* Logo izquierda */}
             <HeaderLogo
               organization={organization}
@@ -99,15 +115,7 @@ export default function HeaderMega({
             />
 
             {/* Barra de búsqueda grande (siempre visible a menos que search_style='hidden') */}
-            {barraSiCromo(settings, showSearchBar ? (
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="flex-1 max-w-2xl mx-auto"
-                size="lg"
-                icon={SearchIconComp}
-              />
-            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-2xl mx-auto' })}
+            {!barraAbajo && barra('flex-1 max-w-2xl mx-auto min-w-[240px]')}
 
             {/* Acciones derecha (sin icono de búsqueda, la barra ya está visible) */}
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -132,6 +140,7 @@ export default function HeaderMega({
               />
             </div>
           </div>
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl', false)}</div>}
         </div>
 
         {/* Fila inferior: nav items con border-top — z-10 para que el dropdown del buscador superior se vea encima */}

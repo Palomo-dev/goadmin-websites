@@ -1,0 +1,3147 @@
+{
+  "_nota": "Encabezados reales de las tiendas con sitio V2 publicado (solo lectura por MCP; ver sanear-encabezados.mjs). Ajustes efectivos = ajustesPublicosDesdeDocumento(documento, legacy, null); menú = menusPublicosDesdeDocumento. Sin nombres, logos, dominios ni teléfonos reales.",
+  "extraido": "2026-11-04",
+  "tiendas": [
+    {
+      "id": 333,
+      "nombre": "Tienda 333",
+      "subdomain": "tienda-333",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_bold",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#E8892B",
+        "enable_tickets": false,
+        "secondary_color": "#1B2C3C",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "radio": {
+            "mode": "value",
+            "value": 0
+          },
+          "colores": {
+            "fondo": {
+              "mode": "value",
+              "value": "#FFFFFF"
+            },
+            "texto": {
+              "mode": "value",
+              "value": "#1B2C3C"
+            },
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#E8892B"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#1B2C3C"
+            }
+          },
+          "movimiento": {
+            "mode": "value",
+            "value": "bajo"
+          },
+          "tipografia": {
+            "cuerpo": {
+              "mode": "value",
+              "value": "Nunito"
+            },
+            "titulos": {
+              "mode": "value",
+              "value": "Poppins"
+            }
+          },
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_bold"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2018",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Sillas y Butacos",
+                "entidadId": "2018"
+              },
+              {
+                "id": "enc-cat-2025",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Vajilla y Mesa",
+                "entidadId": "2025"
+              },
+              {
+                "id": "enc-cat-2021",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Muebles y Salas",
+                "entidadId": "2021"
+              },
+              {
+                "id": "enc-cat-2023",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Organización",
+                "entidadId": "2023"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "9ca8ab2f-b256-4deb-8b25-6336c782bde9"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "8e7c26dc-959c-4e0b-a5c0-3428c64c457b"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "8e7c26dc-959c-4e0b-a5c0-3428c64c457b",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "9ca8ab2f-b256-4deb-8b25-6336c782bde9",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2018,
+          "name": "Sillas y Butacos",
+          "slug": "sillas-y-butacos"
+        },
+        {
+          "id": 2021,
+          "name": "Muebles y Salas",
+          "slug": "muebles-y-salas"
+        },
+        {
+          "id": 2023,
+          "name": "Organización y Almacenamiento",
+          "slug": "organizacion-y-almacenamiento"
+        },
+        {
+          "id": 2025,
+          "name": "Vajilla y Mesa",
+          "slug": "vajilla-y-mesa"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 335,
+      "nombre": "Tienda 335",
+      "subdomain": "tienda-335",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_elegant",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#889D81",
+        "enable_tickets": false,
+        "secondary_color": "#101010",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "radio": {
+            "mode": "value",
+            "value": 12
+          },
+          "colores": {
+            "fondo": {
+              "mode": "value",
+              "value": "#FFFFFF"
+            },
+            "texto": {
+              "mode": "value",
+              "value": "#101010"
+            },
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#889D81"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#101010"
+            }
+          },
+          "movimiento": {
+            "mode": "value",
+            "value": "bajo"
+          },
+          "tipografia": {
+            "cuerpo": {
+              "mode": "value",
+              "value": "Nunito"
+            },
+            "titulos": {
+              "mode": "value",
+              "value": "Poppins"
+            }
+          },
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_elegant"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2035",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Electrodomésticos",
+                "entidadId": "2035"
+              },
+              {
+                "id": "enc-cat-2028",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Ropa de Cama",
+                "entidadId": "2028"
+              },
+              {
+                "id": "enc-cat-2029",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Toallas y Baño",
+                "entidadId": "2029"
+              },
+              {
+                "id": "enc-cat-2030",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Muebles",
+                "entidadId": "2030"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "5426d374-81bf-409c-9deb-c48034888869"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "3ae9023f-615e-4aff-a3eb-8efa659aadf8"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "cta_bg_color": "#889D81",
+              "logo_position": "center",
+              "mobile_header": {
+                "bottom_nav": {
+                  "v": 2,
+                  "items": [
+                    {
+                      "id": "categories_modal",
+                      "icon": "whatsapp",
+                      "label": "WhatsApp",
+                      "action": "whatsapp",
+                      "target": "+57 300 0000000",
+                      "visible": true
+                    },
+                    {
+                      "id": "cart",
+                      "icon": "bag",
+                      "label": "Carrito",
+                      "action": "cart",
+                      "visible": true
+                    },
+                    {
+                      "id": "search",
+                      "icon": "search",
+                      "label": "Buscar",
+                      "action": "search",
+                      "visible": true
+                    }
+                  ],
+                  "style": {
+                    "labels": "always",
+                    "primaryId": "cart"
+                  },
+                  "enabled": true,
+                  "variant": "actions"
+                }
+              },
+              "cta_text_color": "#FFFFFF",
+              "mobile_menu_style": "fullscreen",
+              "topbar_show_email": false,
+              "topbar_announcement": "[\"5% de descuento en electrodomésticos\"]"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "3ae9023f-615e-4aff-a3eb-8efa659aadf8",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "5426d374-81bf-409c-9deb-c48034888869",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2028,
+          "name": "Ropa de Cama y Colchones",
+          "slug": "ropa-de-cama-y-colchones"
+        },
+        {
+          "id": 2029,
+          "name": "Toallas y Baño",
+          "slug": "toallas-y-bano"
+        },
+        {
+          "id": 2030,
+          "name": "Muebles",
+          "slug": "muebles"
+        },
+        {
+          "id": 2035,
+          "name": "Pequeños Electrodomésticos de Cocina",
+          "slug": "pequenos-electrodomesticos-de-cocina"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 337,
+      "nombre": "Tienda 337",
+      "subdomain": "tienda-337",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "ecommerce",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#14A8AC",
+        "enable_tickets": false,
+        "secondary_color": "#111111",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "radio": {
+            "mode": "value",
+            "value": 12
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#0E7C7F"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#111111"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "ecommerce"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2046",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Celulares",
+                "entidadId": "2046"
+              },
+              {
+                "id": "enc-cat-2047",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Portátiles",
+                "entidadId": "2047"
+              },
+              {
+                "id": "enc-cat-2051",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Smartwatches",
+                "entidadId": "2051"
+              },
+              {
+                "id": "enc-cat-2050",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Audífonos",
+                "entidadId": "2050"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "e9692570-61f7-415f-a486-ba13bb5f9b88"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "f13dd1f7-4038-4ee5-b4e2-3f06376b6652"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "cart_icon": "shopping-cart",
+              "show_topbar": true,
+              "currency_icon": "wallet",
+              "topbar_bg_color": "#111111",
+              "mobile_menu_style": "bottom_sheet",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "e9692570-61f7-415f-a486-ba13bb5f9b88",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "f13dd1f7-4038-4ee5-b4e2-3f06376b6652",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2046,
+          "name": "Celulares",
+          "slug": "celulares"
+        },
+        {
+          "id": 2047,
+          "name": "Computadores Portátiles",
+          "slug": "computadores-portatiles"
+        },
+        {
+          "id": 2050,
+          "name": "Audífonos",
+          "slug": "audifonos"
+        },
+        {
+          "id": 2051,
+          "name": "Smartwatches y Wearables",
+          "slug": "smartwatches-y-wearables"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 338,
+      "nombre": "Tienda 338",
+      "subdomain": "tienda-338",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_modern",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#E70284",
+        "enable_tickets": false,
+        "secondary_color": "#101010",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "radio": {
+            "mode": "value",
+            "value": 12
+          },
+          "colores": {
+            "fondo": {
+              "mode": "value",
+              "value": "#FFFFFF"
+            },
+            "texto": {
+              "mode": "value",
+              "value": "#101010"
+            },
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#E70284"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#101010"
+            }
+          },
+          "movimiento": {
+            "mode": "value",
+            "value": "bajo"
+          },
+          "tipografia": {
+            "cuerpo": {
+              "mode": "value",
+              "value": "Inter"
+            },
+            "titulos": {
+              "mode": "value",
+              "value": "Inter"
+            }
+          },
+          "estiloBoton": {
+            "mode": "value",
+            "value": "contorno"
+          },
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_modern"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2069",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Calzado Hombre",
+                "entidadId": "2069"
+              },
+              {
+                "id": "enc-cat-2070",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Calzado Mujer",
+                "entidadId": "2070"
+              },
+              {
+                "id": "enc-cat-2062",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Camisetas y Polos",
+                "entidadId": "2062"
+              },
+              {
+                "id": "enc-cat-2066",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Pantalones y Shorts",
+                "entidadId": "2066"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "793d0e36-2767-4279-8752-f4af71b39b13"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "e756306e-22fd-4ba0-92d9-934d024c97fb"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "mobile_header": {
+                "bottom_nav": {
+                  "v": 2,
+                  "items": [
+                    {
+                      "id": "cart",
+                      "icon": "bag",
+                      "label": "Carrito",
+                      "action": "cart",
+                      "visible": true
+                    },
+                    {
+                      "id": "home",
+                      "icon": "whatsapp",
+                      "label": "WhatsApp",
+                      "action": "whatsapp",
+                      "target": "+57 300 0000000",
+                      "visible": true
+                    },
+                    {
+                      "id": "search",
+                      "icon": "search",
+                      "label": "Buscar",
+                      "action": "search",
+                      "visible": true
+                    }
+                  ],
+                  "style": {
+                    "labels": "always"
+                  },
+                  "enabled": true,
+                  "variant": "actions"
+                }
+              },
+              "header_cta_url": "/productos",
+              "header_bg_color": "#101010",
+              "header_text_color": "#FFFFFF",
+              "topbar_show_email": false,
+              "topbar_show_phone": false,
+              "mobile_search_style": null,
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]"
+            },
+            "composicion": "centered",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "e756306e-22fd-4ba0-92d9-934d024c97fb",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "793d0e36-2767-4279-8752-f4af71b39b13",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2062,
+          "name": "Camisetas y Polos",
+          "slug": "camisetas-y-polos"
+        },
+        {
+          "id": 2066,
+          "name": "Pantalones y Shorts",
+          "slug": "pantalones-y-shorts"
+        },
+        {
+          "id": 2069,
+          "name": "Calzado Hombre",
+          "slug": "calzado-hombre"
+        },
+        {
+          "id": 2070,
+          "name": "Calzado Mujer",
+          "slug": "calzado-mujer"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 339,
+      "nombre": "Tienda 339",
+      "subdomain": "tienda-339",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_bold",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#F9C11D",
+        "enable_tickets": false,
+        "secondary_color": "#000000",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#F9C11D"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#000000"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_bold"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2076",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Ollas y Sartenes",
+                "entidadId": "2076"
+              },
+              {
+                "id": "enc-cat-2075",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Electrodomésticos",
+                "entidadId": "2075"
+              },
+              {
+                "id": "enc-cat-2077",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Utensilios de Cocina",
+                "entidadId": "2077"
+              },
+              {
+                "id": "enc-cat-2074",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Muebles",
+                "entidadId": "2074"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "ebd6391c-3da7-47b6-9c1a-708a9c33a567"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "a04c7cbc-0aea-4aa6-8f95-cc40dfcdc0e3"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {
+              "footer_show_categories": true
+            },
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "bar",
+              "header_cta_url": "/ofertas",
+              "header_bg_color": "#FFFFFF",
+              "topbar_bg_color": "#000000",
+              "header_text_color": "#111111",
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]"
+            },
+            "composicion": "mega",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "ebd6391c-3da7-47b6-9c1a-708a9c33a567",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "a04c7cbc-0aea-4aa6-8f95-cc40dfcdc0e3",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2074,
+          "name": "Muebles",
+          "slug": "muebles"
+        },
+        {
+          "id": 2075,
+          "name": "Pequeños Electrodomésticos",
+          "slug": "pequenos-electrodomesticos"
+        },
+        {
+          "id": 2076,
+          "name": "Ollas y Sartenes",
+          "slug": "ollas-y-sartenes"
+        },
+        {
+          "id": 2077,
+          "name": "Utensilios de Cocina",
+          "slug": "utensilios-de-cocina"
+        }
+      ],
+      "menuCategories": [
+        {
+          "id": 2087,
+          "name": "Cuchillos y Cubiertos",
+          "slug": "cuchillos-y-cubiertos",
+          "parent_id": null
+        },
+        {
+          "id": 2088,
+          "name": "Termos, Recipientes y Vajillas",
+          "slug": "termos-recipientes-y-vajillas",
+          "parent_id": null
+        },
+        {
+          "id": 2074,
+          "name": "Muebles",
+          "slug": "muebles",
+          "parent_id": null
+        },
+        {
+          "id": 2075,
+          "name": "Pequeños Electrodomésticos",
+          "slug": "pequenos-electrodomesticos",
+          "parent_id": null
+        },
+        {
+          "id": 2076,
+          "name": "Ollas y Sartenes",
+          "slug": "ollas-y-sartenes",
+          "parent_id": null
+        },
+        {
+          "id": 2077,
+          "name": "Utensilios de Cocina",
+          "slug": "utensilios-de-cocina",
+          "parent_id": null
+        },
+        {
+          "id": 2078,
+          "name": "Televisores",
+          "slug": "televisores",
+          "parent_id": null
+        },
+        {
+          "id": 2079,
+          "name": "Audio y Tecnología",
+          "slug": "audio-y-tecnologia",
+          "parent_id": null
+        },
+        {
+          "id": 2080,
+          "name": "Neveras y Congeladores",
+          "slug": "neveras-y-congeladores",
+          "parent_id": null
+        },
+        {
+          "id": 2081,
+          "name": "Lavadoras",
+          "slug": "lavadoras",
+          "parent_id": null
+        },
+        {
+          "id": 2082,
+          "name": "Estufas, Hornos y Campanas",
+          "slug": "estufas-hornos-y-campanas",
+          "parent_id": null
+        },
+        {
+          "id": 2083,
+          "name": "Colchones y Almohadas",
+          "slug": "colchones-y-almohadas",
+          "parent_id": null
+        },
+        {
+          "id": 2084,
+          "name": "Cuidado Personal",
+          "slug": "cuidado-personal",
+          "parent_id": null
+        },
+        {
+          "id": 2085,
+          "name": "Climatización y Ventiladores",
+          "slug": "climatizacion-y-ventiladores",
+          "parent_id": null
+        },
+        {
+          "id": 2086,
+          "name": "Licuadoras y Procesadores",
+          "slug": "licuadoras-y-procesadores",
+          "parent_id": null
+        }
+      ]
+    },
+    {
+      "id": 340,
+      "nombre": "Tienda 340",
+      "subdomain": "tienda-340",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "ecommerce",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#AED333",
+        "enable_tickets": false,
+        "secondary_color": "#13253F",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "borde": {
+              "mode": "value",
+              "value": "marcado"
+            },
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "cuadrado"
+              },
+              "mayusculas": {
+                "mode": "value",
+                "value": true
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "ninguno"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "ninguna"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "bricolage_inter"
+              },
+              "estiloTitulos": {
+                "mode": "value",
+                "value": "mayusculas"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#13253F"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#AFD432"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "ecommerce"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2096",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Mancuernas",
+                "entidadId": "2096"
+              },
+              {
+                "id": "enc-cat-2097",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Discos",
+                "entidadId": "2097"
+              },
+              {
+                "id": "enc-cat-2103",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Ropa Deportiva",
+                "entidadId": "2103"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "b71151e5-c820-45b7-8410-1a4efafbf0b9"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "5c95a4b4-9059-4d50-a2f6-ba801aa8b176"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "three_columns"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "cta_bg_color": "#AFD432",
+              "search_style": "icon",
+              "header_layout": "solido_negro_menu_centro",
+              "header_scroll": "fijo",
+              "cta_text_color": "#13253F",
+              "header_bg_color": "#13253F",
+              "topbar_bg_color": "#AFD432",
+              "header_text_color": "#FFFFFF",
+              "topbar_show_email": false,
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "pildora",
+              "header_mobile_icon_color": "#FFFFFF"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "5c95a4b4-9059-4d50-a2f6-ba801aa8b176",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "b71151e5-c820-45b7-8410-1a4efafbf0b9",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2096,
+          "name": "Mancuernas",
+          "slug": "mancuernas"
+        },
+        {
+          "id": 2097,
+          "name": "Discos",
+          "slug": "discos"
+        },
+        {
+          "id": 2103,
+          "name": "Ropa Deportiva",
+          "slug": "ropa-deportiva"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 341,
+      "nombre": "Tienda 341",
+      "subdomain": "tienda-341",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "ecommerce",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#F08A3C",
+        "enable_tickets": false,
+        "secondary_color": "#0F4C4C",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "pildora"
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "muy_redondeado"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "media"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "nunito_nunito"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#0E5657"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#EE8945"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_modern"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-productos",
+                "tipo": "page",
+                "etiqueta": "Productos",
+                "paginaId": "216afb10-521a-4834-bfcc-72df392fdc42"
+              },
+              {
+                "id": "enc-categorias",
+                "tipo": "page",
+                "etiqueta": "Categorías",
+                "paginaId": "a8af5104-fb47-4824-a79a-49156afebd76"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "2c5f7209-d076-4a89-ab60-6415806b6ad4"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "7c84d5f8-c169-44a1-8c70-e2f960c0db56"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "centered"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "cta_bg_color": "#EE8945",
+              "search_style": "icon",
+              "header_layout": "logo_centro",
+              "cta_text_color": "#0E3B3C",
+              "header_bg_color": "#FFF7EF",
+              "topbar_bg_color": "#0E5657",
+              "header_text_color": "#0E5657",
+              "topbar_show_email": false,
+              "header_icons_circle": true,
+              "mobile_search_style": "icon",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "icono"
+            },
+            "composicion": "split",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "a8af5104-fb47-4824-a79a-49156afebd76",
+            "slug": "categorias",
+            "tipo": "builtin",
+            "titulo": "Categorías",
+            "publicada": true
+          },
+          {
+            "id": "2c5f7209-d076-4a89-ab60-6415806b6ad4",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "7c84d5f8-c169-44a1-8c70-e2f960c0db56",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "216afb10-521a-4834-bfcc-72df392fdc42",
+            "slug": "productos",
+            "tipo": "builtin",
+            "titulo": "Productos",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [],
+      "menuCategories": []
+    },
+    {
+      "id": 342,
+      "nombre": "Tienda 342",
+      "subdomain": "tienda-342",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "ecommerce",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#4A2570",
+        "enable_tickets": false,
+        "secondary_color": "#2B2233",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "borde": {
+              "mode": "value",
+              "value": "fino"
+            },
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "redondeado"
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "sutil"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "ninguna"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "inter_inter"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#49256D"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#F5C24B"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "ecommerce"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-productos",
+                "tipo": "page",
+                "etiqueta": "Productos",
+                "paginaId": "c529ec81-fa7c-40b7-b6e1-4f6d94635b9c"
+              },
+              {
+                "id": "enc-categorias",
+                "tipo": "page",
+                "etiqueta": "Categorías",
+                "paginaId": "966acb6e-edae-4c07-be35-a77c3da687d2"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "e9951e9a-e9a2-4e5e-88fd-de99e8a22eb8"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "77570078-fa18-45bf-918e-b15e3efea02a"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {
+              "footer_show_categories": true
+            },
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "cta_bg_color": "#F5C24B",
+              "search_style": "icon",
+              "header_layout": "clasico",
+              "header_scroll": "ocultar_al_bajar",
+              "cta_text_color": "#49256D",
+              "header_cta_url": "/contacto",
+              "header_bg_color": "#FFFFFF",
+              "header_cta_text": "Cotiza para tu empresa",
+              "topbar_bg_color": "#49256D",
+              "header_text_color": "#49256D",
+              "topbar_show_email": false,
+              "topbar_show_phone": false,
+              "mobile_search_style": "icon",
+              "topbar_announcement": "[\"Hasta 5% de descuento en sillas, escritorios y archivadores · Envíos a toda Colombia\"]",
+              "header_actions_style": "texto"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "77570078-fa18-45bf-918e-b15e3efea02a",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "966acb6e-edae-4c07-be35-a77c3da687d2",
+            "slug": "categorias",
+            "tipo": "builtin",
+            "titulo": "Categorías",
+            "publicada": true
+          },
+          {
+            "id": "c529ec81-fa7c-40b7-b6e1-4f6d94635b9c",
+            "slug": "productos",
+            "tipo": "builtin",
+            "titulo": "Productos",
+            "publicada": true
+          },
+          {
+            "id": "e9951e9a-e9a2-4e5e-88fd-de99e8a22eb8",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [],
+      "menuCategories": [
+        {
+          "id": 2169,
+          "name": "Accesorios de Escritorio",
+          "slug": "accesorios-de-escritorio",
+          "parent_id": null
+        },
+        {
+          "id": 2170,
+          "name": "Calculadoras y Equipos",
+          "slug": "calculadoras-y-equipos",
+          "parent_id": null
+        },
+        {
+          "id": 2171,
+          "name": "Cintas y Pegantes",
+          "slug": "cintas-y-pegantes",
+          "parent_id": null
+        },
+        {
+          "id": 2172,
+          "name": "Cosedoras, Perforadoras y Grapas",
+          "slug": "cosedoras-perforadoras-y-grapas",
+          "parent_id": null
+        },
+        {
+          "id": 2173,
+          "name": "Tijeras, Bisturís y Reglas",
+          "slug": "tijeras-bisturis-y-reglas",
+          "parent_id": null
+        },
+        {
+          "id": 2174,
+          "name": "Archivadores y Gabinetes",
+          "slug": "archivadores-y-gabinetes",
+          "parent_id": null
+        },
+        {
+          "id": 2175,
+          "name": "Bibliotecas y Estanterías",
+          "slug": "bibliotecas-y-estanterias",
+          "parent_id": null
+        },
+        {
+          "id": 2176,
+          "name": "Cajoneras",
+          "slug": "cajoneras",
+          "parent_id": null
+        },
+        {
+          "id": 2177,
+          "name": "Alfombrillas y Tapetes",
+          "slug": "alfombrillas-y-tapetes",
+          "parent_id": null
+        },
+        {
+          "id": 2178,
+          "name": "Brazos y Soportes para Monitor",
+          "slug": "brazos-y-soportes-para-monitor",
+          "parent_id": null
+        },
+        {
+          "id": 2179,
+          "name": "Cojines y Apoyos Lumbares",
+          "slug": "cojines-y-apoyos-lumbares",
+          "parent_id": null
+        },
+        {
+          "id": 2180,
+          "name": "Reposapiés",
+          "slug": "reposapies",
+          "parent_id": null
+        },
+        {
+          "id": 2181,
+          "name": "Soportes para Portátil",
+          "slug": "soportes-para-portatil",
+          "parent_id": null
+        },
+        {
+          "id": 2182,
+          "name": "Escritorios Elevables",
+          "slug": "escritorios-elevables",
+          "parent_id": null
+        },
+        {
+          "id": 2183,
+          "name": "Escritorios en L y Gerenciales",
+          "slug": "escritorios-en-l-y-gerenciales",
+          "parent_id": null
+        },
+        {
+          "id": 2184,
+          "name": "Escritorios para Hogar y Estudio",
+          "slug": "escritorios-para-hogar-y-estudio",
+          "parent_id": null
+        },
+        {
+          "id": 2185,
+          "name": "Estaciones de Trabajo y Combos",
+          "slug": "estaciones-de-trabajo-y-combos",
+          "parent_id": null
+        },
+        {
+          "id": 2186,
+          "name": "Mesas de Juntas y Reuniones",
+          "slug": "mesas-de-juntas-y-reuniones",
+          "parent_id": null
+        },
+        {
+          "id": 2187,
+          "name": "Iluminación General",
+          "slug": "iluminacion-general",
+          "parent_id": null
+        },
+        {
+          "id": 2188,
+          "name": "Lámparas de Escritorio",
+          "slug": "lamparas-de-escritorio",
+          "parent_id": null
+        },
+        {
+          "id": 2189,
+          "name": "Lámparas de Pie",
+          "slug": "lamparas-de-pie",
+          "parent_id": null
+        },
+        {
+          "id": 2190,
+          "name": "Cajas y Contenedores",
+          "slug": "cajas-y-contenedores",
+          "parent_id": null
+        },
+        {
+          "id": 2191,
+          "name": "Gestión de Cables",
+          "slug": "gestion-de-cables",
+          "parent_id": null
+        },
+        {
+          "id": 2192,
+          "name": "Organizadores de Escritorio",
+          "slug": "organizadores-de-escritorio",
+          "parent_id": null
+        },
+        {
+          "id": 2193,
+          "name": "Tableros y Pizarras",
+          "slug": "tableros-y-pizarras",
+          "parent_id": null
+        },
+        {
+          "id": 2194,
+          "name": "Bolígrafos, Lápices y Marcadores",
+          "slug": "boligrafos-lapices-y-marcadores",
+          "parent_id": null
+        },
+        {
+          "id": 2195,
+          "name": "Carpetas y Archivo",
+          "slug": "carpetas-y-archivo",
+          "parent_id": null
+        },
+        {
+          "id": 2196,
+          "name": "Cuadernos, Agendas y Libretas",
+          "slug": "cuadernos-agendas-y-libretas",
+          "parent_id": null
+        },
+        {
+          "id": 2197,
+          "name": "Notas Adhesivas y Banderitas",
+          "slug": "notas-adhesivas-y-banderitas",
+          "parent_id": null
+        },
+        {
+          "id": 2198,
+          "name": "Papel y Resmas",
+          "slug": "papel-y-resmas",
+          "parent_id": null
+        },
+        {
+          "id": 2199,
+          "name": "Butacos y Sillas Cajero",
+          "slug": "butacos-y-sillas-cajero",
+          "parent_id": null
+        },
+        {
+          "id": 2200,
+          "name": "Repuestos para Sillas",
+          "slug": "repuestos-para-sillas",
+          "parent_id": null
+        },
+        {
+          "id": 2201,
+          "name": "Sillas Ergonómicas",
+          "slug": "sillas-ergonomicas",
+          "parent_id": null
+        },
+        {
+          "id": 2202,
+          "name": "Sillas Gamer",
+          "slug": "sillas-gamer",
+          "parent_id": null
+        },
+        {
+          "id": 2203,
+          "name": "Sillas Gerenciales y Ejecutivas",
+          "slug": "sillas-gerenciales-y-ejecutivas",
+          "parent_id": null
+        },
+        {
+          "id": 2204,
+          "name": "Sillas Interlocutoras y Visitante",
+          "slug": "sillas-interlocutoras-y-visitante",
+          "parent_id": null
+        },
+        {
+          "id": 2205,
+          "name": "Sillas Operativas",
+          "slug": "sillas-operativas",
+          "parent_id": null
+        },
+        {
+          "id": 2206,
+          "name": "Tándem y Sala de Espera",
+          "slug": "tandem-y-sala-de-espera",
+          "parent_id": null
+        }
+      ]
+    },
+    {
+      "id": 345,
+      "nombre": "Tienda 345",
+      "subdomain": "tienda-345",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_bold",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#FF4D00",
+        "enable_tickets": false,
+        "secondary_color": "#1A1A2E",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "pildora"
+              },
+              "mayusculas": {
+                "mode": "value",
+                "value": true
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "suave"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "dura"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "space_grotesk_inter"
+              },
+              "estiloTitulos": {
+                "mode": "value",
+                "value": "mayusculas"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#FF4D00"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#111111"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_bold"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2241",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Tenis",
+                "entidadId": "2241"
+              },
+              {
+                "id": "enc-cat-2242",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Guayos",
+                "entidadId": "2242"
+              },
+              {
+                "id": "enc-cat-2243",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Sandalias",
+                "entidadId": "2243"
+              },
+              {
+                "id": "enc-cat-2221",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Ropa",
+                "entidadId": "2221"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "93818d78-9739-480f-baa0-1fc413bd9c6b"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "9d0da7d9-bfbe-41d1-bce3-564540d8073a"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "minimal"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "icon",
+              "header_layout": "minimo",
+              "header_scroll": "ocultar_y_encoger",
+              "header_bg_color": "#111111",
+              "topbar_bg_color": "#111111",
+              "header_text_color": "#FFFFFF",
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "minimal_menu_style": "drawer",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "icono",
+              "header_mobile_icon_color": "#FFFFFF"
+            },
+            "composicion": "minimal",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "93818d78-9739-480f-baa0-1fc413bd9c6b",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "9d0da7d9-bfbe-41d1-bce3-564540d8073a",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2221,
+          "name": "Ropa",
+          "slug": "ropa"
+        },
+        {
+          "id": 2241,
+          "name": "Tenis",
+          "slug": "tenis"
+        },
+        {
+          "id": 2242,
+          "name": "Guayos",
+          "slug": "guayos"
+        },
+        {
+          "id": 2243,
+          "name": "Sandalias",
+          "slug": "sandalias"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 346,
+      "nombre": "Tienda 346",
+      "subdomain": "tienda-346",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_modern",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#095045",
+        "enable_tickets": false,
+        "secondary_color": "#1A1A1A",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "cuadrado"
+              },
+              "mayusculas": {
+                "mode": "value",
+                "value": true
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "ninguno"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "ninguna"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "cormorant_montserrat"
+              },
+              "escala": {
+                "mode": "value",
+                "value": "editorial"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#095045"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#B28B49"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_modern"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-productos",
+                "tipo": "page",
+                "etiqueta": "Productos",
+                "paginaId": "0a6e3fde-7fde-4adc-adb0-d551ff53dd22"
+              },
+              {
+                "id": "enc-categorias",
+                "tipo": "page",
+                "etiqueta": "Categorías",
+                "paginaId": "849ae746-44a2-4d7d-8ce2-c9c4b9fb7ccf"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "4e87beb5-4d2f-4082-bc9a-a8ec056643f4"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "3be2068a-e9f0-47b5-bd0e-fb1f4cb5fd75"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "split"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "icon",
+              "header_layout": "logo_centro_menu_abajo",
+              "header_bg_color": "#0B2E28",
+              "topbar_bg_color": "#095045",
+              "header_text_color": "#E9D9B6",
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "mobile_search_style": "icon",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "icono",
+              "header_mobile_icon_color": "#E9D9B6",
+              "show_categories_in_header": false
+            },
+            "composicion": "centered",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "4e87beb5-4d2f-4082-bc9a-a8ec056643f4",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "849ae746-44a2-4d7d-8ce2-c9c4b9fb7ccf",
+            "slug": "categorias",
+            "tipo": "builtin",
+            "titulo": "Categorías",
+            "publicada": true
+          },
+          {
+            "id": "3be2068a-e9f0-47b5-bd0e-fb1f4cb5fd75",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "0a6e3fde-7fde-4adc-adb0-d551ff53dd22",
+            "slug": "productos",
+            "tipo": "builtin",
+            "titulo": "Productos",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [],
+      "menuCategories": []
+    },
+    {
+      "id": 347,
+      "nombre": "Tienda 347",
+      "subdomain": "tienda-347",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_classic",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#A36516",
+        "enable_tickets": false,
+        "secondary_color": "#1A1410",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "pildora"
+              },
+              "mayusculas": {
+                "mode": "value",
+                "value": true
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "ninguno"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "dura"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "bricolage_inter"
+              },
+              "escala": {
+                "mode": "value",
+                "value": "display"
+              },
+              "estiloTitulos": {
+                "mode": "value",
+                "value": "mayusculas"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#42150E"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#DAA94A"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_classic"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-productos",
+                "tipo": "page",
+                "etiqueta": "Productos",
+                "paginaId": "c3bb5e1e-b4b9-4204-8e6b-9b5a5f5470b6"
+              },
+              {
+                "id": "enc-categorias",
+                "tipo": "page",
+                "etiqueta": "Categorías",
+                "paginaId": "df9dadf7-0d6f-4b55-8ed7-51b46925bbe0"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "a1c54089-a429-414b-8c43-7d1324116f91"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "f6bb1bdc-249b-41ab-aacd-e96479c8bed2"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "three_columns"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "icon",
+              "header_layout": "logo_centro",
+              "header_scroll": "encoger",
+              "header_bg_color": "#111111",
+              "topbar_bg_color": "#42150E",
+              "header_text_color": "#DAA94A",
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "mobile_search_style": "icon",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "pildora",
+              "header_mobile_icon_color": "#DAA94A",
+              "show_categories_in_header": false
+            },
+            "composicion": "split",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "f6bb1bdc-249b-41ab-aacd-e96479c8bed2",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "df9dadf7-0d6f-4b55-8ed7-51b46925bbe0",
+            "slug": "categorias",
+            "tipo": "builtin",
+            "titulo": "Categorías",
+            "publicada": true
+          },
+          {
+            "id": "a1c54089-a429-414b-8c43-7d1324116f91",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "c3bb5e1e-b4b9-4204-8e6b-9b5a5f5470b6",
+            "slug": "productos",
+            "tipo": "builtin",
+            "titulo": "Productos",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [],
+      "menuCategories": []
+    },
+    {
+      "id": 348,
+      "nombre": "Tienda 348",
+      "subdomain": "tienda-348",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_modern",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#5E8C0A",
+        "enable_tickets": false,
+        "secondary_color": "#2A2B2A",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "redondeado"
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "redondeado"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "media"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "fraunces_inter"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#5E8C0A"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#2A2B2A"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_modern"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-productos",
+                "tipo": "page",
+                "etiqueta": "Productos",
+                "paginaId": "a58056f9-2be3-4a4e-9978-c16fe617259e"
+              },
+              {
+                "id": "enc-categorias",
+                "tipo": "page",
+                "etiqueta": "Categorías",
+                "paginaId": "7a02f120-ec8e-4c51-84c7-eb2c3a49ea51"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "5d2c95bf-74d9-4fd7-b18d-d0d7d4ac198c"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "a88e25f6-86fc-4ee4-a885-ecea95fd646d"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "bar",
+              "header_layout": "comercio",
+              "header_bg_color": "#2A2B2A",
+              "topbar_bg_color": "#5E8C0A",
+              "header_cart_glyph": "carrito",
+              "header_text_color": "#FFFFFF",
+              "topbar_show_email": false,
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "icono_texto",
+              "header_mobile_icon_color": "#FFFFFF"
+            },
+            "composicion": "default",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "a88e25f6-86fc-4ee4-a885-ecea95fd646d",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "7a02f120-ec8e-4c51-84c7-eb2c3a49ea51",
+            "slug": "categorias",
+            "tipo": "builtin",
+            "titulo": "Categorías",
+            "publicada": true
+          },
+          {
+            "id": "a58056f9-2be3-4a4e-9978-c16fe617259e",
+            "slug": "productos",
+            "tipo": "builtin",
+            "titulo": "Productos",
+            "publicada": true
+          },
+          {
+            "id": "5d2c95bf-74d9-4fd7-b18d-d0d7d4ac198c",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [],
+      "menuCategories": []
+    },
+    {
+      "id": 349,
+      "nombre": "Tienda 349",
+      "subdomain": "tienda-349",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_elegant",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#142C52",
+        "enable_tickets": false,
+        "secondary_color": "#142C52",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "pildora"
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "muy_redondeado"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "suave"
+            },
+            "densidad": {
+              "mode": "value",
+              "value": "amplia"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "playfair_lato"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#142C52"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#6D728E"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_elegant"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2249",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Colchas y Cobijas",
+                "entidadId": "2249"
+              },
+              {
+                "id": "enc-cat-2253",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Sábanas y Fundas",
+                "entidadId": "2253"
+              },
+              {
+                "id": "enc-cat-2258",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Colchones",
+                "entidadId": "2258"
+              },
+              {
+                "id": "enc-cat-2257",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Muebles de Sala",
+                "entidadId": "2257"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "5a37e259-345a-4eb6-9b3c-bfc8910bda31"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "1a2c810e-feca-4f7b-8f8d-22f8ebb4ad92"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "centered"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "icon",
+              "header_layout": "logo_centro_menu_abajo",
+              "header_scroll": "ocultar_al_bajar",
+              "logo_position": "center",
+              "header_bg_color": "#F4F5FA",
+              "topbar_bg_color": "#142C52",
+              "header_text_color": "#142C52",
+              "mobile_menu_style": "fullscreen",
+              "topbar_show_email": false,
+              "mobile_search_style": "icon",
+              "topbar_announcement": "[\"Envíos a toda Colombia\"]",
+              "header_actions_style": "icono"
+            },
+            "composicion": "centered",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "5a37e259-345a-4eb6-9b3c-bfc8910bda31",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          },
+          {
+            "id": "1a2c810e-feca-4f7b-8f8d-22f8ebb4ad92",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2249,
+          "name": "Colchas y Cobijas",
+          "slug": "colchas-y-cobijas"
+        },
+        {
+          "id": 2253,
+          "name": "Sábanas y Fundas",
+          "slug": "sabanas-y-fundas"
+        },
+        {
+          "id": 2257,
+          "name": "Muebles de Sala",
+          "slug": "muebles-de-sala"
+        },
+        {
+          "id": 2258,
+          "name": "Colchones",
+          "slug": "colchones"
+        }
+      ],
+      "menuCategories": []
+    },
+    {
+      "id": 358,
+      "nombre": "Tienda 358",
+      "subdomain": "tienda-358",
+      "type_id": 3,
+      "legacy": {
+        "font_body": "Inter",
+        "text_color": null,
+        "theme_mode": "light",
+        "logo_height": 48,
+        "site_locale": "es-CO",
+        "template_id": "retail_modern",
+        "accent_color": null,
+        "font_heading": "Inter",
+        "menu_position": "inline",
+        "primary_color": "#2254F8",
+        "enable_tickets": false,
+        "secondary_color": "#1EA8D4",
+        "background_color": null,
+        "currency_position": "left",
+        "multi_outlet_mode": "selector",
+        "enable_memberships": false,
+        "show_currency_code": false,
+        "enable_appointments": false,
+        "enable_reservations": false,
+        "categories_menu_style": "dropdown",
+        "enable_online_ordering": true,
+        "enable_parking_booking": false
+      },
+      "documento": {
+        "tema": {
+          "modo": {
+            "mode": "value",
+            "value": "light"
+          },
+          "tokens": {
+            "boton": {
+              "forma": {
+                "mode": "value",
+                "value": "redondeado"
+              }
+            },
+            "radio": {
+              "mode": "value",
+              "value": "suave"
+            },
+            "sombra": {
+              "mode": "value",
+              "value": "media"
+            },
+            "tipografia": {
+              "par": {
+                "mode": "value",
+                "value": "space_grotesk_inter"
+              }
+            }
+          },
+          "colores": {
+            "acento": {
+              "mode": "clear"
+            },
+            "primario": {
+              "mode": "value",
+              "value": "#2254F8"
+            },
+            "secundario": {
+              "mode": "value",
+              "value": "#1EA8D4"
+            }
+          },
+          "tipografia": {},
+          "plantillaBase": {
+            "mode": "value",
+            "value": "retail_modern"
+          }
+        },
+        "menus": [
+          {
+            "id": "paginas-encabezado",
+            "items": [
+              {
+                "id": "enc-cat-2280",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Celulares",
+                "entidadId": "2280"
+              },
+              {
+                "id": "enc-cat-2281",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Portátiles",
+                "entidadId": "2281"
+              },
+              {
+                "id": "enc-cat-2285",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Televisores",
+                "entidadId": "2285"
+              },
+              {
+                "id": "enc-cat-2282",
+                "tipo": "entity",
+                "entidad": "category",
+                "etiqueta": "Audífonos",
+                "entidadId": "2282"
+              },
+              {
+                "id": "enc-ofertas",
+                "tipo": "page",
+                "etiqueta": "Ofertas",
+                "paginaId": "ce83d82a-7660-4af3-9986-c3ecd8b61b15"
+              },
+              {
+                "id": "enc-consultar-pedido",
+                "url": "/consultar-pedido",
+                "tipo": "custom",
+                "etiqueta": "Consultar pedido"
+              },
+              {
+                "id": "enc-contacto",
+                "tipo": "page",
+                "etiqueta": "Contacto",
+                "paginaId": "0d7b7a11-15a7-46b6-8f3a-77056af97657"
+              }
+            ],
+            "nombre": "Páginas del encabezado"
+          }
+        ],
+        "shell": {
+          "footer": {
+            "menuIds": [],
+            "opciones": {},
+            "composicion": "default"
+          },
+          "header": {
+            "opciones": {
+              "show_topbar": true,
+              "search_style": "mega",
+              "header_layout": "mega",
+              "header_bg_color": "#0B1B4D",
+              "header_cart_glyph": "carrito",
+              "header_text_color": "#FFFFFF",
+              "mobile_menu_style": "tabs",
+              "topbar_show_email": false,
+              "header_actions_style": "icono_texto",
+              "header_mobile_icon_color": "#FFFFFF",
+              "show_categories_in_header": true
+            },
+            "composicion": "mega",
+            "menuPrincipalId": "paginas-encabezado"
+          }
+        },
+        "paginas": [
+          {
+            "id": "0d7b7a11-15a7-46b6-8f3a-77056af97657",
+            "slug": "contacto",
+            "tipo": "builtin",
+            "titulo": "Contacto",
+            "publicada": true
+          },
+          {
+            "id": "ce83d82a-7660-4af3-9986-c3ecd8b61b15",
+            "slug": "ofertas",
+            "tipo": "builtin",
+            "titulo": "Ofertas",
+            "publicada": true
+          }
+        ],
+        "identidad": {
+          "alturaLogo": {
+            "mode": "value",
+            "value": 48
+          }
+        }
+      },
+      "categoriasDelMenu": [
+        {
+          "id": 2280,
+          "name": "Celulares",
+          "slug": "celulares"
+        },
+        {
+          "id": 2281,
+          "name": "Portátiles",
+          "slug": "portatiles"
+        },
+        {
+          "id": 2282,
+          "name": "Audífonos Bluetooth",
+          "slug": "audifonos-bluetooth"
+        },
+        {
+          "id": 2285,
+          "name": "Televisores Smart TV",
+          "slug": "televisores-smart-tv"
+        }
+      ],
+      "menuCategories": [
+        {
+          "id": 2280,
+          "name": "Celulares",
+          "slug": "celulares",
+          "parent_id": null
+        },
+        {
+          "id": 2281,
+          "name": "Portátiles",
+          "slug": "portatiles",
+          "parent_id": null
+        },
+        {
+          "id": 2282,
+          "name": "Audífonos Bluetooth",
+          "slug": "audifonos-bluetooth",
+          "parent_id": null
+        },
+        {
+          "id": 2283,
+          "name": "Smartwatches",
+          "slug": "smartwatches",
+          "parent_id": null
+        },
+        {
+          "id": 2284,
+          "name": "Cámaras de Seguridad WiFi",
+          "slug": "camaras-de-seguridad-wifi",
+          "parent_id": null
+        },
+        {
+          "id": 2285,
+          "name": "Televisores Smart TV",
+          "slug": "televisores-smart-tv",
+          "parent_id": null
+        },
+        {
+          "id": 2286,
+          "name": "Consolas PS5",
+          "slug": "consolas-ps5",
+          "parent_id": null
+        }
+      ]
+    }
+  ]
+}

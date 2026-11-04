@@ -28,6 +28,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { useBarraAbajo } from './barraEnFila';
 import {
   Drawer,
   DrawerContent,
@@ -142,6 +143,21 @@ export default function HeaderMinimal({
     />
   );
 
+  // Barra del buscador en la fila; si no cabe (menos de 240px, el menú recortaría o la fila
+  // desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
+  const barra = (clase: string, enFila = true) => barraSiCromo(settings, searchStyle === 'bar' ? (
+              <SearchBarInline
+                primaryColor={primaryColor}
+                organizationId={organizationId}
+                className={clase}
+                size="lg"
+                icon={SearchIconComp}
+              />
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase, enFila });
+  const hayBarra = barra('') != null;
+  const filaRef = useRef<HTMLDivElement>(null);
+  const barraAbajo = useBarraAbajo(filaRef, hayBarra);
+
   return (
     <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {/* Topbar opcional */}
@@ -150,7 +166,7 @@ export default function HeaderMinimal({
       {/* Barra principal */}
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+          <div ref={filaRef} className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {/* Logo izquierda */}
             <HeaderLogo
               organization={organization}
@@ -159,15 +175,7 @@ export default function HeaderMinimal({
             />
 
             {/* Search bar inline (si search_style === 'bar') */}
-            {barraSiCromo(settings, searchStyle === 'bar' ? (
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="flex-1 max-w-xl mx-auto"
-                size="lg"
-                icon={SearchIconComp}
-              />
-            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-auto' })}
+            {!barraAbajo && barra('flex-1 max-w-xl mx-auto min-w-[240px]')}
 
             {/* Acciones derecha: search icon + cart + CTA + botón menú */}
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -227,6 +235,7 @@ export default function HeaderMinimal({
               </div>
             </div>
           </div>
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl', false)}</div>}
 
           {/* Fila móvil: logo + botón hamburguesa */}
           <div className="flex md:hidden items-center justify-between" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>

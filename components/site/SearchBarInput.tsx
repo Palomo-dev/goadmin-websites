@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useBusquedasRecientes, useCerrarBuscador, usePosicionPanel, useResultadosBusqueda, type ResultadoBusqueda } from './buscador/comportamiento';
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
-import { urlBusquedaProductos, urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
+import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
 import { useEncabezadoPie } from './EncabezadoPieContext';
 
 interface SearchBarInputProps {
@@ -46,16 +47,7 @@ interface SearchBarInputProps {
   valorInicial?: string
 }
 
-interface SearchResult {
-  id: number;
-  uuid: string;
-  name: string;
-  price?: number | null;
-  comparePrice?: number | null;
-  imageUrl?: string | null;
-  category?: string | null;
-  tag?: string | null;
-}
+type SearchResult = ResultadoBusqueda;
 
 const sizeConfig = {
   sm: {
@@ -92,77 +84,22 @@ export function SearchBarInput({
   const { busquedasPopulares: popularSearches } = useEncabezadoPie();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cfg = sizeConfig[size];
-  // Sugerencias en vivo solo desde 2 caracteres: con 1 no se pide nada ni se abre el panel.
-  // Enter y el botón de buscar no dependen de esto.
-  const sugiere = query.trim().length >= 2;
   // Al llegar a /search el campo muestra lo buscado (solo cuando cambia el valor de la URL).
   useEffect(() => {
     if (valorInicial) setQuery(valorInicial);
   }, [valorInicial]);
+  // Comportamiento común con el panel de la lupa (components/site/buscador/comportamiento.ts):
+  // resultados desde 2 caracteres, recientes, cierre por clic afuera y Escape, y posición propia.
+  const { resultados: results, cargando: loading, sugiere } = useResultadosBusqueda(query, categoriaSlug);
+  const { recientes: recentSearches, guardar: saveRecentSearch } = useBusquedasRecientes(focused);
+  useCerrarBuscador(focused, () => setFocused(false), [containerRef]);
+  const abiertoPanel = focused && (!query || sugiere);
+  // El desplegable tiene ancho propio (mín. 360px, dentro de la pantalla): nunca el del input.
+  const posicion = usePosicionPanel(abiertoPanel, containerRef);
   const visibles = filtroCategoria && !categoriaSlug ? results.filter((r) => r.category === filtroCategoria) : results;
-
-  useEffect(() => {
-    try {
-      const recent = JSON.parse(localStorage.getItem('recent_searches') || '[]');
-      setRecentSearches(recent.slice(0, 5));
-    } catch {}
-  }, [focused]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setFocused(false);
-      }
-    };
-    if (focused) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [focused]);
-
-  useEffect(() => {
-    if (!sugiere) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    // «Buscando…» desde que cambia el texto o la categoría (no solo tras la espera de 300 ms), y
-    // se descartan respuestas viejas: antes una respuesta tardía o la espera mostraban
-    // «No se encontraron productos» aunque la búsqueda sí tenía resultados.
-    let vigente = true;
-    const control = new AbortController();
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(urlBusquedaProductos(query, categoriaSlug), { signal: control.signal });
-        if (!vigente) return;
-        if (res.ok) {
-          const data = await res.json();
-          if (!vigente) return;
-          setResults(data.products || []);
-        }
-      } catch {
-        if (!vigente) return;
-        setResults([]);
-      }
-      setLoading(false);
-    }, 300);
-    return () => { vigente = false; control.abort(); clearTimeout(timer); };
-  }, [query, categoriaSlug]);
-
-  const saveRecentSearch = (term: string) => {
-    try {
-      const recent = JSON.parse(localStorage.getItem('recent_searches') || '[]');
-      const updated = [term, ...recent.filter((s: string) => s !== term)].slice(0, 5);
-      localStorage.setItem('recent_searches', JSON.stringify(updated));
-    } catch {}
-  };
 
   const handleResultClick = (product: SearchResult) => {
     saveRecentSearch(product.name);
@@ -223,8 +160,12 @@ export function SearchBarInput({
       </div>
 
       {/* Dropdown de resultados */}
-      {focused && (!query || sugiere) && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-[100]">
+      {abiertoPanel && (
+        <div
+          className={`absolute top-full mt-2 z-[100]${posicion ? '' : ' left-0 right-0'}`}
+          style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
+          data-panel-buscador=""
+        >
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden">
             {loading && (
               <div className="flex items-center justify-center py-8">

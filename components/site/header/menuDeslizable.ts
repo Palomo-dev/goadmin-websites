@@ -48,7 +48,8 @@ export function debeDeslizar(
 
 /** Ancho de los hijos más sus gaps, posición del primero y si alguna caja del encabezado desborda. */
 function medidasMenu(nav: HTMLElement) {
-  const hijos = Array.from(nav.children).filter((c): c is HTMLElement => c instanceof HTMLElement && c.offsetParent !== null)
+  // El medidor de NavList (`data-medida-nav`) no es un enlace del menú.
+  const hijos = Array.from(nav.children).filter((c): c is HTMLElement => c instanceof HTMLElement && c.offsetParent !== null && !c.hasAttribute('data-medida-nav'))
   const cs = getComputedStyle(nav)
   const gap = parseFloat(cs.columnGap || cs.gap || '0') || 0
   const contenido = hijos.reduce((t, h) => t + h.getBoundingClientRect().width, 0) + gap * Math.max(0, hijos.length - 1)

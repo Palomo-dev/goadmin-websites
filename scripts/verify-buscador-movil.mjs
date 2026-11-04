@@ -104,7 +104,7 @@ check(cromo.includes('export function ajustesCromoMovil(') && cromo.includes('if
 const conf = readFileSync(new URL('../components/site/header/mobile/HeaderMovilConfigurable.tsx', import.meta.url), 'utf8')
 check(/buscadorIgualEscritorio\(settings as Record<string, unknown>\)\n\s+\? \(presentacion\.buscador === 'fullscreen' && efectivo === 'icon' \? 'fullscreen' : efectivo\)\n\s+: presentacion\.buscador \?\? efectivo/.test(conf), 'configurable: en conjunto manda computador; por separado, mobile_header.search de antes')
 check(cromo.includes("sinIcono: presentacion.button !== 'none' && !lupaEnCampo"), 'escritorio: sin lupa en el campo cuando hay botón de buscar')
-check(/<BuscadorCromo presentacion=\{\{ \.\.\.cromo[^\n]*lupaEnCampo \/>/.test(cromo), 'celular (igual a escritorio) conserva la lupa')
+check(/<BuscadorCromo presentacion=\{\{ \.\.\.cromo[^\n]*lupaEnCampo enFila=\{false\} \/>/.test(cromo), 'celular (igual a escritorio) conserva la lupa y la barra normal (sin compacta)')
 const zonas = readFileSync(new URL('../components/site/header/HeaderPorZonas.tsx', import.meta.url), 'utf8')
 check(zonas.includes("lupaEnCampo={dispositivo === 'mobile'}"), 'HeaderPorZonas: el celular conserva la lupa')
 const campo = readFileSync(new URL('../components/site/SearchBarInput.tsx', import.meta.url), 'utf8')

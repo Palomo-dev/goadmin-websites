@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -1042,6 +1042,25 @@ export function claseNavEncabezado(heredaColor: boolean): string {
     : `${base} text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors`
 }
 
+/** Lo que lleva un enlace del menú (ícono, nombre, insignia y flecha); lo comparten NavLink y el medidor de NavList. */
+function piezasNav(item: NavItem, primaryColor: string, flecha: boolean) {
+  return (
+    <>
+      {item.icon && <span className="text-base">{item.icon}</span>}
+      <span>{item.name}</span>
+      {item.badge && (
+        <span
+          className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-semibold"
+          style={{ backgroundColor: primaryColor }}
+        >
+          {item.badge}
+        </span>
+      )}
+      {flecha && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
+    </>
+  );
+}
+
 export function NavLink({
   item,
   primaryColor,
@@ -1062,17 +1081,7 @@ export function NavLink({
         className={clase}
         style={{ '--hover-color': primaryColor } as React.CSSProperties}
       >
-        {item.icon && <span className="text-base">{item.icon}</span>}
-        <span>{item.name}</span>
-        {item.badge && (
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-semibold"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {item.badge}
-          </span>
-        )}
-        {hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
+        {piezasNav(item, primaryColor, hasDropdown)}
       </Link>
     );
   }
@@ -1083,14 +1092,18 @@ export function NavLink({
   const marca = item.conEnlace ? { 'data-menu-adicional': '' } : { 'data-subpaginas': '' };
   const disparador = (
     <button type="button" className={clase} style={{ '--hover-color': primaryColor } as React.CSSProperties} aria-haspopup="menu" {...marca}>
-      {item.icon && <span className="text-base">{item.icon}</span>}
-      <span>{item.name}</span>
-      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+      {piezasNav({ ...item, badge: undefined }, primaryColor, true)}
     </button>
   );
   return <NavDropdown item={item} primaryColor={primaryColor} disparador={disparador} />;
 }
 
+/**
+ * Menú de escritorio del encabezado. Si sus enlaces no caben, los que sobran pasan a «Más ▾»
+ * (nunca texto cortado ni un menú que se desliza con el borde desvanecido). Si caben, el de siempre.
+ * Deja su ancho natural en `data-nav-natural` (lo lee `useBarraAbajo` para decidir si la barra
+ * del buscador baja a otra fila antes de recortar el menú).
+ */
 export function NavList({
   items,
   primaryColor,
@@ -1100,9 +1113,97 @@ export function NavList({
   primaryColor: string;
   className?: string;
 }) {
+  const navRef = useRef<HTMLElement>(null);
+  const medidaRef = useRef<HTMLDivElement>(null);
+  const [visibles, setVisibles] = useState(items.length);
+  const { opciones } = useEncabezadoPie();
+  const clave = items.map((i) => `${i.name}|${i.children?.length ?? 0}`).join('·');
+  const efecto = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+  efecto(() => {
+    const nav = navRef.current;
+    const medida = medidaRef.current;
+    if (!nav || !medida) return;
+    const medir = () => {
+      const hijos = Array.from(medida.children) as HTMLElement[];
+      const anchoMas = hijos.length ? hijos[hijos.length - 1].getBoundingClientRect().width : 0;
+      const anchos = hijos.slice(0, -1).map((h) => h.getBoundingClientRect().width);
+      const gap = parseFloat(getComputedStyle(nav).columnGap) || 20;
+      const natural = anchos.reduce((t, w) => t + w, 0) + gap * Math.max(0, anchos.length - 1);
+      nav.setAttribute('data-nav-natural', String(Math.ceil(natural)));
+      // Lo que el menú puede ocupar: su ancho más lo que sobra (o falta) en su fila.
+      const fila = nav.parentElement;
+      let libre = 0;
+      if (fila) {
+        const cs = getComputedStyle(fila);
+        const gapFila = parseFloat(cs.columnGap) || 0;
+        const visiblesFila = Array.from(fila.children).filter((c) => (c as HTMLElement).offsetParent !== null) as HTMLElement[];
+        const ocupado = visiblesFila.reduce((t, c) => t + c.getBoundingClientRect().width, 0) + gapFila * Math.max(0, visiblesFila.length - 1);
+        libre = fila.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0') - ocupado;
+        // Lo que un vecino que crece (la barra, `flex-1`) ocupa por encima de su mínimo también es
+        // espacio del menú: así, si la barra baja a otra fila o la ventana se agranda, los enlaces
+        // que habían ido a «Más» vuelven a la fila.
+        for (const c of visiblesFila) {
+          if (c === nav) continue;
+          const ccs = getComputedStyle(c);
+          if (parseFloat(ccs.flexGrow) > 0) libre += Math.max(0, c.getBoundingClientRect().width - (parseFloat(ccs.minWidth) || 0));
+        }
+      }
+      // Con dos menús en la misma fila (encabezado dividido) el espacio que sobra o falta se reparte.
+      const menusFila = fila ? fila.querySelectorAll(':scope > nav').length || 1 : 1;
+      const disponible = nav.clientWidth + libre / menusFila;
+      let n = anchos.length;
+      if (window.innerWidth >= 768 && natural > disponible + 1) {
+        let usado = anchoMas;
+        n = 0;
+        for (const w of anchos) {
+          if (usado + gap + w > disponible) break;
+          usado += gap + w;
+          n++;
+        }
+      }
+      nav.toggleAttribute('data-nav-recorta', n < anchos.length);
+      setVisibles((v) => (v === n ? v : n));
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(nav);
+    ro.observe(medida);
+    if (nav.parentElement) {
+      ro.observe(nav.parentElement);
+      // Un vecino que cambia de ancho (íconos, CTA, la barra) cambia lo que le queda al menú.
+      for (const c of Array.from(nav.parentElement.children)) if (c !== nav) ro.observe(c);
+    }
+    window.addEventListener('resize', medir);
+    // La fuente del sitio llega después del primer pintado y cambia el ancho de los enlaces.
+    let vivo = true;
+    document.fonts?.ready.then(() => { if (vivo) medir(); });
+    return () => {
+      vivo = false;
+      ro.disconnect();
+      window.removeEventListener('resize', medir);
+    };
+  }, [clave]);
+
+  const enLinea = items.slice(0, visibles);
+  const enMas = items.slice(visibles);
+  const claseMas = claseNavEncabezado(Boolean(opciones.colorTextoEncabezado));
+  const mas = enMas.length > 0 ? (
+    <NavDropdown
+      item={{ name: 'Más', href: '', children: enMas.flatMap((it) => [{ ...it, children: it.children }]) }}
+      primaryColor={primaryColor}
+      sinVerTodo
+      disparador={
+        <button type="button" className={claseMas} style={{ '--hover-color': primaryColor } as React.CSSProperties} aria-haspopup="menu" data-nav-mas="">
+          <span>Más</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </button>
+      }
+    />
+  ) : null;
+
   return (
-    <nav className={`flex items-center gap-5 ${className}`}>
-      {items.map((item, i) => (
+    <nav ref={navRef} className={`flex items-center gap-5 ${className}`}>
+      {enLinea.map((item, i) => (
         <NavLink
           key={i}
           item={item}
@@ -1110,6 +1211,28 @@ export function NavList({
           hasDropdown={!!item.children}
         />
       ))}
+      {mas}
+      {/* Medidor: todos los enlaces + «Más», fuera de la pantalla (a la izquierda no da scroll). */}
+      <div
+        ref={medidaRef}
+        aria-hidden="true"
+        data-medida-nav=""
+        className="pointer-events-none invisible absolute left-[-10000px] top-0 flex items-center gap-5"
+      >
+        {items.map((item, i) => {
+          // Mismo contenido que NavLink, sin enlace (nada enfocable ni duplicado para lectores).
+          const conHijos = !!item.children && item.children.length > 0;
+          return (
+            <span key={i} className={`shrink-0 ${claseMas}`}>
+              {piezasNav(conHijos ? { ...item, badge: undefined } : item, primaryColor, !!item.children)}
+            </span>
+          );
+        })}
+        <span className={`shrink-0 ${claseMas}`}>
+          <span>Más</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </span>
+      </div>
     </nav>
   );
 }
@@ -1131,7 +1254,7 @@ export function SearchBarInline({
   placeholder?: string;
 }) {
   return (
-    <div className={className}>
+    <div className={className} data-buscador="bar">
       <SearchBarInput
         primaryColor={primaryColor}
         size={size}

@@ -34,3 +34,6 @@ __*.txt
 
 # IDE / agent configs
 .claude/
+
+# Salida de la matriz del buscador (scripts/pruebas/matriz-buscador.mjs)
+/scripts/pruebas/salida/

@@ -7,7 +7,8 @@ import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
+import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
+import { useBusquedasRecientes, useCerrarBuscador, usePosicionPanel, useResultadosBusqueda, type ResultadoBusqueda } from './buscador/comportamiento'
 import { useEncabezadoPie } from './EncabezadoPieContext'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
 import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
@@ -36,16 +37,7 @@ interface ProductSearchProps {
   circulo?: boolean
 }
 
-interface SearchResult {
-  id: number
-  uuid: string
-  name: string
-  price?: number | null
-  comparePrice?: number | null
-  imageUrl?: string | null
-  category?: string | null
-  tag?: string | null
-}
+type SearchResult = ResultadoBusqueda
 
 
 export function ProductSearch({
@@ -79,22 +71,16 @@ export function ProductSearch({
     setInterno((v) => !v)
   }
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(false)
-  const [recentSearches, setRecentSearches] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mobilePortalRef = useRef<HTMLDivElement>(null)
-  const cerrarRef = useRef(cerrar)
-  cerrarRef.current = cerrar
-
-  useEffect(() => {
-    // Cargar búsquedas recientes del localStorage
-    try {
-      const recent = JSON.parse(localStorage.getItem('recent_searches') || '[]')
-      setRecentSearches(recent.slice(0, 5))
-    } catch {}
-  }, [isOpen])
+  // Comportamiento común con la barra (components/site/buscador/comportamiento.ts): resultados
+  // desde 2 caracteres, recientes, cierre por clic afuera y Escape en todo el documento.
+  const { resultados: results, cargando: loading, sugiere } = useResultadosBusqueda(query)
+  const { recientes: recentSearches, guardar: saveRecentSearch } = useBusquedasRecientes(!!isOpen)
+  useCerrarBuscador(!!isOpen, cerrar, [containerRef, mobilePortalRef])
+  // Panel de escritorio: 384px (w-96) pegado al borde derecho de la lupa y siempre dentro de la pantalla.
+  const posicion = usePosicionPanel(!!isOpen && !pantallaCompleta, containerRef, { ancho: 384, minimo: 320, alinear: 'derecha' })
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -102,64 +88,17 @@ export function ProductSearch({
     }
   }, [isOpen])
 
-  useEffect(() => {
-    // Cerrar al hacer click fuera (verificar tanto el container como el portal móvil)
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        containerRef.current && !containerRef.current.contains(target) &&
-        (!mobilePortalRef.current || !mobilePortalRef.current.contains(target))
-      ) {
-        cerrarRef.current()
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([])
-      return
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(urlBusquedaProductos(query))
-        if (res.ok) {
-          const data = await res.json()
-          setResults(data.products || [])
-        }
-      } catch {
-        setResults([])
-      }
-      setLoading(false)
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [query])
-
-  const saveRecentSearch = (term: string) => {
-    try {
-      const recent = JSON.parse(localStorage.getItem('recent_searches') || '[]')
-      const updated = [term, ...recent.filter((s: string) => s !== term)].slice(0, 5)
-      localStorage.setItem('recent_searches', JSON.stringify(updated))
-    } catch {}
-  }
-
   const handleResultClick = (product: SearchResult) => {
     saveRecentSearch(product.name)
     cerrar()
     setQuery('')
   }
 
+  // Enter: a los resultados (/search), igual que la barra.
   const handleSearchSubmit = (term: string) => {
     if (term.trim()) {
       saveRecentSearch(term.trim())
-      setQuery(term)
+      window.location.href = ruta(urlResultadosBusqueda(term.trim()))
     }
   }
 
@@ -171,7 +110,7 @@ export function ProductSearch({
         </div>
       )}
 
-      {!loading && query && results.length > 0 && (
+      {!loading && sugiere && results.length > 0 && (
         <div className="space-y-1">
           {results.map((product) => (
             <Link
@@ -223,7 +162,7 @@ export function ProductSearch({
         </div>
       )}
 
-      {!loading && query && results.length === 0 && (
+      {!loading && sugiere && results.length === 0 && (
         <div className="text-center py-8">
           <Package className="h-10 w-10 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500">No se encontraron productos para &quot;{query}&quot;</p>
@@ -295,8 +234,12 @@ export function ProductSearch({
 
       {/* Desktop: dropdown. En el menú móvil va pantalla completa: ese menú se usa también en tablet. */}
       {isOpen && !pantallaCompleta && (
-        <div className="hidden md:block absolute right-0 top-full mt-2 z-[100]">
-          <div className="bg-white dark:bg-gray-900 w-96 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col" data-superficie-propia="">
+        <div
+          className={`hidden md:block absolute top-full mt-2 z-[100]${posicion ? '' : ' right-0'}`}
+          style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
+          data-panel-buscador=""
+        >
+          <div className="bg-white dark:bg-gray-900 w-full rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col" data-superficie-propia="">
             <div className="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
               <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <input
