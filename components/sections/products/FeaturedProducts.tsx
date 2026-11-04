@@ -10,7 +10,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado } from '@/lib/products/limiteListado'
-import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
@@ -82,7 +82,12 @@ interface FeaturedProductsProps {
 
 export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, organization }: FeaturedProductsProps) {
   const { ruta } = useRutaSitio()
-  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
+  const estiloSeccion = useEstiloTarjeta(content.product_card_style)
+  const separacion = separacionTarjetas(estiloSeccion)
+  // «Contador de cantidad» (add.quantity_stepper): la tarjeta solo pinta la píldora «− 1 +» con
+  // su carrito interno (lib/cart.ts, misma clave y evento cart-updated), así que con el contador
+  // encendido no se le pasa el addToCart de la sección. Apagado (por defecto): como hoy.
+  const usarContador = contadorCantidadActivo(estiloSeccion?.add)
   const router = useRouter()
   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
   const branchId = data?.branchId ?? null
@@ -193,7 +198,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                 buttonsFullWidth={content.buttons_full_width !== false}
                 iconOnly={content.icon_only}
                 showBuyNow={showBuyNow}
-                onAddToCart={addToCart}
+                onAddToCart={usarContador ? undefined : addToCart}
                 onBuyNow={buyNow}
                 isAdded={addedToCart.has(product.id)}
                 organizationSubdomain={organization?.subdomain}
@@ -241,7 +246,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
                   buttonsFullWidth={content.buttons_full_width !== false}
                   iconOnly={content.icon_only}
                   showBuyNow={showBuyNow}
-                  onAddToCart={addToCart}
+                  onAddToCart={usarContador ? undefined : addToCart}
                   onBuyNow={buyNow}
                   isAdded={isAdded}
                   organizationSubdomain={organization?.subdomain}

@@ -10,7 +10,7 @@ import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProduc
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
-import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { clasesColumnasListado, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
@@ -106,7 +106,12 @@ const SIN_PRODUCTOS: any[] = []
 
 export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization, sectionId }: ProductsGridProps) {
   const { ruta } = useRutaSitio()
-  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
+  const estiloSeccion = useEstiloTarjeta(content.product_card_style)
+  const separacion = separacionTarjetas(estiloSeccion)
+  // «Contador de cantidad» (add.quantity_stepper): la tarjeta solo pinta la píldora «− 1 +» con
+  // su carrito interno (lib/cart.ts, misma clave y evento cart-updated), así que con el contador
+  // encendido no se le pasa el addToCart de la sección. Apagado (por defecto): como hoy.
+  const usarContador = contadorCantidadActivo(estiloSeccion?.add)
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = data?.branchId ?? null
@@ -414,7 +419,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
                 buttonsFullWidth={content.buttons_full_width !== false}
                 iconOnly={content.icon_only}
                 showBuyNow={showBuyNow}
-                onAddToCart={addToCart}
+                onAddToCart={usarContador ? undefined : addToCart}
                 onBuyNow={buyNow}
                 isAdded={isAdded}
                 organizationSubdomain={organizationSubdomain}

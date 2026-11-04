@@ -10,7 +10,7 @@ import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from
 import { categoriasDisponibles, filtrarProductosPorCategorias, incluirSubcategorias, unirProductosDeCategoria } from '@/lib/products/filtrosProductos'
 import { atributosCarrusel, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { desplazar } from '@/lib/carrusel/desplazamiento'
-import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
+import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useAutoplayCarrusel } from '@/lib/carrusel/useCarrusel'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
@@ -41,7 +41,12 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
   const movil = useEsMovilLista()
   const carrusel = resolverCarrusel(BASE_CARRUSEL_PRODUCTO, globalLista.carrusel, content.carrusel, movil)
   const { ruta } = useRutaSitio()
-  const separacion = separacionTarjetas(useEstiloTarjeta(content.product_card_style))
+  const estiloSeccion = useEstiloTarjeta(content.product_card_style)
+  const separacion = separacionTarjetas(estiloSeccion)
+  // «Contador de cantidad» (add.quantity_stepper): la tarjeta solo pinta la píldora «− 1 +» con
+  // su carrito interno (lib/cart.ts, misma clave y evento cart-updated), así que con el contador
+  // encendido no se le pasa el addToCart de la sección. Apagado (por defecto): como hoy.
+  const usarContador = contadorCantidadActivo(estiloSeccion?.add)
   const router = useRouter()
   const organizationSubdomain = organization?.subdomain || ''
   const branchId = data?.branchId ?? null
@@ -216,7 +221,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                   buttonsFullWidth={content.buttons_full_width !== false}
                   iconOnly={content.icon_only}
                   showBuyNow={showBuyNow}
-                  onAddToCart={addToCart}
+                  onAddToCart={usarContador ? undefined : addToCart}
                   onBuyNow={buyNow}
                   isAdded={addedToCart.has(product.id)}
                   organizationSubdomain={organizationSubdomain}
@@ -248,7 +253,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
                   buttonsFullWidth={content.buttons_full_width !== false}
                   iconOnly={content.icon_only}
                   showBuyNow={showBuyNow}
-                  onAddToCart={addToCart}
+                  onAddToCart={usarContador ? undefined : addToCart}
                   onBuyNow={buyNow}
                   isAdded={isAdded}
                   organizationSubdomain={organizationSubdomain}

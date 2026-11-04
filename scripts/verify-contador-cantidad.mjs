@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { stripTypeScriptTypes } from 'node:module'
-import { aplicarEstiloTarjeta, contadorCantidadActivo } from '../lib/website/tarjetaProducto.ts'
+import { aplicarEstiloTarjeta, contadorCantidadActivo, resolverTarjetaProducto } from '../lib/website/tarjetaProducto.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const problemas = []
@@ -77,6 +77,33 @@ check(/if \(added <= 0\) continue/.test(tracker), 'CartEventTracker ignora bajas
 const tarjeta = await readFile(join(ROOT, 'components/sections/products/ProductCard.tsx'), 'utf8')
 check(/contadorCantidadActivo\(estiloTarjeta\.add\) && !onAddToCart && !isParent && !outOfStock/.test(tarjeta), 'el contador exige la clave, sin onAddToCart externo, no padre y con stock')
 check(/useCartLineQty\(subCarrito, branchId, product\.id, conContador\)/.test(tarjeta), 'apagado no escucha el carrito')
+
+// ── Secciones de la portada: con el contador encendido no pasan su addToCart ──
+// La tarjeta solo pinta la píldora sin onAddToCart externo; FeaturedProducts («Lo más vendido»),
+// ProductsGrid, OffersGrid y sus carruseles siempre pasaban el suyo, así que la píldora nunca salía ahí.
+// Misma decisión que la sección: contadorCantidadActivo(resolverTarjetaProducto(sitio, sección).add).
+const decide = (sitio, seccion) => contadorCantidadActivo(resolverTarjetaProducto(sitio, seccion)?.add)
+const PILDORA = { add: { button_style: 'icon_only', button_shape: 'circle', button_position: 'over_image_corner', quantity_stepper: true } }
+check(decide(null, PILDORA) === true, 'sección con quantity_stepper + icon_only + circle: no se pasa onAddToCart')
+check(decide(null, { add: { button_style: 'icon_only', button_shape: 'circle' } }) === false, 'sección sin la clave: se pasa onAddToCart, como hoy')
+check(decide(null, undefined) === false, 'sección sin estilo de tarjeta: se pasa onAddToCart, como hoy')
+check(decide(PILDORA, undefined) === true, 'estilo del sitio con el contador y sección sin estilo: no se pasa onAddToCart')
+check(decide(null, { add: { button_style: 'solid', button_shape: 'pill', quantity_stepper: true } }) === false, 'quantity_stepper sin icon_only + circle: se pasa onAddToCart')
+for (const [ruta, tarjetas] of [
+  ['components/sections/products/FeaturedProducts.tsx', 2],
+  ['components/sections/products/ProductsGrid.tsx', 1],
+  ['components/sections/retail/OffersGrid.tsx', 1],
+  // Variante «carousel» de featured_products y products_grid (SectionRenderer).
+  ['components/sections/products/FeaturedProductsCarousel.tsx', 2],
+  ['components/sections/products/ProductsCarousel.tsx', 2],
+]) {
+  const src = await readFile(join(ROOT, ruta), 'utf8')
+  check(/const estiloSeccion = useEstiloTarjeta\(content\.product_card_style\)/.test(src), `${ruta}: resuelve el estilo de la sección una vez`)
+  check(/const usarContador = contadorCantidadActivo\(estiloSeccion\?\.add\)/.test(src), `${ruta}: decide el contador con contadorCantidadActivo`)
+  const condicionados = (src.match(/onAddToCart=\{usarContador \? undefined : addToCart\}/g) || []).length
+  check(condicionados === tarjetas, `${ruta}: ${condicionados} de ${tarjetas} tarjetas omiten onAddToCart con el contador`)
+  check(!/onAddToCart=\{addToCart\}/.test(src), `${ruta}: queda una tarjeta con onAddToCart fijo (sin contador)`)
+}
 
 if (problemas.length) {
   console.error(`verify-contador-cantidad: ${problemas.length} fallo(s) de ${casos}`)
