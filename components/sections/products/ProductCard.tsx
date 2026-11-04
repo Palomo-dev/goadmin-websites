@@ -193,6 +193,9 @@ function aplicarBotonTarjeta(btn: CardButtonConfig, cfg: EstiloBotonTarjeta | un
   }
 }
 
+/** Posiciones de botón que se pintan sobre la imagen, dentro de su enlace al detalle. */
+const POSICIONES_SOBRE_IMAGEN = ['overlay_bottom', 'overlay_top_left', 'overlay_top_right', 'overlay_bottom_left', 'overlay_bottom_right', 'overlay_hover']
+
 function cfgBoton(estilo: EstiloTarjetaProducto, accion: string, esPadre: boolean, contadorEnPadre = false): EstiloBotonTarjeta | undefined {
   // Con el contador encendido, el padre lleva el mismo «+» circular de «Agregar» (abre el selector de variantes).
   if (esPadre && contadorEnPadre && accion === 'add_to_cart') return estilo.add
@@ -570,6 +573,7 @@ function CardButtonRenderer({
   onShare,
   contador,
   abrirVariantes,
+  dentroDeEnlace = false,
 }: {
   button: CardButtonConfig
   product: any
@@ -589,6 +593,12 @@ function CardButtonRenderer({
   contador?: { subdomain: string; branchId?: number | null; line: CartLineInput; stock: number | null }
   /** Contador encendido en un padre con variantes: el «+» abre el selector de variantes. */
   abrirVariantes?: () => void
+  /**
+   * El botón se pinta dentro del enlace de la imagen (posiciones sobre la imagen). Ahí «Elegir» no
+   * puede ser otro enlace: `<a>` dentro de `<a>` es HTML inválido, el navegador lo parte y React
+   * falla al hidratar (#418/#423). Va como botón que navega al mismo detalle.
+   */
+  dentroDeEnlace?: boolean
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -825,6 +835,30 @@ function CardButtonRenderer({
     // respeta (el enlace sigue yendo al detalle para elegir variante). Con texto, Layers como siempre.
     const iconoElegido = btnIconOnly && button.icon ? ICON_MAP[button.icon as string] : undefined
     const ChooseIcon = iconoElegido || ICON_MAP.Layers || Layers
+    const contenidoElegir = (
+      <>
+        {ladoIcono === 'left' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
+        {!btnIconOnly && <span className={sinIcono ? undefined : ladoIcono === 'right' ? 'mr-1' : 'ml-1'}>{chooseLabel}</span>}
+        {ladoIcono === 'right' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
+      </>
+    )
+    if (dentroDeEnlace) {
+      return (
+        <Button
+          type="button"
+          size={size as any}
+          variant={variant === 'gradient' ? 'solid' : variant as any}
+          className={`${anchoClase} ${sizeTextClass}`}
+          style={baseStyle}
+          aria-label={btnIconOnly ? chooseLabel : undefined}
+          onClick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); navegar(ruta(`/productos/${product.uuid}`)) }}
+          onMouseEnter={alPasar ? (e) => alPasar(e, true) : undefined}
+          onMouseLeave={alPasar ? (e) => alPasar(e, false) : undefined}
+        >
+          {contenidoElegir}
+        </Button>
+      )
+    }
     return (
       <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
         <Button
@@ -835,9 +869,7 @@ function CardButtonRenderer({
           onMouseEnter={alPasar ? (e) => alPasar(e, true) : undefined}
           onMouseLeave={alPasar ? (e) => alPasar(e, false) : undefined}
         >
-          {ladoIcono === 'left' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
-          {!btnIconOnly && <span className={sinIcono ? undefined : ladoIcono === 'right' ? 'mr-1' : 'ml-1'}>{chooseLabel}</span>}
-          {ladoIcono === 'right' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
+          {contenidoElegir}
         </Button>
       </Link>
     )
@@ -1327,6 +1359,7 @@ export function ProductCard({
             onShare={() => setShareOpen(true)}
             contador={contador}
             abrirVariantes={contadorEnPadre ? () => { void dialogoVariantes.abrir(product) } : undefined}
+            dentroDeEnlace={!!positionFilter && POSICIONES_SOBRE_IMAGEN.includes(positionFilter)}
           />
         ))}
     </div>
@@ -1347,7 +1380,7 @@ export function ProductCard({
   }
   // Posiciones overlay que NO son esquinas (se renderizan separadas)
   const nonCornerOverlayPositions = ['overlay_bottom', 'overlay_hover']
-  const overlayPositions = ['overlay_bottom', 'overlay_top_left', 'overlay_top_right', 'overlay_bottom_left', 'overlay_bottom_right', 'overlay_hover']
+  const overlayPositions = POSICIONES_SOBRE_IMAGEN
   const hasOverlayButtons = overlayPositions.some((p) => hasButtonsAt(p))
 
   return (

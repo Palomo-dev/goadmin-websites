@@ -132,6 +132,19 @@ check(dialogo.includes('/api/products/${producto.id}/variants?organizationId=${o
 const grilla = await readFile(join(ROOT, 'components/site/ProductGrid.tsx'), 'utf8')
 check(grilla.includes('useDialogoVariantes(') && !grilla.includes('<VariantSelector'), 'ProductGrid usa el mismo diálogo (sin copia)')
 
+// ── Sin <a> dentro de <a>: «Elegir» sobre la imagen es botón (React #418/#423 al hidratar) ──
+check(tarjeta.includes("const POSICIONES_SOBRE_IMAGEN = ['overlay_bottom', 'overlay_top_left', 'overlay_top_right', 'overlay_bottom_left', 'overlay_bottom_right', 'overlay_hover']"), 'posiciones sobre la imagen en una sola lista')
+check(tarjeta.includes('const overlayPositions = POSICIONES_SOBRE_IMAGEN'), 'la tarjeta usa la misma lista para pintar sobre la imagen')
+check(tarjeta.includes('dentroDeEnlace={!!positionFilter && POSICIONES_SOBRE_IMAGEN.includes(positionFilter)}'), 'renderButtons marca los botones que van dentro del enlace de la imagen')
+check(/if \(dentroDeEnlace\) \{\s*return \(\s*<Button/.test(tarjeta) && tarjeta.includes("navegar(ruta(`/productos/${product.uuid}`))"), '«Elegir» dentro del enlace es un botón que navega al detalle')
+{
+  // El único <Link> de CardButtonRenderer es el «Elegir» fuera de la imagen.
+  const ini = tarjeta.indexOf('function CardButtonRenderer(')
+  const fin = tarjeta.indexOf('\nexport function ProductCard(', ini)
+  const cuerpo = tarjeta.slice(ini, fin)
+  check((cuerpo.match(/<Link /g) || []).length === 1 && !/<a /.test(cuerpo), 'CardButtonRenderer: un solo <Link> (fuera de la imagen) y ningún <a>')
+}
+
 // ── Prioridad card_buttons / product_card_style.add ──
 check(tarjeta.includes("// Prioridad entre `card_buttons` (heredado, de la sección) y el estilo de tarjeta"), 'prioridad documentada en ProductCard')
 check(tarjeta.includes("if (estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !effectiveButtons.some((b) => b.action === 'add_to_cart'))"), 'con el contador, se agrega «Agregar» si card_buttons no lo trae')
