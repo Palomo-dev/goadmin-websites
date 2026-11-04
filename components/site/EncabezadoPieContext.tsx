@@ -36,6 +36,8 @@ export interface ValorEncabezadoPie {
   fondoTemaOscuro: boolean
   /** Hex del fondo del tema, para mezclar un encabezado con opacidad. `null` sin tema. */
   fondoTema: string | null
+  /** Chips «Populares» del buscador: las configuradas o las primeras categorías del menú (busquedasPopulares.ts). */
+  busquedasPopulares: string[]
 }
 
 export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
@@ -45,6 +47,7 @@ export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
   tipo: null,
   fondoTemaOscuro: false,
   fondoTema: null,
+  busquedasPopulares: [],
 }
 
 const Contexto = createContext<ValorEncabezadoPie>(VALOR_POR_DEFECTO)

@@ -34,6 +34,8 @@ export const NOMBRE_IDIOMA: Readonly<Record<string, { corto: string; largo: stri
 }
 
 export interface OpcionesEncabezadoPie {
+  /** Búsquedas populares configuradas (`search_popular`); `null` = las primeras categorías del menú. */
+  busquedasPopulares: string[] | null
   /** Segundo botón; `null` sin texto o sin enlace (lo de hoy). */
   boton2: { texto: string; url: string } | null
   topbar: { estadoSede: boolean; envioGratis: boolean; cupos: boolean }
@@ -76,6 +78,7 @@ export function opcionesEncabezadoPie(ajustes: Ajustes): OpcionesEncabezadoPie {
   const locales = leer(ajustes, 'site_locales') as string[]
   const idiomas = mostrarIdioma ? locales.filter((l) => IDIOMAS_DISPONIBLES.includes(l)) : []
   return {
+    busquedasPopulares: leer(ajustes, 'search_popular') as string[] | null,
     boton2: texto2 && url2 ? { texto: texto2, url: url2 } : null,
     topbar: {
       estadoSede: leer(ajustes, 'topbar_show_branch_status') === true,

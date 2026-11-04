@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlBusquedaProductos } from '@/lib/products/urlBusqueda'
+import { useEncabezadoPie } from './EncabezadoPieContext'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
 import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 
@@ -46,10 +47,6 @@ interface SearchResult {
   tag?: string | null
 }
 
-// Sugerencias de búsqueda (se muestran cuando no hay query)
-const popularSearches = [
-  'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'
-]
 
 export function ProductSearch({
   primaryColor,
@@ -65,6 +62,8 @@ export function ProductSearch({
   circulo = false,
 }: ProductSearchProps) {
   const { ruta } = useRutaSitio()
+  // Populares: las de la tienda (search_popular) o sus primeras categorías del menú; nunca genéricas.
+  const { busquedasPopulares: popularSearches } = useEncabezadoPie()
   const controlado = abierto !== undefined
   const [interno, setInterno] = useState(false)
   const isOpen = controlado ? abierto : interno
@@ -251,7 +250,8 @@ export function ProductSearch({
               </div>
             </div>
           )}
-          <div>
+          {popularSearches.length > 0 && (
+          <div data-busquedas-populares="">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" /> Populares
             </p>
@@ -267,6 +267,7 @@ export function ProductSearch({
               ))}
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

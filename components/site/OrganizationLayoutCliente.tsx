@@ -36,6 +36,7 @@ import { TarjetaProductoProvider } from './TarjetaProductoContext'
 import { ProveedorListaCarrusel } from './listaCarrusel'
 import { TemaColoresProvider } from './TemaColoresContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
+import { busquedasPopulares } from '@/lib/website/busquedasPopulares'
 import { BarraMovilGiro } from './BarraMovilGiro'
 import { ModoMesaProvider } from './ModoMesaContext'
 import { PasosMesaProvider, type PasosMesaServidor } from './PasosMesaContext'
@@ -213,6 +214,7 @@ export function OrganizationLayoutCliente({
     tipo: organization.type_id ?? null,
     fondoTemaOscuro: !!(temaEfectivo?.fondo && fondoOscuro(temaEfectivo.fondo)),
     fondoTema: temaEfectivo?.fondo ?? null,
+    busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, menuCategories),
   }
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).

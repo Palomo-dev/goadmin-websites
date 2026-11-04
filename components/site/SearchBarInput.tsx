@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { urlBusquedaProductos, urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
+import { useEncabezadoPie } from './EncabezadoPieContext';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -56,8 +57,6 @@ interface SearchResult {
   tag?: string | null;
 }
 
-const popularSearches = ['Ofertas', 'Nuevo', 'Tenis', 'Accesorios'];
-
 const sizeConfig = {
   sm: {
     input: 'h-10 text-sm',
@@ -89,6 +88,8 @@ export function SearchBarInput({
   valorInicial,
 }: SearchBarInputProps) {
   const { ruta } = useRutaSitio();
+  // Populares: las de la tienda (search_popular) o sus primeras categorías del menú; nunca genéricas.
+  const { busquedasPopulares: popularSearches } = useEncabezadoPie();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -311,7 +312,8 @@ export function SearchBarInput({
                     </div>
                   </div>
                 )}
-                <div>
+                {popularSearches.length > 0 && (
+                <div data-busquedas-populares="">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" /> Populares
                   </p>
@@ -327,6 +329,7 @@ export function SearchBarInput({
                     ))}
                   </div>
                 </div>
+                )}
               </div>
             )}
           </div>
