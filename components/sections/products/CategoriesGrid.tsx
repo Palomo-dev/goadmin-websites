@@ -6,7 +6,8 @@ import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { EstilosCategoria } from './EstilosCategoria'
 import { desplazarPagina, estiloCategoria } from '@/lib/website/estiloCategoria'
-import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { IconoCategoria } from './IconoCategoria'
+import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria } from '@/lib/website/iconosCategoria'
 import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { ListRenderer } from '../ListRenderer'
@@ -145,6 +146,9 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   if (content.text_position) style.text_position = content.text_position
   if (content.title_size) style.title_size = content.title_size
   if (content.badge) style.badge = content.badge
+  // Color y fondo del ícono (4-nov); sin clave, los de hoy.
+  if (extra.icon_color) style.icon_color = extra.icon_color
+  if (extra.icon_bg_mode) style.icon_bg_mode = extra.icon_bg_mode
   return style
 }
 
@@ -198,6 +202,10 @@ function ListCard({ cat, cardStyle, primaryColor }: {
   const accent = typeof wantColor === 'string' && wantColor ? wantColor : (primaryColor || '#6366f1')
   // Ancho máximo del medio en la lista: sin valor, 56 px como siempre.
   const ladoMedio = Number(cardStyle.media_max_width) > 0 ? Math.min(240, Number(cardStyle.media_max_width)) : undefined
+  // Color y fondo del ícono de la sección (icon_color, icon_bg_mode); sin ellos, los de hoy.
+  const colorIcono = colorIconoCategoria(cardStyle, { categoria: cat.color, primario: primaryColor || '#6366f1' }) ?? accent
+  const modoFondoIcono = !wantImage && wantIcon ? fondoIconoCategoria(cardStyle) : null
+  const iconoConModo = modoFondoIcono ? estiloFondoIcono(modoFondoIcono, colorIcono, cardStyle.image_bg) : null
 
   // Sombra base según card_shadow (si no se define, sin sombra)
   const shadowClass =
@@ -239,7 +247,7 @@ function ListCard({ cat, cardStyle, primaryColor }: {
       {/* Media: imagen | icono | color | inicial */}
       <div
         className={`w-14 h-14 shrink-0 overflow-hidden flex items-center justify-center ${isRound ? 'rounded-full' : 'rounded-lg'}`}
-        style={{ ...(wantColor ? { backgroundColor: `${accent}20` } : {}), ...(ladoMedio ? { width: ladoMedio, height: ladoMedio } : {}) }}
+        style={{ ...(iconoConModo ? { backgroundColor: iconoConModo.fondo } : wantColor ? { backgroundColor: `${accent}20` } : {}), ...(ladoMedio ? { width: ladoMedio, height: ladoMedio } : {}) }}
       >
         {wantImage ? (
           <img
@@ -250,7 +258,7 @@ function ListCard({ cat, cardStyle, primaryColor }: {
             style={{ borderRadius: isRound ? '9999px' : radius, ...estiloMarcoImagen(cardStyle) }}
           />
         ) : wantIcon ? (
-          <DynamicLucideIcon name={cat.icon} fallback="Tag" className="w-6 h-6" style={{ color: accent }} />
+          <IconoCategoria cat={cat} className="w-6 h-6" style={{ color: iconoConModo ? iconoConModo.colorIcono : colorIcono }} />
         ) : wantColor ? (
           <span className="text-lg font-bold" style={{ color: accent }}>
             {cat.name?.charAt(0)?.toUpperCase() || '?'}
