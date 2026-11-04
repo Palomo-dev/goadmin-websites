@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { IconoCategoria } from './IconoCategoria'
+import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria, tieneIconoCategoria } from '@/lib/website/iconosCategoria'
 import { CarruselPastillas } from './CarruselPastillas'
 import {
   claseAjuste,
@@ -35,6 +36,10 @@ interface Contenido {
   media_source?: string
   show_icon?: boolean
   show_image?: boolean
+  /** 'category' | 'primary' | 'secondary' | '#hex'. Ausente: el color de la categoría, como hoy. */
+  icon_color?: string
+  /** 'soft' | 'solid' | 'none'. Ausente: el fondo de hoy. */
+  icon_bg_mode?: string
 }
 
 interface Props {
@@ -59,7 +64,8 @@ function fondoSuave(color: string, explicito?: string): string {
 function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = false }: { cat: any; fit: string; zoom: boolean; clase: string; fondo: string; content?: Contenido; color?: string; preferirIcono?: boolean }) {
   const origen = content?.media_source || 'auto'
   const hayImagen = Boolean(cat.image_url) && content?.show_image !== false
-  const hayIcono = typeof cat.icon === 'string' && cat.icon.trim() !== ''
+  // Propio (`categories.icon`) o automático por el nombre (iconosCategoria.ts).
+  const hayIcono = tieneIconoCategoria(cat)
   let medio: 'imagen' | 'icono' | 'inicial' | 'nada' | 'etiqueta'
   if (origen === 'icon') medio = 'icono'
   else if (origen === 'image') medio = cat.image_url ? 'imagen' : hayIcono ? 'icono' : 'etiqueta'
@@ -71,8 +77,12 @@ function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = fa
   else if (preferirIcono && cat.image_url) medio = 'imagen'
   else medio = 'etiqueta'
   const tamanoIcono = /h-(10|7|8)\b/.test(clase) ? 'h-5 w-5' : 'h-1/3 w-1/3 min-h-6 min-w-6 max-h-12 max-w-12'
+  // Color y fondo del ícono de la sección (icon_color, icon_bg_mode); sin ellos, los de hoy.
+  const colorBase = colorIconoCategoria(content, { categoria: cat.color, primario: color || '#111827' }) ?? (cat.color || color)
+  const modoFondo = medio === 'icono' ? fondoIconoCategoria(content) : null
+  const conModo = modoFondo ? estiloFondoIcono(modoFondo, colorBase || '#111827', content?.image_bg) : null
   return (
-    <span className={`relative flex items-center justify-center overflow-hidden ${clase}`} style={{ backgroundColor: fondo }}>
+    <span className={`relative flex items-center justify-center overflow-hidden ${clase}`} style={{ backgroundColor: conModo ? conModo.fondo : fondo }}>
       {medio === 'imagen' ? (
         <img
           src={cat.image_url}
@@ -80,7 +90,7 @@ function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = fa
           className={`h-full w-full ${claseAjuste(fit)} ${zoom ? 'transition-transform duration-300 group-hover:scale-105' : ''}`}
         />
       ) : medio === 'icono' ? (
-        <DynamicLucideIcon name={cat.icon} fallback="Tag" className={tamanoIcono} style={{ color: cat.color || color }} aria-hidden />
+        <IconoCategoria cat={cat} className={tamanoIcono} style={{ color: conModo ? conModo.colorIcono : colorBase }} aria-hidden />
       ) : medio === 'inicial' ? (
         <span className="text-xl font-bold" style={{ color: cat.color || color }} aria-hidden>{String(cat.name || '?').trim().charAt(0).toUpperCase()}</span>
       ) : medio === 'nada' ? null : (

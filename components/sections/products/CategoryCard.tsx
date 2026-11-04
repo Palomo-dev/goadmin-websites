@@ -17,7 +17,8 @@
  */
 
 import Link from 'next/link'
-import { DynamicLucideIcon } from './DynamicLucideIcon'
+import { IconoCategoria } from './IconoCategoria'
+import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria } from '@/lib/website/iconosCategoria'
 import { claseAjusteImagen, claseProporcionImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
 
 export interface CategoryCardStyle {
@@ -67,6 +68,10 @@ export interface CategoryCardStyle {
   overlay_opacity?: number
   /** Color del texto cuando va sobre la imagen. Default: #FFFFFF. */
   overlay_text_color?: string
+  /** Color del ícono: 'category' | 'primary' | 'secondary' | '#hex'. Ausente: el de hoy. */
+  icon_color?: string
+  /** Fondo del ícono: 'soft' | 'solid' | 'none'. Ausente: el de hoy. */
+  icon_bg_mode?: string
 }
 
 interface CategoryCardProps {
@@ -181,6 +186,10 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   const proporcion = claseProporcionImagen(image_ratio)
   const aspecto = proporcion || aspect
   const accent = show_color && cat.color ? cat.color : primaryColor || '#8B6914'
+  // Color y fondo del ícono de la sección (icon_color, icon_bg_mode); sin ellos, los de hoy.
+  const colorIcono = colorIconoCategoria(cardStyle, { categoria: cat.color, primario: primaryColor || '#8B6914' }) ?? (cat.color || accent)
+  const modoFondoIcono = fondoIconoCategoria(cardStyle)
+  const iconoConModo = modoFondoIcono ? estiloFondoIcono(modoFondoIcono, colorIcono, image_bg) : null
 
   // --- Estilo inline (sobreescribe clases cuando hay valor explícito) ---
   const containerStyle: React.CSSProperties = {
@@ -197,7 +206,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   const wantColor = media_source === 'color' || (media_source === 'auto' && show_color)
 
   const hasImage = wantImage && cat.image_url
-  // Si wantIcon es true, siempre mostramos un icono (DynamicLucideIcon tiene fallback="Tag")
+  // Si wantIcon es true, siempre mostramos un icono (IconoCategoria cae en «Tag»)
   const showIconBlock = wantIcon
   const hasColorBlock = wantColor && (cat.color || primaryColor)
   // `initial` explícito, o fallback `initial` en auto cuando no hay medio.
@@ -225,13 +234,12 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
       ) : showIconBlock ? (
         <div
           className="w-full h-full flex items-center justify-center"
-          style={{ backgroundColor: cat.color ? `${cat.color}20` : `${accent}15` }}
+          style={{ backgroundColor: iconoConModo ? iconoConModo.fondo : cat.color ? `${cat.color}20` : `${accent}15` }}
         >
-          <DynamicLucideIcon
-            name={cat.icon}
-            fallback="Tag"
+          <IconoCategoria
+            cat={cat}
             className={isRound ? 'w-7 h-7' : 'w-10 h-10'}
-            style={{ color: cat.color || accent }}
+            style={{ color: iconoConModo ? iconoConModo.colorIcono : colorIcono }}
           />
         </div>
       ) : hasColorBlock ? (
