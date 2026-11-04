@@ -20,7 +20,7 @@ const css = leer('components/sections/restaurant/motion.module.css')
 
 // CONTENT_KEYS
 const claves = src.match(/export const CONTENT_KEYS = \[([^\]]*)\]/)?.[1].split(',').map((x) => x.trim().replace(/'/g, '')) ?? []
-for (const k of ['phrases', 'separator', 'separator_color', 'images', 'speed', 'size', 'label']) check(claves.includes(k), `CONTENT_KEYS incluye ${k}`)
+for (const k of ['phrases', 'separator', 'separator_color', 'images', 'speed', 'size', 'label', 'respect_reduced_motion']) check(claves.includes(k), `CONTENT_KEYS incluye ${k}`)
 
 // colorSeparador (función pura, se evalúa aislada)
 const ini = src.indexOf('export function colorSeparador(')
@@ -44,8 +44,13 @@ check(src.includes("<span style={sepColor ? { color: sepColor } : undefined}>{se
 // Movimiento reducido: la franja de texto sin barra de scroll; la de fotos sigue con scroll manual
 check(src.includes('className={cn(m.marqueeViewport, m.marqueeText, size.section,'), 'la franja de texto lleva marqueeText')
 const reducido = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
-check(/\.marqueeViewport \{\s*overflow-x: auto;/.test(reducido), 'fotos: scroll horizontal manual (como antes)')
+check(/\.marqueeViewport:not\(\.marqueeText\) \{\s*overflow-x: auto;/.test(reducido), 'fotos: scroll horizontal manual (como antes)')
+check(/\.marqueeViewport:not\(\.marqueeText\) \.marqueeTrack \{\s*animation: none !important;/.test(reducido), 'fotos: quieta (como antes)')
 check(/\.marqueeViewport\.marqueeText \{\s*overflow: hidden;\s*scrollbar-width: none;/.test(reducido), 'texto: overflow hidden y sin barra')
+check(/\.marqueeText \.marqueeTrack \{\s*animation-duration: calc\(var\(--marquee-duration, 30s\) \* 2\);/.test(reducido), 'texto: sigue corriendo, duración ×2')
+check(!/(^|\n)\s*\.marqueeTrack \{\s*animation: none/.test(reducido), 'ninguna regla detiene todas las pistas a la vez')
+check(/\.marqueeText\[data-respetar-movimiento='true'\] \.marqueeTrack \{\s*animation: none !important;/.test(reducido), 'respect_reduced_motion: true la detiene')
+check(src.includes("data-respetar-movimiento={content.respect_reduced_motion === true ? 'true' : undefined}"), 'respect_reduced_motion: solo true (ausente o false = corre más lenta)')
 
 if (problemas.length) {
   console.error(`verify-franja: ${problemas.length} fallo(s) de ${casos}`)

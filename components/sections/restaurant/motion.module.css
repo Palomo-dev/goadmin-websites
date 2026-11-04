@@ -5,7 +5,8 @@
  * Regla común: el contenido está completo y visible en el SSR. Las clases de
  * animación solo actúan cuando el cliente marca el contenedor con
  * `data-motion="on"` (useMotionReady), y nada se mueve con
- * prefers-reduced-motion: reduce.
+ * prefers-reduced-motion: reduce, salvo la franja de texto (Marquee), que corre más lenta
+ * salvo que pida `respect_reduced_motion`.
  */
 
 /* ---- Fade-up escalonado (tarjetas, filas, paquetes) ---- */
@@ -190,19 +191,31 @@
     transition: none !important;
     transform: none !important;
   }
-  /* Franja de texto: estática. Franja de fotos: scroll horizontal manual. */
-  .marqueeTrack {
+  /* Franja de fotos: quieta, con scroll horizontal manual (como antes). */
+  .marqueeViewport:not(.marqueeText) .marqueeTrack {
     animation: none !important;
   }
-  .marqueeViewport {
+  .marqueeViewport:not(.marqueeText) {
     overflow-x: auto;
   }
-  /* La franja de texto queda quieta y recortada: sin barra de scroll. */
+  .marqueeViewport:not(.marqueeText) .marqueeClone {
+    display: none;
+  }
+  /* Franja de texto (4-nov): sigue corriendo, el doble de lenta, recortada y sin barra de
+     scroll. Windows con «Efectos de animación» apagado la dejaba quieta y con barra. Se
+     sigue pausando en hover y en foco (WCAG 2.2.2). */
   .marqueeViewport.marqueeText {
     overflow: hidden;
     scrollbar-width: none;
   }
-  .marqueeClone {
+  .marqueeText .marqueeTrack {
+    animation-duration: calc(var(--marquee-duration, 30s) * 2);
+  }
+  /* Con `respect_reduced_motion: true`: quieta y recortada, como antes. */
+  .marqueeText[data-respetar-movimiento='true'] .marqueeTrack {
+    animation: none !important;
+  }
+  .marqueeText[data-respetar-movimiento='true'] .marqueeClone {
     display: none;
   }
 }

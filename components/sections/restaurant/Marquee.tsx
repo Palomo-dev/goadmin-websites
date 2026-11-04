@@ -7,8 +7,9 @@
  *
  * Movimiento solo con CSS (notas 149:7386 y 149:7464): pista duplicada con
  * translateX(-50 %), pausa en hover y en foco, la copia lleva aria-hidden.
- * prefers-reduced-motion: franja estática (texto, sin barra de scroll) o scroll
- * horizontal manual (fotos). Sin JS: no hace falta 'use client'.
+ * prefers-reduced-motion (4-nov): la franja de texto sigue corriendo, el doble de lenta y
+ * recortada (sin barra de scroll); con `respect_reduced_motion: true` queda quieta, como antes.
+ * La de fotos: scroll horizontal manual. Sin JS: no hace falta 'use client'.
  *
  * Texto (4-nov): `size` 'sm' | 'md' | 'lg' (ausente = 'lg', la franja de siempre) y
  * `separator_color` 'secondary' | 'primary' | '#hex' (ausente = el color del texto).
@@ -20,7 +21,7 @@ import { SiteImage } from './SiteImage'
 import { EditorHint } from './EditorHint'
 import m from './motion.module.css'
 
-export const CONTENT_KEYS = ['phrases', 'separator', 'separator_color', 'images', 'speed', 'size', 'label'] as const
+export const CONTENT_KEYS = ['phrases', 'separator', 'separator_color', 'images', 'speed', 'size', 'label', 'respect_reduced_motion'] as const
 
 type MarqueeVariant = 'text' | 'photos'
 const VARIANTS: readonly MarqueeVariant[] = ['text', 'photos']
@@ -120,6 +121,8 @@ export function Marquee({ content, sectionVariant }: MarqueeProps) {
       aria-label={label}
       className={cn(m.marqueeViewport, m.marqueeText, size.section, 'text-white')}
       style={{ backgroundColor: 'var(--primary-color)' }}
+      // Solo `true` la detiene con «reducir movimiento»; ausente o false: corre más lenta.
+      data-respetar-movimiento={content.respect_reduced_motion === true ? 'true' : undefined}
     >
       {/* Texto completo para lectores de pantalla, una sola vez. */}
       <p className="sr-only">{phrases.join(' · ')}</p>
