@@ -30,6 +30,7 @@ import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import type { WebsitePageWithSections } from '@/types/database'
 import { validarDocumentoSitio, VERSION_ESQUEMA_DOCUMENTO, type DocumentoSitio } from './contrato/documentoSitio'
 import { sitioVistaPreviaDe } from './vistaPreviaBorrador'
+import { depurarReferencias, soloErroresDeReferencia } from './depurarReferencias'
 import {
   paginaPublicaDesdeDocumento,
   plantillaPublicaDesdeDocumento,
@@ -260,7 +261,19 @@ export async function getSitioBorradorV2(organizationId: number, siteStateId: st
       .maybeSingle()
     if (error) throw new Error(`website_site_drafts: ${error.message || error.code}`)
     if (!borrador || borrador.schema_version !== VERSION_ESQUEMA_DOCUMENTO) return null
-    const validacion = validarDocumentoSitio(borrador.document)
+    let validacion = validarDocumentoSitio(borrador.document)
+    if (!validacion.ok && soloErroresDeReferencia(validacion.errores)) {
+      // Menús o páginas inexistentes: se pinta el resto del borrador sin esas referencias
+      // (solo la vista previa; la base no se toca). Ver depurarReferencias.ts.
+      const { documento, quitadas } = depurarReferencias(borrador.document)
+      const depurado = validarDocumentoSitio(documento)
+      if (depurado.ok) {
+        console.warn('[sitio-v2] Borrador con referencias rotas: vista previa sin ellas', {
+          organizationId, siteStateId, quitadas: quitadas.slice(0, 20),
+        })
+        validacion = depurado
+      }
+    }
     if (!validacion.ok) {
       console.error('[sitio-v2] Borrador ilegible para la vista previa', {
         organizationId, siteStateId, errores: validacion.errores.slice(0, 10),
