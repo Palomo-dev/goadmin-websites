@@ -197,6 +197,11 @@
   .marqueeViewport {
     overflow-x: auto;
   }
+  /* La franja de texto queda quieta y recortada: sin barra de scroll. */
+  .marqueeViewport.marqueeText {
+    overflow: hidden;
+    scrollbar-width: none;
+  }
   .marqueeClone {
     display: none;
   }

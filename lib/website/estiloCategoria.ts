@@ -63,18 +63,34 @@ export function layoutMovilCategorias(valor: unknown): 'list' | 'grid' | 'carous
 /** Degradado a la derecha del carril del celular: deja claro que se desliza. En escritorio no hay máscara. */
 export const MASCARA_CARRIL = '[mask-image:linear-gradient(to_right,#000_85%,transparent)] md:[mask-image:none]'
 
+/** Alineación de las pastillas en escritorio (`align`): por defecto centradas bajo el título. */
+export function alineacionPastillas(valor: unknown): 'left' | 'center' {
+  return valor === 'left' ? 'left' : 'center'
+}
+
+/**
+ * Centrado de las pastillas en escritorio. En filas que se parten, `md:justify-center`. En
+ * carrusel, `safe center`: centradas cuando caben; si desbordan, empiezan a la izquierda y se
+ * desplazan (un centrado simple escondería las primeras). Navegador sin `safe`: a la izquierda,
+ * como antes.
+ */
+const CENTRO_FILA = ' md:justify-center'
+const CENTRO_CARRUSEL = ' md:[justify-content:safe_center]'
+
 /**
  * Contenedor de «Pastilla».
  * - Celular: `list` = columna; `grid` = 2 columnas; vacío/`carousel` = carril con degradado.
  * - Escritorio: `desktop_layout: 'carousel'` = una fila con desplazamiento (y flechas en
- *   CarruselPastillas); cualquier otro valor = filas que se parten (lo de siempre).
+ *   CarruselPastillas solo si desborda); cualquier otro valor = filas que se parten.
+ * - `align` (4-nov): 'center' (por defecto) centra en escritorio; 'left', a la izquierda (antes).
  */
-export function clasesPastillas(desktopLayout: unknown, mobileLayout?: unknown): string {
+export function clasesPastillas(desktopLayout: unknown, mobileLayout?: unknown, align?: unknown): string {
   const movil = layoutMovilCategorias(mobileLayout)
   const carrusel = desktopLayout === 'carousel'
-  if (movil === 'list') return carrusel ? 'flex flex-col gap-2 md:flex-row md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'flex flex-col gap-2 md:flex-row md:flex-wrap'
-  if (movil === 'grid') return carrusel ? 'grid grid-cols-2 gap-2 md:flex md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'grid grid-cols-2 gap-2 md:flex md:flex-wrap'
-  return carrusel ? `flex gap-3 overflow-x-auto snap-x pb-2 ${MASCARA_CARRIL}` : `flex gap-3 overflow-x-auto pb-2 md:flex-wrap ${MASCARA_CARRIL}`
+  const centro = alineacionPastillas(align) === 'center' ? (carrusel ? CENTRO_CARRUSEL : CENTRO_FILA) : ''
+  if (movil === 'list') return (carrusel ? 'flex flex-col gap-2 md:flex-row md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'flex flex-col gap-2 md:flex-row md:flex-wrap') + centro
+  if (movil === 'grid') return (carrusel ? 'grid grid-cols-2 gap-2 md:flex md:gap-3 md:overflow-x-auto md:snap-x md:pb-2' : 'grid grid-cols-2 gap-2 md:flex md:flex-wrap') + centro
+  return (carrusel ? `flex gap-3 overflow-x-auto snap-x pb-2 ${MASCARA_CARRIL}` : `flex gap-3 overflow-x-auto pb-2 md:flex-wrap ${MASCARA_CARRIL}`) + centro
 }
 
 /** Contenedor de «Círculo» en el celular (en escritorio va aparte). */

@@ -7,8 +7,11 @@
  *
  * Movimiento solo con CSS (notas 149:7386 y 149:7464): pista duplicada con
  * translateX(-50 %), pausa en hover y en foco, la copia lleva aria-hidden.
- * prefers-reduced-motion: franja estática (texto) o scroll horizontal manual
- * (fotos). Sin JS: no hace falta 'use client'.
+ * prefers-reduced-motion: franja estática (texto, sin barra de scroll) o scroll
+ * horizontal manual (fotos). Sin JS: no hace falta 'use client'.
+ *
+ * Texto (4-nov): `size` 'sm' | 'md' | 'lg' (ausente = 'lg', la franja de siempre) y
+ * `separator_color` 'secondary' | 'primary' | '#hex' (ausente = el color del texto).
  */
 
 import { cn } from '@/lib/utils'
@@ -17,11 +20,40 @@ import { SiteImage } from './SiteImage'
 import { EditorHint } from './EditorHint'
 import m from './motion.module.css'
 
-export const CONTENT_KEYS = ['phrases', 'separator', 'images', 'speed', 'label'] as const
+export const CONTENT_KEYS = ['phrases', 'separator', 'separator_color', 'images', 'speed', 'size', 'label'] as const
 
 type MarqueeVariant = 'text' | 'photos'
 const VARIANTS: readonly MarqueeVariant[] = ['text', 'photos']
 const SPEEDS = ['slow', 'normal', 'fast'] as const
+const SIZES = ['sm', 'md', 'lg'] as const
+type MarqueeSize = (typeof SIZES)[number]
+
+/** Clases de la franja de texto por tamaño. `lg` es la de siempre (las tiendas de hoy no cambian). */
+const TEXT_SIZE: Record<MarqueeSize, { section: string; track: string; gap: string }> = {
+  sm: {
+    section: 'py-2',
+    track: 'gap-6 pr-6 text-[13px] font-semibold uppercase tracking-[0.12em] [font-family:var(--font-body)] md:text-sm',
+    gap: 'gap-6',
+  },
+  md: {
+    section: 'py-3 md:py-4',
+    track: 'gap-6 pr-6 text-lg font-bold uppercase leading-7 [font-family:var(--font-heading)] md:gap-8 md:pr-8 md:text-2xl md:leading-8',
+    gap: 'gap-6 md:gap-8',
+  },
+  lg: {
+    section: 'py-4 md:py-6',
+    track: 'gap-6 pr-6 text-2xl font-bold uppercase leading-8 [font-family:var(--font-heading)] md:gap-10 md:pr-10 md:text-4xl md:leading-10',
+    gap: 'gap-6 md:gap-10',
+  },
+}
+
+/** Color del separador: secundario o primario del sitio, o un hex. Otro valor: el del texto (hoy). */
+export function colorSeparador(value: unknown): string | undefined {
+  if (value === 'secondary') return 'var(--secondary-color)'
+  if (value === 'primary') return 'var(--primary-color)'
+  if (typeof value === 'string' && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim())) return value.trim()
+  return undefined
+}
 
 interface MarqueeProps {
   content: Content
@@ -80,11 +112,13 @@ export function Marquee({ content, sectionVariant }: MarqueeProps) {
   const separator = str(content.separator) ?? '✦'
   const copy = fill(phrases, 6)
   const duration = `${Math.round(30 * factor)}s`
+  const size = TEXT_SIZE[oneOf(content.size, SIZES, 'lg')]
+  const sepColor = colorSeparador(content.separator_color)
 
   return (
     <section
       aria-label={label}
-      className={cn(m.marqueeViewport, 'py-4 text-white md:py-6')}
+      className={cn(m.marqueeViewport, m.marqueeText, size.section, 'text-white')}
       style={{ backgroundColor: 'var(--primary-color)' }}
     >
       {/* Texto completo para lectores de pantalla, una sola vez. */}
@@ -94,14 +128,15 @@ export function Marquee({ content, sectionVariant }: MarqueeProps) {
           <div
             key={n}
             className={cn(
-              'flex shrink-0 items-center gap-6 whitespace-nowrap pr-6 text-2xl font-bold uppercase leading-8 [font-family:var(--font-heading)] md:gap-10 md:pr-10 md:text-4xl md:leading-10',
+              'flex shrink-0 items-center whitespace-nowrap',
+              size.track,
               n === 1 && m.marqueeClone,
             )}
           >
             {copy.map((phrase, i) => (
-              <span key={i} className="flex items-center gap-6 md:gap-10">
+              <span key={i} className={cn('flex items-center', size.gap)}>
                 <span>{phrase}</span>
-                <span>{separator}</span>
+                <span style={sepColor ? { color: sepColor } : undefined}>{separator}</span>
               </span>
             ))}
           </div>

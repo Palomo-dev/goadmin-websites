@@ -44,7 +44,10 @@ import {
  * - NO muestra currency selector ni auth en el header — van dentro del drawer.
  * - Drawer lateral derecho más grande (400px) con vaul:
  *   navegación + currency selector + auth buttons.
- * - En móvil, el botón abre el drawer móvil (gestionado por SiteHeader).
+ * - `minimal_menu_style`: 'drawer' (panel lateral, por defecto), 'dropdown' (desplegable bajo el
+ *   botón) o 'fullscreen' (capa a pantalla completa con el mismo contenido del panel).
+ * - Fila móvil: se ve hasta que SiteHeader cambia al encabezado del celular (y entre los cortes
+ *   640/768); su botón abre el panel lateral.
  */
 export default function HeaderMinimal({
   organization,
@@ -58,6 +61,7 @@ export default function HeaderMinimal({
 }: HeaderVariantProps) {
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
@@ -101,13 +105,42 @@ export default function HeaderMinimal({
     return () => document.removeEventListener('mousedown', handler);
   }, [desktopMenuOpen]);
 
+  // Pantalla completa: Escape cierra y la página de atrás no se desplaza.
+  useEffect(() => {
+    if (!fullscreenOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreenOpen(false);
+    };
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = overflowPrevio;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [fullscreenOpen]);
+
   const openMenu = () => {
-    if (minimalMenuStyle === 'drawer') {
-      setDrawerOpen(true);
-    } else {
+    if (minimalMenuStyle === 'fullscreen') {
+      setFullscreenOpen(true);
+    } else if (minimalMenuStyle === 'dropdown') {
       setDesktopMenuOpen(!desktopMenuOpen);
+    } else {
+      // 'drawer' y cualquier valor desconocido: el panel lateral.
+      setDrawerOpen(true);
     }
   };
+
+  const contenidoMenu = (onCerrar: () => void) => (
+    <ContenidoMenuMinimal
+      items={allItems}
+      primaryColor={primaryColor}
+      settings={settings}
+      isLoggedIn={isLoggedIn}
+      showHeaderAuth={showHeaderAuth}
+      onCerrar={onCerrar}
+    />
+  );
 
   return (
     <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
@@ -202,105 +235,143 @@ export default function HeaderMinimal({
               primaryColor={primaryColor}
               height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))}
             />
-            <MobileMenuButton onClick={() => {}} />
+            <MobileMenuButton onClick={() => setDrawerOpen(true)} />
           </div>
         </div>
       </div>
 
-      {/* Drawer lateral para desktop (minimal_menu_style='drawer') */}
-      {minimalMenuStyle === 'drawer' && (
-        <Drawer
-          open={drawerOpen}
-          onOpenChange={setDrawerOpen}
-          direction="right"
-          modal
+      {/* Panel lateral: 'drawer' en escritorio y el botón de la fila móvil (cualquier estilo). */}
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        direction="right"
+        modal
+      >
+        <DrawerContent className="right-0 left-auto top-0 bottom-0 h-full w-full max-w-[400px] rounded-none">
+          <DrawerHeader>
+            <DrawerTitle>Menú</DrawerTitle>
+            <DrawerClose asChild>
+              <button
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Cerrar menú"
+              >
+                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
+          {contenidoMenu(() => setDrawerOpen(false))}
+        </DrawerContent>
+      </Drawer>
+
+      {/* Pantalla completa (minimal_menu_style='fullscreen') */}
+      {fullscreenOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menú"
+          className="fixed inset-0 z-[70] flex flex-col bg-white text-gray-900 animate-in fade-in duration-150 dark:bg-gray-950 dark:text-white"
         >
-          <DrawerContent className="right-0 left-auto top-0 bottom-0 h-full w-full max-w-[400px] rounded-none">
-            {/* Header del drawer */}
-            <DrawerHeader>
-              <DrawerTitle>Menú</DrawerTitle>
-              <DrawerClose asChild>
-                <button
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                  aria-label="Cerrar menú"
-                >
-                  <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                </button>
-              </DrawerClose>
-            </DrawerHeader>
-
-            {/* Navegación */}
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-              {allItems.map((item) => (
-                <DrawerNavItem
-                  key={item.name}
-                  item={item}
-                  primaryColor={primaryColor}
-                  onNavigate={() => setDrawerOpen(false)}
-                />
-              ))}
-
-              {/* Mi Cuenta — solo si está logueado */}
-              {isLoggedIn && showHeaderAuth && (
-                <Link
-                  href="/mi-cuenta"
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
-                  Mi Cuenta
-                </Link>
-              )}
-            </nav>
-
-            <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="p-4 border-t border-gray-200 dark:border-gray-800" />
-
-            {/* Auth buttons */}
-            {showHeaderAuth && (
-              <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-                {isLoggedIn ? (
-                  <button
-                    onClick={async () => {
-                      const { createClient } = await import('@/lib/supabase/client');
-                      const supabase = createClient();
-                      await supabase.auth.signOut();
-                      setDrawerOpen(false);
-                      window.location.href = '/';
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Cerrar sesión
-                  </button>
-                ) : (
-                  <>
-                    <Link
-                      href="/auth"
-                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: primaryColor }}
-                      onClick={() => setDrawerOpen(false)}
-                    >
-                      Iniciar sesión
-                    </Link>
-                    <Link
-                      href="/auth?tab=register"
-                      className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
-                      style={{
-                        borderColor: primaryColor,
-                        color: primaryColor,
-                      }}
-                      onClick={() => setDrawerOpen(false)}
-                    >
-                      Registrarse
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </DrawerContent>
-        </Drawer>
+          <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-4">
+            <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))} />
+            <button
+              type="button"
+              onClick={() => setFullscreenOpen(false)}
+              className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Cerrar menú"
+              autoFocus
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col text-lg">
+            {contenidoMenu(() => setFullscreenOpen(false))}
+          </div>
+        </div>
       )}
     </header>
+  );
+}
+
+/**
+ * Contenido del menú (panel lateral y pantalla completa): navegación, Mi cuenta, moneda y sesión.
+ */
+function ContenidoMenuMinimal({
+  items,
+  primaryColor,
+  settings,
+  isLoggedIn,
+  showHeaderAuth,
+  onCerrar,
+}: {
+  items: NavItem[];
+  primaryColor: string;
+  settings: HeaderVariantProps['settings'];
+  isLoggedIn: boolean;
+  showHeaderAuth: boolean;
+  onCerrar: () => void;
+}) {
+  return (
+    <>
+      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+        {items.map((item) => (
+          <DrawerNavItem key={item.name} item={item} primaryColor={primaryColor} onNavigate={onCerrar} />
+        ))}
+
+        {/* Mi Cuenta — solo si está logueado */}
+        {isLoggedIn && showHeaderAuth && (
+          <Link
+            href="/mi-cuenta"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors"
+            onClick={onCerrar}
+          >
+            <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
+            Mi Cuenta
+          </Link>
+        )}
+      </nav>
+
+      <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="p-4 border-t border-gray-200 dark:border-gray-800" />
+
+      {/* Auth buttons */}
+      {showHeaderAuth && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+          {isLoggedIn ? (
+            <button
+              onClick={async () => {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                onCerrar();
+                window.location.href = '/';
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/auth"
+                className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
+                onClick={onCerrar}
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/auth?tab=register"
+                className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
+                style={{ borderColor: primaryColor, color: primaryColor }}
+                onClick={onCerrar}
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

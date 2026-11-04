@@ -5,18 +5,23 @@ import { clasesPastillas, desplazarPagina } from '@/lib/website/estiloCategoria'
 
 /**
  * Fila de pastillas en carrusel (`category_style: 'pill'` + `desktop_layout: 'carousel'`).
+ * Es carrusel (desplazamiento y flechas) solo si desborda (`scrollWidth > clientWidth`); si las
+ * pastillas caben, es una fila centrada (`clasesPastillas` con `align`, por defecto 'center').
  * Las flechas solo se ven en escritorio y con el mismo aspecto que las de CategoriesGrid.
  */
 export function CarruselPastillas({ children, clases }: { children: ReactNode; clases?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [izq, setIzq] = useState(false)
   const [der, setDer] = useState(false)
+  const [desborda, setDesborda] = useState(false)
 
   const medir = useCallback(() => {
     const el = ref.current
     if (!el) return
-    setIzq(el.scrollLeft > 4)
-    setDer(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+    const hayDesborde = el.scrollWidth > el.clientWidth + 1
+    setDesborda(hayDesborde)
+    setIzq(hayDesborde && el.scrollLeft > 4)
+    setDer(hayDesborde && el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
   }, [])
 
   useEffect(() => {
@@ -41,7 +46,7 @@ export function CarruselPastillas({ children, clases }: { children: ReactNode; c
           <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
       )}
-      <div ref={ref} className={clases ?? clasesPastillas('carousel')} style={{ scrollbarWidth: 'none' }}>
+      <div ref={ref} className={clases ?? clasesPastillas('carousel')} style={{ scrollbarWidth: 'none' }} data-carrusel={desborda ? 'desborda' : 'cabe'}>
         {children}
       </div>
       {der && (

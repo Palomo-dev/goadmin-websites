@@ -36,6 +36,8 @@ interface Contenido {
   media_source?: string
   show_icon?: boolean
   show_image?: boolean
+  /** Pastillas en escritorio: 'center' (por defecto) o 'left'. */
+  align?: string
   /** 'category' | 'primary' | 'secondary' | '#hex'. Ausente: el color de la categoría, como hoy. */
   icon_color?: string
   /** 'soft' | 'solid' | 'none'. Ausente: el fondo de hoy. */
@@ -227,11 +229,11 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
     )
   } else if (estilo === 'pill') {
     cuerpo = carrusel ? (
-      <CarruselPastillas clases={clasesPastillas('carousel', content.mobile_layout)}>
+      <CarruselPastillas clases={clasesPastillas('carousel', content.mobile_layout, content.align)}>
         {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} snap bloque={bloque} />)}
       </CarruselPastillas>
     ) : (
-      <div className={clasesPastillas(content.desktop_layout, content.mobile_layout)} style={{ scrollbarWidth: 'none' }}>
+      <div className={clasesPastillas(content.desktop_layout, content.mobile_layout, content.align)} style={{ scrollbarWidth: 'none' }}>
         {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} bloque={bloque} />)}
       </div>
     )

@@ -401,6 +401,18 @@ check(! (await fuente('components/sections/hero/HeroFullscreen.tsx')).includes('
 check((await fuente('components/sections/SectionWrapper.tsx')).includes('isFirst'), 'SectionWrapper recibe la primera sección')
 check((await fuente('app/globals.css')).includes('data-header-sobre-hero') && (await fuente('app/globals.css')).includes('data-encabezado-no-fijo'), 'el CSS del header transparente no borra data-encabezado-no-fijo')
 
+// Encabezado «Mínimo» (4-nov): 'fullscreen' pinta su capa y el botón de la fila móvil abre el panel
+{
+  const minimo = await fuente('components/site/header/HeaderMinimal.tsx')
+  check(!minimo.includes('onClick={() => {}}'), 'HeaderMinimal: ningún botón sin acción')
+  check(minimo.includes('<MobileMenuButton onClick={() => setDrawerOpen(true)} />'), 'HeaderMinimal: el botón de la fila móvil abre el panel')
+  check(minimo.includes("if (minimalMenuStyle === 'fullscreen') {\n      setFullscreenOpen(true);"), "HeaderMinimal: 'fullscreen' abre la pantalla completa")
+  check(minimo.includes('{fullscreenOpen && (') && minimo.includes('role="dialog"') && minimo.includes('aria-modal="true"'), 'HeaderMinimal: la pantalla completa se pinta como diálogo')
+  check(minimo.includes("if (e.key === 'Escape') setFullscreenOpen(false);"), 'HeaderMinimal: Escape cierra la pantalla completa')
+  check(!minimo.includes("{minimalMenuStyle === 'drawer' && (\n        <Drawer"), 'HeaderMinimal: el panel existe con cualquier estilo (lo abre la fila móvil)')
+  check((minimo.match(/contenidoMenu\(\(\) => set(Drawer|Fullscreen)Open\(false\)\)/g) || []).length === 2, 'HeaderMinimal: panel y pantalla completa comparten el contenido')
+}
+
 if (problemas.length > 0) {
   console.error(`✗ verify-encabezado-pie: ${problemas.length} problema(s) en ${casos} casos`)
   for (const p of problemas) console.error(`  - ${p}`)
