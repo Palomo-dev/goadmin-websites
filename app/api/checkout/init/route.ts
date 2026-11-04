@@ -8,7 +8,6 @@ import { FUENTE_COBRO_MESA, abonoMesaPorCobrar } from '@/lib/restaurant/mesa-ser
 import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
-import { resolverSecretoCredencial } from '@/lib/integraciones/secretoCredencial'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,8 +29,8 @@ const GATEWAY_CODE_MAP: Record<string, string> = {
 }
 
 /**
- * Obtiene credenciales de una conexión de pasarela de integration_credentials: del Vault si
- * `secret_ref` es su uuid; si no, el valor en claro, como siempre (resolverSecretoCredencial).
+ * Obtiene credenciales de una conexión de pasarela.
+ * Busca en integration_credentials y opcionalmente en Vault.
  */
 async function getCredentials(
   supabase: any,
@@ -49,7 +48,18 @@ async function getCredentials(
 
   for (const cred of credentials) {
     const key = cred.purpose || cred.credential_type
-    result[key] = await resolverSecretoCredencial(supabase, connectionId, cred.purpose || cred.credential_type, cred.secret_ref)
+    let value = cred.secret_ref
+
+    // Intentar leer del Vault de Supabase
+    try {
+      const { data: secret } = await supabase
+        .rpc('get_decrypted_secret', { secret_name: cred.secret_ref })
+      if (secret) value = secret
+    } catch {
+      // Vault no disponible — usar secret_ref directamente
+    }
+
+    result[key] = value
   }
 
   return result
