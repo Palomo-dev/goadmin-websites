@@ -31,6 +31,9 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
     // Misma llamada (y clave de caché) que `categoriasTienda` de getOrgContext.
     props.categoriasBusqueda ?? getMenuCategories(props.organization.id, props.outlet?.branchId ?? props.branchId ?? undefined).catch(() => []),
   ])
+  // Al cliente solo viajan los nombres de las primeras raíces (no el árbol: hasta ~74 KB en
+  // tiendas grandes, en cada página). 8 por si hay nombres vacíos o repetidos.
+  const nombresBusqueda = categoriasBusqueda.slice(0, 8).map((c) => ({ name: c.name }))
   // Encabezado y pie por plantilla: con las opciones en su default no hace consultas nuevas.
   const extrasShell = await getExtrasEncabezadoPie(props.organization, settings ?? null, datosSede, ajustes)
   return (
@@ -41,7 +44,7 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
       temaSitio={temaSitio}
       pixeles={pixeles}
       codigoPropio={ajustes.codigoPropio}
-      categoriasBusqueda={categoriasBusqueda}
+      categoriasBusqueda={nombresBusqueda}
     />
   )
 }

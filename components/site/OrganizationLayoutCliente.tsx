@@ -88,9 +88,10 @@ export interface OrganizationLayoutProps {
   menuCategories?: MenuCategory[]
   /**
    * Categorías de la tienda para las búsquedas populares (sin `search_popular`), sin depender de
-   * `show_categories_in_header` / `footer_show_categories`. La carga OrganizationLayout.
+   * `show_categories_in_header` / `footer_show_categories`. La carga OrganizationLayout (solo
+   * los nombres de las primeras raíces).
    */
-  categoriasBusqueda?: MenuCategory[]
+  categoriasBusqueda?: { name?: string | null }[]
   megaMenuItems?: NavItem[]
   footerNav?: WebsitePage[]
   footerNavTree?: WebsitePageWithChildren[]

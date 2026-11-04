@@ -49,7 +49,7 @@ for (const f of ['components/site/SearchBarInput.tsx', 'components/site/ProductS
 const layout = leer('components/site/OrganizationLayoutCliente.tsx')
 check(layout.includes('busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, categoriasBusqueda && categoriasBusqueda.length > 0 ? categoriasBusqueda : menuCategories),'), 'el layout resuelve configuradas o las categorías de la tienda (no las que se muestran)')
 const layoutServidor = leer('components/site/OrganizationLayout.tsx')
-check(/props\.categoriasBusqueda \?\? getMenuCategories\(props\.organization\.id, /.test(layoutServidor) && layoutServidor.includes('categoriasBusqueda={categoriasBusqueda}'), 'OrganizationLayout carga las categorías del buscador sin depender de los ajustes de mostrarlas')
+check(/props\.categoriasBusqueda \?\? getMenuCategories\(props\.organization\.id, /.test(layoutServidor) && layoutServidor.includes('categoriasBusqueda={nombresBusqueda}') && layoutServidor.includes('categoriasBusqueda.slice(0, 8).map((c) => ({ name: c.name }))'), 'OrganizationLayout carga las categorías del buscador sin depender de los ajustes de mostrarlas')
 const ctxOrg = leer('lib/get-org-context.ts')
 check(ctxOrg.includes('const categoriasTienda = await getMenuCategories(organization.id, branchId)') && ctxOrg.includes('const menuCategories = categoriasVisibles(settings, categoriasTienda)'), 'getOrgContext: categorías de la tienda siempre; las visibles según los ajustes')
 {
