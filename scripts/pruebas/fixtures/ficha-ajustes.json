@@ -1,0 +1,113 @@
+{
+  "_nota": {
+    "pageSettings": {},
+    "descripcion": "page_settings de cada caso. `sitio` se mezcla sobre website_settings del fixture. `urgencia_*` es sintético (ninguna de las tres orgs tiene conversion.stockBajo)."
+  },
+  "base": {
+    "pageSettings": {}
+  },
+  "una_columna": {
+    "pageSettings": {
+      "columns": "1"
+    }
+  },
+  "una_columna_sobre_galeria": {
+    "pageSettings": {
+      "columns": "1",
+      "description_position": "above_gallery",
+      "show_breadcrumb": false
+    }
+  },
+  "bajo_precio": {
+    "pageSettings": {
+      "description_position": "below_price",
+      "sticky_column": false,
+      "gallery_width": 60
+    }
+  },
+  "bajo_botones": {
+    "pageSettings": {
+      "description_position": "below_buttons",
+      "buttons_layout": "inline",
+      "show_benefits": false
+    }
+  },
+  "sobre_galeria": {
+    "pageSettings": {
+      "description_position": "above_gallery",
+      "related_products_layout": "grid",
+      "gallery_layout": "grid",
+      "gallery_grid_columns": 2
+    }
+  },
+  "posicion_desconocida": {
+    "pageSettings": {
+      "description_position": "no_existe",
+      "columns": "2+sidebar",
+      "gallery_width": 40
+    }
+  },
+  "galeria_lateral": {
+    "pageSettings": {
+      "thumbnails_position": "left",
+      "gallery_arrows": false,
+      "gallery_dots": false
+    }
+  },
+  "galeria_scroll": {
+    "pageSettings": {
+      "gallery_layout": "scroll",
+      "gallery_scroll_height": 400
+    }
+  },
+  "urgencia_stock": {
+    "pageSettings": {
+      "description_position": "below_price"
+    },
+    "sitio": {
+      "conversion": {
+        "contadores": [],
+        "urgencia": {
+          "stockBajo": {
+            "activo": true,
+            "umbral": 999,
+            "plantilla": "¡Solo quedan {n} unidades!",
+            "ubicaciones": [
+              "producto"
+            ]
+          },
+          "reservaCarrito": {
+            "activo": false
+          },
+          "personasViendo": {
+            "activo": false
+          }
+        }
+      }
+    }
+  },
+  "urgencia_stock_bajo_titulo": {
+    "pageSettings": {},
+    "sitio": {
+      "conversion": {
+        "contadores": [],
+        "urgencia": {
+          "stockBajo": {
+            "activo": true,
+            "umbral": 999,
+            "plantilla": "¡Solo quedan {n} unidades!",
+            "ubicaciones": [
+              "producto"
+            ]
+          },
+          "reservaCarrito": {
+            "activo": false
+          },
+          "personasViendo": {
+            "activo": false
+          }
+        }
+      }
+    }
+  }
+}
