@@ -157,6 +157,8 @@ function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; conten
 
 function Pastilla({ cat, color, content, snap = false, bloque = false }: { cat: any; color: string; content: Contenido; snap?: boolean; bloque?: boolean }) {
   // Hover solo con CSS y solo donde hay mouse (`hover:hover`): en el celular no queda pintada.
+  // En bloque (celular en grilla o lista) el nombre va en hasta 2 líneas, no truncado: la grilla
+  // estira cada pastilla a la altura de la más alta de su fila. Desde md, una línea como siempre.
   const estilo = {
     '--pastilla-hover': color,
     ...(content.card_bg ? { backgroundColor: content.card_bg } : {}),
@@ -165,11 +167,11 @@ function Pastilla({ cat, color, content, snap = false, bloque = false }: { cat: 
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group ${bloque ? 'flex w-full min-w-0 md:inline-flex md:w-auto' : 'inline-flex'} shrink-0${snap ? ' snap-start' : ''} items-center gap-2 rounded-full border border-gray-200 ${content.card_bg ? '' : 'bg-white '}py-1 pl-1 pr-4 ${content.overlay_text_color ? '' : 'text-gray-900 '}transition [@media(hover:hover)]:hover:border-transparent [@media(hover:hover)]:hover:!bg-[var(--pastilla-hover)] [@media(hover:hover)]:hover:!text-white`}
+      className={`group ${bloque ? 'flex w-full min-w-0 md:inline-flex md:w-auto' : 'inline-flex'} shrink-0${snap ? ' snap-start' : ''} items-center gap-2 ${bloque ? 'rounded-3xl md:rounded-full' : 'rounded-full'} border border-gray-200 ${content.card_bg ? '' : 'bg-white '}${bloque ? 'py-1.5 md:py-1' : 'py-1'} pl-1 pr-4 ${content.overlay_text_color ? '' : 'text-gray-900 '}transition [@media(hover:hover)]:hover:border-transparent [@media(hover:hover)]:hover:!bg-[var(--pastilla-hover)] [@media(hover:hover)]:hover:!text-white`}
       style={estilo}
     >
       <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 shrink-0 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
-      <span className={`text-sm font-medium [@media(hover:hover)]:group-hover:text-white${bloque ? ' min-w-0 truncate' : ''}`}>{cat.name}</span>
+      <span className={`text-sm font-medium [@media(hover:hover)]:group-hover:text-white${bloque ? ' min-w-0 line-clamp-2 break-words leading-tight text-left md:line-clamp-none md:whitespace-nowrap md:leading-5' : ''}`}>{cat.name}</span>
     </Link>
   )
 }
