@@ -1042,6 +1042,7 @@ const getOfferProductsUncached = async (organizationId: number, limit = 500, bra
     let q = supabase
       .from('products')
       .select(OFFER_SELECT)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('status', 'active')
