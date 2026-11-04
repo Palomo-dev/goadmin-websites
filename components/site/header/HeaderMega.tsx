@@ -84,7 +84,7 @@ export default function HeaderMega({
 
   // Barra del buscador en la fila; si no cabe (menos de 240px, el menú recortaría o la fila
   // desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
-  const barra = (clase: string) => barraSiCromo(settings, showSearchBar ? (
+  const barra = (clase: string, enFila = true) => barraSiCromo(settings, showSearchBar ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -92,7 +92,7 @@ export default function HeaderMega({
                 size="lg"
                 icon={SearchIconComp}
               />
-              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase });
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase, enFila });
   const hayBarra = barra('') != null;
   const filaRef = useRef<HTMLDivElement>(null);
   const barraAbajo = useBarraAbajo(filaRef, hayBarra);
@@ -140,7 +140,7 @@ export default function HeaderMega({
               />
             </div>
           </div>
-          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl')}</div>}
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl', false)}</div>}
         </div>
 
         {/* Fila inferior: nav items con border-top — z-10 para que el dropdown del buscador superior se vea encima */}

@@ -1139,8 +1139,18 @@ export function NavList({
         const visiblesFila = Array.from(fila.children).filter((c) => (c as HTMLElement).offsetParent !== null) as HTMLElement[];
         const ocupado = visiblesFila.reduce((t, c) => t + c.getBoundingClientRect().width, 0) + gapFila * Math.max(0, visiblesFila.length - 1);
         libre = fila.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0') - ocupado;
+        // Lo que un vecino que crece (la barra, `flex-1`) ocupa por encima de su mínimo también es
+        // espacio del menú: así, si la barra baja a otra fila o la ventana se agranda, los enlaces
+        // que habían ido a «Más» vuelven a la fila.
+        for (const c of visiblesFila) {
+          if (c === nav) continue;
+          const ccs = getComputedStyle(c);
+          if (parseFloat(ccs.flexGrow) > 0) libre += Math.max(0, c.getBoundingClientRect().width - (parseFloat(ccs.minWidth) || 0));
+        }
       }
-      const disponible = nav.clientWidth + Math.min(0, libre);
+      // Con dos menús en la misma fila (encabezado dividido) el espacio que sobra o falta se reparte.
+      const menusFila = fila ? fila.querySelectorAll(':scope > nav').length || 1 : 1;
+      const disponible = nav.clientWidth + libre / menusFila;
       let n = anchos.length;
       if (window.innerWidth >= 768 && natural > disponible + 1) {
         let usado = anchoMas;
@@ -1157,9 +1167,18 @@ export function NavList({
     medir();
     const ro = new ResizeObserver(medir);
     ro.observe(nav);
-    if (nav.parentElement) ro.observe(nav.parentElement);
+    ro.observe(medida);
+    if (nav.parentElement) {
+      ro.observe(nav.parentElement);
+      // Un vecino que cambia de ancho (íconos, CTA, la barra) cambia lo que le queda al menú.
+      for (const c of Array.from(nav.parentElement.children)) if (c !== nav) ro.observe(c);
+    }
     window.addEventListener('resize', medir);
+    // La fuente del sitio llega después del primer pintado y cambia el ancho de los enlaces.
+    let vivo = true;
+    document.fonts?.ready.then(() => { if (vivo) medir(); });
     return () => {
+      vivo = false;
       ro.disconnect();
       window.removeEventListener('resize', medir);
     };

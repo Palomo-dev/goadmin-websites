@@ -14,7 +14,8 @@ export const ANCHO_MINIMO_BARRA = 240
  * - la fila desborda.
  * Para no oscilar, recuerda el ancho de la fila al bajar y solo vuelve a probar arriba cuando la
  * fila es más ancha que eso. Con espacio (lo de hoy en pantallas anchas), la barra no se mueve.
- * «Barra compacta» (`mini`) y la lupa no cuentan: su ancho en reposo es chico a propósito.
+ * La lupa no cuenta. «Barra compacta» (`mini`) es chica a propósito: solo baja si la fila desborda,
+ * y en la segunda fila se pinta como barra normal a todo el ancho.
  */
 export function useBarraAbajo(filaRef: RefObject<HTMLElement | null>, activa: boolean): boolean {
   const [abajo, setAbajo] = useState(false)
@@ -44,9 +45,13 @@ export function useBarraAbajo(filaRef: RefObject<HTMLElement | null>, activa: bo
         }
         return
       }
-      const barra = fila.querySelector('[data-buscador]:not([data-buscador="mini"]):not([data-buscador="icon_overlay"])') as HTMLElement | null
-      const barraChica = !!barra && barra.getBoundingClientRect().width < ANCHO_MINIMO_BARRA - 0.5
-      const navRecorta = !!fila.querySelector('nav[data-nav-recorta]')
+      const barra = fila.querySelector('[data-buscador]:not([data-buscador="icon_overlay"])') as HTMLElement | null
+      // «Barra compacta» (mini) es chica a propósito: solo baja si la fila desborda.
+      const mini = barra?.dataset.buscador === 'mini'
+      // «Buscador grande» (mega): cuenta el campo, no el conjunto con el selector y el botón.
+      const campo = barra?.dataset.buscador === 'mega' ? (barra.querySelector('input') as HTMLElement | null) ?? barra : barra
+      const barraChica = !mini && !!campo && campo.getBoundingClientRect().width < ANCHO_MINIMO_BARRA - 0.5
+      const navRecorta = !mini && !!fila.querySelector('nav[data-nav-recorta]')
       const desborda = fila.scrollWidth > fila.clientWidth + 1
       if (barra && (barraChica || navRecorta || desborda)) {
         umbral.current = ancho
@@ -56,11 +61,17 @@ export function useBarraAbajo(filaRef: RefObject<HTMLElement | null>, activa: bo
     medir()
     const ro = new ResizeObserver(medir)
     ro.observe(fila)
+    // Los hijos de la fila cambian de ancho sin que la fila cambie (la fuente que llega tarde,
+    // el menú que manda enlaces a «Más»): también se vuelve a medir entonces.
+    for (const c of Array.from(fila.children)) ro.observe(c)
+    let vivo = true
+    document.fonts?.ready.then(() => { if (vivo) medir() })
     // NavList marca `data-nav-recorta` después de medir: también se vuelve a medir entonces.
     const mo = new MutationObserver(medir)
     mo.observe(fila, { subtree: true, attributes: true, attributeFilter: ['data-nav-recorta'] })
     window.addEventListener('resize', medir)
     return () => {
+      vivo = false
       ro.disconnect()
       mo.disconnect()
       window.removeEventListener('resize', medir)

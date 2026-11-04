@@ -17,7 +17,8 @@
  * Reglas por caso:
  *   a  sin scroll horizontal del documento (en reposo y con el buscador abierto);
  *   b  hay buscador y, si es campo visible, mide ≥ 240 px (en reposo o al enfocarlo); una lupa que
- *      abre un panel también vale;
+ *      abre un panel también vale. En el celular con «Buscador grande» (selector + campo + botón)
+ *      se mide el control entero (≥ 240) y el campo debe ser al menos la mitad;
  *   c  al abrir y escribir 3 letras aparece el desplegable/panel con los resultados simulados,
  *      mide ≥ 320 px, queda dentro del viewport y los resultados no quedan tapados;
  *   d  Escape cierra y clic afuera cierra (clic afuera no aplica a un panel de pantalla completa);
@@ -497,13 +498,23 @@ async function correrCaso(page, base, c) {
   if (reposo.modo === 'barra') {
     await clicObjetivo(page, falla, 'b')
     await page.waitForTimeout(250)
-    const enfocado = await page.evaluate(() => {
+    const { enfocado, compuesto } = await page.evaluate(() => {
       const el = document.querySelector('[data-mb-objetivo]')
-      return el ? Math.round(el.getBoundingClientRect().width) : null
+      // Celular con «Buscador grande»: selector angosto + campo + botón en una fila de 360px
+      // (BuscadorCromoCompacto). Ahí la regla mide el control entero y exige que el campo sea al
+      // menos la mitad; el selector y el botón tienen ancho fijo a propósito.
+      const caja = el?.closest('[data-buscador="movil-categorias"]')
+      return {
+        enfocado: el ? Math.round(el.getBoundingClientRect().width) : null,
+        compuesto: caja ? Math.round(caja.getBoundingClientRect().width) : null,
+      }
     })
     r.medidas.anchoInputEnfocado = enfocado
+    r.medidas.anchoControlCompuesto = compuesto
     const ancho = Math.max(reposo.objetivo.width, enfocado ?? 0)
-    if (ancho < ANCHO_MIN_INPUT) falla('b', `input ${reposo.objetivo.width}px${enfocado && enfocado !== reposo.objetivo.width ? ` (${enfocado}px enfocado)` : ''} < ${ANCHO_MIN_INPUT}`)
+    if (compuesto !== null) {
+      if (compuesto < ANCHO_MIN_INPUT || ancho < compuesto / 2) falla('b', `control ${compuesto}px (campo ${ancho}px): se espera ≥ ${ANCHO_MIN_INPUT} y el campo ≥ la mitad`)
+    } else if (ancho < ANCHO_MIN_INPUT) falla('b', `input ${reposo.objetivo.width}px${enfocado && enfocado !== reposo.objetivo.width ? ` (${enfocado}px enfocado)` : ''} < ${ANCHO_MIN_INPUT}`)
   } else {
     await clicObjetivo(page, falla, 'b')
     const campo = await enfocarCampoDelPanel(page)

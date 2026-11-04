@@ -145,7 +145,7 @@ export default function HeaderMinimal({
 
   // Barra del buscador en la fila; si no cabe (menos de 240px, el menú recortaría o la fila
   // desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
-  const barra = (clase: string) => barraSiCromo(settings, searchStyle === 'bar' ? (
+  const barra = (clase: string, enFila = true) => barraSiCromo(settings, searchStyle === 'bar' ? (
               <SearchBarInline
                 primaryColor={primaryColor}
                 organizationId={organizationId}
@@ -153,7 +153,7 @@ export default function HeaderMinimal({
                 size="lg"
                 icon={SearchIconComp}
               />
-              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase });
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase, enFila });
   const hayBarra = barra('') != null;
   const filaRef = useRef<HTMLDivElement>(null);
   const barraAbajo = useBarraAbajo(filaRef, hayBarra);
@@ -235,7 +235,7 @@ export default function HeaderMinimal({
               </div>
             </div>
           </div>
-          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl')}</div>}
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl', false)}</div>}
 
           {/* Fila móvil: logo + botón hamburguesa */}
           <div className="flex md:hidden items-center justify-between" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>

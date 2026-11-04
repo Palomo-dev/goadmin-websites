@@ -20,6 +20,8 @@ export function barraSiCromo(
     className?: string
     /** Categorías del menú: el «Buscador grande» (mega) las lista en su desplegable. */
     categorias?: { id: number; name: string; slug?: string }[]
+    /** En la fila del encabezado (por defecto). En la segunda fila, `false`: «mini» a todo el ancho. */
+    enFila?: boolean
   },
 ): ReactNode {
   const cromo = leerConstructor(settings)?.buscador
@@ -27,7 +29,7 @@ export function barraSiCromo(
   const categorias = cromo.tipo === 'mega'
     ? (props.categorias ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
     : undefined
-  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} />
+  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} enFila={props.enFila ?? true} />
 }
 
 const RADIO: Record<CromoBuscador['radius'], string> = {
@@ -106,8 +108,10 @@ export function BuscadorCromo({
       style={compacta ? undefined : { maxWidth: presentacion.width }}
       data-buscador={compacta ? undefined : presentacion.tipo}
     >
+      {/* Ancho tope: si no, el selector mide lo que su categoría más larga y aplasta el campo.
+          Texto oscuro propio: el fondo es blanco aunque el encabezado sea oscuro. */}
       {presentacion.tipo === 'mega' && (
-        <select aria-label="Categoría" value={categoria} onChange={(e) => cambiarCategoria(e.target.value)} className="h-11 shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm">
+        <select aria-label="Categoría" value={categoria} onChange={(e) => cambiarCategoria(e.target.value)} className="h-11 w-auto max-w-[9rem] shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm text-gray-900">
           <option value="">Todas</option>
           {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
