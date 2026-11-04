@@ -7,6 +7,7 @@ import { reservaConDepositoPorCobrar } from '@/lib/restaurant/deposito-servidor'
 import { FUENTE_COBRO_MESA, abonoMesaPorCobrar } from '@/lib/restaurant/mesa-servidor'
 import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,31 +106,8 @@ async function buildWompiCheckoutUrl(
   const city = (order.customer_city || '').trim()
   const street = (order.customer_address || '').trim()
 
-  // Wompi requiere phone-number y phone-number-prefix por separado:
-  // phone-number-prefix = "+57" (prefijo internacional con +)
-  // phone-number = "3001234567" (número sin prefijo, sin +)
-  let phoneNumber = ''
-  let phonePrefix = ''
-  if (rawPhone) {
-    const phoneMatch = rawPhone.match(/^(\+\d{1,4})\s?(\d[\d\s]*)$/)
-    if (phoneMatch) {
-      phonePrefix = phoneMatch[1] // ej: "+57"
-      phoneNumber = phoneMatch[2].replace(/\D/g, '') // ej: "3001234567"
-    } else {
-      // Sin prefijo: asumir Colombia (+57) si el número tiene 10 dígitos
-      const digits = rawPhone.replace(/\D/g, '')
-      if (digits.length === 10) {
-        phonePrefix = '+57'
-        phoneNumber = digits
-      } else if (digits.length > 10) {
-        // Probablemente incluye el código de país: los últimos 10 son el número
-        phonePrefix = `+${digits.slice(0, -10)}`
-        phoneNumber = digits.slice(-10)
-      } else {
-        phoneNumber = digits
-      }
-    }
-  }
+  // Wompi requiere phone-number y phone-number-prefix por separado (lib/payments/telefonoWompi.ts).
+  const { prefijo: phonePrefix, numero: phoneNumber } = separarTelefonoWompi(rawPhone)
 
   const customerParams: string[] = []
   if (email) customerParams.push(`customer-data:email=${encodeURIComponent(email)}`)
