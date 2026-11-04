@@ -13,6 +13,7 @@ import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRIT
 import { emitirCantidad } from '@/lib/products/varianteSeleccionada'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
+import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -222,6 +223,22 @@ export function ProductDetailActions({
           branchId={branchId}
         />
         {campoNota}
+      </div>
+    )
+  }
+
+  // Padre sin variantes activas: el padre no se vende solo (saldría un pedido sin talla).
+  // Nunca cae al flujo de producto simple de abajo.
+  if (isParent) {
+    if (!puedePedir) return null
+    return (
+      <div className="space-y-2 pt-4" data-padre-sin-variantes="">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{TEXTO_PADRE_SIN_VARIANTES}</span>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Por ahora no hay tallas ni colores disponibles de este producto.
+        </p>
       </div>
     )
   }

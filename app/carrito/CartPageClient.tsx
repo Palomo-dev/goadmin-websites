@@ -12,9 +12,10 @@ import {
 } from 'lucide-react'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
-import { isParentProduct } from '@/components/sections/products/ProductCard'
+import { isParentProduct, padreSinVariantes, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
 import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
+import { usePadresEnCarrito } from '@/lib/orders/usePadresEnCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -141,6 +142,8 @@ export function CartPageClient({
   }
 
   const addSuggested = (product: SuggestedProduct) => {
+    // Un padre se compra eligiendo la variante en su página, nunca directo.
+    if (isParentProduct(product)) return
     const price = product.product_prices?.[0]?.price || 0
     const existing = items.find(i => i.id === product.id)
     if (existing) {
@@ -157,6 +160,14 @@ export function CartPageClient({
   // Impuesto con la regla que cobra /api/orders. Cada producto usa su tarifa;
   // hasta que llega, o si no tiene, la predeterminada de la organización.
   const tarifasCarrito = useTarifasCarrito(items.map((item) => idProductoCarrito(item) ?? 0).filter((id) => id > 0))
+  // Línea con un producto padre (sin talla/color elegido): no se puede pagar. /api/orders la
+  // rechaza igual; aquí se marca y se bloquea «Continuar» para que el cliente la quite antes.
+  const padresEnCarrito = usePadresEnCarrito(items.map((item) => idProductoCarrito(item) ?? 0).filter((id) => id > 0))
+  const esLineaPadre = (item: CartItem) => {
+    const id = idProductoCarrito(item)
+    return id != null && padresEnCarrito.has(id)
+  }
+  const hayLineasPadre = items.some(esLineaPadre)
   const impuestoVisto = impuestoParaLineas({
     brutos: items.map((item) => item.price * item.quantity),
     descuento: promoDiscount,
@@ -301,6 +312,11 @@ export function CartPageClient({
                   {item.notes && (
                     <p className="text-xs text-gray-400 italic mt-0.5">📝 {item.notes}</p>
                   )}
+                  {esLineaPadre(item) && (
+                    <p role="alert" className="text-xs font-medium text-red-600 dark:text-red-400 mt-1">
+                      Falta elegir la talla o el color. Quítalo y agrégalo de nuevo desde la página del producto.
+                    </p>
+                  )}
                   {promotionsForItem(promotions, item.id).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {promotionsForItem(promotions, item.id).map(p => (
@@ -433,6 +449,21 @@ export function CartPageClient({
                 </div>
               </div>
 
+              {hayLineasPadre ? (
+                <div className="mt-6 space-y-2">
+                  <Button
+                    disabled
+                    className="w-full h-12 font-semibold text-base"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {checkoutButtonText}
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </Button>
+                  <p role="status" className="text-xs text-red-600 dark:text-red-400">
+                    Hay productos sin talla o color elegido. Quítalos para continuar.
+                  </p>
+                </div>
+              ) : (
               <Link href={ruta('/checkout')} className="block mt-6">
                 <Button
                   className="w-full h-12 font-semibold text-base"
@@ -442,6 +473,7 @@ export function CartPageClient({
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
+              )}
 
               {/* Trust badges */}
               <div className="mt-6 space-y-3">
@@ -517,7 +549,9 @@ function SuggestedCard({
               ${Number(price).toLocaleString('es-CO')}
             </span>
           )}
-          {isParentProduct(product) ? (
+          {padreSinVariantes(product) ? (
+            <span className="text-xs text-red-500 font-medium">{TEXTO_PADRE_SIN_VARIANTES}</span>
+          ) : isParentProduct(product) ? (
             // Padre con variantes: no se agrega a ciegas, se elige talla/color en el detalle.
             <Link href={ruta(`/productos/${product.uuid}`)}>
               <Button size="sm" variant="outline" className="h-7 text-xs dark:border-gray-600">

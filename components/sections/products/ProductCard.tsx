@@ -36,7 +36,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Check, Package, Layers, ShoppingBag, ShoppingCart, Heart, Eye, Share2,
   MessageCircle, Star, TrendingUp, Zap, ArrowRight,
-  BadgeCheck, ShieldCheck,
+  BadgeCheck, ShieldCheck, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
@@ -82,7 +82,9 @@ import {
   getProductImageUrl,
   getProductPrice,
   isParentProduct,
+  padreSinVariantes,
   requiereElegir,
+  TEXTO_PADRE_SIN_VARIANTES,
 } from '@/lib/products/datosTarjeta'
 
 export {
@@ -91,7 +93,9 @@ export {
   getProductImageUrl,
   getProductPrice,
   isParentProduct,
+  padreSinVariantes,
   requiereElegir,
+  TEXTO_PADRE_SIN_VARIANTES,
 }
 
 const SUPABASE_URL =
@@ -434,7 +438,8 @@ function BadgeRenderer({
       shouldShow = discount !== null && discount > 0
       break
     case 'out_of_stock':
-      shouldShow = outOfStock && !isParent && (discount === null || discount <= 0)
+      // Padre sin variantes que comprar: también «Agotado» (no hay talla que elegir).
+      shouldShow = padreSinVariantes(product) || (outOfStock && !isParent && (discount === null || discount <= 0))
       break
     case 'variants':
       value = variantCount
@@ -719,7 +724,9 @@ function CardButtonRenderer({
         }
         break
       case 'buy_now':
-        onBuyNow?.()
+        if (!isParent && !outOfStock) {
+          onBuyNow?.()
+        }
         break
       case 'wishlist':
         if (onToggleFavorite) onToggleFavorite(Number(product.id))
@@ -764,6 +771,22 @@ function CardButtonRenderer({
         e.currentTarget.style.backgroundColor = entra ? (button.hover_bg as string) : (baseStyle.backgroundColor as string) || ''
       }
     : undefined
+
+  // Padre sin variantes activas: no hay talla que elegir ni nada que agregar.
+  if ((button.action === 'add_to_cart' || button.action === 'buy_now') && padreSinVariantes(product)) {
+    return (
+      <Button
+        size={size as any}
+        variant={variant === 'gradient' ? 'solid' : variant as any}
+        disabled
+        aria-disabled="true"
+        className={`${anchoClase} ${sizeTextClass}`}
+        style={baseStyle}
+      >
+        {!btnIconOnly ? TEXTO_PADRE_SIN_VARIANTES : <X className={iconSizeClass} aria-label={TEXTO_PADRE_SIN_VARIANTES} />}
+      </Button>
+    )
+  }
 
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
     const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
@@ -889,6 +912,8 @@ export function ProductCard({
 
   // Carrito interno (fallback cuando no se pasa onAddToCart)
   const internalAddToCart = (p: any) => {
+    // Un padre no se compra: se elige la variante en el detalle (o no hay ninguna).
+    if (isParentProduct(p)) return
     const pr = getProductPrice(p)
     if (pr === null) return
     const host = typeof window !== 'undefined' ? window.location.hostname : ''
@@ -912,7 +937,14 @@ export function ProductCard({
     router.push(ruta('/checkout'))
   }
 
-  const handleAdd = onAddToCart ? () => onAddToCart(product) : () => internalAddToCart(product)
+  // Padre: ningún camino (botón, vista rápida, carrito externo) lo agrega; con variantes va al
+  // detalle a elegir, sin variantes no hace nada (el botón ya dice «No disponible»).
+  const irAElegir = () => {
+    if (!padreSinVariantes(product)) router.push(ruta(`/productos/${product.uuid}`))
+  }
+  const handleAdd = isParentProduct(product)
+    ? irAElegir
+    : onAddToCart ? () => onAddToCart(product) : () => internalAddToCart(product)
   // «Contador de cantidad» (`add.quantity_stepper`): solo con el carrito interno (sin `onAddToCart`
   // externo: restaurante y mesa siguen igual), producto simple y con stock. Apagado: nada cambia.
   const subCarrito = organizationSubdomain || (typeof window !== 'undefined' ? window.location.hostname.split('.')[0] : '')
@@ -927,7 +959,9 @@ export function ProductCard({
         line: { id: product.id, name: product.name, price: precioContador as number, sku: product.sku, imageUrl: getProductImageUrl(product), comparePrice: getProductComparePrice(product) },
       }
     : undefined
-  const handleBuy = onBuyNow ? () => onBuyNow(product) : () => internalBuyNow(product)
+  const handleBuy = isParentProduct(product)
+    ? irAElegir
+    : onBuyNow ? () => onBuyNow(product) : () => internalBuyNow(product)
 
   // Merge cardStyle con defaults. El estilo nuevo solo pisa las claves que trae.
   const mergedCardStyle: Record<string, any> = { ...DEFAULT_CARD_STYLE, ...(cardStyle || {}) }
@@ -1388,7 +1422,9 @@ export function ProductCard({
               )}
             </div>
             )}
-            {outOfStock && !isParentProduct(product) ? (
+            {padreSinVariantes(product) ? (
+              <span className="text-xs text-red-500 font-medium">{TEXTO_PADRE_SIN_VARIANTES}</span>
+            ) : outOfStock && !isParentProduct(product) ? (
               <span className="text-xs text-red-500 font-medium">Sin stock</span>
             ) : (
               <>

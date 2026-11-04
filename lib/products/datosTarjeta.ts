@@ -37,19 +37,33 @@ export function getProductDiscount(product: any): number | null {
 }
 
 /**
- * ¿La card debe comportarse como padre con variantes ("Elegir" → detalle)?
+ * ¿Es un producto padre (agrupa tallas, colores…)? Un padre NUNCA va al carrito: lo que se
+ * compra es una de sus variantes. Por eso todo botón de agregar lo manda a elegir.
  *
- * `variant_count` lo calcula el listado en servidor. Si viene como número se
- * respeta (0 = padre sin variantes activas, se vende como simple). Si NO viene
- * (listado que no lo calcula, o la consulta de variantes falló) se asume que
- * un `is_parent` sí tiene variantes: mandar al detalle a elegir talla es
- * inofensivo; "Agregar" un padre al carrito genera pedidos sin talla.
+ * Antes un padre con `variant_count = 0` se vendía como simple («Agregar» directo) y salían
+ * pedidos sin talla: el jean CB-FF-72125 (id 106000, org 338) perdió sus 6 tallas en la
+ * restauración del 2026-11-03 y la tarjeta lo agregaba tal cual.
  */
 export function isParentProduct(product: any): boolean {
-  if (product?.is_parent !== true && product?.has_variants !== true) return false
-  const n = product.variant_count
-  return n === undefined || n === null ? true : Number(n) > 0
+  return product?.is_parent === true || product?.has_variants === true
 }
+
+/**
+ * Padre cuyo listado confirmó que no tiene variantes activas (`variant_count` numérico y 0):
+ * no hay nada que comprar, se muestra «No disponible». Si `variant_count` no viene (listado que
+ * no lo calcula, o la consulta de variantes falló) no se afirma nada: la tarjeta manda a elegir
+ * y la ficha decide con la lista real de variantes.
+ */
+export function padreSinVariantes(product: any): boolean {
+  if (!isParentProduct(product)) return false
+  const n = product?.variant_count
+  if (n === undefined || n === null || n === '') return false
+  const cuenta = Number(n)
+  return Number.isFinite(cuenta) && cuenta <= 0
+}
+
+/** Texto único para un padre sin variantes que comprar (tarjeta, vista rápida, ficha, carrito). */
+export const TEXTO_PADRE_SIN_VARIANTES = 'No disponible'
 
 /**
  * ¿La card debe mandar a elegir en vez de «Agregar»? Padre con variantes, o plato con un grupo

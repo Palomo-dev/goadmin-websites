@@ -2,10 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { X, ShoppingCart, Check, Heart, Share2, Star } from 'lucide-react'
+import { X, ShoppingCart, Check, Heart, Share2, Star, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'
-import { getProductPrice, getProductComparePrice, getProductImageUrl, getProductDiscount } from '@/components/sections/products/ProductCard'
+import {
+  getProductPrice,
+  getProductComparePrice,
+  getProductImageUrl,
+  getProductDiscount,
+  isParentProduct,
+  padreSinVariantes,
+  TEXTO_PADRE_SIN_VARIANTES,
+} from '@/components/sections/products/ProductCard'
 import { isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
@@ -61,6 +69,9 @@ export function ProductQuickView({
   const discount = getProductDiscount(product)
   const imageUrl = getProductImageUrl(product)
   const outOfStock = isOutOfStock(product)
+  // Un padre nunca se agrega desde aquí: con variantes se elige en el detalle; sin ellas, no hay venta.
+  const esPadre = isParentProduct(product)
+  const sinVariantes = padreSinVariantes(product)
 
   // Rating (mismo sistema que ProductCard)
   const realRatingAvg = Number(product.rating_avg) || 0
@@ -75,6 +86,7 @@ export function ProductQuickView({
   }
 
   const handleAddToCart = () => {
+    if (esPadre) return
     setAdded(true)
     onAddToCart?.(product)
     setTimeout(() => setAdded(false), 2000)
@@ -160,7 +172,9 @@ export function ProductQuickView({
               )}
             </div>
 
-            {outOfStock && (
+            {sinVariantes ? (
+              <span className="text-sm text-red-500 font-medium">{TEXTO_PADRE_SIN_VARIANTES}</span>
+            ) : outOfStock && !esPadre && (
               <span className="text-sm text-red-500 font-medium">Sin stock</span>
             )}
 
@@ -171,6 +185,17 @@ export function ProductQuickView({
 
             {/* Botones — tamaño mediano */}
             <div className="flex flex-col gap-3 mt-2">
+              {sinVariantes ? (
+                <Button size="lg" disabled className="w-full text-sm sm:text-base h-12" style={{ backgroundColor: primaryColor, color: '#fff' }}>
+                  {TEXTO_PADRE_SIN_VARIANTES}
+                </Button>
+              ) : esPadre ? (
+                <Link href={ruta(`/productos/${product.uuid}`)} className="w-full">
+                  <Button size="lg" className="w-full text-sm sm:text-base h-12" style={{ backgroundColor: primaryColor, color: '#fff' }}>
+                    <Layers className="h-5 w-5 mr-2" /> Elegir talla o color
+                  </Button>
+                </Link>
+              ) : (
               <Button
                 size="lg"
                 onClick={handleAddToCart}
@@ -180,6 +205,7 @@ export function ProductQuickView({
               >
                 {added ? <><Check className="h-5 w-5 mr-2" /> Agregado</> : <><ShoppingCart className="h-5 w-5 mr-2" /> Agregar al carrito</>}
               </Button>
+              )}
 
               <div className="flex gap-3">
                 {onToggleFavorite && (

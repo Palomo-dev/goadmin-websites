@@ -67,6 +67,8 @@ export interface FilaProductoPrecio extends FilaProductoConPadre {
   sku: string | null
   status: string | null
   parent_product_id: number | null
+  /** Padre de variantes: no se vende él mismo. Opcional para lecturas que no lo piden. */
+  is_parent?: boolean | null
   track_stock: boolean | null
   sale_mode: string | null
   qty_decimals: number | null
@@ -394,6 +396,13 @@ export function resolverLineasPedido(
     // Las lecturas del sitio solo muestran `status = 'active'`.
     if (producto.status !== 'active') {
       problema('inactivo', 'ya no está a la venta')
+      return
+    }
+    // Un padre agrupa variantes (talla, color…): lo que se compra es una variante. Una línea con
+    // el padre es un pedido sin talla. Mismo motivo que «ya no está disponible»: el checkout lo
+    // trata como producto que hay que quitar del carrito.
+    if (producto.is_parent === true) {
+      problema('no_disponible', 'falta elegir la talla o el color')
       return
     }
     const filaSede = ctx.carta?.filas.get(productId)

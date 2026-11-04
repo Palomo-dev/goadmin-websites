@@ -243,7 +243,9 @@ export function MenuView({
 
   const openProductDetail = (product: MenuProduct) => {
     // Sin pedido en línea, la hoja del plato (que respeta canOrder) en vez del selector antiguo.
-    if (!canOrder || getProductModifiers(product.id).length === 0) {
+    // Un padre va siempre a la hoja: elige la variante, o avisa que no hay (el selector antiguo
+    // agregaría el padre tal cual).
+    if (!canOrder || getProductModifiers(product.id).length === 0 || isParentProduct(product)) {
       setPlatoAbierto({
         ...toMenuItem(product as unknown as MenuSourceProduct, tagsPorId),
         requiresChoice: exigeEleccion(gruposDe(product)),

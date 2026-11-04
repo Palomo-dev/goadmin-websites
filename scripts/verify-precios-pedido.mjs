@@ -133,7 +133,7 @@ async function main() {
       // 2a. Lo que muestra el sitio (consulta de listados de queries.ts)
       // Columnas y filtros de getProductsByIds (queries.ts): activos, con el estado del padre para
       // descartar variantes de un padre eliminado, como hace el sitio (esProductoVisibleEnWeb).
-      const SEL_WEB = `id, organization_id, status, parent_product_id, product_prices (id, price, compare_price, effective_to), ${M.visibilidad.SELECT_PADRE_ESTADO}`
+      const SEL_WEB = `id, organization_id, status, parent_product_id, is_parent, product_prices (id, price, compare_price, effective_to), ${M.visibilidad.SELECT_PADRE_ESTADO}`
       const web = await rest(
         `products?select=${sel(SEL_WEB)}` +
         `&organization_id=eq.${orgId}&status=eq.active&product_prices.effective_to=is.null&order=id.desc&limit=${N}`
@@ -186,6 +186,12 @@ async function main() {
       const MO = M.modificadores
       const casos = []
       for (const p of vistos) {
+        // Un padre no se vende solo (la tarjeta manda a elegir variante o dice «No disponible»):
+        // el servidor debe rechazar la línea con el padre.
+        if (p.is_parent === true) {
+          casos.push({ item: { id: p.id, price: Number(p.product_prices?.[0]?.price ?? 0), quantity: 1 }, etiqueta: `padre ${p.id} sin variante`, carta: null, rechazo: 'no_disponible' })
+          continue
+        }
         const propio = p.product_prices?.[0]?.price
         const base = propio ?? (p.parent_product_id != null ? precioWebPadre.get(Number(p.parent_product_id)) : undefined)
         if (base === undefined || base === null) { notes.push(`org ${orgId}: producto ${p.id} sin precio en el sitio (no se vende)`); continue }
@@ -247,6 +253,7 @@ async function main() {
         const carta = { branchId, filas: new Map(), precios }
         const datosSede = { ...datos, preciosSede: precios }
         for (const p of M.carta.aplicarCartaSede(vistos, carta)) {
+          if (p.is_parent === true) continue
           if (!precios.has(Number(p.id)) || p.product_prices?.[0]?.price == null) continue
           if (MO.exigeEleccion(MO.gruposDeProducto(p, datos.grupos))) continue
           casos.push({ item: { id: p.id, price: Number(p.product_prices[0].price), quantity: 1 }, etiqueta: `producto ${p.id} con precio de la sede ${branchId}`, carta, datos: datosSede })

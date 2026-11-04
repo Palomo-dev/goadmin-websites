@@ -5,6 +5,7 @@
  * Columnas verificadas por MCP el 2026-10-05:
  * - products: id, organization_id, name, sku, status, parent_product_id, track_stock, sale_mode
  *   ('unit' | 'weight' | 'measure'), qty_decimals (0..3), min_sale_qty (NULL-able).
+ *   is_parent (boolean, NULL-able) verificada por MCP el 2026-11-04.
  * - product_prices: id, product_id, price, effective_from (NOT NULL), effective_to (NULL-able).
  *   No tiene organization_id: se filtra por ids de productos que ya son de la organización.
  * - product_modifier_groups: id, organization_id, product_id, name, selection_mode, max_selections,
@@ -23,7 +24,7 @@ import { SELECT_PADRE_ESTADO } from '@/lib/products/visibilidad-web'
 import type { DatosPrecio, FilaPrecio, FilaProductoPrecio, GrupoModificadores, PrecioSede } from '@/lib/products/precio-servidor'
 
 export const SELECT_PRODUCTO_PRECIO =
-  `id, organization_id, name, sku, status, parent_product_id, track_stock, sale_mode, qty_decimals, min_sale_qty, ${SELECT_PADRE_ESTADO}`
+  `id, organization_id, name, sku, status, parent_product_id, is_parent, track_stock, sale_mode, qty_decimals, min_sale_qty, ${SELECT_PADRE_ESTADO}`
 export const SELECT_PRECIO_VIGENTE = 'id, product_id, price, effective_from, effective_to'
 export const SELECT_GRUPOS_MODIFICADORES =
   'id, product_id, name, selection_mode, max_selections, required, min_selections, product_modifiers ( id, name, extra_price, is_active )'

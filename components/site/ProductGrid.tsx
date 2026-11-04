@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation'
 import { VariantSelector } from './VariantSelector'
 import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
-import { isParentProduct, requiereElegir } from '@/components/sections/products/ProductCard'
+import { isParentProduct, padreSinVariantes, requiereElegir, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
 import { agregarPlatoAlCarrito } from '@/lib/cart'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import type { ModifierGroup, SelectedModifier } from './ProductModifierSelector'
@@ -152,6 +152,8 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
   }
 
   const addToCart = (product: Product) => {
+    // Un padre nunca va al carrito: se compra la variante elegida en el selector.
+    if (isParentProduct(product)) return
     const price = product.product_prices?.[0]?.price || 0
     
     // Obtener carrito actual
@@ -331,7 +333,9 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
                       const isParent = isParentProduct(product)
                       // Grupo obligatorio sin variantes: se elige en el detalle del producto.
                       const soloElegir = !isParent && requiereElegir(product)
-                      return outOfStock && !isParent ? (
+                      return padreSinVariantes(product) ? (
+                        <span className="text-xs text-red-500 font-medium">{TEXTO_PADRE_SIN_VARIANTES}</span>
+                      ) : outOfStock && !isParent ? (
                         <span className="text-xs text-red-500 font-medium">Sin stock</span>
                       ) : soloElegir ? (
                         <Button

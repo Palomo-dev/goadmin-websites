@@ -549,7 +549,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
       )}
 
       {/* Sticky Add to Cart (mobile) */}
-      {price && stickyPermitido && (
+      {/* Un padre sin variantes no tiene nada que agregar: sin barra fija. */}
+      {price && stickyPermitido && !(isParent && variants.length === 0) && (
         <StickyAddToCart
           productId={product.id}
           productName={product.name}

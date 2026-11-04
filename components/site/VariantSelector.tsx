@@ -401,6 +401,9 @@ export function VariantSelector({
             <Check className="h-5 w-5 mr-2" />
             ¡Agregado al carrito!
           </>
+        ) : variants.length === 0 ? (
+          // Padre sin variantes activas: no hay talla que elegir y el padre no se vende solo.
+          'No disponible'
         ) : outOfStock ? (
           'Sin stock'
         ) : (
