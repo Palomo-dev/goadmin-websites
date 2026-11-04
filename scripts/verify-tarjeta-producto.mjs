@@ -138,6 +138,26 @@ check(vistaEditorTarjeta(null, orig).labels_custom?.length === 1, 'el inspector 
 
 check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mode: 'value', value: { show_sales_count: true, labels_custom: [{ id: 'o', label: 'Originales', bg: '#FACC15' }] } } }).success, 'el contrato acepta labels_custom')
 
+// ── Ícono de «Elegir» (producto padre): choose.icon ?? add.icon; Layers solo de respaldo ──
+{
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL('../components/sections/products/ProductCard.tsx', import.meta.url), 'utf8')
+  check(aplicarEstiloTarjeta({ choose: { icon: 'none' } })?.choose?.icon === '', "icon 'none' = sin ícono (solo el texto)")
+  check(aplicarEstiloTarjeta({ choose: { icon: '' } })?.choose?.icon === '', "icon '' = sin ícono")
+  check(aplicarEstiloTarjeta({ choose: { icon: 'Layers2' } })?.choose?.icon === undefined, 'ícono fuera de la lista: se ignora')
+  for (const ic of ['Plus', 'ShoppingBag', 'ShoppingCart', 'Heart', 'Eye', 'ArrowRight', 'Zap', 'Star']) {
+    check(aplicarEstiloTarjeta({ add: { icon: ic } })?.add?.icon === ic, `ícono válido ${ic}`)
+    check(new RegExp(`ICON_MAP: Record<string, any> = \\{[^}]*\\b${ic}\\b`).test(src), `ICON_MAP pinta ${ic}`)
+  }
+  check(src.includes('const iconoElegir = estiloTarjeta ? (estiloTarjeta.choose?.icon ?? estiloTarjeta.add?.icon) : undefined'), 'la tarjeta resuelve choose.icon ?? add.icon')
+  check((src.match(/iconoElegir=\{iconoElegir\}/g) || []).length === 2, 'los dos lugares que pintan botones pasan iconoElegir')
+  check(src.includes("const estiloSinIcono = iconoElegir != null && (iconoVacio(iconoElegir) || iconoElegir === 'none')"), "'' o 'none' = solo texto")
+  check(src.includes('const sinIcono = iconoElegir != null ? estiloSinIcono && !btnIconOnly : iconoVacio(button.icon)'), '«Solo ícono» nunca queda vacío')
+  check(src.includes('const ChooseIcon = iconoDelEstilo || (iconoElegir == null ? iconoDelBoton : undefined) || ICON_MAP.Layers || Layers'), 'Layers solo de respaldo; sin estilo, como antes')
+  // El badge de variantes no cambia: Layers con el número.
+  check(/type: 'variants',[\s\S]{0,200}icon: 'Layers',/.test(src) && src.includes("const Icon = badge.icon === 'Layers' ? Layers :"), 'badge de variantes: Layers con el número (sin cambios)')
+}
+
 if (problemas.length) {
   console.error(problemas.join('\n'))
   process.exit(1)

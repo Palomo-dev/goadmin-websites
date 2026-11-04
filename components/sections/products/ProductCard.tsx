@@ -574,6 +574,7 @@ function CardButtonRenderer({
   contador,
   abrirVariantes,
   dentroDeEnlace = false,
+  iconoElegir,
 }: {
   button: CardButtonConfig
   product: any
@@ -599,6 +600,11 @@ function CardButtonRenderer({
    * falla al hidratar (#418/#423). Va como botón que navega al mismo detalle.
    */
   dentroDeEnlace?: boolean
+  /**
+   * Ícono de «Elegir» del estilo de tarjeta (`choose.icon ?? add.icon`). `''` o 'none': solo el
+   * texto. Ausente: el de siempre (Layers con texto; el del botón en «Solo ícono»).
+   */
+  iconoElegir?: string
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -828,13 +834,17 @@ function CardButtonRenderer({
 
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
     const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
-    // El ícono del botón normal (Plus, etc.) no se reutiliza: «Elegir» lleva Layers.
-    // La excepción es «Sin icono» (`''`): tampoco lleva Layers.
-    const sinIcono = iconoVacio(button.icon)
-    // «Solo ícono»: el ícono es todo el botón y el usuario lo eligió en el editor, así que se
-    // respeta (el enlace sigue yendo al detalle para elegir variante). Con texto, Layers como siempre.
-    const iconoElegido = btnIconOnly && button.icon ? ICON_MAP[button.icon as string] : undefined
-    const ChooseIcon = iconoElegido || ICON_MAP.Layers || Layers
+    // Ícono de «Elegir»:
+    // 1. El del estilo de tarjeta (`choose.icon ?? add.icon`), con texto o en «Solo ícono».
+    //    `''`/'none' = solo el texto (en «Solo ícono» no queda vacío: Layers).
+    // 2. Sin estilo: el ícono del botón normal de `card_buttons` (Plus, etc.) NO se reutiliza
+    //    con texto («Agregar»/Plus haría parecer que agrega): Layers. En «Solo ícono», el del
+    //    botón, que el usuario eligió. «Sin icono» (`''`) tampoco lleva Layers.
+    const estiloSinIcono = iconoElegir != null && (iconoVacio(iconoElegir) || iconoElegir === 'none')
+    const iconoDelEstilo = iconoElegir && !estiloSinIcono ? ICON_MAP[iconoElegir] : undefined
+    const sinIcono = iconoElegir != null ? estiloSinIcono && !btnIconOnly : iconoVacio(button.icon)
+    const iconoDelBoton = btnIconOnly && button.icon ? ICON_MAP[button.icon as string] : undefined
+    const ChooseIcon = iconoDelEstilo || (iconoElegir == null ? iconoDelBoton : undefined) || ICON_MAP.Layers || Layers
     const contenidoElegir = (
       <>
         {ladoIcono === 'left' && !sinIcono && <ChooseIcon className={iconSizeClass} />}
@@ -1014,6 +1024,8 @@ export function ProductCard({
     ? razonSinContador(estiloTarjeta.add, { esPadre: isParent, sinStock: outOfStock, sinPrecio: precioContador === null, carritoExterno: !!onAddToCart })
     : null
   const conContador = !!estiloTarjeta && estiloTarjeta.add?.quantity_stepper === true && razonContador === null
+  // Ícono de «Elegir» del estilo de tarjeta: el de «Elegir» y, si no tiene, el de «Agregar».
+  const iconoElegir = estiloTarjeta ? (estiloTarjeta.choose?.icon ?? estiloTarjeta.add?.icon) : undefined
   // Padre con variantes y el contador encendido: el «+» abre el selector de variantes (DialogoVariantes).
   const contadorEnPadre = !!estiloTarjeta && contadorCantidadActivo(estiloTarjeta.add) && !onAddToCart && isParent && !padreSinVariantes(product)
   const dialogoVariantes = useDialogoVariantes({
@@ -1292,6 +1304,7 @@ export function ProductCard({
                     onToggleFavorite={toggleFavorite}
                     onQuickView={() => setQuickViewOpen(true)}
                     onShare={() => setShareOpen(true)}
+                    iconoElegir={iconoElegir}
                   />
                 ))}
               </div>
@@ -1357,6 +1370,7 @@ export function ProductCard({
             onToggleFavorite={toggleFavorite}
             onQuickView={() => setQuickViewOpen(true)}
             onShare={() => setShareOpen(true)}
+            iconoElegir={iconoElegir}
             contador={contador}
             abrirVariantes={contadorEnPadre ? () => { void dialogoVariantes.abrir(product) } : undefined}
             dentroDeEnlace={!!positionFilter && POSICIONES_SOBRE_IMAGEN.includes(positionFilter)}
