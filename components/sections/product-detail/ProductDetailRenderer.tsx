@@ -3,8 +3,23 @@
  *
  * Orquesta la renderización del detalle de producto:
  *  1. Busca la plantilla `product_detail` de la organización.
- *  2. Si tiene secciones → las renderiza via SectionRenderer con datos del producto.
- *  3. Si no tiene secciones → renderiza el layout hardcodeado actual (cero regresión).
+ *  2. Si tiene secciones → las renderiza con datos del producto.
+ *  3. Si no tiene secciones → renderiza los bloques por defecto
+ *     (`buildDefaultProductDetailSections(page_settings)`), que pintan lo mismo que el layout
+ *     monolítico de antes (fase 1 de la PDP personalizable; verify:ficha-diff lo compara al píxel).
+ *
+ * Un solo layout para los dos casos:
+ *  - `page_settings.columns === '1'`: todo apilado (`space-y-12`).
+ *  - Si no, dos columnas: la galería y lo que va ANTES de ella en el orden van en la columna de
+ *    la galería; lo que va después, en la columna de información (`sticky_column`).
+ *  - `related_products` y `product_reviews` van a todo el ancho, debajo, en su orden.
+ *  - El marcador `product_urgency` (aviso de stock bajo + contador) se resuelve aquí; sin
+ *    marcador, la urgencia va justo después de `product_info`.
+ *
+ * Los bloques de ficha sin `settings` (estilo por sección) se pintan directo, sin
+ * SectionWrapper: el wrapper agrega `<section>` con relleno de sección y un bloque vacío
+ * (p. ej. beneficios en un restaurante) dejaba hueco. Con `settings` pasan por SectionRenderer
+ * como cualquier sección (estilo y visibilidad por dispositivo).
  *
  * La lógica transaccional (checkout, pagos) NO se expone aquí.
  */
@@ -12,30 +27,29 @@
 import Link from 'next/link'
 import type React from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { SectionRenderer } from '@/components/sections/SectionRenderer'
-import { ProductImageGallery, type GallerySettings } from '@/components/site/ProductImageGallery'
-import { StickyAddToCart } from '@/components/site/StickyAddToCart'
-import { ProductReviews } from '@/components/site/reviews/ProductReviews'
-import { RelatedProducts } from '@/components/site/RelatedProducts'
-import { ExpandableDescription } from '@/components/site/ExpandableDescription'
-import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
+import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
 import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website/conversion'
-import { PrecioFicha } from '@/components/site/PrecioFicha'
-import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
-import { Truck, Shield, Package, Star } from 'lucide-react'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
-import { buildDefaultProductDetailSections } from '@/lib/defaultProductDetailSections'
+import { buildDefaultProductDetailSections, TIPO_URGENCIA_FICHA } from '@/lib/defaultProductDetailSections'
+import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 
 function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
   return product.stock_levels.reduce((suma, nivel) => suma + Number(nivel?.qty_on_hand || 0), 0)
 }
-import { conPrefijo } from '@/lib/outlet/rutaSitio'
-import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
+
+/** Bloques propios de la ficha: sin estilo por sección se pintan sin SectionWrapper. */
+const TIPOS_BLOQUE_FICHA = new Set([
+  'product_gallery', 'product_info', 'product_actions', 'product_benefits', 'product_description',
+  'related_products', 'product_reviews', 'product_specs', 'product_faq', 'product_shipping',
+])
+/** Tipos que van a todo el ancho, debajo de las columnas. */
+const TIPOS_ANCHO_COMPLETO = new Set(['related_products', 'product_reviews'])
 
 interface ProductDetailRendererProps {
   organization: OrganizationWithDetails
@@ -82,7 +96,7 @@ export function ProductDetailRenderer({
   const volver = restaurante
     ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
     : { href: conPrefijo('/productos', prefijoSede), texto: 'Volver a productos' }
-  const hasSections = templatePage && templatePage.website_page_sections.length > 0
+  const hasSections = Boolean(templatePage && templatePage.website_page_sections.length > 0)
 
   const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? null
   const productStats = { rating_avg: product.rating_avg, reviews_count: product.reviews_count }
@@ -92,21 +106,7 @@ export function ProductDetailRenderer({
   const columns = pageSettings.columns || '2' // '1' | '2' | '2+sidebar'
   const stickyColumn = pageSettings.sticky_column !== false // default true
   const galleryWidth = pageSettings.gallery_width ?? 50
-  const descPos = pageSettings.description_position || 'below_title'
-  const buttonsLayout = pageSettings.buttons_layout || 'stacked'
-  const showBenefits = pageSettings.show_benefits !== false
   const showBreadcrumb = pageSettings.show_breadcrumb !== false
-  const relatedLayout = pageSettings.related_products_layout || 'carousel'
-
-  // Configuración de galería pasada al componente
-  const gallerySettings: GallerySettings = {
-    gallery_layout: pageSettings.gallery_layout,
-    thumbnails_position: pageSettings.thumbnails_position,
-    gallery_arrows: pageSettings.gallery_arrows,
-    gallery_dots: pageSettings.gallery_dots,
-    gallery_grid_columns: pageSettings.gallery_grid_columns,
-    gallery_scroll_height: pageSettings.gallery_scroll_height,
-  }
 
   // ---- Datos compartidos para las secciones ----
   const sectionData: Record<string, any> = {
@@ -117,6 +117,8 @@ export function ProductDetailRenderer({
     imageUrls,
     imageUrl,
     price: price ? Number(price.price) : 0,
+    /** Hay fila de precio vigente (el precio de la ficha solo se pinta con ella). */
+    tienePrecio: Boolean(price),
     comparePrice,
     isParent,
     organization,
@@ -131,107 +133,7 @@ export function ProductDetailRenderer({
     ordenAtributos,
   }
 
-  // ---- Modo plantilla: renderizar secciones respetando page_settings.columns ----
-  // Las secciones se agrupan en columnas para replicar el layout del fallback
-  // monolítico: galería a la izquierda, info/actions/benefits/description a la
-  // derecha, y relacionadas/reviews a full width abajo.
-  if (hasSections && templatePage) {
-    const visibleSections = templatePage.website_page_sections.filter((s) => s.is_visible !== false)
-
-    // Tipos que van en la columna izquierda (galería)
-    const LEFT_TYPES = new Set(['product_gallery'])
-    // Tipos que van a full width (debajo del grid de 2 columnas)
-    const FULL_WIDTH_TYPES = new Set(['related_products', 'product_reviews'])
-
-    const leftSections = visibleSections.filter((s) => LEFT_TYPES.has(s.section_type))
-    const rightSections = visibleSections.filter((s) => !LEFT_TYPES.has(s.section_type) && !FULL_WIDTH_TYPES.has(s.section_type))
-    const fullWidthSections = visibleSections.filter((s) => FULL_WIDTH_TYPES.has(s.section_type))
-
-    const ordenVisual = [...leftSections, ...rightSections, ...fullWidthSections]
-    const idPrimera = ordenVisual.find((s) => s.is_visible !== false)?.id
-    const renderSection = (section: WebsitePageSection) => (
-      <SectionRenderer
-        key={section.id}
-        section={section}
-        organization={organization}
-        primaryColor={primaryColor}
-        data={sectionData}
-        isFirst={section.id === idPrimera}
-      />
-    )
-
-    const tplColumns = pageSettings.columns || '2'
-    const tplGalleryWidth = pageSettings.gallery_width ?? 50
-    const tplSticky = pageSettings.sticky_column !== false
-
-    return (
-      <div className="container mx-auto px-4 py-12">
-        {/* Breadcrumb */}
-        {showBreadcrumb && (
-          <div className="mb-8">
-            <Link
-              href={volver.href}
-              className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {volver.texto}
-            </Link>
-          </div>
-        )}
-
-        {tplColumns === '1' ? (
-          /* 1 columna: todo apilado verticalmente */
-          <div className="space-y-12">
-            {[...leftSections, ...rightSections].map(renderSection)}
-          </div>
-        ) : (
-          /* 2 columnas: galería | info, como el fallback monolítico */
-          <div className="flex flex-col lg:flex-row gap-12">
-            <div style={{ flexBasis: `${tplGalleryWidth}%` }} className="space-y-3 min-w-0">
-              {leftSections.map(renderSection)}
-            </div>
-            <div style={{ flexBasis: `${100 - tplGalleryWidth}%` }} className={`min-w-0 space-y-6 ${tplSticky ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
-              {rightSections.map(renderSection)}
-            </div>
-          </div>
-        )}
-
-        {/* Secciones full width (relacionados, reviews) */}
-        <div className="mt-12 space-y-12">
-          {fullWidthSections.map(renderSection)}
-        </div>
-      </div>
-    )
-  }
-
-  // ---- Fallback: layout configurable (cero regresión) ----
-  // Construir descripción reutilizable
-  const descriptionBlock = product.description && (
-    <div>
-      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Descripción</h3>
-      <ExpandableDescription text={product.description} maxLength={180} />
-    </div>
-  )
-
-  // Bloque de información del producto (título, reviews, precio, countdown)
-  const productInfoBlock = (
-    <div>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">SKU: {product.sku || 'N/A'}</p>
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{product.name}</h1>
-      <ReviewSummaryBadge
-        primaryColor={primaryColor}
-        productId={product.id}
-        reviewsConfig={reviewsConfig}
-        productStats={productStats}
-      />
-
-      {price && (
-        <PrecioFicha price={Number(price.price)} comparePrice={comparePrice} variants={isParent ? variants : []} primaryColor={primaryColor} />
-      )}
-    </div>
-  )
-
-  // Countdown
+  // ---- Urgencia: aviso de stock bajo + contador (igual que el layout de antes) ----
   const ajustesProducto = organization.website_settings as { conversion?: ConversionSitio } | null
   const stockProducto = stockReal(product)
   const stockBajo = ajustesProducto?.conversion?.urgencia?.stockBajo
@@ -243,76 +145,50 @@ export function ProductDetailRenderer({
   ) : (
     <ContadorColumnas settings={soloContador(organization.website_settings)} columna="countdown_show_in_product" primaryColor={primaryColor} variant="inline" />
   )
+  const urgencia = (clave: string) => (
+    <UrgenciaFicha key={clave} aviso={avisoProducto} contador={countdownBlock} />
+  )
 
-  // Acciones
-  const actionsBlock = (
-    <div id="product-actions">
-      <ProductDetailActions
-        product={product}
-        variants={variants}
-        price={Number(price?.price || 0)}
-        comparePrice={comparePrice}
-        imageUrl={imageUrl}
+  // ---- Secciones: las de la plantilla o los bloques por defecto ----
+  const secciones = hasSections && templatePage
+    ? templatePage.website_page_sections
+    : buildDefaultProductDetailSections(pageSettings)
+  const visibles = secciones.filter((s) => s.is_visible !== false)
+  const conMarcador = visibles.some((s) => s.section_type === TIPO_URGENCIA_FICHA)
+
+  const principales = visibles.filter((s) => !TIPOS_ANCHO_COMPLETO.has(s.section_type))
+  const anchoCompleto = visibles.filter((s) => TIPOS_ANCHO_COMPLETO.has(s.section_type))
+  const idPrimera = [...principales, ...anchoCompleto].find((s) => s.section_type !== TIPO_URGENCIA_FICHA)?.id
+
+  const renderSection = (section: WebsitePageSection): React.ReactNode => {
+    if (section.section_type === TIPO_URGENCIA_FICHA) return urgencia(section.id)
+    const settings = (section.settings || {}) as Record<string, unknown>
+    const Bloque = SECTION_MAP[section.section_type]?.[section.section_variant]
+    const nodo = Bloque && TIPOS_BLOQUE_FICHA.has(section.section_type) && Object.keys(settings).length === 0 ? (
+      <Bloque
+        key={section.id}
+        content={(section.content || {}) as Record<string, any>}
+        organization={organization}
         primaryColor={primaryColor}
-        isParent={isParent}
-        organizationSubdomain={organization.subdomain || ''}
-        modifierGroups={modifierGroups}
-        trackStock={product.track_stock}
-        stockLevels={product.stock_levels}
-        buttonsLayout={buttonsLayout}
-        branchId={branchId}
-        restaurante={restaurante}
-        puedePedir={puedePedir}
-        ordenAtributos={ordenAtributos}
+        data={sectionData}
+        sectionVariant={section.section_variant}
+        sectionId={section.id}
       />
-    </div>
-  )
-
-  // Beneficios
-  // Restaurante: los beneficios por defecto (envío 24-48 h, garantía…) no aplican a un plato.
-  const benefitsBlock = showBenefits && !restaurante && (
-    <div className="grid grid-cols-2 gap-4 pt-6 border-t dark:border-gray-700">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-          <Truck className="h-5 w-5 text-green-600 dark:text-green-400" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Envío rápido</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">24-48 horas</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Garantía</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">30 días</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-          <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Empaque seguro</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Protección total</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-          <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white">Calidad</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">100% original</p>
-        </div>
-      </div>
-    </div>
-  )
+    ) : (
+      <SectionRenderer
+        key={section.id}
+        section={section}
+        organization={organization}
+        primaryColor={primaryColor}
+        data={sectionData}
+        isFirst={section.id === idPrimera}
+      />
+    )
+    // Plantilla sin marcador: la urgencia va justo después de la información.
+    const urgenciaTrasInfo = !conMarcador && section.section_type === 'product_info'
+      && (section.content as Record<string, unknown> | null)?.show_countdown !== false
+    return urgenciaTrasInfo ? [nodo, urgencia(`${section.id}__urgencia`)] : nodo
+  }
 
   // Breadcrumb
   const breadcrumbBlock = showBreadcrumb && (
@@ -327,58 +203,32 @@ export function ProductDetailRenderer({
     </div>
   )
 
-  // Galería
-  const galleryBlock = (
-    <ProductImageGallery
-      images={imageUrls}
-      productName={product.name}
-      primaryColor={primaryColor}
-      settings={gallerySettings}
-    />
-  )
-
-  // Construir columna de información según orden configurado por description_position
-  const infoColumn = (
-    <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
-      {descPos === 'above_gallery' ? null : productInfoBlock}
-      {descPos === 'below_title' && descriptionBlock}
-      {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
-      {countdownBlock}
-      {descPos === 'below_price' && descriptionBlock}
-      {actionsBlock}
-      {descPos === 'below_buttons' && descriptionBlock}
-      {benefitsBlock}
-    </div>
-  )
-
   // Layout según columns
   const layoutGrid = (() => {
     if (columns === '1') {
       return (
         <div className="space-y-12">
-          {descPos === 'above_gallery' && descriptionBlock}
-          {galleryBlock}
-          {productInfoBlock}
-          {avisoProducto && <p className="text-sm font-medium text-orange-600">{avisoProducto}</p>}
-      {countdownBlock}
-          {actionsBlock}
-          {benefitsBlock}
+          {principales.map(renderSection)}
         </div>
       )
     }
 
-    // columns === '2' o '2+sidebar'
+    // columns === '2' o '2+sidebar': la galería y lo anterior a ella, en la columna de la galería.
+    const iGaleria = principales.findIndex((s) => s.section_type === 'product_gallery')
+    const columnaGaleria = iGaleria >= 0 ? principales.slice(0, iGaleria + 1) : []
+    const columnaInfo = iGaleria >= 0 ? principales.slice(iGaleria + 1) : principales
     const galleryStyle = { flexBasis: `${galleryWidth}%` } as React.CSSProperties
     const infoStyle = { flexBasis: `${100 - galleryWidth}%` } as React.CSSProperties
 
     return (
       <div className="flex flex-col lg:flex-row gap-12">
         <div style={galleryStyle} className="space-y-3">
-          {descPos === 'above_gallery' && descriptionBlock}
-          {galleryBlock}
+          {columnaGaleria.map(renderSection)}
         </div>
         <div style={infoStyle} className="min-w-0">
-          {infoColumn}
+          <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
+            {columnaInfo.map(renderSection)}
+          </div>
         </div>
       </div>
     )
@@ -389,25 +239,18 @@ export function ProductDetailRenderer({
       {breadcrumbBlock}
       {layoutGrid}
 
-      {/* Productos relacionados */}
-      <RelatedProducts
-        products={relatedProducts}
-        primaryColor={primaryColor}
-        currentProductId={product.id}
-        organizationSubdomain={organization.subdomain || ''}
-        layout={relatedLayout}
-      />
-
-      {/* Reviews */}
-      <div id="product-reviews">
-        <ProductReviews
-          productId={product.id}
-          productName={product.name}
-          primaryColor={primaryColor}
-          reviewsConfig={reviewsConfig}
-          productStats={productStats}
-        />
-      </div>
+      {/* Productos relacionados y reseñas, a todo el ancho */}
+      {anchoCompleto.map(renderSection)}
     </div>
+  )
+}
+
+/** Aviso de stock bajo y contador: dos hermanos sueltos en la columna, como antes. */
+function UrgenciaFicha({ aviso, contador }: { aviso: string | null; contador: React.ReactNode }) {
+  return (
+    <>
+      {aviso && <p className="text-sm font-medium text-orange-600">{aviso}</p>}
+      {contador}
+    </>
   )
 }
