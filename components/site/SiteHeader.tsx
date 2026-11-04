@@ -25,6 +25,7 @@ import HeaderMega from './header/HeaderMega'
 import HeaderTransparent from './header/HeaderTransparent'
 import HeaderCommerce from './header/HeaderCommerce'
 import { useScrollEncabezado } from './header/useScrollEncabezado'
+import { ProveedorCapaFija } from './header/CapaFijaEncabezado'
 import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes'
 import { BarraReservaHotel } from './header/BarraReservaHotel'
 import { useEncabezadoPie } from './EncabezadoPieContext'
@@ -413,6 +414,8 @@ export default function SiteHeader({
   const scroll = useScrollEncabezado(
     extra?.header_sticky === false ? null : ocultarMovilPropio && (!extra?.header_scroll || extra.header_scroll === 'normal') ? 'ocultar_al_bajar' : extra?.header_scroll,
   )
+  // Capa hermana del envoltorio que se mueve (CapaFijaEncabezado): ahí va la barra inferior.
+  const [capaFija, setCapaFija] = useState<HTMLDivElement | null>(null)
 
   // Props comunes para todas las variantes
   const variantProps = {
@@ -456,10 +459,15 @@ export default function SiteHeader({
   /** Sin «Al bajar» activo, el árbol de hoy. Con él, el envoltorio toma el fijo del <header>. */
   function envolverScroll(contenido: ReactNode) {
     if (!scroll.activo) return contenido
+    // Lo fijo a la pantalla (barra inferior) sale del envoltorio por la capa hermana: el
+    // transform del envoltorio lo arrastraba (ver CapaFijaEncabezado).
     return (
-      <div className={['sticky top-0 z-40', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ')}>
-        {contenido}
-      </div>
+      <>
+        <div className={['sticky top-0 z-40', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ')}>
+          <ProveedorCapaFija value={capaFija}>{contenido}</ProveedorCapaFija>
+        </div>
+        <div ref={setCapaFija} className="contents" data-capa-fija-encabezado="" />
+      </>
     )
   }
 

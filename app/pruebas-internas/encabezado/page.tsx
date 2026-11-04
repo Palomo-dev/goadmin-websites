@@ -14,6 +14,8 @@
  *   encabezado real de la tienda (header_layout / header_style tal cual).
  * - `search`: search_style (icon | bar | mini | icon_overlay | mega | pill_floating | hidden).
  * - `msearch`: mobile_search_style (opcional). Sin él, el de la tienda.
+ * - `scroll`: header_scroll (normal | ocultar_al_bajar | encoger | ocultar_y_encoger), opcional.
+ * - `menu`: mobile_menu_style (drawer | bottom_sheet | fullscreen | tabs), opcional.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -125,6 +127,10 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
   const header = uno(searchParams.header)
   const search = uno(searchParams.search)
   const msearch = uno(searchParams.msearch)
+  const scroll = uno(searchParams.scroll)
+  const menu = uno(searchParams.menu)
+  if (scroll && !['normal', 'ocultar_al_bajar', 'encoger', 'ocultar_y_encoger'].includes(scroll)) notFound()
+  if (menu && !['drawer', 'bottom_sheet', 'fullscreen', 'tabs'].includes(menu)) notFound()
   if (header && !(HEADERS as readonly string[]).includes(header)) notFound()
   if (search && !(BUSCADORES as readonly string[]).includes(search)) notFound()
   if (msearch && !(BUSCADORES as readonly string[]).includes(msearch)) notFound()
@@ -138,6 +144,8 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
   }
   if (search) ajustes.search_style = search
   if (msearch) ajustes.mobile_search_style = msearch
+  if (scroll) ajustes.header_scroll = scroll
+  if (menu) ajustes.mobile_menu_style = menu
 
   const categorias = new Map(tienda.categoriasDelMenu.map((c) => [Number(c.id), c]))
   const menus = menusPublicosDesdeDocumento(documento, tienda.id, categorias)

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Heart, Home, LayoutGrid, Link2, MessageCircle, Search, ShoppingBag, ShoppingCart, Tag, User } from 'lucide-react'
 import type { BarraApp, ItemBarra } from '@/lib/website/menuMovil'
 import { contarUnidadesCarrito } from '@/lib/cart'
+import { FueraDelEncabezado } from '../CapaFijaEncabezado'
 
 const ICONO: Record<string, typeof Home> = {
   home: Home,
@@ -54,7 +55,9 @@ export function MobileBottomNav({
   const inactivo = barra.inactive || '#6b7280'
   const fondo = barra.background || 'var(--background-color, #ffffff)'
 
+  // Con «Al bajar» se pinta fuera del envoltorio que se mueve (CapaFijaEncabezado).
   return (
+    <FueraDelEncabezado>
     <nav
       aria-label="Barra de la tienda"
       data-barra-app=""
@@ -100,6 +103,7 @@ export function MobileBottomNav({
         })}
       </ul>
     </nav>
+    </FueraDelEncabezado>
   )
 }
 
