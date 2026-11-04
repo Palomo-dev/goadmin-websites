@@ -12,6 +12,7 @@ import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
 import crypto from 'crypto'
 import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
+import { resolverSecretoCredencial } from '@/lib/integraciones/secretoCredencial'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,16 +118,8 @@ async function getBoldSecretKey(
 
   if (!credential?.secret_ref) return null
 
-  // Intentar leer del Vault de Supabase
-  try {
-    const { data: secret } = await supabase
-      .rpc('get_decrypted_secret', { secret_name: credential.secret_ref })
-    if (secret) return secret
-  } catch {
-    // Vault no disponible — usar secret_ref directamente
-  }
-
-  return credential.secret_ref
+  // Del Vault si `secret_ref` es su uuid; si no, el valor en claro (lo de siempre).
+  return (await resolverSecretoCredencial(supabase, connection.id, 'secret_key', credential.secret_ref)) || null
 }
 
 /**
