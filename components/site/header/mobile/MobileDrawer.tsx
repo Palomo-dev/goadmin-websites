@@ -3,8 +3,8 @@
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
-import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
-import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
 import { X, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
 import {
@@ -61,6 +61,7 @@ export default function MobileDrawer({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
+  const cromoMovil = ajustesCromoMovil(settings);
   const showSearchBar = searchStyle === 'bar';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
@@ -127,8 +128,8 @@ export default function MobileDrawer({
 
           {showSearchBar && (
             <div className="pb-3">
-              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
-                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" />
+              {cromoMovil ? (
+                <BuscadorMovilComoEscritorio settings={cromoMovil} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}

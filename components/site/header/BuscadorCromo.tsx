@@ -8,6 +8,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
+import { ajustesBuscadorMovil, buscadorIgualEscritorio, buscadorMovilConEstilo } from '@/lib/website/opcionUnica'
 
 /** La barra de hoy si no hay cromo nuevo. El overlay no ocupa la barra. */
 export function barraSiCromo(
@@ -259,7 +260,23 @@ export function hayCromoEnBarra(settings: unknown): boolean {
 }
 
 /**
- * Buscador del celular igual al de escritorio (`mobile_search_same_as_desktop`).
+ * Ajustes con que el celular pinta su barra con estilo (`BuscadorMovilComoEscritorio`), o `null`
+ * para la barra de siempre (`SearchBarInline`).
+ * - En conjunto (`mobile_search_same_as_desktop`): el cromo de computador, como hasta hoy.
+ * - Por separado: solo «Barra compacta», «Buscador grande» y «Píldora flotante» del celular, con el
+ *   tipo del celular y el resto del estilo de computador. «Barra visible» sigue con la de siempre.
+ */
+export function ajustesCromoMovil(settings: unknown): unknown | null {
+  const s = settings as Record<string, unknown> | null | undefined
+  if (buscadorIgualEscritorio(s)) return hayCromoEnBarra(settings) ? settings : null
+  if (!buscadorMovilConEstilo(s)) return null
+  const movil = ajustesBuscadorMovil(s)
+  return hayCromoEnBarra(movil) ? movil : null
+}
+
+/**
+ * Buscador del celular con estilo: el de computador (en conjunto) o el propio (por separado),
+ * con los ajustes de `ajustesCromoMovil`.
  * «Buscador grande» → BuscadorCromoCompacto (mismas puntas, «Todas» y botón primario en 360px);
  * mini, píldora y barra con estilo → el mismo BuscadorCromo a todo el ancho.
  */

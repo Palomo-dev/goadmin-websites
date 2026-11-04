@@ -2,8 +2,8 @@
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useEffect, useState } from 'react';
-import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
-import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
 import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { ProductSearch } from '../../ProductSearch';
@@ -58,6 +58,7 @@ export default function MobileTabs({
   const transparente = useTransparenteMovil(settings);
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
+  const cromoMovil = ajustesCromoMovil(settings);
   const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
 
   return (
@@ -90,8 +91,8 @@ export default function MobileTabs({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
-                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchTabIcon} className="w-full" />
+              {cromoMovil ? (
+                <BuscadorMovilComoEscritorio settings={cromoMovil} primaryColor={primaryColor} categorias={menuCategories} icon={SearchTabIcon} className="w-full" />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}
