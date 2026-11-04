@@ -67,7 +67,8 @@
     "verify:ficha-diff": "node scripts/pruebas/ficha-diff.mjs",
     "verify:opciones-ficha": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-opciones-ficha.mjs",
     "pruebas:matriz-buscador": "node scripts/pruebas/matriz-buscador.mjs",
-    "pruebas:franja-movimiento": "node scripts/pruebas/franja-movimiento.mjs"
+    "pruebas:franja-movimiento": "node scripts/pruebas/franja-movimiento.mjs",
+    "pruebas:busquedas-populares": "node scripts/pruebas/busquedas-populares.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

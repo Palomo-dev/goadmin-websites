@@ -13,18 +13,23 @@ import { temaPublicoDesdeDocumento, type TemaPublico } from '@/lib/website/v2/te
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getExtrasEncabezadoPie } from '@/lib/website/extrasEncabezadoPie.server'
+import { getMenuCategories } from '@/lib/supabase/queries'
 import { OrganizationLayoutCliente, type OrganizationLayoutProps } from './OrganizationLayoutCliente'
 
 export type { OrganizationLayoutProps }
 
 export async function OrganizationLayout(props: OrganizationLayoutProps) {
   const settings = (props.effectiveSettings ?? props.organization.website_settings ?? null) as OrganizationLayoutProps['effectiveSettings']
-  const [datosSede, temaSitio, pixeles, ajustes] = await Promise.all([
+  const [datosSede, temaSitio, pixeles, ajustes, categoriasBusqueda] = await Promise.all([
     getDatosSedeLayout(props.organization, props.outlet ?? null, settings ?? null),
     getTemaSitio(props.organization.id, props.outlet?.branchId ?? undefined),
     getPixelesSitio(props.organization.id),
     // Misma fila global ya cacheada que lee getOrgContext (react.cache + cacheStructural).
     getAjustesSitio(props.organization.id),
+    // Búsquedas populares sin `search_popular`: las primeras categorías de la tienda, aunque no
+    // se muestren en el encabezado ni en el pie y aunque la página no pase `menuCategories`.
+    // Misma llamada (y clave de caché) que `categoriasTienda` de getOrgContext.
+    props.categoriasBusqueda ?? getMenuCategories(props.organization.id, props.outlet?.branchId ?? props.branchId ?? undefined).catch(() => []),
   ])
   // Encabezado y pie por plantilla: con las opciones en su default no hace consultas nuevas.
   const extrasShell = await getExtrasEncabezadoPie(props.organization, settings ?? null, datosSede, ajustes)
@@ -36,6 +41,7 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
       temaSitio={temaSitio}
       pixeles={pixeles}
       codigoPropio={ajustes.codigoPropio}
+      categoriasBusqueda={categoriasBusqueda}
     />
   )
 }

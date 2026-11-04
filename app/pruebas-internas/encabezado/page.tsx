@@ -16,9 +16,16 @@
  * - `msearch`: mobile_search_style (opcional). Sin él, el de la tienda.
  * - `scroll`: header_scroll (normal | ocultar_al_bajar | encoger | ocultar_y_encoger), opcional.
  * - `menu`: mobile_menu_style (drawer | bottom_sheet | fullscreen | tabs), opcional.
+ * - `sinAjustesCategorias=1`: sin `search_popular` y con show_categories_in_header y
+ *   footer_show_categories en false (las búsquedas populares salen de las categorías igual).
+ *
+ * Las categorías llegan como en la tienda publicada: `menuCategories` según los ajustes de
+ * mostrarlas (categoriasVisibles, como getOrgContext) y `categoriasBusqueda` siempre todas
+ * (como OrganizationLayout).
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { categoriasVisibles } from '@/lib/website/busquedasPopulares'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { OrganizationLayoutCliente } from '@/components/site/OrganizationLayoutCliente'
@@ -146,11 +153,17 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
   if (msearch) ajustes.mobile_search_style = msearch
   if (scroll) ajustes.header_scroll = scroll
   if (menu) ajustes.mobile_menu_style = menu
+  if (uno(searchParams.sinAjustesCategorias) === '1') {
+    delete ajustes.search_popular
+    ajustes.show_categories_in_header = false
+    ajustes.footer_show_categories = false
+  }
 
   const categorias = new Map(tienda.categoriasDelMenu.map((c) => [Number(c.id), c]))
   const menus = menusPublicosDesdeDocumento(documento, tienda.id, categorias)
   const navTree = (menus.header?.items ?? []).map(itemANodo)
-  const menuCategories = arbolCategorias(tienda.menuCategories)
+  const categoriasTienda = arbolCategorias(tienda.menuCategories)
+  const menuCategories = categoriasVisibles(ajustes as { show_categories_in_header?: boolean | null; footer_show_categories?: boolean | null }, categoriasTienda)
   const tema = temaPublicoDesdeDocumento(documento, false, null)
   const settings = ajustes as unknown as WebsiteSettings
   const primaryColor = (ajustes.primary_color as string | null) || '#3B82F6'
@@ -184,6 +197,11 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
     mobile_breakpoint: (ajustes.mobile_breakpoint as number | null) ?? 768,
     mobile_menu_style: ajustes.mobile_menu_style ?? null,
     menu: navTree.map((n) => n.title),
+    /** Las 4 primeras categorías raíz de la tienda, en su orden (lo que deben mostrar «Populares»). */
+    primerasCategorias: categoriasTienda.slice(0, 4).map((c) => c.name),
+    search_popular: ajustes.search_popular ?? null,
+    show_categories_in_header: ajustes.show_categories_in_header ?? null,
+    footer_show_categories: ajustes.footer_show_categories ?? null,
   }
 
   return (
@@ -194,6 +212,7 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
       headerNav={navTree}
       headerNavTree={navTree}
       menuCategories={menuCategories}
+      categoriasBusqueda={categoriasTienda}
       effectiveSettings={settings}
       temaSitio={tema}
     >

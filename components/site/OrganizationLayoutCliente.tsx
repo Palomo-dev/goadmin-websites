@@ -86,6 +86,11 @@ export interface OrganizationLayoutProps {
   headerNav?: WebsitePage[]
   headerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
+  /**
+   * Categorías de la tienda para las búsquedas populares (sin `search_popular`), sin depender de
+   * `show_categories_in_header` / `footer_show_categories`. La carga OrganizationLayout.
+   */
+  categoriasBusqueda?: MenuCategory[]
   megaMenuItems?: NavItem[]
   footerNav?: WebsitePage[]
   footerNavTree?: WebsitePageWithChildren[]
@@ -129,6 +134,7 @@ export function OrganizationLayoutCliente({
   headerNav,
   headerNavTree,
   menuCategories,
+  categoriasBusqueda,
   megaMenuItems,
   footerNav,
   footerNavTree,
@@ -214,7 +220,7 @@ export function OrganizationLayoutCliente({
     tipo: organization.type_id ?? null,
     fondoTemaOscuro: !!(temaEfectivo?.fondo && fondoOscuro(temaEfectivo.fondo)),
     fondoTema: temaEfectivo?.fondo ?? null,
-    busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, menuCategories),
+    busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, categoriasBusqueda && categoriasBusqueda.length > 0 ? categoriasBusqueda : menuCategories),
   }
   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).

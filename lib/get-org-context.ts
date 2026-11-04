@@ -1,3 +1,4 @@
+import { categoriasVisibles } from '@/lib/website/busquedasPopulares'
 import { headers } from 'next/headers'
 import { cache } from 'react'
 import {
@@ -204,14 +205,14 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     : footerNavTreeLegacy
   const footerNav = footerNavTree
 
-  // Cargar categorías para el mega-menú solo si la configuración lo activa
-  // El pie también las usa (`footer_show_categories`): antes solo se cargaban
-  // si el header las mostraba, y la columna «Categorías» del pie salía vacía.
-  const showCategoriesInHeader = settings?.show_categories_in_header ?? false
-  const showCategoriesInFooter = settings?.footer_show_categories ?? false
-  const menuCategories = showCategoriesInHeader || showCategoriesInFooter
-    ? await getMenuCategories(organization.id, branchId)
-    : []
+  // Categorías de la tienda (getMenuCategories va en unstable_cache). Dos usos separados:
+  // - `menuCategories`: las que se MUESTRAN en el encabezado (mega-menú) o en la columna
+  //   «Categorías» del pie; siguen respetando `show_categories_in_header` y
+  //   `footer_show_categories` (con los dos en false, vacío como siempre).
+  // - `categoriasTienda`: todas, sin depender de esos ajustes. De aquí salen las búsquedas
+  //   populares del buscador cuando la tienda no configuró `search_popular`.
+  const categoriasTienda = await getMenuCategories(organization.id, branchId)
+  const menuCategories = categoriasVisibles(settings, categoriasTienda)
 
   // Cargar menús nombrados (sistema nuevo) con fallback al sistema de páginas
   const headerMenuId = settings?.header_menu_id ?? null
@@ -306,6 +307,8 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     footerNav,
     footerNavTree,
     menuCategories,
+    /** Todas las categorías de la tienda, sin los ajustes de mostrarlas (búsquedas populares). */
+    categoriasTienda,
     megaMenuItems,
     websiteMenus: footerMenus,
     frozenReason,

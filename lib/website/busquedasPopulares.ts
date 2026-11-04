@@ -24,3 +24,15 @@ export function busquedasPopulares(
   }
   return salida
 }
+
+/**
+ * Categorías que se MUESTRAN en el encabezado (mega-menú) o en la columna «Categorías» del pie:
+ * todas si `show_categories_in_header` o `footer_show_categories` está activo; si no, ninguna.
+ * Las búsquedas populares no pasan por aquí: usan todas las categorías de la tienda.
+ */
+export function categoriasVisibles<T>(
+  ajustes: { show_categories_in_header?: boolean | null; footer_show_categories?: boolean | null } | null | undefined,
+  categorias: readonly T[],
+): T[] {
+  return ajustes?.show_categories_in_header || ajustes?.footer_show_categories ? [...categorias] : []
+}

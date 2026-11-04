@@ -13,7 +13,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { normalizarOpcionShell, OPCIONES_SHELL } from '../lib/website/v2/mapeoAjustes.ts'
-import { busquedasPopulares, MAX_BUSQUEDAS_POPULARES_CATEGORIAS } from '../lib/website/busquedasPopulares.ts'
+import { busquedasPopulares, categoriasVisibles, MAX_BUSQUEDAS_POPULARES_CATEGORIAS } from '../lib/website/busquedasPopulares.ts'
 import { ANCHO_MINIMO_PANEL, posicionPanel } from '../lib/website/posicionPanelBuscador.ts'
 
 const problemas = []
@@ -35,6 +35,11 @@ igual(busquedasPopulares(null, cats), ['Sillas', 'Escritorios', 'Archivadores', 
 check(MAX_BUSQUEDAS_POPULARES_CATEGORIAS === 4, 'hasta 4 categorías')
 igual(busquedasPopulares(null, []), [], 'sin categorías: nada (nunca la lista genérica)')
 igual(busquedasPopulares([], undefined), [], 'lista vacía y sin categorías: nada')
+igual(categoriasVisibles({ show_categories_in_header: false, footer_show_categories: false }, cats), [], 'sin ajustes de mostrarlas: no se muestran en encabezado ni pie')
+igual(categoriasVisibles(null, cats), [], 'sin ajustes: no se muestran')
+igual(categoriasVisibles({ show_categories_in_header: true }, cats).length, cats.length, 'encabezado: se muestran')
+igual(categoriasVisibles({ footer_show_categories: true }, cats).length, cats.length, 'pie: se muestran')
+igual(busquedasPopulares(null, cats).length, 4, 'las populares no dependen de esos ajustes: 4 categorías')
 for (const f of ['components/site/SearchBarInput.tsx', 'components/site/ProductSearch.tsx']) {
   const src = leer(f)
   check(!/'Ofertas', 'Nuevo', 'Tenis', 'Accesorios'/.test(src) && !src.includes("'Tenis'"), `${f}: sin la lista genérica`)
@@ -42,7 +47,15 @@ for (const f of ['components/site/SearchBarInput.tsx', 'components/site/ProductS
   check(src.includes('popularSearches.length > 0 && ('), `${f}: sin populares no pinta el bloque`)
 }
 const layout = leer('components/site/OrganizationLayoutCliente.tsx')
-check(layout.includes('busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, menuCategories),'), 'el layout resuelve configuradas o categorías del menú')
+check(layout.includes('busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, categoriasBusqueda && categoriasBusqueda.length > 0 ? categoriasBusqueda : menuCategories),'), 'el layout resuelve configuradas o las categorías de la tienda (no las que se muestran)')
+const layoutServidor = leer('components/site/OrganizationLayout.tsx')
+check(/props\.categoriasBusqueda \?\? getMenuCategories\(props\.organization\.id, /.test(layoutServidor) && layoutServidor.includes('categoriasBusqueda={categoriasBusqueda}'), 'OrganizationLayout carga las categorías del buscador sin depender de los ajustes de mostrarlas')
+const ctxOrg = leer('lib/get-org-context.ts')
+check(ctxOrg.includes('const categoriasTienda = await getMenuCategories(organization.id, branchId)') && ctxOrg.includes('const menuCategories = categoriasVisibles(settings, categoriasTienda)'), 'getOrgContext: categorías de la tienda siempre; las visibles según los ajustes')
+{
+  const mod = leer('lib/website/busquedasPopulares.ts')
+  check(mod.includes('export function categoriasVisibles<T>('), 'categoriasVisibles existe')
+}
 check(leer('lib/website/encabezadoPie.ts').includes("busquedasPopulares: leer(ajustes, 'search_popular') as string[] | null,"), 'opcionesEncabezadoPie lee search_popular validado')
 check(leer('components/site/useAjustesVivosPreview.ts').includes("'search_popular'"), 'la vista previa del editor la aplica en vivo')
 
