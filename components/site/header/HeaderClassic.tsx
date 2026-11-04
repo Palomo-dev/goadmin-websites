@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Search } from 'lucide-react';
 import {
   HeaderLogo,
@@ -21,6 +22,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { useBarraAbajo } from './barraEnFila';
 
 export default function HeaderClassic({
   organization,
@@ -50,15 +52,21 @@ export default function HeaderClassic({
     <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
   ) : null;
 
-  const renderSearchBar = barraSiCromo(settings, showSearchBar ? (
+  // La barra del buscador va en la fila con el menú; si no cabe (menos de 240px, el menú tendría que
+  // recortar o la fila desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
+  const barra = (clase: string) => barraSiCromo(settings, showSearchBar ? (
     <SearchBarInline
       primaryColor={primaryColor}
       organizationId={organizationId}
-      className="flex-1 max-w-xl mx-4"
+      className={clase}
       size="lg"
       icon={SearchIconComp}
     />
-  ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-4' });
+  ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase });
+  const hayBarra = barra('') != null;
+  const filaRef = useRef<HTMLDivElement>(null);
+  const barraAbajo = useBarraAbajo(filaRef, hayBarra);
+  const renderSearchBar = barraAbajo ? null : barra('flex-1 max-w-xl mx-4 min-w-[240px]');
 
   const renderActions = (
     <div className="flex items-center gap-3 flex-shrink-0">
@@ -118,9 +126,10 @@ export default function HeaderClassic({
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+          <div ref={filaRef} className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {middle}
           </div>
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl')}</div>}
         </div>
       </div>
     </header>

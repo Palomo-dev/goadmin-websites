@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+
 import { Search } from 'lucide-react';
 import {
   HeaderLogo,
@@ -21,6 +23,7 @@ import {
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
+import { useBarraAbajo } from './barraEnFila';
 
 export default function HeaderSplit({
   organization,
@@ -42,12 +45,27 @@ export default function HeaderSplit({
   const leftNav = navItems.slice(0, midpoint);
   const rightNav = navItems.slice(midpoint);
 
+  // Barra del buscador en la fila; si no cabe (menos de 240px, el menú recortaría o la fila
+  // desborda), baja a una segunda fila de ancho completo (useBarraAbajo).
+  const barra = (clase: string) => barraSiCromo(settings, showSearchBar ? (
+              <SearchBarInline
+                primaryColor={primaryColor}
+                organizationId={organizationId}
+                className={clase}
+                size="lg"
+                icon={SearchIconComp}
+              />
+              ) : null, { primaryColor, organizationId, categorias: menuCategories, className: clase });
+  const hayBarra = barra('') != null;
+  const filaRef = useRef<HTMLDivElement>(null);
+  const barraAbajo = useBarraAbajo(filaRef, hayBarra);
+
   return (
     <header className="sticky top-0 z-40 w-full" style={variablesEncabezado(settings)}>
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md shadow-sm bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
+          <div ref={filaRef} className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {/* Logo */}
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
 
@@ -57,15 +75,7 @@ export default function HeaderSplit({
             )}
 
             {/* Search bar central */}
-            {barraSiCromo(settings, showSearchBar ? (
-              <SearchBarInline
-                primaryColor={primaryColor}
-                organizationId={organizationId}
-                className="flex-1 max-w-xl mx-auto"
-                size="lg"
-                icon={SearchIconComp}
-              />
-            ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'flex-1 max-w-xl mx-auto' })}
+            {!barraAbajo && barra('flex-1 max-w-xl mx-auto min-w-[240px]')}
 
             {/* Nav derecha */}
             {rightNav.length > 0 && (
@@ -91,6 +101,7 @@ export default function HeaderSplit({
               )}
             </div>
           </div>
+          {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl')}</div>}
         </div>
       </div>
     </header>

@@ -50,8 +50,15 @@ export function BuscadorCromo({
   contenedor = null,
   colores,
   lupaEnCampo = false,
+  enFila = true,
 }: {
   presentacion: CromoBuscador
+  /**
+   * En la fila del encabezado de escritorio. «Barra compacta» (`mini`) ocupa ahí un espacio fijo
+   * (9rem) y al enfocarla se abre encima del menú hacia la izquierda (24rem), sin empujar la fila.
+   * Fuera de la fila (celular, segunda fila), la barra normal a todo el ancho.
+   */
+  enFila?: boolean
   /** El celular conserva la lupa dentro del campo aunque haya botón (se ve como hasta hoy). */
   lupaEnCampo?: boolean
   primaryColor: string
@@ -89,13 +96,15 @@ export function BuscadorCromo({
       />
     )
   }
-  const ancho = presentacion.tipo === 'mini' ? 'max-w-[9rem] focus-within:max-w-md transition-all' : ''
+  const compacta = presentacion.tipo === 'mini' && enFila
   const sombra = presentacion.shadow ? 'shadow-lg' : ''
-  return (
+  const campo = (
     <div
-      className={`flex min-w-0 items-center gap-2 ${ancho} ${sombra} ${RADIO[presentacion.radius]} ${className}`}
-      style={{ maxWidth: presentacion.width }}
-      data-buscador={presentacion.tipo}
+      className={compacta
+        ? `absolute right-0 top-1/2 z-30 flex w-36 -translate-y-1/2 items-center gap-2 bg-[var(--header-bg-light,white)] transition-[width] duration-200 focus-within:w-96 motion-reduce:transition-none dark:bg-[var(--header-bg-dark,#111827)] ${sombra} ${RADIO[presentacion.radius]}`
+        : `flex min-w-0 items-center gap-2 ${sombra} ${RADIO[presentacion.radius]} ${className}`}
+      style={compacta ? undefined : { maxWidth: presentacion.width }}
+      data-buscador={compacta ? undefined : presentacion.tipo}
     >
       {presentacion.tipo === 'mega' && (
         <select aria-label="Categoría" value={categoria} onChange={(e) => cambiarCategoria(e.target.value)} className="h-11 shrink-0 rounded-l-md border border-gray-200 bg-white px-2 text-sm">
@@ -137,6 +146,13 @@ export function BuscadorCromo({
           {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
+    </div>
+  )
+  if (!compacta) return campo
+  // «Barra compacta»: reserva su espacio en la fila; el campo se abre encima, hacia la izquierda.
+  return (
+    <div className={`relative h-11 w-36 shrink-0 ${className.includes('mx-') ? 'mx-4' : ''}`} data-buscador="mini">
+      {campo}
     </div>
   )
 }
@@ -291,5 +307,5 @@ export function BuscadorMovilComoEscritorio(props: {
   const cromo = leerConstructor(props.settings)?.buscador
   if (cromo?.tipo === 'mega') return <BuscadorCromoCompacto {...props} categorias={props.categorias ?? []} />
   if (!cromo) return null
-  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} lupaEnCampo />
+  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} lupaEnCampo enFila={false} />
 }

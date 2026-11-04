@@ -5,10 +5,16 @@
  *
  * 1. `search_popular` (shell.header.opciones): lista de textos validada (regla `listaTextos`);
  *    sin valor, las primeras categorías del menú; nunca la lista genérica de antes.
+ * 2. Desplegable con ancho propio (mín. 360px; la lupa 384px) y dentro de la pantalla.
+ * 3. Un solo comportamiento (buscador/comportamiento.ts) para la barra y la lupa.
+ * 4. La barra nunca se aplasta: min-w 240px en la fila o baja a una segunda fila (useBarraAbajo).
+ * 5. El menú que no cabe pasa a «Más» (NavList): nunca texto cortado.
+ * 6. «Barra compacta» se abre encima del menú sin empujar la fila.
  */
 import { readFileSync } from 'node:fs'
 import { normalizarOpcionShell, OPCIONES_SHELL } from '../lib/website/v2/mapeoAjustes.ts'
 import { busquedasPopulares, MAX_BUSQUEDAS_POPULARES_CATEGORIAS } from '../lib/website/busquedasPopulares.ts'
+import { ANCHO_MINIMO_PANEL, posicionPanel } from '../lib/website/posicionPanelBuscador.ts'
 
 const problemas = []
 let casos = 0
@@ -39,6 +45,59 @@ const layout = leer('components/site/OrganizationLayoutCliente.tsx')
 check(layout.includes('busquedasPopulares: busquedasPopulares(opcionesShell.busquedasPopulares, menuCategories),'), 'el layout resuelve configuradas o categorías del menú')
 check(leer('lib/website/encabezadoPie.ts').includes("busquedasPopulares: leer(ajustes, 'search_popular') as string[] | null,"), 'opcionesEncabezadoPie lee search_popular validado')
 check(leer('components/site/useAjustesVivosPreview.ts').includes("'search_popular'"), 'la vista previa del editor la aplica en vivo')
+
+// ── 2. Posición del desplegable ──
+check(ANCHO_MINIMO_PANEL === 360, 'mínimo 360px')
+const vw = 1024
+const angosto = posicionPanel({ left: 600, right: 715, width: 115 }, vw)
+check(angosto.width === 360 && 600 + angosto.left + 360 <= vw - 8, `input de 115px a 1024: panel de 360 dentro de la pantalla (${JSON.stringify(angosto)})`)
+const ancho = posicionPanel({ left: 300, right: 876, width: 576 }, 1440)
+check(ancho.width === 576 && ancho.left === 0, 'input ancho: el panel lo sigue (como hoy)')
+const celular = posicionPanel({ left: 16, right: 374, width: 358 }, 390)
+check(celular.width === 360 && 16 + celular.left >= 8 && 16 + celular.left + celular.width <= 382, 'celular 390: 360 dentro de la pantalla')
+const muyAngosto = posicionPanel({ left: 10, right: 300, width: 290 }, 340)
+check(muyAngosto.width === 324 && 10 + muyAngosto.left === 8, 'pantalla de 340: el panel nunca se sale (324)')
+const lupaIzq = posicionPanel({ left: 20, right: 60, width: 40 }, 1024, { ancho: 384, minimo: 320, alinear: 'derecha' })
+check(lupaIzq.width === 384 && 20 + lupaIzq.left === 8, 'lupa cerca del borde izquierdo: el panel se corre adentro')
+const lupaDer = posicionPanel({ left: 960, right: 1000, width: 40 }, 1024, { ancho: 384, minimo: 320, alinear: 'derecha' })
+check(lupaDer.width === 384 && 960 + lupaDer.left + 384 === 1000, 'lupa a la derecha: el panel termina en la lupa (como hoy)')
+
+// ── 3. Un solo comportamiento ──
+const barra = leer('components/site/SearchBarInput.tsx')
+const lupa = leer('components/site/ProductSearch.tsx')
+for (const [n, src] of [['SearchBarInput', barra], ['ProductSearch', lupa]]) {
+  check(src.includes('useResultadosBusqueda(') && src.includes('useBusquedasRecientes(') && src.includes('useCerrarBuscador(') && src.includes('usePosicionPanel('), `${n}: usa el comportamiento común`)
+  check(!src.includes("document.addEventListener('mousedown'") && !src.includes('fetch('), `${n}: sin lógica propia de cierre ni de búsqueda`)
+  check(src.includes('data-panel-buscador'), `${n}: el desplegable se marca para las pruebas`)
+}
+check(barra.includes('style={posicion ? { left: posicion.left, width: posicion.width } : undefined}') && !barra.includes('<div className="absolute left-0 right-0 top-full mt-2 z-[100]">'), 'la barra: el desplegable no hereda el ancho del input')
+check(lupa.includes("usePosicionPanel(!!isOpen && !pantallaCompleta, containerRef, { ancho: 384, minimo: 320, alinear: 'derecha' })"), 'la lupa: panel de 384 dentro de la pantalla')
+check(lupa.includes('window.location.href = ruta(urlResultadosBusqueda(term.trim()))'), 'Enter en la lupa lleva a /search, como la barra')
+const comp = leer('components/site/buscador/comportamiento.ts')
+check(comp.includes("if (e.key === 'Escape') cerrarRef.current()") && comp.includes("document.addEventListener('keydown', alTecla)"), 'Escape cierra en todo el documento')
+check(comp.includes('export const MINIMO_SUGERENCIAS = 2'), 'sugerencias desde 2 caracteres (la lupa buscaba desde 1)')
+
+// ── 4. La barra en la fila ──
+check(leer('components/site/header/barraEnFila.ts').includes('export const ANCHO_MINIMO_BARRA = 240'), 'mínimo 240px')
+for (const f of ['HeaderClassic', 'HeaderSplit', 'HeaderMinimal', 'HeaderMega']) {
+  const src = leer(`components/site/header/${f}.tsx`)
+  check(src.includes('const barraAbajo = useBarraAbajo(filaRef, hayBarra);') && src.includes('ref={filaRef}'), `${f}: mide la fila`)
+  check(/barra\('[^']*min-w-\[240px\]'\)/.test(src), `${f}: la barra en la fila no baja de 240px`)
+  check(src.includes(`{barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl')}</div>}`), `${f}: segunda fila de ancho completo`)
+}
+check(leer('components/site/header/HeaderShared.tsx').includes('<div className={className} data-buscador="bar">'), 'la barra simple se marca para la medida')
+
+// ── 5. Menú con «Más» ──
+const shared = leer('components/site/header/HeaderShared.tsx')
+check(shared.includes("nav.toggleAttribute('data-nav-recorta', n < anchos.length)") && shared.includes("item={{ name: 'Más', href: '', children:"), 'NavList: los enlaces que no caben van a «Más»')
+check(shared.includes('data-medida-nav=""') && !/data-medida-nav[\s\S]{0,400}<NavLink/.test(shared), 'el medidor no duplica enlaces enfocables')
+check(leer('components/site/header/menuDeslizable.ts').includes("!c.hasAttribute('data-medida-nav')"), 'el deslizamiento no cuenta el medidor')
+check(leer('components/site/header/NavDropdown.tsx').includes('{!sinVerTodo && ('), '«Más» sin «Ver todo»')
+
+// ── 6. Barra compacta ──
+const cromo = leer('components/site/header/BuscadorCromo.tsx')
+check(cromo.includes("const compacta = presentacion.tipo === 'mini' && enFila") && cromo.includes('focus-within:w-96') && cromo.includes('absolute right-0'), 'mini: se abre encima, hacia la izquierda, sin empujar')
+check(cromo.includes('lupaEnCampo enFila={false} />'), 'mini en el celular: barra normal')
 
 if (problemas.length) {
   console.error(`verify-buscador: ${problemas.length} fallo(s) de ${casos}`)

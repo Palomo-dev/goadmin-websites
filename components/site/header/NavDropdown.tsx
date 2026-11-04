@@ -13,6 +13,8 @@ interface NavDropdownProps {
   primaryColor: string;
   /** Lo que se ve en la barra (menús adicionales). Sin él, como siempre. */
   disparador?: React.ReactNode;
+  /** Sin el enlace «Ver todo» (el «Más» del menú que no cabe no tiene página propia). */
+  sinVerTodo?: boolean;
 }
 
 /**
@@ -20,8 +22,8 @@ interface NavDropdownProps {
  * Se abre al hover (desktop) sobre el wrapper div que contiene el item de nav.
  * Soporta children anidados hasta nivel 2 (indentados).
  */
-export function NavDropdown({ item, primaryColor, disparador }: NavDropdownProps) {
-  if (disparador) return <DesplegableFlotante item={item} primaryColor={primaryColor} disparador={disparador} />;
+export function NavDropdown({ item, primaryColor, disparador, sinVerTodo }: NavDropdownProps) {
+  if (disparador) return <DesplegableFlotante item={item} primaryColor={primaryColor} disparador={disparador} sinVerTodo={sinVerTodo} />;
   return <DesplegableClasico item={item} primaryColor={primaryColor} />;
 }
 
@@ -102,7 +104,7 @@ function DesplegableClasico({ item, primaryColor }: NavDropdownProps) {
  * la barra que se desliza (overflow + máscara) y sobre el encabezado. Abre con clic o al pasar el
  * mouse; cierra con Escape, clic afuera o al salir. Abrirlo no mueve la barra.
  */
-function DesplegableFlotante({ item, primaryColor, disparador }: NavDropdownProps) {
+function DesplegableFlotante({ item, primaryColor, disparador, sinVerTodo = false }: NavDropdownProps) {
   const [abierto, setAbierto] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const ancla = useRef<HTMLDivElement>(null);
@@ -164,11 +166,15 @@ function DesplegableFlotante({ item, primaryColor, disparador }: NavDropdownProp
           style={{ position: 'fixed', left: pos?.left ?? -9999, top: pos?.top ?? -9999, zIndex: 1000 }}
           className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2"
         >
-          <Link href={item.href} onClick={() => setAbierto(false)} className="flex items-center justify-between gap-1 px-3 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-80" style={{ color: primaryColor }}>
-            Ver todo
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-          <div className="my-1 h-px bg-gray-100 dark:bg-gray-800" />
+          {!sinVerTodo && (
+            <>
+              <Link href={item.href} onClick={() => setAbierto(false)} className="flex items-center justify-between gap-1 px-3 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-80" style={{ color: primaryColor }}>
+                Ver todo
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <div className="my-1 h-px bg-gray-100 dark:bg-gray-800" />
+            </>
+          )}
           <ul className="flex flex-col">
             {item.children.map((child, i) => (
               <li key={i}>
