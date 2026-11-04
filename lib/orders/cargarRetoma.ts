@@ -244,6 +244,7 @@ async function fichaDeProductos(
     .from('product_images')
     .select('product_id, storage_path, is_primary, display_order, shared_images(storage_path)')
     .in('product_id', idsFoto)
+    .eq('archivo_disponible', true)
     .order('display_order', { ascending: true })
   if (errorImagenes) {
     console.error('[retomar] No se pudieron leer las fotos', { organizationId, error: errorImagenes.message })

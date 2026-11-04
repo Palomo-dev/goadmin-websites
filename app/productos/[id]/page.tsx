@@ -54,6 +54,7 @@ const getProduct = cache(async (productUuid: string, organizationId: number, bra
       stock_levels ( branch_id, qty_on_hand, qty_reserved ),
       ${SELECT_PADRE_ESTADO}
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('uuid', productUuid)
     .eq('organization_id', organizationId)
@@ -107,6 +108,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('category_id', categoryId)
@@ -124,6 +126,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('tag_id', tagId)
@@ -141,6 +144,7 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('status', 'active')

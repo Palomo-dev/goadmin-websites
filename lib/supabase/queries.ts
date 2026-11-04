@@ -551,6 +551,7 @@ async function directProductPhotoByCategory(
         shared_images ( storage_path )
       `)
       .in('product_id', candidateIds)
+      .eq('archivo_disponible', true)
       // El embed anterior llegaba ordenado por display_order; se replica para
       // que "la primera imagen" del producto siga siendo la misma de antes.
       .order('display_order', { ascending: true })
@@ -771,6 +772,7 @@ const getOrganizationProductsUncached = async (organizationId: number, limit = 1
           qty_reserved
         )
       `)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('status', 'active')
@@ -857,6 +859,7 @@ const getOrganizationProductsInCategoriesUncached = async (
         qty_reserved
       )
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -926,6 +929,7 @@ export async function getListadoSeccion(
       product_images ( id, storage_path, is_primary, display_order, shared_image_id, shared_images ( storage_path ) ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `, { count: 'exact' })
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -1268,6 +1272,7 @@ const getProductsByCategoryIdsUncached = async (
         shared_images ( storage_path )
       )
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .in('category_id', effectiveCategoryIds)
@@ -1555,6 +1560,7 @@ async function getFichasListadoCategoriaUncached(
   const { data, error } = await supabase
     .from('products')
     .select(SELECT_FICHA_LISTADO)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -1674,6 +1680,7 @@ export async function getProductVariants(parentProductId: number, organizationId
       ),
       stock_levels ( branch_id, qty_on_hand, qty_reserved )
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('parent_product_id', parentProductId)
     .eq('organization_id', organizationId)
@@ -2599,6 +2606,7 @@ async function getMenuProductsUncached(organizationId: number, limit = 100, bran
       stock_levels ( branch_id, qty_on_hand, qty_reserved ),
       product_tag_relations ( tag_id )
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
@@ -2664,6 +2672,7 @@ const getMenuCatalogProductsUncached = async (
         stock_levels ( branch_id, qty_on_hand, qty_reserved ),
         product_tag_relations ( tag_id )
       `)
+      .eq('product_images.archivo_disponible', true)
       .is('product_prices.effective_to', null)
       .eq('organization_id', organizationId)
       .eq('status', 'active')
@@ -2712,6 +2721,7 @@ export async function getProductsByIds(productIds: number[], organizationId: num
       stock_levels ( branch_id, qty_on_hand, qty_reserved ),
       ${SELECT_PADRE_ESTADO}
     `)
+    .eq('product_images.archivo_disponible', true)
     .is('product_prices.effective_to', null)
     .eq('organization_id', organizationId)
     .eq('status', 'active')

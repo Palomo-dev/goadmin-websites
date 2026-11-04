@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
     let consulta = (supabase as any)
       .from('products')
       .select(SELECT_FIELDS)
+      .eq('product_images.archivo_disponible', true)
       .eq('organization_id', orgId)
       .eq('status', 'active')
       .is('parent_product_id', null)
