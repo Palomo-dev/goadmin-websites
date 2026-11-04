@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/server'
+import { SIN_CACHE, cabecerasCatalogo } from '@/lib/locations/cacheCatalogo'
 
 export const dynamic = 'force-dynamic'
+// Catálogo leído en cada petición: en un GET, `force-dynamic` solo no evita que Next guarde el
+// fetch de Supabase en su Data Cache (así quedó `[]` de cuando la tabla estaba vacía).
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 /**
  * GET /api/locations/cities?country_code=COL&state_code=05
@@ -31,16 +36,17 @@ export async function GET(request: NextRequest) {
       console.error('[Locations] cities error:', error.message)
       return NextResponse.json(
         { error: 'Error al obtener ciudades' },
-        { status: 500 }
+        { status: 500, headers: SIN_CACHE }
       )
     }
 
-    return NextResponse.json(data || [])
+    const ciudades = data || []
+    return NextResponse.json(ciudades, { headers: cabecerasCatalogo(ciudades.length) })
   } catch (error: any) {
     console.error('[Locations] cities error:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
-      { status: 500 }
+      { status: 500, headers: SIN_CACHE }
     )
   }
 }

@@ -75,6 +75,11 @@ export function createPublicClient() {
         getAll() { return [] },
         setAll() {},
       },
+      // Sin esto, en un GET de route handler (aun con `force-dynamic`) Next 14 guarda cada
+      // consulta en su Data Cache sin vencimiento: /api/locations/cities devolvía `[]` de
+      // cuando la tabla estaba vacía. Lo que debe cachearse va con unstable_cache, que ya
+      // corre sus consultas en no-store por dentro.
+      global: { fetch: (u, o) => fetch(u, { ...o, cache: 'no-store' }) },
     }
   )
 }
