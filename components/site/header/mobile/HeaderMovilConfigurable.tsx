@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
-import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo'
+import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { headerSobreHero } from '@/lib/website/espacioHeader'
@@ -61,7 +61,13 @@ export function HeaderMovilConfigurable({
   const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
   const navItems = buildNavItems(navTree)
   const organizationId = organization.id
-  const buscador = presentacion.buscador ?? buscadorMovilEfectivo(settings as Record<string, unknown>)
+  // En conjunto manda el buscador de computador (el «a pantalla completa» del ícono se respeta);
+  // por separado, el `mobile_header.search` de antes sigue mandando si estaba guardado.
+  const efectivo = buscadorMovilEfectivo(settings as Record<string, unknown>)
+  const buscador = buscadorIgualEscritorio(settings as Record<string, unknown>)
+    ? (presentacion.buscador === 'fullscreen' && efectivo === 'icon' ? 'fullscreen' : efectivo)
+    : presentacion.buscador ?? efectivo
+  const cromoMovil = ajustesCromoMovil(settings)
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
   // «Sobre portada» es una sola opción para computador y celular; el `transparent_hero` del celular se respeta.
@@ -150,8 +156,8 @@ export function HeaderMovilConfigurable({
             </div>
             {buscador === 'bar' && (
               <div className="pb-3">
-                {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings)
-                  ? <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" />
+                {cromoMovil
+                  ? <BuscadorMovilComoEscritorio settings={cromoMovil} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" />
                   : <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" size="sm" icon={SearchIconComp} />}
               </div>
             )}

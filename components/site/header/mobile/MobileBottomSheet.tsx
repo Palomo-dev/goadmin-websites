@@ -4,8 +4,8 @@ import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
-import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
-import { BuscadorMovilComoEscritorio, hayCromoEnBarra } from '../BuscadorCromo';
+import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
+import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -63,6 +63,7 @@ export default function MobileBottomSheet({
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
+  const cromoMovil = ajustesCromoMovil(settings);
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   return (
@@ -158,8 +159,8 @@ export default function MobileBottomSheet({
 
           {searchStyle === 'bar' && (
             <div className="pb-3">
-              {buscadorIgualEscritorio(settings as Record<string, unknown>) && hayCromoEnBarra(settings) ? (
-                <BuscadorMovilComoEscritorio settings={settings} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
+              {cromoMovil ? (
+                <BuscadorMovilComoEscritorio settings={cromoMovil} primaryColor={primaryColor} categorias={menuCategories} icon={SearchIconComp} className="w-full" placeholder={opcionesShell.fuenteMenu === 'categorias_carta' ? 'Buscar en la carta' : undefined} />
               ) : (
                 <SearchBarInline
                   primaryColor={primaryColor}
