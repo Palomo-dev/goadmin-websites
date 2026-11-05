@@ -122,7 +122,7 @@ export function HeaderMovilConfigurable({
         organizationSubdomain={organization.subdomain || ''}
         showSearchIcon={iconos?.showSearch !== false && (buscador === 'icon' || buscador === 'fullscreen')}
         isMobile
-        mostrarCuentaMovil={iconos?.showAccount === true}
+        mostrarCuentaMovil={iconos?.showAccount !== false}
         branchId={branchId}
       />
       <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
