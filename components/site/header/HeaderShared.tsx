@@ -282,8 +282,12 @@ export function movilPlantilla(settings: unknown) {
     verMenu: I?.showMenu !== false,
     verBuscar: I?.showSearch !== false,
     verCarrito: I?.showCart !== false,
-    /** En el celular de plantilla la cuenta no sale si no se pidió (lo de hoy). */
-    verCuenta: crudo?.show_account === true,
+    /**
+     * Cuenta en el celular: la misma que en computador (`show_header_auth`, que HeaderActions ya
+     * respeta). Solo la quita un `mobile_header.icons.show_account: false` explícito. Antes salía
+     * solo con `show_account: true`, y las tiendas con «Cuenta» activa no la veían en el celular.
+     */
+    verCuenta: crudo?.show_account !== false,
     glifo: I?.menu ?? 'lines3',
     claseBorde: I?.style === 'border' ? ' rounded-full border border-current' : '',
     estilo: (colorPropio ? { ['--hdr-mobile-icon']: colorPropio } : {}) as React.CSSProperties,
@@ -670,8 +674,11 @@ export function HeaderActions({
     ) : null,
   };
 
+  // Celular con cuenta visible: un ícono más en la fila; menos separación para que logo, buscar,
+  // carrito y menú no se aplasten. Sin cuenta en el celular, la separación de siempre.
+  const filaApretada = isMobile && actionElements.auth != null;
   return (
-    <div className="flex items-center space-x-4 flex-shrink-0">
+    <div className={`flex items-center ${filaApretada ? 'gap-1' : 'space-x-4'} flex-shrink-0`}>
       {actionsOrder.map((action) => actionElements[action]).filter(Boolean)}
     </div>
   );
