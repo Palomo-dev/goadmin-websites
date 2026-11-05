@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo'
 import Link from 'next/link'
@@ -53,11 +53,12 @@ export function HeaderMovilConfigurable({
   const [scrolled, setScrolled] = useState(false)
   const layout = presentacion.layout
   const iconos = presentacion.iconos
-  // Color de los íconos: uno solo para todos los encabezados del celular (header_mobile_icon_color);
-  // el `icons.color` viejo del configurable sigue mandando si estaba guardado.
-  const colorIconos = iconos?.color
-    ? { color: iconos.color }
-    : (settings as Record<string, unknown> | undefined)?.header_mobile_icon_color ? { color: 'var(--hdr-mobile-icon)' } : undefined
+  // Color de los íconos: UNO para la hamburguesa, la lupa, la cuenta y el carrito, en
+  // `--hdr-mobile-icon` (el mismo que usan HeaderActions y el «Cajón lateral»): sale de
+  // header_mobile_icon_color / header_text_color con el cálculo de contraste de variablesMenuMovil,
+  // o de la hoja de estilos (claro, oscuro, tema). El `icons.color` viejo del configurable sigue
+  // mandando si estaba guardado, ahora para todos los íconos (antes solo pintaba la hamburguesa).
+  const colorIconos = iconos?.color ? ({ ['--hdr-mobile-icon']: iconos.color } as CSSProperties) : undefined
   const unidades = useUnidadesBarra(organization.subdomain || '', branchId)
   const navItems = buildNavItems(navTree)
   const organizationId = organization.id
@@ -105,7 +106,6 @@ export function HeaderMovilConfigurable({
       onClick={() => setAbierto(true)}
       aria-label="Abrir menú"
       className={claseIcono(iconos)}
-      style={colorIconos}
     >
       <GlifoMenu glifo={iconos?.menu ?? 'lines3'} />
     </button>
@@ -141,7 +141,7 @@ export function HeaderMovilConfigurable({
     <>
       <header
         className={`sticky top-0 z-40 w-full transition-transform duration-200 ${oculto ? '-translate-y-full' : ''}`}
-        style={{ ...variablesEncabezado(settings), ...posicionMovil(settings) }}
+        style={{ ...variablesEncabezado(settings), ...colorIconos, ...posicionMovil(settings) }}
         data-header-movil={presentacion.estilo}
       >
         {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
@@ -237,7 +237,9 @@ function alineacionLogo(logo: string | undefined) {
 }
 
 function claseIcono(iconos: IconosMovil | null) {
-  const base = 'p-2 text-gray-700 dark:text-gray-300'
+  // Mismo color que los demás íconos del encabezado (antes, gris fijo: sobre fondo oscuro la
+  // hamburguesa quedaba gris mientras el carrito salía blanco).
+  const base = 'p-2 text-[var(--hdr-mobile-icon)]'
   if (iconos?.style === 'circle') return `${base} rounded-full bg-black/5`
   if (iconos?.style === 'border') return `${base} rounded-full border border-current`
   return `${base} rounded-lg hover:bg-[var(--header-hover)]`
