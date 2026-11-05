@@ -15,7 +15,8 @@
  * - `search`: search_style (icon | bar | mini | icon_overlay | mega | pill_floating | hidden).
  * - `msearch`: mobile_search_style (opcional). Sin él, el de la tienda.
  * - `scroll`: header_scroll (normal | ocultar_al_bajar | encoger | ocultar_y_encoger), opcional.
- * - `menu`: mobile_menu_style (drawer | bottom_sheet | fullscreen | tabs), opcional.
+ * - `menu`: mobile_menu_style (drawer | bottom_sheet | fullscreen | tabs | drawer_left | drawer_right |
+ *   top_dropdown | none), opcional.
  * - `sinAjustesCategorias=1`: sin `search_popular` y con show_categories_in_header y
  *   footer_show_categories en false (las búsquedas populares salen de las categorías igual).
  *
@@ -43,6 +44,7 @@ import type {
   WebsiteSettings,
 } from '@/types/database'
 import { MarcaListo } from './MarcaListo'
+import { ESTILOS_MENU } from '@/lib/website/menuMovil'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Pruebas internas · encabezado', robots: { index: false, follow: false } }
@@ -137,7 +139,7 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
   const scroll = uno(searchParams.scroll)
   const menu = uno(searchParams.menu)
   if (scroll && !['normal', 'ocultar_al_bajar', 'encoger', 'ocultar_y_encoger'].includes(scroll)) notFound()
-  if (menu && !['drawer', 'bottom_sheet', 'fullscreen', 'tabs'].includes(menu)) notFound()
+  if (menu && !(ESTILOS_MENU as readonly string[]).includes(menu)) notFound()
   if (header && !(HEADERS as readonly string[]).includes(header)) notFound()
   if (search && !(BUSCADORES as readonly string[]).includes(search)) notFound()
   if (msearch && !(BUSCADORES as readonly string[]).includes(msearch)) notFound()
