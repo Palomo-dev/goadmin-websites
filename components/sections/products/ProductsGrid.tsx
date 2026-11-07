@@ -12,6 +12,7 @@ import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
 import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { pestanasSubrayadas, rejillaConLineas } from '@/lib/website/tarjetaPlantillasTienda'
 import { clasesColumnasListado, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { SiLista } from '../ListRenderer'
@@ -251,6 +252,10 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
     setCurrentPage(n)
     if (ajusteLista) lista.ir(n)
   }
+  // Plantillas de tienda: rejilla con líneas (`card_grid_lines`, solo en la rejilla de siempre) y
+  // pestañas subrayadas (`tabs_style`, sobre la barra de siempre). Ausentes: el marcado de hoy.
+  const lineas = presentacion?.displayMode ? null : rejillaConLineas(estiloSeccion)
+  const pestanas = pestanasSubrayadas(content as Record<string, unknown>, primaryColor)
   const barraNueva = !!(presentacion && (presentacion.chipStyle || presentacion.filterPosition || presentacion.filters || presentacion.showSort === false || presentacion.showCount === false || presentacion.chipMobile))
   const columnas = clasesColumnasListado(presentacion) ?? clasesColumnasProductos(content.columns)
   const claseRejilla = presentacion?.displayMode === 'list'
@@ -387,7 +392,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           atributos={opcionesAtributo}
         />
       )}
-      {products.length > 0 && !barraNueva && (
+      {products.length > 0 && !barraNueva && !pestanas && (
         <BarraFiltrosProductos
           categorias={categoriasChips}
           estado={filtros.estado}
@@ -400,9 +405,24 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
           content={content}
         />
       )}
+      {products.length > 0 && !barraNueva && pestanas && (
+        <div className={pestanas.className} data-pestanas="underline">
+          <BarraFiltrosProductos
+            categorias={categoriasChips}
+            estado={filtros.estado}
+            cambiar={filtros.cambiar}
+            total={totalContador}
+            primaryColor={primaryColor}
+            mostrarFiltros={content.show_filters !== false}
+            mostrarBuscador={content.show_search === true}
+            mostrarCategorias={content.show_categories !== false}
+            content={pestanas.content}
+          />
+        </div>
+      )}
 
       {(listaShell ? fuenteTarjetas : mostrados).length > 0 ? (
-        <SiLista content={content} className={claseRejilla} style={separacion}>
+        <SiLista content={content} className={lineas ? `${claseRejilla} ${lineas.className}` : claseRejilla} style={lineas ? { ...separacion, ...lineas.style } : separacion}>
           {(listaShell ? fuenteTarjetas : mostrados).map((product: any) => {
             const isAdded = addedToCart.has(product.id)
             return (

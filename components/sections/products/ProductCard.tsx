@@ -79,6 +79,18 @@ import {
 } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta, useVendidosTarjeta, useEtiquetasPropiasTarjeta } from '@/components/site/TarjetaProductoContext'
 import {
+  CLASE_PRIMERA_IMAGEN_DESLIZA,
+  CLASE_SEGUNDA_IMAGEN_DESLIZA,
+  FONDO_BOTON_SUAVE,
+  ajustesTarjetaConLineas,
+  deslizaSegundaImagen,
+  estiloFuenteTitulo,
+  favoritoTarjeta,
+  prefijoPrecioTarjeta,
+  subtituloTarjeta,
+  textoElegirTarjeta,
+} from '@/lib/website/tarjetaPlantillasTienda'
+import {
   getProductComparePrice,
   getProductDiscount,
   getProductImageUrl,
@@ -164,6 +176,9 @@ function pintarEstiloTarjeta(merged: Record<string, any>, estilo: EstiloTarjetaP
   if (estilo.reviews_position) merged.rating_position = estilo.reviews_position
   if (estilo.reviews_style === 'stars') merged.rating_style = 'stars'
   if (estilo.reviews_style === 'number_star') merged.rating_style = 'compact'
+  // Rejilla con líneas (`card_grid_lines`): borde de 1 px sin radio ni sombra. Ausente: nada.
+  const conLineas = ajustesTarjetaConLineas(estilo)
+  if (conLineas) Object.assign(merged, conLineas)
 }
 
 function aplicarBotonTarjeta(btn: CardButtonConfig, cfg: EstiloBotonTarjeta | undefined): CardButtonConfig | null {
@@ -575,6 +590,7 @@ function CardButtonRenderer({
   abrirVariantes,
   dentroDeEnlace = false,
   iconoElegir,
+  textoElegir,
 }: {
   button: CardButtonConfig
   product: any
@@ -605,6 +621,8 @@ function CardButtonRenderer({
    * texto. Ausente: el de siempre (Layers con texto; el del botón en «Solo ícono»).
    */
   iconoElegir?: string
+  /** Texto de «Elegir» del estilo de tarjeta (`choose_label`). Ausente: «Elegir», como hoy. */
+  textoElegir?: string
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -646,6 +664,8 @@ function CardButtonRenderer({
     baseStyle.background = 'transparent'
   }
   if (variant === 'ghost') { baseStyle.color = textColor }
+  // «Suave» (`soft`): fondo tenue (8 % del texto del tema) y texto del color del botón.
+  if (variant === 'soft') { baseStyle.backgroundColor = FONDO_BOTON_SUAVE; baseStyle.color = textColor }
   if (variant === 'link') { baseStyle.color = textColor; baseStyle.textDecoration = 'underline' }
   if (variant === 'gradient' && bgEnd) {
     const angulo = typeof button.gradient_angle === 'number' ? button.gradient_angle : 135
@@ -833,7 +853,7 @@ function CardButtonRenderer({
   }
 
   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
-    const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
+    const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || textoElegir || 'Elegir'
     // Ícono de «Elegir»:
     // 1. El del estilo de tarjeta (`choose.icon ?? add.icon`), con texto o en «Solo ícono».
     //    `''`/'none' = solo el texto (en «Solo ícono» no queda vacío: Layers).
@@ -1138,6 +1158,12 @@ export function ProductCard({
     effectiveButtons = effectiveButtons
       .map((btn) => aplicarBotonTarjeta(btn, cfgBoton(estiloTarjeta, btn.action, isParent, contadorEnPadre)))
       .filter((btn): btn is CardButtonConfig => btn != null)
+    // Corazón del estilo de tarjeta (`wishlist_style`): reemplaza al de `card_buttons`. Ausente: lo de hoy.
+    const favorito = favoritoTarjeta(estiloTarjeta)
+    if (favorito !== undefined) {
+      effectiveButtons = effectiveButtons.filter((btn) => btn.action !== 'wishlist')
+      if (favorito) effectiveButtons = [...effectiveButtons, favorito]
+    }
     const etiquetas = etiquetasDeEstilo(estiloTarjeta)
     if (etiquetas) {
       const propias = etiquetas.map((e) => ({ ...e }))
@@ -1346,6 +1372,23 @@ export function ProductCard({
     estiloTarjeta?.show_category ? categoriaProducto(product) : '',
   ].filter(Boolean)
   const etiquetasTitulo = effectiveBadges.filter((b) => b.position === 'over_title')
+  // Claves nuevas de las plantillas de tienda. Cada una ausente = el marcado de hoy, sin envoltorio.
+  const deslizaFoto = !!segundaUrl && deslizaSegundaImagen(estiloTarjeta)
+  const precioJunto = posPrecio === 'beside_title'
+  const subtitulo = subtituloTarjeta(estiloTarjeta, product)
+  const verSubtitulo = !!subtitulo && !(estiloTarjeta?.card_subtitle === 'description' && showDesc)
+  const fuenteTitulo = estiloFuenteTitulo(estiloTarjeta)
+  const prefijoPrecio = prefijoPrecioTarjeta(estiloTarjeta, isParentProduct(product) && !padreSinVariantes(product))
+  const textoElegir = textoElegirTarjeta(estiloTarjeta)
+  /** «Desde» pegado al precio (`price_prefix`). Sin prefijo, el precio tal cual. */
+  const conPrefijo = (nodo: JSX.Element) => prefijoPrecio
+    ? (
+        <span className="inline-flex items-baseline gap-1 whitespace-nowrap" data-prefijo-precio="">
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">{prefijoPrecio}</span>
+          {nodo}
+        </span>
+      )
+    : nodo
 
   // Render de botones reutilizable — permite filtrar por posición individual
   const buttonsContainerClass = `flex ${buttonsLayout === 'row' ? 'flex-row gap-2' : 'flex-col gap-1.5'} ${buttonsFullWidth ? 'w-full' : ''}`
@@ -1371,6 +1414,7 @@ export function ProductCard({
             onQuickView={() => setQuickViewOpen(true)}
             onShare={() => setShareOpen(true)}
             iconoElegir={iconoElegir}
+            textoElegir={textoElegir}
             contador={contador}
             abrirVariantes={contadorEnPadre ? () => { void dialogoVariantes.abrir(product) } : undefined}
             dentroDeEnlace={!!positionFilter && POSICIONES_SOBRE_IMAGEN.includes(positionFilter)}
@@ -1430,7 +1474,7 @@ export function ProductCard({
               src={imgUrl}
               alt={product.name}
               fill
-              className={claseImagen}
+              className={deslizaFoto ? `${claseImagen} ${CLASE_PRIMERA_IMAGEN_DESLIZA}` : claseImagen}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
           ) : (
@@ -1443,13 +1487,13 @@ export function ProductCard({
               src={segundaUrl}
               alt=""
               fill
-              className={`${imageFitClass} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+              className={deslizaFoto ? `${imageFitClass} ${CLASE_SEGUNDA_IMAGEN_DESLIZA}` : `${imageFitClass} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
           )}
           {posPrecio === 'over_image' && price !== null && (
             <div className="absolute bottom-2 left-2 z-10 rounded bg-white/90 px-1.5 py-0.5">
-              <Price value={price} className={clasePrecio} style={precio} />
+              {conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
             </div>
           )}
           {showRatingBlock && estiloTarjeta?.reviews_position === 'over_image' && (
@@ -1491,7 +1535,7 @@ export function ProductCard({
           )}
           {posPrecio === 'above_title' && price !== null && (
             <div className="mb-1">
-              <Price value={price} className={clasePrecio} style={precio} />
+              {conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
             </div>
           )}
           {showRatingBlock && ratingPosition === 'above_title' && (
@@ -1499,11 +1543,33 @@ export function ProductCard({
               <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
             </div>
           )}
-          <Link href={ruta(`/productos/${product.uuid}`)}>
-            <h3 className={`${claseTitulo} ${titleLinesClass} group-hover:underline`}>
-              {product.name}
-            </h3>
-          </Link>
+          {precioJunto ? (
+            // `price_position: 'beside_title'`: el precio a la derecha del nombre, en la misma fila.
+            <div className="flex items-start justify-between gap-3" data-precio-junto="">
+              <Link href={ruta(`/productos/${product.uuid}`)} className="min-w-0 flex-1">
+                <h3 className={`${claseTitulo} ${titleLinesClass} group-hover:underline`} style={fuenteTitulo}>
+                  {product.name}
+                </h3>
+              </Link>
+              {price !== null && (
+                <div className="flex shrink-0 flex-col items-end text-right">
+                  {conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
+                  {comparePrice && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
+                    <Price value={comparePrice} className={`text-xs ${claseAnterior}`} style={estiloAnterior} />
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href={ruta(`/productos/${product.uuid}`)}>
+              <h3 className={`${claseTitulo} ${titleLinesClass} group-hover:underline`} style={fuenteTitulo}>
+                {product.name}
+              </h3>
+            </Link>
+          )}
+          {verSubtitulo && (
+            <p className="mb-1 line-clamp-1 text-xs text-gray-500 dark:text-gray-400" data-subtitulo-tarjeta="">{subtitulo}</p>
+          )}
           {showRatingBlock && ratingPosition === 'below_title' && (
             <div className="mb-1">
               <RatingStars rating={ratingAvg} count={ratingCount} style={ratingStyleType as any} primaryColor={primaryColor} />
@@ -1518,9 +1584,7 @@ export function ProductCard({
               {comparePrice && price !== null && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
                 <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
               )}
-              {price !== null && (
-                <Price value={price} className={clasePrecio} style={precio} />
-              )}
+              {price !== null && conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
             </div>
             )}
             {padreSinVariantes(product) ? (
@@ -1549,7 +1613,7 @@ export function ProductCard({
                         {comparePrice && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
                           <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
                         )}
-                        <Price value={price} className={clasePrecio} style={precio} />
+                        {conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
                       </span>
                     )}
                     {renderButtons('', 'beside_price')}
