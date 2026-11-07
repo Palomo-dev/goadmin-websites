@@ -78,6 +78,7 @@ import {
   type EstiloTarjetaProducto,
 } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta, useVendidosTarjeta, useEtiquetasPropiasTarjeta } from '@/components/site/TarjetaProductoContext'
+import { useMarcaBotonTema } from '@/components/site/BotonesTemaContext'
 import {
   CLASE_PRIMERA_IMAGEN_DESLIZA,
   CLASE_SEGUNDA_IMAGEN_DESLIZA,
@@ -626,6 +627,8 @@ function CardButtonRenderer({
 }) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
+  // Mayúsculas / efecto al pasar (plantillas de tienda): `{}` sin esas opciones (BotonesTemaContext).
+  const marcaTema = useMarcaBotonTema()
   const price = getProductPrice(product)
   const outOfStock = isOutOfStock(product)
   // Padre con variantes o grupo obligatorio: «Elegir» → detalle.
@@ -820,6 +823,7 @@ function CardButtonRenderer({
     return (
       <Button
         size={size as any}
+        {...marcaTema}
         variant={variant === 'gradient' ? 'solid' : variant as any}
         disabled
         aria-disabled="true"
@@ -838,6 +842,7 @@ function CardButtonRenderer({
       <Button
         type="button"
         size={size as any}
+        {...marcaTema}
         variant={variant === 'gradient' ? 'solid' : variant as any}
         className={sizeTextClass}
         style={baseStyle}
@@ -877,6 +882,7 @@ function CardButtonRenderer({
         <Button
           type="button"
           size={size as any}
+          {...marcaTema}
           variant={variant === 'gradient' ? 'solid' : variant as any}
           className={`${anchoClase} ${sizeTextClass}`}
           style={baseStyle}
@@ -893,6 +899,7 @@ function CardButtonRenderer({
       <Link href={ruta(`/productos/${product.uuid}`)} className={anchoClase}>
         <Button
           size={size as any}
+          {...marcaTema}
           variant={variant === 'gradient' ? 'solid' : variant as any}
           className={`${anchoClase} ${sizeTextClass}`}
           style={baseStyle}
@@ -926,6 +933,7 @@ function CardButtonRenderer({
   return (
     <Button
       size={size as any}
+      {...marcaTema}
       variant={variant === 'gradient' ? 'solid' : variant as any}
       onClick={handleClick}
       data-nueva-pestana={nuevaPestana && (button.action === 'view_detail' || button.action === 'custom') ? '' : undefined}

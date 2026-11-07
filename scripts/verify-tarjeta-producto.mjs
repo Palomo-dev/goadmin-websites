@@ -201,6 +201,14 @@ check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mo
   }
   for (const [id, html] of Object.entries(rama)) check(!String(html).startsWith('ERROR'), `no pinta ${id}: ${html}`)
 
+  // Mayúsculas / hover del tema (integrador W7): solo se agrega data-boton-tema a los botones.
+  {
+    const marcados = Object.keys(rama).filter((id) => id.startsWith('marca:'))
+    const otros = marcados.filter((id) => String(rama[id]).replace(/ data-boton-tema=""/g, '') !== rama[id.slice(6)])
+    check(marcados.length > 0 && otros.length === 0, `con mayúsculas/hover cambió algo más que data-boton-tema en ${otros.length} casos (${otros.slice(0, 3).join(', ')})`)
+    check(marcados.some((id) => String(rama[id]).includes('data-boton-tema')), 'con mayúsculas/hover ningún botón de la tarjeta lleva data-boton-tema')
+    check(Object.keys(rama).filter((id) => !id.startsWith('marca:')).every((id) => !String(rama[id]).includes('data-boton-tema')), 'sin las opciones algún botón lleva data-boton-tema')
+  }
   const h = (id) => String(rama[id] ?? '')
   const subtitulo = (id) => /data-subtitulo-tarjeta="">([^<]*)</.exec(h(id))?.[1] ?? null
   const cuenta = (texto, aguja) => texto.split(aguja).length - 1

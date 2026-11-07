@@ -238,6 +238,10 @@ try {
       "[data-tema-hover='expresivo'] section[data-section-id] [data-boton]:hover",
       '[data-pie-tarjeta] > footer',
       'header[data-encabezado-pildora] [data-nav-pildora] > nav',
+      // Integrador (W7): el botón del encabezado y los de la tarjeta, con data-boton-tema.
+      '[data-botones-mayusculas] [data-boton-tema]',
+      "[data-tema-hover='sutil'] [data-boton-tema]:hover",
+      "[data-tema-hover='expresivo'] [data-boton-tema]:hover",
     ]) check(css.includes(sel), `app/globals.css sin la regla «${sel}»`)
     check(css.includes('text-transform: var(--gw-btn-case, none)') && css.includes('letter-spacing: var(--gw-btn-tracking, normal)'), 'el botón usa las variables de mayúsculas con su respaldo')
     // Sin el atributo, ninguna regla nueva alcanza un botón: no hay regla suelta sobre [data-boton].
@@ -343,6 +347,23 @@ try {
     check(enlaceActivo('/', '/') && !enlaceActivo('/', '/productos'), 'la portada solo está activa en /')
     check(enlaceActivo('/productos', '/productos/12') && !enlaceActivo('/productos', '/productosx'), 'una sección activa sus subrutas')
     check(enlaceActivo('/productos?orden=1', '/productos/'), 'consulta y barra final no cuentan')
+  }
+
+  // Mayúsculas y hover también en el botón del encabezado (integrador W7): `data-boton-tema` solo
+  // con BotonesTemaProvider en true (la raíz trae data-botones-mayusculas o data-tema-hover).
+  {
+    const { BotonesTemaProvider } = await rama('components/site/BotonesTemaContext.tsx')
+    for (const header_style of [...COMPOSICIONES_ENCABEZADO, 'pill']) {
+      for (const forma of [{}, { header_cta_shape: 'circle' }]) {
+        const ajustes = { ...BASE_AJUSTES, header_style, header_cta_text: 'Comprar', header_cta_url: '/productos', header_cta2_text: 'Contacto', header_cta2_url: '/contacto', ...forma }
+        const nombre = `encabezado ${header_style} ${JSON.stringify(forma)}`
+        const sin = pintar(nombre, encabezado(R, ajustes, true))
+        const apagado = pintar(`${nombre} (proveedor en false)`, h(BotonesTemaProvider, { value: false }, encabezado(R, ajustes, true)))
+        const con = pintar(`${nombre} (mayúsculas/hover)`, h(BotonesTemaProvider, { value: true }, encabezado(R, ajustes, true)))
+        check(!sin.includes('data-boton-tema') && apagado === sin, `${nombre}: sin las opciones no hay data-boton-tema`)
+        check(con.includes('data-boton-tema') && con.replace(/ data-boton-tema=""/g, '') === sin, `${nombre}: con las opciones solo se agrega data-boton-tema`)
+      }
+    }
   }
 
   // Opciones del pie encendidas.

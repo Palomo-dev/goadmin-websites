@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/client';
 import NavDropdown from './NavDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useTemaColores } from '../TemaColoresContext';
+import { useMarcaBotonTema } from '../BotonesTemaContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { esEnlaceExterno, hrefBoton, opcionesPlantillaTienda } from '@/lib/website/encabezadoPie';
@@ -697,6 +698,8 @@ export function HeaderCTA({
 }) {
   const temaColores = useTemaColores();
   const { extras } = useEncabezadoPie();
+  // Mayúsculas / efecto al pasar (plantillas de tienda): `{}` sin esas opciones.
+  const marcaTema = useMarcaBotonTema();
   if (!text) return null;
   // Destinos especiales del contrato: `whatsapp` (número del sitio) y `maps` (Cómo llegar de la
   // sede). Sin ese dato el botón no se pinta. Cualquier otro enlace, igual que siempre.
@@ -743,6 +746,7 @@ export function HeaderCTA({
         {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
         className="hidden md:inline-flex aspect-square min-h-16 min-w-16 flex-shrink-0 items-center justify-center rounded-full px-3 text-center text-xs font-semibold leading-tight transition-opacity hover:opacity-90"
         data-boton-circular=""
+        {...marcaTema}
         style={{
           backgroundColor: bgColor,
           color: textColor,
@@ -762,6 +766,7 @@ export function HeaderCTA({
       href={linkHref}
       {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className={className}
+      {...marcaTema}
       style={{
         backgroundColor: bgColor,
         color: textColor,
@@ -788,6 +793,7 @@ export function HeaderCTA({
 export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVariantProps['settings']; primaryColor: string }) {
   const temaColores = useTemaColores();
   const { extras } = useEncabezadoPie();
+  const marcaTema = useMarcaBotonTema();
   const texto = settings?.header_cta_text ?? '';
   if (!temaColores || !texto) return null;
   const crudo = settings?.header_cta_url ?? '';
@@ -799,6 +805,7 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
       href={href}
       {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className="md:hidden inline-flex items-center whitespace-nowrap px-3 py-1.5 text-[13px] font-medium"
+      {...marcaTema}
       style={{
         backgroundColor: fondo,
         color: settings?.cta_text_color ?? textoSobreAcentoSiHex(fondo) ?? '#ffffff',
@@ -817,6 +824,7 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
  */
 export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settings'] }) {
   const { opciones, extras } = useEncabezadoPie();
+  const marcaTema = useMarcaBotonTema();
   // Botones 3 a 6 (antes solo en el Constructor): mismo estilo que el segundo, después de él.
   const botones = [opciones.boton2, ...botonesExtraEncabezado(settings)].filter((b): b is { texto: string; url: string } => !!b);
   if (botones.length === 0) return null;
@@ -850,11 +858,11 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     const clase = esSegundo ? claseBase : claseExtra;
     const estilo = esSegundo ? estiloBase : estiloDeExtra;
     return externo ? (
-      <a key={i} href={href} className={clase} style={estilo} {...marca} {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+      <a key={i} href={href} className={clase} style={estilo} {...marca} {...marcaTema} {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         {boton.texto}
       </a>
     ) : (
-      <Link key={i} href={href} className={clase} style={estilo} {...marca}>
+      <Link key={i} href={href} className={clase} style={estilo} {...marca} {...marcaTema}>
         {boton.texto}
       </Link>
     );

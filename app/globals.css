@@ -432,6 +432,37 @@ header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora
     transform: none !important;
   }
 }
+/* Lo mismo para el botón del encabezado y los de la tarjeta de producto, que no llevan data-boton
+   (les cambiaría el redondeo y el «Contorno» de hoy). Llevan data-boton-tema, que solo se pone
+   cuando la raíz trae alguna de las dos opciones (components/site/BotonesTemaContext.tsx): sin
+   ellas no hay atributo y nada de esto aplica. La transición conserva la de opacidad y colores de
+   esos botones (hover:opacity-90, hover:bg-*). */
+[data-botones-mayusculas] [data-boton-tema] {
+  text-transform: var(--gw-btn-case, none);
+  letter-spacing: var(--gw-btn-tracking, normal);
+}
+[data-tema-hover] [data-boton-tema] {
+  transition: filter 0.2s ease, transform 0.2s ease, opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+[data-tema-hover] [data-boton-tema] svg {
+  transition: transform 0.2s ease;
+}
+[data-tema-hover='sutil'] [data-boton-tema]:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+[data-tema-hover='expresivo'] [data-boton-tema]:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+[data-tema-hover='expresivo'] [data-boton-tema]:hover:not(:disabled) svg:last-child {
+  transform: translateX(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-tema-hover] [data-boton-tema],
+  [data-tema-hover] [data-boton-tema] svg {
+    transition: none;
+    transform: none !important;
+  }
+}
 
 /* Panel «Encabezado» / «Pie de página» (lib/website/encabezadoPie.ts). Los atributos solo van en
    la raíz del layout cuando la opción difiere del default; sin ellos nada de esto aplica.

@@ -35,6 +35,7 @@ import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v
 import { TarjetaProductoProvider } from './TarjetaProductoContext'
 import { ProveedorListaCarrusel } from './listaCarrusel'
 import { TemaColoresProvider } from './TemaColoresContext'
+import { BotonesTemaProvider } from './BotonesTemaContext'
 import { EncabezadoPieProvider, type ValorEncabezadoPie } from './EncabezadoPieContext'
 import { busquedasPopulares } from '@/lib/website/busquedasPopulares'
 import { BarraMovilGiro } from './BarraMovilGiro'
@@ -344,6 +345,7 @@ export function OrganizationLayoutCliente({
     <ProveedorListaCarrusel paginacion={temaEfectivo?.paginacion ?? null} carrusel={temaEfectivo?.carrusel ?? null}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
+    <BotonesTemaProvider value={'data-botones-mayusculas' in temaVars.datos || 'data-tema-hover' in temaVars.datos}>
     <EncabezadoPieProvider value={valorEncabezadoPie}>
     <ModoMesaProvider value={modoMesa}>
     <PasosMesaProvider value={modoMesa ? pasosMesa : null}>
@@ -532,6 +534,7 @@ export function OrganizationLayoutCliente({
     </PasosMesaProvider>
     </ModoMesaProvider>
     </EncabezadoPieProvider>
+    </BotonesTemaProvider>
     </TemaColoresProvider>
     </RutaSitioProvider>
     </ProveedorListaCarrusel>

@@ -39,4 +39,18 @@ for (const caso of rejillas) {
     salida[caso.id] = `ERROR: ${e?.message ?? e}`
   }
 }
+// Integrador (W7): con mayúsculas o hover del tema (BotonesTemaProvider en true) los botones de la
+// tarjeta llevan `data-boton-tema` y nada más cambia. Solo en la rama: el archivo no existe en main.
+if (process.env.TARJETA_NUEVOS === '1') {
+  const { BotonesTemaProvider } = await import('@/components/site/BotonesTemaContext')
+  for (const caso of CASOS_SIN_CLAVES) {
+    try {
+      salida[`marca:${caso.id}`] = renderToStaticMarkup(
+        createElement(BotonesTemaProvider, { value: true }, createElement(TarjetaProductoProvider, { valor: caso.sitio }, createElement(ProductCard, { primaryColor: '#1F3FD8', organizationSubdomain: 'demo', ...caso.props }))),
+      )
+    } catch (e) {
+      salida[`marca:${caso.id}`] = `ERROR: ${e?.message ?? e}`
+    }
+  }
+}
 process.stdout.write(JSON.stringify(salida))
