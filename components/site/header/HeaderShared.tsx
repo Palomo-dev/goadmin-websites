@@ -759,8 +759,9 @@ export function HeaderCTA({
           borderWidth: `${borderWidth}px`,
           borderColor,
           borderStyle: 'solid',
-          // Sin sombra elegida, la del diseño (app/globals.css, [data-boton-circular]).
-          ...(settings?.cta_shadow ? { boxShadow: shadowMap[shadow] ?? 'none' } : {}),
+          // Sin sombra elegida (o «ninguna», el valor por defecto), la del diseño (app/globals.css,
+          // [data-boton-circular]).
+          ...(settings?.cta_shadow && settings.cta_shadow !== 'none' ? { boxShadow: shadowMap[shadow] ?? 'none' } : {}),
         }}
       >
         {IconoCirculo && <IconoCirculo className="h-[18px] w-[18px]" aria-hidden />}
