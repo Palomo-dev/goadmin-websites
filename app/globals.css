@@ -389,21 +389,21 @@ header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estil
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav :is(a, button, span, svg) {
   color: var(--text-color, #111827) !important;
 }
-header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav :is(a, button, span, svg) {
   color: rgba(255, 255, 255, 0.95) !important;
 }
-header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav > a[data-activo] {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav > a[data-activo] {
   background-color: var(--text-color, #111827);
   color: var(--background-color, #ffffff) !important;
 }
-header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
   background-color: #ffffff;
   color: #111111 !important;
 }
-header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
   color: #111111 !important;
 }
 header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'] > div:last-child {
