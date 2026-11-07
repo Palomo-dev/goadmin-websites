@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,22 +34,28 @@ async function getMetaCredentials(
   // Buscar conexión activa de meta_marketing para esta organización
   const { data: connections } = await supabase
     .from('integration_connections')
-    .select('id')
+    .select('id, settings')
     .eq('connector_id', META_MARKETING_CONNECTOR_ID)
     .eq('organization_id', organizationId)
-    .eq('status', 'active')
+    // 'connected' es el estado real (CHECK de la columna); 'active' se conserva por compatibilidad.
+    .in('status', ['active', 'connected'])
     .limit(1)
 
   if (!connections || connections.length === 0) return null
 
   const connectionId = connections[0].id
+  // «Qué se envía» (asistente de Meta del ERP): con las compras apagadas no se envía nada.
+  if (connections[0].settings?.meta_envios?.compras === false) return null
 
-  const { data: credentials } = await supabase
+  const { data: crudas } = await supabase
     .from('integration_credentials')
     .select('purpose, secret_ref')
     .eq('connection_id', connectionId)
     .eq('status', 'active')
 
+  // Lector dual (lib/payments/secretosConexion.ts): en claro igual que siempre; un uuid de la
+  // bóveda se resuelve con fn_get_provider_secret.
+  const credentials = await resolverCredenciales(supabase, connectionId, crudas)
   if (!credentials || credentials.length === 0) return null
 
   let accessToken = ''

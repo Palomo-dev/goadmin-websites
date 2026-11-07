@@ -9,6 +9,8 @@
  * - GOOGLE_ADS_LOGIN_CUSTOMER_ID
  */
 
+import { resolverCredenciales } from '@/lib/payments/secretosConexion'
+
 const GOOGLE_ADS_CONNECTOR_ID = '876a3948-ddd2-4a80-9ffe-ed6d3882aa04'
 const GOOGLE_ADS_API_VERSION = 'v23'
 const GOOGLE_ADS_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`
@@ -66,13 +68,16 @@ export async function uploadGoogleAdsConversion(
     const connectionId = connections[0].id
 
     // 3. Obtener credenciales: refresh_token, customer_id, conversion_action_id
-    const { data: credentials } = await supabase
+    const { data: crudas } = await supabase
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId)
       .in('purpose', ['refresh_token', 'customer_id', 'conversion_action_id'])
       .eq('status', 'active')
 
+    // Lector dual (lib/payments/secretosConexion.ts): en claro igual que siempre; un uuid de la
+    // bóveda se resuelve con fn_get_provider_secret.
+    const credentials = await resolverCredenciales<{ purpose: string; secret_ref: string }>(supabase, connectionId, crudas)
     if (!credentials || credentials.length === 0) {
       return { uploaded: false }
     }

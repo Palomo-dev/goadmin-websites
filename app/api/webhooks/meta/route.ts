@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,12 +61,15 @@ async function getMetaAppSecret(
   supabase: any,
   connectionId: string
 ): Promise<string | null> {
-  const { data: credentials } = await supabase
+  const { data: crudas } = await supabase
     .from('integration_credentials')
     .select('purpose, secret_ref')
     .eq('connection_id', connectionId)
     .eq('status', 'active')
 
+  // Lector dual (lib/payments/secretosConexion.ts): en claro igual que siempre; un uuid de la
+  // bóveda se resuelve con fn_get_provider_secret.
+  const credentials = await resolverCredenciales(supabase, connectionId, crudas)
   if (!credentials || credentials.length === 0) return null
 
   const appSecretCred = credentials.find(

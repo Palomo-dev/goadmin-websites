@@ -11,6 +11,7 @@ import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
 import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
+import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,12 +67,15 @@ async function getPayPalCredentials(
   supabase: any,
   connectionId: string
 ): Promise<{ clientId: string; clientSecret: string; webhookId: string } | null> {
-  const { data: credentials } = await supabase
+  const { data: crudas } = await supabase
     .from('integration_credentials')
     .select('purpose, secret_ref')
     .eq('connection_id', connectionId)
     .eq('status', 'active')
 
+  // Lector dual (lib/payments/secretosConexion.ts): en claro igual que siempre; un uuid de la
+  // bóveda se resuelve con fn_get_provider_secret.
+  const credentials = await resolverCredenciales(supabase, connectionId, crudas)
   if (!credentials || credentials.length === 0) return null
 
   let clientId = ''

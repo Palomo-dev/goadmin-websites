@@ -8,6 +8,7 @@ import { FUENTE_COBRO_MESA, abonoMesaPorCobrar } from '@/lib/restaurant/mesa-ser
 import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
+import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,30 +37,27 @@ async function getCredentials(
   supabase: any,
   connectionId: string
 ): Promise<Record<string, string>> {
-  const { data: credentials } = await supabase
+  const { data: crudas } = await supabase
     .from('integration_credentials')
     .select('credential_type, secret_ref, purpose')
     .eq('connection_id', connectionId)
     .eq('status', 'active')
 
-  if (!credentials || credentials.length === 0) return {}
+  if (!crudas || crudas.length === 0) return {}
 
+  // Lector dual (lib/payments/secretosConexion.ts): en claro igual que siempre; un uuid se lee de
+  // la bóveda con fn_get_provider_secret. La RPC `get_decrypted_secret` que se intentaba antes no
+  // existe en la base (siempre caía al valor crudo), así que el resultado de hoy no cambia.
+  const credentials = await resolverCredenciales<{ purpose: string; credential_type: string; secret_ref: string }>(
+    supabase,
+    connectionId,
+    crudas
+  )
   const result: Record<string, string> = {}
 
   for (const cred of credentials) {
     const key = cred.purpose || cred.credential_type
-    let value = cred.secret_ref
-
-    // Intentar leer del Vault de Supabase
-    try {
-      const { data: secret } = await supabase
-        .rpc('get_decrypted_secret', { secret_name: cred.secret_ref })
-      if (secret) value = secret
-    } catch {
-      // Vault no disponible — usar secret_ref directamente
-    }
-
-    result[key] = value
+    result[key] = cred.secret_ref
   }
 
   return result
