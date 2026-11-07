@@ -23,6 +23,8 @@ import {
   vistaEditorTarjeta,
 } from '../lib/website/tarjetaProducto.ts'
 
+import { readFileSync } from 'node:fs'
+
 const problemas = []
 let casos = 0
 const check = (cond, msg) => {
@@ -156,6 +158,129 @@ check(esquemaTema.safeParse({ colores: {}, tipografia: {}, tarjetaProducto: { mo
   check(src.includes('const ChooseIcon = iconoDelEstilo || (iconoElegir == null ? iconoDelBoton : undefined) || ICON_MAP.Layers || Layers'), 'Layers solo de respaldo; sin estilo, como antes')
   // El badge de variantes no cambia: Layers con el número.
   check(/type: 'variants',[\s\S]{0,200}icon: 'Layers',/.test(src) && src.includes("const Icon = badge.icon === 'Layers' ? Layers :"), 'badge de variantes: Layers con el número (sin cambios)')
+}
+
+// ── Plantillas de tienda (W2): claves nuevas de tarjeta ─────────────────────────────────────
+// 1) Snapshot contra `main`: se pinta la tarjeta (ProductCard) y la rejilla (ProductsGrid) con
+//    react-dom/server en dos pasadas — el código de `main` (git show) y el del árbol — con
+//    estilos SIN claves nuevas (o con su valor por defecto o uno inválido). El HTML tiene que ser
+//    idéntico byte a byte. `TARJETA_REF=<rama>` compara contra otra rama.
+// 2) Con las claves nuevas, el marcado esperado de cada una y de las 7 tarjetas de plantilla.
+{
+  const { execFileSync } = await import('node:child_process')
+  const { register } = await import('node:module')
+  const { fileURLToPath } = await import('node:url')
+  const { dirname, join } = await import('node:path')
+  const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
+  const ref = process.env.TARJETA_REF || 'main'
+  const pintar = (entorno) => {
+    const json = execFileSync(process.execPath, ['--import', './scripts/tarjeta-producto/registrar.mjs', 'scripts/tarjeta-producto/pintar.mjs'], {
+      cwd: raiz,
+      env: { ...process.env, ...entorno },
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+    })
+    return JSON.parse(json)
+  }
+  let referencia = null
+  try {
+    execFileSync('git', ['-C', raiz, 'rev-parse', '--verify', '--quiet', ref], { stdio: 'ignore' })
+    referencia = pintar({ TARJETA_REF: ref, TARJETA_NUEVOS: '0' })
+  } catch {
+    check(false, `no se pudo pintar la referencia «${ref}» (¿existe la rama? TARJETA_REF=<rama> para otra)`)
+  }
+  const rama = pintar({ TARJETA_REF: '', TARJETA_NUEVOS: '1' })
+  if (referencia) {
+    const ids = Object.keys(referencia)
+    check(ids.length >= 300, `snapshot con pocos casos (${ids.length})`)
+    const distintos = ids.filter((id) => referencia[id] !== rama[id])
+    for (const id of distintos.slice(0, 10)) check(false, `sin claves nuevas el HTML cambió respecto a ${ref}: ${id}`)
+    check(distintos.length === 0, `${distintos.length} casos sin claves nuevas difieren de ${ref}`)
+    check(ids.every((id) => !String(referencia[id]).startsWith('ERROR')), `la referencia ${ref} no pintó algún caso`)
+    console.log(`snapshot: ${ids.length} casos sin claves nuevas idénticos a ${ref}: ${distintos.length === 0 ? 'sí' : 'NO'}`)
+  }
+  for (const [id, html] of Object.entries(rama)) check(!String(html).startsWith('ERROR'), `no pinta ${id}: ${html}`)
+
+  const h = (id) => String(rama[id] ?? '')
+  const subtitulo = (id) => /data-subtitulo-tarjeta="">([^<]*)</.exec(h(id))?.[1] ?? null
+  const cuenta = (texto, aguja) => texto.split(aguja).length - 1
+  const esquina = (id, clase) => {
+    const i = h(id).indexOf(`<div class="absolute ${clase} z-10 flex flex-col gap-1">`)
+    return i < 0 ? '' : h(id).slice(i, h(id).indexOf('</div></div>', i) + 12)
+  }
+
+  check(subtitulo('suelta:subtituloMarca·simple') === 'Taller Norte', 'card_subtitle brand pinta la marca')
+  check(subtitulo('suelta:subtituloMarca·sinFoto') === null, 'card_subtitle brand sin marca: no hay línea')
+  check(subtitulo('suelta:subtituloReferencia·simple') === 'RF-0101', 'card_subtitle reference')
+  check(subtitulo('suelta:subtituloReferencia·sinFoto') === null, 'card_subtitle reference vacía: no hay línea')
+  check(subtitulo('suelta:subtituloMedidas·simple') === '45 × 50 × 82,5 cm', 'card_subtitle dimensions = textoDimensiones')
+  check(subtitulo('suelta:subtituloMedidas·sinFoto') === null, 'card_subtitle dimensions incompletas: no hay línea')
+  check(subtitulo('suelta:subtituloDescripcion·simple') === 'Roble macizo aceitado', 'card_subtitle description = primera línea sin HTML')
+  check(subtitulo('suelta:subtituloNada·simple') === null, 'card_subtitle none: sin línea')
+
+  check(h('suelta:desde·padre').includes('>Desde<'), 'price_prefix desde en un padre')
+  check(!h('suelta:desde·simple').includes('>Desde<'), 'price_prefix desde no va en un producto simple')
+  check(h('suelta:desdeArriba·padre').includes('>Desde<'), 'price_prefix con el precio arriba del nombre')
+  check(h('suelta:desdeBoton·padre').includes('>Desde<'), 'price_prefix con el precio junto al botón')
+  check(h('plantilla:panorama·padre').includes('>Desde<') && !h('plantilla:panorama·padreSinVariantes').includes('>Desde<'), 'Panorama: «Desde» solo en padres con variantes')
+
+  const junto = h('suelta:junto·oferta')
+  check(junto.includes('data-precio-junto=""'), 'beside_title pinta la fila nombre + precio')
+  check(cuenta(junto, '$ 2.099.000') === 1 && cuenta(junto, '$ 2.990.000') === 1, 'beside_title: el precio (y el anterior) una sola vez')
+  check(/data-precio-junto="">[\s\S]*?Sillón Nube[\s\S]*?\$ 2\.099\.000/.test(junto), 'beside_title: precio a la derecha del nombre')
+
+  check(h('suelta:fuente·simple').includes('font-family:var(--font-heading)'), 'title_font heading usa la fuente de títulos')
+  check(!h('suelta:junto·simple').includes('font-family:'), 'sin title_font el nombre no lleva style')
+
+  const lineas = h('suelta:lineas·simple')
+  check(lineas.includes('border-width:1px') && !lineas.includes('--card-radius:16px') && !lineas.includes('shadow-lg'), 'card_grid_lines: borde 1 px, sin radio ni sombra')
+
+  const corazones = (id) => cuenta(h(id), 'lucide-heart')
+  check(corazones('ninguno·simple·botones-legado') === 1, 'hoy: el corazón de card_buttons')
+  check(corazones('suelta:favCirculo·simple') === 1 && esquina('suelta:favCirculo·simple', 'top-2 right-2').includes('lucide-heart'), 'wishlist circle: un corazón arriba a la derecha')
+  check(esquina('suelta:favCirculo·simple', 'top-2 right-2').includes('background-color:#FFFFFF;color:#111827;border-radius:9999px'), 'wishlist circle: círculo blanco')
+  check(corazones('suelta:favGhostIzq·simple') === 1 && esquina('suelta:favGhostIzq·simple', 'top-2 left-2').includes('lucide-heart'), 'wishlist ghost top_left: arriba a la izquierda')
+  check(corazones('suelta:favNinguno·simple') === 0, 'wishlist none: quita el corazón de card_buttons')
+  check(corazones('plantilla:hogar·simple') === 1 && corazones('plantilla:radiante·simple') === 1, 'Hogar y Radiante: corazón en círculo')
+
+  check(h('suelta:desliza·oferta').includes('translate-x-full transition-transform duration-300 group-hover:translate-x-0') && h('suelta:desliza·oferta').includes('group-hover:-translate-x-full'), 'hover_image_transition slide')
+  check(!h('suelta:desliza·simple').includes('translate-x-full'), 'slide sin segunda foto: nada cambia')
+  check(h('plantilla:atelier·oferta').includes('opacity-0 transition-opacity duration-300 group-hover:opacity-100'), 'sin transición: el fundido de hoy')
+
+  check(h('suelta:elegir·padre').includes('Elige tu talla') && !h('suelta:elegir·simple').includes('Elige tu talla'), 'choose_label solo en el botón Elegir del padre')
+  check(h('plantilla:hogar·padre').includes('Elige una opción'), 'Hogar: «Elige una opción»')
+  check(h('suelta:suave·simple').includes('color-mix(in srgb, var(--text-color, #111827) 8%, transparent)'), 'button_style soft: fondo tenue')
+  check(h('suelta:suave·padre').includes('color-mix(in srgb, var(--text-color, #111827) 8%, transparent)'), 'soft también en Elegir')
+  check(h('plantilla:atelier·simple').includes('data-precio-junto=""') && h('plantilla:atelier·simple').includes('font-family:var(--font-heading)'), 'Atelier: precio junto al nombre en la fuente de títulos')
+  check(subtitulo('plantilla:roble·simple') === '45 × 50 × 82,5 cm', 'Roble: medidas bajo el nombre')
+
+  const rejilla = (id) => h(id)
+  check(rejilla('rejilla:lineas-sitio').includes('pb-px pr-px [&amp;&gt;*]:-mb-px [&amp;&gt;*]:-mr-px') && rejilla('rejilla:lineas-sitio').includes('gap:0px'), 'card_grid_lines: rejilla sin separación con bordes compartidos')
+  check(rejilla('rejilla:lineas-seccion').includes('gap:0px') && !rejilla('rejilla:lineas-seccion').includes('gap:24px'), 'card_grid_lines gana a card_gap')
+  check(!rejilla('rejilla:lineas-carrusel').includes('-mr-px'), 'card_grid_lines no toca el carrusel')
+  check(rejilla('rejilla:subrayado').includes('data-pestanas="underline"') && rejilla('rejilla:subrayado').includes('background-color:transparent;color:#1F3FD8'), 'tabs_style underline: activa sin fondo, del color primario')
+  check(rejilla('rejilla:subrayado-colores').includes('color:#2E2E2A'), 'tabs_style underline respeta el color de la sección')
+  check(!rejilla('rejilla:subrayado-barra-nueva').includes('data-pestanas'), 'tabs_style no toca la barra nueva (chip_style manda)')
+
+  // Funciones puras (lib/website/tarjetaPlantillasTienda.ts), por el mismo cargador.
+  register('./tarjeta-producto/cargador.mjs', import.meta.url, { data: { root: raiz, ref: null } })
+  const t = await import('../lib/website/tarjetaPlantillasTienda.ts')
+  check(t.rejillaConLineas(null) === null && t.rejillaConLineas({ card_radius: 2 }) === null, 'sin card_grid_lines: la rejilla de hoy')
+  check(t.ajustesTarjetaConLineas(null) === null, 'sin card_grid_lines: la tarjeta de hoy')
+  check(t.favoritoTarjeta(null) === undefined && t.favoritoTarjeta({ wishlist_position: 'top_left' }) === undefined, 'sin wishlist_style manda card_buttons')
+  check(t.favoritoTarjeta({ wishlist_style: 'none' }) === null, 'wishlist none = sin corazón')
+  check(t.subtituloTarjeta(null, {}) === null && t.subtituloTarjeta({ card_subtitle: 'brand' }, { brand: '  ' }) === null, 'subtítulo vacío no se pinta')
+  check(t.subtituloTarjeta({ card_subtitle: 'description' }, { description: '\n\n• Cuero curtido\nOtra' }) === 'Cuero curtido', 'primera línea con texto, sin viñeta')
+  check(t.prefijoPrecioTarjeta({ price_prefix: 'desde' }, false) === null && t.prefijoPrecioTarjeta({ price_prefix: 'none' }, true) === null, '«Desde» solo en padres y con desde')
+  check(t.estiloFuenteTitulo({ title_font: 'body' }) === undefined, 'title_font body = el de hoy')
+  check(t.textoElegirTarjeta({ choose_label: 'Elige un acabado' }) === 'Elige un acabado' && t.textoElegirTarjeta(null) === undefined, 'choose_label')
+  check(t.pestanasSubrayadas({}, '#000') === null && t.pestanasSubrayadas({ tabs_style: 'chips' }, '#000') === null, 'tabs_style chips/ausente = las de hoy')
+  const sub = t.pestanasSubrayadas({ tabs_style: 'underline', filter_active_bg: '#EEE' }, '#123456')
+  check(sub?.content.filter_active_bg === '#EEE' && sub?.content.filter_active_text === '#123456', 'underline: conserva los colores de la sección')
+  check(JSON.stringify(t.COLUMNAS_SUBTITULO_TARJETA.dimensions) === JSON.stringify(['length_cm', 'width_cm', 'height_cm']), 'columnas de medidas')
+  // Las clases de la tarjeta nueva están completas en el fuente (Tailwind no ve clases armadas).
+  const fuente = readFileSync(new URL('../lib/website/tarjetaPlantillasTienda.ts', import.meta.url), 'utf8')
+  for (const clase of [t.CLASE_SEGUNDA_IMAGEN_DESLIZA, t.CLASE_PRIMERA_IMAGEN_DESLIZA, t.CLASE_REJILLA_LINEAS]) check(fuente.includes(`'${clase}'`), `clase literal en el fuente: ${clase}`)
 }
 
 if (problemas.length) {
