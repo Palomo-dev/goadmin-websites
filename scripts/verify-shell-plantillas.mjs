@@ -323,7 +323,9 @@ try {
         const hoy = pintar(`${nombre} (base)`, encabezado(B, ajustes, tema))
         const ahora = pintar(nombre, encabezado(R, ajustes, tema))
         check(hoy.length > 0 && hoy === ahora, `${nombre}: el HTML cambió sin opciones nuevas`)
-        const conDefaults = pintar(nombre, encabezado(R, { ...ajustes, header_cta_shape: 'pill', buttons_uppercase_active: false }, tema))
+        // header_cta_shape: desde el contrato del 2026-11-07 su default es `null` (el botón de hoy) y
+        // `pill` es la píldora de verdad (radio total): el default explícito es `null`.
+        const conDefaults = pintar(nombre, encabezado(R, { ...ajustes, header_cta_shape: null, buttons_uppercase_active: false }, tema))
         check(conDefaults === hoy, `${nombre}: los defaults explícitos cambian el HTML`)
       }
     }

@@ -61,5 +61,24 @@ for (const v of [undefined, null, 'auto', 'ninguna', 'reservar', 'whatsapp,llama
 check(telDe('573000000000') === 'tel:+573000000000', '12 dígitos con 57 → tel:+57…')
 check(telDe('+57 300 000 0000') === 'tel:+573000000000', 'con + se respeta')
 
+// Píldora flotante (2026-11-07): variante y estilo nuevos del contrato; las de siempre no cambian.
+const BOTONES6 = Array.from({ length: 6 }, (_, i) => ({ id: `f${i}`, action: 'home', label: `B${i}`, icon: 'home', visible: true }))
+const flotante = leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'floating', items: BOTONES6, style: { labels: 'always', glass: false, offset: 24, width: 'full', indicator: 'dot', centerId: 'f2' } } } })
+check(flotante?.variant === 'floating', 'floating se lee como variante')
+check(flotante?.style.glass === false && flotante.style.offset === 24 && flotante.style.width === 'full' && flotante.style.indicator === 'dot', 'floating: vidrio, separación, ancho e indicador')
+check(flotante?.style.centerId === 'f2', 'floating: botón destacado')
+check(botonesVisibles(flotante, D).length === 5, 'floating: máximo 5 botones')
+const flotanteBasura = leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'floating', items: BOTONES6.slice(0, 2), style: { labels: 'never', glass: 'si', offset: 40, width: 'ancho', indicator: 'raya' } } } })
+check(flotanteBasura && !('glass' in flotanteBasura.style) && !('offset' in flotanteBasura.style) && !('width' in flotanteBasura.style) && !('indicator' in flotanteBasura.style), 'floating: valores fuera del contrato = ausentes (vidrio, 16, contenido, relleno)')
+const idaFlotante = leerMenuInferior({ mobile_header: { bottom_nav: aGuardar(flotante) } })
+check(JSON.stringify(idaFlotante) === JSON.stringify(flotante), 'floating: ida y vuelta')
+const tabsSinEstilo = leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'tabs', items: BOTONES6.slice(0, 3), style: { labels: 'always' } } } })
+check(tabsSinEstilo && Object.keys(tabsSinEstilo.style).join() === 'labels', 'tabs sin claves nuevas: el estilo de siempre')
+check(!('glass' in aGuardar(tabsSinEstilo).style), 'tabs: aGuardar no escribe claves de la píldora')
+const { readFileSync } = await import('node:fs')
+const fuenteMenu = readFileSync(new URL('../components/site/MenuInferior.tsx', import.meta.url), 'utf8')
+check(fuenteMenu.includes("menu.variant === 'floating'") && fuenteMenu.includes('data-menu-inferior="flotante"'), 'MenuInferior pinta la píldora flotante')
+check(/env\(safe-area-inset-bottom\)/.test(fuenteMenu.slice(fuenteMenu.indexOf("menu.variant === 'floating') {"))), 'floating respeta el área segura de abajo')
+
 if (problemas.length) { console.error(`verify-menu-inferior: ${problemas.length} de ${casos} fallan`); for (const p of problemas) console.error(' -', p); process.exit(1) }
 console.log(`verify-menu-inferior: ${casos} casos OK`)

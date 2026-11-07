@@ -62,8 +62,11 @@ const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
 // 70 + las 6 de las plantillas de tienda (P0 2026-11: header_cta_shape, buttons_uppercase_active,
-// footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style).
-check(nuevas.length === 76, `se esperaban 76 opciones nuevas y hay ${nuevas.length}`)
+// footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style) + las 15 del
+// encabezado píldora y el botón principal (2026-11-07: header_cta_size/width/height/style/icon/
+// icon_side/uppercase, header_pill_style/glass_opacity/blur/border/on_scroll/text_case,
+// header_float_offset, header_pill_position).
+check(nuevas.length === 91, `se esperaban 91 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -248,6 +251,23 @@ const CONSUMIDORES = {
   footer_brand_figure_url: ['components/site/SiteFooter.tsx', 'figuraUrl={tienda.pie.figuraMarca}'],
   footer_inset: ['components/site/SiteFooter.tsx', 'tienda.pie.tarjeta ?'],
   footer_links_style: ['components/site/SiteFooter.tsx', "enlacesDisplay={tienda.pie.enlaces === 'display'}"],
+  // Encabezado píldora y botón principal (2026-11-07). Las lee lib/website/pildora.ts; aquí, quién
+  // las pinta (scripts/verify-pildora.mjs prueba el HTML de cada una).
+  header_cta_size: ['components/site/header/HeaderShared.tsx', 'medidasBoton(o, ajustes, movil)'],
+  header_cta_width: ['components/site/header/HeaderShared.tsx', 'width: `${m.ancho}px`'],
+  header_cta_height: ['components/site/header/HeaderShared.tsx', 'height: `${m.alto}px`'],
+  header_cta_style: ['components/site/header/HeaderShared.tsx', 'data-cta-estilo={estilo}'],
+  header_cta_icon: ['components/site/header/HeaderShared.tsx', 'iconoBotonPrincipal(o.icono)'],
+  header_cta_icon_side: ['components/site/header/HeaderShared.tsx', "lado === 'derecha' && icono"],
+  header_cta_uppercase: ['components/site/header/HeaderShared.tsx', 'o.mayusculas === true'],
+  header_pill_style: ['components/site/header/HeaderPill.tsx', 'data-pildora-estilo={estiloPildora}'],
+  header_pill_glass_opacity: ['app/globals.css', 'var(--pildora-vidrio, 0.1)'],
+  header_pill_blur: ['app/globals.css', 'blur(var(--pildora-desenfoque, 24px))'],
+  header_pill_border: ['app/globals.css', 'var(--pildora-borde, rgba(255, 255, 255, 0.2))'],
+  header_pill_on_scroll: ['components/site/header/HeaderPill.tsx', 'data-pildora-al-bajar={atributoAlBajar(ajustes)}'],
+  header_pill_text_case: ['app/globals.css', 'text-transform: var(--pildora-mayusculas, uppercase)'],
+  header_float_offset: ['components/site/header/HeaderPill.tsx', 'paddingTop: `${separacion}px`'],
+  header_pill_position: ['components/site/OrganizationLayoutCliente.tsx', 'menuFlotanteDesdeEncabezado('],
 }
 // El editor la guarda. El default `icono` es el encabezado de hoy y ninguna pantalla lee otro valor.
 const SIN_PINTOR = new Set(['header_actions_style'])
