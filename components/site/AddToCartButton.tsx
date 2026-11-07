@@ -19,6 +19,11 @@ interface AddToCartButtonProps {
   disabled?: boolean
   onClick?: () => void
   branchId?: number | null
+  /**
+   * Texto del botón `full` en reposo (p. ej. «Agregar al carrito · $ 120.000», plantillas de
+   * tienda). Ausente = «Agregar al carrito», como siempre. No cambia qué ni cómo se agrega.
+   */
+  etiqueta?: string
 }
 
 export function AddToCartButton({ 
@@ -34,7 +39,8 @@ export function AddToCartButton({
   organizationSubdomain,
   disabled = false,
   onClick,
-  branchId
+  branchId,
+  etiqueta,
 }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false)
 
@@ -95,7 +101,7 @@ export function AddToCartButton({
         ) : (
           <>
             <ShoppingCart className="h-5 w-5 mr-2" />
-            Agregar al carrito
+            {etiqueta ?? 'Agregar al carrito'}
           </>
         )}
       </Button>
