@@ -14,6 +14,7 @@ import { ListRenderer } from '../ListRenderer'
 import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
 import { Paginacion } from '@/components/site/Paginacion'
 import { useEsMovilLista, useListaCarrusel, usePaginaLista } from '@/components/site/listaCarrusel'
+import { normalizarAjustesCategorias } from '@/lib/website/v2/contrato/seccionesTienda'
 
 interface CategoriesGridProps {
   content: {
@@ -149,6 +150,12 @@ function buildCardStyle(content: CategoriesGridProps['content']): CategoryCardSt
   // Color y fondo del ícono (4-nov); sin clave, los de hoy.
   if (extra.icon_color) style.icon_color = extra.icon_color
   if (extra.icon_bg_mode) style.icon_bg_mode = extra.icon_bg_mode
+  // Plantillas de tienda (PLANO §2 ítems 16-18). Solo se agregan con un valor distinto del
+  // default: sin ellas el objeto es el de siempre y la tarjeta no cambia.
+  const ajustes = normalizarAjustesCategorias(extra)
+  if (ajustes.textPosition === 'top') style.text_vertical = 'top'
+  if (ajustes.cardColor === 'per_item') style.per_item_color = true
+  if (ajustes.ctaIcon !== 'none') style.cta_icon = ajustes.ctaIcon
   return style
 }
 

@@ -7,6 +7,12 @@
  *  3. Si no tiene secciones → renderiza el layout hardcodeado actual (cero regresión).
  *
  * Mismo patrón que ProductDetailRenderer (F9.2).
+ *
+ * Plantillas de tienda: si la plantilla trae una sección VISIBLE `category_filters ·
+ * sidebar_facets` (registrada en SECTION_MAP), esa sección va en una columna a la izquierda y
+ * las secciones de listado que la siguen (filtros, subcategorías, productos) a la derecha
+ * (`planColumnasCategoria`). Solo entonces se lee el árbol de categorías (`getMenuCategories`,
+ * en caché: es la misma llamada que ya hace getOrgContext). Sin esa sección, todo igual que hoy.
  */
 
 import Link from 'next/link'
@@ -16,6 +22,9 @@ import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { SECTION_MAP } from '@/components/sections/SectionRenderer'
+import { getMenuCategories } from '@/lib/supabase/queries'
+import { categoriasHermanas, planColumnasCategoria, VARIANTE_FILTROS_LATERALES } from './columnasCategoria'
 
 interface CategoryDetailRendererProps {
   organization: OrganizationWithDetails
@@ -35,7 +44,7 @@ interface CategoryDetailRendererProps {
   branchId?: number | null
 }
 
-export function CategoryDetailRenderer({
+export async function CategoryDetailRenderer({
   organization,
   primaryColor,
   templatePage,
@@ -70,6 +79,55 @@ export function CategoryDetailRenderer({
     organizationSubdomain: organization.subdomain || '',
     showBuyNow: organization.website_settings?.show_buy_now_button !== false,
     branchId,
+  }
+
+  // ---- Modo plantilla con columna lateral (solo plantillas de tienda) ----
+  const plan = hasSections && templatePage
+    ? planColumnasCategoria(templatePage.website_page_sections, Boolean(SECTION_MAP.category_filters?.[VARIANTE_FILTROS_LATERALES]))
+    : null
+  if (plan && templatePage) {
+    const secciones = templatePage.website_page_sections
+    const esPrimera = (i: number) => i === 0 || secciones.slice(0, i).every((s) => s.is_visible === false)
+    const arbol = await getMenuCategories(organization.id, branchId)
+    const dataLateral = { ...sectionData, categoriasHermanas: categoriasHermanas(arbol, category) }
+    return (
+      <div className="container mx-auto px-4 py-8">
+        {plan.map((bloque) => bloque.tipo === 'seccion' ? (
+          <SectionRenderer
+            key={bloque.seccion.id}
+            section={bloque.seccion}
+            organization={organization}
+            primaryColor={primaryColor}
+            data={sectionData}
+            isFirst={esPrimera(bloque.indice)}
+          />
+        ) : (
+          <div key={`columnas-${bloque.lateral.id}`} className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-x-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-12">
+            <div className="min-w-0">
+              <SectionRenderer
+                section={bloque.lateral}
+                organization={organization}
+                primaryColor={primaryColor}
+                data={dataLateral}
+                isFirst={esPrimera(bloque.indiceLateral)}
+              />
+            </div>
+            <div className="min-w-0">
+              {bloque.principal.map(({ seccion, indice }) => (
+                <SectionRenderer
+                  key={seccion.id}
+                  section={seccion}
+                  organization={organization}
+                  primaryColor={primaryColor}
+                  data={sectionData}
+                  isFirst={esPrimera(indice)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   // ---- Modo plantilla: renderizar secciones ----

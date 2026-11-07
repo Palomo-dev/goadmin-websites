@@ -9,14 +9,17 @@
 import Link from 'next/link'
 import { ChevronRight, Home } from 'lucide-react'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { disposicionEncabezadoCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
 
-export const CONTENT_KEYS = ['show_image', 'show_breadcrumb', 'show_count'] as const
+export const CONTENT_KEYS = ['show_image', 'show_breadcrumb', 'show_count', 'layout'] as const
 
 interface CategoryHeaderProps {
   content: {
     show_image?: boolean
     show_breadcrumb?: boolean
     show_count?: boolean
+    /** `split_text` (plantillas de tienda): título a la izquierda y texto a la derecha. Ausente = `stack`. */
+    layout?: string
   }
   primaryColor?: string
   data?: {
@@ -35,6 +38,8 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
   const showImage = content.show_image !== false
   const showBreadcrumb = content.show_breadcrumb !== false
   const showCount = content.show_count !== false
+  // `split_text` solo cambia el bloque de texto (sin foto de portada); `stack` = lo de hoy.
+  const partido = disposicionEncabezadoCategoria(content as Record<string, unknown>) === 'split_text'
 
   return (
     <div className="mb-8">
@@ -77,7 +82,23 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
         </div>
       )}
 
-      {(!showImage || !category.image_url) && (
+      {(!showImage || !category.image_url) && partido && (
+        <div className="grid gap-4 md:grid-cols-2 md:items-end md:gap-12">
+          <div>
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+            {showCount && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                {total} {total === 1 ? 'producto' : 'productos'}
+              </p>
+            )}
+          </div>
+          {category.description && (
+            <p className="text-gray-600 dark:text-gray-400 md:text-lg max-w-xl md:justify-self-end">{category.description}</p>
+          )}
+        </div>
+      )}
+
+      {(!showImage || !category.image_url) && !partido && (
         <div>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
           {category.description && (
@@ -86,7 +107,7 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
         </div>
       )}
 
-      {showCount && (
+      {showCount && !(partido && (!showImage || !category.image_url)) && (
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
           {total} {total === 1 ? 'producto' : 'productos'}
         </p>

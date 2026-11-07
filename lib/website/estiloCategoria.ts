@@ -6,10 +6,13 @@
  * `contain`, para no recortar el producto.
  */
 
-export type EstiloCategoria = 'circle' | 'card_bottom' | 'pill' | 'bento' | 'minimal_icon'
+export type EstiloCategoria = 'circle' | 'card_bottom' | 'pill' | 'bento' | 'minimal_icon' | 'title_top'
 
 export function estiloCategoria(valor: unknown): EstiloCategoria | null {
   if (valor === 'circle' || valor === 'card_bottom' || valor === 'pill' || valor === 'bento' || valor === 'minimal_icon') return valor
+  // Plantillas de tienda (PLANO §2 ítem 15): título y conteo encima de la foto. 0 secciones lo
+  // usan en producción (SQL 2026-11-07); antes caía en la tarjeta superpuesta de siempre.
+  if (valor === 'title_top') return valor
   return null
 }
 
@@ -106,4 +109,37 @@ export function desplazarPagina(el: HTMLElement | null, dir: 'left' | 'right'): 
   if (!el) return
   const amount = el.clientWidth
   el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
+}
+
+// ─── Opciones de tarjeta de las plantillas de tienda (PLANO §2 ítems 16-18) ─────────────────
+// Se leen con `normalizarAjustesCategorias` (contrato seccionesTienda). Con los defaults
+// (`bottom` / `none` / `none`) ninguna de estas ayudas cambia nada: es la tarjeta de hoy.
+
+/** `categories.color` si es un hex válido (#rgb o #rrggbb); si no, `null` (no se pinta color). */
+export function colorDeCategoria(valor: unknown): string | null {
+  if (typeof valor !== 'string') return null
+  const v = valor.trim()
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : null
+}
+
+/** Texto legible sobre un fondo hex: oscuro sobre claro, blanco sobre oscuro (luminancia WCAG). */
+export function textoSobreColor(hex: string): '#111827' | '#FFFFFF' {
+  let h = hex.replace('#', '')
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  const canal = (i: number) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  const luminancia = 0.2126 * canal(0) + 0.7152 * canal(2) + 0.0722 * canal(4)
+  // Contraste contra negro (#111827 ≈ 0,0116) frente a blanco: gana el mayor.
+  return (luminancia + 0.05) / (0.0116 + 0.05) >= 1.05 / (luminancia + 0.05) ? '#111827' : '#FFFFFF'
+}
+
+/** Proporción de la foto en «Título arriba»: `image_ratio` si es uno conocido; si no, 4:5. */
+export function proporcionTituloArriba(valor: unknown): string {
+  if (valor === '1:1') return 'aspect-square'
+  if (valor === '4:3') return 'aspect-[4/3]'
+  if (valor === '3:4') return 'aspect-[3/4]'
+  if (valor === '16:9') return 'aspect-video'
+  return 'aspect-[4/5]'
 }
