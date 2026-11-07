@@ -27,6 +27,8 @@ export const COPIAS = [
   ['lib/website/v2/contrato/documentoSitio.ts', 'src/lib/website/contrato/documentoSitio.ts'],
   // Carta QR en la mesa: tipos, variantes, campos y defaults de las secciones de mesa (lámina 18).
   ['lib/website/v2/contrato/seccionesMesa.ts', 'src/lib/website/contrato/seccionesMesa.ts'],
+  // Plantillas de tienda: variantes, secciones nuevas, claves, defaults y normalizadores (PLANO §3).
+  ['lib/website/v2/contrato/seccionesTienda.ts', 'src/lib/website/contrato/seccionesTienda.ts'],
   ['lib/website/v2/mapeoAjustes.ts', 'src/lib/website/v2/mapeoAjustes.ts'],
   ['lib/website/menuMovil.ts', 'src/lib/website/menuMovil.ts'],
   ['lib/website/menuInferior.ts', 'src/lib/website/menuInferior.ts'],
