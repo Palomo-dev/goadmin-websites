@@ -6,9 +6,11 @@ import { animarCambio, flechaPersonalizada, leerAparienciaCarrusel } from '@/lib
 import { atributosCarrusel, indiceAnterior, indiceSiguiente, leerOpcionesCarrusel } from '@/lib/carrusel/opcionesCarrusel'
 import { useAutoplayCarrusel, useDeslizar, usePorVista } from '@/lib/carrusel/useCarrusel'
 import { aFotosLightbox, etiquetaAmpliar, FOCO_FOTO, lightboxActivo, useLightbox } from './FotosAmpliables'
+import { galeriaEscalonada } from '@/lib/website/v2/contrato/seccionesTienda'
+import { GaleriaEscalonada } from './GaleriaEscalonada'
 
 /** Claves de content que este componente lee (F0.6 — manifiesto editor ↔ sitio). */
-export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe', 'lightbox', 'arrow_style', 'arrow_size', 'arrow_color', 'arrow_bg_color', 'dot_style', 'transition_ms'] as const
+export const CONTENT_KEYS = ['title', 'images', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe', 'lightbox', 'arrow_style', 'arrow_size', 'arrow_color', 'arrow_bg_color', 'dot_style', 'transition_ms', 'stagger'] as const
 
 interface GalleryCarouselProps {
   content: Record<string, any>
@@ -68,6 +70,12 @@ export function GalleryCarousel({ content, primaryColor = '#3B82F6' }: GalleryCa
   const deslizar = useDeslizar({ activo: o.deslizar && total > 1, alSiguiente: irSiguiente, alAnterior: irAnterior })
 
   if (images.length === 0) return null
+
+  // Plantillas de tienda: `stagger: true` = fila de fotos a alturas alternas. Sin la clave, el
+  // carrusel de siempre (los hooks de arriba se llaman igual en los dos casos).
+  if (galeriaEscalonada(content)) {
+    return <GaleriaEscalonada title={title} images={images} />
+  }
 
   return (
     <section className="py-16 px-4" aria-roledescription="carrusel" {...atributosCarrusel(o)} {...autoplay}>

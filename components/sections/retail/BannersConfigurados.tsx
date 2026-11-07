@@ -19,6 +19,8 @@ import {
   type EstiloBanners,
 } from '@/lib/website/distribucionBanner'
 import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
+import { normalizarCuponBanner } from '@/lib/website/v2/contrato/seccionesTienda'
+import { CuponCopiable, VigenciaCupon } from './CuponBanner'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -98,6 +100,8 @@ interface Props {
   primaryColor: string
   data?: Parameters<typeof resolveBannerHref>[1] & {
     bannerCategoryProducts?: Record<string, any[]>
+    /** Hoy (YYYY-MM-DD, zona de la organización). Lo pone PromoBannersGrid solo si algún banner trae cupón. */
+    hoyCupon?: string
   }
 }
 
@@ -393,7 +397,12 @@ function Tarjeta(props: {
       : `${claseImagenBanner(fit, content.image_position)}${zoom}${oscuro}`
   const estiloFoto: CSSProperties = focal ? { objectPosition: focal } : {}
   const scrim = degradado(estilo)
-  const boton = botonDe(banner, estilo, primaryColor)
+  // Cupón del banner (plantillas de tienda): solo con `hoyCupon` (algún banner trae código) y si
+  // no venció. Con cupón el banner no va dentro de un enlace: el botón es el que enlaza.
+  const cuponLeido = data?.hoyCupon ? normalizarCuponBanner(banner, data.hoyCupon) : null
+  const cupon = cuponLeido && !cuponLeido.vencido && layout !== 'circles' ? cuponLeido : null
+  const botonBase = botonDe(banner, estilo, primaryColor)
+  const boton = cupon && href && botonBase ? <Link href={href} className="inline-block">{botonBase}</Link> : botonBase
 
   const media = (
     <>
@@ -447,7 +456,9 @@ function Tarjeta(props: {
           {scrim && textoVisible && <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: scrim }} />}
           {textoVisible && (
             <div className={`${altoNatural ? 'absolute inset-0 z-10 flex flex-col p-8' : 'relative z-10'} ${vertical} ${alinear} ${claseRevelar ? '' : ''}`}>
+              {cupon && <VigenciaCupon cupon={cupon} className="mb-3" />}
               {textos}
+              {cupon && <CuponCopiable cupon={cupon} className="mb-4" />}
               {preview}
               {boton && !estilo.button_position && <div className={claseRevelar}>{boton}</div>}
             </div>
@@ -468,6 +479,7 @@ function Tarjeta(props: {
       <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl ${sombra} ${forma} ${(props.indice ?? 0) % 2 === 1 ? 'md:order-2' : ''}`} style={{ ...radio, ...borde }}>{media}</div>
       <div className={alinear}>
         {textos && <div style={{ color: banner.text_color || estilo.text_color || '#111827' }}>{textos}</div>}
+        {cupon && <CuponCopiable cupon={cupon} className="mb-4" />}
         {boton}
       </div>
     </div>
@@ -478,7 +490,7 @@ function Tarjeta(props: {
       {pieza}
     </div>
   )
-  return href ? <Link href={href} className="block">{marcado}</Link> : marcado
+  return href && !cupon ? <Link href={href} className="block">{marcado}</Link> : marcado
 }
 
 function botonDe(banner: BannerItem, estilo: EstiloBanners, primaryColor: string) {

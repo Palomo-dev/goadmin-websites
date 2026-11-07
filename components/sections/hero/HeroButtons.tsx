@@ -55,6 +55,14 @@ const SIZE_CLASSES: Record<string, string> = {
   xl: 'px-10 py-4 text-xl',
 }
 
+/** Tamaño de letra del «enlace subrayado» (`variant: 'link'`): sin relleno, solo el texto. */
+const LINK_SIZE_CLASSES: Record<string, string> = {
+  sm: 'text-sm',
+  md: 'text-base',
+  lg: 'text-lg',
+  xl: 'text-xl',
+}
+
 /** Relleno cuadrado del botón «solo icono», por tamaño. */
 const ICON_ONLY_CLASSES: Record<string, string> = {
   sm: 'p-2',
@@ -121,12 +129,19 @@ function HeroButton({
   const iconSize = ICON_SIZE[size] || 18
   const soloIcono = btn.icon_only === true && Icon !== null
 
-  const baseClass = [
+  // «Enlace subrayado» (plantillas de tienda): texto con subrayado, sin relleno, fondo ni escala.
+  // Ningún sitio usaba `variant: 'link'` (SQL 2026-11-07); el resto de variantes, como siempre.
+  const baseClass = variant === 'link' ? [
+    'inline-flex items-center gap-2 font-medium py-1 underline decoration-1 underline-offset-[6px] transition-[text-decoration-thickness] hover:decoration-2',
+    LINK_SIZE_CLASSES[size] || LINK_SIZE_CLASSES.md,
+  ].join(' ') : [
     'inline-flex items-center justify-center gap-2 font-semibold transition-transform hover:scale-105',
     soloIcono ? ICON_ONLY_CLASSES[size] || ICON_ONLY_CLASSES.md : SIZE_CLASSES[size] || SIZE_CLASSES.md,
     variant === 'outline' ? 'border-2 bg-transparent hover:bg-black/5' : '',
     variant === 'ghost' ? 'bg-white/10 backdrop-blur hover:bg-white/20' : '',
-    variant === 'link' ? 'underline-offset-4 hover:underline' : '',
+    // Antes: el subrayado al pasar de `link`; ahora `link` tiene su propia clase (arriba). Queda
+    // la cadena vacía para que la clase de las demás variantes sea idéntica a la de siempre.
+    '',
     btn.full_width === true && !soloIcono ? 'w-full' : btn.full_width_mobile !== false && !soloIcono ? 'w-full sm:w-auto' : '',
   ].join(' ')
 

@@ -8,8 +8,14 @@ import {
   textSizeClass,
   type TestimonialsContent,
   type TestimonialsData,
+  type NormalizedTestimonial,
 } from './testimonialsUtils'
 import { SiLista } from '../ListRenderer'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { normalizarAjustesTestimonios } from '@/lib/website/v2/contrato/seccionesTienda'
+import { EditorHint } from '../restaurant/EditorHint'
+import { ResumenTestimonios } from './ResumenTestimonios'
 
 interface TestimonialsQuotesProps {
   content: TestimonialsContent
@@ -42,6 +48,13 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
   const textSize = content.text_size || 'xl'
   const ratingPosition = content.rating_position || 'bottom'
 
+  // Plantillas de tienda (Roble): con `image_url` o `pager: 'fraction'`, una cita a la vez junto a
+  // la foto. Sin esas claves, la lista de citas de siempre.
+  const ajustesCitas = normalizarAjustesTestimonios(content)
+  if (ajustesCitas.imageUrl !== '' || ajustesCitas.pager === 'fraction') {
+    return <CitasConFoto content={content} data={data} items={items} imageUrl={ajustesCitas.imageUrl} fraccion={ajustesCitas.pager === 'fraction'} />
+  }
+
   if (items.length === 0) {
     return (
       <section className="py-16 px-4">
@@ -60,6 +73,7 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto">
         {title && <h2 className="titulo-legado text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">{title}</h2>}
+        <ResumenTestimonios content={content} data={data} className="mb-10 justify-center" />
         <SiLista content={content} className={`space-y-10`}>
           {items.map((item) => {
             const stars = ratingStars(item.rating)
@@ -130,5 +144,71 @@ export function TestimonialsQuotes({ content, primaryColor = '#3B82F6', data }: 
         </SiLista>
       </div>
     </section>
+  )
+}
+
+const FOCO_CITA = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-current'
+
+/** «01 / 03» */
+function dosCifras(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+/**
+ * Una cita a la vez junto a la foto (`image_url`), con «01 / 03» y flechas (`pager: 'fraction'`) y
+ * el resumen real de reseñas abajo (`show_summary`). Sin testimonios no pinta nada (en la vista
+ * previa, un aviso): nunca una cita de ejemplo.
+ */
+function CitasConFoto({
+  content,
+  data,
+  items,
+  imageUrl,
+  fraccion,
+}: {
+  content: TestimonialsContent
+  data?: TestimonialsData
+  items: NormalizedTestimonial[]
+  imageUrl: string
+  fraccion: boolean
+}) {
+  const [actual, setActual] = useState(0)
+  if (items.length === 0) {
+    return <EditorHint title="Sin testimonios">Agrega testimonios o conéctalos a los de tu tienda.</EditorHint>
+  }
+  const i = Math.min(actual, items.length - 1)
+  const cita = items[i]
+  const conPaginas = fraccion && items.length > 1
+  const detalle = cita.role || cita.company
+  return (
+    <div className={imageUrl ? 'grid items-stretch gap-10 md:grid-cols-2 md:gap-14' : 'mx-auto max-w-3xl'} data-citas-foto="">
+      {imageUrl && (
+        <div className="aspect-[4/5] overflow-hidden bg-black/5 md:aspect-auto md:min-h-[460px]">
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        </div>
+      )}
+      <div className="flex flex-col py-2">
+        {content.title && <p className="mb-6 text-xs opacity-60">{content.title}</p>}
+        <blockquote aria-live="polite">
+          <p className="text-2xl leading-snug md:text-4xl md:leading-tight">&ldquo;{cita.content}&rdquo;</p>
+          <footer className="mt-6 text-sm">
+            <span className="block">{cita.name}</span>
+            {detalle && <span className="block text-xs opacity-60">{detalle}</span>}
+          </footer>
+        </blockquote>
+        {conPaginas && (
+          <div className="mt-8 flex items-center gap-3 text-xs">
+            <button type="button" aria-label="Testimonio anterior" onClick={() => setActual((i - 1 + items.length) % items.length)} className={`flex h-9 w-9 items-center justify-center rounded-full border border-black/20 dark:border-white/30 ${FOCO_CITA}`}>
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <span>{dosCifras(i + 1)} / {dosCifras(items.length)}</span>
+            <button type="button" aria-label="Testimonio siguiente" onClick={() => setActual((i + 1) % items.length)} className={`flex h-9 w-9 items-center justify-center rounded-full border border-black/20 dark:border-white/30 ${FOCO_CITA}`}>
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        <ResumenTestimonios content={content} data={data} className="mt-auto pt-10" />
+      </div>
+    </div>
   )
 }

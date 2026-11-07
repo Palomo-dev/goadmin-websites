@@ -41,6 +41,11 @@ interface HeroSplitProps {
   }
   primaryColor?: string
   organization?: any
+  /**
+   * Pieza extra bajo los botones (las mini tarjetas de `hero · split_products`). Solo la pasa
+   * HeroSplitProductos; sin ella, la portada dividida de siempre.
+   */
+  extra?: React.ReactNode
 }
 
 /** Alineación vertical del contenido según content_position. */
@@ -59,7 +64,7 @@ function verticalAlignClass(pos: string): string {
   }
 }
 
-export function HeroSplit({ content, primaryColor, organization }: HeroSplitProps) {
+export function HeroSplit({ content, primaryColor, organization, extra }: HeroSplitProps) {
   const imageUrl = content.image_url || null
   const imageUrlMobile = content.image_url_mobile || null
   const focal = puntoFocal((content as any).focal_point)
@@ -134,6 +139,7 @@ export function HeroSplit({ content, primaryColor, organization }: HeroSplitProp
             )}
           </div>
         ) : null}
+        {extra ? extra : null}
       </div>
       <div className={`relative order-first md:order-last ${claseCaja}`}>
         {imageUrl || imageUrlMobile ? (
