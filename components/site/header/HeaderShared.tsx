@@ -16,7 +16,7 @@ import {
   Calendar, CalendarCheck, CalendarClock, Clock, MessageCircle, MapPin, ArrowRight, ArrowUpRight, ChevronRight as FlechaDerecha,
   Utensils, UtensilsCrossed, Coffee, Star, Heart, Sparkles, Ticket, Send, Truck, Tag, Percent, BedDouble, Dumbbell, Car, Plus,
 } from 'lucide-react';
-import { atributoAlBajar, botonConOpcionesNuevas, diametroCirculo, estiloPildora, medidasBoton, opcionesBoton, radioBoton, variablesPildora, type OpcionesBoton } from '@/lib/website/pildora';
+import { atributoAlBajar, botonConOpcionesNuevas, diametroCirculo, estiloPildora, medidasBoton, opcionesBoton, radioBoton, segundoBotonConOpciones, variablesPildora, type OpcionesBoton } from '@/lib/website/pildora';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -975,6 +975,7 @@ function BotonPrincipalConOpciones({
   textoColor,
   marcaTema,
   movil,
+  secundario = false,
 }: {
   o: OpcionesBoton;
   texto: string;
@@ -985,16 +986,35 @@ function BotonPrincipalConOpciones({
   textoColor: string;
   marcaTema: { 'data-boton-tema'?: '' };
   movil: boolean;
+  /**
+   * Segundo botón (header_cta2_*): sin estilo guardado va en contorno (su aspecto de hoy); sin
+   * tamaño, el relleno de hoy del segundo (cta_padding_* menos 1 px por el borde) y, sin forma, su
+   * radio de hoy (cta_border_radius ?? 8); el contorno y el texto toman el color del texto del
+   * encabezado (`currentColor`, con las clases de color de hoy) en vez del color del principal;
+   * sin la sombra, el ancho completo ni los márgenes del principal; el círculo no pone el
+   * calendario por defecto. Lleva `data-boton-secundario`, como hoy.
+   */
+  secundario?: boolean;
 }) {
   const ajustes = settings as Record<string, unknown> | null | undefined;
-  const estilo = o.estilo ?? 'solido';
+  const estilo = o.estilo ?? (secundario ? 'contorno' : 'solido');
   const circulo = o.forma === 'circle' && !movil;
-  const Icono = iconoBotonPrincipal(o.icono) ?? (circulo && /reserv/i.test(href) ? CalendarDays : null);
+  // El calendario por defecto del círculo que lleva a reservas es del principal; el segundo botón
+  // solo pinta ícono si guardó header_cta2_icon.
+  const Icono = iconoBotonPrincipal(o.icono) ?? (!secundario && circulo && /reserv/i.test(href) ? CalendarDays : null);
   const ladoGuardado = o.ladoIcono ?? (circulo ? 'encima' : 'izquierda');
   const lado = movil && ladoGuardado === 'encima' ? 'izquierda' : ladoGuardado;
 
-  const colores: React.CSSProperties =
-    estilo === 'contorno'
+  // Segundo botón en contorno o texto: color del texto del encabezado (`currentColor`).
+  const coloresSecundario: React.CSSProperties | null = !secundario
+    ? null
+    : estilo === 'contorno'
+      ? { backgroundColor: 'transparent', border: '1.5px solid currentColor' }
+      : estilo === 'texto'
+        ? { backgroundColor: 'transparent', border: '0 solid transparent' }
+        : null;
+  const colores: React.CSSProperties = coloresSecundario ??
+    (estilo === 'contorno'
       ? { backgroundColor: 'transparent', color: fondo, border: `1.5px solid ${fondo}` }
       : estilo === 'texto'
         ? { backgroundColor: 'transparent', color: fondo, border: '0 solid transparent' }
@@ -1012,9 +1032,9 @@ function BotonPrincipalConOpciones({
               borderWidth: `${settings?.cta_border_width ?? 0}px`,
               borderColor: settings?.cta_border_color ?? 'transparent',
               borderStyle: 'solid',
-            };
+            });
   const conRelleno = estilo === 'solido' || estilo === 'tema';
-  const sombraGuardada = settings?.cta_shadow && settings.cta_shadow !== 'none' ? SOMBRAS_BOTON[settings.cta_shadow] ?? 'none' : null;
+  const sombraGuardada = !secundario && settings?.cta_shadow && settings.cta_shadow !== 'none' ? SOMBRAS_BOTON[settings.cta_shadow] ?? 'none' : null;
   // Círculo relleno sin sombra elegida: la del diseño ([data-boton-circular] en app/globals.css).
   const sombra = conRelleno ? (sombraGuardada ?? (circulo ? undefined : 'none')) : 'none';
   const letras: React.CSSProperties =
@@ -1030,6 +1050,9 @@ function BotonPrincipalConOpciones({
   );
   const enlaceExterno = externo ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   const efecto = estilo === 'texto' ? 'hover:underline underline-offset-4' : 'transition-opacity hover:opacity-90';
+  // Segundo botón en contorno o texto: el color del texto del encabezado, con las clases de hoy.
+  const colorSecundario = secundario && (estilo === 'contorno' || estilo === 'texto') ? ' text-gray-900 dark:text-white' : '';
+  const marcaSecundario = secundario ? { 'data-boton-secundario': '' } : {};
 
   if (circulo) {
     const d = diametroCirculo(o);
@@ -1037,13 +1060,14 @@ function BotonPrincipalConOpciones({
       <Link
         href={href}
         {...enlaceExterno}
-        className={`hidden md:inline-flex aspect-square flex-shrink-0 ${lado === 'encima' ? 'flex-col' : 'flex-row'} items-center justify-center gap-1 rounded-full ${d < 68 ? 'px-1 tracking-[0.06em]' : 'px-2 tracking-[0.12em]'} text-center text-[9px] font-semibold uppercase leading-tight ${efecto}`}
+        className={`hidden md:inline-flex aspect-square flex-shrink-0 ${lado === 'encima' ? 'flex-col' : 'flex-row'} items-center justify-center gap-1 rounded-full ${d < 68 ? 'px-1 tracking-[0.06em]' : 'px-2 tracking-[0.12em]'} text-center text-[9px] font-semibold uppercase leading-tight ${efecto}${colorSecundario}`}
         data-boton-circular=""
         data-cta-estilo={estilo}
+        {...marcaSecundario}
         {...marcaTema}
         style={{
           ...colores,
-          ['--cta-color' as string]: fondo,
+          ['--cta-color' as string]: secundario && !conRelleno && estilo !== 'vidrio' ? 'currentColor' : fondo,
           width: `${d}px`,
           height: `${d}px`,
           ...(sombra !== undefined ? { boxShadow: sombra } : {}),
@@ -1056,24 +1080,30 @@ function BotonPrincipalConOpciones({
   }
 
   const m = medidasBoton(o, ajustes, movil);
-  const fullWidth = !movil && (settings?.cta_full_width ?? false);
+  const fullWidth = !movil && !secundario && (settings?.cta_full_width ?? false);
   const visible = movil ? 'md:hidden inline-flex' : fullWidth ? 'flex' : 'hidden md:inline-flex';
   const letra = movil ? 'text-[13px] font-medium' : 'text-sm font-semibold';
   return (
     <Link
       href={href}
       {...enlaceExterno}
-      className={`${visible} items-center justify-center gap-1.5 whitespace-nowrap ${letra} ${efecto}`}
+      className={`${visible} items-center justify-center gap-1.5 whitespace-nowrap ${letra} ${efecto}${colorSecundario}`}
       data-cta-estilo={estilo}
+      {...marcaSecundario}
       {...marcaTema}
       style={{
         ...colores,
-        ['--cta-color' as string]: fondo,
+        ['--cta-color' as string]: secundario && !conRelleno && estilo !== 'vidrio' ? 'currentColor' : fondo,
         borderRadius: radioBoton(o, ajustes, movil ? 6 : 8),
-        ...(m.alto !== null ? { height: `${m.alto}px`, padding: `0 ${m.rellenoX}px` } : { padding: `${m.rellenoY}px ${m.rellenoX}px` }),
+        ...(m.alto !== null
+          ? { height: `${m.alto}px`, padding: `0 ${m.rellenoX}px` }
+          : secundario
+            // El relleno de hoy del segundo botón (HeaderCTA2): 1 px menos por su borde.
+            ? { padding: `${Math.max(0, m.rellenoY - 1)}px ${Math.max(0, m.rellenoX - 1)}px` }
+            : { padding: `${m.rellenoY}px ${m.rellenoX}px` }),
         ...(m.ancho !== null ? { width: `${m.ancho}px` } : fullWidth ? { width: '100%' } : {}),
         boxShadow: sombra ?? 'none',
-        ...(!movil ? { marginTop: `${settings?.cta_margin_top ?? 0}px`, marginBottom: `${settings?.cta_margin_bottom ?? 0}px` } : {}),
+        ...(!movil && !secundario ? { marginTop: `${settings?.cta_margin_top ?? 0}px`, marginBottom: `${settings?.cta_margin_bottom ?? 0}px` } : {}),
         ...letras,
       }}
     >
@@ -1111,6 +1141,8 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     : estiloExtra === 'text'
       ? 'hidden md:inline-flex items-center whitespace-nowrap border border-transparent text-sm font-semibold text-gray-900 dark:text-white transition-opacity hover:opacity-80 hover:underline'
       : clase;
+  const opcionesSegundo = opcionesBoton(settings as Record<string, unknown> | null | undefined, 'header_cta2');
+  const segundoConOpciones = segundoBotonConOpciones(opcionesSegundo);
   const estiloDeExtra: React.CSSProperties = estiloExtra === 'solid'
     ? { ...estilo, backgroundColor: fondoRelleno, color: settings?.cta_text_color ?? '#ffffff' }
     : estilo;
@@ -1119,6 +1151,25 @@ export function HeaderCTA2({ settings }: { settings?: HeaderVariantProps['settin
     if (!href) return null;
     const externo = esEnlaceExterno(href) || href.startsWith('tel:') || href.startsWith('mailto:');
     const esSegundo = i === 0 && !!opciones.boton2;
+    // Segundo botón con el mismo control que el principal (header_cta2_*). Sin ninguna clave, el
+    // contorno de siempre (abajo, sin cambios).
+    if (esSegundo && segundoConOpciones) {
+      return (
+        <BotonPrincipalConOpciones
+          key={i}
+          o={opcionesSegundo}
+          texto={boton.texto}
+          href={href}
+          externo={esEnlaceExterno(href)}
+          settings={settings}
+          fondo={fondoRelleno}
+          textoColor={settings?.cta_text_color ?? textoSobreAcentoSiHex(fondoRelleno) ?? '#ffffff'}
+          marcaTema={marcaTema}
+          movil={false}
+          secundario
+        />
+      );
+    }
     const marca = esSegundo ? { 'data-boton-secundario': '' } : { 'data-boton-extra': String(i + 2), ...(estiloExtra !== 'outline' ? { 'data-estilo-extra': estiloExtra } : {}) };
     const clase = esSegundo ? claseBase : claseExtra;
     const estilo = esSegundo ? estiloBase : estiloDeExtra;

@@ -139,17 +139,33 @@ function nombreIcono(v: unknown): string | null {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(t) && t.length <= 40 ? t : null
 }
 
-export function opcionesBoton(ajustes: Ajustes): OpcionesBoton {
+/**
+ * Prefijo de las claves del botón: `header_cta` (principal) o `header_cta2` (segundo botón, mismo
+ * control; el contrato no le da ancho ni alto fijos, así que esos dos quedan en `null`).
+ */
+export type PrefijoBoton = 'header_cta' | 'header_cta2'
+
+export function opcionesBoton(ajustes: Ajustes, prefijo: PrefijoBoton = 'header_cta'): OpcionesBoton {
+  const principal = prefijo === 'header_cta'
   return {
-    forma: opcion<FormaBoton>(ajustes, 'header_cta_shape'),
-    tamano: opcion<'sm' | 'md' | 'lg'>(ajustes, 'header_cta_size'),
-    ancho: opcion<number>(ajustes, 'header_cta_width'),
-    alto: opcion<number>(ajustes, 'header_cta_height'),
-    estilo: opcion<EstiloBoton>(ajustes, 'header_cta_style'),
-    icono: nombreIcono(opcion<string>(ajustes, 'header_cta_icon')),
-    ladoIcono: opcion<LadoIcono>(ajustes, 'header_cta_icon_side'),
-    mayusculas: opcion<boolean>(ajustes, 'header_cta_uppercase'),
+    forma: opcion<FormaBoton>(ajustes, `${prefijo}_shape`),
+    tamano: opcion<'sm' | 'md' | 'lg'>(ajustes, `${prefijo}_size`),
+    ancho: principal ? opcion<number>(ajustes, 'header_cta_width') : null,
+    alto: principal ? opcion<number>(ajustes, 'header_cta_height') : null,
+    estilo: opcion<EstiloBoton>(ajustes, `${prefijo}_style`),
+    icono: nombreIcono(opcion<string>(ajustes, `${prefijo}_icon`)),
+    ladoIcono: opcion<LadoIcono>(ajustes, `${prefijo}_icon_side`),
+    mayusculas: opcion<boolean>(ajustes, `${prefijo}_uppercase`),
   }
+}
+
+/**
+ * ¿El segundo botón va con las opciones nuevas? Con cualquier clave `header_cta2_*` (también el
+ * círculo: el segundo botón no tenía círculo de hoy). Sin ninguna → `false` y HeaderCTA2 pinta su
+ * contorno de siempre.
+ */
+export function segundoBotonConOpciones(o: OpcionesBoton): boolean {
+  return o.forma !== null || o.tamano !== null || o.estilo !== null || o.icono !== null || o.ladoIcono !== null || o.mayusculas !== null
 }
 
 /**
