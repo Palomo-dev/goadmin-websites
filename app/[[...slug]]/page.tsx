@@ -60,6 +60,8 @@ import { cartaDeLaSedeDeLaMesa } from '@/lib/restaurant/cartaDeSede'
 import { cartaQrRecibeMesa, esPaginaModoMesa } from '@/lib/restaurant/modoMesa'
 import { pasosDisponibles, resolverPaso } from '@/lib/restaurant/pasosMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
+import { precargarPortadaTienda } from '@/lib/queries/tienda/portada'
+import { cargarDatosSeccionesTienda } from '@/lib/queries/tienda/productosPorId'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -428,6 +430,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         )
       }
     }
+    // Plantillas de tienda (W6): productos por id y categorías de las secciones nuevas. Sin
+    // ninguna de esas secciones no consulta nada y no agrega claves a `data`.
+    Object.assign(data, await cargarDatosSeccionesTienda(organization.id, branchId, page.website_page_sections, data))
     // FASE 6: pre-fetch de testimonios desde la BD cuando alguna sección
     // testimonials usa data_source 'database' o 'featured' (o no tiene items manuales).
     if (sectionTypes.includes('testimonials')) {
@@ -447,6 +452,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
         data.testimonials = await getOrganizationTestimonials(organization.id, { limit: 200 })
       }
     }
+    // Plantillas de tienda (W5): resumen de reseñas y productos de las portadas nuevas. Sin
+    // secciones nuevas no consulta nada.
+    await precargarPortadaTienda(organization.id, branchId, page.website_page_sections, data)
     // Gym y transporte: secciones que antes salían siempre vacías porque nadie
     // cargaba su `data`. Una consulta cacheada cada una (lib/website/datosSecciones.ts)
     // y solo si la página tiene la sección (o en la vista previa del editor).

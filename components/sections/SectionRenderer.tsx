@@ -164,6 +164,34 @@ import { CategoryFilters } from './category-detail/CategoryFilters'
 import { CategoryProducts } from './category-detail/CategoryProducts'
 import { CategorySubcategories } from './category-detail/CategorySubcategories'
 import { CategorySeoText } from './category-detail/CategorySeoText'
+import { FiltrosLaterales } from './category-detail/FiltrosLaterales'
+
+// Plantillas de tienda (W3–W6): variantes nuevas de tipos existentes y tipos nuevos.
+// Contrato: lib/website/v2/contrato/seccionesTienda.ts (copia del ERP).
+import { ProductSpecsIconos, ProductSpecsPanel } from './product-detail/ProductSpecsVariantes'
+import { NavAnclas } from './product-detail/NavAnclas'
+import { AnteriorSiguiente } from './product-detail/AnteriorSiguiente'
+import { CompletaElLook } from './tienda/CompletaElLook'
+import { HeroBuscador } from './tienda/HeroBuscador'
+import { HeroMarca } from './tienda/HeroMarca'
+import { HeroFlotante } from './tienda/HeroFlotante'
+import { HeroSplitProductos } from './tienda/HeroSplitProductos'
+import { GalleryCollage } from './gallery/GalleryCollage'
+import { GalleryInstagram } from './gallery/GalleryInstagram'
+import { ImageTextColor } from './image-text/ImageTextColor'
+import { ImageTextEditorial } from './image-text/ImageTextEditorial'
+import { TextBlockIconos } from './text-block/TextBlockIconos'
+import { NubeEnlaces } from './tienda/NubeEnlaces'
+import { TarjetasServicio } from './tienda/TarjetasServicio'
+import { CompraElLook } from './tienda/CompraElLook'
+import { IndiceProductos } from './tienda/IndiceProductos'
+import { AnatomiaProducto } from './tienda/AnatomiaProducto'
+import { VentanaBienvenida } from './tienda/VentanaBienvenida'
+import { AntesDespues } from './tienda/AntesDespues'
+import { RasgosConFoto } from './tienda/RasgosConFoto'
+import { RejillaEditorial } from './tienda/RejillaEditorial'
+import { motivoSeccionTiendaVacia } from './tienda/datosTienda'
+import { EditorHint } from './restaurant/EditorHint'
 
 // Secciones saas
 import { PricingTableColumns } from './saas/PricingTableColumns'
@@ -182,6 +210,10 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     split: HeroSplit,
     video: HeroVideo,
     slider: HeroSlider,
+    search: HeroBuscador,
+    brand_giant: HeroMarca,
+    floating: HeroFlotante,
+    split_products: HeroSplitProductos,
   },
   testimonials: {
     carousel: TestimonialsCarousel,
@@ -205,6 +237,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     grid: GalleryGrid,
     carousel: GalleryCarousel,
     fullscreen: GalleryFullscreen,
+    collage: GalleryCollage,
+    instagram_cta: GalleryInstagram,
   },
   contact_form: {
     default: ContactFormDefault,
@@ -216,6 +250,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     image_right: ImageTextRight,
     image_left: ImageTextLeft,
     image_top: ImageTextTop,
+    color_block: ImageTextColor,
+    editorial: ImageTextEditorial,
   },
   team: {
     grid: TeamGrid,
@@ -243,6 +279,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     centered: TextBlockCentered,
     left: TextBlockLeft,
     two_columns: TextBlockTwoColumns,
+    inline_icons: TextBlockIconos,
   },
   newsletter: {
     simple: NewsletterSimple,
@@ -267,6 +304,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     grid: ProductsGrid,
     carousel: ProductsCarousel,
     list: ProductsList,
+    editorial: RejillaEditorial,
   },
   categories_grid: {
     default: CategoriesGrid,
@@ -400,6 +438,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   transformation: {
     before_after: TransformationBeforeAfter,
+    slider: AntesDespues,
   },
   // Transport
   routes: {
@@ -441,6 +480,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   features_grid: {
     alternating: FeaturesGridAlternating,
     icons: FeaturesGridAlternating,
+    photo_columns: RasgosConFoto,
   },
   integrations: {
     logos: IntegrationsLogos,
@@ -481,6 +521,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   product_specs: {
     default: ProductSpecs,
+    icon_grid: ProductSpecsIconos,
+    panel: ProductSpecsPanel,
   },
   product_faq: {
     default: ProductFAQ,
@@ -494,6 +536,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   category_filters: {
     default: CategoryFilters,
+    sidebar_facets: FiltrosLaterales,
   },
   category_products: {
     default: CategoryProducts,
@@ -503,6 +546,35 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   category_seo_text: {
     default: CategorySeoText,
+  },
+  // Plantillas de tienda — ficha (W4)
+  product_anchor_nav: {
+    tabs: NavAnclas,
+  },
+  product_pager: {
+    default: AnteriorSiguiente,
+  },
+  complete_the_look: {
+    default: CompletaElLook,
+  },
+  // Plantillas de tienda — secciones nuevas (W6)
+  shop_the_look: {
+    hotspots: CompraElLook,
+  },
+  product_index: {
+    list: IndiceProductos,
+  },
+  product_anatomy: {
+    default: AnatomiaProducto,
+  },
+  welcome_popup: {
+    coupon: VentanaBienvenida,
+  },
+  link_cloud: {
+    pills: NubeEnlaces,
+  },
+  service_cards: {
+    over_image: TarjetasServicio,
   },
 }
 
@@ -534,6 +606,16 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
 
   const settings = (section.settings || {}) as Record<string, any>
   const content = (section.content || {}) as Record<string, any>
+
+  // Secciones nuevas de tienda sin datos reales: en el sitio público no pintan nada (ni el margen
+  // de la sección) y en la vista previa muestran el aviso. Para cualquier otro tipo devuelve null.
+  const vaciaTienda = motivoSeccionTiendaVacia(section.section_type, section.section_variant, content, data)
+  if (vaciaTienda) return <EditorHint title={vaciaTienda.titulo}>{vaciaTienda.texto}</EditorHint>
+
+  // La ventana de bienvenida es una capa fija: no lleva SectionWrapper (ni margen ni fondo).
+  if (section.section_type === 'welcome_popup') {
+    return <Component content={content} organization={organization} primaryColor={primaryColor} data={data} sectionVariant={section.section_variant} sectionId={section.id} />
+  }
 
   if (section.section_type === 'newsletter' && leerBoletin(content)) {
     return (

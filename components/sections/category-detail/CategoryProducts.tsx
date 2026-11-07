@@ -17,6 +17,7 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { rejillaConLineas } from '@/lib/website/tarjetaPlantillasTienda'
 
 export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
 
@@ -53,7 +54,10 @@ function getProductImageUrl(product: any): string | null {
 
 export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: CategoryProductsProps) {
   const { ruta } = useRutaSitio()
-  const separacion = separacionTarjetas(useEstiloTarjeta((content as { product_card_style?: unknown } | undefined)?.product_card_style))
+  const estiloSeccion = useEstiloTarjeta((content as { product_card_style?: unknown } | undefined)?.product_card_style)
+  const separacion = separacionTarjetas(estiloSeccion)
+  // card_grid_lines (plantillas de tienda): sin la clave es null y la rejilla queda igual que hoy.
+  const lineas = rejillaConLineas(estiloSeccion)
   const router = useRouter()
   const products = data?.products || []
   const categorySlug = data?.categorySlug || ''
@@ -142,7 +146,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
   return (
     <>
       {view === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6" style={separacion}>
+        <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6${lineas ? ` ${lineas.className}` : ''}`} style={lineas ? { ...separacion, ...lineas.style } : separacion}>
           {products.map((product: any) => (
             <ProductCard
               key={product.id}

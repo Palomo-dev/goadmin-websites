@@ -22,7 +22,7 @@ import { HeroButtons, type HeroButtonItem } from '../hero/HeroButtons'
 import { acentoDe, partesTitulo, TituloConResaltado } from '../hero/TituloResaltado'
 import { estiloSolapa, RADIO_PORTADA, rutaSede } from './comunPortada'
 
-export const CONTENT_KEYS = [...CLAVES_SECCION_TIENDA['hero.floating'], 'subtitle'] as const
+export const CONTENT_KEYS = CLAVES_SECCION_TIENDA['hero.floating']
 
 const MAX_CHIPS = 4
 

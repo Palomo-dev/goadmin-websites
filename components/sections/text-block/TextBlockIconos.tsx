@@ -13,7 +13,7 @@ import * as Iconos from 'lucide-react'
 import { CLAVES_SECCION_TIENDA, normalizarTextoConIconos } from '@/lib/website/v2/contrato/seccionesTienda'
 import { EditorHint } from '../restaurant/EditorHint'
 
-export const CONTENT_KEYS = [...CLAVES_SECCION_TIENDA['text_block.inline_icons'], 'title'] as const
+export const CONTENT_KEYS = CLAVES_SECCION_TIENDA['text_block.inline_icons']
 
 type Icono = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>
 
