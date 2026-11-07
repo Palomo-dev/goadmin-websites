@@ -12,6 +12,7 @@ import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
+import { textoAyudaVariante, textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
 
 interface VariantProduct {
   id: number
@@ -60,6 +61,14 @@ interface VariantSelectorProps {
   /** Para descontar del tope lo que ya está en el carrito. Sin él, se deduce del host. */
   organizationSubdomain?: string
   branchId?: number | null
+  /** Plantillas de tienda: «Agregar al carrito · $ X» con la variante elegida. Ausente = hoy. */
+  precioEnBoton?: boolean
+  /**
+   * Plantillas de tienda (`button_hint: 'auto'`): no se preselecciona la primera variante; el
+   * botón queda deshabilitado con «Elige tu talla» (nombre del atributo sin elegir) hasta que
+   * elija. Ausente = hoy (se preselecciona la primera disponible).
+   */
+  ayudaVariante?: boolean
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -85,6 +94,8 @@ export function VariantSelector({
   ordenAtributos = null,
   organizationSubdomain,
   branchId,
+  precioEnBoton = false,
+  ayudaVariante = false,
 }: VariantSelectorProps) {
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [mods, setMods] = useState<SelectedModifier[]>([])
@@ -133,9 +144,11 @@ export function VariantSelector({
     return result
   }, [variants, ordenAtributos])
 
-  // Pre-seleccionar primera variante
+  // Pre-seleccionar primera variante (con la ayuda del botón, el cliente elige: no se preselecciona).
   useEffect(() => {
-    if (variants.length > 0 && !selectedVariant) {
+    if (ayudaVariante) {
+      // Plantillas de tienda: sin preselección.
+    } else if (variants.length > 0 && !selectedVariant) {
       const inicial = primeraVarianteDisponible(variants)!
       setSelectedVariant(inicial)
       setSelectedAttributes(inicial.variant_data || {})
@@ -404,12 +417,15 @@ export function VariantSelector({
         ) : variants.length === 0 ? (
           // Padre sin variantes activas: no hay talla que elegir y el padre no se vende solo.
           'No disponible'
+        ) : ayudaVariante && !selectedVariant ? (
+          // Plantillas de tienda: el botón dice qué falta elegir (sigue deshabilitado).
+          textoAyudaVariante(Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0])
         ) : outOfStock ? (
           'Sin stock'
         ) : (
           <>
             <ShoppingCart className="h-5 w-5 mr-2" />
-            Agregar al carrito
+            {precioEnBoton && price ? textoBotonConPrecio('Agregar al carrito', formatPrice(Number(price))) : 'Agregar al carrito'}
           </>
         )}
       </Button>

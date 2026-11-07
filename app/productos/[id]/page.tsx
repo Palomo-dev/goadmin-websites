@@ -32,7 +32,11 @@ import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
-import { ProductDetailRenderer } from '@/components/sections/product-detail/ProductDetailRenderer'
+import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
+import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
+import { normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
+import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
+import { getCompletaElLook } from '@/lib/queries/tienda/look'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { textoPlanoONulo } from '@/lib/texto/textoPlano'
 
@@ -368,6 +372,34 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
 
   const hasTemplateSections = productDetailTemplate && productDetailTemplate.website_page_sections.length > 0
 
+  // Plantillas de tienda: datos de los bloques nuevos de la ficha. Cada consulta corre SOLO si la
+  // plantilla trae su bloque visible, una vez por render y con la caché del catálogo por org.
+  let extrasFicha: ExtrasFicha | null = null
+  const seccionesFicha = hasTemplateSections ? productDetailTemplate.website_page_sections : []
+  const conPaginador = tieneBloque(seccionesFicha, TIPO_PAGINADOR_FICHA)
+  const bloqueLook = seccionesFicha.find((s) => s.section_type === TIPO_COMPLETA_EL_LOOK && s.is_visible !== false)
+  const conFichaTecnica = seccionesFicha.some((s) => s.section_type === 'product_specs'
+    && (s.section_variant === 'icon_grid' || s.section_variant === 'panel') && s.is_visible !== false)
+  if (conPaginador || bloqueLook || conFichaTecnica) {
+    const look = bloqueLook ? normalizarCompletaElLook(bloqueLook.content as Record<string, unknown> | null) : null
+    const [paginador, productosLook] = await Promise.all([
+      conPaginador ? getPaginadorFicha(organization.id, product.category_id ?? null, Number(product.id), branchId) : Promise.resolve(null),
+      look
+        ? getCompletaElLook(organization.id, Number(product.id), product.tag_id ?? null, look.source, look.productIds, look.limit, branchId)
+        : Promise.resolve(null),
+    ])
+    const categoria = conFichaTecnica && product.category_id
+      ? (ctx.categoriasTienda ?? []).find((c) => Number(c.id) === Number(product.category_id)) ?? null
+      : null
+    extrasFicha = {
+      paginador,
+      look: productosLook,
+      categoria: categoria ? { name: categoria.name, slug: categoria.slug } : null,
+    }
+  } else {
+    // Sin bloques nuevos: ninguna consulta extra, la ficha de siempre.
+  }
+
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
       {/* JSON-LD Product */}
@@ -405,6 +437,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           puedePedir={puedePedir}
           prefijoSede={prefijo}
           ordenAtributos={ordenAtributos}
+          extrasFicha={extrasFicha}
         />
       ) : (
       <div className="container mx-auto px-4 py-12">

@@ -2,7 +2,8 @@
 
 import { ProductImageGallery, type GallerySettings } from '@/components/site/ProductImageGallery'
 
-export const CONTENT_KEYS = ['layout', 'zoom', 'aspect_ratio', 'show_video', 'show_badges', 'thumb_size'] as const
+// `page_layout` (plantillas de tienda): lo lee ProductDetailRenderer, no la galería.
+export const CONTENT_KEYS = ['layout', 'zoom', 'aspect_ratio', 'show_video', 'show_badges', 'thumb_size', 'page_layout'] as const
 
 interface ProductGalleryProps {
   content: {

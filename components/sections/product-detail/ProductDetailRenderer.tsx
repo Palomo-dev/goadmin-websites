@@ -16,6 +16,16 @@
  *  - El marcador `product_urgency` (aviso de stock bajo + contador) se resuelve aquí; sin
  *    marcador, la urgencia va justo después de `product_info`.
  *
+ * Plantillas de tienda (paquete W4; todo inerte sin sus claves o bloques):
+ *  - Sin `page_settings` (V2), `product_gallery.contenido.page_layout` decide columnas, columna
+ *    fija, ancho de la galería y migas (`resolverDisenoFicha`). Con `page_settings` (legacy), lo
+ *    de siempre. Sin `page_layout`, los defaults de hoy.
+ *  - Bloques nuevos: `product_anchor_nav` (pestañas ancla), `product_pager` (anterior y siguiente)
+ *    y `complete_the_look`. Sus datos (vecinos, productos del look) los consulta la página solo
+ *    si el bloque está, y llegan en `extrasFicha`.
+ *  - Con pestañas ancla, cada bloque destino lleva un envoltorio con `id` = su tipo. Sin ellas,
+ *    ningún envoltorio: el marcado es el de hoy.
+ *
  * Los bloques de ficha sin `settings` (estilo por sección) se pintan directo, sin
  * SectionWrapper: el wrapper agrega `<section>` con relleno de sección y un bloque vacío
  * (p. ej. beneficios en un restaurante) dejaba hueco. Con `settings` pasan por SectionRenderer
@@ -37,6 +47,15 @@ import type { WebsitePageWithSections, WebsitePageSection } from '@/types/databa
 import { buildDefaultProductDetailSections, TIPO_URGENCIA_FICHA } from '@/lib/defaultProductDetailSections'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
+import {
+  TIPOS_ANCHO_COMPLETO_TIENDA,
+  TIPOS_BLOQUE_FICHA_TIENDA,
+  TIPO_PESTANAS_ANCLA,
+  destinosPresentes,
+  idAncla,
+  resolverDisenoFicha,
+  type PaginadorFichaDatos,
+} from './fichaTienda'
 
 function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
@@ -44,12 +63,26 @@ function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty
 }
 
 /** Bloques propios de la ficha: sin estilo por sección se pintan sin SectionWrapper. */
-const TIPOS_BLOQUE_FICHA = new Set([
+const TIPOS_BLOQUE_FICHA = new Set<string>([
   'product_gallery', 'product_info', 'product_actions', 'product_benefits', 'product_description',
   'related_products', 'product_reviews', 'product_specs', 'product_faq', 'product_shipping',
+  ...TIPOS_BLOQUE_FICHA_TIENDA,
 ])
 /** Tipos que van a todo el ancho, debajo de las columnas. */
-const TIPOS_ANCHO_COMPLETO = new Set(['related_products', 'product_reviews'])
+const TIPOS_ANCHO_COMPLETO = new Set<string>(['related_products', 'product_reviews', ...TIPOS_ANCHO_COMPLETO_TIENDA])
+
+/**
+ * Datos de los bloques nuevos de las plantillas de tienda. La página solo los consulta si la
+ * plantilla trae el bloque; ausentes, los bloques no se pintan.
+ */
+export interface ExtrasFicha {
+  /** `product_pager`: vecinos en el orden de la categoría. */
+  paginador?: PaginadorFichaDatos | null
+  /** `complete_the_look`: productos que se llevan con este. */
+  look?: any[] | null
+  /** `product_specs · icon_grid/panel`, fila «Categoría». */
+  categoria?: { name: string; slug?: string | null } | null
+}
 
 interface ProductDetailRendererProps {
   organization: OrganizationWithDetails
@@ -72,6 +105,8 @@ interface ProductDetailRendererProps {
   prefijoSede?: string
   /** Orden del catálogo de variantes (`variant_values.display_order`). */
   ordenAtributos?: OrdenAtributos | null
+  /** Plantillas de tienda: datos de los bloques nuevos (ver {@link ExtrasFicha}). */
+  extrasFicha?: ExtrasFicha | null
 }
 
 export function ProductDetailRenderer({
@@ -92,6 +127,7 @@ export function ProductDetailRenderer({
   puedePedir = true,
   prefijoSede = '',
   ordenAtributos = null,
+  extrasFicha = null,
 }: ProductDetailRendererProps) {
   const volver = restaurante
     ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
@@ -103,10 +139,6 @@ export function ProductDetailRenderer({
 
   // F9.3 — Ajustes de layout de la página
   const pageSettings = (templatePage?.page_settings || {}) as Record<string, any>
-  const columns = pageSettings.columns || '2' // '1' | '2' | '2+sidebar'
-  const stickyColumn = pageSettings.sticky_column !== false // default true
-  const galleryWidth = pageSettings.gallery_width ?? 50
-  const showBreadcrumb = pageSettings.show_breadcrumb !== false
 
   // ---- Datos compartidos para las secciones ----
   const sectionData: Record<string, any> = {
@@ -156,6 +188,28 @@ export function ProductDetailRenderer({
   const visibles = secciones.filter((s) => s.is_visible !== false)
   const conMarcador = visibles.some((s) => s.section_type === TIPO_URGENCIA_FICHA)
 
+  // Columnas, columna fija, ancho de galería y migas: `page_settings` (legacy) como siempre; sin
+  // él (V2), el `page_layout` de la galería; sin `page_layout`, los defaults de hoy.
+  const { columns, stickyColumn, galleryWidth, showBreadcrumb } = resolverDisenoFicha(templatePage?.page_settings ?? null, secciones)
+
+  // Plantillas de tienda: datos de los bloques nuevos, solo si la página los trae.
+  const conAnclas = visibles.some((s) => s.section_type === TIPO_PESTANAS_ANCLA)
+  // Un «Completa el look» sin productos no se pinta: su pestaña tampoco.
+  if (conAnclas) {
+    sectionData.destinosAncla = destinosPresentes(visibles)
+      .filter((d) => d !== 'complete_the_look' || (extrasFicha?.look?.length ?? 0) > 0)
+  }
+  if (extrasFicha) {
+    sectionData.paginadorFicha = extrasFicha.paginador ?? null
+    sectionData.lookFicha = extrasFicha.look ?? []
+    sectionData.categoriaFicha = extrasFicha.categoria ?? null
+    sectionData.prefijoSede = prefijoSede
+  } else {
+    // Sin extras: los datos de siempre.
+  }
+  /** Tipos que ya llevan su ancla (solo el primer bloque de cada tipo la lleva). */
+  const anclasPuestas = new Set<string>()
+
   const principales = visibles.filter((s) => !TIPOS_ANCHO_COMPLETO.has(s.section_type))
   const anchoCompleto = visibles.filter((s) => TIPOS_ANCHO_COMPLETO.has(s.section_type))
   const idPrimera = [...principales, ...anchoCompleto].find((s) => s.section_type !== TIPO_URGENCIA_FICHA)?.id
@@ -184,10 +238,23 @@ export function ProductDetailRenderer({
         isFirst={section.id === idPrimera}
       />
     )
+    // Con pestañas ancla, el destino lleva su id (= su tipo). Sin ellas, el nodo tal cual.
+    const ancla = conAnclas ? idAncla(section.section_type) : null
+    let bloque: React.ReactNode = nodo
+    if (ancla && !anclasPuestas.has(ancla)) {
+      anclasPuestas.add(ancla)
+      bloque = (
+        <div key={`${section.id}__ancla`} id={ancla} className="scroll-mt-[calc(var(--header-h,72px)+3rem)]">
+          {nodo}
+        </div>
+      )
+    } else {
+      // Sin ancla: lo de hoy.
+    }
     // Plantilla sin marcador: la urgencia va justo después de la información.
     const urgenciaTrasInfo = !conMarcador && section.section_type === 'product_info'
       && (section.content as Record<string, unknown> | null)?.show_countdown !== false
-    return urgenciaTrasInfo ? [nodo, urgencia(`${section.id}__urgencia`)] : nodo
+    return urgenciaTrasInfo ? [bloque, urgencia(`${section.id}__urgencia`)] : bloque
   }
 
   // Breadcrumb

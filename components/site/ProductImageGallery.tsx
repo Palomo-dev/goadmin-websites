@@ -2,10 +2,14 @@
 
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { celdasMosaico } from '@/components/sections/product-detail/fichaTienda'
 
 export interface GallerySettings {
-  /** 'carousel' (flechas + dots), 'scroll' (scroll vertical/horizontal), 'grid' (grilla), 'show_all' (todas visibles en columna) */
-  gallery_layout?: 'carousel' | 'scroll' | 'grid' | 'show_all'
+  /**
+   * 'carousel' (flechas + dots), 'scroll' (scroll vertical/horizontal), 'grid' (grilla), 'show_all' (todas visibles en columna),
+   * 'mosaic' (plantillas de tienda: 1 grande · 2 medianas · 1 grande, `GALERIA_MOSAICO` del contrato).
+   */
+  gallery_layout?: 'carousel' | 'scroll' | 'grid' | 'show_all' | 'mosaic'
   /** 'bottom' | 'left' | 'right' | 'none' */
   thumbnails_position?: 'bottom' | 'left' | 'right' | 'none'
   /** Mostrar flechas de navegación en carousel */
@@ -63,6 +67,29 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
               className="w-full h-full object-cover hover:scale-105 transition-transform"
+            />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // ---- Modo mosaic (plantillas de tienda): 1 grande · 2 medianas · 1 grande, y se repite ----
+  if (layout === 'mosaic') {
+    const celdas = celdasMosaico(images.length)
+    return (
+      <div className="grid grid-cols-2 gap-2" data-galeria-mosaico="">
+        {images.map((url, i) => (
+          <div
+            key={i}
+            className={`overflow-hidden rounded-[var(--radio-sitio,0.75rem)] ${celdas[i] === 'grande' ? 'col-span-2 aspect-[5/6]' : 'aspect-[3/4]'}`}
+            style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
+          >
+            <img
+              src={url}
+              alt={`${productName} - imagen ${i + 1}`}
+              className="h-full w-full object-cover"
+              loading={i === 0 ? undefined : 'lazy'}
             />
           </div>
         ))}

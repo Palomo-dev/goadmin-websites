@@ -15,6 +15,7 @@ import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
+import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -52,6 +53,16 @@ interface ProductDetailActionsProps {
   puedePedir?: boolean
   /** Orden del catálogo de variantes (`variant_values.display_order`). */
   ordenAtributos?: OrdenAtributos | null
+  /**
+   * Plantillas de tienda (`product_actions.show_price_in_button`): «Agregar al carrito · $ X».
+   * Ausente o `false` = el botón de hoy.
+   */
+  precioEnBoton?: boolean
+  /**
+   * Plantillas de tienda (`product_actions.button_hint: 'auto'`): con variantes, nada viene
+   * elegido y el botón dice «Elige tu talla» hasta que el cliente elija. Ausente o `false` = hoy.
+   */
+  ayudaVariante?: boolean
 }
 
 export function ProductDetailActions({
@@ -71,6 +82,8 @@ export function ProductDetailActions({
   restaurante = null,
   puedePedir = true,
   ordenAtributos = null,
+  precioEnBoton = false,
+  ayudaVariante = false,
 }: ProductDetailActionsProps) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
@@ -221,6 +234,8 @@ export function ProductDetailActions({
           ordenAtributos={ordenAtributos}
           organizationSubdomain={organizationSubdomain}
           branchId={branchId}
+          precioEnBoton={precioEnBoton}
+          ayudaVariante={ayudaVariante}
         />
         {campoNota}
       </div>
@@ -330,6 +345,7 @@ export function ProductDetailActions({
           disabled={outOfStock || sinCupo}
           className={buttonsLayout === 'inline' ? 'flex-1' : undefined}
           branchId={branchId}
+          etiqueta={precioEnBoton ? textoBotonConPrecio('Agregar al carrito', formatPrice(effectivePrice)) : undefined}
         />
 
         <Button
