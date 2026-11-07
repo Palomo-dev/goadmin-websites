@@ -24,6 +24,7 @@ import {
   type NormalizedTestimonial,
 } from './testimonialsUtils'
 import { SiLista } from '../ListRenderer'
+import { ResumenTestimonios } from './ResumenTestimonios'
 import { proporcionHijos } from '../proporcionCeldas'
 
 interface TestimonialsCarouselProps {
@@ -87,6 +88,7 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
       {content.title && (
         <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-10 text-gray-900 dark:text-white">{content.title}</h2>
       )}
+      <ResumenTestimonios content={content} data={data} className="mb-10 justify-center" />
       {items.length === 0 ? (
         <div className="text-center text-gray-400 py-12 border-2 border-dashed dark:border-gray-700 rounded-lg">
           <p className="text-4xl mb-3">💬</p>

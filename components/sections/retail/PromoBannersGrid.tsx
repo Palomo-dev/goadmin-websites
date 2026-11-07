@@ -7,6 +7,9 @@ import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
 import { usarDistribucionNueva } from '@/lib/website/distribucionBanner'
 import { BannersConfigurados } from './BannersConfigurados'
 import { SiLista } from '../ListRenderer'
+import { normalizarCodigoCupon, normalizarCuponBanner, type CuponBanner } from '@/lib/website/v2/contrato/seccionesTienda'
+import { hoyEnZona } from '@/lib/restaurant/horario'
+import { CuponCopiable, VigenciaCupon } from './CuponBanner'
 
 export type { BannerItem }
 export { resolveBannerHref }
@@ -53,13 +56,29 @@ interface PromoBannersGridProps {
     products?: any[]
     bannerCategoryProducts?: Record<number, any[]>
     bannerPages?: Record<string, { slug: string; title: string }>
+    /** Día de hoy (YYYY-MM-DD) en la zona de la organización; solo si algún banner trae cupón. */
+    hoyCupon?: string
   }
+  /** Zona horaria de la organización (vence el cupón de `valid_until`). */
+  organization?: { timezone?: string | null } | null
 }
 
-export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: PromoBannersGridProps) {
+/**
+ * Cupón visible de un banner (plantillas de tienda): `null` sin código o vencido. Sin
+ * `coupon_code` en ningún banner no se calcula nada y el banner es el de siempre.
+ */
+function cuponVisible(banner: unknown, hoy: string): CuponBanner | null {
+  const c = hoy ? normalizarCuponBanner(banner, hoy) : null
+  return c && !c.vencido ? c : null
+}
+
+export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data, organization }: PromoBannersGridProps) {
+  // Cupón del banner: «hoy» en la zona de la organización, solo si algún banner trae código.
+  const hayCupon = (content.banners || []).some((b) => normalizarCodigoCupon((b as { coupon_code?: unknown } | null)?.coupon_code) !== '')
+  const hoy = hayCupon ? hoyEnZona(organization?.timezone) : ''
   const nuevo = usarDistribucionNueva(content)
   if (nuevo) {
-    return <BannersConfigurados content={content} config={nuevo} primaryColor={primaryColor} data={data} />
+    return <BannersConfigurados content={content} config={nuevo} primaryColor={primaryColor} data={hayCupon ? { ...data, hoyCupon: hoy } : data} />
   }
   const banners = content.banners || []
   const layout = content.layout || 'grid'
@@ -105,6 +124,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
               ghost: 'text-white hover:underline',
             }[buttonStyle]
 
+            const cupon = hayCupon ? cuponVisible(banner, hoy) : null
             const fotoNatural = altoNatural && Boolean(banner.image_url)
             const fotoNaturalMd = !fotoNatural && altoNaturalEscritorio && Boolean(banner.image_url)
             const card = (
@@ -135,10 +155,14 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
                       : 'relative z-10'}
                   style={{ color: textColor }}
                 >
+                  {cupon && <VigenciaCupon cupon={cupon} className="mb-3" />}
                   {banner.title && (
-                    <h3 className="text-2xl font-bold mb-2">{banner.title}</h3>
+                    <h3 className="text-2xl font-bold mb-2">
+                      {cupon && href && !buttonText ? <Link href={href} className="hover:underline">{banner.title}</Link> : banner.title}
+                    </h3>
                   )}
                   {banner.subtitle && <p className="mb-4 opacity-90">{banner.subtitle}</p>}
+                  {cupon && <CuponCopiable cupon={cupon} className="mb-4" />}
 
                   {showPreview && previewProducts.length > 0 && (
                     <div className="flex gap-2 mb-4 flex-wrap">
@@ -171,16 +195,21 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
                     </div>
                   )}
 
-                  {buttonText && href && (
+                  {buttonText && href && (cupon ? (
+                    // Con cupón el banner no va dentro de un enlace (el cupón es un botón): el botón sí enlaza.
+                    <Link href={href} className={`block w-fit px-5 py-2 rounded-lg font-medium transition-colors ${buttonClasses}`}>
+                      {buttonText}
+                    </Link>
+                  ) : (
                     <span className={`inline-block px-5 py-2 rounded-lg font-medium transition-colors ${buttonClasses}`}>
                       {buttonText}
                     </span>
-                  )}
+                  ))}
                 </div>
               </div>
             )
 
-            return href ? (
+            return href && !cupon ? (
               <Link key={i} href={href} className="block group">
                 {card}
               </Link>

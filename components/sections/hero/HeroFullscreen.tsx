@@ -6,6 +6,8 @@ import { heroSolapa, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 import { ajusteImagen, cssAltura, planAlturaPortada, proporcionImagen, puntoFocal } from '@/lib/website/alturaHero'
+import { normalizarTituloResaltado } from '@/lib/website/v2/contrato/seccionesTienda'
+import { acentoDe, partesTitulo, TituloConResaltado } from './TituloResaltado'
 
 function useMedida(url: string | null, ancho: unknown, alto: unknown, activo: boolean): string | null {
   const guardada = proporcionImagen(ancho, alto)
@@ -153,6 +155,10 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
 
   const pos = positionClasses(contentPosition)
   const alignClass = textAlignClass(textAlign)
+  // Plantillas de tienda: palabra resaltada del título, solo con `title_highlight` y si la palabra
+  // está en el título. Sin la clave, `partes` es null y el título es el de siempre.
+  const resaltado = normalizarTituloResaltado(content as Record<string, unknown>)
+  const partes = partesTitulo(title, resaltado)
   return (
     <div
       className={`relative ${idAltura} ${bookingHeightClass} flex ${pos} text-white`}
@@ -197,7 +203,7 @@ export function HeroFullscreen({ content, organization, primaryColor }: HeroFull
       <div className={`relative z-10 ${showBooking ? 'max-w-4xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 py-8 ${alignClass}`}>
         {showTitle && (
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight" style={estiloTitulo(content as any)}>
-            {title}
+            {partes ? <TituloConResaltado partes={partes} estilo={resaltado.style} acento={acentoDe(organization, primaryColor)} /> : title}
           </h1>
         )}
         {showTitle && subtitle && (

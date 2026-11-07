@@ -1,3 +1,5 @@
+import { normalizarMiniaturas } from '@/lib/website/v2/contrato/seccionesTienda'
+
 interface ImageTextRightProps {
   content: {
     title?: string
@@ -12,6 +14,26 @@ interface ImageTextRightProps {
 }
 
 export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
+  // Plantillas de tienda (Marea): hasta 3 miniaturas bajo la foto. Sin `thumbnails`, lo de siempre.
+  const miniaturas = normalizarMiniaturas(content as Record<string, unknown>)
+  const foto = (
+    <div className="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-[4/3]">
+      {content.image_url || content.image_url_mobile ? (
+        content.image_url_mobile && content.image_url_mobile !== content.image_url ? (
+          <picture className="block h-full w-full">
+            <source media="(max-width: 767px)" srcSet={content.image_url_mobile} />
+            <img src={content.image_url || content.image_url_mobile} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
+          </picture>
+        ) : (
+          <img src={content.image_url || content.image_url_mobile || ''} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
+        )
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-gray-400">
+          <span className="text-4xl">🖼️</span>
+        </div>
+      )}
+    </div>
+  )
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div>
@@ -32,22 +54,20 @@ export function ImageTextRight({ content, primaryColor }: ImageTextRightProps) {
           </a>
         )}
       </div>
-      <div className="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-[4/3]">
-        {content.image_url || content.image_url_mobile ? (
-          content.image_url_mobile && content.image_url_mobile !== content.image_url ? (
-            <picture className="block h-full w-full">
-              <source media="(max-width: 767px)" srcSet={content.image_url_mobile} />
-              <img src={content.image_url || content.image_url_mobile} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
-            </picture>
-          ) : (
-            <img src={content.image_url || content.image_url_mobile || ''} alt={content.title || ''} className="w-full h-full object-cover" loading="lazy" />
-          )
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <span className="text-4xl">🖼️</span>
-          </div>
-        )}
-      </div>
+      {miniaturas.length > 0 ? (
+        <div data-miniaturas="">
+          {foto}
+          <ul className="mt-3 flex gap-3">
+            {miniaturas.map((url, i) => (
+              <li key={`${url}-${i}`} className="aspect-[4/5] w-20 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700 md:w-24">
+                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        foto
+      )}
     </div>
   )
 }
