@@ -571,7 +571,7 @@ function FormularioCompleto({ flujo, base, ctaText, showNotes }: { flujo: Flujo;
 // Confirmación
 // ---------------------------------------------------------------------------
 
-function enlacesCalendario(r: ReservaCreada, zona: string, titulo: string, lugar: string | null) {
+export function enlacesCalendario(r: ReservaCreada, zona: string, titulo: string, lugar: string | null) {
   const inicio = instanteEnZona(r.date, r.time.slice(0, 5), zona)
   const fin = new Date(inicio.getTime() + DURACION_TURNO_MIN * 60_000)
   const utc = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')

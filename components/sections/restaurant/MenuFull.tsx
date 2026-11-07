@@ -127,7 +127,7 @@ interface CartaResuelta {
  * - Pestañas sin carta fija y con varias cartas: una pestaña por carta con su horario de hoy,
  *   sus excepciones y sus variantes/extras ocultos.
  */
-function resolverCartaErp(
+export function resolverCartaErp(
   cartas: unknown,
   content: Record<string, unknown>,
   variant: MenuFullVariant,

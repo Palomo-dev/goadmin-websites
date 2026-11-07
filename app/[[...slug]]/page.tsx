@@ -42,6 +42,10 @@ import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
 import { legalSinTexto } from '@/lib/website/v2/textoLegalPublico'
 import { sitioVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
 import { getSedesRestaurante } from '@/lib/restaurant/sedes'
+import { getPlanosMesas } from '@/lib/restaurant/planoMesas.server'
+import { sedesDeReservaPlano } from '@/lib/restaurant/planoMesas'
+import { esSedesRestaurante } from '@/lib/restaurant/sedes-modelo'
+import { VARIANTE_RESERVA_PLANO } from '@/lib/website/v2/contrato/seccionesCafe'
 import { getClasesDeSeccion, getFlotaDeSeccion, getPlanesDeSeccion, getRutasDeSeccion, getServiciosDeSeccion } from '@/lib/website/datosSecciones'
 import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
@@ -251,6 +255,25 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // lead) leen lo mismo: sin la precarga caían a los límites de la base y sin selector.
     if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview' || t === 'table_service' || t === 'table_order' || t === 'table_bill')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
+    }
+    // Reserva con plano de mesas (plantilla «Café de especialidad»): solo si la página tiene
+    // `reservation` · `floor_plan`. Una RPC por sede con mesas, cacheada por organización y sedes
+    // (lib/restaurant/planoMesas.server.ts). Sin esa variante no se consulta nada.
+    const seccionesPlano = page.website_page_sections.filter(
+      (s) => s.section_type === 'reservation' && s.section_variant === VARIANTE_RESERVA_PLANO
+    )
+    if (seccionesPlano.length > 0 && esSedesRestaurante(data.sedesRestaurante)) {
+      const idsPlano = new Set<number>()
+      for (const s of seccionesPlano) {
+        const c = (s.content ?? {}) as Record<string, unknown>
+        const elegidas = Array.isArray(c.branch_ids) ? c.branch_ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : []
+        for (const sede of sedesDeReservaPlano(data.sedesRestaurante, { sedePagina: typeof branchId === 'number' ? branchId : null, elegidas, modoGuardado: c.booking_mode })) {
+          idsPlano.add(sede.id)
+        }
+      }
+      data.planosMesas = await getPlanosMesas(organization.id, Array.from(idsPlano))
+    } else {
+      // Sin plano en la página: como siempre, nada que leer.
     }
 
     if (sectionTypes.includes('room_types')) {

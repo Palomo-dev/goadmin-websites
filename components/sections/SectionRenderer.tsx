@@ -193,6 +193,10 @@ import { RejillaEditorial } from './tienda/RejillaEditorial'
 import { motivoSeccionTiendaVacia } from './tienda/datosTienda'
 import { EditorHint } from './restaurant/EditorHint'
 
+// Plantilla «Café de especialidad»: cuatro variantes de tipos que ya existen (solo las usa quien
+// las elige). Contrato: lib/website/v2/contrato/seccionesCafe.ts (copia del ERP).
+import { SeccionCartaPuntos, SeccionHistoriaCapitulos, SeccionPortadaEditorial, SeccionReservaPlano } from './cafe/secciones'
+
 // Secciones saas
 import { PricingTableColumns } from './saas/PricingTableColumns'
 import { FeaturesGridAlternating } from './saas/FeaturesGridAlternating'
@@ -214,6 +218,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     brand_giant: HeroMarca,
     floating: HeroFlotante,
     split_products: HeroSplitProductos,
+    // Café de especialidad: fotos que rotan con texto y botones fijos.
+    carousel_editorial: SeccionPortadaEditorial,
   },
   testimonials: {
     carousel: TestimonialsCarousel,
@@ -338,6 +344,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     editorial: MenuFull,
     // Carta para el celular en la mesa (Carta QR): buscador, dieta y alérgenos, «+» de 44 px.
     qr: MenuFull,
+    // Café de especialidad: pestañas en cursiva y línea de puntos hasta el precio.
+    dotted: SeccionCartaPuntos,
   },
   specialties: {
     featured: SpecialtiesFeatured,
@@ -353,6 +361,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     band: Reservation,
     hero_widget: Reservation,
     external: Reservation,
+    // Café de especialidad: plano de mesas de POS › Mesas (sin plano, cae a `stepper`).
+    floor_plan: SeccionReservaPlano,
   },
   // Horario y sedes (Figma Locations 144:6644). Datos de `branches`.
   hours_location: {
@@ -487,6 +497,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
   },
   how_it_works: {
     steps: HowItWorksSteps,
+    // Café de especialidad: historia por capítulos con imagen.
+    chapters: SeccionHistoriaCapitulos,
   },
   demo_cta: {
     form: DemoCtaForm,
