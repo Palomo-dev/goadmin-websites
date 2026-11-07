@@ -14,6 +14,8 @@ import { useEncabezadoPie } from './EncabezadoPieContext'
 import { useTemaColores } from './TemaColoresContext'
 import { BotonWhatsappPie, IconoTikTok, MapaPie, MediosPagoPie } from './footer/PieExtras'
 import { PieTema } from './footer/PieTema'
+import { PieMarca } from './footer/PieMarca'
+import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie'
 import { hrefDeSlug, logoSegunFondo, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
 
 interface SiteFooterProps {
@@ -325,10 +327,20 @@ export function SiteFooter({
     ...(opcionesShell.pie.whatsapp ? { whatsapp: MessageCircle } : {}),
   }
 
+  // Plantillas de tienda (shell.footer.opciones; sin columna legacy): marca gigante, pie como
+  // tarjeta con margen y enlaces grandes. Sin las claves, `marcaGigante` es null y `conTarjeta`
+  // devuelve el mismo pie: el HTML de hoy (scripts/verify-shell-plantillas.mjs).
+  const tienda = opcionesPlantillaTienda(settings as Record<string, unknown> | null)
+  const marcaGigante = tienda.pie.marca === 'giant'
+    ? <PieMarca nombre={organization.name} figuraUrl={tienda.pie.figuraMarca} />
+    : null
+  const conTarjeta = (pie: React.ReactElement): React.ReactElement =>
+    tienda.pie.tarjeta ? <div className="px-4 pb-4" data-pie-tarjeta="">{pie}</div> : pie
+
   // ===== Sitio V2 con tema: el pie de las láminas de Figma (footer/PieTema.tsx) =====
   // Legacy (sin tema) sigue por sus cinco composiciones de abajo, sin cambios.
   if (temaColores) {
-    return (
+    return conTarjeta(
       <PieTema
         organization={organization}
         primaryColor={primaryColor}
@@ -344,13 +356,15 @@ export function SiteFooter({
         mostrarRedes={footerShowSocial}
         logoHeight={logoHeight}
         logoUrl={logoPie}
+        marca={marcaGigante}
+        enlacesDisplay={tienda.pie.enlaces === 'display'}
       />
     )
   }
 
   // ===== Layout: minimal =====
   if (footerStyle === 'minimal') {
-    return (
+    return conTarjeta(
       <footer className={footerBgClass} style={footerBgStyle}>
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -433,6 +447,7 @@ export function SiteFooter({
               </p>
             )}
           </div>
+          {marcaGigante}
         </div>
       </footer>
     )
@@ -440,7 +455,7 @@ export function SiteFooter({
 
   // ===== Layout: centered =====
   if (footerStyle === 'centered') {
-    return (
+    return conTarjeta(
       <footer className={footerBgClass} style={footerBgStyle}>
         <div className="container mx-auto px-4 py-12">
           {/* Logo + descripción centrados */}
@@ -540,6 +555,7 @@ export function SiteFooter({
               </p>
             )}
           </div>
+          {marcaGigante}
         </div>
       </footer>
     )
@@ -547,7 +563,7 @@ export function SiteFooter({
 
   // ===== Layout: three_columns =====
   if (footerStyle === 'three_columns') {
-    return (
+    return conTarjeta(
       <footer className={footerBgClass} style={footerBgStyle}>
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -674,6 +690,7 @@ export function SiteFooter({
               </p>
             )}
           </div>
+          {marcaGigante}
         </div>
       </footer>
     )
@@ -681,7 +698,7 @@ export function SiteFooter({
 
   // ===== Layout: split (2 columnas: branding | enlaces) =====
   if (footerStyle === 'split') {
-    return (
+    return conTarjeta(
       <footer className={footerBgClass} style={footerBgStyle}>
         <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
@@ -860,13 +877,14 @@ export function SiteFooter({
               </p>
             )}
           </div>
+          {marcaGigante}
         </div>
       </footer>
     )
   }
 
   // ===== Layout: default (columnas dinámicas, comportamiento original mejorado) =====
-  return (
+  return conTarjeta(
     <footer className={footerBgClass} style={footerBgStyle}>
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className={footerGridClass}>
@@ -1098,6 +1116,7 @@ export function SiteFooter({
               </p>
             )}
           </div>
+          {marcaGigante}
         </div>
       </div>
     </footer>

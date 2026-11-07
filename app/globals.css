@@ -344,6 +344,37 @@ header[data-encabezado-transparente='sobre'][data-encabezado-transparente] > div
 header[data-encabezado-transparente='solido'] > div:last-child {
   box-shadow: 0 6px 24px -12px rgba(0, 0, 0, 0.35);
 }
+/* Encabezado «Píldora» (components/site/header/HeaderPill.tsx, header_style 'pill'): el menú va
+   dentro de una píldora; el enlace de la página actual (data-activo) va relleno. Solo el <header>
+   con data-encabezado-pildora: ningún otro encabezado cambia. Sobre la portada, píldora de vidrio
+   y enlace activo blanco; con fondo, un lavado del color del texto y el activo con el texto del tema. */
+header[data-encabezado-pildora] [data-nav-pildora] > nav {
+  column-gap: 0.25rem;
+  border-color: color-mix(in srgb, currentColor 12%, transparent);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+}
+header[data-encabezado-pildora] [data-nav-pildora] > nav > :is(a, button, div > button) {
+  border-radius: 9999px;
+  padding: 0.375rem 0.875rem;
+}
+header[data-encabezado-pildora][data-encabezado-pildora] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: var(--text-color, #111827);
+  color: var(--background-color, #ffffff) !important;
+}
+/* Sobre la portada, también el nombre del logo y los textos `text-gray-900` (las reglas del tema de
+   arriba les ganan a las del transparente: 0,7,1 contra 0,6,2). Solo la píldora. */
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-transparente='sobre'] > div :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: #ffffff !important;
+}
+header[data-encabezado-pildora][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
+  border-color: rgba(255, 255, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: #ffffff;
+  color: #111111 !important;
+}
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 /* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian).
@@ -369,6 +400,37 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-estilo-boton='sombra_dura'] section[data-section-id] [data-boton='primario'] {
   border: 2px solid var(--text-color, #111827);
   box-shadow: 4px 4px 0 0 var(--text-color, #111827);
+}
+/* Plantillas de tienda (CONTRATO P0 §3). Cuelgan de atributos que solo pone atributosTema cuando
+   el documento los pide (lib/website/v2/temaPublico.ts); sin ellos, el botón de hoy (también los
+   que ya traen `uppercase` en su clase: no se les pisa el text-transform).
+   - Mayúsculas espaciadas: `tokens.boton.mayusculas` + `buttons_uppercase_active`.
+   - Hover: `tokens.hover` — `sutil` oscurece un 8 %; `expresivo` sube 1 px y la flecha avanza 3 px. */
+[data-botones-mayusculas] section[data-section-id] [data-boton] {
+  text-transform: var(--gw-btn-case, none);
+  letter-spacing: var(--gw-btn-tracking, normal);
+}
+[data-tema-hover] section[data-section-id] [data-boton] {
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+[data-tema-hover] section[data-section-id] [data-boton] svg {
+  transition: transform 0.2s ease;
+}
+[data-tema-hover='sutil'] section[data-section-id] [data-boton]:hover {
+  filter: brightness(0.92);
+}
+[data-tema-hover='expresivo'] section[data-section-id] [data-boton]:hover {
+  transform: translateY(-1px);
+}
+[data-tema-hover='expresivo'] section[data-section-id] [data-boton]:hover svg:last-child {
+  transform: translateX(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-tema-hover] section[data-section-id] [data-boton],
+  [data-tema-hover] section[data-section-id] [data-boton] svg {
+    transition: none;
+    transform: none !important;
+  }
 }
 
 /* Panel «Encabezado» / «Pie de página» (lib/website/encabezadoPie.ts). Los atributos solo van en
@@ -417,6 +479,12 @@ header[data-encabezado-transparente='solido'] > div:last-child {
 [data-pie-texto][data-pie-texto][data-pie-texto] footer:not(main *),
 [data-pie-texto][data-pie-texto][data-pie-texto] footer:not(main *) :is(h2, h3, h4, summary, [class*='text-gray-'], [class~='text-white'], [class~='text-current']):not([style*='background-color']) {
   color: var(--pie-texto) !important;
+}
+/* Pie como tarjeta (footer_inset, SiteFooter envuelve el <footer> en [data-pie-tarjeta] con margen
+   de 16 px): el radio del tema. Sin la opción no hay envoltorio y esto no aplica. */
+[data-pie-tarjeta] > footer {
+  border-radius: var(--radio-sitio, 16px);
+  overflow: hidden;
 }
 [data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) [class*='border-'],
 [data-pie-sin-separadores][data-pie-sin-separadores] footer:not(main *) details {

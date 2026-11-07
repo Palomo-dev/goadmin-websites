@@ -24,6 +24,7 @@ import HeaderMinimal from './header/HeaderMinimal'
 import HeaderMega from './header/HeaderMega'
 import HeaderTransparent from './header/HeaderTransparent'
 import HeaderCommerce from './header/HeaderCommerce'
+import HeaderPill from './header/HeaderPill'
 import { useScrollEncabezado } from './header/useScrollEncabezado'
 import { ProveedorCapaFija } from './header/CapaFijaEncabezado'
 import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes'
@@ -518,6 +519,9 @@ export default function SiteHeader({
       return <HeaderTransparent {...variantProps} />
     case 'comercio':
       return <HeaderCommerce {...variantProps} />
+    // Píldora (plantillas de tienda y café): antes caía en el clásico; ningún sitio lo usa hoy.
+    case 'pill':
+      return <HeaderPill {...variantProps} />
     default:
       return <HeaderClassic {...variantProps} />
   }
