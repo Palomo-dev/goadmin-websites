@@ -19,19 +19,35 @@ import { useEffect, useState } from 'react';
 import HeaderClassic from './HeaderClassic';
 import type { HeaderVariantProps } from './HeaderShared';
 
+/** Etiquetas que no pintan nada: no cuentan como «primera sección». */
+const SIN_CAJA = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'LINK', 'META', 'NOSCRIPT']);
+
+/**
+ * Caja del primer elemento visible bajo `raiz`. La portada puede venir envuelta (SectionWrapper,
+ * ZonaGlobalPreview…), así que se baja unos niveles; y antes de ella puede haber hermanos sin
+ * caja: el <script> de datos estructurados que la página del café pone como primer hijo de
+ * <main> dejaba el encabezado «sólido» para siempre (org 374, 2026-11-07).
+ */
+function primeraCajaVisible(raiz: Element, nivel = 0): DOMRect | null {
+  for (const hijo of Array.from(raiz.children)) {
+    if (SIN_CAJA.has(hijo.tagName)) continue;
+    const caja = hijo.getBoundingClientRect();
+    if (caja.height > 0) return caja;
+    if (nivel < 3) {
+      const dentro = primeraCajaVisible(hijo, nivel + 1);
+      if (dentro) return dentro;
+    }
+  }
+  return null;
+}
+
 /** ¿La primera sección de <main> sube por debajo del encabezado? */
 function portadaSolapada(header: HTMLElement | null): boolean {
   const main = document.querySelector('main');
   if (!main || !header) return false;
   const fondoHeader = header.getBoundingClientRect().bottom;
-  let el: Element | null = main.firstElementChild;
-  // La portada puede venir envuelta (SectionWrapper, ZonaGlobalPreview…): se baja unos niveles.
-  for (let nivel = 0; el && nivel < 4; nivel++) {
-    const caja = el.getBoundingClientRect();
-    if (caja.height > 0) return caja.top < fondoHeader - 2;
-    el = el.firstElementChild;
-  }
-  return false;
+  const caja = primeraCajaVisible(main);
+  return caja ? caja.top < fondoHeader - 2 : false;
 }
 
 /**

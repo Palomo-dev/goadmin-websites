@@ -53,6 +53,8 @@ export default function MobileFullscreen({
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
+  // Sobre la portada (header_transparent_over_hero): texto e íconos claros, como en escritorio.
+  const sobrePortadaMovil = Object.keys(transparente).length > 0;
   const navItems = buildNavItems(navTree);
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
@@ -80,7 +82,7 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -89,7 +91,7 @@ export default function MobileFullscreen({
             ajustes={settings}
             posicion={posicionLogo}
             minHeight={mp.altoFila}
-            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} />}
+            logo={<HeaderLogo organization={organization} primaryColor={primaryColor} height={mp.altoLogo} fondoOscuro={sobrePortadaMovil} />}
             acciones={
               <>
                 <HeaderActions

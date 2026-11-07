@@ -267,15 +267,18 @@ const hWa = render(secciones.SeccionReservaPlano, { ...contRes, booking_mode: 'w
 check(hWa.includes('data-reserva-plano='), 'reserva: modo WhatsApp renderiza')
 
 // ─── 5. Sin variantes nuevas = main ──────────────────────────────────────────────────────────
+// Base = main justo antes del café (a13b1b3). Ya fusionado, origin/main trae las cuatro variantes y
+// la comparación «solo se suman» quedaría vacía. CAFE_BASE=<ref> para otra base.
+const BASE_CAFE = process.env.CAFE_BASE || 'a13b1b3c4224f2f0f0da7f6a3a34402f40092f75'
 let main = process.env.CAFE_MAIN ? resolve(process.env.CAFE_MAIN) : null
 let temporal = null
 if (!main) {
   try {
     temporal = await mkdtemp(join(tmpdir(), 'verify-cafe-main-'))
-    execFileSync('bash', ['-c', `git -C "${ROOT}" archive origin/main components lib types | tar -x -C "${temporal}"`], { stdio: 'ignore' })
+    execFileSync('bash', ['-c', `git -C "${ROOT}" archive ${BASE_CAFE} components lib types | tar -x -C "${temporal}"`], { stdio: 'ignore' })
     main = temporal
   } catch {
-    notas.push('Sin origin/main: no se compara el HTML con main (CAFE_MAIN=… para indicarlo).')
+    notas.push(`Sin ${BASE_CAFE} en el clon: no se compara el HTML con main de antes del café (CAFE_MAIN=… o CAFE_BASE=…).`)
   }
 }
 if (main) {

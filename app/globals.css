@@ -366,14 +366,60 @@ header[data-encabezado-pildora][data-encabezado-pildora] [data-nav-pildora] > na
 header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-transparente='sobre'] > div :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: #ffffff !important;
 }
-header[data-encabezado-pildora][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
+header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
   border-color: rgba(255, 255, 255, 0.28);
   background-color: rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(12px);
 }
-header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
   background-color: #ffffff;
   color: #111111 !important;
+}
+/* Píldora «isla» (data-pildora-estilo='isla', el café en Figma 2224:46167; es la de sin clave):
+   el menú es una isla clara semitransparente que flota, con borde, sombra y desenfoque, en
+   versalitas espaciadas y con el texto del tema, también sobre la foto (no se vuelve blanco).
+   Al bajar, la barra toma el fondo del tema translúcido para que el logo se siga leyendo. */
+header[data-encabezado-pildora][data-pildora-estilo='isla'][data-pildora-estilo='isla'] [data-nav-pildora] > nav {
+  column-gap: 0.125rem;
+  padding: 0.3125rem 0.625rem;
+  border-color: color-mix(in srgb, var(--text-color, #111827) 10%, transparent);
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 84%, transparent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='isla'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+  color: var(--text-color, #111827) !important;
+}
+header[data-encabezado-pildora][data-pildora-estilo='isla'][data-pildora-estilo='isla'] [data-nav-pildora] > nav > :is(a, button, div > button) {
+  padding: 0.5rem 0.875rem;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='isla'] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: var(--text-color, #111827);
+  color: var(--background-color, #ffffff) !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='isla'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
+  color: var(--background-color, #ffffff) !important;
+}
+header[data-encabezado-pildora][data-pildora-estilo='isla'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'] > div:last-child {
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 78%, transparent) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+/* Celular con el encabezado sobre la portada (MobileDrawer/Fullscreen/Tabs/BottomSheet,
+   data-movil-sobre-portada mientras la página está arriba): el nombre del logo y los íconos de la
+   fila van en blanco sobre la foto. Solo la fila del logo, no el panel del menú. Hoy solo la
+   org 374 publica header_transparent_over_hero (SQL 2026-11-07). */
+header[data-movil-sobre-portada][data-movil-sobre-portada][data-movil-sobre-portada][data-movil-sobre-portada] > div[class*='header-bg-light'] > div:first-child :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+  color: #ffffff !important;
+}
+/* Botón circular del encabezado (header_cta_shape 'circle'): sombra suave como en Figma. */
+header [data-boton-circular] {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }

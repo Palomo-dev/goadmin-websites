@@ -11,6 +11,13 @@
  * `[data-encabezado-transparente]` de app/globals.css) y, al bajar, con el fondo del tema.
  * Sin la opción, siempre con fondo.
  *
+ * Estilo de la píldora (`header_pill_style`):
+ * - `isla` (sin la clave): la del café en Figma (2224:46167): isla clara semitransparente con
+ *   borde, sombra y desenfoque, menú en versalitas espaciadas y texto del tema, también sobre la
+ *   foto. Con la barra transparente sobre la portada, la isla flota sola.
+ * - `vidrio`: la de Panorama (Figma 294:20722): vidrio translúcido con texto blanco sobre la portada.
+ * Hoy solo la org 374 publica `pill` (SQL 2026-11-07), y sin la clave: queda en `isla`.
+ *
  * Antes de existir, `pill` caía en HeaderClassic: ningún sitio publicado lo usa (SQL 2026-11-07,
  * PLANO H2), así que no cambia ningún sitio.
  */
@@ -37,6 +44,7 @@ import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
 import { useEstadoTransparente } from './HeaderTransparent';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
+import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie';
 
 /** ¿El enlace lleva a la página actual? La portada solo con la ruta exacta. */
 export function enlaceActivo(hrefEnlace: string, ruta: string): boolean {
@@ -63,6 +71,8 @@ export default function HeaderPill({
   const sobrePortada = headerSobreHero(settings as Parameters<typeof headerSobreHero>[0]);
   const estado = useEstadoTransparente(sobrePortada);
   const ruta = usePathname() || '/';
+  const estiloPildora = (settings as Record<string, unknown> | null | undefined)?.header_pill_style === 'vidrio' ? 'vidrio' : 'isla';
+  const conCirculo = opcionesPlantillaTienda(settings as Record<string, unknown> | null | undefined).formaBotonEncabezado === 'circle';
 
   // El enlace de la página actual va relleno dentro de la píldora (data-activo, app/globals.css).
   // NavList pinta y mide sus enlaces; aquí solo se marca el que corresponde.
@@ -94,13 +104,15 @@ export default function HeaderPill({
     <header
       className="sticky top-0 z-40 w-full"
       data-encabezado-pildora=""
+      data-pildora-estilo={estiloPildora}
       data-encabezado-transparente={sobrePortada ? estado : undefined}
       style={variablesEncabezado(settings)}
     >
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 24}px` }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          {/* Aire arriba y abajo: la isla y el botón circular (76 px) no tocan el borde. */}
+          <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-2.5" style={{ minHeight: `${Math.max((settings?.logo_height || 48) + 24, conCirculo ? 96 : 0)}px` }}>
             <div className="flex min-w-0 items-center justify-start">
               <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} fondoOscuro={estado === 'sobre'} />
             </div>

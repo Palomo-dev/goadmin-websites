@@ -11,7 +11,7 @@ import { BuscadorCromo } from './BuscadorCromo';
 import { botonesExtraEncabezado, cajaIconosEncabezado, estiloBotonesExtra, leerConstructor } from '@/lib/website/constructorEncabezado';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { leerPresentacionMovil } from '@/lib/website/menuMovil';
-import { MoreHorizontal, LayoutGrid, Minus } from 'lucide-react';
+import { MoreHorizontal, LayoutGrid, Minus, CalendarDays } from 'lucide-react';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -740,11 +740,17 @@ export function HeaderCTA({
   // «Forma del botón» (header_cta_shape, plantillas de tienda): `circle` = un círculo con el texto
   // dentro. Sin la clave (`pill`), el botón de siempre, con su padding y su radio.
   if (opcionesPlantillaTienda(settings as Record<string, unknown> | null | undefined).formaBotonEncabezado === 'circle') {
+    // Ícono encima del texto (Figma 2224:46167): `header_cta_icon` si se eligió; si el botón lleva
+    // a reservas, el calendario; si no, solo el texto.
+    const iconoGuardado = (settings as Record<string, unknown> | null | undefined)?.header_cta_icon;
+    const IconoCirculo = typeof iconoGuardado === 'string' && iconoGuardado
+      ? getLucideIcon(iconoGuardado, CalendarDays)
+      : /reserv/i.test(linkHref) ? CalendarDays : null;
     return (
       <Link
         href={linkHref}
         {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        className="hidden md:inline-flex aspect-square min-h-16 min-w-16 flex-shrink-0 items-center justify-center rounded-full px-3 text-center text-xs font-semibold leading-tight transition-opacity hover:opacity-90"
+        className="hidden md:inline-flex aspect-square h-[76px] w-[76px] flex-shrink-0 flex-col items-center justify-center gap-1 rounded-full px-2 text-center text-[9px] font-semibold uppercase leading-tight tracking-[0.12em] transition-opacity hover:opacity-90"
         data-boton-circular=""
         {...marcaTema}
         style={{
@@ -753,9 +759,11 @@ export function HeaderCTA({
           borderWidth: `${borderWidth}px`,
           borderColor,
           borderStyle: 'solid',
-          boxShadow: shadowMap[shadow] ?? 'none',
+          // Sin sombra elegida, la del diseño (app/globals.css, [data-boton-circular]).
+          ...(settings?.cta_shadow ? { boxShadow: shadowMap[shadow] ?? 'none' } : {}),
         }}
       >
+        {IconoCirculo && <IconoCirculo className="h-[18px] w-[18px]" aria-hidden />}
         {text}
       </Link>
     );
