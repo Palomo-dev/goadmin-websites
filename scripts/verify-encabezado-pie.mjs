@@ -65,8 +65,9 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style) + las 15 del
 // encabezado píldora y el botón principal (2026-11-07: header_cta_size/width/height/style/icon/
 // icon_side/uppercase, header_pill_style/glass_opacity/blur/border/on_scroll/text_case,
-// header_float_offset, header_pill_position).
-check(nuevas.length === 91, `se esperaban 91 opciones nuevas y hay ${nuevas.length}`)
+// header_float_offset, header_pill_position) + las 7 del segundo botón y los botones del tema
+// (2026-11-07: header_cta2_shape/size/style/icon/icon_side/uppercase, buttons_theme_active).
+check(nuevas.length === 98, `se esperaban 98 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -268,6 +269,15 @@ const CONSUMIDORES = {
   header_pill_text_case: ['app/globals.css', 'text-transform: var(--pildora-mayusculas, uppercase)'],
   header_float_offset: ['components/site/header/HeaderPill.tsx', 'paddingTop: `${separacion}px`'],
   header_pill_position: ['components/site/OrganizationLayoutCliente.tsx', 'menuFlotanteDesdeEncabezado('],
+  // Segundo botón con el control del principal y botones de las secciones con el tema (2026-11-07).
+  // Los lee opcionesBoton(…, 'header_cta2') / botonesTema.ts; scripts/verify-botones.mjs prueba el HTML.
+  header_cta2_shape: ['lib/website/pildora.ts', '`${prefijo}_shape`'],
+  header_cta2_size: ['lib/website/pildora.ts', '`${prefijo}_size`'],
+  header_cta2_style: ['lib/website/pildora.ts', '`${prefijo}_style`'],
+  header_cta2_icon: ['lib/website/pildora.ts', '`${prefijo}_icon`'],
+  header_cta2_icon_side: ['lib/website/pildora.ts', '`${prefijo}_icon_side`'],
+  header_cta2_uppercase: ['lib/website/pildora.ts', '`${prefijo}_uppercase`'],
+  buttons_theme_active: ['components/site/OrganizationLayoutCliente.tsx', 'botonesTemaActivos: botonesTemaActivo(settings)'],
 }
 // El editor la guarda. El default `icono` es el encabezado de hoy y ninguna pantalla lee otro valor.
 const SIN_PINTOR = new Set(['header_actions_style'])

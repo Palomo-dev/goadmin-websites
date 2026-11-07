@@ -21,6 +21,7 @@
     "verify:copias": "node scripts/verify-copias-erp.mjs",
     "verify:cafe": "node --disable-warning=ExperimentalWarning scripts/verify-cafe.mjs",
     "verify:pildora": "node --disable-warning=ExperimentalWarning scripts/verify-pildora.mjs",
+    "verify:botones": "node --disable-warning=ExperimentalWarning scripts/verify-botones.mjs",
     "verify:metodos-sede": "node --disable-warning=ExperimentalWarning scripts/verify-metodos-sede.mjs",
     "verify:estilo": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-sitio.mjs",
     "verify:sitio-publico": "node --disable-warning=ExperimentalWarning scripts/verify-sitio-publico.mjs",
