@@ -45,7 +45,7 @@ import { fondoOscuro, textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreA
 import { contraste } from '@/lib/website/v2/contrasteColor'
 import { EncabezadoMesa } from './header/EncabezadoMesa'
 import { PieMesa } from './footer/PieMesa'
-import { EXTRAS_VACIOS, opcionesEncabezadoPie, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
+import { EXTRAS_VACIOS, opcionesEncabezadoPie, opcionesPlantillaTienda, variantesFuenteTienda, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 import { headerSobreHero, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { contarUnidadesCarrito } from '@/lib/cart'
 
@@ -303,8 +303,12 @@ export function OrganizationLayoutCliente({
   
   // En el lienzo del editor, el estilo general en edición (fuentes, redondeo, botón, movimiento)
   // reemplaza al guardado; se pinta con las mismas funciones que el sitio publicado.
-  const temaVars = atributosTema(temaEfectivo)
-  const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo]) : null
+  // Plantillas de tienda: mayúsculas de los botones, cursiva y pesos extra de la hoja de fuentes.
+  // Sin sus claves (todo sitio de hoy) las tres son falsas: mismas variables y misma URL.
+  const opcionesTienda = opcionesPlantillaTienda(settings)
+  const variantesFuente = variantesFuenteTienda(opcionesTienda)
+  const temaVars = atributosTema(temaEfectivo, { mayusculasActivas: opcionesTienda.mayusculasBotones, cursiva: variantesFuente.cursiva })
+  const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo], variantesFuente) : null
   // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de
   // las láminas (fondo del tema, «Reservar» relleno y el resto en contorno). Legacy (sin tema): la
   // barra de siempre, sin cambios.

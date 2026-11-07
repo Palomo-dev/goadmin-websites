@@ -65,6 +65,16 @@ export interface PieTemaProps {
   logoHeight: number
   /** Logo ya elegido (claro si el fondo del pie es oscuro). */
   logoUrl?: string | null
+  /**
+   * Plantillas de tienda: la marca gigante (`footer_brand_display: 'giant'`, ya armada por
+   * SiteFooter), sobre la barra inferior. Ausente o null = el pie de hoy.
+   */
+  marca?: React.ReactNode
+  /**
+   * `footer_links_style: 'display'`: los enlaces de los menús van juntos, grandes y en la fuente de
+   * títulos (en cursiva si la hoja la trae, `--font-heading-italic`), a la derecha. Ausente = hoy.
+   */
+  enlacesDisplay?: boolean
 }
 
 function enlacesDeMenu(items: WebsiteMenuItemWithChildren[]): Enlace[] {
@@ -176,7 +186,29 @@ export function PieTema(p: PieTemaProps) {
         </ul>
       ),
   })
-  columnas.push(...columnasMenu.filter((m) => !esLegal(m.titulo)).map(columnaMenu))
+  // Enlaces «display»: los menús salen de las columnas y van juntos en un bloque grande (Atelier).
+  // Sin la opción, una columna por menú, como siempre.
+  const enlacesGrandes = p.enlacesDisplay
+    ? [...columnasMenu.filter((m) => !esLegal(m.titulo)), ...columnasMenu.filter((m) => esLegal(m.titulo))].flatMap((m) => m.enlaces)
+    : []
+  const bloqueDisplay = enlacesGrandes.length > 0 ? (
+    <nav aria-label="Enlaces del pie" data-pie-enlaces-display="">
+      <ul className="flex flex-col gap-1 md:items-end">
+        {enlacesGrandes.map((e, i) => (
+          <li key={`${e.href}-${i}`}>
+            <Link
+              href={e.href}
+              className="block text-3xl leading-[1.15] text-current opacity-90 transition-opacity hover:opacity-100 md:text-right md:text-5xl"
+              style={{ fontFamily: 'var(--font-heading), var(--font-body)', fontStyle: 'var(--font-heading-italic, normal)' }}
+            >
+              {e.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  ) : null
+  if (!p.enlacesDisplay) columnas.push(...columnasMenu.filter((m) => !esLegal(m.titulo)).map(columnaMenu))
   if (p.mostrarContacto) {
     const tel = p.organization.phone
     const correo = p.organization.email
@@ -198,7 +230,7 @@ export function PieTema(p: PieTemaProps) {
     }
   }
 
-  columnas.push(...columnasMenu.filter((m) => esLegal(m.titulo)).map(columnaMenu))
+  if (!p.enlacesDisplay) columnas.push(...columnasMenu.filter((m) => esLegal(m.titulo)).map(columnaMenu))
 
   const redes = p.mostrarRedes
     ? Object.entries(p.redes).filter(([red, url]) => !!url && (ICONOS_REDES[red] || (red === 'whatsapp' && opciones.pie.whatsapp)))
@@ -276,6 +308,7 @@ export function PieTema(p: PieTemaProps) {
   // Celular: a la izquierda, con acordeones (el primero abierto).
   const movil = (
     <div className="md:hidden">
+      {bloqueDisplay && <div className="mb-6">{bloqueDisplay}</div>}
       {columnas.map((c, i) => (
         <details key={c.clave} className="group border-b border-gray-700" open={i === 0}>
           <summary className="flex cursor-pointer list-none items-center justify-between py-3.5 text-sm font-semibold text-white">
@@ -303,6 +336,7 @@ export function PieTema(p: PieTemaProps) {
                 </div>
               ))}
             </div>
+            {bloqueDisplay && <div className="mt-10 hidden md:flex md:justify-center">{bloqueDisplay}</div>}
             <div className="hidden md:block"><MapaPie className="mx-auto mt-8 max-w-md" /></div>
             {movil}
           </>
@@ -319,6 +353,7 @@ export function PieTema(p: PieTemaProps) {
                 ))}
               </div>
               <MapaPie className="w-64" />
+              {bloqueDisplay}
             </div>
             <div className="md:hidden">
               <div className="mb-6">{marca}</div>
@@ -343,12 +378,14 @@ export function PieTema(p: PieTemaProps) {
               ))}
               {opciones.pie.mapa && <MapaPie />}
             </div>
+            {bloqueDisplay && <div className="mt-10 hidden md:flex md:justify-end">{bloqueDisplay}</div>}
             <div className="md:hidden">
               <div className="mb-6">{marca}</div>
               {movil}
             </div>
           </>
         )}
+        {p.marca}
         {barraInferior}
       </div>
     </footer>

@@ -22,7 +22,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useTemaColores } from '../TemaColoresContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
 import { useEncabezadoPie } from '../EncabezadoPieContext';
-import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+import { esEnlaceExterno, hrefBoton, opcionesPlantillaTienda } from '@/lib/website/encabezadoPie';
 import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncendido, estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
@@ -733,6 +733,29 @@ export function HeaderCTA({
   const className = fullWidth
     ? 'flex items-center justify-center text-sm font-semibold transition-opacity hover:opacity-90'
     : 'hidden md:inline-flex items-center text-sm font-semibold transition-opacity hover:opacity-90';
+
+  // «Forma del botón» (header_cta_shape, plantillas de tienda): `circle` = un círculo con el texto
+  // dentro. Sin la clave (`pill`), el botón de siempre, con su padding y su radio.
+  if (opcionesPlantillaTienda(settings as Record<string, unknown> | null | undefined).formaBotonEncabezado === 'circle') {
+    return (
+      <Link
+        href={linkHref}
+        {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        className="hidden md:inline-flex aspect-square min-h-16 min-w-16 flex-shrink-0 items-center justify-center rounded-full px-3 text-center text-xs font-semibold leading-tight transition-opacity hover:opacity-90"
+        data-boton-circular=""
+        style={{
+          backgroundColor: bgColor,
+          color: textColor,
+          borderWidth: `${borderWidth}px`,
+          borderColor,
+          borderStyle: 'solid',
+          boxShadow: shadowMap[shadow] ?? 'none',
+        }}
+      >
+        {text}
+      </Link>
+    );
+  }
 
   return (
     <Link

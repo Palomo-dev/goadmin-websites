@@ -34,10 +34,16 @@ function portadaSolapada(header: HTMLElement | null): boolean {
   return false;
 }
 
-export default function HeaderTransparent(props: HeaderVariantProps) {
+/**
+ * Estado del encabezado transparente: `sobre` mientras la página está arriba y la portada se
+ * solapa; `solido` en cuanto se baja o si no hay portada. Lo comparte HeaderPill (el café y
+ * Panorama, con `header_transparent_over_hero`). `activo: false` = siempre `solido`.
+ */
+export function useEstadoTransparente(activo = true): 'sobre' | 'solido' {
   const [estado, setEstado] = useState<'sobre' | 'solido'>('solido');
 
   useEffect(() => {
+    if (!activo) return;
     const header = document.querySelector<HTMLElement>('header[data-encabezado-transparente]');
     let solapada = portadaSolapada(header);
     const actualizar = () => setEstado(solapada && window.scrollY < 8 ? 'sobre' : 'solido');
@@ -52,7 +58,12 @@ export default function HeaderTransparent(props: HeaderVariantProps) {
       window.clearTimeout(medir);
       window.removeEventListener('scroll', actualizar);
     };
-  }, []);
+  }, [activo]);
 
+  return activo ? estado : 'solido';
+}
+
+export default function HeaderTransparent(props: HeaderVariantProps) {
+  const estado = useEstadoTransparente();
   return <HeaderClassic {...props} transparente={estado} />;
 }

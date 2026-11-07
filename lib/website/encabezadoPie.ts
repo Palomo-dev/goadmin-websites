@@ -105,6 +105,59 @@ export function opcionesEncabezadoPie(ajustes: Ajustes): OpcionesEncabezadoPie {
   }
 }
 
+/**
+ * Opciones del shell que traen las plantillas de tienda (2026-11, PLANO §2 ítems 11, 20, 23-25).
+ * Van aparte de {@link opcionesEncabezadoPie} para que esa lectura (y su prueba de «defaults = hoy»)
+ * no cambie. Todas sus claves viven solo en el documento V2 (no hay columna legacy).
+ */
+export interface OpcionesPlantillaTienda {
+  /** Forma del botón principal del encabezado: `pill` = el botón de hoy; `circle` = círculo con el texto. */
+  formaBotonEncabezado: 'pill' | 'circle'
+  /** `buttons_uppercase_active`: deja que `tema.tokens.boton.mayusculas` se pinte (si no, se ignora). */
+  mayusculasBotones: boolean
+  pie: {
+    /** `none` = el pie de hoy; `giant` = el nombre de la tienda a todo el ancho. */
+    marca: 'none' | 'giant'
+    /** Figura sobre la marca gigante. Solo con `marca: 'giant'`; si no, `null`. */
+    figuraMarca: string | null
+    /** Pie como tarjeta con margen de 16 px y el radio del tema. */
+    tarjeta: boolean
+    /** `normal` = los enlaces de hoy; `display` = grandes, en la fuente de títulos. */
+    enlaces: 'normal' | 'display'
+  }
+}
+
+/** Lo que dan las opciones de tienda sin ninguna clave: el sitio de hoy. */
+export const PLANTILLA_TIENDA_HOY: OpcionesPlantillaTienda = {
+  formaBotonEncabezado: 'pill',
+  mayusculasBotones: false,
+  pie: { marca: 'none', figuraMarca: null, tarjeta: false, enlaces: 'normal' },
+}
+
+export function opcionesPlantillaTienda(ajustes: Ajustes): OpcionesPlantillaTienda {
+  const marca = leer(ajustes, 'footer_brand_display') === 'giant' ? 'giant' : 'none'
+  return {
+    formaBotonEncabezado: leer(ajustes, 'header_cta_shape') === 'circle' ? 'circle' : 'pill',
+    mayusculasBotones: leer(ajustes, 'buttons_uppercase_active') === true,
+    pie: {
+      marca,
+      figuraMarca: marca === 'giant' ? ((leer(ajustes, 'footer_brand_figure_url') as string | null) ?? null) : null,
+      tarjeta: leer(ajustes, 'footer_inset') === true,
+      enlaces: leer(ajustes, 'footer_links_style') === 'display' ? 'display' : 'normal',
+    },
+  }
+}
+
+/**
+ * Variantes de fuente que piden las opciones de tienda (decisión D6 del dueño): la hoja de Google
+ * Fonts de hoy no cambia salvo que la plantilla pida cursiva o pesos extra.
+ * - `cursiva`: los enlaces `display` del pie van en cursiva (Atelier: Cormorant Garamond).
+ * - `pesosExtra`: la marca gigante del pie usa el peso 900 de Archivo (Marea).
+ */
+export function variantesFuenteTienda(o: OpcionesPlantillaTienda): { cursiva: boolean; pesosExtra: boolean } {
+  return { cursiva: o.pie.enlaces === 'display', pesosExtra: o.pie.marca === 'giant' }
+}
+
 /** Enlaces que resuelve el servidor para los destinos especiales y la barra móvil. */
 export interface EnlacesSitio {
   whatsapp: string | null

@@ -61,7 +61,9 @@ await rm(dir, { recursive: true, force: true })
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
-check(nuevas.length === 70, `se esperaban 70 opciones nuevas y hay ${nuevas.length}`)
+// 70 + las 6 de las plantillas de tienda (P0 2026-11: header_cta_shape, buttons_uppercase_active,
+// footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style).
+check(nuevas.length === 76, `se esperaban 76 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -133,6 +135,26 @@ igual(ep.opcionesEncabezadoPie({ header_show_language: true, site_locales: ['es-
 igual(ep.opcionesEncabezadoPie({ header_cta2_text: 'Eventos' }).boton2, null, 'segundo botón sin enlace')
 igual(ep.hrefBoton('whatsapp', { whatsapp: null, comoLlegar: null, llamar: null }), null, 'whatsapp sin número')
 igual(ep.hrefBoton('/eventos', null), '/eventos', 'enlace normal')
+// Plantillas de tienda: lectura aparte, sin claves = el sitio de hoy.
+const TIENDA_HOY = { formaBotonEncabezado: 'pill', mayusculasBotones: false, pie: { marca: 'none', figuraMarca: null, tarjeta: false, enlaces: 'normal' } }
+igual(ep.PLANTILLA_TIENDA_HOY, TIENDA_HOY, 'PLANTILLA_TIENDA_HOY es el sitio de hoy')
+igual(ep.opcionesPlantillaTienda(null), TIENDA_HOY, 'tienda: fila nula')
+igual(ep.opcionesPlantillaTienda({}), TIENDA_HOY, 'tienda: sin claves')
+igual(ep.opcionesPlantillaTienda(FILA_DEFAULT), TIENDA_HOY, 'tienda: fila legacy con los DEFAULT')
+igual(
+  ep.opcionesPlantillaTienda({ header_cta_shape: 'x', buttons_uppercase_active: 'si', footer_brand_display: 'enorme', footer_inset: 1, footer_links_style: 'grande', footer_brand_figure_url: 'javascript:alert(1)' }),
+  TIENDA_HOY,
+  'tienda: valores basura',
+)
+igual(ep.opcionesPlantillaTienda({ footer_brand_figure_url: 'https://x.co/f.png' }).pie.figuraMarca, null, 'la figura sin marca gigante no se pinta')
+igual(ep.opcionesPlantillaTienda({ footer_brand_display: 'giant', footer_brand_figure_url: ' /img/f.png ' }).pie.figuraMarca, '/img/f.png', 'figura con marca gigante (recortada)')
+igual(ep.opcionesPlantillaTienda({ footer_brand_display: 'giant', footer_brand_figure_url: '//otro.co/f.png' }).pie.figuraMarca, null, 'figura de otro dominio por protocolo relativo')
+igual(
+  ep.opcionesPlantillaTienda({ header_cta_shape: 'circle', buttons_uppercase_active: true, footer_brand_display: 'giant', footer_inset: true, footer_links_style: 'display' }),
+  { formaBotonEncabezado: 'circle', mayusculasBotones: true, pie: { marca: 'giant', figuraMarca: null, tarjeta: true, enlaces: 'display' } },
+  'tienda: todas encendidas',
+)
+igual(ep.variantesFuenteTienda(TIENDA_HOY), { cursiva: false, pesosExtra: false }, 'sin opciones de tienda la hoja de fuentes no cambia')
 
 // ─── 3. Quién pinta cada cosa ────────────────────────────────────────────────────────────────
 const fuente = async (r) => readFile(join(ROOT, r), 'utf8')
@@ -219,6 +241,13 @@ const CONSUMIDORES = {
   header_mobile_icon_color: ['lib/headerColors.ts', 'header_mobile_icon_color'],
   footer_text_color: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.colorTexto'],
   footer_show_dividers: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.pie.separadores'],
+  // Plantillas de tienda (W1). Las lee opcionesPlantillaTienda (lib/website/encabezadoPie.ts).
+  header_cta_shape: ['components/site/header/HeaderShared.tsx', "formaBotonEncabezado === 'circle'"],
+  buttons_uppercase_active: ['components/site/OrganizationLayoutCliente.tsx', 'mayusculasActivas: opcionesTienda.mayusculasBotones'],
+  footer_brand_display: ['components/site/SiteFooter.tsx', "tienda.pie.marca === 'giant'"],
+  footer_brand_figure_url: ['components/site/SiteFooter.tsx', 'figuraUrl={tienda.pie.figuraMarca}'],
+  footer_inset: ['components/site/SiteFooter.tsx', 'tienda.pie.tarjeta ?'],
+  footer_links_style: ['components/site/SiteFooter.tsx', "enlacesDisplay={tienda.pie.enlaces === 'display'}"],
 }
 // El editor la guarda. El default `icono` es el encabezado de hoy y ninguna pantalla lee otro valor.
 const SIN_PINTOR = new Set(['header_actions_style'])

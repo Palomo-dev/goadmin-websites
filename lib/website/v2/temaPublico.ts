@@ -18,7 +18,7 @@
  */
 import { esquemaTema, resolverCampo, type CampoHeredable, type DocumentoSitio } from './contrato/documentoSitio'
 import { fondoOscuro } from './textoSobreAcento'
-import { familiasDePar, variablesDeTokens } from './tokensDiseno'
+import { familiasDePar, hoverDeTokens, variablesDeTokens, variablesMayusculasBoton } from './tokensDiseno'
 import type { TokensCrudos } from './tokensDiseno'
 import { sanitizarCarrusel, sanitizarPaginacion, type ParcialCarrusel, type ParcialPaginacion } from './paginacionCarrusel'
 
@@ -154,7 +154,7 @@ export interface AtributosTema {
  * Variables y atributos del contenedor raíz. Solo emite lo que el tema define: un sitio sin
  * tokens (o legacy) no recibe nada y se pinta igual que antes.
  */
-export function atributosTema(t: TemaPublico | null): AtributosTema {
+export function atributosTema(t: TemaPublico | null, opciones?: OpcionesAtributosTema): AtributosTema {
   const variables: Record<string, string> = {}
   const datos: Record<string, string> = {}
   if (!t) return { variables, datos }
@@ -181,13 +181,30 @@ export function atributosTema(t: TemaPublico | null): AtributosTema {
   const perillas = variablesDeTokens(t?.tokens)
   for (const [clave, valor] of Object.entries(perillas)) variables[clave] = valor
   if (Object.keys(perillas).length > 0) datos['data-tokens-diseno'] = 'propio'
+  // Plantillas de tienda (CONTRATO P0 §3). Van aparte de las perillas: `variablesDeTokens` no
+  // cambia y un sitio que ya guarda `mayusculas: true` sin `buttons_uppercase_active` sigue igual.
+  const mayusculas = variablesMayusculasBoton(t.tokens, opciones?.mayusculasActivas === true)
+  if (Object.keys(mayusculas).length > 0) {
+    for (const [clave, valor] of Object.entries(mayusculas)) variables[clave] = valor
+    datos['data-botones-mayusculas'] = 'propio'
+  }
+  const hover = hoverDeTokens(t.tokens)
+  if (hover) datos['data-tema-hover'] = hover
+  // Cursiva de la fuente de títulos: solo cuando la hoja la pidió (`urlGoogleFonts` con cursiva).
+  // Sin la variable, `var(--font-heading-italic, normal)` deja el texto recto (no se sintetiza).
+  if (opciones?.cursiva === true && t.fuenteTitulos && FAMILIAS_CON_CURSIVA.has(t.fuenteTitulos)) {
+    variables['--font-heading-italic'] = 'italic'
+  }
   return { variables, datos }
 }
 
-/**
- * Hoja de Google Fonts para las familias pedidas (sin repetir, máximo 6), o `null` si no hay
- * ninguna. Solo familias que pasan `familiaSegura`. Pesos 400-700 (los del estilo por sección).
- */
+export interface OpcionesAtributosTema {
+  /** `buttons_uppercase_active` ya normalizada (lib/website/encabezadoPie.ts `opcionesPlantillaTienda`). */
+  mayusculasActivas?: boolean
+  /** La hoja de fuentes se pidió con cursiva (`variantesFuenteTienda`). */
+  cursiva?: boolean
+}
+
 /** Fuentes que ya trae el sistema: no se piden a Google Fonts (la hoja no existe). */
 const FUENTES_SISTEMA = new Set([
   'arial', 'helvetica', 'helvetica neue', 'georgia', 'times', 'times new roman', 'verdana', 'tahoma', 'trebuchet ms',
@@ -199,9 +216,49 @@ export function esFuenteSistema(f: string): boolean {
   return FUENTES_SISTEMA.has(f.trim().replace(/^['"]|['"]$/g, '').toLowerCase())
 }
 
-export function urlGoogleFonts(familias: (string | null | undefined)[]): string | null {
+/** Ejes de siempre (los pesos del estilo por sección). Toda familia que no esté abajo los conserva. */
+export const EJES_FUENTE_HOY = 'wght@400;500;600;700'
+
+/**
+ * Ejes válidos por familia (decisión D6 del dueño, PLANO H9 y §4). Solo familias que piden las
+ * plantillas de tienda; cualquier otra familia sigue con {@link EJES_FUENTE_HOY} (su URL no cambia).
+ * - `base`: sin variantes pedidas. Instrument Serif solo existe en 400 (no se le piden 500-700).
+ * - `cursiva` / `pesosExtra`: solo cuando la plantilla lo pide (enlaces `display`, marca gigante).
+ *   Sin la opción, Cormorant Garamond y Archivo piden lo de hoy.
+ */
+export const EJES_POR_FAMILIA: Readonly<Record<string, { base: string; cursiva?: string; pesosExtra?: string }>> = {
+  'Instrument Serif': { base: 'wght@400', cursiva: 'ital,wght@0,400;1,400' },
+  'Cormorant Garamond': { base: EJES_FUENTE_HOY, cursiva: 'ital,wght@0,400;0,500;0,600;0,700;1,400' },
+  Archivo: { base: EJES_FUENTE_HOY, pesosExtra: 'wght@400;500;600;700;800;900' },
+}
+
+/** Familias cuya hoja trae la cursiva cuando se pide (`--font-heading-italic`). */
+const FAMILIAS_CON_CURSIVA: ReadonlySet<string> = new Set(
+  Object.entries(EJES_POR_FAMILIA).filter(([, e]) => e.cursiva).map(([f]) => f),
+)
+
+export interface VariantesFuente {
+  cursiva?: boolean
+  pesosExtra?: boolean
+}
+
+/** Ejes que se piden a Google Fonts para una familia. */
+export function ejesDeFamilia(familia: string, variantes?: VariantesFuente): string {
+  const e = EJES_POR_FAMILIA[familia]
+  if (!e) return EJES_FUENTE_HOY
+  if (variantes?.cursiva && e.cursiva) return e.cursiva
+  if (variantes?.pesosExtra && e.pesosExtra) return e.pesosExtra
+  return e.base
+}
+
+/**
+ * Hoja de Google Fonts para las familias pedidas (sin repetir, máximo 6), o `null` si no hay
+ * ninguna. Solo familias que pasan `familiaSegura`. Pesos 400-700 (los del estilo por sección),
+ * salvo las familias de {@link EJES_POR_FAMILIA}. Sin `variantes`, la URL de hoy.
+ */
+export function urlGoogleFonts(familias: (string | null | undefined)[], variantes?: VariantesFuente): string | null {
   const unicas = Array.from(new Set(familias.flatMap((f) => (f && f.includes('_') ? familiasDePar(f) : [familiaSegura(f)])).filter((f): f is string => !!f && !esFuenteSistema(f)))).slice(0, 6)
   if (unicas.length === 0) return null
-  const partes = unicas.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700`)
+  const partes = unicas.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:${ejesDeFamilia(f, variantes)}`)
   return `https://fonts.googleapis.com/css2?${partes.join('&')}&display=swap`
 }
