@@ -34,6 +34,9 @@ const MODULOS = {
   tokensDiseno: 'lib/website/v2/tokensDiseno.ts',
   estiloSeccionPublico: 'lib/website/v2/estiloSeccionPublico.ts',
   paginacionCarrusel: 'lib/website/v2/paginacionCarrusel.ts',
+  // temaPublico → botonesTema (buttons_theme_active, 2026-11-07) → mapeoAjustes (sin imports).
+  botonesTema: 'lib/website/v2/botonesTema.ts',
+  mapeoAjustes: 'lib/website/v2/mapeoAjustes.ts',
 }
 
 function aMjs(ts) {

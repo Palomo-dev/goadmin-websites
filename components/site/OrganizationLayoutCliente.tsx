@@ -34,6 +34,7 @@ import { SelectorSede } from './header/SelectorSede'
 import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
 import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
+import { botonesTemaActivo } from '@/lib/website/v2/botonesTema'
 import { TarjetaProductoProvider } from './TarjetaProductoContext'
 import { ProveedorListaCarrusel } from './listaCarrusel'
 import { TemaColoresProvider } from './TemaColoresContext'
@@ -320,7 +321,9 @@ export function OrganizationLayoutCliente({
   // Sin sus claves (todo sitio de hoy) las tres son falsas: mismas variables y misma URL.
   const opcionesTienda = opcionesPlantillaTienda(settings)
   const variantesFuente = variantesFuenteTienda(opcionesTienda)
-  const temaVars = atributosTema(temaEfectivo, { mayusculasActivas: opcionesTienda.mayusculasBotones, cursiva: variantesFuente.cursiva })
+  // `buttons_theme_active`: forma, relleno y tamaño de `tokens.boton` en los botones de las
+  // secciones. Sin la clave (false), atributosTema da exactamente lo de hoy.
+  const temaVars = atributosTema(temaEfectivo, { mayusculasActivas: opcionesTienda.mayusculasBotones, cursiva: variantesFuente.cursiva, botonesTemaActivos: botonesTemaActivo(settings) })
   const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo], variantesFuente) : null
   // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de
   // las láminas (fondo del tema, «Reservar» relleno y el resto en contorno). Legacy (sin tema): la

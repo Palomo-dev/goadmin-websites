@@ -636,14 +636,61 @@ header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) :i
 [data-radio-boton] section[data-section-id] :is(input, select, textarea)[class*='rounded'] {
   border-radius: min(var(--radio-boton), 12px);
 }
-[data-estilo-boton='contorno'] section[data-section-id] [data-boton='primario'] {
+/* Con el relleno de los botones del tema (data-boton-relleno, más abajo) ese manda: estas dos se
+   apartan. Sin el atributo (todo sitio de hoy) el :not() siempre se cumple y nada cambia. */
+[data-estilo-boton='contorno']:not([data-boton-relleno]) section[data-section-id] [data-boton='primario'] {
   background: transparent !important;
   border: 2px solid var(--primary-color);
   color: var(--primary-color) !important;
 }
-[data-estilo-boton='sombra_dura'] section[data-section-id] [data-boton='primario'] {
+[data-estilo-boton='sombra_dura']:not([data-boton-relleno]) section[data-section-id] [data-boton='primario'],
+[data-botones-tema][data-boton-relleno='sombra_dura'] section[data-section-id] [data-boton='primario'] {
   border: 2px solid var(--text-color, #111827);
   box-shadow: 4px 4px 0 0 var(--text-color, #111827);
+}
+/* Botones del tema (`buttons_theme_active` + `tema.tokens.boton`, lib/website/v2/botonesTema.ts).
+   Cuelgan de data-botones-tema, que solo pone atributosTema con el interruptor prendido: sin él no
+   hay atributo y nada de esto aplica (los 9 sitios que ya guardan tokens.boton no cambian).
+   Solo los botones marcados de las secciones (data-boton); no el encabezado, ni la tarjeta de
+   producto (tiene su propio estilo de botón), ni el checkout. Llevan !important donde el botón
+   trae el valor en línea (HeroButtons pone su borderRadius y su color en `style`): con el
+   interruptor el dueño eligió que el tema mande.
+   - Forma: --boton-radio (0 / 12px / 999px). Manda sobre --radio-boton.
+   - Relleno (solo la acción principal, como el estilo de botón del tema): contorno, fantasma (sin
+     fondo ni borde, texto primario, fondo suave al pasar) y sombra dura (regla de arriba). Sólido
+     = el fondo de marca de hoy.
+   - Tamaño: alto 36 / 44 / 52 con min-height y el relleno vertical (descontado el borde de 2 px);
+     los inline-block pasan a inline-flex para centrar el texto (nunca se toca otro display: un
+     «hidden md:inline-flex» sigue oculto). Fuera los que solo llevan ícono (aria-label) y los
+     enlaces subrayados. */
+[data-botones-tema][data-boton-forma] section[data-section-id] [data-boton] {
+  border-radius: var(--boton-radio) !important;
+}
+[data-botones-tema][data-boton-relleno='contorno'] section[data-section-id] [data-boton='primario'] {
+  background: transparent !important;
+  border: 2px solid var(--primary-color) !important;
+  color: var(--primary-color) !important;
+}
+[data-botones-tema][data-boton-relleno='fantasma'] section[data-section-id] [data-boton='primario'] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--primary-color) !important;
+  transition: background-color 0.15s ease, filter 0.2s ease, transform 0.2s ease;
+}
+[data-botones-tema][data-boton-relleno='fantasma'] section[data-section-id] [data-boton='primario']:hover {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent) !important;
+}
+[data-botones-tema][data-boton-tamano] section[data-section-id] [data-boton]:not([aria-label]):not([class*='underline']) {
+  min-height: var(--boton-alto);
+  padding: var(--boton-relleno-y) var(--boton-relleno-x);
+  font-size: var(--boton-letra);
+  line-height: var(--boton-interlinea);
+}
+[data-botones-tema][data-boton-tamano] section[data-section-id] [data-boton][class~='inline-block']:not([aria-label]):not([class*='underline']) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 /* Plantillas de tienda (CONTRATO P0 §3). Cuelgan de atributos que solo pone atributosTema cuando
    el documento los pide (lib/website/v2/temaPublico.ts); sin ellos, el botón de hoy (también los

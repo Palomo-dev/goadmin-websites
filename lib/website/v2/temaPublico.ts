@@ -21,6 +21,7 @@ import { fondoOscuro } from './textoSobreAcento'
 import { familiasDePar, hoverDeTokens, variablesDeTokens, variablesMayusculasBoton } from './tokensDiseno'
 import type { TokensCrudos } from './tokensDiseno'
 import { sanitizarCarrusel, sanitizarPaginacion, type ParcialCarrusel, type ParcialPaginacion } from './paginacionCarrusel'
+import { atributosBotonesTema } from './botonesTema'
 
 export type RadioSitio = 0 | 4 | 12 | 24
 export type EstiloBotonSitio = 'solido' | 'contorno' | 'pastilla' | 'sombra_dura'
@@ -190,6 +191,12 @@ export function atributosTema(t: TemaPublico | null, opciones?: OpcionesAtributo
   }
   const hover = hoverDeTokens(t.tokens)
   if (hover) datos['data-tema-hover'] = hover
+  // Forma, relleno y tamaño de `tokens.boton` en los botones de las secciones: solo con
+  // `buttons_theme_active` (lib/website/v2/botonesTema.ts). Sin él, nada: los 9 sitios que ya
+  // guardan `tokens.boton` por un preset siguen como hoy.
+  const botones = atributosBotonesTema(t.tokens, opciones?.botonesTemaActivos === true)
+  for (const [clave, valor] of Object.entries(botones.variables)) variables[clave] = valor
+  for (const [clave, valor] of Object.entries(botones.datos)) datos[clave] = valor
   // Cursiva de la fuente de títulos: solo cuando la hoja la pidió (`urlGoogleFonts` con cursiva).
   // Sin la variable, `var(--font-heading-italic, normal)` deja el texto recto (no se sintetiza).
   if (opciones?.cursiva === true && t.fuenteTitulos && FAMILIAS_CON_CURSIVA.has(t.fuenteTitulos)) {
@@ -203,6 +210,8 @@ export interface OpcionesAtributosTema {
   mayusculasActivas?: boolean
   /** La hoja de fuentes se pidió con cursiva (`variantesFuenteTienda`). */
   cursiva?: boolean
+  /** `buttons_theme_active` ya normalizada (`botonesTemaActivo` de lib/website/v2/botonesTema.ts). */
+  botonesTemaActivos?: boolean
 }
 
 /** Fuentes que ya trae el sistema: no se piden a Google Fonts (la hoja no existe). */
