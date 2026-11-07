@@ -366,14 +366,51 @@ header[data-encabezado-pildora][data-encabezado-pildora] [data-nav-pildora] > na
 header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-transparente='sobre'] > div :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: #ffffff !important;
 }
-header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
-  border-color: rgba(255, 255, 255, 0.28);
-  background-color: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px);
+/* Píldora «vidrio» (sin clave: la del café, medida en su web de referencia): el menú es una píldora
+   de vidrio que flota; sobre la foto, blanco 10 % con desenfoque 24 px, borde blanco 20 % y letras
+   blancas; al bajar la barra sigue sin fondo y solo la píldora toma el fondo del tema al 85 %. */
+header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav {
+  column-gap: 0.125rem;
+  padding: 0.1875rem 0.5rem;
+  border-color: color-mix(in srgb, var(--text-color, #111827) 12%, transparent);
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
-header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
+header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav > :is(a, button, div > button) {
+  padding: 0.5rem 0.875rem;
+  font-size: 11.2px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+  color: var(--text-color, #111827) !important;
+}
+header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: var(--text-color, #111827);
+  color: var(--background-color, #ffffff) !important;
+}
+header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
   background-color: #ffffff;
   color: #111111 !important;
+}
+header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora]header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
+  color: #111111 !important;
+}
+header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'] > div:last-child {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-color: transparent !important;
 }
 /* Píldora «isla» (data-pildora-estilo='isla', el café en Figma 2224:46167; es la de sin clave):
    el menú es una isla clara semitransparente que flota, con borde, sombra y desenfoque, en
