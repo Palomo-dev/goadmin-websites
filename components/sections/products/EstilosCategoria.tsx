@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria, tieneIconoCategoria } from '@/lib/website/iconosCategoria'
 import { CarruselPastillas } from './CarruselPastillas'
@@ -6,12 +7,21 @@ import {
   claseAjuste,
   clasesCirculosMovil,
   clasesPastillas,
+  colorDeCategoria,
+  proporcionTituloArriba,
+  textoSobreColor,
   layoutMovilCategorias,
+  MASCARA_CARRIL,
   planBento,
   radioTarjeta,
   sombraTarjeta,
   type EstiloCategoria,
 } from '@/lib/website/estiloCategoria'
+import {
+  DEFAULT_AJUSTES_CATEGORIAS,
+  normalizarAjustesCategorias,
+  type AjustesCategorias,
+} from '@/lib/website/v2/contrato/seccionesTienda'
 
 interface Contenido {
   title?: string
@@ -130,20 +140,43 @@ function Circulo({ cat, color, content, fila = false, ancho = false }: { cat: an
   )
 }
 
-function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; content: Contenido }) {
+/** Flecha en círculo sobre la esquina de la foto (`category_cta_icon: 'arrow_circle'`). */
+function FlechaCirculo() {
+  return (
+    <span className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-900 shadow-sm transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5 [@media(hover:hover)]:group-hover:-translate-y-0.5" aria-hidden>
+      <ArrowUpRight className="h-4 w-4" />
+    </span>
+  )
+}
+
+/**
+ * «Tarjeta abajo». Con los ajustes por defecto (`bottom` / `none` / `none`) es la tarjeta de
+ * siempre, clase por clase (lo compara verify:categoria-plantilla). Las opciones nuevas:
+ * - `textPosition: 'top'`: el pie va encima de la foto.
+ * - `cardColor: 'per_item'`: el pie toma `categories.color` y el texto se ajusta al contraste.
+ * - `ctaIcon`: `arrow` = flecha al lado del nombre; `arrow_circle` = flecha en círculo sobre la
+ *   foto. Las dos reemplazan el rótulo «Ver productos →».
+ */
+function TarjetaAbajo({ cat, color, content, ajustes = DEFAULT_AJUSTES_CATEGORIAS }: { cat: any; color: string; content: Contenido; ajustes?: AjustesCategorias }) {
   const ratio = content.image_ratio === '4:3' ? 'aspect-[4/3]' : 'aspect-square'
   const radio = radioTarjeta(content.card_radius, 16)
   const sombra = sombraTarjeta(content.card_shadow, 'shadow-sm')
   const borde = Number(content.card_border_width) > 0
     ? `${Number(content.card_border_width)}px solid ${content.card_border_color || '#e5e7eb'}`
     : undefined
-  return (
-    <Link
-      href={`/categorias/${cat.slug}`}
-      className={`group block overflow-hidden bg-white ${sombra} ${content.card_hover === 'lift' ? 'transition-transform hover:-translate-y-1' : ''}`}
-      style={{ borderRadius: radio, ...(borde ? { border: borde } : {}) }}
-    >
-      <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase={`${ratio} p-4`} fondo={fondoSuave(color, content.image_bg)} />
+  const colorPie = ajustes.cardColor === 'per_item' ? colorDeCategoria(cat.color) : null
+  const textoPie = colorPie ? textoSobreColor(colorPie) : null
+  const foto = <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase={`${ratio} p-4`} fondo={fondoSuave(color, content.image_bg)} />
+  const conteo = content.show_count && cat.product_count != null
+  let pie: React.ReactNode
+  if (ajustes.ctaIcon === 'none') {
+    pie = colorPie ? (
+      <div className="px-4 py-3" style={{ backgroundColor: colorPie, color: textoPie ?? undefined }}>
+        <p className="font-semibold">{cat.name}</p>
+        <p className="mt-1 text-sm opacity-80">Ver productos →</p>
+        {conteo && <p className="text-xs opacity-70">{cat.product_count} productos</p>}
+      </div>
+    ) : (
       <div className="bg-gray-50 px-4 py-3 dark:bg-gray-800">
         <p className="font-semibold text-gray-900 dark:text-white">{cat.name}</p>
         <p className="mt-1 text-sm" style={{ color }}>Ver productos →</p>
@@ -151,6 +184,79 @@ function TarjetaAbajo({ cat, color, content }: { cat: any; color: string; conten
           <p className="text-xs text-gray-500">{cat.product_count} productos</p>
         )}
       </div>
+    )
+  } else {
+    // Con flecha: nombre y conteo en una fila (el conteo a la derecha con flecha en círculo).
+    const claseConteo = colorPie ? 'text-xs opacity-70' : 'text-xs text-gray-500'
+    pie = (
+      <div
+        className={`flex items-center justify-between gap-3 px-4 py-3 ${colorPie ? '' : 'bg-gray-50 dark:bg-gray-800'}`}
+        style={colorPie ? { backgroundColor: colorPie, color: textoPie ?? undefined } : undefined}
+      >
+        <span className="min-w-0">
+          <span className={`block truncate font-semibold ${colorPie ? '' : 'text-gray-900 dark:text-white'}`}>{cat.name}</span>
+          {conteo && ajustes.ctaIcon === 'arrow' && <span className={`block ${claseConteo}`}>{cat.product_count} productos</span>}
+        </span>
+        {ajustes.ctaIcon === 'arrow' ? (
+          <ArrowRight className="h-4 w-4 shrink-0 transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5" style={colorPie ? undefined : { color }} aria-hidden />
+        ) : (
+          conteo && <span className={`shrink-0 ${claseConteo}`}>{cat.product_count} productos</span>
+        )}
+      </div>
+    )
+  }
+  const medio = ajustes.ctaIcon === 'arrow_circle' ? <div className="relative">{foto}<FlechaCirculo /></div> : foto
+  return (
+    <Link
+      href={`/categorias/${cat.slug}`}
+      className={`group block overflow-hidden bg-white ${sombra} ${content.card_hover === 'lift' ? 'transition-transform hover:-translate-y-1' : ''}`}
+      style={{ borderRadius: radio, ...(borde ? { border: borde } : {}) }}
+    >
+      {ajustes.textPosition === 'top' ? <>{pie}{medio}</> : <>{medio}{pie}</>}
+    </Link>
+  )
+}
+
+/**
+ * «Título arriba» (`category_style: 'title_top'`, plantillas de tienda): nombre encima de la
+ * foto; debajo el conteo, «Explorar →» y la descripción (`categories.description`), si la hay.
+ * Radio 0 por defecto (`card_radius` lo cambia). `cardColor: 'per_item'` pinta el fondo de la
+ * foto con `categories.color`; `ctaIcon: 'arrow_circle'` pone la flecha sobre la foto.
+ */
+function TituloArriba({ cat, color, content, ajustes }: { cat: any; color: string; content: Contenido; ajustes: AjustesCategorias }) {
+  const radio = radioTarjeta(content.card_radius, 0)
+  const colorFondo = ajustes.cardColor === 'per_item' ? colorDeCategoria(cat.color) : null
+  const colorTexto = content.overlay_text_color ? { color: content.overlay_text_color } : undefined
+  return (
+    <Link
+      href={`/categorias/${cat.slug}`}
+      className={`group block min-w-0 ${content.card_hover === 'lift' ? 'transition-transform [@media(hover:hover)]:hover:-translate-y-1' : ''}`}
+    >
+      <h3 className="mb-3 truncate text-center text-2xl font-normal text-gray-900 dark:text-white md:text-3xl" style={colorTexto}>{cat.name}</h3>
+      <div className="relative overflow-hidden" style={{ borderRadius: radio }}>
+        <Foto
+          content={content}
+          color={color}
+          cat={cat}
+          fit={content.image_fit || 'contain'}
+          zoom={content.card_hover !== 'none'}
+          clase={`${proporcionTituloArriba(content.image_ratio)} w-full`}
+          fondo={colorFondo ?? fondoSuave(color, content.image_bg)}
+        />
+        {ajustes.ctaIcon === 'arrow_circle' && <FlechaCirculo />}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+        <span className="text-gray-500 dark:text-gray-400">
+          {content.show_count && cat.product_count != null ? `${cat.product_count} productos` : ''}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 font-medium text-gray-900 dark:text-white">
+          Explorar
+          <ArrowRight className="h-3.5 w-3.5 transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5" aria-hidden />
+        </span>
+      </div>
+      {cat.description && (
+        <p className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">{cat.description}</p>
+      )}
     </Link>
   )
 }
@@ -216,6 +322,9 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
   const carrusel = content.desktop_layout === 'carousel'
   const movil = layoutMovilCategorias(content.mobile_layout)
   const bloque = movil !== 'carousel'
+  // Opciones de las plantillas de tienda (category_text_position, category_card_color,
+  // category_cta_icon). Ausentes = `bottom` / `none` / `none`: la tarjeta de hoy.
+  const ajustes = normalizarAjustesCategorias(content as Record<string, unknown>)
   let cuerpo: React.ReactNode
 
   if (estilo === 'circle') {
@@ -288,14 +397,35 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
         </div>
       </>
     )
+  } else if (estilo === 'title_top') {
+    // Celular: `mobile_layout` carril (por defecto), 2 columnas o lista; escritorio: columnas.
+    const claseMovil = movil === 'grid'
+      ? 'grid grid-cols-2 gap-4 md:hidden'
+      : movil === 'list'
+        ? 'flex flex-col gap-8 md:hidden'
+        : `flex gap-4 overflow-x-auto snap-x pb-2 md:hidden ${MASCARA_CARRIL}`
+    cuerpo = (
+      <>
+        <div className={claseMovil} style={movil === 'carousel' ? { scrollbarWidth: 'none' } : undefined}>
+          {categorias.map((cat) => (
+            <div key={cat.id} className={movil === 'carousel' ? 'w-[72%] shrink-0 snap-start' : 'min-w-0'}>
+              <TituloArriba cat={cat} color={color} content={content} ajustes={ajustes} />
+            </div>
+          ))}
+        </div>
+        <div className="hidden gap-8 md:grid" style={{ gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
+          {categorias.map((cat) => <TituloArriba key={cat.id} cat={cat} color={color} content={content} ajustes={ajustes} />)}
+        </div>
+      </>
+    )
   } else {
     cuerpo = (
       <>
         <div className="grid grid-cols-2 gap-4 md:hidden">
-          {categorias.map((cat) => <TarjetaAbajo key={cat.id} cat={cat} color={color} content={content} />)}
+          {categorias.map((cat) => <TarjetaAbajo key={cat.id} cat={cat} color={color} content={content} ajustes={ajustes} />)}
         </div>
         <div className="hidden gap-6 md:grid" style={{ gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
-          {categorias.map((cat) => <TarjetaAbajo key={cat.id} cat={cat} color={color} content={content} />)}
+          {categorias.map((cat) => <TarjetaAbajo key={cat.id} cat={cat} color={color} content={content} ajustes={ajustes} />)}
         </div>
       </>
     )

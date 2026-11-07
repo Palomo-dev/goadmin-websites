@@ -17,9 +17,11 @@
  */
 
 import Link from 'next/link'
+import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria } from '@/lib/website/iconosCategoria'
 import { claseAjusteImagen, claseProporcionImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
+import { colorDeCategoria, textoSobreColor } from '@/lib/website/estiloCategoria'
 
 export interface CategoryCardStyle {
   /** Forma del contenedor. `round` es alias de `circle` (compat hacia atrás). */
@@ -72,6 +74,18 @@ export interface CategoryCardStyle {
   icon_color?: string
   /** Fondo del ícono: 'soft' | 'solid' | 'none'. Ausente: el de hoy. */
   icon_bg_mode?: string
+  /**
+   * Plantillas de tienda (`category_text_position: 'top'`): en la tarjeta superpuesta el texto
+   * va arriba y el degradado baja desde arriba. Ausente = abajo, como siempre.
+   */
+  text_vertical?: 'top'
+  /**
+   * `category_card_color: 'per_item'`: el color de la categoría (`categories.color`) es el del
+   * degradado superpuesto, o el fondo del pie en `text_position: 'below'`. Ausente = hoy.
+   */
+  per_item_color?: boolean
+  /** `category_cta_icon`: flecha al lado del nombre o en círculo sobre la foto. Ausente = sin flecha. */
+  cta_icon?: 'arrow' | 'arrow_circle'
 }
 
 interface CategoryCardProps {
@@ -179,7 +193,12 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     overlay_color = '#000000',
     overlay_opacity = 60,
     overlay_text_color = '#FFFFFF',
+    text_vertical,
+    per_item_color,
+    cta_icon,
   } = cardStyle
+  // Color propio de la categoría (solo con `per_item_color` y un hex válido).
+  const colorPropio = per_item_color ? colorDeCategoria(cat.color) : null
 
   const isRound = shape === 'circle' || shape === 'round'
   const { aspect, radius } = shapeClasses(shape)
@@ -269,9 +288,30 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   }`
   const alignClass = TEXT_ALIGN_CLASS[text_align || (isRound ? 'center' : 'left')]
 
+  // Pie de color propio en «debajo»: el texto toma el contraste del color de la categoría.
+  const colorPieDebajo = !onOverlay && colorPropio ? textoSobreColor(colorPropio) : null
+  const titulo = cta_icon === 'arrow' ? (
+    <h3
+      className={`${titleClass} inline-flex items-center gap-1.5`}
+      style={onOverlay ? { color: overlayTextColor } : colorPieDebajo ? { color: colorPieDebajo } : undefined}
+    >
+      {cat.name}
+      <ArrowRight className="h-4 w-4 shrink-0 transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5" aria-hidden />
+    </h3>
+  ) : colorPieDebajo ? (
+    <h3 className={titleClass} style={{ color: colorPieDebajo }}>{cat.name}</h3>
+  ) : (
+    <h3 className={titleClass} style={onOverlay ? { color: overlayTextColor } : undefined}>{cat.name}</h3>
+  )
+  const flechaCirculo = cta_icon === 'arrow_circle' ? (
+    <span className="pointer-events-none absolute right-3 top-3 z-[1] flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-900 shadow-sm" aria-hidden>
+      <ArrowUpRight className="h-4 w-4" />
+    </span>
+  ) : null
+
   const textBlock = (
     <div className={alignClass}>
-      <h3 className={titleClass} style={onOverlay ? { color: overlayTextColor } : undefined}>{cat.name}</h3>
+      {titulo}
       {show_description && cat.description && (
         <p className={`text-sm line-clamp-2 ${
           text_position === 'below' ? 'text-gray-500 dark:text-gray-400' : ''
@@ -313,11 +353,12 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
     return (
       <Link
         href={`/categorias/${cat.slug}`}
-        className={`block group ${belowRadius} ${shadowClass} ${shadowHover} transition-shadow bg-gray-100 dark:bg-gray-800`}
+        className={`block group ${belowRadius} ${shadowClass} ${shadowHover} transition-shadow bg-gray-100 dark:bg-gray-800${flechaCirculo ? ' relative' : ''}`}
         style={{ ...containerStyle, ...widthStyle }}
       >
         {media}
-        <div className={alignClass} style={{ padding: paddingPx }}>
+        {flechaCirculo}
+        <div className={alignClass} style={colorPropio ? { padding: paddingPx, backgroundColor: colorPropio } : { padding: paddingPx }}>
           {textBlock}
           {badge && (
             <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accent}20`, color: accent }}>
@@ -331,7 +372,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
 
   // overlay / inside / on_hover — gradiente con color y opacidad configurables
   const overlayOpacity = overlay_opacity != null ? overlay_opacity / 100 : 0.6
-  const overlayHex = overlay_color || '#000000'
+  const overlayHex = colorPropio || overlay_color || '#000000'
   // Convertir hex a rgba para el gradiente
   const hexToRgba = (hex: string, alpha: number) => {
     const h = hex.replace('#', '')
@@ -343,19 +384,22 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
   const gradientFrom = hexToRgba(overlayHex, overlayOpacity)
   const gradientTo = hexToRgba(overlayHex, 0)
 
+  // `text_vertical: 'top'` (plantillas de tienda): texto arriba y degradado desde arriba.
+  const sentido = text_vertical === 'top' ? 'to bottom' : 'to top'
   const overlayStyle: React.CSSProperties =
     text_position === 'overlay'
-      ? { background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})` }
+      ? { background: `linear-gradient(${sentido}, ${gradientFrom}, ${gradientTo})` }
       : text_position === 'on_hover'
-        ? { background: `linear-gradient(to top, ${gradientFrom}, ${gradientTo})` }
+        ? { background: `linear-gradient(${sentido}, ${gradientFrom}, ${gradientTo})` }
         : {}
 
+  const alineacionVertical = text_vertical === 'top' ? 'items-start' : 'items-end'
   const overlayBg =
     text_position === 'overlay'
-      ? 'absolute inset-0 flex items-end'
+      ? `absolute inset-0 flex ${alineacionVertical}`
       : text_position === 'inside'
-        ? 'absolute inset-0 flex items-end'
-        : 'absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end'
+        ? `absolute inset-0 flex ${alineacionVertical}`
+        : `absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex ${alineacionVertical}`
 
   return (
     <Link
@@ -364,6 +408,7 @@ export function CategoryCard({ cat, cardStyle = {}, primaryColor, itemWidth }: C
       style={{ ...containerStyle, ...widthStyle }}
     >
       {media}
+      {flechaCirculo}
       <div className={`${overlayBg} ${alignClass}`} style={{ ...overlayStyle, padding: paddingPx }}>
         {textBlock}
         {badge && (
