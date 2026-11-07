@@ -41,6 +41,7 @@ import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
 import { useMenuDeslizable } from './header/menuDeslizable'
 import { menusAdicionales } from '@/lib/website/constructorEncabezado'
+import { pildoraMovil as leerPildoraMovil } from '@/lib/website/pildora'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -418,6 +419,8 @@ export default function SiteHeader({
   // Capa hermana del envoltorio que se mueve (CapaFijaEncabezado): ahí va la barra inferior.
   const [capaFija, setCapaFija] = useState<HTMLDivElement | null>(null)
 
+  const pildora = leerPildoraMovil(settings as Record<string, unknown> | null | undefined)
+
   // Props comunes para todas las variantes
   const variantProps = {
     organization,
@@ -430,6 +433,9 @@ export default function SiteHeader({
     megaMenuItems,
     branchId,
     posicionLogo: logoMovil(settings),
+    // Composición `pill`: el celular en píldora (logo + «Menú» + botón). Con otra composición o con
+    // la píldora solo abajo, `false`: el encabezado de celular de hoy.
+    pildoraMovil: pildora.arriba,
   }
 
   // El Constructor ya no cambia de encabezado (HeaderPorZonas): ninguna fila guardada tiene zonas
@@ -494,7 +500,9 @@ export default function SiteHeader({
     }
     const legado = menuLegado()
     // Con menú inferior v2 guardado la barra la pinta MenuInferior (OrganizationLayoutCliente).
-    if (presentacion?.barra && leerMenuInferior(settings) === null) {
+    // Con la píldora abajo (composición `pill`) la navegación va en la píldora flotante que pinta
+    // OrganizationLayoutCliente: la barra v1 no se suma encima.
+    if (presentacion?.barra && leerMenuInferior(settings) === null && !pildora.abajo) {
       return (
         <>
           {legado}

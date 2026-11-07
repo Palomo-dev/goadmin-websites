@@ -15,9 +15,12 @@
  * - `vidrio` (sin la clave): la del café, medida en su web de referencia: píldora de vidrio que
  *   flota (blanco 10 %, desenfoque 24 px, borde blanco 20 %, letras blancas en versalitas sobre la
  *   foto); al bajar la barra sigue sin fondo y solo la píldora toma el fondo del tema al 85 %.
- * - `isla` / `solido`: isla clara del tema con sombra, también sobre la foto.
- * La clave aún no está en el contrato (OPCIONES_SHELL): llega con el editor. Hoy solo la org 374
- * publica `pill` (SQL 2026-11-07): queda en `vidrio`.
+ * - `solido` (y `isla`, guardado antes del contrato): isla clara del tema con sombra, también
+ *   sobre la foto (`data-pildora-estilo="isla"`).
+ * - `contorno`: sin fondo, solo el borde; al bajar, como el vidrio.
+ * Las demás claves del contrato (lib/website/pildora.ts) van como variables CSS en el <header>
+ * (vidrio, desenfoque, borde, letras), `data-pildora-al-bajar="igual"` y la separación superior.
+ * Hoy solo la org 374 publica `pill` (SQL 2026-11-07) y ninguna de esas claves: queda en `vidrio`.
  *
  * Antes de existir, `pill` caía en HeaderClassic: ningún sitio publicado lo usa (SQL 2026-11-07,
  * PLANO H2), así que no cambia ningún sitio.
@@ -46,6 +49,7 @@ import { barraSiCromo } from './BuscadorCromo';
 import { useEstadoTransparente } from './HeaderTransparent';
 import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie';
+import { atributoAlBajar, estiloPildora as leerEstiloPildora, opcionesPildora, variablesPildora } from '@/lib/website/pildora';
 
 /** ¿El enlace lleva a la página actual? La portada solo con la ruta exacta. */
 export function enlaceActivo(hrefEnlace: string, ruta: string): boolean {
@@ -72,8 +76,12 @@ export default function HeaderPill({
   const sobrePortada = headerSobreHero(settings as Parameters<typeof headerSobreHero>[0]);
   const estado = useEstadoTransparente(sobrePortada);
   const ruta = usePathname() || '/';
-  const guardado = (settings as Record<string, unknown> | null | undefined)?.header_pill_style;
-  const estiloPildora = guardado === 'isla' || guardado === 'solido' ? 'isla' : 'vidrio';
+  const ajustes = settings as Record<string, unknown> | null | undefined;
+  // Opciones del editor (lib/website/pildora.ts). Sin claves: `vidrio`, sin variables, sin
+  // atributo de «al bajar» y la separación de hoy: el mismo <header> de siempre.
+  const estiloPildora = leerEstiloPildora(ajustes);
+  const variables = variablesPildora(ajustes);
+  const separacion = opcionesPildora(ajustes).separacion;
   const conCirculo = opcionesPlantillaTienda(settings as Record<string, unknown> | null | undefined).formaBotonEncabezado === 'circle';
 
   // El enlace de la página actual va relleno dentro de la píldora (data-activo, app/globals.css).
@@ -107,14 +115,20 @@ export default function HeaderPill({
       className="sticky top-0 z-40 w-full"
       data-encabezado-pildora=""
       data-pildora-estilo={estiloPildora}
+      data-pildora-al-bajar={atributoAlBajar(ajustes)}
       data-encabezado-transparente={sobrePortada ? estado : undefined}
-      style={variablesEncabezado(settings)}
+      style={Object.keys(variables).length > 0 ? { ...variablesEncabezado(settings), ...variables } : variablesEncabezado(settings)}
     >
       {settings?.show_topbar && <HeaderTopbar organization={organization} settings={settings} />}
       <div className="backdrop-blur-md bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...headerBgStyle(settings), ...estiloDivisor(settings, 'bottom') }}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 md:pt-2">
+        <div className={separacion === null ? 'max-w-7xl mx-auto px-4 md:px-8 md:pt-2' : 'max-w-7xl mx-auto px-4 md:px-8'}>
           {/* Aire arriba y abajo: la isla y el botón circular (76 px) no tocan el borde. */}
-          <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-2.5" style={{ minHeight: `${Math.max((settings?.logo_height || 48) + 24, conCirculo ? 96 : 0)}px` }}>
+          <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-2.5" style={separacion === null
+            ? { minHeight: `${Math.max((settings?.logo_height || 48) + 24, conCirculo ? 96 : 0)}px` }
+            // header_float_offset: separación del borde superior al elemento más alto de la fila (hoy
+            // son los 8 + 10 px de relleno: ≈ 18 px; el logo de 48 queda a 20 y la píldora a 22). Sin
+            // alto mínimo, para que la fila no recentre y la separación sea la pedida.
+            : { paddingTop: `${separacion}px` }}>
             <div className="flex min-w-0 items-center justify-start">
               <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} fondoOscuro={estado === 'sobre'} />
             </div>

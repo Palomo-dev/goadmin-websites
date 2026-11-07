@@ -12,6 +12,11 @@ import { botonesExtraEncabezado, cajaIconosEncabezado, estiloBotonesExtra, leerC
 import { headerSobreHero } from '@/lib/website/espacioHeader';
 import { leerPresentacionMovil } from '@/lib/website/menuMovil';
 import { MoreHorizontal, LayoutGrid, Minus, CalendarDays } from 'lucide-react';
+import {
+  Calendar, CalendarCheck, CalendarClock, Clock, MessageCircle, MapPin, ArrowRight, ArrowUpRight, ChevronRight as FlechaDerecha,
+  Utensils, UtensilsCrossed, Coffee, Star, Heart, Sparkles, Ticket, Send, Truck, Tag, Percent, BedDouble, Dumbbell, Car, Plus,
+} from 'lucide-react';
+import { atributoAlBajar, botonConOpcionesNuevas, diametroCirculo, estiloPildora, medidasBoton, opcionesBoton, radioBoton, variablesPildora, type OpcionesBoton } from '@/lib/website/pildora';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
 import { CurrencySelector } from '../CurrencySelector';
@@ -49,6 +54,12 @@ export interface HeaderVariantProps {
   branchId?: number | null;
   /** Lado del logo en el celular. Ausente: se calcula de los ajustes. */
   posicionLogo?: 'left' | 'center' | 'right';
+  /**
+   * Celular con la composición `pill` y la píldora arriba (lib/website/pildora.ts `pildoraMovil`):
+   * logo + píldora «Menú» + botón principal (la cuenta va dentro del menú, para que la fila quepa
+   * en 390 px). Ausente o `false`: el encabezado de celular de hoy.
+   */
+  pildoraMovil?: boolean;
 }
 
 export interface MenuCategory {
@@ -104,6 +115,49 @@ const ICON_MAP: Record<string, any> = {
 export function getLucideIcon(name: string | null | undefined, fallback: any): any {
   if (!name) return fallback;
   return ICON_MAP[name] ?? fallback;
+}
+
+/**
+ * Íconos del botón principal (`header_cta_icon`, nombres de lucide en kebab-case como header_icons).
+ * Los del encabezado más los de un botón de acción; incluye los 16 que ofrece el editor del ERP
+ * (ICONOS_BOTON de pildoraLogica.ts). Va aparte de ICON_MAP para no cambiar qué pinta
+ * getLucideIcon en los íconos del encabezado que ya existen. Un nombre fuera de la lista = sin ícono.
+ */
+const ICONOS_BOTON: Record<string, any> = {
+  ...ICON_MAP,
+  calendar: Calendar,
+  'calendar-days': CalendarDays,
+  'calendar-check': CalendarCheck,
+  'calendar-clock': CalendarClock,
+  clock: Clock,
+  phone: Phone,
+  mail: Mail,
+  'message-circle': MessageCircle,
+  whatsapp: MessageCircle,
+  'map-pin': MapPin,
+  'arrow-right': ArrowRight,
+  'arrow-up-right': ArrowUpRight,
+  'chevron-right': FlechaDerecha,
+  utensils: Utensils,
+  'utensils-crossed': UtensilsCrossed,
+  coffee: Coffee,
+  star: Star,
+  heart: Heart,
+  sparkles: Sparkles,
+  ticket: Ticket,
+  send: Send,
+  truck: Truck,
+  tag: Tag,
+  percent: Percent,
+  'bed-double': BedDouble,
+  dumbbell: Dumbbell,
+  car: Car,
+  plus: Plus,
+};
+
+export function iconoBotonPrincipal(nombre: string | null | undefined): any | null {
+  if (!nombre) return null;
+  return ICONOS_BOTON[nombre] ?? null;
 }
 
 export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
@@ -323,6 +377,30 @@ export function useTransparenteMovil(settings: unknown): React.CSSProperties {
   if (!activo || bajo) return {}
   return { ['--header-bg-light' as string]: 'transparent', ['--header-bg-dark' as string]: 'transparent' } as React.CSSProperties
 }
+
+/**
+ * Encabezado de celular en píldora (composición `pill`, píldora arriba; Figma P5 b): atributos y
+ * variables del <header> que leen las reglas `header[data-pildora-movil]` de app/globals.css.
+ * `data-pildora-movil="portada"` cuando el encabezado va sobre la portada (al bajar, la barra sigue
+ * sin fondo y la píldora toma el del tema, como en el computador). Sin la píldora: `{}`.
+ */
+export function atributosPildoraMovil(settings: unknown, activo: boolean | undefined): Record<string, string> {
+  if (!activo) return {};
+  const a = settings as Record<string, unknown> | null | undefined;
+  const al = atributoAlBajar(a);
+  return {
+    'data-pildora-movil': headerSobreHero(a as Parameters<typeof headerSobreHero>[0]) ? 'portada' : '',
+    'data-pildora-estilo': estiloPildora(a),
+    ...(al ? { 'data-pildora-al-bajar': al } : {}),
+  };
+}
+
+export function variablesPildoraMovil(settings: unknown, activo: boolean | undefined): React.CSSProperties {
+  return activo ? (variablesPildora(settings as Record<string, unknown> | null | undefined) as React.CSSProperties) : {};
+}
+
+/** Botón «Menú» en píldora (versalitas): abre el mismo menú del celular. Colores en app/globals.css. */
+export const CLASE_BOTON_MENU_PILDORA = 'inline-flex h-9 flex-shrink-0 items-center rounded-full border px-3.5 font-medium transition-colors';
 
 /** Tema que el menú móvil usa para mezclar la opacidad y el contraste de los botones. */
 export function useTemaMenuMovil(primario?: string): TemaMenuMovil {
@@ -737,15 +815,34 @@ export function HeaderCTA({
     ? 'flex items-center justify-center text-sm font-semibold transition-opacity hover:opacity-90'
     : 'hidden md:inline-flex items-center text-sm font-semibold transition-opacity hover:opacity-90';
 
+  // Opciones del botón principal (header_cta_shape/size/width/height/style/icon/uppercase). Sin
+  // ninguna (o solo el círculo de hoy) sigue abajo el botón de siempre, sin cambios.
+  const opcionesNuevas = opcionesBoton(settings as Record<string, unknown> | null | undefined);
+  if (botonConOpcionesNuevas(opcionesNuevas)) {
+    return (
+      <BotonPrincipalConOpciones
+        o={opcionesNuevas}
+        texto={text}
+        href={linkHref}
+        externo={externo}
+        settings={settings}
+        fondo={bgColor}
+        textoColor={textColor}
+        marcaTema={marcaTema}
+        movil={false}
+      />
+    );
+  }
+
   // «Forma del botón» (header_cta_shape, plantillas de tienda): `circle` = un círculo con el texto
   // dentro. Sin la clave (`pill`), el botón de siempre, con su padding y su radio.
   if (opcionesPlantillaTienda(settings as Record<string, unknown> | null | undefined).formaBotonEncabezado === 'circle') {
     // Ícono encima del texto (Figma 2224:46167): `header_cta_icon` si se eligió; si el botón lleva
     // a reservas, el calendario; si no, solo el texto.
     const iconoGuardado = (settings as Record<string, unknown> | null | undefined)?.header_cta_icon;
-    const IconoCirculo = typeof iconoGuardado === 'string' && iconoGuardado
-      ? getLucideIcon(iconoGuardado, CalendarDays)
-      : /reserv/i.test(linkHref) ? CalendarDays : null;
+    // Un nombre que no está en ICONOS_BOTON = sin ícono (salvo el calendario si lleva a reservas).
+    const IconoCirculo = (typeof iconoGuardado === 'string' ? iconoBotonPrincipal(iconoGuardado.trim().toLowerCase()) : null)
+      ?? (/reserv/i.test(linkHref) ? CalendarDays : null);
     return (
       <Link
         href={linkHref}
@@ -799,7 +896,7 @@ export function HeaderCTA({
  * Botón principal en la barra del celular (láminas de Figma: «Tu marca · Reservar · ☰»). Solo en
  * sitios V2 con tema y con texto de botón; legacy, el celular sigue sin botón como siempre.
  */
-export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVariantProps['settings']; primaryColor: string }) {
+export function HeaderCTAMovil({ settings, primaryColor, pildora = false }: { settings?: HeaderVariantProps['settings']; primaryColor: string; /** Encabezado de celular en píldora: botón de 36 px en píldora. */ pildora?: boolean }) {
   const temaColores = useTemaColores();
   const { extras } = useEncabezadoPie();
   const marcaTema = useMarcaBotonTema();
@@ -809,6 +906,26 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
   const href = crudo === 'whatsapp' || crudo === 'maps' ? hrefBoton(crudo, extras.enlaces) : crudo || '#';
   if (!href) return null;
   const fondo = settings?.cta_bg_color ?? primaryColor;
+  // Mismas opciones que el botón del computador, a la medida de la fila (36 px). En el encabezado
+  // en píldora, sin forma (o con el círculo, que no cabe en la fila) va en píldora, como en Figma
+  // P5. Sin opciones y fuera de la píldora, el botón de siempre.
+  const o = opcionesBoton(settings as Record<string, unknown> | null | undefined);
+  if (pildora || botonConOpcionesNuevas(o)) {
+    const forma = o.forma === 'circle' || (o.forma === null && pildora) ? 'pill' : o.forma;
+    return (
+      <BotonPrincipalConOpciones
+        o={{ ...o, forma }}
+        texto={texto}
+        href={href}
+        externo={esEnlaceExterno(href)}
+        settings={settings}
+        fondo={fondo}
+        textoColor={settings?.cta_text_color ?? textoSobreAcentoSiHex(fondo) ?? '#ffffff'}
+        marcaTema={marcaTema}
+        movil
+      />
+    );
+  }
   return (
     <Link
       href={href}
@@ -822,6 +939,145 @@ export function HeaderCTAMovil({ settings, primaryColor }: { settings?: HeaderVa
       }}
     >
       {texto}
+    </Link>
+  );
+}
+
+const SOMBRAS_BOTON: Record<string, string> = {
+  none: 'none',
+  sm: '0 1px 2px rgba(0,0,0,0.1)',
+  md: '0 4px 6px rgba(0,0,0,0.15)',
+  lg: '0 10px 15px rgba(0,0,0,0.2)',
+};
+
+/**
+ * Botón principal con las opciones del editor (Figma «Editor · Encabezado píldora…» P2/P3). Solo
+ * se pinta cuando el sitio guardó alguna (`botonConOpcionesNuevas`) o en el encabezado de celular
+ * en píldora; si no, HeaderCTA / HeaderCTAMovil pintan el botón de siempre.
+ *
+ * - Forma: `pill` radio total, `rounded` 12, `square` 0, `circle` el círculo con el ícono encima;
+ *   sin forma, el radio de hoy (`cta_border_radius ?? 8`, o `--radio-boton` con el estilo `tema`).
+ * - Tamaño: alto 36/44/50 (círculo 56/68/76) con relleno 14/18/22 (`cta_padding_x` manda);
+ *   `header_cta_height` manda sobre el tamaño; `header_cta_width` fija el ancho (texto centrado).
+ * - Estilo (`data-cta-estilo`): `solido`/`tema` con `cta_bg_color`; `contorno` borde de 1,5 px del
+ *   color del botón; `vidrio` blanco 14 % con desenfoque sobre la portada y fondo del tema 85 % al
+ *   bajar; `texto` sin fondo ni borde, subrayado al pasar. Lo que depende de la portada o del tema
+ *   vive en app/globals.css. El `style` empieza siempre por `background-color`: así las reglas que
+ *   ponen en blanco el texto del encabezado sobre la portada no le pisan el color al ícono.
+ */
+function BotonPrincipalConOpciones({
+  o,
+  texto,
+  href,
+  externo,
+  settings,
+  fondo,
+  textoColor,
+  marcaTema,
+  movil,
+}: {
+  o: OpcionesBoton;
+  texto: string;
+  href: string;
+  externo: boolean;
+  settings?: HeaderVariantProps['settings'];
+  fondo: string;
+  textoColor: string;
+  marcaTema: { 'data-boton-tema'?: '' };
+  movil: boolean;
+}) {
+  const ajustes = settings as Record<string, unknown> | null | undefined;
+  const estilo = o.estilo ?? 'solido';
+  const circulo = o.forma === 'circle' && !movil;
+  const Icono = iconoBotonPrincipal(o.icono) ?? (circulo && /reserv/i.test(href) ? CalendarDays : null);
+  const ladoGuardado = o.ladoIcono ?? (circulo ? 'encima' : 'izquierda');
+  const lado = movil && ladoGuardado === 'encima' ? 'izquierda' : ladoGuardado;
+
+  const colores: React.CSSProperties =
+    estilo === 'contorno'
+      ? { backgroundColor: 'transparent', color: fondo, border: `1.5px solid ${fondo}` }
+      : estilo === 'texto'
+        ? { backgroundColor: 'transparent', color: fondo, border: '0 solid transparent' }
+        : estilo === 'vidrio'
+          ? {
+              backgroundColor: 'color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent)',
+              color: 'var(--text-color, #111827)',
+              border: '1px solid color-mix(in srgb, var(--text-color, #111827) 12%, transparent)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+            }
+          : {
+              backgroundColor: fondo,
+              color: textoColor,
+              borderWidth: `${settings?.cta_border_width ?? 0}px`,
+              borderColor: settings?.cta_border_color ?? 'transparent',
+              borderStyle: 'solid',
+            };
+  const conRelleno = estilo === 'solido' || estilo === 'tema';
+  const sombraGuardada = settings?.cta_shadow && settings.cta_shadow !== 'none' ? SOMBRAS_BOTON[settings.cta_shadow] ?? 'none' : null;
+  // Círculo relleno sin sombra elegida: la del diseño ([data-boton-circular] en app/globals.css).
+  const sombra = conRelleno ? (sombraGuardada ?? (circulo ? undefined : 'none')) : 'none';
+  const letras: React.CSSProperties =
+    o.mayusculas === true ? { textTransform: 'uppercase', letterSpacing: '0.08em' } : o.mayusculas === false ? { textTransform: 'none', letterSpacing: 'normal' } : {};
+
+  const icono = Icono ? <Icono className={circulo ? 'h-[18px] w-[18px] flex-shrink-0' : 'h-4 w-4 flex-shrink-0'} aria-hidden /> : null;
+  const contenido = (
+    <>
+      {icono && lado !== 'derecha' && icono}
+      <span className={circulo ? undefined : 'truncate'}>{texto}</span>
+      {icono && lado === 'derecha' && icono}
+    </>
+  );
+  const enlaceExterno = externo ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+  const efecto = estilo === 'texto' ? 'hover:underline underline-offset-4' : 'transition-opacity hover:opacity-90';
+
+  if (circulo) {
+    const d = diametroCirculo(o);
+    return (
+      <Link
+        href={href}
+        {...enlaceExterno}
+        className={`hidden md:inline-flex aspect-square flex-shrink-0 ${lado === 'encima' ? 'flex-col' : 'flex-row'} items-center justify-center gap-1 rounded-full ${d < 68 ? 'px-1 tracking-[0.06em]' : 'px-2 tracking-[0.12em]'} text-center text-[9px] font-semibold uppercase leading-tight ${efecto}`}
+        data-boton-circular=""
+        data-cta-estilo={estilo}
+        {...marcaTema}
+        style={{
+          ...colores,
+          ['--cta-color' as string]: fondo,
+          width: `${d}px`,
+          height: `${d}px`,
+          ...(sombra !== undefined ? { boxShadow: sombra } : {}),
+          ...letras,
+        }}
+      >
+        {contenido}
+      </Link>
+    );
+  }
+
+  const m = medidasBoton(o, ajustes, movil);
+  const fullWidth = !movil && (settings?.cta_full_width ?? false);
+  const visible = movil ? 'md:hidden inline-flex' : fullWidth ? 'flex' : 'hidden md:inline-flex';
+  const letra = movil ? 'text-[13px] font-medium' : 'text-sm font-semibold';
+  return (
+    <Link
+      href={href}
+      {...enlaceExterno}
+      className={`${visible} items-center justify-center gap-1.5 whitespace-nowrap ${letra} ${efecto}`}
+      data-cta-estilo={estilo}
+      {...marcaTema}
+      style={{
+        ...colores,
+        ['--cta-color' as string]: fondo,
+        borderRadius: radioBoton(o, ajustes, movil ? 6 : 8),
+        ...(m.alto !== null ? { height: `${m.alto}px`, padding: `0 ${m.rellenoX}px` } : { padding: `${m.rellenoY}px ${m.rellenoX}px` }),
+        ...(m.ancho !== null ? { width: `${m.ancho}px` } : fullWidth ? { width: '100%' } : {}),
+        boxShadow: sombra ?? 'none',
+        ...(!movil ? { marginTop: `${settings?.cta_margin_top ?? 0}px`, marginBottom: `${settings?.cta_margin_bottom ?? 0}px` } : {}),
+        ...letras,
+      }}
+    >
+      {contenido}
     </Link>
   );
 }

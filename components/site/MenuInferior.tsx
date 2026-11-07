@@ -8,6 +8,12 @@
  * siempre (BarraPestanas, MobileBottomNav, MobileCTABar o BarraMovilGiro).
  * - Pestañas: el mismo aspecto de BarraPestanas (fondo y color del encabezado, 56 px).
  * - Acciones: el mismo aspecto de BarraMovilGiro (primero relleno con el color de la marca).
+ * - Píldora flotante (`floating`, Figma «Editor · Encabezado píldora…» P4/P5 c): una píldora
+ *   separada `style.offset` (16) del borde inferior y de los lados, de vidrio (fondo del tema
+ *   translúcido con desenfoque y borde; con `glass: false`, fondo del tema con sombra), pestañas
+ *   ícono + texto, el botón destacado (`centerId`) en un círculo relleno y el activo marcado con
+ *   `indicator` (fill/dot/line). También la pinta OrganizationLayoutCliente con los enlaces del
+ *   encabezado cuando la composición `pill` pide la píldora abajo (lib/website/pildora.ts).
  */
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -46,7 +52,8 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
   const unidades = useUnidadesCarrito(organization.subdomain || '', branchId)
   const temaMenu = useTemaMenuMovil(primaryColor)
   const corte = ((settings as { mobile_breakpoint?: number | null } | null | undefined)?.mobile_breakpoint ?? 768) - 0.02
-  const botones = menu.enabled && (menu.variant === 'tabs' || rutaAdmiteAcciones) ? botonesVisibles(menu, destinos) : []
+  // La píldora flotante es navegación, como las pestañas: en todas las rutas.
+  const botones = menu.enabled && (menu.variant === 'tabs' || menu.variant === 'floating' || rutaAdmiteAcciones) ? botonesVisibles(menu, destinos) : []
   const visible = botones.length > 0
 
   useEffect(() => {
@@ -117,6 +124,84 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
                     <Icono className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                     {conTexto && <span className="truncate">{b.label}</span>}
                   </>)}
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+        {extras}
+      </>
+    )
+  }
+
+  if (menu.variant === 'floating') {
+    const separacion = menu.style.offset ?? 16
+    const vidrio = menu.style.glass !== false
+    const completo = menu.style.width === 'full'
+    const indicador = menu.style.indicator ?? 'fill'
+    const texto = 'var(--text-color, #111827)'
+    const activoColor = menu.style.active ?? texto
+    const inactivoColor = menu.style.inactive ?? `color-mix(in srgb, ${texto} 70%, transparent)`
+    const destacado = menu.style.active ?? primaryColor
+    // Alto de la píldora (con o sin textos) + su separación: lo que se reserva al final de la página
+    // para que no tape el pie ni el contenido.
+    const altoPildora = conTexto ? 62 : 52
+    return (
+      <>
+        <style>{ocultarEscritorio}</style>
+        <div data-menu-inferior="" aria-hidden="true" style={{ height: `calc(${altoPildora + separacion + 8}px + env(safe-area-inset-bottom))` }} />
+        <nav
+          aria-label="Menú inferior"
+          data-menu-inferior="flotante"
+          data-menu-vidrio={vidrio ? '' : undefined}
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center"
+          style={{ bottom: `calc(${separacion}px + env(safe-area-inset-bottom))`, paddingLeft: `${separacion}px`, paddingRight: `${separacion}px` }}
+        >
+          <ul
+            className={`pointer-events-auto flex items-stretch gap-0.5 rounded-full p-1.5 ${completo ? 'w-full' : 'max-w-full'}`}
+            style={{
+              backgroundColor: menu.style.background ?? (vidrio ? 'color-mix(in srgb, var(--background-color, #ffffff) 72%, transparent)' : 'var(--background-color, #ffffff)'),
+              ...(vidrio ? { backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)' } : {}),
+              border: `1px solid color-mix(in srgb, ${texto} ${vidrio ? 10 : 8}%, transparent)`,
+              boxShadow: vidrio ? '0 8px 24px rgba(0, 0, 0, 0.12)' : '0 10px 30px rgba(0, 0, 0, 0.18)',
+              color: inactivoColor,
+            }}
+          >
+            {botones.map(({ boton: b, destino: d }) => {
+              const Icono = ICONO[b.icon]
+              const centro = b.id === menu.style.centerId
+              const esActivo = !centro && activo(d)
+              const insignia = b.action === 'cart' && unidades > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center" style={{ backgroundColor: primaryColor }}>
+                  {unidades > 99 ? '99+' : unidades}
+                </span>
+              )
+              const etiqueta = conTexto && <span className="max-w-[72px] truncate text-[10px] font-medium leading-none">{b.label}</span>
+              const contenido = centro ? (
+                <span className="flex h-full flex-col items-center justify-center gap-1" style={{ color: texto }}>
+                  <span className="relative flex h-10 w-10 items-center justify-center rounded-full shadow-md" style={{ backgroundColor: destacado, color: textoSobreAcentoSiHex(destacado) ?? '#ffffff' }}>
+                    <Icono className="h-5 w-5" aria-hidden="true" />{insignia}
+                  </span>
+                  {etiqueta}
+                </span>
+              ) : (
+                <span
+                  className={`relative flex h-full flex-col items-center justify-center gap-1 rounded-full px-2.5 ${conTexto ? 'py-1.5' : 'py-2'}`}
+                  style={{
+                    color: esActivo ? activoColor : inactivoColor,
+                    ...(esActivo && indicador === 'fill' ? { backgroundColor: `color-mix(in srgb, ${activoColor} 10%, transparent)` } : {}),
+                  }}
+                >
+                  <span className="relative"><Icono className="h-5 w-5" aria-hidden="true" />{insignia}</span>
+                  {etiqueta}
+                  {esActivo && indicador === 'dot' && <span className="absolute bottom-0.5 h-1 w-1 rounded-full" style={{ backgroundColor: activoColor }} aria-hidden="true" />}
+                  {esActivo && indicador === 'line' && <span className="absolute bottom-0 h-0.5 w-4 rounded-full" style={{ backgroundColor: activoColor }} aria-hidden="true" />}
+                </span>
+              )
+              const aria = b.action === 'cart' && unidades > 0 ? `${b.label || 'Carrito'}, ${unidades}` : undefined
+              return (
+                <li key={b.id} className={`flex ${completo ? 'flex-1' : 'min-w-[56px]'} justify-center`} aria-current={esActivo ? 'page' : undefined}>
+                  {enlace(b, d, 'flex h-full w-full items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2', { outlineColor: primaryColor }, contenido, aria)}
                 </li>
               )
             })}

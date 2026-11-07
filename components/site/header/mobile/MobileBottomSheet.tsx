@@ -28,6 +28,9 @@ import {
   atributosMenuMovil,
   useTemaMenuMovil,
   marcaFondoEncabezado,
+  atributosPildoraMovil,
+  variablesPildoraMovil,
+  CLASE_BOTON_MENU_PILDORA,
   ESTILO_BOTON_ENTRAR,
 } from '../HeaderShared';
 
@@ -48,6 +51,7 @@ export default function MobileBottomSheet({
   branchId,
   posicionLogo,
   menuCategories,
+  pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   // La hoja se monta dentro del propio <header> (portal) y no en la fila de botones: así queda
@@ -71,7 +75,7 @@ export default function MobileBottomSheet({
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
-    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined}>
+    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -93,13 +97,20 @@ export default function MobileBottomSheet({
                   organizationSubdomain={organization.subdomain || ''}
                   showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
                   showCart={showCart && mp.verCarrito}
-                  mostrarCuentaMovil={mp.verCuenta}
+                  mostrarCuentaMovil={pildoraMovil ? false : mp.verCuenta}
                   isMobile={true}
                 />
-                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+                {pildoraMovil && (
+                  <Drawer.Trigger asChild>
+                    <button type="button" aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                      Menú
+                    </button>
+                  </Drawer.Trigger>
+                )}
+                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} pildora={pildoraMovil} />
               </>
             }
-            menu={
+            menu={pildoraMovil ? undefined : (
               <Drawer.Trigger asChild>
                 <button
                   aria-label="Abrir menú"
@@ -108,7 +119,7 @@ export default function MobileBottomSheet({
                   <GlifoMenu glifo={mp.glifo} className="h-5 w-5" />
                 </button>
               </Drawer.Trigger>
-            }
+            )}
           />
                 <Drawer.Portal container={headerEl}>
                 <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" data-hoja-menu-fondo="" />

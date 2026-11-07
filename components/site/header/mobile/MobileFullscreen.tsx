@@ -28,6 +28,9 @@ import {
   atributosMenuMovil,
   useTemaMenuMovil,
   marcaFondoEncabezado,
+  atributosPildoraMovil,
+  variablesPildoraMovil,
+  CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
 
 /**
@@ -47,6 +50,7 @@ export default function MobileFullscreen({
   onCartClick,
   menuCategories,
   posicionLogo,
+  pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const isLoggedIn = useAuthState();
@@ -82,7 +86,7 @@ export default function MobileFullscreen({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -103,13 +107,18 @@ export default function MobileFullscreen({
                   organizationSubdomain={organization.subdomain || ''}
                   showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
                   showCart={showCart && mp.verCarrito}
-                  mostrarCuentaMovil={mp.verCuenta}
+                  mostrarCuentaMovil={pildoraMovil ? false : mp.verCuenta}
                   isMobile={true}
                 />
-                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+                {pildoraMovil && (
+                  <button type="button" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                    {open ? 'Cerrar' : 'Menú'}
+                  </button>
+                )}
+                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} pildora={pildoraMovil} />
               </>
             }
-            menu={
+            menu={pildoraMovil ? undefined : (
               <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
@@ -117,7 +126,7 @@ export default function MobileFullscreen({
               >
                 {open ? <X className="h-5 w-5" /> : <GlifoMenu glifo={mp.glifo} className="h-5 w-5" />}
               </button>
-            }
+            )}
           />
 
           {searchStyle === 'bar' && (

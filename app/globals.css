@@ -372,22 +372,22 @@ header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora
 header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav {
   column-gap: 0.125rem;
   padding: 0.1875rem 0.5rem;
-  border-color: color-mix(in srgb, var(--text-color, #111827) 12%, transparent);
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 12%, transparent));
   background-color: color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px));
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
-  border-color: rgba(255, 255, 255, 0.2);
-  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--pildora-borde, rgba(255, 255, 255, 0.2));
+  background-color: rgba(255, 255, 255, var(--pildora-vidrio, 0.1));
 }
 header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav > :is(a, button, div > button) {
   padding: 0.5rem 0.875rem;
-  font-size: 11.2px;
+  font-size: var(--pildora-letra, 11.2px);
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: var(--pildora-espaciado, 0.14em);
+  text-transform: var(--pildora-mayusculas, uppercase);
 }
 header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='vidrio'] [data-nav-pildora] > nav :is(a, button, span, svg) {
   color: var(--text-color, #111827) !important;
@@ -419,21 +419,21 @@ header[data-encabezado-pildora][data-pildora-estilo='vidrio'][data-encabezado-tr
 header[data-encabezado-pildora][data-pildora-estilo='isla'][data-pildora-estilo='isla'] [data-nav-pildora] > nav {
   column-gap: 0.125rem;
   padding: 0.3125rem 0.625rem;
-  border-color: color-mix(in srgb, var(--text-color, #111827) 10%, transparent);
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 10%, transparent));
   background-color: color-mix(in srgb, var(--background-color, #ffffff) 84%, transparent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(var(--pildora-desenfoque, 14px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 14px)) saturate(1.2);
 }
 header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='isla'] [data-nav-pildora] > nav :is(a, button, span, svg) {
   color: var(--text-color, #111827) !important;
 }
 header[data-encabezado-pildora][data-pildora-estilo='isla'][data-pildora-estilo='isla'] [data-nav-pildora] > nav > :is(a, button, div > button) {
   padding: 0.5rem 0.875rem;
-  font-size: 11.5px;
+  font-size: var(--pildora-letra, 11.5px);
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: var(--pildora-espaciado, 0.14em);
+  text-transform: var(--pildora-mayusculas, uppercase);
 }
 header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='isla'] [data-nav-pildora] > nav > a[data-activo] {
   background-color: var(--text-color, #111827);
@@ -447,6 +447,75 @@ header[data-encabezado-pildora][data-pildora-estilo='isla'][data-encabezado-tran
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+/* Píldora «contorno» (header_pill_style 'contorno'): sin fondo, solo el borde, con el texto del
+   tema; sobre la portada, borde y letras blancas. Al bajar (con la portada) la barra sigue sin
+   fondo y la píldora toma el fondo del tema al 85 %, como el vidrio, para seguir legible. */
+header[data-encabezado-pildora][data-pildora-estilo='contorno'][data-pildora-estilo='contorno'] [data-nav-pildora] > nav {
+  column-gap: 0.125rem;
+  padding: 0.1875rem 0.5rem;
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 30%, transparent));
+  background-color: transparent;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+header[data-encabezado-pildora][data-pildora-estilo='contorno'][data-pildora-estilo='contorno'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav {
+  border-color: var(--pildora-borde, rgba(255, 255, 255, 0.5));
+}
+header[data-encabezado-pildora][data-pildora-estilo='contorno'][data-pildora-estilo='contorno'][data-encabezado-transparente='solido'] [data-nav-pildora] > nav {
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent);
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+}
+header[data-encabezado-pildora][data-pildora-estilo='contorno'][data-pildora-estilo='contorno'] [data-nav-pildora] > nav > :is(a, button, div > button) {
+  padding: 0.5rem 0.875rem;
+  font-size: var(--pildora-letra, 11.2px);
+  font-weight: 500;
+  letter-spacing: var(--pildora-espaciado, 0.14em);
+  text-transform: var(--pildora-mayusculas, uppercase);
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+  color: var(--text-color, #111827) !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav :is(a, button, span, svg) {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: var(--text-color, #111827);
+  color: var(--background-color, #ffffff) !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
+  color: var(--background-color, #ffffff) !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] {
+  background-color: #ffffff;
+  color: #111111 !important;
+}
+header[data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-encabezado-pildora][data-pildora-estilo='contorno'][data-encabezado-transparente='sobre'] [data-nav-pildora] > nav > a[data-activo] :is(span, svg) {
+  color: #111111 !important;
+}
+header[data-encabezado-pildora][data-pildora-estilo='contorno'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'] > div:last-child {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-color: transparent !important;
+}
+/* «Al bajar: igual» (header_pill_on_scroll 'igual', data-pildora-al-bajar): sin portada debajo el
+   vidrio blanco 10 % con letras blancas no se leería. Decisión (2026-11-07): la píldora sigue
+   siendo de vidrio —translúcida y con desenfoque— pero teñida con el fondo del tema al 45 % (claro
+   en temas claros, oscuro en los oscuros) y con el texto del tema. Así se distingue del «fondo del
+   tema» (85 %, casi opaco) y se lee sobre cualquier contenido. La isla ya es legible: con «igual»
+   solo deja la barra sin fondo al bajar (como el vidrio). */
+header[data-encabezado-pildora][data-pildora-al-bajar='igual'][data-pildora-al-bajar='igual']:is([data-pildora-estilo='vidrio'], [data-pildora-estilo='contorno']):not([data-encabezado-transparente='sobre']) [data-nav-pildora] > nav {
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 45%, transparent);
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 14%, transparent));
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px)) saturate(1.2);
+}
+header[data-encabezado-pildora][data-pildora-al-bajar='igual'][data-pildora-estilo='isla'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'][data-encabezado-transparente='solido'] > div:last-child {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-color: transparent !important;
+}
 /* Celular con el encabezado sobre la portada (MobileDrawer/Fullscreen/Tabs/BottomSheet,
    data-movil-sobre-portada mientras la página está arriba): el nombre del logo y los íconos de la
    fila van en blanco sobre la foto. Solo la fila del logo, no el panel del menú. Hoy solo la
@@ -454,9 +523,101 @@ header[data-encabezado-pildora][data-pildora-estilo='isla'][data-encabezado-tran
 header[data-movil-sobre-portada][data-movil-sobre-portada][data-movil-sobre-portada][data-movil-sobre-portada] > div[class*='header-bg-light'] > div:first-child :is([class*='text-gray-'], [class~='dark:text-white'], svg):not([style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: #ffffff !important;
 }
+/* Celular en píldora (composición `pill`, píldora arriba; Figma P5 b; data-pildora-movil en el
+   <header> de MobileDrawer/Fullscreen/BottomSheet/Tabs): logo, una píldora pequeña «Menú» del mismo
+   estilo que la del computador y el botón principal. Sobre la portada, vidrio blanco y letras
+   blancas; sin portada, el fondo del tema al 85 % y su texto. Con el encabezado sobre la portada
+   (`data-pildora-movil='portada'`), al bajar la barra sigue sin fondo, como en el computador. */
+header[data-pildora-movil] [data-pildora-menu][data-pildora-menu] {
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 12%, transparent));
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent);
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+  color: var(--text-color, #111827) !important;
+  font-size: var(--pildora-letra, 11px);
+  letter-spacing: var(--pildora-espaciado, 0.14em);
+  text-transform: var(--pildora-mayusculas, uppercase);
+}
+header[data-pildora-movil][data-movil-sobre-portada] [data-pildora-menu][data-pildora-menu] {
+  border-color: var(--pildora-borde, rgba(255, 255, 255, 0.2));
+  background-color: rgba(255, 255, 255, var(--pildora-vidrio, 0.1));
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+header[data-pildora-movil][data-pildora-estilo='isla'] [data-pildora-menu][data-pildora-menu][data-pildora-menu] {
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 10%, transparent));
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 84%, transparent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: var(--text-color, #111827) !important;
+}
+header[data-pildora-movil][data-pildora-estilo='contorno'] [data-pildora-menu][data-pildora-menu][data-pildora-menu] {
+  border-color: var(--pildora-borde, color-mix(in srgb, var(--text-color, #111827) 30%, transparent));
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+header[data-pildora-movil][data-pildora-estilo='contorno'][data-movil-sobre-portada] [data-pildora-menu][data-pildora-menu][data-pildora-menu] {
+  border-color: var(--pildora-borde, rgba(255, 255, 255, 0.5));
+}
+header[data-pildora-movil='portada'][data-pildora-estilo='contorno']:not([data-movil-sobre-portada]) [data-pildora-menu][data-pildora-menu][data-pildora-menu] {
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 85%, transparent);
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px));
+}
+header[data-pildora-movil][data-pildora-al-bajar='igual']:not([data-movil-sobre-portada]):not([data-pildora-estilo='isla']) [data-pildora-menu][data-pildora-menu][data-pildora-menu] {
+  background-color: color-mix(in srgb, var(--background-color, #ffffff) 45%, transparent);
+  backdrop-filter: blur(var(--pildora-desenfoque, 24px)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--pildora-desenfoque, 24px)) saturate(1.2);
+}
+/* La fila del celular en píldora cabe en 390 px: el nombre del logo se encoge con puntos
+   suspensivos antes de empujar «Menú» y el botón fuera de la pantalla. */
+header[data-pildora-movil] [data-logo-tema] {
+  flex-shrink: 1;
+  min-width: 0;
+}
+header[data-pildora-movil] [data-logo-tema] > :not(span) {
+  flex-shrink: 0;
+}
+header[data-pildora-movil] [data-logo-tema] > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.0625rem;
+}
+header[data-pildora-movil='portada'][data-pildora-movil='portada']:not([data-movil-sobre-portada]):not([data-pildora-estilo='isla']) > div[class*='header-bg-light'] {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-color: transparent !important;
+}
 /* Botón circular del encabezado (header_cta_shape 'circle'): sombra suave como en Figma. */
 header [data-boton-circular] {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+/* Botón principal con estilo (header_cta_style, data-cta-estilo; HeaderShared
+   BotonPrincipalConOpciones). Sin la clave el botón no lleva el atributo y nada de esto aplica.
+   Sobre la portada (escritorio data-encabezado-transparente='sobre', celular
+   data-movil-sobre-portada): el vidrio es blanco 14 % con borde blanco 25 % y texto blanco; el
+   contorno y el texto van en blanco. Al bajar, lo de su estilo en línea (fondo del tema 85 %). */
+header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) [data-cta-estilo='vidrio'][data-cta-estilo='vidrio'] {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) :is([data-cta-estilo='contorno'], [data-cta-estilo='texto'])[data-cta-estilo] {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+/* «Tema»: el estilo de botón del sitio (temaPublico.ts: data-estilo-boton en la raíz; el radio ya va
+   con var(--radio-boton) en línea). Sin tema = sólido. */
+[data-estilo-boton='contorno'] header [data-cta-estilo='tema'] {
+  background-color: transparent !important;
+  border: 1.5px solid var(--cta-color) !important;
+  color: var(--cta-color) !important;
+}
+[data-estilo-boton='sombra_dura'] header [data-cta-estilo='tema'] {
+  border: 2px solid var(--text-color, #111827) !important;
+  box-shadow: 4px 4px 0 0 var(--text-color, #111827) !important;
 }
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }

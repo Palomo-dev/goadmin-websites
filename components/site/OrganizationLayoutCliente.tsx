@@ -2,6 +2,8 @@
 
 import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { MenuInferior } from './MenuInferior'
+import { menuFlotanteDesdeEncabezado, pildoraMovil } from '@/lib/website/pildora'
+import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 import { useState, useEffect, useRef } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
@@ -228,7 +230,17 @@ export function OrganizationLayoutCliente({
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
   // En modo mesa la barra del sitio (Reservar / Pedir) no va: la mesa tiene su propia barra.
   const menuInferiorV2 = leerMenuInferior(settings)
-  const rutaAdmiteBarra = !frozenReason && !modoMesa && !menuInferiorV2 && settings?.mobile_menu_style !== 'tabs'
+  // Composición `pill` con la píldora abajo (header_pill_position abajo/ambas) y sin menú inferior
+  // v2 guardado: una píldora flotante con los enlaces del menú del encabezado (lib/website/pildora.ts).
+  // Con «tabs» el celular ya trae su barra de pestañas abajo: no se suma otra. Ocupa el lugar de la
+  // barra fija del sitio, como el menú v2. Sin la composición `pill`, `null` y todo como antes.
+  const menuPildoraAbajo = !frozenReason && !modoMesa && !menuInferiorV2 && settings?.mobile_menu_style !== 'tabs' && pildoraMovil(settings as Record<string, unknown> | null | undefined).abajo
+    ? menuFlotanteDesdeEncabezado(
+        (arbolVivo ?? headerNavTree ?? []).map((p) => ({ name: p.title, href: hrefDeSlug(p.slug) })),
+        settings?.header_cta_text && settings?.header_cta_url ? { texto: settings.header_cta_text, href: settings.header_cta_url } : null,
+      )
+    : null
+  const rutaAdmiteBarra = !frozenReason && !modoMesa && !menuInferiorV2 && !menuPildoraAbajo && settings?.mobile_menu_style !== 'tabs'
     && rutaConBarraMovil(quitarPrefijo(pathname, prefijo))
   // `auto` (default): la de hoy, «Reservar · Llamar · Cómo llegar · Pedir» del restaurante.
   const barraMovil = rutaAdmiteBarra && opcionesShell.barraMovil === 'auto' && datosSede?.barraMovil
@@ -513,6 +525,20 @@ export function OrganizationLayoutCliente({
           branchId={branchId}
           onCartClick={() => setCartOpen(true)}
           rutaAdmiteAcciones={rutaConBarraMovil(quitarPrefijo(pathname, prefijo))}
+        />
+      )}
+      {menuPildoraAbajo && (
+        <MenuInferior
+          menu={menuPildoraAbajo}
+          destinos={{ ...extras.enlaces, ...(extras.destinosMenu ?? { pedir: null, reservar: null }) }}
+          organization={organizacionEncabezado as OrganizationWithDetails}
+          primaryColor={primaryColor}
+          navTree={arbolEncabezado ?? []}
+          settings={settings}
+          menuCategories={menuCategories}
+          branchId={branchId}
+          onCartClick={() => setCartOpen(true)}
+          rutaAdmiteAcciones
         />
       )}
       {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}

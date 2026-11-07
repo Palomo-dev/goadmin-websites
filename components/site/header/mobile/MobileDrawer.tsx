@@ -30,6 +30,9 @@ import {
   ESTILO_BOTON_ENTRAR,
   ESTILO_BOTON_REGISTRO,
   ESTILO_BOTON_SALIR,
+  atributosPildoraMovil,
+  variablesPildoraMovil,
+  CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
 
 /**
@@ -52,6 +55,7 @@ export default function MobileDrawer({
   onCartClick,
   menuCategories,
   posicionLogo,
+  pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const temaMenu = useTemaMenuMovil(primaryColor);
@@ -90,7 +94,7 @@ export default function MobileDrawer({
   const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -111,13 +115,19 @@ export default function MobileDrawer({
                   organizationSubdomain={organization.subdomain || ''}
                   showSearchIcon={searchStyle === 'icon' && mp.verBuscar}
                   showCart={showCart && mp.verCarrito}
-                  mostrarCuentaMovil={mp.verCuenta}
+                  mostrarCuentaMovil={pildoraMovil ? false : mp.verCuenta}
                   isMobile={true}
                 />
-                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} />
+                {/* Píldora: «Menú» y el botón, a la derecha del logo (Figma P5 b). */}
+                {pildoraMovil && (
+                  <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                    Menú
+                  </button>
+                )}
+                <HeaderCTAMovil settings={settings} primaryColor={primaryColor} pildora={pildoraMovil} />
               </>
             }
-            menu={
+            menu={pildoraMovil ? undefined : (
               <button
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"
@@ -125,7 +135,7 @@ export default function MobileDrawer({
               >
                 <GlifoMenu glifo={mp.glifo} className="h-6 w-6" />
               </button>
-            }
+            )}
           />
 
           {showSearchBar && (
