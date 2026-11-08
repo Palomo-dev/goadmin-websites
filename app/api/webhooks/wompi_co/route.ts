@@ -25,6 +25,7 @@ import { esReferenciaDeposito } from '@/lib/restaurant/deposito-modelo'
 import { procesarDepositoWompi } from '@/lib/restaurant/deposito-webhook'
 import { esReferenciaAbonoMesa } from '@/lib/restaurant/mesa-servidor'
 import { procesarAbonoMesaWompi } from '@/lib/restaurant/abono-mesa-webhook'
+import { debeReenviarAlErp, reenviarWompiAlErp } from '@/lib/payments/wompi-reenvio-erp'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,10 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient() || createPublicClient()
 
   try {
-    const body = await request.json()
+    // Bytes exactos: si la referencia no es de la tienda se reenvían tal cual al ERP.
+    // Se decodifican igual que `request.json()` (UTF-8): el procesamiento no cambia.
+    const cuerpoCrudo = new Uint8Array(await request.arrayBuffer())
+    const body = JSON.parse(new TextDecoder().decode(cuerpoCrudo))
     const { event, data, timestamp, signature, environment } = body
 
     // Solo procesar eventos de transacción
@@ -240,6 +244,23 @@ export async function POST(request: NextRequest) {
       .eq('order_number', reference)
       .limit(1)
       .single()
+
+    // Sin pedido web con esa referencia (PGRST116 = 0 filas): no es de la tienda. Wompi tiene
+    // UNA sola URL de eventos y es esta, así que el evento va al ERP (sesiones QR del POS y del
+    // folio, links de pago, pagos pendientes) con el cuerpo crudo; el ERP decide la conexión por
+    // la firma. Un error real de la base NO se reenvía: podría ser un pedido de la tienda y el
+    // ERP lo daría por recibido. Tampoco lo que ya vino reenviado (evita ciclos).
+    if (debeReenviarAlErp({ pedido: webOrder, error: orderError, cabeceras: request.headers })) {
+      const r = await reenviarWompiAlErp({
+        cuerpo: cuerpoCrudo,
+        cabeceras: request.headers,
+        hostEntrante: request.headers.get('host'),
+        referencia: reference,
+      })
+      return new NextResponse(r.cuerpo, { status: r.status, headers: { 'content-type': r.contentType } })
+    } else {
+      // Error de la base o evento ya reenviado: la respuesta de siempre.
+    }
 
     if (orderError || !webOrder) {
       console.error('[Wompi Webhook] Orden no encontrada:', reference, orderError)

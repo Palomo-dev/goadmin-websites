@@ -13,6 +13,7 @@
     "verify:precios": "node --env-file=.env.local --disable-warning=ExperimentalWarning scripts/verify-precios-pedido.mjs",
     "verify:padre": "node --disable-warning=ExperimentalWarning scripts/verify-padre-sin-variante.mjs",
     "verify:telefono-wompi": "node --disable-warning=ExperimentalWarning scripts/verify-telefono-wompi.mjs",
+    "verify:reenvio-wompi": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-reenvio-wompi.mjs",
     "verify:secretos": "node --disable-warning=ExperimentalWarning scripts/verify-secretos-conexion.mjs",
     "verify:carta": "node --env-file=.env.local scripts/verify-carta.mjs",
     "verify:sedes": "TZ=UTC node --disable-warning=ExperimentalWarning scripts/verify-sedes.mjs && TZ=America/Bogota node --disable-warning=ExperimentalWarning scripts/verify-sedes.mjs",
