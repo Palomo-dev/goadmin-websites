@@ -266,8 +266,10 @@ const RESUMEN = { product_reviews: { promedio: 4.9, cantidad: 2318 }, testimonia
 const RESUMEN_CERO = { product_reviews: { promedio: 0, cantidad: 0 }, testimonials: { promedio: 0, cantidad: 0 } }
 
 // CONTENT_KEYS: lo que declara el contrato (más las claves de siempre que se nombran en el reporte).
+// `blocks` de color_block es el repetidor de la decisión del dueño 2026-11-10 (verify:editor-tienda).
+const EXTRA_KEYS = { 'image_text.color_block': ['blocks'] }
 for (const [C, clave] of [[HeroBuscador, 'hero.search'], [HeroMarca, 'hero.brand_giant'], [GalleryCollage, 'gallery.collage'], [GalleryInstagram, 'gallery.instagram_cta'], [ImageTextColor, 'image_text.color_block'], [ImageTextEditorial, 'image_text.editorial']]) {
-  check(JSON.stringify([...C.CONTENT_KEYS]) === JSON.stringify([...contrato.CLAVES_SECCION_TIENDA[clave]]), `${clave}: CONTENT_KEYS = las del contrato`)
+  check(JSON.stringify([...C.CONTENT_KEYS]) === JSON.stringify([...contrato.CLAVES_SECCION_TIENDA[clave], ...(EXTRA_KEYS[clave] ?? [])]), `${clave}: CONTENT_KEYS = las del contrato`)
 }
 for (const [C, clave] of [[HeroFlotante, 'hero.floating'], [HeroSplitProductos, 'hero.split_products'], [TextBlockIconos, 'text_block.inline_icons']]) {
   check(contrato.CLAVES_SECCION_TIENDA[clave].every((k) => C.CONTENT_KEYS.includes(k)), `${clave}: CONTENT_KEYS incluye las del contrato`)

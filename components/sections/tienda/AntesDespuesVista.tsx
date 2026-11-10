@@ -12,15 +12,19 @@
 import { useId, useRef, useState, type PointerEvent } from 'react'
 import { ChevronsLeftRight } from 'lucide-react'
 import type { ParAntesDespues } from '@/lib/website/v2/contrato/seccionesTienda'
+import { ETIQUETAS_ANTES_DESPUES_POR_DEFECTO, type EtiquetasAntesDespues } from '@/lib/website/opcionesEditorTienda'
 
 interface AntesDespuesVistaProps {
   items: ParAntesDespues[]
   /** Posición inicial del divisor (0–100). */
   inicio: number
   manija: { fondo: string; icono: string }
+  /** Rótulos de las dos fotos (`before_label` / `after_label`); por defecto «Antes» y «Después». */
+  etiquetas?: EtiquetasAntesDespues
 }
 
-export function AntesDespuesVista({ items, inicio, manija }: AntesDespuesVistaProps) {
+export function AntesDespuesVista({ items, inicio, manija, etiquetas = ETIQUETAS_ANTES_DESPUES_POR_DEFECTO }: AntesDespuesVistaProps) {
+  const { antes, despues } = etiquetas
   const [actual, setActual] = useState(0)
   const [valor, setValor] = useState(inicio)
   const [foco, setFoco] = useState(false)
@@ -61,7 +65,7 @@ export function AntesDespuesVista({ items, inicio, manija }: AntesDespuesVistaPr
       )}
       <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-8">
         <span className="hidden text-2xl uppercase tracking-wide md:block" style={{ fontFamily: 'var(--font-heading, inherit)' }} aria-hidden="true">
-          Antes
+          {antes}
         </span>
         <div
           className="relative mx-auto aspect-[4/3] w-full max-w-3xl cursor-ew-resize select-none overflow-hidden bg-black/5"
@@ -81,20 +85,20 @@ export function AntesDespuesVista({ items, inicio, manija }: AntesDespuesVistaPr
             arrastrando.current = false
           }}
         >
-          <img src={par.afterUrl} alt={nombre ? `Después: ${nombre}` : 'Después'} className="absolute inset-0 h-full w-full object-cover" loading="lazy" draggable={false} />
+          <img src={par.afterUrl} alt={nombre ? `${despues}: ${nombre}` : despues} className="absolute inset-0 h-full w-full object-cover" loading="lazy" draggable={false} />
           <img
             src={par.beforeUrl}
-            alt={nombre ? `Antes: ${nombre}` : 'Antes'}
+            alt={nombre ? `${antes}: ${nombre}` : antes}
             className="absolute inset-0 h-full w-full object-cover"
             style={{ clipPath: `inset(0 ${100 - valor}% 0 0)` }}
             loading="lazy"
             draggable={false}
           />
           <span className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs uppercase tracking-wide text-white md:hidden" aria-hidden="true">
-            Antes
+            {antes}
           </span>
           <span className="pointer-events-none absolute bottom-3 right-3 rounded bg-black/60 px-2 py-1 text-xs uppercase tracking-wide text-white md:hidden" aria-hidden="true">
-            Después
+            {despues}
           </span>
           <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white/90" style={{ left: `${valor}%` }} aria-hidden="true" />
           <div
@@ -117,12 +121,12 @@ export function AntesDespuesVista({ items, inicio, manija }: AntesDespuesVistaPr
             onFocus={() => setFoco(true)}
             onBlur={() => setFoco(false)}
             aria-labelledby={idEtiqueta}
-            aria-valuetext={`${valor} % antes, ${100 - valor} % después`}
+            aria-valuetext={`${valor} % ${antes.toLocaleLowerCase('es')}, ${100 - valor} % ${despues.toLocaleLowerCase('es')}`}
             className="pointer-events-none absolute inset-0 h-full w-full appearance-none opacity-0"
           />
         </div>
         <span className="hidden text-2xl uppercase tracking-wide md:block" style={{ fontFamily: 'var(--font-heading, inherit)' }} aria-hidden="true">
-          Después
+          {despues}
         </span>
       </div>
     </div>

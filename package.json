@@ -77,6 +77,7 @@
     "verify:ficha-plantilla": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-ficha-plantilla.mjs",
     "verify:portada-tienda": "node --disable-warning=ExperimentalWarning scripts/verify-portada-tienda.mjs",
     "verify:secciones-tienda": "node --env-file-if-exists=.env.local --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-secciones-tienda.mjs",
+    "verify:editor-tienda": "node --disable-warning=ExperimentalWarning scripts/verify-editor-tienda.mjs",
     "verify:rutas-prohibidas": "node scripts/verify-rutas-prohibidas.mjs",
     "pruebas:matriz-buscador": "node scripts/pruebas/matriz-buscador.mjs",
     "pruebas:franja-movimiento": "node scripts/pruebas/franja-movimiento.mjs",

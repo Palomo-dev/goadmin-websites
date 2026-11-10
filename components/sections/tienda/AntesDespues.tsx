@@ -8,17 +8,21 @@
  * Accesible: el divisor es un `input type=range` nativo (flechas, Inicio/Fin, RePág/AvPág y
  * lectores de pantalla); con varios pares, botones para elegir cuál comparar.
  *
+ * Los rótulos «Antes» y «Después» se cambian con `before_label` / `after_label` (vacíos = esos).
+ *
  * Sin 'use client': el manifiesto lee `AntesDespues.CONTENT_KEYS`. La interacción vive en
  * `AntesDespuesVista.tsx`.
  */
 
 import { CLAVES_SECCION_TIENDA, normalizarAntesDespues } from '@/lib/website/v2/contrato/seccionesTienda'
+import { CLAVES_ETIQUETAS_ANTES_DESPUES, etiquetasAntesDespues } from '@/lib/website/opcionesEditorTienda'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { EditorHint } from '../restaurant/EditorHint'
 import { AntesDespuesVista } from './AntesDespuesVista'
 import { motivoSeccionTiendaVacia, type DatosPaginaTienda } from './datosTienda'
 
-export const CONTENT_KEYS = CLAVES_SECCION_TIENDA['transformation.slider']
+/** Las del contrato más las etiquetas editables (`before_label` / `after_label`, decisión 2026-11-10). */
+export const CONTENT_KEYS = [...CLAVES_SECCION_TIENDA['transformation.slider'], ...CLAVES_ETIQUETAS_ANTES_DESPUES]
 
 interface AntesDespuesProps {
   content: Record<string, unknown>
@@ -61,7 +65,12 @@ export function AntesDespues({ content, primaryColor = '#111111', organization, 
           {n.subtitle && <p className="titulo-legado text-sm leading-relaxed opacity-75">{n.subtitle}</p>}
         </div>
       )}
-      <AntesDespuesVista items={n.items} inicio={n.startPosition} manija={coloresManija(n.handleColor, primaryColor, acento)} />
+      <AntesDespuesVista
+        items={n.items}
+        inicio={n.startPosition}
+        manija={coloresManija(n.handleColor, primaryColor, acento)}
+        etiquetas={etiquetasAntesDespues(content)}
+      />
     </div>
   )
 }

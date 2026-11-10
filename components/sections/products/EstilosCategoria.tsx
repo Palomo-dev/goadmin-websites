@@ -17,6 +17,7 @@ import {
   sombraTarjeta,
   type EstiloCategoria,
 } from '@/lib/website/estiloCategoria'
+import { clasesListaTexto } from '@/lib/website/opcionesEditorTienda'
 import {
   DEFAULT_AJUSTES_CATEGORIAS,
   normalizarAjustesCategorias,
@@ -301,6 +302,35 @@ function Minimo({ cat, color, content }: { cat: any; color: string; content: Con
   )
 }
 
+/**
+ * «Lista de texto»: el nombre de cada categoría enlazado, en una fila (carril en el celular). Sin
+ * foto ni ícono; el conteo solo con `show_count`. El color es el del texto de la sección
+ * (`overlay_text_color` si lo hay).
+ */
+function ListaTexto({ categorias, content }: { categorias: any[]; content: Contenido }) {
+  const colorTexto = content.overlay_text_color ? { color: content.overlay_text_color } : undefined
+  return (
+    <nav aria-label={content.title || 'Categorías'}>
+      <ul className={clasesListaTexto(content.align)} style={{ scrollbarWidth: 'none' }} data-categorias-texto="">
+        {categorias.map((cat) => (
+          <li key={cat.id} className="shrink-0">
+            <Link
+              href={`/categorias/${cat.slug}`}
+              className="inline-flex items-baseline gap-1 py-1 text-base text-gray-700 underline-offset-[6px] transition-colors hover:text-gray-900 hover:underline dark:text-gray-300 dark:hover:text-white md:text-lg"
+              style={colorTexto}
+            >
+              {cat.name}
+              {content.show_count && cat.product_count != null && (
+                <span className="text-xs tabular-nums opacity-60">{cat.product_count}</span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 function CeldaBento({ cat, color, content, grande }: { cat: any; color: string; content: Contenido; grande: boolean }) {
   const radio = radioTarjeta(content.card_radius, 16)
   return (
@@ -418,6 +448,8 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
         </div>
       </>
     )
+  } else if (estilo === 'text_list') {
+    cuerpo = <ListaTexto categorias={categorias} content={content} />
   } else {
     cuerpo = (
       <>

@@ -6,13 +6,16 @@
  * `contain`, para no recortar el producto.
  */
 
-export type EstiloCategoria = 'circle' | 'card_bottom' | 'pill' | 'bento' | 'minimal_icon' | 'title_top'
+export type EstiloCategoria = 'circle' | 'card_bottom' | 'pill' | 'bento' | 'minimal_icon' | 'title_top' | 'text_list'
 
 export function estiloCategoria(valor: unknown): EstiloCategoria | null {
   if (valor === 'circle' || valor === 'card_bottom' || valor === 'pill' || valor === 'bento' || valor === 'minimal_icon') return valor
   // Plantillas de tienda (PLANO §2 ítem 15): título y conteo encima de la foto. 0 secciones lo
   // usan en producción (SQL 2026-11-07); antes caía en la tarjeta superpuesta de siempre.
   if (valor === 'title_top') return valor
+  // «Lista de texto» (decisión del dueño 2026-11-10): una fila de nombres enlazados. Antes caía en
+  // la tarjeta superpuesta de siempre; sin la clave nada cambia.
+  if (valor === 'text_list') return valor
   return null
 }
 
