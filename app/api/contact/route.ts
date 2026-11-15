@@ -85,6 +85,12 @@ function detallesSaneados(valor: unknown): Record<string, string | number> | nul
   if (lugar) out.venue = lugar
   const presupuesto = Number(v.budget_per_person)
   if (Number.isFinite(presupuesto) && presupuesto >= 0 && presupuesto < 1e9) out.budget_per_person = presupuesto
+  // D6b (ERP 20261115160000): el presupuesto tal como se eligió (un rango) y
+  // el mensaje libre del visitante, para la tarjeta «Evento privado» del lead.
+  const rotuloPresupuesto = str(v.budget_label).slice(0, 60)
+  if (rotuloPresupuesto) out.budget_label = rotuloPresupuesto
+  const mensajeLibre = str(v.message).slice(0, 2000)
+  if (mensajeLibre) out.message = mensajeLibre
   return Object.keys(out).length > 0 ? out : null
 }
 

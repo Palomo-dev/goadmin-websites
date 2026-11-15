@@ -170,7 +170,7 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
 
   // Datos estructurados para la ficha del lead (migración D6): sede y detalles
   // del evento. El texto de `composeMessage` se sigue enviando igual.
-  const extraPayload = useCallback(() => {
+  const extraPayload = useCallback((values: ContactFormValues) => {
     const guests = Number(fields.guests)
     const details: Record<string, unknown> = {
       event_type: fields.eventType || undefined,
@@ -182,6 +182,11 @@ export function PrivateEventsView(props: PrivateEventsViewProps) {
     if (fields.budget !== UNDECIDED && /^\$?\s*[\d.,]+$/.test(fields.budget.trim()) && presupuesto > 0) {
       details.budget_per_person = presupuesto
     }
+    // D6b (ERP 20261115160000): la opción elegida tal cual (suele ser un rango)
+    // y el mensaje libre, para la tarjeta «Evento privado» del lead en el CRM.
+    if (fields.budget && fields.budget !== UNDECIDED) details.budget_label = fields.budget.slice(0, 60)
+    const mensaje = values.message.trim()
+    if (mensaje) details.message = mensaje.slice(0, 2000)
     return { branchId: sedeId, details }
   }, [fields, sedeId])
 
