@@ -6,6 +6,10 @@
  * función. Lee el pedido, sus líneas, la organización y la sede con el cliente de servidor, y
  * arma el enlace de seguimiento (con su token) en el dominio del sitio de la organización.
  *
+ * La clave de Resend sale de `claveResend` (variable del despliegue o, si falta, el vault), igual
+ * que el correo de compra pendiente: el despliegue no tiene RESEND_API_KEY y este correo fallaba
+ * siempre. Sin clave se registra el error y no se envía.
+ *
  * Nunca lanza: un fallo del correo no puede tumbar el webhook.
  */
 
@@ -13,6 +17,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
 import { registrarCorreoPedido } from '@/lib/email/registrarCorreoPedido'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+import { claveResend } from '@/lib/orders/claveResend'
 import { origenSitio } from '@/lib/orders/cargarOrigenSitio'
 import { lineasConFoto } from '@/lib/orders/fotosLinea'
 import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
@@ -39,6 +44,20 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
       .maybeSingle()
     if (error || !pedido?.customer_email) {
       if (error) console.error('[CorreoPedido] No se pudo leer el pedido', { webOrderId, error: error.message })
+      return
+    }
+    const apiKey = await claveResend(sb)
+    if (!apiKey) {
+      console.error('[CorreoPedido] Falta la clave de envío: correo de pago sin enviar', { webOrderId })
+      await registrarCorreoPedido(sb, {
+        webOrderId,
+        organizationId: Number(pedido.organization_id),
+        email: String(pedido.customer_email),
+        tipo: 'pedido_pagado',
+        resendId: null,
+        estado: 'error',
+        error: 'sin clave de envío',
+      })
       return
     }
     const [{ data: org }, { data: sede }] = await Promise.all([
@@ -68,7 +87,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
       paymentStatus: 'paid',
       tipoEntrega: etiquetaTipoEntrega(pedido.delivery_type, esRestaurante, pedido.internal_notes),
       programadoPara: pedido.is_scheduled && pedido.scheduled_at ? momentoPedido(pedido.scheduled_at, zona) : null,
-    })
+    }, { apiKey })
     await registrarCorreoPedido(sb, {
       webOrderId,
       organizationId: Number(pedido.organization_id),
