@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
+import { claveResend } from '@/lib/orders/claveResend'
 import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
@@ -864,6 +866,13 @@ export async function POST(request: NextRequest) {
         // Ronda de la Carta QR sin correo: no hay a quién escribir. Sigue en la pantalla de la mesa.
       } else if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
         const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
+        // Marca y clave de envío: From pedidos@<dominio verificado> con Reply-To de la tienda, como el
+        // correo de pago confirmado. Si alguna falla, el correo sale como antes (respaldo de la plataforma).
+        const sbCorreo = supabase as any
+        const [marca, apiKey] = await Promise.all([
+          cargarMarcaPedido(sbCorreo, contextOrgId, resolvedBranchId ?? null).catch(() => null),
+          claveResend(sbCorreo).catch(() => null),
+        ])
         sendOrderConfirmationEmail({
           orderNumber: webOrder.order_number,
           customerEmail: customer.email,
@@ -878,11 +887,12 @@ export async function POST(request: NextRequest) {
           ...(resolvedCoupon && resolvedCouponDiscount > 0 ? { couponCode: resolvedCoupon.code, couponDiscount: resolvedCouponDiscount } : {}),
           total: calculatedTotal,
           organizationName: contexto.nombreOrganizacion,
+          ...(marca ? { marca } : {}),
           trackingUrl: `${origin}${rutaSeguimiento(contextOrgId, webOrder)}`,
           paymentStatus: 'pending',
           tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · ${etiquetaMesa(mesaPedido.name)}` : ''}`,
           programadoPara: isScheduled && programadoParaGuardado ? momentoPedido(programadoParaGuardado, contexto.zona) : null,
-        }).catch(err => console.error('[Orders] Email error:', err))
+        }, { apiKey }).catch(err => console.error('[Orders] Email error:', err))
       } else {
         // Wompi: el correo sale del webhook al confirmarse el pago.
       }
