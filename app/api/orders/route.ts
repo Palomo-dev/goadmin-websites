@@ -28,21 +28,12 @@ import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
+import { insertarConNumero } from '@/lib/orders/numeroPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { avisarErpRondaMesa, buscarRondaPorClave, claveRondaValida, comensalDeRonda, esRondaDuplicada, filasConComensal, filasSinComensal, rechazaClaveRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
-
-/**
- * Genera un order_number único que sirve como referencia para Wompi.
- * Formato: WO-{orgId}-{timestamp}-{random}
- */
-function generateOrderNumber(organizationId: number): string {
-  const ts = Date.now().toString(36).toUpperCase()
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
-  return `WO-${organizationId}-${ts}-${rand}`
-}
 
 function getSupabase() {
   return createAdminClient() || createPublicClient()
@@ -620,15 +611,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generar order_number (será la referencia para Wompi)
-    const orderNumber = generateOrderNumber(contextOrgId)
-
     // Crear web_order
     const filaPedido: Record<string, unknown> = {
         organization_id: contextOrgId,
         branch_id: resolvedBranchId,
         customer_id: customerId,
-        order_number: orderNumber,
         status: 'pending',
         source: 'website',
         subtotal: calculatedSubtotal,
@@ -664,8 +651,12 @@ export async function POST(request: NextRequest) {
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
     }
+    // `order_number` (la referencia de la pasarela) con el formato de la organización (ERP ›
+    // Configuración › POS › Número de pedido); si choca con uno existente, se pide otro.
     const insertarPedido = (fila: Record<string, unknown>) =>
-      (supabase as any).from('web_orders').insert(fila).select('id, order_number').single()
+      insertarConNumero<any>(supabase as any, contextOrgId, (numero) =>
+        (supabase as any).from('web_orders').insert({ ...fila, order_number: numero }).select('id, order_number').single(),
+      )
     let { data: webOrder, error: orderError } = await insertarPedido(filaPedido)
     if (orderError && mesaPedido && rechazaComerAqui(orderError)) {
       // E1 sin aplicar: el CHECK aún no admite 'dine_in' o falta restaurant_table_id. Mapeo
