@@ -151,7 +151,7 @@ export function HeaderMovilConfigurable({
           {...(transparente ? {} : marcaFondoEncabezado(settings))}
         >
           <div className="px-4">
-            <div className="flex items-center gap-2" style={{ minHeight: layout?.headerHeight ?? Math.max(56, altoLogo + 16) }}>
+            <div className="flex items-center gap-2" style={{ minHeight: layout?.headerHeight ?? Math.max(56, altoLogo + 16) }} data-fila-movil="">
               {fila(layout?.arrangement ?? 'logo-acciones-menu', logo, acciones, menuBtn)}
             </div>
             {buscador === 'bar' && (

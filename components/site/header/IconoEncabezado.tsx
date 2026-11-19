@@ -27,6 +27,7 @@ export function IconoConCirculo({
   return (
     <span
       className={`inline-flex ${caja} items-center justify-center rounded-full`}
+      data-icono-circulo={tamano}
       style={{ backgroundColor: `var(--hdr-circle-bg, ${primaryColor})`, color: `var(--hdr-circle-fg, ${iconoSobreFondo(primaryColor)})` }}
     >
       {children}

@@ -543,7 +543,7 @@ export function HeaderLogo({
   );
   if (logoSrc) {
     return (
-      <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
+      <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3" data-logo-encabezado="">
         <Image
           src={logoSrc}
           alt={organization.name}
@@ -564,7 +564,7 @@ export function HeaderLogo({
       || organization.name.substring(0, 2).toUpperCase();
     const lado = Math.round(logoSize * 0.85);
     return (
-      <Link href={inicio} className="flex-shrink-0 flex items-center gap-2.5" data-logo-tema="">
+      <Link href={inicio} className="flex-shrink-0 flex items-center gap-2.5" data-logo-tema="" data-logo-encabezado="">
         <div
           className="flex items-center justify-center font-semibold"
           style={{
@@ -587,7 +587,7 @@ export function HeaderLogo({
   }
 
   return (
-    <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
+    <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3" data-logo-encabezado="">
       <div
         className="rounded-xl flex items-center justify-center text-white font-bold text-lg"
         style={{ backgroundColor: primaryColor, width: logoSize, height: logoSize }}
@@ -757,7 +757,7 @@ export function HeaderActions({
   // carrito y menú no se aplasten. Sin cuenta en el celular, la separación de siempre.
   const filaApretada = isMobile && actionElements.auth != null;
   return (
-    <div className={`flex items-center ${filaApretada ? 'gap-1' : 'space-x-4'} flex-shrink-0`}>
+    <div className={`flex items-center ${filaApretada ? 'gap-1' : 'space-x-4'} flex-shrink-0`} data-acciones-encabezado="">
       {actionsOrder.map((action) => actionElements[action]).filter(Boolean)}
     </div>
   );
@@ -931,6 +931,7 @@ export function HeaderCTAMovil({ settings, primaryColor, pildora = false }: { se
       href={href}
       {...(esEnlaceExterno(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className="md:hidden inline-flex items-center whitespace-nowrap px-3 py-1.5 text-[13px] font-medium"
+      data-cta-movil=""
       {...marcaTema}
       style={{
         backgroundColor: fondo,
@@ -1089,6 +1090,7 @@ function BotonPrincipalConOpciones({
       {...enlaceExterno}
       className={`${visible} items-center justify-center gap-1.5 whitespace-nowrap ${letra} ${efecto}${colorSecundario}`}
       data-cta-estilo={estilo}
+      data-cta-movil={movil ? '' : undefined}
       {...marcaSecundario}
       {...marcaTema}
       style={{

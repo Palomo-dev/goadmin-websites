@@ -32,12 +32,12 @@ export function FilaLogoMovil({
 
   // Orden elegido en «Celular» (sin clave, las filas de siempre de abajo).
   if (orden === 'menu-logo-acciones') {
-    return <div className="flex w-full items-center gap-2" style={alto}>{menu}<div className="min-w-0 flex-1">{logoAlineado}</div><div className="flex items-center gap-2 flex-shrink-0">{acciones}</div></div>
+    return <div className="flex w-full items-center gap-2" style={alto} data-fila-movil="">{menu}<div className="min-w-0 flex-1">{logoAlineado}</div><div className="flex items-center gap-2 flex-shrink-0">{acciones}</div></div>
   }
   if (orden === 'logo-sobre-acciones' || orden === 'acciones-sobre-logo') {
     const filaAcciones = <div className="flex items-center justify-between gap-2">{menu}<div className="flex items-center gap-2">{acciones}</div></div>
     return (
-      <div className="flex w-full flex-col justify-center gap-2 py-2" style={alto}>
+      <div className="flex w-full flex-col justify-center gap-2 py-2" style={alto} data-fila-movil="">
         {orden === 'logo-sobre-acciones' ? <>{logoAlineado}{filaAcciones}</> : <>{filaAcciones}{logoAlineado}</>}
       </div>
     )
@@ -45,7 +45,7 @@ export function FilaLogoMovil({
 
   if (lado === 'center') {
     return (
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2" style={alto}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2" style={alto} data-fila-movil="">
         <div className="justify-self-start">{menu}</div>
         <div className="justify-self-center">{logo}</div>
         <div className="flex items-center justify-end gap-2 justify-self-end">{acciones}</div>
@@ -55,7 +55,7 @@ export function FilaLogoMovil({
 
   if (lado === 'right') {
     return (
-      <div className="flex items-center justify-between gap-2" style={alto}>
+      <div className="flex items-center justify-between gap-2" style={alto} data-fila-movil="">
         <div className="flex items-center gap-2 flex-shrink-0">
           {menu}
           {acciones}
@@ -66,7 +66,7 @@ export function FilaLogoMovil({
   }
 
   return (
-    <div className="flex items-center justify-between gap-2" style={alto}>
+    <div className="flex items-center justify-between gap-2" style={alto} data-fila-movil="">
       {logo}
       <div className="flex items-center gap-2 flex-shrink-0">
         {acciones}

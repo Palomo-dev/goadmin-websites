@@ -238,7 +238,7 @@ export default function HeaderMinimal({
           {barraAbajo && <div className="hidden md:flex justify-center pb-3" data-barra-abajo="">{barra('w-full max-w-3xl', false)}</div>}
 
           {/* Fila móvil: logo + botón hamburguesa */}
-          <div className="flex md:hidden items-center justify-between" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }}>
+          <div className="flex md:hidden items-center justify-between gap-2" style={{ minHeight: Math.max(56, Math.round((settings?.logo_height || 48) * 0.85) + 16) }} data-fila-movil="">
             <HeaderLogo
               organization={organization}
               primaryColor={primaryColor}

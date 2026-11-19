@@ -1008,3 +1008,155 @@ header a[data-categoria-activa][data-categoria-activa] {
     mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
   }
 }
+
+/*
+ * Fila del encabezado en el celular (< 768 px; atributo `data-fila-movil`): logo, íconos, botón
+ * principal y menú caben en el ancho sin quitar ni mover nada. Solo cambian tamaños y espacios:
+ * colores, formas, íconos visibles y el botón siguen siendo los que guardó el editor. Antes, con
+ * íconos en círculo + botón + menú, la fila pedía ~480 px y a 390 px estiraba la página
+ * (logo cortado, scroll horizontal, portada corrida). Computador, sin cambios.
+ * Comprobación: npm run verify:encabezado-movil.
+ */
+@media (max-width: 767px) {
+  /* Contenedor: 12 px a los lados y nada se sale del ancho (sin scroll horizontal del body). */
+  .px-4:has(> [data-fila-movil]),
+  .px-4[data-fila-movil] {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-left: 12px;
+    padding-right: 12px;
+    overflow-x: clip;
+  }
+  [data-fila-movil] {
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* Centrado: el logo se queda en medio del espacio que dejan menú y acciones. */
+  [data-fila-movil].grid {
+    grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  }
+
+  /* Logo: se encoge con el espacio libre (hasta 40 % del ancho) y nunca se recorta. */
+  [data-fila-movil] div:has([data-logo-encabezado]) {
+    min-width: 0;
+  }
+  [data-fila-movil] [data-logo-encabezado] {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+  [data-fila-movil] [data-logo-encabezado] img {
+    max-width: min(100%, 40vw);
+    object-fit: contain;
+    object-position: left center;
+  }
+  [data-fila-movil] [data-logo-encabezado] > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Íconos: caja de 34 px con el ícono proporcional y 6 px entre ellos. */
+  [data-fila-movil] [data-acciones-encabezado] {
+    gap: 6px;
+  }
+  [data-fila-movil] [data-acciones-encabezado] > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  [data-fila-movil] [data-acciones-encabezado] :is(a, button).p-2 {
+    padding: 6px;
+  }
+  [data-fila-movil] [data-acciones-encabezado] :is(a, button):has([data-icono-circulo], [data-contenedor-icono]:not([data-contenedor-icono='none'])) {
+    padding: 0;
+  }
+  [data-fila-movil] [data-icono-circulo='md'] {
+    width: 34px;
+    height: 34px;
+  }
+  [data-fila-movil] [data-icono-circulo='md'] svg.h-6 {
+    width: 22px;
+    height: 22px;
+  }
+  [data-fila-movil] [data-icono-circulo='md'] svg.h-5 {
+    width: 19px;
+    height: 19px;
+  }
+  [data-fila-movil] [data-contenedor-icono]:not([data-contenedor-icono='none']) {
+    max-width: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+  }
+  [data-fila-movil] [data-contenedor-icono]:not([data-contenedor-icono='none']) svg {
+    max-width: 20px !important;
+    max-height: 20px !important;
+  }
+
+  /* Botón principal: compacto, en una línea, con el mismo texto, colores y forma. */
+  [data-fila-movil] [data-cta-movil] {
+    flex-shrink: 0;
+    width: auto !important;
+    height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+  }
+  [data-fila-movil] [data-cta-movil] svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Menú: 36 px (antes 40). La píldora «Menú», 32 px de alto. */
+  [data-fila-movil] button:is([aria-label='Abrir menú'], [aria-label='Cerrar menú']):not([data-pildora-menu]) {
+    flex-shrink: 0;
+    padding: 6px;
+  }
+  [data-fila-movil] [data-pildora-menu] {
+    height: 32px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/*
+ * Último recurso en pantallas angostas (360 px), solo en filas con botón principal o píldora
+ * «Menú» (las que no caben): un poco más chico, sin quitar nada. Sin botón, los tamaños de arriba.
+ */
+@media (max-width: 374px) {
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]),
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) .gap-2 {
+    gap: 6px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-acciones-encabezado] {
+    gap: 4px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-acciones-encabezado] :is(a, button).p-2:not(:has([data-icono-circulo], [data-contenedor-icono]:not([data-contenedor-icono='none']))) {
+    padding: 4px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-icono-circulo='md'] {
+    width: 32px;
+    height: 32px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-icono-circulo='md'] svg.h-6 {
+    width: 21px;
+    height: 21px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-icono-circulo='md'] svg.h-5 {
+    width: 18px;
+    height: 18px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-contenedor-icono]:not([data-contenedor-icono='none']) {
+    max-width: 32px !important;
+    max-height: 32px !important;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-cta-movil] {
+    padding: 0 10px !important;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) button:is([aria-label='Abrir menú'], [aria-label='Cerrar menú']):not([data-pildora-menu]) {
+    padding: 4px;
+  }
+  [data-fila-movil]:has([data-cta-movil], [data-pildora-menu]) [data-logo-encabezado] img {
+    max-width: min(100%, 36vw);
+  }
+}

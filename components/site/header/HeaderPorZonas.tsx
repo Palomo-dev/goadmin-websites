@@ -109,7 +109,7 @@ function FilaMovil({
   if (!fila.length && !cierre) return null
   const nodos = fila.map(children)
   return (
-    <div className="flex items-center gap-2 px-4 md:hidden" style={{ minHeight: 56 }}>
+    <div className="flex items-center gap-2 px-4 md:hidden" style={{ minHeight: 56 }} data-fila-movil="">
       {semilla ? (
         <>
           {nodos[0]}
