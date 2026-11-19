@@ -18,6 +18,9 @@ const CONNECTOR_IDS: Record<string, string> = {
   wompi_co: '39950173-5f7c-48a9-a242-c6fdf5a07aee',
   wompi: '39950173-5f7c-48a9-a242-c6fdf5a07aee',
   mp_checkout: 'b00cfe3f-efa6-4656-93da-f42bf3073ab4',
+  // Código del método «Mercado Pago» en payment_methods (el que enlaza el ERP en Métodos de pago).
+  mp: 'b00cfe3f-efa6-4656-93da-f42bf3073ab4',
+  mercadopago: 'b00cfe3f-efa6-4656-93da-f42bf3073ab4',
   payu_co: 'dc652aa4-5146-45cc-9df7-f58c7098ad00',
   stripe_payments: 'a2b84a76-9557-4fee-88ba-8ee517ed8b88',
   paypal_checkout: '944c6b76-e8bf-49f9-90ea-06f906e152e7',
@@ -28,6 +31,8 @@ const CONNECTOR_IDS: Record<string, string> = {
 const GATEWAY_CODE_MAP: Record<string, string> = {
   wompi: 'wompi_co',
   card: 'wompi_co',
+  mp: 'mp_checkout',
+  mercadopago: 'mp_checkout',
 }
 
 /**

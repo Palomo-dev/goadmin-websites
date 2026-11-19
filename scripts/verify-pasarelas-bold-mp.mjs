@@ -350,6 +350,8 @@ const leer = (ruta) => readFileSync(join(ROOT, ruta), 'utf8')
 
   const init = leer('app/api/checkout/init/route.ts')
   check(/preference\.notification_url = notificationUrl/.test(init) && /urlNotificacionMercadoPago\(/.test(init), '8h: la preferencia de Mercado Pago sale sin URL de aviso')
+  // El ERP enlaza el método «Mercado Pago» con el código `mp` (payment_methods): sin esto, «Pasarela no soportada».
+  check(/\n\s*mp: 'b00cfe3f-efa6-4656-93da-f42bf3073ab4',/.test(init) && /\n\s*mp: 'mp_checkout',/.test(init), '8h2: checkout/init no acepta el código `mp` del ERP')
 
   const resultadoPagina = leer('app/checkout/resultado/page.tsx')
   check(/consultarBold\(/.test(resultadoPagina) && /consultarMercadoPago\(/.test(resultadoPagina) && /aplicarPagoPedidoWeb\(/.test(resultadoPagina), '8i: /checkout/resultado no consulta a Bold ni a Mercado Pago')

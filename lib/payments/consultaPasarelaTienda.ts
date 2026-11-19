@@ -26,8 +26,11 @@ import type { ResultadoPasarela } from '@/lib/payments/pagoPedidoWeb'
 const MP_CONECTOR_ID = 'b00cfe3f-efa6-4656-93da-f42bf3073ab4'
 const TIEMPO_LIMITE_MS = 5000
 
-/** `web_orders.payment_method` que deja checkout/init al elegir cada pasarela. */
-export const METODO_PEDIDO_MERCADOPAGO = 'mp_checkout'
+/**
+ * `web_orders.payment_method` que deja checkout/init al elegir cada pasarela: el código del
+ * conector o, si el método viene enlazado desde Métodos de pago del ERP, su código (`mp`).
+ */
+export const METODOS_PEDIDO_MERCADOPAGO = ['mp_checkout', 'mp', 'mercadopago']
 export const METODO_PEDIDO_BOLD = 'bold_link'
 
 async function credenciales(supabase: any, organizationId: number, conectorId: string): Promise<Record<string, string> | null> {
