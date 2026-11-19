@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { celdasMosaico } from '@/components/sections/product-detail/fichaTienda'
 
@@ -18,7 +18,11 @@ export interface GallerySettings {
   gallery_dots?: boolean
   /** Número de columnas en modo grid */
   gallery_grid_columns?: number
-  /** Altura máxima en modo scroll (px) */
+  /**
+   * Altura máxima en modo scroll (px). YA NO SE USA: era el alto de una caja con barra propia que
+   * cortaba la primera foto. El modo scroll ahora baja con la página; se conserva el tipo porque
+   * lo guardan sitios existentes.
+   */
   gallery_scroll_height?: number
 }
 
@@ -31,13 +35,42 @@ interface ProductImageGalleryProps {
 
 export function ProductImageGallery({ images, productName, primaryColor, settings = {} }: ProductImageGalleryProps) {
   const [selected, setSelected] = useState(0)
+  // Modo scroll: fotos de escritorio (para saltar desde las miniaturas y saber cuál se ve) y el
+  // carrusel del celular (para los puntos).
+  const fotosRef = useRef<Array<HTMLElement | null>>([])
+  const carruselRef = useRef<HTMLDivElement | null>(null)
 
   const layout = settings.gallery_layout || 'carousel'
   const thumbsPos = settings.thumbnails_position ?? 'bottom'
   const showArrows = settings.gallery_arrows !== false
   const showDots = settings.gallery_dots !== false
   const gridCols = settings.gallery_grid_columns ?? 3
-  const scrollHeight = settings.gallery_scroll_height ?? 500
+  const modoScroll = layout === 'scroll' && images.length > 0
+
+  // Escritorio, modo scroll: la miniatura activa es la foto que más se ve.
+  useEffect(() => {
+    if (!modoScroll || typeof IntersectionObserver === 'undefined') return
+    const fotos = fotosRef.current.filter((f): f is HTMLElement => !!f)
+    if (fotos.length < 2) return
+    const visibles = new Map<number, number>()
+    const observer = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) visibles.set(Number((e.target as HTMLElement).dataset.indice), e.intersectionRatio)
+        let mejor = -1
+        let max = 0
+        visibles.forEach((ratio, i) => {
+          if (ratio > max) {
+            max = ratio
+            mejor = i
+          }
+        })
+        if (mejor >= 0) setSelected(mejor)
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
+    )
+    fotos.forEach((f) => observer.observe(f))
+    return () => observer.disconnect()
+  }, [modoScroll, images.length])
 
   if (images.length === 0) {
     return (
@@ -118,29 +151,103 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
     )
   }
 
-  // ---- Modo scroll: galería con scroll vertical ----
+  // ---- Modo scroll («Desplazamiento») ----
+  // Escritorio: fotos apiladas a todo el ancho que bajan con la página (sin caja con barra propia);
+  // la columna de información queda fija al lado. Ninguna foto se recorta: proporción real y
+  // object-contain sobre un fondo neutro. Celular: carrusel deslizable con puntos.
   if (layout === 'scroll') {
+    const conMiniaturas = images.length > 1 && thumbsPos !== 'none'
+    const irAFoto = (i: number) => {
+      setSelected(i)
+      fotosRef.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    const irAlSlide = (i: number) => {
+      const c = carruselRef.current
+      if (c) c.scrollTo({ left: i * c.clientWidth, behavior: 'smooth' })
+    }
+    const alDeslizar = () => {
+      const c = carruselRef.current
+      if (c && c.clientWidth > 0) setSelected(Math.round(c.scrollLeft / c.clientWidth))
+    }
+
     return (
-      <div
-        className="rounded-2xl overflow-y-auto space-y-2 pr-1"
-        style={{ maxHeight: `${scrollHeight}px` }}
-      >
-        {images.map((url, i) => (
+      <div data-galeria-scroll="">
+        {/* Celular: carrusel deslizable, foto a todo el ancho, sin scroll vertical interno */}
+        <div className="md:hidden">
           <div
-            key={i}
-            className={`aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-              i === selected ? '' : 'border-transparent opacity-80 hover:opacity-100'
-            }`}
-            style={i === selected ? { borderColor: primaryColor } : {}}
-            onClick={() => setSelected(i)}
+            ref={carruselRef}
+            onScroll={alDeslizar}
+            className="flex snap-x snap-mandatory overflow-x-auto rounded-lg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            <img
-              src={url}
-              alt={`${productName} - imagen ${i + 1}`}
-              className="w-full h-full object-cover"
-            />
+            {images.map((url, i) => (
+              <div key={i} className="flex aspect-square w-full shrink-0 snap-center items-center justify-center bg-neutral-50">
+                <img
+                  src={url}
+                  alt={`${productName} - imagen ${i + 1}`}
+                  className="h-full w-full object-contain"
+                  loading={i === 0 ? undefined : 'lazy'}
+                  decoding="async"
+                />
+              </div>
+            ))}
           </div>
-        ))}
+          {images.length > 1 && (
+            <div className="mt-3 flex justify-center gap-1.5">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => irAlSlide(i)}
+                  aria-label={`Ver imagen ${i + 1}`}
+                  aria-current={i === selected ? 'true' : undefined}
+                  className={`h-1.5 rounded-full transition-all ${i === selected ? 'w-5 bg-neutral-800' : 'w-1.5 bg-neutral-300'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Escritorio: columna de fotos que baja con la página */}
+        <div className="hidden gap-4 md:flex">
+          {conMiniaturas && (
+            <div className="sticky top-[calc(var(--header-h,72px)+1rem)] flex w-14 shrink-0 flex-col gap-2 self-start">
+              {images.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => irAFoto(i)}
+                  aria-label={`Ver imagen ${i + 1}`}
+                  aria-current={i === selected ? 'true' : undefined}
+                  className={`aspect-square overflow-hidden rounded-md bg-neutral-50 transition-opacity ${
+                    i === selected ? 'opacity-100 ring-1 ring-neutral-400' : 'opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={url} alt="" className="h-full w-full object-contain" loading="lazy" decoding="async" />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:gap-4">
+            {images.map((url, i) => (
+              <figure
+                key={i}
+                ref={(el) => {
+                  fotosRef.current[i] = el
+                }}
+                data-indice={i}
+                className="m-0 scroll-mt-[calc(var(--header-h,72px)+1rem)] overflow-hidden rounded-lg bg-neutral-50"
+              >
+                <img
+                  src={url}
+                  alt={`${productName} - imagen ${i + 1}`}
+                  className="block h-auto w-full object-contain"
+                  loading={i === 0 ? undefined : 'lazy'}
+                  decoding="async"
+                />
+              </figure>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
