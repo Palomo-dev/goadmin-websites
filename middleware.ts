@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { esSlugReservado } from '@/lib/outlet/rutaSitio'
+import {
+  CABECERA_SONDA,
+  CODIGO_REDIRECCION,
+  formaDelPrincipal,
+  hostDestinoRedireccion,
+  principalPropio,
+  rutaSinRedireccion,
+  type DominioDeOrg,
+  type FormaPrincipal,
+} from '@/lib/site/redireccionPrincipal'
 
 // Dominios del sistema donde se sirven los sitios de organizaciones.
 // Se comparan contra el host completo (no por número de etiquetas) para
@@ -153,6 +163,110 @@ async function orgDeDominio(
   if (orgPorDominioCache.size >= BRANCH_DOMAIN_CACHE_MAX) orgPorDominioCache.clear()
   orgPorDominioCache.set(host, { organizationId, expira: Date.now() + SEDES_RUTA_TTL_MS })
   return organizationId
+}
+
+// --- Redirección al dominio principal propio (lib/site/redireccionPrincipal.ts) ---
+// Dominios de la organización por host y forma del principal (sonda), en memoria por instancia:
+// como mucho 2 consultas por host y una sonda por principal cada REDIRECCION_TTL_MS.
+const REDIRECCION_TTL_MS = Number(process.env.REDIRECCION_PRINCIPAL_TTL_MS) || 5 * 60 * 1000
+const dominiosPorHostCache = new Map<string, { dominios: DominioDeOrg[]; esSede: boolean; expira: number }>()
+const formaPrincipalCache = new Map<string, { forma: FormaPrincipal | null; expira: number }>()
+
+function guardarEnCache<T>(mapa: Map<string, T>, clave: string, valor: T) {
+  if (mapa.size >= BRANCH_DOMAIN_CACHE_MAX) mapa.clear()
+  mapa.set(clave, valor)
+}
+
+/** Dominios activos de la organización del host. null = fallo de la base (no se redirige). */
+async function dominiosDelHost(
+  supabase: ReturnType<typeof createServerClient>,
+  tenant: { subdomain: string | null; customDomainHost: string | null },
+): Promise<{ dominios: DominioDeOrg[]; esSede: boolean } | null> {
+  const clave = tenant.customDomainHost ? `d:${tenant.customDomainHost}` : `s:${(tenant.subdomain || '').toLowerCase()}`
+  const cacheado = dominiosPorHostCache.get(clave)
+  if (cacheado && Date.now() < cacheado.expira) return cacheado
+  let organizationId: number | null = null
+  let esSede = false
+  if (tenant.customDomainHost) {
+    const { data, error } = await supabase
+      .from('organization_domains')
+      .select('organization_id, branch_id')
+      .eq('host', tenant.customDomainHost)
+      .eq('is_active', true)
+      .eq('status', 'verified')
+      .maybeSingle()
+    if (error) return null
+    const fila = data as { organization_id: number; branch_id: number | null } | null
+    organizationId = fila?.organization_id ?? null
+    esSede = fila?.branch_id !== null && fila?.branch_id !== undefined
+  } else if (tenant.subdomain) {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('subdomain', tenant.subdomain.toLowerCase())
+      .maybeSingle()
+    if (error) return null
+    organizationId = (data as { id: number } | null)?.id ?? null
+  }
+  let dominios: DominioDeOrg[] = []
+  if (organizationId !== null && !esSede) {
+    const { data, error } = await supabase
+      .from('organization_domains')
+      .select('host, domain_type, status, is_primary, is_active, updated_at, misconfigured, branch_id')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+    if (error) return null
+    dominios = ((data ?? []) as Array<Record<string, unknown>>).map((d) => ({
+      host: String(d.host ?? ''),
+      domainType: String(d.domain_type ?? ''),
+      status: String(d.status ?? ''),
+      isPrimary: d.is_primary === true,
+      isActive: d.is_active === true,
+      updatedAt: (d.updated_at as string | null) ?? null,
+      misconfigured: d.misconfigured === true,
+      branchId: (d.branch_id as number | null) ?? null,
+    }))
+  }
+  const valor = { dominios, esSede, expira: Date.now() + REDIRECCION_TTL_MS }
+  guardarEnCache(dominiosPorHostCache, clave, valor)
+  return valor
+}
+
+async function formaCacheada(principal: string): Promise<FormaPrincipal | null> {
+  const cacheado = formaPrincipalCache.get(principal)
+  if (cacheado && Date.now() < cacheado.expira) return cacheado.forma
+  const forma = await formaDelPrincipal(principal)
+  if (forma === null) console.warn(`[middleware] El dominio principal ${principal} no sirve la tienda: no se redirige hacia él`)
+  guardarEnCache(formaPrincipalCache, principal, { forma, expira: Date.now() + REDIRECCION_TTL_MS })
+  return forma
+}
+
+/** Host del principal al que redirigir esta petición, o null (se atiende aquí, como antes). */
+async function destinoAlPrincipal(
+  supabase: ReturnType<typeof createServerClient>,
+  request: NextRequest,
+  tenant: { subdomain: string | null; customDomainHost: string | null },
+): Promise<string | null> {
+  try {
+    const datos = await dominiosDelHost(supabase, tenant)
+    if (!datos || datos.esSede) return null
+    const principal = principalPropio(datos.dominios)
+    if (!principal) return null
+    const host = (request.headers.get('host') || '').toLowerCase().replace(/:\d+$/, '')
+    // Visita al propio principal (lo normal): sin sonda.
+    if (host === principal) return null
+    return hostDestinoRedireccion({
+      host,
+      metodo: request.method,
+      pathname: request.nextUrl.pathname,
+      dominios: datos.dominios,
+      esSede: false,
+      forma: await formaCacheada(principal),
+    })
+  } catch (err) {
+    console.error('[middleware] Redirección al principal omitida:', err instanceof Error ? err.message : String(err))
+    return null
+  }
 }
 
 /**
@@ -317,6 +431,32 @@ export async function middleware(request: NextRequest) {
       }
     } else {
       isCustomDomain = true
+    }
+  }
+
+  // Dominio principal propio: el subdominio del sistema y los demás dominios de la organización
+  // (con o sin www) van con 308 al principal, misma ruta y query. Nunca sedes, ni POST, ni
+  // /api, /auth, /vista-previa…, ni la sonda del propio middleware. Si la base o la sonda
+  // fallan, no se redirige (todo sigue como antes).
+  if (
+    !isLocalhost &&
+    !outletSubdomain &&
+    !isCustomOutletDomain &&
+    (subdomain || isCustomDomain) &&
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    !rutaSinRedireccion(url.pathname) &&
+    !request.headers.has(CABECERA_SONDA)
+  ) {
+    const destino = await destinoAlPrincipal(supabase, request, {
+      subdomain: isCustomDomain ? null : subdomain,
+      customDomainHost: isCustomDomain ? effectiveHost : null,
+    })
+    if (destino) {
+      const redireccion = NextResponse.redirect(new URL(`${url.pathname}${url.search}`, `https://${destino}`), CODIGO_REDIRECCION)
+      // El navegador la recuerda una hora, no para siempre: si el principal cambia o se quita,
+      // nadie queda atrapado en una redirección vieja. «private»: no la guarda la CDN.
+      redireccion.headers.set('Cache-Control', 'private, max-age=3600')
+      return redireccion
     }
   }
 
