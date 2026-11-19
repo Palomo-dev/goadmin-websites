@@ -4,475 +4,202 @@ import { isReservationReference, handleReservationPayment } from '@/lib/reservat
 import { isMembershipReference, handleMembershipPayment } from '@/lib/memberships/payment-handler'
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
-import { isInvoiceReference, handleInvoicePayment, organizacionesCandidatasFactura } from '@/lib/services/payment-handler'
-import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
-import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
-import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
-import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
-import { notifyErpRefund } from '@/lib/erp-refund'
-import crypto from 'crypto'
+import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
 import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
-import { valorDeCredencial } from '@/lib/payments/secretosConexion'
+import { estadoEventoBold } from '@/lib/payments/pasarelasTienda'
+import { firmanteBold } from '@/lib/payments/firmanteBold'
+import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { debeReenviarAlErp, reenviarBoldAlErp } from '@/lib/payments/wompi-reenvio-erp'
 
 export const dynamic = 'force-dynamic'
 
-// Connector ID de Bold API Link en integration_connectors
-const BOLD_CONNECTOR_ID = '6d732ae3-e9ff-41be-9d75-aa29ba86d927'
-
-/**
- * Mapea el tipo de evento de Bold al payment_status de web_orders
- */
-function mapBoldStatus(eventType: string): string {
-  const map: Record<string, string> = {
-    SALE_APPROVED: 'paid',
-    SALE_REJECTED: 'failed',
-    VOID_APPROVED: 'refunded',
-    VOID_REJECTED: 'failed',
-  }
-  return map[eventType] || 'pending'
-}
-
-/**
- * Valida la firma del webhook de Bold.
- * La firma es HMAC-SHA256 del body (raw) usando la llave secreta,
- * con el resultado expresado en hexadecimal.
- */
-function validateBoldSignature(
-  rawBody: string,
-  signature: string,
-  secretKey: string
-): boolean {
-  if (!secretKey || !signature) return false
-
-  const expected = crypto
-    .createHmac('sha256', secretKey)
-    .update(Buffer.from(rawBody))
-    .digest('hex')
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(expected, 'hex'),
-      Buffer.from(signature, 'hex')
-    )
-  } catch {
-    return false
-  }
-}
-
-/**
- * Organización de un pago de factura (INV-): entre las organizaciones que tienen una
- * factura con esa referencia y una conexión de Bold, la única cuya llave verifica la
- * firma del body. `null` si ninguna la verifica (o si falta la firma).
- */
-async function resolverOrganizacionFacturaBold(
-  supabase: any,
-  reference: string,
-  rawBody: string,
-  signature: string
-): Promise<number | null> {
-  if (!signature) return null
-  const candidatas = await organizacionesCandidatasFactura(supabase, reference)
-  if (candidatas.length === 0) return null
-
-  const { data: conBold } = await supabase
-    .from('integration_connections')
-    .select('organization_id')
-    .in('organization_id', candidatas)
-    .eq('connector_id', BOLD_CONNECTOR_ID)
-    .in('status', ['active', 'connected'])
-  const orgs = Array.from(new Set<number>((conBold || []).map((c: any) => c.organization_id)))
-
-  for (const orgId of orgs) {
-    const secretKey = await getBoldSecretKey(supabase, orgId)
-    if (secretKey && validateBoldSignature(rawBody, signature, secretKey)) return orgId
-  }
-  return null
-}
-
-/**
- * Obtiene el secret_key de Bold para una organización.
- */
-async function getBoldSecretKey(
-  supabase: any,
-  organizationId: number
-): Promise<string | null> {
-  const { data: connection } = await supabase
-    .from('integration_connections')
-    .select('id')
-    .eq('organization_id', organizationId)
-    .eq('connector_id', BOLD_CONNECTOR_ID)
-    .in('status', ['active', 'connected'])
-    .limit(1)
-    .single()
-
-  if (!connection) return null
-
-  const { data: credential } = await supabase
-    .from('integration_credentials')
-    .select('secret_ref')
-    .eq('connection_id', connection.id)
-    .eq('purpose', 'secret_key')
-    .eq('status', 'active')
-    .limit(1)
-    .single()
-
-  if (!credential?.secret_ref) return null
-
-  // Lector dual: en claro igual que siempre; un uuid se lee de la bóveda (secretosConexion.ts).
-  return (await valorDeCredencial(supabase, connection.id, 'secret_key', credential.secret_ref)) || null
-}
+const EVENTOS_DE_VENTA = ['SALE_APPROVED', 'SALE_REJECTED', 'VOID_APPROVED', 'VOID_REJECTED']
 
 /**
  * POST /api/webhooks/bold
  *
- * Recibe notificaciones de eventos de Bold (CloudEvents).
- * Actualiza el estado de pago de web_orders y registra el pago en payments.
+ * Eventos de Bold (CloudEvents) para la tienda. Es la URL que el ERP le muestra al comercio
+ * cuando su organización tiene dominio principal verificado (como la de Wompi).
+ *
+ *  1. FIRMA OBLIGATORIA: la conexión que firmó (`x-bold-signature`, HMAC de la llave secreta) da
+ *     la organización. Sin firma válida de ninguna conexión: 401. Antes, una tienda sin Bold (o
+ *     un aviso sin firma) dejaba pasar cualquier JSON y marcaba pagado el pedido que nombrara.
+ *  2. Reservas, membresías, boletos, pases y facturas: sus manejadores de siempre.
+ *  3. Pedido web DE ESA organización (`aplicarPagoPedidoWeb`: monto, idempotencia, ERP, correo).
+ *  4. Ni pedido ni lo anterior: es del ERP (cobros QR del POS, links de pago) y se le reenvía con
+ *     el cuerpo crudo y la firma intactos; el ERP vuelve a identificar la conexión por la firma.
  */
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient() || createPublicClient()
 
   try {
-    // Bold envía el body como texto (CloudEvents JSON)
-    const rawBody = await request.text()
-    const body = JSON.parse(rawBody)
-
-    const { type, data } = body
-
-    // Solo procesar eventos de venta
-    if (!type || !data) {
-      return NextResponse.json(
-        { error: 'Payload inválido: falta type o data' },
-        { status: 400 }
-      )
+    const cuerpoCrudo = new Uint8Array(await request.arrayBuffer())
+    let body: any
+    try {
+      body = JSON.parse(new TextDecoder().decode(cuerpoCrudo))
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 })
     }
-
-    // Ignorar eventos que no son de venta
-    if (!['SALE_APPROVED', 'SALE_REJECTED', 'VOID_APPROVED', 'VOID_REJECTED'].includes(type)) {
-      console.log(`[Bold Webhook] Evento ${type} ignorado`)
+    const { type, data } = body ?? {}
+    if (!type || !data) {
+      return NextResponse.json({ error: 'Payload inválido: falta type o data' }, { status: 400 })
+    }
+    if (!EVENTOS_DE_VENTA.includes(type)) {
       return NextResponse.json({ received: true, skipped: true })
     }
 
-    const reference = data.metadata?.reference
-    const transactionId = data.payment_id
-    const amountTotal = data.amount?.total
+    // 1. Firma
+    const firma = request.headers.get('x-bold-signature')
+    const firmante = await firmanteBold(supabase, cuerpoCrudo, firma)
+    if (!firmante) {
+      console.error(`[Bold Webhook] ${firma ? 'Firma de ninguna conexión de Bold' : 'Evento sin firma'}: rechazado`)
+      return NextResponse.json({ error: 'Firma inválida' }, { status: 401 })
+    }
+    const organizationId = firmante.organizationId
+
+    const reference: string | null = data.metadata?.reference ?? null
+    const transactionId = String(data.payment_id ?? body.subject ?? '')
+    const amountTotal = Number(data.amount?.total)
+    const monto = Number.isFinite(amountTotal) ? amountTotal : null
     const currency = data.amount?.currency || 'COP'
-    const paymentMethod = data.payment_method?.toLowerCase() || 'card'
+    const metodoCrudo = typeof data.payment_method === 'string' ? data.payment_method.toLowerCase() : null
+    const metodoPago = mapToPaymentMethodCode(metodoCrudo, 'bold')
+    const paymentStatus = estadoEventoBold(type)
+
+    console.log(`[Bold Webhook] type=${type} ref=${reference ?? '(sin referencia)'} tx=${transactionId} org=${organizationId}`)
 
     if (!reference) {
-      console.error('[Bold Webhook] Webhook sin reference en metadata')
-      return NextResponse.json(
-        { error: 'Webhook sin reference en metadata' },
-        { status: 400 }
-      )
+      // Link de pago sin referencia: puede ser del ERP.
+      return reenviar(cuerpoCrudo, request, reference)
     }
 
-    console.log(
-      `[Bold Webhook] type=${type} ref=${reference} tx=${transactionId} amount=${amountTotal} ${currency}`
-    )
+    const datosPago = {
+      transactionId,
+      amount: monto ?? 0,
+      currency,
+      method: metodoPago,
+      processorResponse: body,
+      gateway: 'bold_link',
+    }
 
-    // ── Verificar si es pago de reservación ──
+    // 2. Otras fuentes de cobro de la tienda
     if (isReservationReference(reference)) {
-      const paymentStatus = mapBoldStatus(type)
-      const amountDecimal = Number(amountTotal || 0)
-
-      const result = await handleReservationPayment(supabase, reference, paymentStatus, {
-        transactionId,
-        amount: amountDecimal,
-        currency,
-        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-        processorResponse: body,
-        gateway: 'bold_link',
-      })
-
-      return NextResponse.json({
-        received: true,
-        source: 'reservation',
-        reservationId: result.reservationId,
-        payment_status: paymentStatus,
-      })
+      const result = await handleReservationPayment(supabase, reference, paymentStatus, datosPago)
+      return NextResponse.json({ received: true, source: 'reservation', reservationId: result.reservationId, payment_status: paymentStatus })
     }
-
-    // ── Verificar si es pago de membresía ──
     if (isMembershipReference(reference)) {
-      const paymentStatus = mapBoldStatus(type)
-      const amountDecimal = Number(amountTotal || 0)
-
-      const result = await handleMembershipPayment(supabase, reference, paymentStatus, {
-        transactionId,
-        amount: amountDecimal,
-        currency,
-        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-        processorResponse: body,
-        gateway: 'bold_link',
-      })
-
-      return NextResponse.json({
-        received: true,
-        source: 'membership',
-        membershipId: result.membershipId,
-        payment_status: paymentStatus,
-      })
+      const result = await handleMembershipPayment(supabase, reference, paymentStatus, datosPago)
+      return NextResponse.json({ received: true, source: 'membership', membershipId: result.membershipId, payment_status: paymentStatus })
     }
-
-    // ── Verificar si es pago de ticket de transporte ──
     if (isTicketReference(reference)) {
-      const paymentStatus = mapBoldStatus(type)
-      const amountDecimal = Number(amountTotal || 0)
-
-      const result = await handleTicketPayment(supabase, reference, paymentStatus, {
-        transactionId,
-        amount: amountDecimal,
-        currency,
-        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-        processorResponse: body,
-        gateway: 'bold_link',
-      })
-
-      return NextResponse.json({
-        received: true,
-        source: 'trip_ticket',
-        ticketId: result.ticketId,
-        payment_status: paymentStatus,
-      })
+      const result = await handleTicketPayment(supabase, reference, paymentStatus, datosPago)
+      return NextResponse.json({ received: true, source: 'trip_ticket', ticketId: result.ticketId, payment_status: paymentStatus })
     }
-
-    // ── Verificar si es pago de pase de parking ──
     if (isParkingPassReference(reference)) {
-      const paymentStatus = mapBoldStatus(type)
-      const amountDecimal = Number(amountTotal || 0)
-
-      const result = await handleParkingPassPayment(supabase, reference, paymentStatus, {
-        transactionId,
-        amount: amountDecimal,
-        currency,
-        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-        processorResponse: body,
-        gateway: 'bold_link',
-      })
-
-      return NextResponse.json({
-        received: true,
-        source: 'parking_pass',
-        passId: result.passId,
-        payment_status: paymentStatus,
-      })
+      const result = await handleParkingPassPayment(supabase, reference, paymentStatus, datosPago)
+      return NextResponse.json({ received: true, source: 'parking_pass', passId: result.passId, payment_status: paymentStatus })
     }
-
-    // ── Verificar si es pago de factura (services) ──
     if (isInvoiceReference(reference)) {
-      const paymentStatus = mapBoldStatus(type)
-      const amountDecimal = Number(amountTotal || 0)
-
-      // La organización de la factura es la única cuya llave verifica la firma. Los
-      // números de factura se repiten entre organizaciones: sin esto, cualquiera marcaba
-      // pagada la factura de otra. Sin firma válida: 401.
-      const boldSignature = request.headers.get('x-bold-signature') || ''
-      const invoiceOrgId = await resolverOrganizacionFacturaBold(supabase, reference, rawBody, boldSignature)
-      if (!invoiceOrgId) {
-        console.error(`[Bold Webhook] Pago de factura ${reference} sin firma válida de ninguna organización: rechazado`)
-        return NextResponse.json({ error: 'Firma inválida' }, { status: 401 })
-      }
-
-      const result = await handleInvoicePayment(supabase, reference, paymentStatus, {
-        transactionId,
-        amount: amountDecimal,
-        currency,
-        method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-        gateway: 'bold_link',
-      }, invoiceOrgId)
-
-      return NextResponse.json({
-        received: true,
-        source: 'invoice',
-        invoiceId: result.invoiceId,
-        payment_status: paymentStatus,
-      })
+      // La factura se busca SOLO en la organización que firmó.
+      const result = await handleInvoicePayment(
+        supabase,
+        reference,
+        paymentStatus,
+        { transactionId, amount: monto ?? 0, currency, method: metodoPago, gateway: 'bold_link' },
+        organizationId
+      )
+      return NextResponse.json({ received: true, source: 'invoice', invoiceId: result.invoiceId, payment_status: paymentStatus })
     }
 
-    // ── Flujo normal: buscar web_order por referencia ──
+    // 3. Pedido web de la organización que firmó
     const { data: webOrder, error: orderError } = await (supabase as any)
       .from('web_orders')
-      .select('id, organization_id, branch_id, customer_id, total, payment_status')
+      .select('id, organization_id, branch_id, total, payment_status, order_number')
+      .eq('organization_id', organizationId)
       .eq('order_number', reference)
       .limit(1)
       .single()
 
+    // 4. No es de la tienda: al ERP (salvo error real de la base o evento ya reenviado).
+    if (debeReenviarAlErp({ pedido: webOrder, error: orderError, cabeceras: request.headers })) {
+      return reenviar(cuerpoCrudo, request, reference)
+    }
     if (orderError || !webOrder) {
-      console.error('[Bold Webhook] Orden no encontrada:', reference, orderError)
-      return NextResponse.json(
-        { error: 'Orden no encontrada', reference },
-        { status: 404 }
-      )
+      console.error('[Bold Webhook] Pedido no encontrado:', reference, orderError?.code)
+      return NextResponse.json({ error: 'Orden no encontrada', reference }, { status: orderError && orderError.code !== 'PGRST116' ? 500 : 404 })
     }
 
-    const organizationId = (webOrder as any).organization_id
-
-    // 2. Validar firma usando el secret_key de Bold
-    const boldSignature = request.headers.get('x-bold-signature') || ''
-    const secretKey = await getBoldSecretKey(supabase, organizationId)
-
-    if (secretKey && boldSignature) {
-      const isValid = validateBoldSignature(rawBody, boldSignature, secretKey)
-
-      if (!isValid) {
-        console.error('[Bold Webhook] Firma inválida para org:', organizationId)
-
-        await supabase.from('integration_events').insert({
-          connection_id: null,
-          organization_id: organizationId,
-          source: 'webhook',
-          direction: 'inbound',
-          event_type: type,
-          external_event_id: transactionId,
-          payload: { provider: 'bold', ...body },
-          status: 'rejected',
-          error_message: 'Firma de webhook inválida',
-          // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
-        } as any)
-
-        return NextResponse.json(
-          { error: 'Firma inválida' },
-          { status: 401 }
-        )
-      }
-    }
-
-    // 3. Mapear estado de Bold → payment_status
-    const paymentStatus = mapBoldStatus(type)
-
-    // 4. Actualizar web_order
-    const { error: updateError } = await (supabase as any)
-      .from('web_orders')
-      .update({
-        payment_status: paymentStatus,
-        payment_method: paymentMethod,
-        payment_reference: transactionId,
-        updated_at: new Date().toISOString(),
-        ...(paymentStatus === 'paid' && {
-          status: 'confirmed',
-          confirmed_at: new Date().toISOString(),
-        }),
-        ...(paymentStatus === 'failed' && {
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: `Pago rechazado por Bold: ${type}`,
-        }),
-      } as any)
-      .eq('id', (webOrder as any).id)
-
-    if (updateError) {
-      console.error('[Bold Webhook] Error actualizando orden:', updateError)
-    }
-
-    // 5. Crear registro en payments
-    const amountDecimal = Number(amountTotal || (webOrder as any).total)
-    await (supabase as any).from('payments').insert({
-      organization_id: organizationId,
-      branch_id: (webOrder as any).branch_id,
-      source: 'web_order',
-      source_id: String((webOrder as any).id),
-      method: mapToPaymentMethodCode(paymentMethod, 'bold'),
-      amount: amountDecimal,
-      currency,
-      reference: transactionId,
-      processor_response: body,
-      status: paymentStatus,
-    } as any)
-
-    // 6. Registrar evento en integration_events
-    const { data: conn } = await supabase
-      .from('integration_connections')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('connector_id', BOLD_CONNECTOR_ID)
-      .limit(1)
-      .single()
-
-    await (supabase as any).from('integration_events').insert({
-      connection_id: (conn as any)?.id || null,
-      organization_id: organizationId,
-      source: 'webhook',
-      direction: 'inbound',
-      event_type: type,
-      external_event_id: transactionId,
-      payload: { provider: 'bold', ...body },
-      status: 'processed',
-      processed_at: new Date().toISOString(),
-      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
-    } as any)
-
-    // 7. Actualizar last_received_at en integration_webhooks
-    if ((conn as any)?.id) {
-      await (supabase as any)
-        .from('integration_webhooks')
-        .update({ last_received_at: new Date().toISOString() })
-        .eq('connection_id', (conn as any).id)
-        .eq('direction', 'inbound')
-    }
-
-    // 8. Google Ads + Meta CAPI + ERP auto-confirm si pago exitoso
-    if (paymentStatus === 'paid') {
-      uploadGoogleAdsConversion(supabase, organizationId, {
-        orderId: reference,
-        value: amountDecimal,
-        currency,
-        category: 'purchase',
-      }).catch(err => console.error('[Bold Webhook] Google Ads upload error:', err))
-
-      sendMetaCAPIEvent(supabase, organizationId, {
-        eventName: 'Purchase',
-        eventId: reference,
-        value: amountDecimal,
-        currency,
-      }).catch(err => console.error('[Bold Webhook] Meta CAPI error:', err))
-
-      notifyErpAutoConfirm((webOrder as any).id).catch(err =>
-        console.error('[Bold Webhook] ERP auto-confirm error:', err)
-      )
-    }
-
-    // Liberar stock reservado si el pago falló
-    if (paymentStatus === 'failed') {
-      notifyErpReleaseStock((webOrder as any).id).catch(err =>
-        console.error('[Bold Webhook] ERP release-stock error:', err)
-      )
-    }
-
-    // Procesar reembolso (nota crédito + devolución de stock + asiento reversión)
-    if (paymentStatus === 'refunded') {
-      notifyErpRefund((webOrder as any).id, {
-        reason: `Reembolso procesado por Bold: ${type}`,
-      }).catch(err =>
-        console.error('[Bold Webhook] ERP refund error:', err)
-      )
-    }
-
-    console.log(
-      `[Bold Webhook] Procesado OK: order=${reference} status=${paymentStatus}`
+    const { desenlace } = await aplicarPagoPedidoWeb(
+      supabase,
+      webOrder,
+      {
+        estado: paymentStatus,
+        transaccionId: transactionId,
+        monto,
+        moneda: currency,
+        metodoPago,
+        metodoPedido: metodoCrudo || 'bold_link',
+        respuesta: body,
+        proveedor: 'Bold',
+        detalle: type,
+      },
+      'webhook'
     )
 
-    return NextResponse.json({
-      received: true,
-      order: reference,
-      payment_status: paymentStatus,
-    })
+    await registrarEvento(supabase, firmante, type, transactionId, body)
+
+    if (desenlace === 'error') {
+      // Bold reintenta ante un no-200.
+      return NextResponse.json({ error: 'No se pudo actualizar el pedido' }, { status: 500 })
+    }
+    return NextResponse.json({ received: true, order: reference, payment_status: paymentStatus, result: desenlace })
   } catch (error) {
     console.error('[Bold Webhook] Error inesperado:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }
 
-/**
- * GET /api/webhooks/bold
- * Health check — Bold puede verificar que el endpoint existe.
- */
-export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    service: 'bold_webhook',
-    timestamp: new Date().toISOString(),
+async function reenviar(cuerpo: Uint8Array, request: NextRequest, referencia: string | null) {
+  const r = await reenviarBoldAlErp({
+    cuerpo: cuerpo as Uint8Array<ArrayBuffer>,
+    cabeceras: request.headers,
+    hostEntrante: request.headers.get('host'),
+    referencia,
   })
+  return new NextResponse(r.cuerpo, { status: r.status, headers: { 'content-type': r.contentType } })
+}
+
+async function registrarEvento(
+  supabase: any,
+  firmante: { organizationId: number; connectionId: string },
+  tipo: string,
+  transaccionId: string,
+  body: unknown
+) {
+  try {
+    await supabase.from('integration_events').insert({
+      connection_id: firmante.connectionId,
+      organization_id: firmante.organizationId,
+      source: 'webhook',
+      direction: 'inbound',
+      event_type: tipo,
+      external_event_id: transaccionId,
+      payload: { provider: 'bold', ...(body as Record<string, unknown>) },
+      status: 'processed',
+      processed_at: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
+    })
+    await supabase
+      .from('integration_webhooks')
+      .update({ last_received_at: new Date().toISOString() })
+      .eq('connection_id', firmante.connectionId)
+      .eq('direction', 'inbound')
+  } catch (err) {
+    console.error('[Bold Webhook] No se pudo registrar el evento:', err)
+  }
+}
+
+/** GET /api/webhooks/bold — comprobación de que el receptor existe. */
+export async function GET() {
+  return NextResponse.json({ status: 'ok', service: 'bold_webhook', timestamp: new Date().toISOString() })
 }

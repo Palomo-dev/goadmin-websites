@@ -12,6 +12,13 @@ import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
 import { etiquetaPago } from '@/lib/orders/estados-pedido'
+import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import {
+  consultarBold,
+  consultarMercadoPago,
+  METODO_PEDIDO_BOLD,
+  METODO_PEDIDO_MERCADOPAGO,
+} from '@/lib/payments/consultaPasarelaTienda'
 
 /** «j***@dominio.com»: la página se abre con solo el número de pedido. */
 function correoEnmascarado(correo: string): string {
@@ -26,12 +33,14 @@ async function getOrderByRef(organizationId: number, orderNumber: string, transa
   const supabase = createAdminClient() || createPublicClient()
 
   // Solo pedidos de la organización del host: con el número de otro sitio, «no encontrado».
-  const { data, error } = await (supabase as any)
-    .from('web_orders')
-    .select('id, order_number, total, payment_status, status, payment_method, customer_email, customer_name, organization_id, created_at')
-    .eq('organization_id', organizationId)
-    .eq('order_number', orderNumber)
-    .maybeSingle()
+  const leer = () =>
+    (supabase as any)
+      .from('web_orders')
+      .select('id, order_number, total, payment_status, status, payment_method, customer_email, customer_name, organization_id, branch_id, created_at')
+      .eq('organization_id', organizationId)
+      .eq('order_number', orderNumber)
+      .maybeSingle()
+  const { data, error } = await leer()
 
   if (error || !data) return null
 
@@ -42,6 +51,26 @@ async function getOrderByRef(organizationId: number, orderNumber: string, transa
       if (updated) return updated
     } catch (err) {
       console.error('[Resultado] Error checking Wompi status:', err)
+    }
+  }
+
+  // Lo mismo con Mercado Pago y Bold: si el aviso aún no llegó, se le pregunta al proveedor y se
+  // aplica con la misma pieza que usan sus webhooks (monto, idempotencia, ERP y correo una vez).
+  if (data.payment_status === 'pending' && [METODO_PEDIDO_MERCADOPAGO, METODO_PEDIDO_BOLD].includes(data.payment_method)) {
+    try {
+      const resultado =
+        data.payment_method === METODO_PEDIDO_BOLD ? await consultarBold(supabase, data) : await consultarMercadoPago(supabase, data)
+      if (resultado) {
+        const { desenlace } = await aplicarPagoPedidoWeb(supabase, data, resultado, 'resultado')
+        if (desenlace === 'actualizado' || desenlace === 'carrera' || desenlace === 'ya_pagado') {
+          const { data: fresco } = await leer()
+          if (fresco) return fresco
+        } else {
+          // Sin cambio, monto insuficiente o error: se muestra el pedido como está.
+        }
+      }
+    } catch (err) {
+      console.error('[Resultado] Error consultando la pasarela:', err)
     }
   }
 

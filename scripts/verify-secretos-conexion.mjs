@@ -99,7 +99,9 @@ await caso('uuid sin valor en la bóveda: queda vacío, nunca el uuid', async ()
 await caso('checkout/init y webhooks de pasarela usan el lector dual', async () => {
   const lectores = [
     'app/api/checkout/init/route.ts',
-    'app/api/webhooks/bold/route.ts',
+    // Bold (2026-11-19): la llave secreta la lee firmanteBold.ts; la de identidad, la consulta.
+    'lib/payments/firmanteBold.ts',
+    'lib/payments/consultaPasarelaTienda.ts',
     'app/api/webhooks/mercadopago/route.ts',
     'app/api/webhooks/meta/route.ts',
     'app/api/webhooks/paypal/route.ts',

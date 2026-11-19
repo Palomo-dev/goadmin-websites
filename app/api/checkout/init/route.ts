@@ -9,6 +9,7 @@ import { FUENTE_COBRO_DEPOSITO } from '@/lib/restaurant/deposito-modelo'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
+import { urlNotificacionMercadoPago } from '@/lib/payments/pasarelasTienda'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,7 +131,8 @@ async function buildWompiCheckoutUrl(
 async function buildMercadoPagoCheckout(
   creds: Record<string, string>,
   order: any,
-  returnUrl: string
+  returnUrl: string,
+  notificationUrl: string | null
 ): Promise<string | null> {
   const accessToken = creds.access_token || ''
 
@@ -168,8 +170,11 @@ async function buildMercadoPagoCheckout(
       pending: `${returnUrl}?ref=${order.order_number}&status=pending`,
     },
     auto_return: 'approved',
-    notification_url: undefined, // Se configura en el dashboard de MP
   }
+  // El aviso del pago va a la tienda por la que entró la compra (`/api/webhooks/mercadopago`), no
+  // a lo que el comercio tenga pegado en su panel (el ERP muestra allí la URL del ERP, que no
+  // confirma pedidos de la tienda). Sin host público, sin notification_url, como antes.
+  if (notificationUrl) preference.notification_url = notificationUrl
 
   // Solo agregar payer si hay al menos un dato
   if (Object.keys(payer).length > 0) {
@@ -187,6 +192,10 @@ async function buildMercadoPagoCheckout(
     })
 
     const data = await res.json()
+    if (!res.ok) {
+      console.error('[Checkout Init] MercadoPago rechazó la preferencia:', res.status, data?.message || data?.error || '')
+      return null
+    }
     return data.init_point || data.sandbox_init_point || null
   } catch (error) {
     console.error('[Checkout Init] MercadoPago error:', error)
@@ -650,7 +659,15 @@ export async function POST(request: NextRequest) {
         break
 
       case 'mp_checkout':
-        checkoutUrl = await buildMercadoPagoCheckout(creds, order, returnUrl)
+        checkoutUrl = await buildMercadoPagoCheckout(
+          creds,
+          order,
+          returnUrl,
+          urlNotificacionMercadoPago(
+            request.headers.get('x-forwarded-host') || request.headers.get('host'),
+            Number(order.organization_id)
+          )
+        )
         break
 
       case 'stripe_payments':

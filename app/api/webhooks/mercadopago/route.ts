@@ -5,13 +5,10 @@ import { isMembershipReference, handleMembershipPayment } from '@/lib/membership
 import { isTicketReference, handleTicketPayment } from '@/lib/transport/payment-handler'
 import { isParkingPassReference, handleParkingPassPayment } from '@/lib/parking/payment-handler'
 import { isInvoiceReference, handleInvoicePayment } from '@/lib/services/payment-handler'
-import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
-import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
-import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
-import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
-import { notifyErpRefund } from '@/lib/erp-refund'
 import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
+import { estadoMercadoPago, organizacionDeAviso } from '@/lib/payments/pasarelasTienda'
+import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,24 +23,6 @@ const CREDENTIAL_PURPOSES = {
   ACCESS_TOKEN: 'access_token',
   WEBHOOK_SECRET: 'webhook_secret',
 } as const
-
-/**
- * Mapea el status de MercadoPago al payment_status de web_orders
- */
-function mapMPStatus(mpStatus: string): string {
-  const map: Record<string, string> = {
-    approved: 'paid',
-    authorized: 'paid',
-    pending: 'pending',
-    in_process: 'pending',
-    in_mediation: 'pending',
-    rejected: 'failed',
-    cancelled: 'failed',
-    refunded: 'refunded',
-    charged_back: 'refunded',
-  }
-  return map[mpStatus] || 'pending'
-}
 
 /**
  * Verifica la firma HMAC-SHA256 del webhook de MercadoPago.
@@ -163,36 +142,49 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient() || createPublicClient()
 
   try {
-    const body = await request.json()
+    // Webhooks v2 traen el aviso en el cuerpo ({ type, action, data: { id } }); el formato IPN
+    // que Mercado Pago aún manda a una notification_url lo trae en la URL (?topic=payment&id=…).
+    const texto = await request.text()
+    let body: any = {}
+    try {
+      body = texto ? JSON.parse(texto) : {}
+    } catch {
+      body = {}
+    }
+    const consultaUrl = request.nextUrl.searchParams
     const xSignature = request.headers.get('x-signature') || ''
     const xRequestId = request.headers.get('x-request-id') || ''
 
     // Parsear notificación
-    const { type, action, data: notifData } = body
+    const type = body?.type ?? consultaUrl.get('type') ?? consultaUrl.get('topic')
+    const action = body?.action
+    const notifData = body?.data
 
     // Solo procesar eventos de tipo payment
     if (type !== 'payment') {
       return NextResponse.json({ received: true, skipped: true })
     }
 
-    const paymentId = String(notifData?.id || '')
-    if (!paymentId) {
-      return NextResponse.json(
-        { error: 'Payload inválido: falta data.id' },
-        { status: 400 }
-      )
+    const paymentId = String(notifData?.id || consultaUrl.get('data.id') || consultaUrl.get('id') || '')
+    if (!/^\d{1,20}$/.test(paymentId)) {
+      return NextResponse.json({ error: 'Payload inválido: data.id' }, { status: 400 })
     }
 
     console.log(
       `[MercadoPago Webhook] type=${type} action=${action} paymentId=${paymentId}`
     )
 
-    // 1. Buscar todas las conexiones activas de MercadoPago
-    const { data: connections } = await (supabase as any)
+    // 1. Conexiones activas de MercadoPago. La preferencia de la tienda trae `?org=` en su
+    //    notification_url: es solo una pista para no probar todas; la organización real es la de
+    //    la conexión cuyo access_token encuentra el pago.
+    const orgPista = organizacionDeAviso(request.nextUrl.searchParams.get('org'))
+    let consulta = (supabase as any)
       .from('integration_connections')
       .select('id, organization_id, settings')
       .eq('connector_id', MP_CONNECTOR_ID)
-      .eq('status', 'active')
+      .in('status', ['active', 'connected'])
+    if (orgPista) consulta = consulta.eq('organization_id', orgPista)
+    const { data: connections } = await consulta
 
     if (!connections || connections.length === 0) {
       console.warn('[MercadoPago Webhook] No hay conexiones activas de MercadoPago')
@@ -265,7 +257,7 @@ export async function POST(request: NextRequest) {
     )
 
     // 3. Mapear estado (necesario para ambos flujos)
-    const paymentStatus = mapMPStatus(mpStatus)
+    const paymentStatus = estadoMercadoPago(mpStatus)
 
     if (!reference) {
       console.warn('[MercadoPago Webhook] Pago sin external_reference, no se puede vincular a orden')
@@ -380,61 +372,43 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // ── Flujo normal: buscar web_order ──
+    // ── Flujo normal: pedido web DE LA ORGANIZACIÓN dueña del pago ──
+    // (el número de pedido no es único entre tiendas: sin este filtro, el pago de una cuenta podía
+    // marcar el pedido homónimo de otra organización).
     const { data: webOrder, error: orderError } = await (supabase as any)
       .from('web_orders')
-      .select('id, organization_id, branch_id, customer_id, total, payment_status')
+      .select('id, organization_id, branch_id, total, payment_status, order_number')
+      .eq('organization_id', organizationId)
       .eq('order_number', reference)
       .limit(1)
       .single()
 
     if (orderError || !webOrder) {
-      console.error('[MercadoPago Webhook] Orden no encontrada:', reference, orderError)
+      console.error('[MercadoPago Webhook] Orden no encontrada:', reference, orderError?.code)
       return NextResponse.json(
         { error: 'Orden no encontrada', reference },
-        { status: 404 }
+        { status: orderError && orderError.code !== 'PGRST116' ? 500 : 404 }
       )
     }
 
-    // 5. Actualizar web_order
-    const { error: updateError } = await (supabase as any)
-      .from('web_orders')
-      .update({
-        payment_status: paymentStatus,
-        payment_method: paymentMethodId || paymentTypeId || 'mercadopago',
-        payment_reference: String(mpPaymentId),
-        updated_at: new Date().toISOString(),
-        ...(paymentStatus === 'paid' && {
-          status: 'confirmed',
-          confirmed_at: new Date().toISOString(),
-        }),
-        ...(paymentStatus === 'failed' && {
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: `Pago rechazado por MercadoPago: ${mpStatus} (${statusDetail || ''})`,
-        }),
-      })
-      .eq('id', webOrder.id)
+    const { desenlace } = await aplicarPagoPedidoWeb(
+      supabase,
+      webOrder,
+      {
+        estado: paymentStatus,
+        transaccionId: String(mpPaymentId),
+        monto: Number.isFinite(Number(amount)) ? Number(amount) : null,
+        moneda: currency || 'COP',
+        metodoPago: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
+        metodoPedido: paymentMethodId || paymentTypeId || 'mercadopago',
+        respuesta: paymentData,
+        proveedor: 'Mercado Pago',
+        detalle: [mpStatus, statusDetail].filter(Boolean).join(' · '),
+      },
+      'webhook'
+    )
 
-    if (updateError) {
-      console.error('[MercadoPago Webhook] Error actualizando orden:', updateError)
-    }
-
-    // 6. Crear registro en payments
-    await (supabase as any).from('payments').insert({
-      organization_id: organizationId,
-      branch_id: webOrder.branch_id,
-      source: 'web_order',
-      source_id: String(webOrder.id),
-      method: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
-      amount: amount || webOrder.total,
-      currency: currency || 'COP',
-      reference: String(mpPaymentId),
-      processor_response: paymentData,
-      status: paymentStatus,
-    })
-
-    // 7. Registrar evento en integration_events
+    // Evento de integración y fecha del último aviso
     await (supabase as any).from('integration_events').insert({
       connection_id: matchedConnection.id,
       organization_id: organizationId,
@@ -447,61 +421,20 @@ export async function POST(request: NextRequest) {
       processed_at: new Date().toISOString(),
       // event_time es GENERATED ALWAYS AS (created_at), no se puede insertar.
     })
-
-    // 8. Actualizar last_received_at en integration_webhooks
     await (supabase as any)
       .from('integration_webhooks')
       .update({ last_received_at: new Date().toISOString() })
       .eq('connection_id', matchedConnection.id)
       .eq('direction', 'inbound')
 
-    // Google Ads — subir conversión offline si pago exitoso
-    if (paymentStatus === 'paid') {
-      uploadGoogleAdsConversion(supabase, organizationId, {
-        orderId: reference,
-        value: amount || webOrder.total,
-        currency: currency || 'COP',
-        category: 'purchase',
-      }).catch(err => console.error('[MercadoPago Webhook] Google Ads upload error:', err))
-
-      // Meta CAPI — Purchase event server-side
-      sendMetaCAPIEvent(supabase, organizationId, {
-        eventName: 'Purchase',
-        eventId: reference,
-        value: amount || webOrder.total,
-        currency: currency || 'COP',
-      }).catch(err => console.error('[MercadoPago Webhook] Meta CAPI error:', err))
-
-      // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío
-      notifyErpAutoConfirm(webOrder.id).catch(err =>
-        console.error('[MercadoPago Webhook] ERP auto-confirm error:', err)
-      )
+    if (desenlace === 'error') {
+      return NextResponse.json({ error: 'No se pudo actualizar el pedido' }, { status: 500 })
     }
-
-    // Liberar stock reservado si el pago falló
-    if (paymentStatus === 'failed') {
-      notifyErpReleaseStock(webOrder.id).catch(err =>
-        console.error('[MercadoPago Webhook] ERP release-stock error:', err)
-      )
-    }
-
-    // Procesar reembolso (nota crédito + devolución de stock + asiento reversión)
-    if (paymentStatus === 'refunded') {
-      notifyErpRefund(webOrder.id, {
-        reason: `Reembolso procesado por MercadoPago: ${mpStatus}`,
-      }).catch(err =>
-        console.error('[MercadoPago Webhook] ERP refund error:', err)
-      )
-    }
-
-    console.log(
-      `[MercadoPago Webhook] Procesado OK: order=${reference} status=${paymentStatus}`
-    )
-
     return NextResponse.json({
       received: true,
       order: reference,
       payment_status: paymentStatus,
+      result: desenlace,
     })
   } catch (error) {
     console.error('[MercadoPago Webhook] Error inesperado:', error)

@@ -34,6 +34,14 @@ export const TAMANO_MAXIMO_REENVIO = 256 * 1024
 /** Las únicas cabeceras que viajan al ERP. Ni cookies, ni `authorization`, ni `host`. */
 const CABECERAS_QUE_VIAJAN = ['content-type', 'x-event-checksum', 'user-agent'] as const
 
+/**
+ * Bold (2026-11-19): mismo reenvío, con su ruta del ERP y su cabecera de firma. Bold exige
+ * respuesta en menos de 2 s; si el ERP tarda más, se le devuelve 504 y Bold reintenta.
+ */
+export const RUTA_WEBHOOK_BOLD_ERP = '/api/integrations/bold/webhook'
+export const TIEMPO_LIMITE_REENVIO_BOLD_MS = 1500
+const CABECERAS_QUE_VIAJAN_BOLD = ['content-type', 'x-bold-signature', 'user-agent'] as const
+
 /** Misma base que `lib/erp-auto-confirm.ts` y compañía: `NEXT_PUBLIC_APP_URL` o la del ERP. */
 const ERP_POR_DEFECTO = 'https://app.goadmin.io'
 
@@ -42,6 +50,11 @@ const ERP_POR_DEFECTO = 'https://app.goadmin.io'
  * desarrollo). `null` si la base configurada no es una URL válida.
  */
 export function urlWebhookWompiErp(base: string | undefined = process.env.NEXT_PUBLIC_APP_URL): string | null {
+  return urlWebhookErp(RUTA_WEBHOOK_WOMPI_ERP, base)
+}
+
+/** URL de un receptor del ERP (misma regla que la de Wompi). */
+export function urlWebhookErp(ruta: string, base: string | undefined = process.env.NEXT_PUBLIC_APP_URL): string | null {
   const valor = (base ?? '').trim() || ERP_POR_DEFECTO
   let url: URL
   try {
@@ -51,7 +64,7 @@ export function urlWebhookWompiErp(base: string | undefined = process.env.NEXT_P
   }
   const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
   if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) return null
-  return `${url.origin}${RUTA_WEBHOOK_WOMPI_ERP}`
+  return `${url.origin}${ruta}`
 }
 
 /** ¿El evento ya pasó por un reenvío de la tienda? */
@@ -112,35 +125,64 @@ const json = (status: number, cuerpo: Record<string, unknown>, reenviado = false
  *  - Sin URL válida del ERP → 503 (Wompi reintenta; es configuración).
  */
 export async function reenviarWompiAlErp(p: ParametrosReenvio): Promise<RespuestaReenvio> {
+  return reenviarEventoAlErp(p, {
+    proveedor: 'Wompi',
+    marca: 'wompi_co',
+    ruta: RUTA_WEBHOOK_WOMPI_ERP,
+    cabeceras: CABECERAS_QUE_VIAJAN,
+    tiempoLimiteMs: TIEMPO_LIMITE_REENVIO_MS,
+  })
+}
+
+/** Lo mismo para Bold: eventos firmados por una conexión de Bold que no son pedidos de la tienda. */
+export async function reenviarBoldAlErp(p: ParametrosReenvio): Promise<RespuestaReenvio> {
+  return reenviarEventoAlErp(p, {
+    proveedor: 'Bold',
+    marca: 'bold',
+    ruta: RUTA_WEBHOOK_BOLD_ERP,
+    cabeceras: CABECERAS_QUE_VIAJAN_BOLD,
+    tiempoLimiteMs: TIEMPO_LIMITE_REENVIO_BOLD_MS,
+  })
+}
+
+interface ConfigReenvio {
+  proveedor: string
+  marca: string
+  ruta: string
+  cabeceras: readonly string[]
+  tiempoLimiteMs: number
+}
+
+async function reenviarEventoAlErp(p: ParametrosReenvio, c: ConfigReenvio): Promise<RespuestaReenvio> {
   const ref = p.referencia ? String(p.referencia).slice(0, 80) : '(sin referencia)'
-  const url = p.url === undefined ? urlWebhookWompiErp() : p.url
+  const url = p.url === undefined ? urlWebhookErp(c.ruta) : p.url
 
   if (!url) {
-    console.error(`[Wompi Reenvío] ref=${ref}: NEXT_PUBLIC_APP_URL no es una URL válida del ERP; no se reenvía`)
+    console.error(`[${c.proveedor} Reenvío] ref=${ref}: NEXT_PUBLIC_APP_URL no es una URL válida del ERP; no se reenvía`)
     return json(503, { error: 'Reenvío al ERP no configurado' })
   }
   if (p.cuerpo.byteLength > TAMANO_MAXIMO_REENVIO) {
-    console.error(`[Wompi Reenvío] ref=${ref}: cuerpo de ${p.cuerpo.byteLength} bytes; no se reenvía`)
+    console.error(`[${c.proveedor} Reenvío] ref=${ref}: cuerpo de ${p.cuerpo.byteLength} bytes; no se reenvía`)
     return json(413, { error: 'Evento demasiado grande' })
   }
   const destino = new URL(url)
   const host = (p.hostEntrante ?? '').trim().toLowerCase().replace(/:\d+$/, '')
   if (host && destino.hostname.toLowerCase() === host) {
     // La URL del ERP apunta a esta misma tienda: reenviar sería hablarse a sí misma.
-    console.error(`[Wompi Reenvío] ref=${ref}: la URL del ERP es este mismo host; no se reenvía`)
+    console.error(`[${c.proveedor} Reenvío] ref=${ref}: la URL del ERP es este mismo host; no se reenvía`)
     return json(404, { error: 'Orden no encontrada', reference: p.referencia ?? null })
   }
 
   const cabeceras = new Headers()
-  for (const nombre of CABECERAS_QUE_VIAJAN) {
+  for (const nombre of c.cabeceras) {
     const valor = p.cabeceras.get(nombre)
     if (valor) cabeceras.set(nombre, valor)
   }
   if (!cabeceras.has('content-type')) cabeceras.set('content-type', 'application/json')
-  cabeceras.set(CABECERA_REENVIADO, 'wompi_co')
+  cabeceras.set(CABECERA_REENVIADO, c.marca)
 
   const controlador = new AbortController()
-  const limite = setTimeout(() => controlador.abort(), p.tiempoLimiteMs ?? TIEMPO_LIMITE_REENVIO_MS)
+  const limite = setTimeout(() => controlador.abort(), p.tiempoLimiteMs ?? c.tiempoLimiteMs)
   const inicio = Date.now()
   try {
     const res = await (p.fetchImpl ?? fetch)(url, {
@@ -154,9 +196,9 @@ export async function reenviarWompiAlErp(p: ParametrosReenvio): Promise<Respuest
     const cuerpo = await res.text()
     const ms = Date.now() - inicio
     if (res.status >= 500) {
-      console.error(`[Wompi Reenvío] ref=${ref} → ERP ${res.status} en ${ms} ms; Wompi reintentará`)
+      console.error(`[${c.proveedor} Reenvío] ref=${ref} → ERP ${res.status} en ${ms} ms; ${c.proveedor} reintentará`)
     } else {
-      console.log(`[Wompi Reenvío] ref=${ref} → ERP ${res.status} en ${ms} ms`)
+      console.log(`[${c.proveedor} Reenvío] ref=${ref} → ERP ${res.status} en ${ms} ms`)
     }
     // Una redirección no es una respuesta del receptor: que Wompi reintente.
     const status = res.status >= 300 && res.status < 400 ? 502 : res.status
@@ -170,7 +212,7 @@ export async function reenviarWompiAlErp(p: ParametrosReenvio): Promise<Respuest
     const ms = Date.now() - inicio
     const tiempoAgotado = controlador.signal.aborted
     console.error(
-      `[Wompi Reenvío] ref=${ref}: ${tiempoAgotado ? 'el ERP no respondió a tiempo' : 'no se pudo llegar al ERP'} (${ms} ms); Wompi reintentará`
+      `[${c.proveedor} Reenvío] ref=${ref}: ${tiempoAgotado ? 'el ERP no respondió a tiempo' : 'no se pudo llegar al ERP'} (${ms} ms); ${c.proveedor} reintentará`
     )
     return json(tiempoAgotado ? 504 : 502, { error: 'ERP no disponible' })
   } finally {
