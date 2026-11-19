@@ -33,6 +33,7 @@ import {
   CLASE_BOTON_MENU_PILDORA,
   ESTILO_BOTON_ENTRAR,
 } from '../HeaderShared';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 /**
  * MobileBottomSheet
@@ -211,7 +212,7 @@ function BottomSheetItem({
           className="flex items-center justify-between w-full px-3 py-3 text-sm font-medium text-[var(--mm-fg)] bg-[var(--header-hover)]"
         >
           <span className="flex items-center gap-2">
-            {item.icon && <span>{item.icon}</span>}
+            {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
             <span>{item.name}</span>
             {item.badge && (
               <span
@@ -257,7 +258,7 @@ function BottomSheetItem({
       onClick={onNavigate}
       className="flex items-center gap-2 px-3 py-3 rounded-lg text-sm font-medium text-[var(--mm-fg)] bg-[var(--header-hover)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)]"
     >
-      {item.icon && <span>{item.icon}</span>}
+      {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
       <span>{item.name}</span>
       {item.badge && (
         <span

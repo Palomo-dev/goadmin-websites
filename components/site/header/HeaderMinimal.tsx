@@ -36,6 +36,7 @@ import {
   DrawerTitle,
   DrawerClose,
 } from '@/components/ui/drawer';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 /**
  * HeaderMinimal
@@ -401,7 +402,7 @@ function DrawerNavItem({
       <details className="group">
         <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors list-none">
           <span className="flex items-center gap-2">
-            {item.icon && <span>{item.icon}</span>}
+            {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
             <span>{item.name}</span>
             {item.badge && (
               <span
@@ -444,7 +445,7 @@ function DrawerNavItem({
       onClick={onNavigate}
     >
       <span className="flex items-center gap-2">
-        {item.icon && <span>{item.icon}</span>}
+        {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
         <span>{item.name}</span>
         {item.badge && (
           <span

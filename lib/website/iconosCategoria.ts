@@ -97,6 +97,35 @@ export function candidatosIconoCategoria(cat: CategoriaConIcono): string[] {
   return [propio, auto].filter((v, i, a): v is string => !!v && a.indexOf(v) === i)
 }
 
+/**
+ * Nombre de ícono en la forma de lucide-react: «smartphone» → «Smartphone», «gamepad-2» →
+ * «Gamepad2», «washing_machine» → «WashingMachine». Un nombre ya en PascalCase no cambia.
+ */
+export function nombrePascalIcono(nombre: string): string {
+  const limpio = nombre.trim()
+  if (/^[A-Z][A-Za-z0-9]*$/.test(limpio) && /[a-z]/.test(limpio)) return limpio
+  return limpio
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join('')
+}
+
+/**
+ * Qué es lo guardado en `icon` (categoría o ítem del menú), para no pintarlo nunca como texto:
+ *  - `url`: imagen (http(s) o ruta del sitio con extensión de imagen);
+ *  - `emoji`: sin letras latinas y corto (📱): se muestra tal cual;
+ *  - `nombre`: nombre de un ícono de lucide (se resuelve; si no existe, respaldo);
+ *  - `vacio`.
+ */
+export function tipoIconoGuardado(valor: unknown): { tipo: 'url' | 'emoji' | 'nombre' | 'vacio'; valor: string } {
+  const v = typeof valor === 'string' ? valor.trim() : ''
+  if (!v) return { tipo: 'vacio', valor: '' }
+  if (/^https?:\/\/\S+$/i.test(v) || /^\/[^\s]*\.(png|jpe?g|svg|webp|gif|avif)(\?\S*)?$/i.test(v)) return { tipo: 'url', valor: v }
+  if (!/[A-Za-z]/.test(v) && [...v].length <= 8) return { tipo: 'emoji', valor: v }
+  return { tipo: 'nombre', valor: v }
+}
+
 /** ¿La categoría tiene ícono (propio o automático)? Sin ninguno, cada estilo usa su respaldo de siempre. */
 export function tieneIconoCategoria(cat: CategoriaConIcono): boolean {
   return candidatosIconoCategoria(cat).length > 0

@@ -6,14 +6,22 @@
  * (0.454.0) pasa al siguiente candidato: nunca rompe la página.
  */
 import { icons, type LucideProps } from 'lucide-react'
-import { candidatosIconoCategoria } from '@/lib/website/iconosCategoria'
+import { candidatosIconoCategoria, nombrePascalIcono } from '@/lib/website/iconosCategoria'
 
 type MapaIconos = Record<string, React.ComponentType<LucideProps> | undefined>
 
-/** Primer candidato que exista en lucide, o `respaldo`. */
+/**
+ * Primer candidato que exista en lucide, o `respaldo`. Tolera minúsculas, guiones y guiones bajos
+ * («smartphone», «gamepad-2»): se prueba también su forma PascalCase.
+ */
 export function nombreIconoCategoria(cat: { icon?: unknown; name?: unknown }, respaldo = 'Tag'): string {
   const mapa = icons as unknown as MapaIconos
-  return candidatosIconoCategoria(cat).find((n) => mapa[n]) ?? respaldo
+  for (const n of candidatosIconoCategoria(cat)) {
+    if (mapa[n]) return n
+    const pascal = nombrePascalIcono(n)
+    if (mapa[pascal]) return pascal
+  }
+  return respaldo
 }
 
 export function IconoCategoria({

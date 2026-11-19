@@ -117,7 +117,23 @@ check(contrato.esquemaSeccion.safeParse(seccion).success, 'un valor inválido no
 // ── 4. Fuentes ──
 const leer = (r) => readFile(join(ROOT, r), 'utf8')
 const comp = await leer('components/sections/products/IconoCategoria.tsx')
-check(comp.includes("candidatosIconoCategoria(cat).find((n) => mapa[n]) ?? respaldo") && comp.includes('?? mapa.Tag'), 'IconoCategoria: primer candidato que exista, si no Tag')
+// 2026-11-19: también su forma PascalCase («smartphone», «gamepad-2»).
+check(/for \(const n of candidatosIconoCategoria\(cat\)\) \{\s*if \(mapa\[n\]\) return n;?\s*const pascal = nombrePascalIcono\(n\);?\s*if \(mapa\[pascal\]\) return pascal;?\s*\}\s*return respaldo;?/.test(comp) && comp.includes('?? mapa.Tag'), 'IconoCategoria: primer candidato que exista (o su PascalCase), si no Tag')
+
+// ── 5. Ícono guardado: nunca el nombre como texto (menú «Categorías», 2026-11-19) ──
+for (const [entrada, salida] of [['Smartphone', 'Smartphone'], ['smartphone', 'Smartphone'], ['gamepad-2', 'Gamepad2'], ['washing_machine', 'WashingMachine'], ['CCTV', 'Cctv'], ['Gamepad2', 'Gamepad2']]) {
+  check(ic.nombrePascalIcono(entrada) === salida && icons[salida], `nombrePascalIcono(${entrada}) → ${salida}`)
+}
+check(ic.tipoIconoGuardado('https://cdn.ejemplo.test/a.png').tipo === 'url' && ic.tipoIconoGuardado('/iconos/a.svg').tipo === 'url', 'tipoIconoGuardado: URL')
+check(ic.tipoIconoGuardado('📱').tipo === 'emoji' && ic.tipoIconoGuardado('Smartphone').tipo === 'nombre', 'tipoIconoGuardado: emoji y nombre')
+check(ic.tipoIconoGuardado('').tipo === 'vacio' && ic.tipoIconoGuardado(null).tipo === 'vacio', 'tipoIconoGuardado: vacío')
+for (const r of ['components/site/header/MegaMenuDropdown.tsx', 'components/site/header/HeaderShared.tsx', 'components/site/header/HeaderMinimal.tsx', 'components/site/header/mobile/MobileDrawer.tsx', 'components/site/header/mobile/MobileFullscreen.tsx', 'components/site/header/mobile/MobileBottomSheet.tsx', 'components/sections/category-detail/CategoryFilters.tsx', 'components/sections/category-detail/CategorySubcategories.tsx', 'components/site/header/mobile/MobileTabs.tsx', 'components/site/MenuView.tsx', 'components/site/SiteFooter.tsx', 'app/categorias/[slug]/CategoryPageClient.tsx']) {
+  const f = await leer(r)
+  check(!/(?<!=)\{(item|category|sub|cat|group\.category)\.icon( \|\| '[^']*')?\}/.test(f) && f.includes('<IconoGuardado'), `${r}: pinta el nombre del ícono como texto`)
+}
+const mega = await leer('components/site/header/MegaMenuDropdown.tsx')
+check(!/border-b border-gray-100/.test(mega.slice(mega.indexOf('function PanelCategorias'))), 'panel de categorías: vuelve la línea bajo cada celda')
+check(/alt=""/.test(mega.slice(mega.indexOf('function PanelCategorias'))), 'panel de categorías: la imagen muestra texto alternativo')
 const estilos = await leer('components/sections/products/EstilosCategoria.tsx')
 check(estilos.includes('const hayIcono = tieneIconoCategoria(cat)'), 'EstilosCategoria: el ícono automático cuenta como ícono')
 const tarjeta = await leer('components/sections/products/CategoryCard.tsx')

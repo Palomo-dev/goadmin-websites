@@ -39,6 +39,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { leerMenuInferior } from '@/lib/website/menuInferior';
 import { FueraDelEncabezado } from '../CapaFijaEncabezado';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 /**
  * MobileTabs
@@ -312,7 +313,7 @@ export function ModalCategorias({
                   className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
                   onClick={onClose}
                 >
-                  {cat.icon && <span className="text-xl">{cat.icon}</span>}
+                  {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-5 w-5 flex-shrink-0" />}
                   <span className="text-sm font-medium text-[var(--mm-fg)]">
                     {cat.name}
                   </span>
@@ -402,7 +403,7 @@ function CategoryNavItem({
     return (
       <details className="group">
         <summary className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)] cursor-pointer list-none">
-          {item.icon && <span className="text-xl">{item.icon}</span>}
+          {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-5 w-5 flex-shrink-0" />}
           <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">
             {item.name}
           </span>
@@ -438,7 +439,7 @@ function CategoryNavItem({
       className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
       onClick={onNavigate}
     >
-      {item.icon && <span className="text-xl">{item.icon}</span>}
+      {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-5 w-5 flex-shrink-0" />}
       <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">
         {item.name}
       </span>

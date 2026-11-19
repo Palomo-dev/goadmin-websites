@@ -21,6 +21,7 @@ import { exigeEleccion, gruposDeProducto } from '@/lib/products/modificadores'
 import { mapaDeTags, soldOutReturnLabel, toMenuItem, type MenuItem, type MenuSourceProduct } from '@/lib/menu/menuFull'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { textoPlano } from '@/lib/texto/textoPlano'
+import { IconoGuardado } from '@/components/site/IconoGuardado'
 
 // ── Types ──
 
@@ -442,7 +443,7 @@ export function MenuView({
                   }`}
                   style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
                 >
-                  {cat.icon && <span className="mr-1">{cat.icon}</span>}
+                  {cat.icon && <span className="mr-1 inline-flex align-[-2px]"><IconoGuardado icono={cat.icon} nombre={cat.name} className="h-4 w-4" /></span>}
                   {cat.name}
                 </button>
               ))}
@@ -480,7 +481,7 @@ export function MenuView({
                 {group.category && (
                   <div className="mb-4">
                     <h2 className="text-2xl font-bold text-gray-900">
-                      {group.category.icon && <span className="mr-2">{group.category.icon}</span>}
+                      {group.category.icon && <span className="mr-2 inline-flex align-[-3px]"><IconoGuardado icono={group.category.icon} nombre={group.category.name} className="h-5 w-5" /></span>}
                       {group.category.name}
                     </h2>
                     {textoPlano(group.category.description) && (

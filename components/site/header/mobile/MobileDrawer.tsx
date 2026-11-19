@@ -34,6 +34,7 @@ import {
   variablesPildoraMovil,
   CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 /**
  * MobileDrawer
@@ -271,7 +272,7 @@ function DrawerNavItem({
       <details className="group">
         <summary className="flex items-center justify-between cursor-pointer px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors list-none">
           <span className="flex items-center gap-2">
-            {item.icon && <span>{item.icon}</span>}
+            {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
             <span>{item.name}</span>
             {item.badge && (
               <span
@@ -315,7 +316,7 @@ function DrawerNavItem({
       onClick={onNavigate}
     >
       <span className="flex items-center gap-2">
-        {item.icon && <span>{item.icon}</span>}
+        {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
         <span>{item.name}</span>
         {item.badge && (
           <span

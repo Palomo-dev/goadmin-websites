@@ -13,6 +13,7 @@ import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
+import { IconoGuardado } from '@/components/site/IconoGuardado'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -228,7 +229,7 @@ export function CategoryPageClient({
                 }`}
                 style={currentSubcategory === sub.slug ? { backgroundColor: primaryColor } : {}}
               >
-                {sub.icon && <span className="mr-1">{sub.icon}</span>}
+                {sub.icon && <span className="mr-1 inline-flex align-[-2px]"><IconoGuardado icono={sub.icon} nombre={sub.name} className="h-4 w-4" /></span>}
                 {sub.name}
               </button>
             ))}

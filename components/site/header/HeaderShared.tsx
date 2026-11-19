@@ -37,6 +37,7 @@ import { colorGuardado, iconoSobreFondo } from '@/lib/website/colorCirculoIconos
 import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 // ============================================================
 // SHARED TYPES
@@ -1402,7 +1403,7 @@ export function claseNavEncabezado(heredaColor: boolean): string {
 function piezasNav(item: NavItem, primaryColor: string, flecha: boolean) {
   return (
     <>
-      {item.icon && <span className="text-base">{item.icon}</span>}
+      {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
       <span>{item.name}</span>
       {item.badge && (
         <span

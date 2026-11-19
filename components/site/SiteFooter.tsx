@@ -17,6 +17,7 @@ import { PieTema } from './footer/PieTema'
 import { PieMarca } from './footer/PieMarca'
 import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie'
 import { hrefDeSlug, logoSegunFondo, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
+import { IconoGuardado } from '@/components/site/IconoGuardado'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -181,7 +182,7 @@ function FooterLinkItem({ item }: { item: FooterNavItem }) {
         href={item.href}
         className="text-current opacity-60 hover:opacity-100 transition-opacity text-sm flex items-center gap-1.5"
       >
-        {item.icon && <span className="text-base">{item.icon}</span>}
+        {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-4 w-4 flex-shrink-0" />}
         <span>{item.name}</span>
         {item.badge && (
           <span
@@ -809,7 +810,7 @@ export function SiteFooter({
                         {categoryItems.slice(0, 6).map((cat, i) => (
                           <li key={i}>
                             <Link href={cat.href} className="text-current opacity-50 hover:opacity-100 transition-opacity text-xs flex items-center gap-1.5">
-                              {cat.icon && <span>{cat.icon}</span>}
+                              {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-3.5 w-3.5 flex-shrink-0" />}
                               <span>{cat.name}</span>
                             </Link>
                           </li>
@@ -1039,7 +1040,7 @@ export function SiteFooter({
                           href={cat.href}
                           className="text-current opacity-50 hover:opacity-100 transition-opacity text-xs flex items-center gap-1.5"
                         >
-                          {cat.icon && <span>{cat.icon}</span>}
+                          {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-3.5 w-3.5 flex-shrink-0" />}
                           <span>{cat.name}</span>
                         </Link>
                       </li>

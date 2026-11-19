@@ -13,6 +13,7 @@ import { Grid3X3, List, Search, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { normalizarAjustesFiltrosCategoria, TEXTO_BUSCADOR_CATEGORIA } from '@/lib/website/v2/contrato/seccionesTienda'
+import { IconoGuardado } from '@/components/site/IconoGuardado'
 
 export const CONTENT_KEYS = ['filter_position', 'show_sort', 'show_view_toggle', 'subcategory_style', 'search'] as const
 
@@ -164,7 +165,7 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
             }`}
             style={currentSubcategory === sub.slug ? { backgroundColor: primaryColor } : {}}
           >
-            {sub.icon && <span className="mr-1">{sub.icon}</span>}
+            {sub.icon && <span className="mr-1 inline-flex align-[-2px]"><IconoGuardado icono={sub.icon} nombre={sub.name} className="h-4 w-4" /></span>}
             {sub.name}
           </button>
         ))}

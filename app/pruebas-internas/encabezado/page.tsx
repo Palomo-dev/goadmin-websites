@@ -17,6 +17,7 @@
  * - `scroll`: header_scroll (normal | ocultar_al_bajar | encoger | ocultar_y_encoger), opcional.
  * - `menu`: mobile_menu_style (drawer | bottom_sheet | fullscreen | tabs | drawer_left | drawer_right |
  *   top_dropdown | none), opcional.
+ * - `iconos=Smartphone,laptop,…`: íconos de las categorías raíz, en orden (opcional).
  * - `sinAjustesCategorias=1`: sin `search_popular` y con show_categories_in_header y
  *   footer_show_categories en false (las búsquedas populares salen de las categorías igual).
  *
@@ -165,6 +166,12 @@ export default function PaginaPruebaEncabezado({ searchParams }: { searchParams:
   const menus = menusPublicosDesdeDocumento(documento, tienda.id, categorias)
   const navTree = (menus.header?.items ?? []).map(itemANodo)
   const categoriasTienda = arbolCategorias(tienda.menuCategories)
+  // `iconos=Smartphone,laptop,gamepad-2,…`: íconos guardados de las categorías raíz, en orden (el
+  // fixture no los trae). Para probar el menú «Categorías» con los valores reales de una tienda.
+  const iconos = (uno(searchParams.iconos) ?? '').split(',').map((v) => v.trim())
+  categoriasTienda.forEach((c, i) => {
+    if (iconos[i]) c.icon = iconos[i]
+  })
   const menuCategories = categoriasVisibles(ajustes as { show_categories_in_header?: boolean | null; footer_show_categories?: boolean | null }, categoriasTienda)
   const tema = temaPublicoDesdeDocumento(documento, false, null)
   const settings = ajustes as unknown as WebsiteSettings

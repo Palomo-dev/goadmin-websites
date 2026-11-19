@@ -32,6 +32,7 @@ import {
   variablesPildoraMovil,
   CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
+import { IconoGuardado } from '@/components/site/IconoGuardado';
 
 /**
  * MobileFullscreen
@@ -196,7 +197,7 @@ function FullscreenNavItem({
       <details className="group border-b border-[color:var(--mm-divider)]">
         <summary className="flex items-center justify-between cursor-pointer py-4 text-lg font-medium text-[var(--mm-title)] hover:text-[var(--mm-hover-fg)] list-none">
           <span className="flex items-center gap-2">
-            {item.icon && <span>{item.icon}</span>}
+            {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-5 w-5 flex-shrink-0" />}
             <span>{item.name}</span>
             {item.badge && (
               <span
@@ -238,7 +239,7 @@ function FullscreenNavItem({
       className="flex items-center gap-2 py-4 text-lg font-medium text-[var(--mm-title)] border-b border-[color:var(--mm-divider)] hover:text-[var(--mm-hover-fg)]"
       onClick={onNavigate}
     >
-      {item.icon && <span>{item.icon}</span>}
+      {item.icon && <IconoGuardado icono={item.icon} nombre={item.name} className="h-5 w-5 flex-shrink-0" />}
       <span>{item.name}</span>
       {item.badge && (
         <span
