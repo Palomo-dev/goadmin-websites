@@ -38,6 +38,7 @@ import Link from 'next/link'
 import type React from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
+import { ColumnaInfoFija } from '@/components/sections/product-detail/ColumnaInfoFija'
 import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
@@ -286,6 +287,11 @@ export function ProductDetailRenderer({
     const columnaInfo = iGaleria >= 0 ? principales.slice(iGaleria + 1) : principales
     const galleryStyle = { flexBasis: `${galleryWidth}%` } as React.CSSProperties
     const infoStyle = { flexBasis: `${100 - galleryWidth}%` } as React.CSSProperties
+    // Galería en «Desplazamiento»: las fotos bajan con la página y la información queda fija
+    // debajo del header, o sube hasta mostrar su final si es más alta que la pantalla
+    // (ColumnaInfoFija). Los demás modos, como siempre (top-4).
+    const contenidoGaleria = (iGaleria >= 0 ? principales[iGaleria].content : null) as Record<string, unknown> | null
+    const galeriaScroll = contenidoGaleria?.gallery_layout === 'scroll'
 
     return (
       <div className="flex flex-col lg:flex-row gap-12">
@@ -293,9 +299,13 @@ export function ProductDetailRenderer({
           {columnaGaleria.map(renderSection)}
         </div>
         <div style={infoStyle} className="min-w-0">
-          <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
-            {columnaInfo.map(renderSection)}
-          </div>
+          {stickyColumn && galeriaScroll ? (
+            <ColumnaInfoFija className="space-y-6">{columnaInfo.map(renderSection)}</ColumnaInfoFija>
+          ) : (
+            <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
+              {columnaInfo.map(renderSection)}
+            </div>
+          )}
         </div>
       </div>
     )
