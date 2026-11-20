@@ -11,6 +11,7 @@ import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { SiLista } from '../ListRenderer'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
+import { clasesVistaLista, columnasVistaLista } from '@/lib/products/fuenteListado'
 
 interface ProductsListProps {
   content: Record<string, any>
@@ -111,17 +112,25 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
 
       {products.length > 0 ? (
         (() => {
-          const cols = content.columns || content.desktop_columns || 1
+          // Columnas por pantalla (columnasVistaLista): escritorio desde columns_desktop (o las claves
+          // de antes, desktop_columns / columns), tablet columns_tablet y celular columns_mobile (1 por
+          // defecto: la tarjeta horizontal no cabe apretada). Sin columnas, la lista de una columna.
+          const vista = columnasVistaLista({
+            desktop: content.columns_desktop ?? content.desktop_columns ?? content.columns,
+            tablet: content.columns_tablet,
+            mobile: content.columns_mobile,
+          })
+          const cols = vista?.escritorio ?? 1
           const rows = content.rows || content.desktop_rows
           const maxItemsByRows = rows ? cols * rows : 0
           const lista = listaDelInspector(content)
           const visibleProducts = lista ? products : (maxItemsByRows > 0 ? products.slice(0, maxItemsByRows) : products)
-          const isGrid = cols > 1
+          const claseRejilla = vista ? clasesVistaLista({ desktop: vista.escritorio, tablet: vista.tablet, mobile: vista.movil }) : null
           return (
             <SiLista
               content={content}
-              className={isGrid ? 'grid gap-4 max-w-6xl mx-auto' : 'space-y-4 max-w-4xl mx-auto'}
-              style={isGrid ? { gridTemplateColumns: `repeat(${Math.min(cols, 4)}, minmax(0, 1fr))`, ...separacion } : separacion}
+              className={claseRejilla ? `${claseRejilla} max-w-6xl mx-auto` : 'space-y-4 max-w-4xl mx-auto'}
+              style={separacion}
             >
               {visibleProducts.map((product: any) => {
                 const isAdded = addedToCart.has(product.id)

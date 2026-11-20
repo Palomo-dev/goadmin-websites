@@ -100,7 +100,7 @@ export function BuscadorCromo({
   }
   const compacta = presentacion.tipo === 'mini' && enFila
   const sombra = presentacion.shadow ? 'shadow-lg' : ''
-  const campo = (
+  const campoSuelto = (
     <div
       className={compacta
         ? `absolute right-0 top-1/2 z-30 flex w-36 -translate-y-1/2 items-center gap-2 bg-[var(--header-bg-light,white)] transition-[width] duration-200 focus-within:w-96 motion-reduce:transition-none dark:bg-[var(--header-bg-dark,#111827)] ${sombra} ${RADIO[presentacion.radius]}`
@@ -152,6 +152,70 @@ export function BuscadorCromo({
       )}
     </div>
   )
+  // Barra unificada (diseño aprobado en Figma 2689:57377): una sola caja con el fondo, el borde,
+  // las esquinas y la sombra del editor; el desplegable de categorías a la izquierda con un divisor
+  // y el botón de buscar por dentro, a la derecha. La «barra compacta» del encabezado sigue igual.
+  const bordeAncho = presentacion.border === 'none' ? 0 : presentacion.border === 'thick' ? 2 : 1
+  const radioInterno = presentacion.radius === 'square' ? 0 : presentacion.radius === 'pill' || presentacion.radius === 'circle' ? 999 : 6
+  const unificada = (
+    <div
+      className={`flex min-w-0 items-center gap-1 p-1 focus-within:ring-2 ${sombra} ${RADIO[presentacion.radius]} ${className}`}
+      style={{
+        maxWidth: presentacion.width,
+        backgroundColor: presentacion.background || '#FFFFFF',
+        borderStyle: 'solid',
+        borderWidth: bordeAncho,
+        borderColor: presentacion.borderColor || '#E5E7EB',
+        ['--tw-ring-color' as string]: `color-mix(in srgb, ${primaryColor} 40%, transparent)`,
+      }}
+      data-buscador={presentacion.tipo}
+      data-barra-unificada=""
+    >
+      {presentacion.tipo === 'mega' && (
+        <select
+          aria-label="Categoría"
+          value={categoria}
+          onChange={(e) => cambiarCategoria(e.target.value)}
+          className="h-10 w-auto max-w-[9rem] shrink-0 cursor-pointer border-0 border-r border-gray-200 bg-transparent pl-3 pr-2 text-sm font-medium text-gray-900 outline-none"
+        >
+          <option value="">Todas</option>
+          {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      )}
+      <div className="min-w-0 flex-1">
+        <SearchBarInput
+          primaryColor={primaryColor}
+          className="w-full"
+          size="sm"
+          icon={Icono}
+          cromo={{
+            radius: presentacion.radius,
+            iconSide: presentacion.iconSide,
+            iconColor: presentacion.iconColor,
+            iconBackground: presentacion.iconBackground,
+            sinIcono: presentacion.button !== 'none' && !lupaEnCampo,
+            enBarra: true,
+          }}
+          {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
+          {...(elegida ? { filtroCategoria: elegida.name, categoriaSlug: elegida.slug } : {})}
+          onQueryChange={setTexto}
+          {...(presentacion.tipo === 'mega' && desdeUrl.q ? { valorInicial: desdeUrl.q } : {})}
+        />
+      </div>
+      {presentacion.button !== 'none' && (
+        <button
+          type="button"
+          onClick={buscar}
+          className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center gap-1 px-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: primaryColor, borderRadius: radioInterno }}
+          aria-label="Buscar"
+        >
+          {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
+        </button>
+      )}
+    </div>
+  )
+  const campo = compacta ? campoSuelto : unificada
   if (!compacta) return campo
   // «Barra compacta»: reserva su espacio en la fila; el campo se abre encima, hacia la izquierda.
   return (

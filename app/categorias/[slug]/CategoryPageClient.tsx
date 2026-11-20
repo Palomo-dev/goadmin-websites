@@ -14,6 +14,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -203,11 +204,17 @@ export function CategoryPageClient({
 
   return (
     <div>
-      {/* Subcategorías */}
+      {/* Subcategorías: carril sin barra gris, con «Todas» fijo, degradado y flechas (CarrilChips) */}
       {subcategories.length > 0 && (
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-2 pb-2">
+        <CarrilChips
+          className="mb-6"
+          etiqueta="Subcategorías"
+          color={primaryColor}
+          claveActivo={currentSubcategory || ''}
+          chipFijo={
             <button
+              type="button"
+              aria-pressed={!currentSubcategory}
               onClick={() => handleSubcategoryChange('')}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 !currentSubcategory
@@ -218,23 +225,26 @@ export function CategoryPageClient({
             >
               Todas
             </button>
-            {subcategories.map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => handleSubcategoryChange(sub.slug)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  currentSubcategory === sub.slug
-                    ? 'text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-                style={currentSubcategory === sub.slug ? { backgroundColor: primaryColor } : {}}
-              >
-                {sub.icon && <span className="mr-1 inline-flex align-[-2px]"><IconoGuardado icono={sub.icon} nombre={sub.name} className="h-4 w-4" /></span>}
-                {sub.name}
-              </button>
-            ))}
-          </div>
-        </div>
+          }
+        >
+          {subcategories.map((sub) => (
+            <button
+              key={sub.id}
+              type="button"
+              aria-pressed={currentSubcategory === sub.slug}
+              onClick={() => handleSubcategoryChange(sub.slug)}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                currentSubcategory === sub.slug
+                  ? 'text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+              style={currentSubcategory === sub.slug ? { backgroundColor: primaryColor } : {}}
+            >
+              {sub.icon && <span className="mr-1 inline-flex align-[-2px]"><IconoGuardado icono={sub.icon} nombre={sub.name} className="h-4 w-4" /></span>}
+              {sub.name}
+            </button>
+          ))}
+        </CarrilChips>
       )}
 
       {/* Toolbar: ordenamiento + vista */}
@@ -303,7 +313,7 @@ export function CategoryPageClient({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4" style={separacion}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={separacion} data-vista-lista="">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

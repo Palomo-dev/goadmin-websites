@@ -16,6 +16,7 @@ import {
 } from 'react'
 import { listaDelInspector, type ListaVisual } from '@/lib/website/cascaronSeccion'
 import { proporcionEnvoltorio } from './proporcionCeldas'
+import { columnasVistaLista } from '@/lib/products/fuenteListado'
 
 type ApiCarrusel = { prev: () => void; next: () => void }
 
@@ -121,6 +122,9 @@ export function ListRenderer({
   const cm = lista.columnsMobile ?? 1
   const ct = lista.columnsTablet ?? Math.min(lista.columnsDesktop ?? 2, 3)
   const cd = lista.columnsDesktop ?? 4
+  const listaConColumnas = lista.mode === 'list'
+    ? columnasVistaLista({ desktop: lista.columnsDesktop, tablet: lista.columnsTablet, mobile: lista.columnsMobile })
+    : null
   const vm = lista.visibleMobile ?? 1
   const vt = lista.visibleTablet ?? 2
   const vd = lista.visibleDesktop ?? 4
@@ -134,7 +138,10 @@ export function ListRenderer({
         ? `[data-lista="${id}"]{display:flex;gap:${gap}px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}${lista.drag === false ? '[data-lista="' + id + '"]{overflow-x:hidden}' : ''}[data-lista="${id}"]>[data-lista-item]{flex:0 0 calc((100% - ${(vm - 1) * gap}px)/${vm});scroll-snap-align:start}@media(min-width:768px){[data-lista="${id}"]>[data-lista-item]{flex-basis:calc((100% - ${(vt - 1) * gap}px)/${vt})}}@media(min-width:1024px){[data-lista="${id}"]>[data-lista-item]{flex-basis:calc((100% - ${(vd - 1) * gap}px)/${vd})}}`
         : lista.mode === 'masonry'
           ? `[data-lista="${id}"]{column-count:${cm};column-gap:${gap}px}@media(min-width:768px){[data-lista="${id}"]{column-count:${ct}}}@media(min-width:1024px){[data-lista="${id}"]{column-count:${cd}}}`
-          : `[data-lista="${id}"]{display:flex;flex-direction:column;gap:${gap}px}`
+          : listaConColumnas
+            // «Lista» con columnas del editor: 1 en celular (o las pedidas), tablet y escritorio.
+            ? `[data-lista="${id}"]{display:grid;gap:${gap}px;grid-template-columns:repeat(${listaConColumnas.movil},minmax(0,1fr))}@media(min-width:768px){[data-lista="${id}"]{grid-template-columns:repeat(${listaConColumnas.tablet},minmax(0,1fr))}}@media(min-width:1024px){[data-lista="${id}"]{grid-template-columns:repeat(${listaConColumnas.escritorio},minmax(0,1fr))}}`
+            : `[data-lista="${id}"]{display:flex;flex-direction:column;gap:${gap}px}`
 
   const desplazar = (dir: number) => {
     const el = scroller.current

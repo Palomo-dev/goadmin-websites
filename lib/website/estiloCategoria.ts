@@ -114,6 +114,94 @@ export function desplazarPagina(el: HTMLElement | null, dir: 'left' | 'right'): 
   el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
 }
 
+// ─── Carrusel por páginas de círculos y pastillas (`desktop_rows` / `mobile_rows`) ──────────
+
+/**
+ * Divide un array en chunks (páginas) de `size` elementos.
+ * Si `size <= 0` (o cabe todo en una) retorna un solo chunk con todos los elementos.
+ * La usan CategoriesGrid (lista con scroll horizontal) y el carrusel por páginas de EstilosCategoria.
+ */
+export function chunkArray<T>(arr: T[], size: number): T[][] {
+  if (size <= 0 || size >= arr.length) return [arr]
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
+/** `mobile_layout` ausente o `inherit` hereda el de escritorio, como en CategoriesGrid. */
+export function layoutMovilEfectivo(mobileLayout: unknown, desktopLayout: unknown): string {
+  if (!mobileLayout || mobileLayout === 'inherit') return typeof desktopLayout === 'string' && desktopLayout ? desktopLayout : 'grid'
+  return String(mobileLayout)
+}
+
+/** Una página del carrusel: `columnas × filas` categorías. */
+export interface RejillaPagina {
+  columnas: number
+  filas: number
+  porPagina: number
+}
+
+/**
+ * Columnas por defecto si la sección no trae `desktop_columns` / `mobile_columns`: lo que cabe
+ * cómodo de cada pieza (círculo de 112 px; pastilla con nombre).
+ */
+const COLUMNAS_POR_DEFECTO = {
+  circle: { escritorio: 6, movil: 3 },
+  pill: { escritorio: 4, movil: 2 },
+} as const
+
+function enteroPositivo(valor: unknown): number {
+  const n = typeof valor === 'number' ? valor : typeof valor === 'string' && valor.trim() ? Number(valor) : NaN
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 0
+}
+
+const acotar = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
+
+/**
+ * Páginas del carrusel de «Círculo» y «Pastilla». `null` en un lado = ese lado se pinta como hoy
+ * (el carril de una fila o la rejilla).
+ * - Escritorio: solo con `desktop_layout: 'carousel'` y `desktop_rows` ≥ 1. Columnas:
+ *   `desktop_columns` (1–8) o 6 círculos / 4 pastillas.
+ * - Celular: solo si el layout móvil efectivo es carrusel (`mobile_layout`, o el de escritorio si
+ *   falta o es `inherit`) y `mobile_rows` ≥ 1. Columnas: `mobile_columns` (1–4) o 3 / 2.
+ * Filas acotadas a 1–6.
+ */
+export function paginasCategorias(
+  estilo: 'circle' | 'pill',
+  content: { desktop_layout?: unknown; mobile_layout?: unknown; desktop_columns?: unknown; desktop_rows?: unknown; mobile_columns?: unknown; mobile_rows?: unknown },
+): { escritorio: RejillaPagina | null; movil: RejillaPagina | null } {
+  const def = COLUMNAS_POR_DEFECTO[estilo]
+  const rejilla = (columnas: number, filas: number): RejillaPagina => ({ columnas, filas, porPagina: columnas * filas })
+  const filasEsc = enteroPositivo(content.desktop_rows)
+  const filasMov = enteroPositivo(content.mobile_rows)
+  const escritorio = content.desktop_layout === 'carousel' && filasEsc > 0
+    ? rejilla(acotar(enteroPositivo(content.desktop_columns) || def.escritorio, 1, 8), acotar(filasEsc, 1, 6))
+    : null
+  const movil = layoutMovilEfectivo(content.mobile_layout, content.desktop_layout) === 'carousel' && filasMov > 0
+    ? rejilla(acotar(enteroPositivo(content.mobile_columns) || def.movil, 1, 4), acotar(filasMov, 1, 6))
+    : null
+  return { escritorio, movil }
+}
+
+/** Página visible de un carril de páginas de 100 % de ancho, según su desplazamiento. */
+export function paginaDeScroll(scrollLeft: number, anchoPagina: number, total: number): number {
+  if (!(anchoPagina > 0) || total <= 1) return 0
+  return acotar(Math.round(scrollLeft / anchoPagina), 0, total - 1)
+}
+
+/**
+ * Página a la que lleva un arrastre con el mouse de `dx` px (negativo = hacia la izquierda =
+ * siguiente). Menos de `umbral` px se queda en la actual. Sin bucle: no pasa de los bordes.
+ */
+export function paginaTrasArrastre(actual: number, dx: number, total: number, umbral = 50): number {
+  if (total <= 1) return 0
+  if (dx <= -umbral) return Math.min(total - 1, actual + 1)
+  if (dx >= umbral) return Math.max(0, actual - 1)
+  return acotar(actual, 0, total - 1)
+}
+
 // ─── Opciones de tarjeta de las plantillas de tienda (PLANO §2 ítems 16-18) ─────────────────
 // Se leen con `normalizarAjustesCategorias` (contrato seccionesTienda). Con los defaults
 // (`bottom` / `none` / `none`) ninguna de estas ayudas cambia nada: es la tarjeta de hoy.

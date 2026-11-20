@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Wallet, Tag } from 'lucide-react'
 import Link from 'next/link'
-import { OrderTypeSelector, type OrderType } from '@/components/site/OrderTypeSelector'
+import { OrderTypeSelector, type OrderType, type OpcionDomicilio } from '@/components/site/OrderTypeSelector'
+import { gruposActivos, resumenDomicilio, tarifasDelGrupo, textoDias, type GrupoEnvio } from '@/lib/shipping/opcionesDomicilio'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/site/OrderConfirmation'
@@ -211,6 +212,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const hasPickup = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('pickup')
   const hasDelivery = !settings.availableDeliveryTypes || settings.availableDeliveryTypes.includes('delivery_own') || settings.availableDeliveryTypes.includes('delivery_third_party')
   const defaultOrderType: OrderType = hasDelivery ? 'delivery' : 'pickup'
+  // «Domicilio» (lo lleva la tienda) y «Transportadora» (lib/shipping/opcionesDomicilio.ts): con
+  // los dos activos en «Cómo reciben el pedido», el cliente elige; cada uno con su tiempo y precio.
+  const gruposDomicilio: GrupoEnvio[] = hasDelivery ? gruposActivos(settings.availableDeliveryTypes) : []
+  const [grupoEnvio, setGrupoEnvio] = useState<GrupoEnvio>(gruposDomicilio[0] ?? 'own')
   // «Comer aquí»: con una mesa escaneada, o si el negocio lo activó en sus tipos de entrega.
   const dineInEnAjustes = !!settings.availableDeliveryTypes?.includes('dine_in')
   const [orderType, setOrderType] = useState<OrderType>(defaultOrderType)
@@ -223,7 +228,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const [mesaManual, setMesaManual] = useState('')
   const hasDineIn = isRestaurant && (dineInEnAjustes || !!mesa)
   // Sin «Comer aquí» la cuenta es la de siempre (recoger + domicilio).
-  const opcionesEntrega = [hasPickup, hasDelivery, hasDineIn].filter(Boolean).length
+  const opcionesEntrega = [hasPickup, hasDineIn].filter(Boolean).length + (hasDelivery ? Math.max(1, gruposDomicilio.length) : 0)
 
   // Coupon states
   const [couponCode, setCouponCode] = useState('')
@@ -265,7 +270,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   } = useCartPromotions({ organizationId, branchId: sedePromocion, items: cartItems, paymentMethod })
 
   // Dynamic shipping states
-  const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null }[]>([])
+  const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null; grupo?: GrupoEnvio; dias?: number | null }[]>([])
   const [selectedShippingRate, setSelectedShippingRate] = useState<string | null>(null)
   const [dynamicShippingCost, setDynamicShippingCost] = useState<number | null>(null)
 
@@ -482,16 +487,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const shipping = dynamicShippingCost !== null && needsShipping ? dynamicShippingCost : flatShipping
   const total = subtotal + tax + shipping + tipAmount - couponDiscount - promoDiscount
 
-  // Dynamic shipping rates based on city
+  // Tarifas de Transporte › Tarifas de envío («Web»), por ciudad. Se piden desde el principio (sin
+  // ciudad, las de cualquier destino) para que las tarjetas de domicilio muestren precio y tiempo.
   useEffect(() => {
-    if (!organizationId || !needsShipping) return
-    const city = customerData.city.trim()
-    if (city.length < 3) {
-      setDynamicShippingRates([])
-      setDynamicShippingCost(null)
-      setSelectedShippingRate(null)
-      return
-    }
+    if (!organizationId || !hasDelivery) return
+    const escrita = customerData.city.trim()
+    const city = escrita.length >= 3 ? escrita : ''
     const timeout = setTimeout(async () => {
       try {
         const res = await fetch('/api/shipping/calculate', {
@@ -500,26 +501,49 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           body: JSON.stringify({ organizationId, city, subtotal })
         })
         const data = await res.json()
-        if (data.rates && data.rates.length > 0) {
-          setDynamicShippingRates(data.rates)
-          // Auto-seleccionar la más económica
-          const cheapest = data.cheapest
-          if (cheapest) {
-            setSelectedShippingRate(cheapest.id)
-            setDynamicShippingCost(cheapest.cost)
-          }
-        } else {
-          setDynamicShippingRates([])
-          setDynamicShippingCost(null)
-          setSelectedShippingRate(null)
-        }
+        setDynamicShippingRates(Array.isArray(data.rates) ? data.rates : [])
       } catch {
         setDynamicShippingRates([])
-        setDynamicShippingCost(null)
       }
     }, 500) // Debounce 500ms
     return () => clearTimeout(timeout)
-  }, [customerData.city, organizationId, needsShipping, subtotal])
+  }, [customerData.city, organizationId, hasDelivery, subtotal])
+
+  // Tarifas del domicilio elegido (con un solo tipo activo, todas). Se elige la más económica,
+  // salvo que el cliente ya tenga una de ese grupo; sin tarifas, la plana de los ajustes.
+  const tarifasGrupo = tarifasDelGrupo(dynamicShippingRates, grupoEnvio, gruposDomicilio)
+  const claveTarifasGrupo = tarifasGrupo.map((t) => `${t.id}:${t.cost}`).join('|')
+  useEffect(() => {
+    if (tarifasGrupo.length === 0) {
+      setSelectedShippingRate(null)
+      setDynamicShippingCost(null)
+      return
+    }
+    const actual = tarifasGrupo.find((t) => t.id === selectedShippingRate)
+    const elegida = actual ?? tarifasGrupo.reduce((a, b) => (b.cost < a.cost ? b : a))
+    setSelectedShippingRate(elegida.id)
+    setDynamicShippingCost(elegida.cost)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveTarifasGrupo])
+
+  // Tarjetas «Domicilio» / «Transportadora» con su tiempo y su precio (como en el diseño aprobado).
+  const opcionesDomicilio: OpcionDomicilio[] = gruposDomicilio.map((g) => {
+    const r = resumenDomicilio(
+      g,
+      tarifasDelGrupo(dynamicShippingRates, g, gruposDomicilio),
+      { activo: settings.enableShipping, tarifa: settings.shippingFlatRate, umbralGratis: settings.freeShippingThreshold },
+      subtotal,
+      gruposDomicilio,
+    )
+    return {
+      grupo: g,
+      titulo: r.titulo,
+      detalle: r.detalle,
+      tiempo: r.tiempo,
+      precio: r.costo === 0 ? 'Gratis' : `${r.desde ? 'desde ' : ''}${fmtPrice(r.costo)}`,
+    }
+  })
+  const etiquetaDomicilio = gruposDomicilio.length > 1 && grupoEnvio === 'third_party' ? 'Transportadora' : 'Domicilio'
 
   // Coupon validation
   const validateCoupon = async () => {
@@ -593,6 +617,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
       // Tipo de entrega (aplica a todos los tipos de org)
       orderPayload.deliveryType = orderType
+      // Domicilio de la tienda o transportadora: el servidor lo valida contra los tipos activos.
+      if (orderType === 'delivery') orderPayload.grupoEnvio = grupoEnvio
       if (orderType === 'delivery') {
         orderPayload.deliveryAddress = {
           address: customerData.address,
@@ -729,7 +755,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       // 3. Si es pago offline (cash/transfer), mostrar confirmación
       // Copia de lo pedido antes de vaciar carrito y estado (resumen de la confirmación).
       setResumenPedido({
-        tipo: orderType === 'delivery' ? 'Domicilio' : orderType === 'pickup' ? 'Recoger' : 'Comer aquí',
+        tipo: orderType === 'delivery' ? etiquetaDomicilio : orderType === 'pickup' ? 'Recoger' : 'Comer aquí',
         mesa: orderType === 'dine_in' ? (mesa?.nombre || mesaManual.trim() || null) : null,
         sede: orderType === 'dine_in' ? (mesa?.nombreSede || sedePedido?.nombre || null) : (sedePedido?.nombre || null),
         programadoPara: isScheduled && scheduledAt && orderType !== 'dine_in' ? scheduledAt : null,
@@ -1115,6 +1141,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                       enableDelivery={hasDelivery}
                       enablePickup={hasPickup}
                       enableDineIn={hasDineIn}
+                      opcionesDomicilio={opcionesDomicilio}
+                      grupoDomicilio={grupoEnvio}
+                      onGrupoDomicilio={setGrupoEnvio}
                     />
                     {orderType === 'dine_in' && !mesa && (
                       <div>
@@ -1352,11 +1381,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                       )}
 
                       {/* Dynamic shipping rate selector */}
-                      {dynamicShippingRates.length > 0 && (
+                      {/* Más de una tarifa en el domicilio elegido: el cliente escoge (con una, se usa sola). */}
+                      {tarifasGrupo.length > 1 && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Método de envío</label>
                           <div className="space-y-2">
-                            {dynamicShippingRates.map((rate) => (
+                            {tarifasGrupo.map((rate) => (
                               <label
                                 key={rate.id}
                                 className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -1380,6 +1410,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                                     <p className="text-xs text-gray-500">
                                       {rate.carrier_name && `${rate.carrier_name} · `}
                                       {rate.service_level === 'express' ? '⚡ Express' : rate.service_level === 'same_day' ? '🏃 Mismo día' : rate.service_level === 'economy' ? '📦 Económico' : '🚚 Estándar'}
+                                      {textoDias([rate.dias]) && ` · ${textoDias([rate.dias])}`}
                                     </p>
                                   </div>
                                 </div>
@@ -1544,7 +1575,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                   <div className="flex items-center gap-2 text-xs font-medium rounded-lg p-2 mb-2"
                     style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
                   >
-                    {orderType === 'delivery' ? '🛵 Domicilio' : orderType === 'pickup' ? '🏪 Recoger' : '🍽️ Comer aquí'}
+                    {orderType === 'delivery' ? (etiquetaDomicilio === 'Transportadora' ? '📦 Transportadora' : '🛵 Domicilio') : orderType === 'pickup' ? '🏪 Recoger' : '🍽️ Comer aquí'}
                     {isScheduled && scheduledAt && (
                       <span className="text-gray-500 ml-auto">
                         {sedePedido

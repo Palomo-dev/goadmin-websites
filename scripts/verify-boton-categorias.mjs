@@ -93,6 +93,24 @@ const comp = fuente('components/site/header/BotonTodasCategorias.tsx')
 check(/role="menu"/.test(comp) && /aria-expanded=\{abierto\}/.test(comp) && /e\.key === 'Escape'/.test(comp), 'accesible: menú, aria-expanded y Escape')
 check(/bg-white/.test(comp) && !/dark:/.test(comp), 'panel con colores propios, sin dark:')
 check(/Ver todas las categorías/.test(comp), '«Ver todas las categorías» al final')
+check(!/animate-in|fade-in/.test(comp), 'panel opaco desde el primer cuadro (sin desvanecerse)')
+
+// 7. Subcategorías en el celular (parent_id): la padre se despliega dentro del menú
+const sub = fuente('components/site/header/mobile/SubmenuCategoria.tsx')
+check(/<details/.test(sub) && /Ver todo/.test(sub), 'SubmenuCategoria: acordeón con «Ver todo» y sus hijas')
+for (const m of ['components/site/header/mobile/MobileDrawer.tsx', 'components/site/header/mobile/MobileFullscreen.tsx', 'components/site/header/HeaderMinimal.tsx']) {
+  const s = fuente(m)
+  check(/cat\.children && cat\.children\.length > 0/.test(s) && /children: cat\.children\.map/.test(s), `${m}: las categorías llevan sus subcategorías`)
+  check(/child\.children && child\.children\.length > 0 \? \(\s*<SubmenuCategoria/.test(s), `${m}: la padre se despliega con SubmenuCategoria`)
+}
+check(/menuCategories\.map\(\(cat\) => cat\.children && cat\.children\.length > 0 \? \(/.test(fuente('components/site/header/mobile/MobileTabs.tsx')), 'barra de pestañas: la hoja de categorías despliega las padres')
+
+// 8. Buscador en una sola barra (Figma 2689:57377) con las opciones del editor
+const cromo = fuente('components/site/header/BuscadorCromo.tsx')
+check(/data-barra-unificada=""/.test(cromo), 'BuscadorCromo: barra unificada')
+check(/backgroundColor: presentacion\.background \|\| '#FFFFFF'/.test(cromo) && /borderColor: presentacion\.borderColor/.test(cromo) && /RADIO\[presentacion\.radius\]/.test(cromo) && /maxWidth: presentacion\.width/.test(cromo), 'la barra respeta fondo, borde, esquinas y ancho del editor')
+check(/const campo = compacta \? campoSuelto : unificada/.test(cromo), 'la «barra compacta» sigue como antes')
+check(/enBarra: true/.test(cromo) && /cromo\?\.enBarra/.test(fuente('components/site/SearchBarInput.tsx')), 'el campo va sin borde propio dentro de la barra')
 
 if (problemas.length) {
   console.error(`✗ ${problemas.length} de ${casos} comprobaciones fallaron:`)

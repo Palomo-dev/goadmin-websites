@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { EstilosCategoria } from './EstilosCategoria'
-import { desplazarPagina, estiloCategoria } from '@/lib/website/estiloCategoria'
+import { chunkArray, desplazarPagina, estiloCategoria } from '@/lib/website/estiloCategoria'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria } from '@/lib/website/iconosCategoria'
 import { claseAjusteImagen, estiloMarcoImagen } from '@/lib/website/marcoImagen'
@@ -93,19 +93,6 @@ function getGridClass(count: number): string {
   if (count === 4) return 'grid-cols-2 lg:grid-cols-4'
   if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
-}
-
-/**
- * Divide un array en chunks (páginas) de `size` elementos.
- * Si `size <= 0` retorna un solo chunk con todos los elementos.
- */
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  if (size <= 0 || size >= arr.length) return [arr]
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
-  }
-  return chunks
 }
 
 /**

@@ -28,6 +28,7 @@ import { evaluarDisponibilidadPedido, horarioSedeObligatorio } from '@/lib/order
 import { horarioDeSede, hoyEnZona } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
+import { gruposActivos } from '@/lib/shipping/opcionesDomicilio'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { insertarConNumero } from '@/lib/orders/numeroPedido'
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       subtotal, shipping, total, paymentMethod: paymentMethodCliente,
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
-      couponCode, couponId, couponDiscount,
+      couponCode, couponId, couponDiscount, grupoEnvio,
       promoDiscount, promotionIds, dinerLabel, roundKey
     } = body
     // Mismo trim que /api/promotions/check: el código se valida, se evalúa en promociones y se guarda limpio.
@@ -572,12 +573,17 @@ export async function POST(request: NextRequest) {
     // que la firma de Wompi): en `false` solo se registra la diferencia y se cobra el envío del
     // cliente; en `true` se cobra el del servidor. Si el servidor no puede decidir (tarifa ajena o
     // sin ajustes), se cobra el del cliente como siempre.
-    const tipoGuardado = mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping)
+    // Domicilio o Transportadora (lib/shipping/opcionesDomicilio.ts): el grupo que eligió el
+    // cliente, validado contra «Cómo reciben el pedido» de la tienda.
+    const tiposEntrega = contexto.ajustes?.tiposEntrega ?? null
+    const tipoGuardado = mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping, tiposEntrega, grupoEnvio)
     if (!mesaPedido) {
       const envioServidor = await resolverEnvio(supabase as any, {
         organizationId: contextOrgId,
         esDomicilio: esDomicilio(tipoGuardado),
         tarifaId: typeof shippingRateId === 'string' && shippingRateId ? shippingRateId : null,
+        grupo: tipoGuardado === 'delivery_third_party' ? 'third_party' : tipoGuardado === 'delivery_own' ? 'own' : null,
+        activos: gruposActivos(tiposEntrega),
         ciudad: String(deliveryAddress?.city ?? customer.city ?? ''),
         subtotal: calculatedSubtotal,
         ajustes: contexto.ajustes,

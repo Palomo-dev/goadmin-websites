@@ -163,7 +163,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-4" style={separacion}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={separacion} data-vista-lista="">
           {products.map((product: any) => (
             <ProductCard
               key={product.id}
