@@ -306,10 +306,18 @@ try {
         const nombre = `pie ${footer_style}${tema ? ' con tema' : ''} ${JSON.stringify(extra)}`
         const hoy = pintar(`${nombre} (base)`, pie(B, ajustes, tema))
         const ahora = pintar(nombre, pie(R, ajustes, tema))
-        check(hoy.length > 0 && hoy === ahora, `${nombre}: el HTML cambió sin opciones nuevas`)
+        // Cambio buscado (2026-11-20): con tema y `footer_show_newsletter`, el pie trae el boletín, que
+        // ahora guarda el correo (/api/newsletter). Antes no salía porque no había dónde guardarlo.
+        // Es el único caso en que el HTML puede cambiar, y solo por el formulario del boletín.
+        const conBoletin = tema && extra.footer_show_newsletter === true
+        if (conBoletin) {
+          check(ahora.includes('data-boletin-pie') && !hoy.includes('data-boletin-pie'), `${nombre}: el boletín del pie no apareció`)
+        } else {
+          check(hoy.length > 0 && hoy === ahora, `${nombre}: el HTML cambió sin opciones nuevas`)
+        }
         // Valores por defecto escritos explícitamente: tampoco cambian nada.
         const conDefaults = pintar(nombre, pie(R, { ...ajustes, footer_brand_display: 'none', footer_inset: false, footer_links_style: 'normal', footer_brand_figure_url: null }, tema))
-        check(conDefaults === hoy, `${nombre}: los defaults explícitos cambian el HTML`)
+        check(conDefaults === (conBoletin ? ahora : hoy), `${nombre}: los defaults explícitos cambian el HTML`)
       }
     }
   }

@@ -16,8 +16,8 @@
  * - centrado (Noir): todo centrado; mínimo: marca | enlaces | redes en una fila; el resto, rejilla.
  * - celular: alineado a la izquierda y con acordeones (el primero abierto), como las láminas.
  *
- * Boletín: no hay dónde guardar el correo (no existe alta de suscriptores), así que la columna no
- * sale hasta que exista (BOLETIN_DISPONIBLE). Un formulario que no envía no va en una plantilla.
+ * Boletín: desde 2026-11-20 el correo se guarda (POST /api/newsletter → website_newsletter_subscribers,
+ * ERP 20261120041740). La columna sale solo si el sitio enciende `footer_show_newsletter`.
  */
 import Link from 'next/link'
 import Image from 'next/image'
@@ -32,9 +32,10 @@ import { prefijarItemsNav } from '@/lib/outlet/rutaSitio'
 import { IconoTikTok, LogoPieTema, MapaPie, MediosPagoPie } from './PieExtras'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
+import { BoletinPie } from './BoletinPie'
 
-/** Alta de suscriptores del boletín: no existe todavía (2026-10-06). */
-export const BOLETIN_DISPONIBLE = false
+/** Alta de suscriptores del boletín: existe desde 2026-11-20 (/api/newsletter). */
+export const BOLETIN_DISPONIBLE = true
 
 const TRATAMIENTO = /^tratamiento de datos$/i
 
@@ -75,6 +76,11 @@ export interface PieTemaProps {
    * títulos (en cursiva si la hoja la trae, `--font-heading-italic`), a la derecha. Ausente = hoy.
    */
   enlacesDisplay?: boolean
+  /**
+   * Boletín (`footer_show_newsletter`): título, texto de la caja y del botón. Ausente = sin columna,
+   * como hoy.
+   */
+  boletin?: { titulo: string; placeholder: string; boton: string } | null
 }
 
 function enlacesDeMenu(items: WebsiteMenuItemWithChildren[]): Enlace[] {
@@ -231,6 +237,22 @@ export function PieTema(p: PieTemaProps) {
   }
 
   if (!p.enlacesDisplay) columnas.push(...columnasMenu.filter((m) => esLegal(m.titulo)).map(columnaMenu))
+
+  if (BOLETIN_DISPONIBLE && p.boletin) {
+    columnas.push({
+      clave: 'boletin',
+      titulo: p.boletin.titulo,
+      contenido: (
+        <BoletinPie
+          titulo={p.boletin.titulo}
+          placeholder={p.boletin.placeholder}
+          textoBoton={p.boletin.boton}
+          primaryColor={p.primaryColor}
+          textoSobrePrimario={iconoTxt}
+        />
+      ),
+    })
+  }
 
   const redes = p.mostrarRedes
     ? Object.entries(p.redes).filter(([red, url]) => !!url && (ICONOS_REDES[red] || (red === 'whatsapp' && opciones.pie.whatsapp)))

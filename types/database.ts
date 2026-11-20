@@ -354,6 +354,43 @@ export interface Database {
           is_new_visitor?: boolean
         }
       }
+      /** Suscriptores del boletín del sitio (ERP 20261120041740). Escribe solo POST /api/newsletter. */
+      website_newsletter_subscribers: {
+        Row: {
+          id: string
+          organization_id: number
+          /** En minúsculas (check de la tabla). */
+          email: string
+          name: string | null
+          phone: string | null
+          birthday: string | null
+          consent: boolean
+          source: 'section' | 'footer' | 'popup'
+          status: 'active' | 'unsubscribed'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: number
+          email: string
+          name?: string | null
+          phone?: string | null
+          birthday?: string | null
+          consent?: boolean
+          source?: 'section' | 'footer' | 'popup'
+          status?: 'active' | 'unsubscribed'
+          updated_at?: string
+        }
+        Update: {
+          name?: string | null
+          phone?: string | null
+          birthday?: string | null
+          consent?: boolean
+          source?: 'section' | 'footer' | 'popup'
+          status?: 'active' | 'unsubscribed'
+          updated_at?: string
+        }
+      }
       website_pages: {
         Row: {
           id: string

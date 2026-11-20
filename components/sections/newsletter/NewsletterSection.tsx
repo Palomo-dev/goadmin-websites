@@ -234,7 +234,9 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
   const [telefono, setTelefono] = useState('')
   const [cumple, setCumple] = useState('')
   const [acepta, setAcepta] = useState(false)
-  const [aviso, setAviso] = useState<'ok' | 'correo' | 'aceptacion' | null>(null)
+  const [aviso, setAviso] = useState<'ok' | 'correo' | 'aceptacion' | 'servidor' | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  const [mensajeServidor, setMensajeServidor] = useState('')
   const marca = useId().replace(/:/g, '')
   const f = boletin.form
   const forma = FORMA[f.input.shape] || FORMA.rounded
@@ -255,10 +257,44 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
       ? { backgroundImage: `linear-gradient(90deg, ${f.button.color || primaryColor}, ${f.button.hover || '#111827'})`, color: f.button.textColor || '#fff' }
       : { backgroundColor: f.button.color || primaryColor, color: f.button.textColor || '#fff' }
 
-  const enviar = (e: FormEvent) => {
+  // Antes el «quedaste suscrito» salía sin guardar nada. Ahora el correo va a /api/newsletter
+  // (la organización la pone el servidor desde el dominio) y el aviso de éxito solo sale si se guardó.
+  const enviar = async (e: FormEvent) => {
     e.preventDefault()
+    if (enviando) return
     const resultado = validarEnvio(correo, acepta, f.showConsent)
-    setAviso(resultado === 'ok' ? 'ok' : resultado)
+    if (resultado !== 'ok') {
+      setAviso(resultado)
+      return
+    }
+    setEnviando(true)
+    setAviso(null)
+    try {
+      const respuesta = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: correo,
+          ...(f.showName && nombre ? { name: nombre } : {}),
+          ...(f.showPhone && telefono ? { phone: telefono } : {}),
+          ...(f.showBirthday && cumple ? { birthday: cumple } : {}),
+          consent: f.showConsent ? acepta : false,
+          source: 'section',
+        }),
+      })
+      if (respuesta.ok) {
+        setAviso('ok')
+      } else {
+        const datos = await respuesta.json().catch(() => null)
+        setMensajeServidor(typeof datos?.error === 'string' ? datos.error : '')
+        setAviso('servidor')
+      }
+    } catch {
+      setMensajeServidor('')
+      setAviso('servidor')
+    } finally {
+      setEnviando(false)
+    }
   }
 
   const inputCorreo = (
@@ -282,6 +318,8 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
   const boton = (
     <button
       type="submit"
+      disabled={enviando}
+      aria-busy={enviando || undefined}
       aria-label={f.button.style === 'icon_only' ? f.button.text : undefined}
       className={`font-medium hover:opacity-90 ${formaBoton} ${f.button.style === 'outline' ? 'border' : ''} ${f.button.style === 'icon_only' ? 'px-3' : tamBoton} whitespace-nowrap`}
       onMouseEnter={(e) => { if (f.button.hover && f.button.style === 'solid') e.currentTarget.style.backgroundColor = f.button.hover }}
@@ -325,7 +363,11 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
       {fila}
       {(f.showName || f.showPhone || f.showBirthday || f.showConsent) && extras}
       {aviso === 'ok' && <p className="text-sm" role="status">{boletin.success}</p>}
-      {aviso && aviso !== 'ok' && <p className="text-sm" role="alert">{boletin.error}</p>}
+      {aviso && aviso !== 'ok' && (
+        <p className="text-sm" role="alert">
+          {aviso === 'servidor' ? mensajeServidor || 'No pudimos guardar tu suscripción. Inténtalo de nuevo.' : boletin.error}
+        </p>
+      )}
     </form>
   )
 }

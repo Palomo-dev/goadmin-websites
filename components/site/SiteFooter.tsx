@@ -367,6 +367,7 @@ export function SiteFooter({
         logoUrl={logoPie}
         marca={marcaGigante}
         enlacesDisplay={tienda.pie.enlaces === 'display'}
+        boletin={footerShowNewsletter ? { titulo: footerNewsletterTitle, placeholder: footerNewsletterPlaceholder, boton: footerNewsletterButtonText } : null}
       />
     )
   }
