@@ -76,6 +76,12 @@ export interface PromotionRow {
   /** `HH:mm` o `HH:mm:ss` en la zona del negocio. Nulo = todo el día. */
   start_time?: string | null
   end_time?: string | null
+  /**
+   * ERP 20261120180000: franjas semanales {desde_dia, desde_hora, hasta_dia,
+   * hasta_hora} que pueden cruzar días. Con lista no vacía manda sobre
+   * `applicable_days` + `start_time`/`end_time`. Llega con el `select('*')`.
+   */
+  schedule_windows?: unknown
   /** Precio del paquete. Si es mayor que cero, manda sobre el porcentaje. */
   bundle_price?: number | string | null
   promotion_rules?: PromotionRule[] | null
@@ -176,54 +182,133 @@ function horaNormalizada(valor: string | null | undefined): string | null {
   return `${hh}:${mm}:${ss}`
 }
 
-/** Sin horas, todo el día. Si el fin es anterior al inicio, cruza la medianoche. */
-function enFranjaHoraria(inicio: string | null | undefined, fin: string | null | undefined, hora: string): boolean {
-  const a = horaNormalizada(inicio)
-  const b = horaNormalizada(fin)
-  if (!a && !b) return true
-  if (a && !b) return hora >= a
-  if (!a && b) return hora <= b
-  if (a! <= b!) return hora >= a! && hora <= b!
-  return hora >= a! || hora <= b!
+// ── Horario semanal (espejo de `vigencia.ts` del ERP) ───────────────────────
+//
+// Dos formas de guardar el horario (ERP, migración 20261120180000):
+//   1. `applicable_days` + UNA franja diaria `start_time`/`end_time`. Si el fin
+//      es anterior al inicio, cruza la medianoche y la madrugada cuenta como el
+//      día en que empezó. Extremos incluidos al segundo (02:00:00 aplica).
+//   2. `schedule_windows`: franjas semanales que pueden cruzar días
+//      («sábado 16:00 → domingo 14:00»), fin EXCLUSIVO (a las 14:00 ya no).
+//      Si trae una lista no vacía, manda ella.
+// Las dos se reducen a tramos [inicio, fin) en segundos desde el lunes 00:00
+// (hora de pared de la zona del negocio). Una ocurrencia pertenece al DÍA EN
+// QUE EMPEZÓ frente a `end_date`: si la promoción vence el sábado, la de
+// sábado 16:00 → domingo 14:00 sigue completa el domingo.
+// Mismas funciones y mismos nombres que en el ERP: `tramosSemanalesDe`,
+// `vigenteEnHorario`. Si cambias una, cambia la otra.
+
+const SEGUNDOS_DIA = 24 * 60 * 60
+const SEGUNDOS_SEMANA = 7 * SEGUNDOS_DIA
+const DIAS_DESDE_LUNES: readonly WeekDay[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+/** Una franja de `promotions.schedule_windows`. */
+export interface FranjaSemanal {
+  desde_dia: WeekDay
+  desde_hora: string
+  hasta_dia: WeekDay
+  hasta_hora: string
 }
 
-/** Día anterior de la semana (lunes → domingo). */
-function diaAnterior(dia: WeekDay): WeekDay {
-  const orden: WeekDay[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-  return orden[(orden.indexOf(dia) + 6) % 7]
+/** [inicio, fin) en segundos desde el lunes 00:00; `fin` puede pasar del domingo. */
+export type TramoSemanal = readonly [number, number]
+
+interface HorarioPromocion {
+  applicable_days?: unknown
+  start_time?: string | null
+  end_time?: string | null
+  schedule_windows?: unknown
 }
 
-/**
- * Día contra el que se mira `applicable_days`. Con una franja que cruza la
- * medianoche (inicio > fin), la madrugada (hora ≤ fin) es la cola de la
- * franja del día ANTERIOR: «lunes a miércoles 18:00–02:00» sigue el jueves a
- * la 01:00. Mismo criterio que `diaEfectivoDeFranja` del ERP.
- */
-export function diaEfectivoDeFranja(inicio: string | null | undefined, fin: string | null | undefined, diaReloj: WeekDay, hora: string): WeekDay {
-  const a = horaNormalizada(inicio)
-  const b = horaNormalizada(fin)
-  if (!a || !b || a <= b) return diaReloj
-  return hora <= b && hora < a ? diaAnterior(diaReloj) : diaReloj
+function segundosDeHora(valor: unknown): number | null {
+  const hora = horaNormalizada(valor == null ? null : String(valor))
+  if (!hora) return null
+  const [hh, mm, ss] = hora.split(':').map((parte) => Number(parte))
+  return hh * 3600 + mm * 60 + ss
 }
 
-/**
- * ¿Sigue vigente según `end_date`, contando la cola de la franja? En la
- * madrugada de una franja que cruza la medianoche («sábado 16:00 a domingo
- * 14:00» = sábado + 16:00–14:00) la franja empezó el día anterior: si la
- * promoción vence ese día, la cola del domingo todavía le pertenece. Mismo
- * criterio que `isWithinEndDateConFranja` del ERP.
- */
-export function vigentePorFechaFin(endDate: string | null | undefined, inicio: string | null | undefined, fin: string | null | undefined, date: Date, hora: string): boolean {
-  if (!endDate) return true
-  const limite = new Date(endDate).getTime()
+function indiceDia(dia: unknown): number {
+  return DIAS_DESDE_LUNES.indexOf(dia as WeekDay)
+}
+
+function tramoDeFranja(f: FranjaSemanal): TramoSemanal {
+  const inicio = indiceDia(f.desde_dia) * SEGUNDOS_DIA + (segundosDeHora(f.desde_hora) ?? 0)
+  const fin = indiceDia(f.hasta_dia) * SEGUNDOS_DIA + (segundosDeHora(f.hasta_hora) ?? 0)
+  const duracion = (((fin - inicio) % SEGUNDOS_SEMANA) + SEGUNDOS_SEMANA) % SEGUNDOS_SEMANA
+  return [inicio, inicio + duracion]
+}
+
+/** Franja legible (días en inglés, `HH:mm`, duración > 0) o null. */
+export function franjaSemanalValida(valor: unknown): FranjaSemanal | null {
+  if (!valor || typeof valor !== 'object') return null
+  const f = valor as Record<string, unknown>
+  if (indiceDia(f.desde_dia) < 0 || indiceDia(f.hasta_dia) < 0) return null
+  const desde = horaNormalizada(f.desde_hora == null ? null : String(f.desde_hora))
+  const hasta = horaNormalizada(f.hasta_hora == null ? null : String(f.hasta_hora))
+  if (!desde || !hasta) return null
+  const franja: FranjaSemanal = { desde_dia: f.desde_dia as WeekDay, desde_hora: desde.slice(0, 5), hasta_dia: f.hasta_dia as WeekDay, hasta_hora: hasta.slice(0, 5) }
+  const [a, b] = tramoDeFranja(franja)
+  return b - a > 0 ? franja : null
+}
+
+/** null = esquema de siempre. Lista con solo franjas ilegibles = nunca activa. */
+export function franjasSemanalesDe(valor: unknown): FranjaSemanal[] | null {
+  if (!Array.isArray(valor) || valor.length === 0) return null
+  return valor.map(franjaSemanalValida).filter((f): f is FranjaSemanal => f !== null)
+}
+
+/** Tramos semanales de la promoción, venga del esquema que venga. */
+export function tramosSemanalesDe(p: HorarioPromocion): TramoSemanal[] {
+  const franjas = franjasSemanalesDe(p.schedule_windows)
+  if (franjas) return franjas.map(tramoDeFranja)
+  const ini = segundosDeHora(p.start_time)
+  const fin = segundosDeHora(p.end_time)
+  let desde: number
+  let hasta: number
+  if (ini == null && fin == null) { desde = 0; hasta = SEGUNDOS_DIA }
+  else if (ini != null && fin == null) { desde = ini; hasta = SEGUNDOS_DIA }
+  else if (ini == null && fin != null) { desde = 0; hasta = fin + 1 }
+  else if (ini! <= fin!) { desde = ini!; hasta = fin! + 1 }
+  else { desde = ini!; hasta = SEGUNDOS_DIA + fin! + 1 }
+  const dias = Array.isArray(p.applicable_days) && p.applicable_days.length > 0 ? (p.applicable_days as string[]) : null
+  return DIAS_DESDE_LUNES
+    .map((dia, i) => [dia, i] as const)
+    .filter(([dia]) => !dias || dias.includes(dia))
+    .map(([, i]) => [i * SEGUNDOS_DIA + desde, i * SEGUNDOS_DIA + hasta] as TramoSemanal)
+}
+
+/** `end_date` nulo = no vence; ilegible = vencida. */
+function dentroDeFechaFin(endDate: unknown, instante: Date): boolean {
+  if (endDate === null || endDate === undefined || endDate === '') return true
+  const limite = new Date(String(endDate)).getTime()
   if (!Number.isFinite(limite)) return false
-  const a = horaNormalizada(inicio)
-  const b = horaNormalizada(fin)
-  const madrugada = Boolean(a && b && a > b && hora <= b && hora < a)
-  if (!madrugada) return limite >= date.getTime()
-  const [hh, mm, ss] = hora.split(':').map((parte) => Number(parte) || 0)
-  const ultimoInstanteDiaAnterior = date.getTime() - ((hh * 3600 + mm * 60 + ss + 1) * 1000 + date.getUTCMilliseconds())
-  return limite >= ultimoInstanteDiaAnterior
+  return limite >= instante.getTime()
+}
+
+/**
+ * ¿Está dentro de su horario semanal y, contando la cola de la franja, no ha
+ * vencido? Igual que `vigenteEnHorario` del ERP. `start_date` va aparte.
+ */
+export function vigenteEnHorario(p: HorarioPromocion & { end_date?: unknown }, date: Date, timeZone = 'America/Bogota'): boolean {
+  const hora = horaEnZona(date, timeZone)
+  const desdeMedianoche = segundosDeHora(hora) ?? 0
+  const s = indiceDia(weekdayInTimezone(date, timeZone)) * SEGUNDOS_DIA + desdeMedianoche
+  let vigente = false
+  for (const [a, b] of tramosSemanalesDe(p)) {
+    // `s + semana`: la cola de un tramo que pasó del domingo cae en el lunes siguiente.
+    for (const m of [s, s + SEGUNDOS_SEMANA]) {
+      if (!(a <= m && m < b)) continue
+      const diasDesdeInicio = Math.floor(m / SEGUNDOS_DIA) - Math.floor(a / SEGUNDOS_DIA)
+      if (diasDesdeInicio <= 0) {
+        if (dentroDeFechaFin(p.end_date, date)) vigente = true
+      } else {
+        // Último instante (23:59:59) del día en que empezó la ocurrencia.
+        const atras = (desdeMedianoche + 1 + (diasDesdeInicio - 1) * SEGUNDOS_DIA) * 1000 + date.getUTCMilliseconds()
+        if (dentroDeFechaFin(p.end_date, new Date(date.getTime() - atras))) vigente = true
+      }
+    }
+  }
+  return vigente
 }
 
 /** Día de la semana en la zona horaria del negocio (por defecto Colombia). */
@@ -276,18 +361,14 @@ export interface PromotionFilterContext {
  */
 export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFilterContext = {}): PromotionRow[] {
   const date = ctx.date || new Date()
-  const dayName = weekdayInTimezone(date, ctx.timeZone)
 
   return promos.filter((p) => {
     if (!p.is_active) return false
     if (p.applies_to_web === false) return false
     if (p.start_date && new Date(p.start_date) > date) return false
     if (p.usage_limit && Number(p.usage_count || 0) >= Number(p.usage_limit)) return false
-    const hora = horaEnZona(date, ctx.timeZone)
-    if (!vigentePorFechaFin(p.end_date, p.start_time, p.end_time, date, hora)) return false
-    const dia = diaEfectivoDeFranja(p.start_time, p.end_time, dayName, hora)
-    if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !(p.applicable_days as string[]).includes(dia)) return false
-    if (!enFranjaHoraria(p.start_time, p.end_time, hora)) return false
+    // Días, franja diaria o franjas semanales, y `end_date` con la cola de la franja.
+    if (!vigenteEnHorario(p, date, ctx.timeZone)) return false
     // `branches` jsonb: null/[] = todas las sucursales.
     if (Array.isArray(p.branches) && p.branches.length > 0) {
       if (ctx.branchId == null) return false
