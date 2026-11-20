@@ -19,6 +19,7 @@ import {
   type OrdenFiltro,
 } from '@/lib/products/filtrosProductos'
 import { estiloChipFiltro, type ColoresFiltro } from '@/lib/website/presentacionTienda'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 const FOCO = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
 
@@ -104,28 +105,40 @@ export function BarraFiltrosProductos({
         <>
           {/* Categorías — respeta show_categories (default: true) */}
           {categorias.length > 0 && mostrarCategorias && (
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-              <button
-                onClick={() => cambiar({ categoria: null })}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(!selectedCategory).className}`}
-                style={chip(!selectedCategory).style}
-              >
-                Todos
-              </button>
+            // Carril sin barra gris, con «Todos» fijo, degradado y flechas (CarrilChips). Los colores
+            // de los chips siguen saliendo del editor (estiloChipFiltro).
+            <CarrilChips
+              etiqueta="Categorías"
+              color={primaryColor}
+              claveActivo={selectedCategory ?? ''}
+              chipFijo={
+                <button
+                  type="button"
+                  aria-pressed={!selectedCategory}
+                  onClick={() => cambiar({ categoria: null })}
+                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(!selectedCategory).className}`}
+                  style={chip(!selectedCategory).style}
+                >
+                  Todos
+                </button>
+              }
+            >
               {categorias.map((cat: any) => {
                 const activo = chip(selectedCategory === cat.id)
                 return (
                 <button
                   key={cat.id}
+                  type="button"
+                  aria-pressed={selectedCategory === cat.id}
                   onClick={() => cambiar({ categoria: selectedCategory === cat.id ? null : cat.id })}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
+                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
                   style={activo.style}
                 >
                   {cat.name}
                 </button>
                 )
               })}
-            </div>
+            </CarrilChips>
           )}
           {/* Ordenar + Ofertas */}
           <div className="flex items-center gap-2 flex-wrap">
