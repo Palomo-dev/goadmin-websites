@@ -206,6 +206,26 @@ export function diaEfectivoDeFranja(inicio: string | null | undefined, fin: stri
   return hora <= b && hora < a ? diaAnterior(diaReloj) : diaReloj
 }
 
+/**
+ * ¿Sigue vigente según `end_date`, contando la cola de la franja? En la
+ * madrugada de una franja que cruza la medianoche («sábado 16:00 a domingo
+ * 14:00» = sábado + 16:00–14:00) la franja empezó el día anterior: si la
+ * promoción vence ese día, la cola del domingo todavía le pertenece. Mismo
+ * criterio que `isWithinEndDateConFranja` del ERP.
+ */
+export function vigentePorFechaFin(endDate: string | null | undefined, inicio: string | null | undefined, fin: string | null | undefined, date: Date, hora: string): boolean {
+  if (!endDate) return true
+  const limite = new Date(endDate).getTime()
+  if (!Number.isFinite(limite)) return false
+  const a = horaNormalizada(inicio)
+  const b = horaNormalizada(fin)
+  const madrugada = Boolean(a && b && a > b && hora <= b && hora < a)
+  if (!madrugada) return limite >= date.getTime()
+  const [hh, mm, ss] = hora.split(':').map((parte) => Number(parte) || 0)
+  const ultimoInstanteDiaAnterior = date.getTime() - ((hh * 3600 + mm * 60 + ss + 1) * 1000 + date.getUTCMilliseconds())
+  return limite >= ultimoInstanteDiaAnterior
+}
+
 /** Día de la semana en la zona horaria del negocio (por defecto Colombia). */
 export function weekdayInTimezone(date: Date, timeZone = 'America/Bogota'): WeekDay {
   try {
@@ -262,9 +282,9 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
     if (!p.is_active) return false
     if (p.applies_to_web === false) return false
     if (p.start_date && new Date(p.start_date) > date) return false
-    if (p.end_date && new Date(p.end_date) < date) return false
     if (p.usage_limit && Number(p.usage_count || 0) >= Number(p.usage_limit)) return false
     const hora = horaEnZona(date, ctx.timeZone)
+    if (!vigentePorFechaFin(p.end_date, p.start_time, p.end_time, date, hora)) return false
     const dia = diaEfectivoDeFranja(p.start_time, p.end_time, dayName, hora)
     if (Array.isArray(p.applicable_days) && p.applicable_days.length > 0 && !(p.applicable_days as string[]).includes(dia)) return false
     if (!enFranjaHoraria(p.start_time, p.end_time, hora)) return false

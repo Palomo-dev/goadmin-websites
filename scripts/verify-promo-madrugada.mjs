@@ -31,6 +31,22 @@ check(!aplica('2026-10-05T06:00:00Z'), 'lunes 01:00 Bogotá no aplica (cola del 
 check(aplica('2026-10-06T06:00:00Z'), 'martes 01:00 Bogotá aplica (cola del lunes)')
 check(aplica('2026-10-08T01:00:00Z'), 'miércoles 20:00 Bogotá aplica')
 
+// «Sábado 16:00 a domingo 14:00» (sábado + 16:00–14:00), caso de un cliente (2026-11-20).
+const finde = (extra = {}) => ({ ...promo, id: 'finde', applicable_days: ['saturday'], start_time: '16:00:00', end_time: '14:00:00', ...extra })
+const aplicaFinde = (p, local) => filterActivePromotions([p], { date: new Date(`${local}:00-05:00`), timeZone: 'America/Bogota' }).length === 1
+check(!aplicaFinde(finde(), '2026-11-21T15:59'), 'sábado 15:59 no aplica')
+check(aplicaFinde(finde(), '2026-11-21T16:00'), 'sábado 16:00 aplica')
+check(aplicaFinde(finde(), '2026-11-22T00:30'), 'domingo 00:30 aplica')
+check(aplicaFinde(finde(), '2026-11-22T14:00'), 'domingo 14:00 aplica')
+check(!aplicaFinde(finde(), '2026-11-22T14:01'), 'domingo 14:01 no aplica')
+check(!aplicaFinde(finde(), '2026-11-21T10:00'), 'sábado 10:00 no aplica (cola del viernes)')
+// Vence el sábado: la cola del domingo sigue contando; el fin de semana siguiente no.
+const vence = finde({ end_date: '2026-11-21T23:59:59.999-05:00' })
+check(aplicaFinde(vence, '2026-11-22T09:00'), 'vence el sábado: domingo 09:00 aplica')
+check(!aplicaFinde(vence, '2026-11-22T14:01'), 'vence el sábado: domingo 14:01 no aplica')
+check(!aplicaFinde(vence, '2026-11-29T01:00'), 'vence el sábado: el domingo siguiente no aplica')
+check(!aplicaFinde(finde({ end_date: 'basura' }), '2026-11-21T20:00'), 'fecha fin ilegible: no aplica (igual que el ERP)')
+
 if (problemas.length) {
   console.error(problemas.join('\n'))
   process.exit(1)
