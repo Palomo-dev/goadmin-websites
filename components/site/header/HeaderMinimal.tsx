@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/drawer';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { menuConCategorias } from '@/lib/website/botonCategorias';
+import { SubmenuCategoria } from './mobile/SubmenuCategoria';
 
 /**
  * HeaderMinimal
@@ -90,6 +91,10 @@ export default function HeaderMinimal({
           name: cat.name,
           href: `/categorias/${cat.slug}`,
           icon: cat.icon,
+          // Subcategorías (parent_id): la padre se despliega dentro del menú (SubmenuCategoria).
+          ...(cat.children && cat.children.length > 0
+            ? { children: cat.children.map((h) => ({ name: h.name, href: `/categorias/${h.slug}`, icon: h.icon })) }
+            : {}),
         })),
       }
     : null;
@@ -425,7 +430,9 @@ function DrawerNavItem({
           >
             Ver todo
           </Link>
-          {item.children.map((child, j) => (
+          {item.children.map((child, j) => child.children && child.children.length > 0 ? (
+            <SubmenuCategoria key={j} item={child} claseEnlace="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onNavigate={onNavigate} />
+          ) : (
             <Link
               key={j}
               href={child.href}

@@ -34,6 +34,7 @@ import {
 } from '../HeaderShared';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { menuConCategorias } from '@/lib/website/botonCategorias';
+import { SubmenuCategoria } from './SubmenuCategoria';
 
 /**
  * MobileFullscreen
@@ -81,6 +82,10 @@ export default function MobileFullscreen({
           name: cat.name,
           href: `/categorias/${cat.slug}`,
           icon: cat.icon,
+          // Subcategorías (parent_id): la padre se despliega dentro del menú (SubmenuCategoria).
+          ...(cat.children && cat.children.length > 0
+            ? { children: cat.children.map((h) => ({ name: h.name, href: `/categorias/${h.slug}`, icon: h.icon })) }
+            : {}),
         })),
       }
     : null;
@@ -220,7 +225,9 @@ function FullscreenNavItem({
           >
             Ver todo
           </Link>
-          {item.children.map((child, j) => (
+          {item.children.map((child, j) => child.children && child.children.length > 0 ? (
+            <SubmenuCategoria key={j} item={child} claseEnlace="block py-2 text-base text-[var(--mm-fg-muted)] hover:text-[var(--mm-hover-fg)]" onNavigate={onNavigate} />
+          ) : (
             <Link
               key={j}
               href={child.href}

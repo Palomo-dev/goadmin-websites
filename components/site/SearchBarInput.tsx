@@ -30,6 +30,11 @@ interface SearchBarInputProps {
     iconBackground?: string
     /** Sin lupa dentro del campo (el buscador ya trae botón de buscar); el texto queda con px-4. */
     sinIcono?: boolean
+    /**
+     * Dentro de la barra unificada de BuscadorCromo: el borde, el fondo, las esquinas y el foco los
+     * pone la barra; el campo va sin borde y transparente.
+     */
+    enBarra?: boolean
   }
   /**
    * Nombre de categoría elegido en el desplegable del buscador compacto del celular: las
@@ -134,11 +139,14 @@ export function SearchBarInput({
             }
           }}
           placeholder={placeholder}
-          className={cromo
+          className={cromo?.enBarra
+            ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-3' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} border-0 bg-transparent outline-none text-gray-900 placeholder-gray-400`
+            : cromo
             ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-4' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`
             : `w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
-          style={{ ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
+          style={cromo?.enBarra ? undefined : { ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
           onFocusCapture={(e) => {
+            if (cromo?.enBarra) return;
             (e.target as HTMLInputElement).style.borderColor = primaryColor;
           }}
           onBlurCapture={(e) => {

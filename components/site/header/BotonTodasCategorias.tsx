@@ -102,7 +102,7 @@ export function BotonTodasCategorias({
           <div
             role="menu"
             aria-label={texto}
-            className="flex overflow-hidden rounded-xl border border-gray-200 bg-white text-left text-[#111827] shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150"
+            className="flex overflow-hidden rounded-xl border border-gray-200 bg-white text-left text-[#111827] shadow-2xl"
           >
             <div className="flex w-[300px] flex-col">
               <ul className="max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain py-1.5 [scrollbar-width:thin] [scrollbar-color:#D1D5DB_transparent]">

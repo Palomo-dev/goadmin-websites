@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
-import { Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
+import { ChevronDown, Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { ProductSearch } from '../../ProductSearch';
 import { contarUnidadesCarrito } from '@/lib/cart';
 import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
@@ -306,7 +306,26 @@ export function ModalCategorias({
         </div>
         <div className="p-4 space-y-1">
           {menuCategories && menuCategories.length > 0
-            ? menuCategories.map((cat) => (
+            ? menuCategories.map((cat) => cat.children && cat.children.length > 0 ? (
+                // Categoría padre (parent_id): se despliega aquí mismo con «Ver todo» y sus hijas.
+                <details key={cat.id} className="group" data-submenu-categoria="">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]">
+                    {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-5 w-5 flex-shrink-0" />}
+                    <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">{cat.name}</span>
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 text-[var(--mm-fg-muted)] transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="pl-10 pb-1">
+                    <Link href={ruta(`/categorias/${cat.slug}`)} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
+                      Ver todo
+                    </Link>
+                    {cat.children.map((h) => (
+                      <Link key={h.id} href={ruta(`/categorias/${h.slug}`)} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
+                        {h.name}
+                      </Link>
+                    ))}
+                  </div>
+                </details>
+              ) : (
                 <Link
                   key={cat.id}
                   href={ruta(`/categorias/${cat.slug}`)}
