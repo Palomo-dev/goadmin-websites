@@ -18,6 +18,10 @@ import { PieMarca } from './footer/PieMarca'
 import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie'
 import { hrefDeSlug, logoSegunFondo, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
+import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+
+/** ¿El color propio del pie es oscuro (se lee mejor el blanco)? Solo con un hex válido. */
+const fondoOscuroSiHex = (color: string): boolean => textoSobreAcentoSiHex(color) === '#FFFFFF'
 
 interface SiteFooterProps {
   organization: OrganizationWithDetails
@@ -110,7 +114,11 @@ function getFooterBgClass(bg: string | undefined, customColor: string | null | u
     case 'primary':
       return 'text-white'
     case 'custom':
-      return customColor ? '' : 'bg-gray-900 dark:bg-gray-900/80 text-white'
+      // Color propio OSCURO: texto blanco (sin clase, los enlaces salían oscuros sobre oscuro:
+      // pie de Moderna y Contraste en la tienda de prueba, 2026-11-20). Color claro o inválido:
+      // sin clase, como siempre.
+      if (customColor) return fondoOscuroSiHex(customColor) ? 'text-white' : ''
+      return 'bg-gray-900 dark:bg-gray-900/80 text-white'
     default:
       return 'bg-gray-900 dark:bg-gray-900/80 text-white'
   }
