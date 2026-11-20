@@ -42,6 +42,7 @@ import { logoMovil } from '@/lib/website/logoEncabezado'
 import { useMenuDeslizable } from './header/menuDeslizable'
 import { menusAdicionales } from '@/lib/website/constructorEncabezado'
 import { pildoraMovil as leerPildoraMovil } from '@/lib/website/pildora'
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -445,7 +446,7 @@ export default function SiteHeader({
   const cssBp = cssBreakpointHeader(mobileBreakpoint, isMobile ? 'movil' : 'escritorio')
   const variante = cssBp ? (
     <div data-hdr-bp={isMobile ? 'movil' : 'escritorio'} style={{ display: 'contents' }}>
-      <style>{cssBp}</style>
+      <EstiloEnLinea css={cssBp} />
       {varianteBase}
     </div>
   ) : (

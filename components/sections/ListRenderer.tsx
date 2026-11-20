@@ -17,6 +17,7 @@ import {
 import { listaDelInspector, type ListaVisual } from '@/lib/website/cascaronSeccion'
 import { proporcionEnvoltorio } from './proporcionCeldas'
 import { columnasVistaLista } from '@/lib/products/fuenteListado'
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 type ApiCarrusel = { prev: () => void; next: () => void }
 
@@ -192,7 +193,7 @@ export function ListRenderer({
 
   return (
     <div>
-      {css ? <style>{css}</style> : null}
+      {css ? <EstiloEnLinea css={css} /> : null}
       {lista.arrows === 'top' && flechas}
       <div className="relative">
         {lista.arrows === 'sides' && flechas}

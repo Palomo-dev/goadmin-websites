@@ -4,6 +4,7 @@ import { esPreviewErpVercel } from '@/lib/website/origenPreviewErp';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { WebsitePageSection } from '@/types/database';
 import type { AvisoLienzo } from './SeccionVaciaLienzo';
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 /** Evento del navegador con el que el bridge pide un paso a la Carta QR (PasosMesa lo escucha). */
 export const EVENTO_PASO_LIENZO = 'goadmin:paso-mesa';
@@ -311,7 +312,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
 
   return (
     <>
-      <style>{ESTILOS_SECCION_ACTIVA}</style>
+      <EstiloEnLinea css={ESTILOS_SECCION_ACTIVA} />
       {children(liveSections, activeSectionId, avisos)}
     </>
   );

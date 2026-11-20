@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 /**
  * Zona global (encabezado o pie) seleccionable desde el editor del ERP.
@@ -56,7 +57,7 @@ export function ZonaGlobalPreview({ zona, children }: { zona: ZonaGlobal; childr
       {/* Un solo bloque de estilos basta: lo pone el encabezado. Va después de
           los hijos para que el primer hijo siga siendo el <header> (el bridge
           desplaza hasta él). */}
-      {zona === 'header' && <style>{ESTILOS}</style>}
+      {zona === 'header' && <EstiloEnLinea css={ESTILOS} />}
     </div>
   )
 }

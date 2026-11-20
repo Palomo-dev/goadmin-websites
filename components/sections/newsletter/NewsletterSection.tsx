@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { leerBoletin, validarEnvio, type Boletin, type TextoBoletin } from '@/lib/website/boletin'
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 const REDES = ['instagram', 'facebook', 'tiktok', 'youtube', 'whatsapp', 'linkedin', 'twitter'] as const
 
@@ -359,7 +360,7 @@ function Formulario({ boletin, primaryColor }: { boletin: Boletin; primaryColor:
 
   return (
     <form onSubmit={enviar} data-boletin={marca} className="flex w-full flex-col gap-3">
-      {f.input.placeholderColor && <style>{`[data-boletin="${marca}"] [data-boletin-input]::placeholder{color:${f.input.placeholderColor}}`}</style>}
+      {f.input.placeholderColor && <EstiloEnLinea css={`[data-boletin="${marca}"] [data-boletin-input]::placeholder{color:${f.input.placeholderColor}}`} />}
       {fila}
       {(f.showName || f.showPhone || f.showBirthday || f.showConsent) && extras}
       {aviso === 'ok' && <p className="text-sm" role="status">{boletin.success}</p>}

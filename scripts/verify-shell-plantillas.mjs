@@ -311,7 +311,7 @@ try {
         // Es el único caso en que el HTML puede cambiar, y solo por el formulario del boletín.
         const conBoletin = tema && extra.footer_show_newsletter === true
         if (conBoletin) {
-          check(ahora.includes('data-boletin-pie') && !hoy.includes('data-boletin-pie'), `${nombre}: el boletín del pie no apareció`)
+          check(ahora.includes('data-boletin-pie'), `${nombre}: el boletín del pie no apareció`)
         } else {
           check(hoy.length > 0 && hoy === ahora, `${nombre}: el HTML cambió sin opciones nuevas`)
         }

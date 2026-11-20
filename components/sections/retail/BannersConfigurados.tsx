@@ -21,6 +21,7 @@ import {
 import { resolveBannerHref, type BannerItem } from '@/lib/website/enlaceBanner'
 import { normalizarCuponBanner } from '@/lib/website/v2/contrato/seccionesTienda'
 import { CuponCopiable, VigenciaCupon } from './CuponBanner'
+import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -139,7 +140,7 @@ export function BannersConfigurados({ content, config, primaryColor, data }: Pro
   return (
     <div style={fondoSeccion}>
       {movil === 'stack' && (
-        <style>{`@media (max-width:767px){[data-banners-movil="stack"]{display:flex !important;flex-direction:column !important}[data-banners-movil="stack"]>*{width:100% !important}}`}</style>
+        <EstiloEnLinea css={`@media (max-width:767px){[data-banners-movil="stack"]{display:flex !important;flex-direction:column !important}[data-banners-movil="stack"]>*{width:100% !important}}`} />
       )}
       {content.title && (
         <h2 className="titulo-legado text-2xl md:text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">{content.title}</h2>
