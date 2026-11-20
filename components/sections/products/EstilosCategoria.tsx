@@ -3,7 +3,9 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria, tieneIconoCategoria } from '@/lib/website/iconosCategoria'
 import { CarruselPastillas } from './CarruselPastillas'
+import { CarruselPaginasCategorias } from './CarruselPaginasCategorias'
 import {
+  chunkArray,
   claseAjuste,
   clasesCirculosMovil,
   clasesPastillas,
@@ -12,6 +14,7 @@ import {
   textoSobreColor,
   layoutMovilCategorias,
   MASCARA_CARRIL,
+  paginasCategorias,
   planBento,
   radioTarjeta,
   sombraTarjeta,
@@ -42,6 +45,13 @@ interface Contenido {
   desktop_columns?: number
   desktop_layout?: string
   mobile_layout?: string
+  /** Con `desktop_layout: 'carousel'`, círculos y pastillas van en páginas de columnas × filas. Ausente: el carril de una fila de hoy. */
+  desktop_rows?: number
+  mobile_columns?: number
+  /** Con layout móvil carrusel (o heredado), páginas de `mobile_columns × mobile_rows`. */
+  mobile_rows?: number
+  /** Panel «Carrusel» de la sección (flechas, indicador, avance automático, bucle). */
+  carrusel?: unknown
   card_bg?: string
   overlay_text_color?: string
   media_source?: string
@@ -113,7 +123,7 @@ function Foto({ cat, fit, zoom, clase, fondo, content, color, preferirIcono = fa
   )
 }
 
-function Circulo({ cat, color, content, fila = false, ancho = false }: { cat: any; color: string; content: Contenido; fila?: boolean; ancho?: boolean }) {
+function Circulo({ cat, color, content, fila = false, ancho = false, fluido = false }: { cat: any; color: string; content: Contenido; fila?: boolean; ancho?: boolean; fluido?: boolean }) {
   const zoom = content.card_hover === 'zoom'
   const anillo = content.card_hover !== 'none'
   const colorTexto = content.overlay_text_color ? { color: content.overlay_text_color } : undefined
@@ -128,7 +138,7 @@ function Circulo({ cat, color, content, fila = false, ancho = false }: { cat: an
         cat={cat}
         fit={content.image_fit || 'contain'}
         zoom={zoom}
-        clase={`${fila ? 'h-14 w-14 shrink-0' : 'h-28 w-28'} rounded-full ${anillo ? 'ring-2 ring-transparent transition [@media(hover:hover)]:group-hover:ring-[var(--accent-color)]' : ''}`}
+        clase={`${fila ? 'h-14 w-14 shrink-0' : fluido ? 'aspect-square w-full max-w-[7rem]' : 'h-28 w-28'} rounded-full ${anillo ? 'ring-2 ring-transparent transition [@media(hover:hover)]:group-hover:ring-[var(--accent-color)]' : ''}`}
         fondo={fondoSuave(color, content.image_bg)}
       />
       <span className={fila ? 'min-w-0' : undefined}>
@@ -262,7 +272,7 @@ function TituloArriba({ cat, color, content, ajustes }: { cat: any; color: strin
   )
 }
 
-function Pastilla({ cat, color, content, snap = false, bloque = false }: { cat: any; color: string; content: Contenido; snap?: boolean; bloque?: boolean }) {
+function Pastilla({ cat, color, content, snap = false, bloque = false, celda = false }: { cat: any; color: string; content: Contenido; snap?: boolean; bloque?: boolean; celda?: boolean }) {
   // Hover solo con CSS y solo donde hay mouse (`hover:hover`): en el celular no queda pintada.
   // En bloque (celular en grilla o lista) el nombre va en hasta 2 líneas, no truncado: la grilla
   // estira cada pastilla a la altura de la más alta de su fila. Desde md, una línea como siempre.
@@ -271,14 +281,17 @@ function Pastilla({ cat, color, content, snap = false, bloque = false }: { cat: 
     ...(content.card_bg ? { backgroundColor: content.card_bg } : {}),
     ...(content.overlay_text_color ? { color: content.overlay_text_color } : {}),
   } as React.CSSProperties
+  // En una celda del carrusel por páginas ocupa el ancho de su columna, en celular y escritorio.
+  const ancho = celda ? 'flex w-full min-w-0' : bloque ? 'flex w-full min-w-0 md:inline-flex md:w-auto' : 'inline-flex'
+  const enBloque = bloque && !celda
   return (
     <Link
       href={`/categorias/${cat.slug}`}
-      className={`group ${bloque ? 'flex w-full min-w-0 md:inline-flex md:w-auto' : 'inline-flex'} shrink-0${snap ? ' snap-start' : ''} items-center gap-2 ${bloque ? 'rounded-3xl md:rounded-full' : 'rounded-full'} border border-gray-200 ${content.card_bg ? '' : 'bg-white '}${bloque ? 'py-1.5 md:py-1' : 'py-1'} pl-1 pr-4 ${content.overlay_text_color ? '' : 'text-gray-900 '}transition [@media(hover:hover)]:hover:border-transparent [@media(hover:hover)]:hover:!bg-[var(--pastilla-hover)] [@media(hover:hover)]:hover:!text-white`}
+      className={`group ${ancho} shrink-0${snap ? ' snap-start' : ''} items-center gap-2 ${enBloque ? 'rounded-3xl md:rounded-full' : 'rounded-full'} border border-gray-200 ${content.card_bg ? '' : 'bg-white '}${enBloque ? 'py-1.5 md:py-1' : 'py-1'} pl-1 pr-4 ${content.overlay_text_color ? '' : 'text-gray-900 '}transition [@media(hover:hover)]:hover:border-transparent [@media(hover:hover)]:hover:!bg-[var(--pastilla-hover)] [@media(hover:hover)]:hover:!text-white`}
       style={estilo}
     >
       <Foto content={content} color={color} cat={cat} fit={content.image_fit || 'contain'} zoom={content.card_hover === 'zoom'} clase="h-10 w-10 shrink-0 rounded-full" fondo={fondoSuave(color, content.image_bg)} />
-      <span className={`text-sm font-medium [@media(hover:hover)]:group-hover:text-white${bloque ? ' min-w-0 line-clamp-2 break-words leading-tight text-left md:line-clamp-none md:whitespace-nowrap md:leading-5' : ''}`}>{cat.name}</span>
+      <span className={`text-sm font-medium [@media(hover:hover)]:group-hover:text-white${celda ? ' min-w-0 truncate' : bloque ? ' min-w-0 line-clamp-2 break-words leading-tight text-left md:line-clamp-none md:whitespace-nowrap md:leading-5' : ''}`}>{cat.name}</span>
     </Link>
   )
 }
@@ -355,21 +368,52 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
   // Opciones de las plantillas de tienda (category_text_position, category_card_color,
   // category_cta_icon). Ausentes = `bottom` / `none` / `none`: la tarjeta de hoy.
   const ajustes = normalizarAjustesCategorias(content as Record<string, unknown>)
+  // Carrusel por páginas (columnas × filas) de círculos y pastillas. Sin `desktop_rows` /
+  // `mobile_rows`, o sin layout carrusel, los dos lados son `null` y se pinta lo de hoy.
+  const paginas = estilo === 'circle' || estilo === 'pill' ? paginasCategorias(estilo, content) : { escritorio: null, movil: null }
+  const etiquetaCarrusel = content.title || 'Categorías'
   let cuerpo: React.ReactNode
 
   if (estilo === 'circle') {
+    const enCelda = (cat: any) => <Circulo key={cat.id} cat={cat} color={color} content={content} ancho fluido />
     cuerpo = (
       <>
-        <div className={clasesCirculosMovil(content.mobile_layout)} style={{ scrollbarWidth: 'none' }}>
-          {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} fila={movil === 'list'} ancho={movil === 'grid'} />)}
-        </div>
-        <div className={carrusel ? 'hidden gap-4 overflow-x-auto md:flex' : 'hidden gap-6 md:grid'} style={carrusel ? { scrollbarWidth: 'none' } : { gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
-          {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} />)}
-        </div>
+        {paginas.movil ? (
+          <CarruselPaginasCategorias
+            className="md:hidden"
+            movil
+            paginas={chunkArray(categorias, paginas.movil.porPagina).map((trozo) => trozo.map(enCelda))}
+            columnas={paginas.movil.columnas}
+            color={color}
+            carruselSeccion={content.carrusel}
+            etiqueta={etiquetaCarrusel}
+            gap="gap-x-3 gap-y-5"
+          />
+        ) : (
+          <div className={clasesCirculosMovil(content.mobile_layout)} style={{ scrollbarWidth: 'none' }}>
+            {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} fila={movil === 'list'} ancho={movil === 'grid'} />)}
+          </div>
+        )}
+        {paginas.escritorio ? (
+          <CarruselPaginasCategorias
+            className="hidden md:block"
+            movil={false}
+            paginas={chunkArray(categorias, paginas.escritorio.porPagina).map((trozo) => trozo.map(enCelda))}
+            columnas={paginas.escritorio.columnas}
+            color={color}
+            carruselSeccion={content.carrusel}
+            etiqueta={etiquetaCarrusel}
+            gap="gap-x-4 gap-y-6"
+          />
+        ) : (
+          <div className={carrusel ? 'hidden gap-4 overflow-x-auto md:flex' : 'hidden gap-6 md:grid'} style={carrusel ? { scrollbarWidth: 'none' } : { gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
+            {categorias.map((cat) => <Circulo key={cat.id} cat={cat} color={color} content={content} />)}
+          </div>
+        )}
       </>
     )
   } else if (estilo === 'pill') {
-    cuerpo = carrusel ? (
+    const hoy = carrusel ? (
       <CarruselPastillas clases={clasesPastillas('carousel', content.mobile_layout, content.align)}>
         {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} snap bloque={bloque} />)}
       </CarruselPastillas>
@@ -377,6 +421,41 @@ export function EstilosCategoria({ categorias, estilo, primaryColor, content }: 
       <div className={clasesPastillas(content.desktop_layout, content.mobile_layout, content.align)} style={{ scrollbarWidth: 'none' }}>
         {categorias.map((cat) => <Pastilla key={cat.id} cat={cat} color={color} content={content} bloque={bloque} />)}
       </div>
+    )
+    const enCelda = (cat: any) => <Pastilla key={cat.id} cat={cat} color={color} content={content} celda />
+    // Sin páginas en ningún lado: las pastillas de hoy, tal cual. Con páginas en un solo lado, el
+    // otro conserva lo de hoy (escondido en el lado paginado).
+    cuerpo = !paginas.movil && !paginas.escritorio ? hoy : (
+      <>
+        {paginas.movil ? (
+          <CarruselPaginasCategorias
+            className="md:hidden"
+            movil
+            paginas={chunkArray(categorias, paginas.movil.porPagina).map((trozo) => trozo.map(enCelda))}
+            columnas={paginas.movil.columnas}
+            color={color}
+            carruselSeccion={content.carrusel}
+            etiqueta={etiquetaCarrusel}
+            gap="gap-2"
+          />
+        ) : (
+          <div className="md:hidden">{hoy}</div>
+        )}
+        {paginas.escritorio ? (
+          <CarruselPaginasCategorias
+            className="hidden md:block"
+            movil={false}
+            paginas={chunkArray(categorias, paginas.escritorio.porPagina).map((trozo) => trozo.map(enCelda))}
+            columnas={paginas.escritorio.columnas}
+            color={color}
+            carruselSeccion={content.carrusel}
+            etiqueta={etiquetaCarrusel}
+            gap="gap-3"
+          />
+        ) : (
+          <div className="hidden md:block">{hoy}</div>
+        )}
+      </>
     )
   } else if (estilo === 'bento') {
     const plan = planBento(categorias.length)

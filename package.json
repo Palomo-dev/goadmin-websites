@@ -75,6 +75,7 @@
     "verify:selector-moneda": "node --disable-warning=ExperimentalWarning scripts/verify-selector-moneda.mjs",
     "verify:boton-categorias": "node --disable-warning=ExperimentalWarning scripts/verify-boton-categorias.mjs",
     "verify:domicilio-transportadora": "node --disable-warning=ExperimentalWarning scripts/verify-domicilio-transportadora.mjs",
+    "verify:categorias-carrusel": "node --disable-warning=ExperimentalWarning scripts/verify-categorias-carrusel.mjs",
     "verify:contador-cantidad": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contador-cantidad.mjs",
     "verify:vista-previa-referencias": "node --disable-warning=ExperimentalWarning scripts/verify-vista-previa-referencias.mjs",
     "verify:ficha-diff": "node scripts/pruebas/ficha-diff.mjs",
