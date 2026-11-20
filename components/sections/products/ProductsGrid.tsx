@@ -13,7 +13,7 @@ import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { pestanasSubrayadas, rejillaConLineas } from '@/lib/website/tarjetaPlantillasTienda'
-import { clasesColumnasListado, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
+import { clasesColumnasListado, clasesVistaLista, leerPresentacion, pedidoServidor, recortePresentacion } from '@/lib/products/fuenteListado'
 import { listaDelInspector } from '@/lib/website/cascaronSeccion'
 import { SiLista } from '../ListRenderer'
 import { isOutOfStock } from '@/lib/stock'
@@ -258,8 +258,10 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
   const pestanas = pestanasSubrayadas(content as Record<string, unknown>, primaryColor)
   const barraNueva = !!(presentacion && (presentacion.chipStyle || presentacion.filterPosition || presentacion.filters || presentacion.showSort === false || presentacion.showCount === false || presentacion.chipMobile))
   const columnas = clasesColumnasListado(presentacion) ?? clasesColumnasProductos(content.columns)
+  // Vista «Lista» con columnas del editor (columnasVistaLista): rejilla responsive; sin ellas, una
+  // columna como siempre.
   const claseRejilla = presentacion?.displayMode === 'list'
-    ? 'flex flex-col gap-4'
+    ? (clasesVistaLista({ desktop: presentacion.columnsDesktop, tablet: presentacion.columnsTablet, mobile: presentacion.columnsMobile }) ?? 'flex flex-col gap-4')
     : presentacion?.displayMode === 'carousel'
       ? 'flex gap-4 overflow-x-auto pb-2'
       : presentacion?.displayMode === 'masonry'

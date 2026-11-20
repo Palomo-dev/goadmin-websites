@@ -313,7 +313,7 @@ export function CategoryPageClient({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4" style={separacion}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={separacion} data-vista-lista="">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

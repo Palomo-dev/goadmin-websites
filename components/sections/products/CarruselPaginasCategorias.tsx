@@ -202,7 +202,7 @@ export function CarruselPaginasCategorias({
           onDragStart={(e) => e.preventDefault()}
         >
           <div
-            className="flex will-change-transform"
+            className="flex select-none will-change-transform"
             style={{ transform: `translate3d(calc(${-actual * 100}% + ${dx}px), 0, 0)`, transition: transicion }}
             data-pista-carrusel=""
           >

@@ -187,6 +187,30 @@ const LG: Record<number, string> = {
   6: 'lg:grid-cols-6',
 }
 
+function columnasEnteras(v: unknown, max: number): number | null {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 ? Math.min(n, max) : null
+}
+
+/**
+ * Columnas de la vista «Lista» (tarjeta horizontal) con las claves del editor
+ * (`columns_desktop` / `columns_tablet` / `columns_mobile`). `null` = una columna, lo de hoy.
+ * Celular: 1 salvo que se pida 2 (la tarjeta horizontal no cabe apretada). Tablet: lo pedido o,
+ * sin dato, hasta 2. Escritorio: hasta 4.
+ */
+export function columnasVistaLista(c: { desktop?: unknown; tablet?: unknown; mobile?: unknown }): { movil: number; tablet: number; escritorio: number } | null {
+  const escritorio = columnasEnteras(c.desktop, 4) ?? 1
+  const tablet = columnasEnteras(c.tablet, 4) ?? Math.min(escritorio, 2)
+  if (escritorio <= 1 && tablet <= 1) return null
+  return { movil: columnasEnteras(c.mobile, 2) ?? 1, tablet, escritorio }
+}
+
+/** Clases de la rejilla de la vista «Lista» con varias columnas, o `null` (una columna, lo de hoy). */
+export function clasesVistaLista(c: { desktop?: unknown; tablet?: unknown; mobile?: unknown }): string | null {
+  const r = columnasVistaLista(c)
+  return r ? `grid ${COL[r.movil]} ${MD[r.tablet]} ${LG[r.escritorio]} gap-4` : null
+}
+
 /**
  * Recorte del listado ya cargado. null = seguir con la paginación de hoy (12).
  * `none` muestra el universo sin páginas. `pages` usa `per_page` o 12.
