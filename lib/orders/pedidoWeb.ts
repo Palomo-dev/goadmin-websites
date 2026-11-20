@@ -5,14 +5,22 @@
  */
 
 import { ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
+import { tipoDomicilioGuardado } from '@/lib/shipping/opcionesDomicilio'
 
 type ClienteSupabase = { from: (tabla: string) => any }
 
-/** Tipo de entrega que se guarda en `web_orders.delivery_type` a partir del que manda el checkout. */
-export function tipoEntregaCliente(deliveryType: unknown, envio: number): string {
-  if (deliveryType === 'delivery') return 'delivery_own'
-  if (typeof deliveryType === 'string' && deliveryType) return deliveryType
-  return envio > 0 ? 'delivery_own' : 'pickup'
+const TIPOS_ENTREGA_GUARDABLES = ['pickup', 'delivery_own', 'delivery_third_party', 'dine_in']
+
+/**
+ * Tipo de entrega que se guarda en `web_orders.delivery_type` a partir del que manda el checkout.
+ * «delivery» (Domicilio o Transportadora) → el del grupo elegido (`grupoEnvio`) si la tienda lo
+ * tiene activo en «Cómo reciben el pedido»; si no, el que tenga (solo tercero → tercero). Un valor
+ * fuera del CHECK de la tabla no se guarda tal cual.
+ */
+export function tipoEntregaCliente(deliveryType: unknown, envio: number, tiposEntrega?: readonly string[] | null, grupoEnvio?: unknown): string {
+  if (deliveryType === 'delivery') return tipoDomicilioGuardado(grupoEnvio, tiposEntrega)
+  if (typeof deliveryType === 'string' && TIPOS_ENTREGA_GUARDABLES.includes(deliveryType)) return deliveryType
+  return envio > 0 ? tipoDomicilioGuardado(grupoEnvio, tiposEntrega) : 'pickup'
 }
 
 /** Marca el pedido como cancelado con el motivo (rama de error después de crearlo). */

@@ -13,17 +13,18 @@
  */
 
 import type { ShippingRate } from '@/types/database'
+import { grupoDeTransportadora, tarifasDelGrupo, type GrupoEnvio } from './opcionesDomicilio'
 
 type ClienteSupabase = { from: (tabla: string) => any }
 
-export const SELECT_TARIFAS = 'id, organization_id, rate_name, service_level, base_rate, rate_per_kg, fuel_surcharge_percent, min_charge, min_weight_kg, max_weight_kg, free_shipping_threshold, destination_city, destination_zone, valid_from, valid_until, is_active, show_on_website, transport_carriers:carrier_id(id, name)'
+export const SELECT_TARIFAS = 'id, organization_id, rate_name, service_level, base_rate, rate_per_kg, fuel_surcharge_percent, min_charge, min_weight_kg, max_weight_kg, free_shipping_threshold, destination_city, destination_zone, valid_from, valid_until, is_active, show_on_website, estimated_transit_days, transport_carriers:carrier_id(id, name, carrier_type)'
 
 type FilaTarifa = Pick<ShippingRate,
   | 'id' | 'organization_id' | 'rate_name' | 'service_level' | 'base_rate' | 'rate_per_kg'
   | 'fuel_surcharge_percent' | 'min_charge' | 'min_weight_kg' | 'max_weight_kg'
   | 'free_shipping_threshold' | 'destination_city' | 'destination_zone' | 'valid_from'
   | 'valid_until' | 'is_active' | 'show_on_website'
-> & { transport_carriers?: { id: string; name: string } | null }
+> & { estimated_transit_days?: number | null; transport_carriers?: { id: string; name: string; carrier_type?: string | null } | null }
 
 export interface TarifaCalculada {
   id: string
@@ -34,6 +35,10 @@ export interface TarifaCalculada {
   carrier_name: string | null
   destination_zone: string | null
   free_shipping_threshold: number
+  /** Domicilio de la tienda o transportadora (opcionesDomicilio.ts), por el tipo de su transportadora. */
+  grupo: GrupoEnvio
+  /** Días estimados de entrega (`estimated_transit_days`); `null` sin dato. */
+  dias: number | null
 }
 
 const ORDEN_SERVICIO: Record<string, number> = { same_day: 1, overnight: 2, express: 3, standard: 4, economy: 5 }
@@ -80,6 +85,8 @@ export function calcularTarifas(tarifas: FilaTarifa[], peso?: number | null, sub
       carrier_name: t.transport_carriers?.name || null,
       destination_zone: t.destination_zone,
       free_shipping_threshold: umbral,
+      grupo: grupoDeTransportadora(t.transport_carriers?.carrier_type),
+      dias: typeof t.estimated_transit_days === 'number' ? t.estimated_transit_days : null,
     }
   })
   calculadas.sort((a, b) => a.cost - b.cost)
@@ -124,6 +131,12 @@ export interface EntradaResolverEnvio {
   ajustes: AjustesEnvio | null
   /** YYYY-MM-DD de hoy en la zona de la organización (vigencia de tarifas). */
   hoy: string
+  /**
+   * Domicilio elegido (propio o transportadora) y los tipos activos de la tienda. Con los dos
+   * activos, la tarifa debe ser del grupo elegido; si no, no se decide (`null`).
+   */
+  grupo?: GrupoEnvio | null
+  activos?: readonly GrupoEnvio[]
 }
 
 export async function resolverEnvio(supabase: ClienteSupabase, e: EntradaResolverEnvio): Promise<EnvioResuelto> {
@@ -136,6 +149,7 @@ export async function resolverEnvio(supabase: ClienteSupabase, e: EntradaResolve
     const aplicables = tarifasParaDestino(tarifas, e.ciudad, null, e.hoy)
     if (!aplicables.some((t) => t.id === tarifa.id)) return null
     const { rates } = calcularTarifas([tarifa], null, e.subtotal)
+    if (e.grupo && tarifasDelGrupo(rates, e.grupo, e.activos ?? []).length === 0) return null
     return { costo: rates[0].cost, fuente: 'tarifa', tarifaId: tarifa.id }
   }
   if (!e.ajustes) return null

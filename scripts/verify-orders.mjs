@@ -41,6 +41,8 @@ const MODULOS = {
   impuestoProducto: 'lib/orders/impuestoProducto.ts',
   'estados-pedido': 'lib/orders/estados-pedido.ts',
   disponibilidadPedido: 'lib/orders/disponibilidadPedido.ts',
+  // resolveShipping importa la regla de domicilio/transportadora (2026-11-19).
+  opcionesDomicilio: 'lib/shipping/opcionesDomicilio.ts',
   resolveShipping: 'lib/shipping/resolveShipping.ts',
   nombreMesa: 'lib/orders/nombreMesa.ts',
   mesaQR: 'lib/restaurant/mesaQR.ts',
