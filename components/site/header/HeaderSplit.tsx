@@ -24,6 +24,9 @@ import {
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
 import { useBarraAbajo } from './barraEnFila';
+import { BotonTodasCategorias } from './BotonTodasCategorias';
+import { botonCategoriasBarra } from '@/lib/website/botonCategorias';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 export default function HeaderSplit({
   organization,
@@ -40,6 +43,10 @@ export default function HeaderSplit({
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+
+  // Botón «Todas las categorías» (lib/website/botonCategorias.ts): junto al logo, antes del menú.
+  const { ruta } = useRutaSitio();
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
 
   const midpoint = Math.ceil(navItems.length / 2);
   const leftNav = navItems.slice(0, midpoint);
@@ -68,6 +75,10 @@ export default function HeaderSplit({
           <div ref={filaRef} className="hidden md:flex items-center justify-between gap-4" style={{ minHeight: `${(settings?.logo_height || 48) + 16}px` }}>
             {/* Logo */}
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
+
+            {boton && (
+              <BotonTodasCategorias texto={boton.texto} entradas={boton.entradas} primaryColor={primaryColor} hrefTodas={ruta('/categorias')} />
+            )}
 
             {/* Nav izquierda */}
             {leftNav.length > 0 && (

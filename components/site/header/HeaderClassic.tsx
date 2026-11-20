@@ -23,6 +23,9 @@ import {
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
 import { useBarraAbajo } from './barraEnFila';
+import { BotonTodasCategorias } from './BotonTodasCategorias';
+import { botonCategoriasBarra } from '@/lib/website/botonCategorias';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 export default function HeaderClassic({
   organization,
@@ -48,7 +51,20 @@ export default function HeaderClassic({
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
-  const renderNav = navItems.length > 0 ? (
+  // Botón «Todas las categorías» (lib/website/botonCategorias.ts): con categorías en el encabezado
+  // (`show_categories_in_header`) va a la izquierda del menú, que entonces arranca a su lado.
+  const { ruta } = useRutaSitio();
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
+  const renderBoton = boton ? (
+    <BotonTodasCategorias texto={boton.texto} entradas={boton.entradas} primaryColor={primaryColor} hrefTodas={ruta('/categorias')} />
+  ) : null;
+
+  const renderNav = boton ? (
+    <div className="flex min-w-0 flex-1 items-center gap-5">
+      {renderBoton}
+      {navItems.length > 0 && <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-start" />}
+    </div>
+  ) : navItems.length > 0 ? (
     <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-center" />
   ) : null;
 
@@ -103,6 +119,7 @@ export default function HeaderClassic({
   } else if (logoPosition === 'center') {
     middle = (
       <>
+        {renderBoton}
         <NavList items={navItems.slice(0, Math.ceil(navItems.length / 2))} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-end" />
         {renderLogo}
         <NavList items={navItems.slice(Math.ceil(navItems.length / 2))} primaryColor={accentColor(settings, primaryColor)} className="flex-1 justify-start" />

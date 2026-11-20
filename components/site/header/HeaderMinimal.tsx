@@ -37,6 +37,7 @@ import {
   DrawerClose,
 } from '@/components/ui/drawer';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
+import { menuConCategorias } from '@/lib/website/botonCategorias';
 
 /**
  * HeaderMinimal
@@ -93,7 +94,8 @@ export default function HeaderMinimal({
       }
     : null;
 
-  const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
+  // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
+  const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);
 
   // Cerrar el menú desktop al hacer clic fuera (dropdown mode)
   useEffect(() => {

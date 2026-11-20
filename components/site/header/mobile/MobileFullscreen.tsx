@@ -33,6 +33,7 @@ import {
   CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
+import { menuConCategorias } from '@/lib/website/botonCategorias';
 
 /**
  * MobileFullscreen
@@ -84,7 +85,8 @@ export default function MobileFullscreen({
       }
     : null;
 
-  const allItems = categoriesItem ? [...navItems, categoriesItem] : navItems;
+  // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
+  const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>

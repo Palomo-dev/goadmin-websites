@@ -67,7 +67,8 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // icon_side/uppercase, header_pill_style/glass_opacity/blur/border/on_scroll/text_case,
 // header_float_offset, header_pill_position) + las 7 del segundo botón y los botones del tema
 // (2026-11-07: header_cta2_shape/size/style/icon/icon_side/uppercase, buttons_theme_active).
-check(nuevas.length === 98, `se esperaban 98 opciones nuevas y hay ${nuevas.length}`)
+// +2 (2026-11-19): header_categories_button y header_categories_button_text (botón «Todas las categorías»).
+check(nuevas.length === 100, `se esperaban 100 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -182,6 +183,8 @@ const CONSUMIDORES = {
   topbar_show_free_shipping: ['components/site/header/TopbarExtras.tsx', 'opciones.topbar.envioGratis'],
   topbar_show_availability: ['components/site/header/TopbarExtras.tsx', 'opciones.topbar.cupos'],
   header_show_branch_selector: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.selectorSedeEnEncabezado'],
+  header_categories_button: ['lib/website/botonCategorias.ts', "'header_categories_button'"],
+  header_categories_button_text: ['lib/website/botonCategorias.ts', "'header_categories_button_text'"],
   header_show_language: ['components/site/header/TopbarExtras.tsx', 'opciones.idiomas'],
   site_locales: ['components/site/header/TopbarExtras.tsx', 'opciones.idiomas'],
   header_booking_bar: ['components/site/header/BarraReservaHotel.tsx', 'opciones.barraReserva'],

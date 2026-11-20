@@ -27,6 +27,8 @@ import {
 import { useEncabezadoPie } from '../EncabezadoPieContext';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import MegaMenuDropdown from './MegaMenuDropdown';
+import { BotonTodasCategorias } from './BotonTodasCategorias';
+import { botonCategoriasBarra } from '@/lib/website/botonCategorias';
 import { barraSiCromo } from './BuscadorCromo';
 import { useBarraAbajo } from './barraEnFila';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
@@ -77,6 +79,10 @@ export default function HeaderMega({
     : navItemsBase;
 
   const megaColumns = settings?.mega_menu_columns ?? 4;
+
+  // Botón «Todas las categorías» (encendido por defecto): a la izquierda de la barra, en lugar del
+  // «Categorías ⌄» del final. Mismas fuentes que ese ítem (mega menú del editor o categorías).
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta);
 
   // El Mega Menu siempre muestra la barra de búsqueda grande en desktop,
   // a menos que search_style === 'hidden'
@@ -146,7 +152,11 @@ export default function HeaderMega({
         {/* Fila inferior: nav items con border-top — z-10 para que el dropdown del buscador superior se vea encima */}
         <div className="relative z-10 bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
           <div className="max-w-7xl mx-auto px-4">
-            <nav className="relative hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
+            <nav className={`relative hidden md:flex items-center ${boton ? 'justify-start' : 'justify-center'} gap-6 h-12`} style={{ color: navTextColor(settings) }}>
+              {boton && (
+                <BotonTodasCategorias texto={boton.texto} entradas={boton.entradas} primaryColor={primaryColor} hrefTodas={ruta('/categorias')} />
+              )}
+
               {/* Nav items de páginas (con NavDropdown automático si tienen children) */}
               {navItems.map((item, i) => (
                 <NavLink
@@ -158,7 +168,7 @@ export default function HeaderMega({
               ))}
 
               {/* Item "Categorías" con MegaMenuDropdown */}
-              {showCategories && (
+              {showCategories && !boton && (
                 <div
                   className="static"
                   onMouseEnter={() => setMegaOpen(true)}

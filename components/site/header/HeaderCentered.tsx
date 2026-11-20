@@ -23,6 +23,9 @@ import {
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
 import { useBarraAbajo } from './barraEnFila';
+import { BotonTodasCategorias } from './BotonTodasCategorias';
+import { botonCategoriasBarra } from '@/lib/website/botonCategorias';
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 
 export default function HeaderCentered({
   organization,
@@ -39,6 +42,9 @@ export default function HeaderCentered({
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  // Botón «Todas las categorías» (lib/website/botonCategorias.ts): primero en la barra del menú.
+  const { ruta } = useRutaSitio();
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
 
   // La barra va junto a los íconos (w-64, lo de hoy); si ahí quedaría por debajo de 240px o la fila
   // desborda, baja a una fila propia debajo del logo (useBarraAbajo, la regla de los encabezados).
@@ -93,9 +99,12 @@ export default function HeaderCentered({
       {/* Fila inferior: nav centrado */}
       <div className="relative z-10 backdrop-blur-md bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)]" style={{ ...navBgStyle(settings), ...estiloDivisor(settings, 'top') }}>
         <div className="max-w-7xl mx-auto px-4">
-          <div className="hidden md:flex items-center justify-center gap-6 h-12" style={{ color: navTextColor(settings) }}>
+          <div className={`hidden md:flex items-center ${boton ? 'justify-start' : 'justify-center'} gap-6 h-12`} style={{ color: navTextColor(settings) }}>
+            {boton && (
+              <BotonTodasCategorias texto={boton.texto} entradas={boton.entradas} primaryColor={primaryColor} hrefTodas={ruta('/categorias')} />
+            )}
             {navItems.length > 0 && (
-              <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} />
+              <NavList items={navItems} primaryColor={accentColor(settings, primaryColor)} className={boton ? 'min-w-0 flex-1 justify-start' : ''} />
             )}
           </div>
         </div>
