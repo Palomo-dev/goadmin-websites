@@ -561,6 +561,10 @@ export function HeaderLogo({
   const logoSize = Math.max(40, Math.min(56, height * 0.8));
 
   if (temaColores) {
+    // El nombre sigue al texto del encabezado: sobre la portada (transparente) en blanco y, con
+    // «Texto y enlaces» guardado, ese color (Contraste: negro con texto blanco; antes el nombre
+    // quedaba gris oscuro sobre negro). Sin ninguno de los dos, la clase de siempre.
+    const colorNombre = fondoOscuro ? null : colorTextoEncabezadoGuardado(organization.website_settings as HeaderVariantProps['settings']) || null
     const iniciales = organization.name.split(/\s+/).filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase()
       || organization.name.substring(0, 2).toUpperCase();
     const lado = Math.round(logoSize * 0.85);
@@ -580,7 +584,10 @@ export function HeaderLogo({
         >
           {iniciales}
         </div>
-        <span className="text-xl sm:text-2xl font-medium text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+        <span
+          className={`text-xl sm:text-2xl font-medium ${fondoOscuro ? 'text-white' : 'text-gray-900 dark:text-white'}`}
+          style={{ fontFamily: 'var(--font-heading)', ...(colorNombre ? { color: colorNombre } : {}) }}
+        >
           {organization.name}
         </span>
       </Link>
