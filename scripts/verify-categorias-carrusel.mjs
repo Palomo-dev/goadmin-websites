@@ -113,18 +113,25 @@ check(carrusel.includes('color={o.colorActivo || color}'), 'los puntos en el pri
 check(carrusel.includes('etiqueta={(i) => `Ir a la página ${i + 1}`}'), 'puntos: «Ir a la página N»')
 check(controles.includes("aria-current={i === actual ? 'true' : undefined}") && controles.includes("aria-current={activo ? 'true' : undefined}"), 'punto activo con aria-current')
 check(controles.includes("aria-label={etiqueta ?? (direccion === 'anterior' ? 'Anterior' : 'Siguiente')}"), 'flechas: «Anterior» / «Siguiente»')
-check(carrusel.includes("desplazarPagina(ref.current, 'right')") && carrusel.includes("desplazarPagina(ref.current, 'left')"), 'las flechas desplazan una página con desplazarPagina')
+check(carrusel.includes('onClick={siguiente}') && carrusel.includes('onClick={anterior}') && carrusel.includes('const ir = (i: number) => setActual(') && !carrusel.includes('scrollBy(') && !carrusel.includes('desplazarPagina('), 'las flechas cambian de página moviendo la pista (sin scroll nativo)')
 check(carrusel.includes('indiceSiguiente(actual, total, o.loop)') && carrusel.includes('indiceAnterior(actual, total, o.loop)'), 'bucle con indiceSiguiente / indiceAnterior')
 check(carrusel.includes('activo: o.autoplay && total > 1 && !tocado') && carrusel.includes('pausarAlPasar: o.pausaHover') && carrusel.includes('onTouchStart={() => setTocado(true)}'), 'avance automático: pausa con el mouse y se detiene al tocar')
 check(autoplayFuente.includes("'(prefers-reduced-motion: reduce)'"), 'el avance automático respeta prefers-reduced-motion')
-check(carrusel.includes('snap-x snap-mandatory overflow-x-auto') && carrusel.includes('w-full shrink-0 snap-start'), 'páginas de 100 % con scroll-snap nativo (el dedo desliza)')
-check(carrusel.includes('onMouseDown={alBajar}') && carrusel.includes('onClickCapture={alClic}'), 'arrastre con el mouse y sin abrir la categoría al soltar')
+// 2026-11-20: pista con translate3d (el scroll suave con snap cambiaba casi en el sitio en Windows).
+check(carrusel.includes('transform: `translate3d(calc(${-actual * 100}% + ${dx}px), 0, 0)`') && carrusel.includes('className="w-full shrink-0"'), 'páginas de 100 % sobre una pista con translate3d')
+check(carrusel.includes("export const DURACION_MS = 480") && carrusel.includes("export const CURVA = 'cubic-bezier(0.22, 1, 0.36, 1)'"), 'paso de página de 480 ms con curva suave')
+check(carrusel.includes("arrastrando ? 'none' : `transform ${reducido ? DURACION_REDUCIDA_MS : DURACION_MS}ms ${CURVA}`") && carrusel.includes('export const DURACION_REDUCIDA_MS = 200'), 'sin transición al arrastrar (1:1); con prefers-reduced-motion, un paso corto de 200 ms')
+check(carrusel.includes("style={{ touchAction: 'pan-y' }}") && carrusel.includes('onPointerCancel={(e) => terminar(e, true)}'), 'el dedo solo toma el gesto horizontal; el vertical sigue siendo de la página')
+check(carrusel.includes("if (e.pointerType === 'mouse' && !o.arrastre) return"), 'el arrastre con mouse respeta el panel')
+check(carrusel.includes('onFocusCapture={alEnfocar}'), 'el foco del teclado lleva a la página de la categoría')
+check(carrusel.includes('onPointerDown={alBajar}') && carrusel.includes('onClickCapture={alClic}') && carrusel.includes('const UMBRAL_CLIC = 6'), 'arrastre (más de 6 px) sin abrir la categoría al soltar')
 check(/import \{[^}]*\bchunkArray\b[^}]*\} from '@\/lib\/website\/estiloCategoria'/.test(grid) && !grid.includes('function chunkArray'), 'CategoriesGrid importa chunkArray del módulo puro')
 check(!/organization|org_id|organizationId/.test(carrusel), 'el carrusel no conoce organizaciones')
 
 // ─── 4. Render ──────────────────────────────────────────────────────────────────────────────
-// Grafo «HEAD»: EstilosCategoria y estiloCategoria tal como están confirmados (sin claves = hoy).
-const BASE_REF = process.env.VERIFY_BASE || 'HEAD'
+// Grafo base: EstilosCategoria y estiloCategoria antes del carrusel por páginas (sin claves = hoy).
+// Base: el commit anterior al carrusel por páginas (3bdf8d5). Contra HEAD ya no sirve: HEAD lo trae.
+const BASE_REF = process.env.VERIFY_BASE || '3bdf8d5^'
 const base = {}
 for (const ruta of ['components/sections/products/EstilosCategoria.tsx', 'lib/website/estiloCategoria.ts']) {
   try {
