@@ -147,10 +147,10 @@ async function buildMercadoPagoCheckout(
   const firstName = nameParts[0] || ''
   const lastName = nameParts.slice(1).join(' ') || ''
   const email = (order.customer_email || '').trim()
-  const phone = (order.customer_phone || '').trim()
-  // Teléfono CO: 10 dígitos, área 57 + número sin leading 0
-  const phoneArea = phone.length >= 10 ? '57' : ''
-  const phoneNumber = phone.replace(/\D/g, '')
+  // Celular en dos partes, como Wompi: «+573001234567» → área «57» y número «3001234567».
+  // Antes iba el número con el indicativo pegado (12 dígitos) y Mercado Pago no lo usaba para
+  // llenar el «Celular» de su formulario (PSE pide 10 dígitos).
+  const { prefijo: phonePrefix, numero: phoneNumber } = separarTelefonoWompi(order.customer_phone)
 
   const payer: any = {}
   if (email) payer.email = email
@@ -158,7 +158,7 @@ async function buildMercadoPagoCheckout(
   if (lastName) payer.surname = lastName
   if (phoneNumber) {
     payer.phone = { number: phoneNumber }
-    if (phoneArea) payer.phone.area_code = phoneArea
+    if (phonePrefix) payer.phone.area_code = phonePrefix.replace(/\D/g, '')
   }
 
   const preference: any = {
