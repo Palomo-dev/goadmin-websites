@@ -32,6 +32,11 @@ const TIEMPO_LIMITE_MS = 5000
  */
 export const METODOS_PEDIDO_MERCADOPAGO = ['mp_checkout', 'mp', 'mercadopago']
 export const METODO_PEDIDO_BOLD = 'bold_link'
+/**
+ * Lo que queda en `web_orders.payment_method` al pagar: el código de la pasarela en
+ * `payment_methods` (el ERP lo usa para la factura). El submétodo va en `payments.method`.
+ */
+export const METODO_PEDIDO_MP = 'mp'
 
 async function credenciales(supabase: any, organizationId: number, conectorId: string): Promise<Record<string, string> | null> {
   const { data: conexion } = await supabase
@@ -90,7 +95,7 @@ export async function consultarMercadoPago(
     monto: Number.isFinite(monto) ? monto : null,
     moneda: pago.currency_id || 'COP',
     metodoPago: mapToPaymentMethodCode(pago.payment_method_id || pago.payment_type_id, 'mercadopago'),
-    metodoPedido: pago.payment_method_id || pago.payment_type_id || 'mercadopago',
+    metodoPedido: METODO_PEDIDO_MP,
     respuesta: pago,
     proveedor: 'Mercado Pago',
     detalle: [pago.status, pago.status_detail].filter(Boolean).join(' · '),
@@ -117,7 +122,7 @@ export async function consultarBold(
     monto: Number.isFinite(monto) ? monto : null,
     moneda: 'COP',
     metodoPago: mapToPaymentMethodCode(metodo, 'bold'),
-    metodoPedido: metodo || 'bold_link',
+    metodoPedido: METODO_PEDIDO_BOLD,
     respuesta: json,
     proveedor: 'Bold',
     detalle: json.payment_status ?? null,

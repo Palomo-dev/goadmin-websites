@@ -9,6 +9,7 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { estadoEventoBold } from '@/lib/payments/pasarelasTienda'
 import { firmanteBold } from '@/lib/payments/firmanteBold'
 import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { METODO_PEDIDO_BOLD } from '@/lib/payments/consultaPasarelaTienda'
 import { debeReenviarAlErp, reenviarBoldAlErp } from '@/lib/payments/wompi-reenvio-erp'
 
 export const dynamic = 'force-dynamic'
@@ -138,7 +139,9 @@ export async function POST(request: NextRequest) {
         monto,
         moneda: currency,
         metodoPago,
-        metodoPedido: metodoCrudo || 'bold_link',
+        // El pedido guarda la pasarela, no el submétodo («card», «nequi»): el ERP factura con ese
+        // código (payment_methods) y traducía cualquier «card»/«nequi» a Wompi (2026-11-21).
+        metodoPedido: METODO_PEDIDO_BOLD,
         respuesta: body,
         proveedor: 'Bold',
         detalle: type,

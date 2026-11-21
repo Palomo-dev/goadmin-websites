@@ -9,6 +9,7 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 import { estadoMercadoPago, organizacionDeAviso } from '@/lib/payments/pasarelasTienda'
 import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { METODO_PEDIDO_MP } from '@/lib/payments/consultaPasarelaTienda'
 
 export const dynamic = 'force-dynamic'
 
@@ -400,7 +401,8 @@ export async function POST(request: NextRequest) {
         monto: Number.isFinite(Number(amount)) ? Number(amount) : null,
         moneda: currency || 'COP',
         metodoPago: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
-        metodoPedido: paymentMethodId || paymentTypeId || 'mercadopago',
+        // La pasarela, no el submétodo («visa», «account_money»): el ERP factura con `mp`.
+        metodoPedido: METODO_PEDIDO_MP,
         respuesta: paymentData,
         proveedor: 'Mercado Pago',
         detalle: [mpStatus, statusDetail].filter(Boolean).join(' · '),
