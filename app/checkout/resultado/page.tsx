@@ -56,7 +56,10 @@ async function getOrderByRef(organizationId: number, orderNumber: string, transa
 
   // Lo mismo con Mercado Pago y Bold: si el aviso aún no llegó, se le pregunta al proveedor y se
   // aplica con la misma pieza que usan sus webhooks (monto, idempotencia, ERP y correo una vez).
-  if (data.payment_status === 'pending' && [...METODOS_PEDIDO_MERCADOPAGO, METODO_PEDIDO_BOLD].includes(data.payment_method)) {
+  // También el pedido que `expire_pending_web_orders` venció a los 30 min sin aviso: si el cliente
+  // sí pagó (aviso tardío o webhook sin configurar, 2026-11-21), el pago lo revive (failed → paid).
+  const vencidoSinAviso = data.status === 'expired' && data.payment_status === 'failed'
+  if ((data.payment_status === 'pending' || vencidoSinAviso) && [...METODOS_PEDIDO_MERCADOPAGO, METODO_PEDIDO_BOLD].includes(data.payment_method)) {
     try {
       const resultado =
         data.payment_method === METODO_PEDIDO_BOLD ? await consultarBold(supabase, data) : await consultarMercadoPago(supabase, data)
