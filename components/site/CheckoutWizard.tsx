@@ -31,6 +31,7 @@ import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
+import { abrirBoldDesdeUrl, cargarLibreriaBold } from '@/lib/payments/boldCheckoutCliente'
 import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
 
 interface CartModifier {
@@ -267,6 +268,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const [paymentMethod, setPaymentMethod] = useState<string>(
     availableMethods.length > 0 ? availableMethods[0].code : 'cash'
   )
+  // Bold elegido: su librería se carga mientras la persona termina el formulario, para que
+  // «Pagar» abra el pago de Bold al instante (sin la página intermedia).
+  useEffect(() => {
+    if (BOLD_CODES.has(paymentMethod)) cargarLibreriaBold().catch(() => {})
+  }, [paymentMethod])
   // Si la sede cambia y el método elegido no está habilitado en la nueva
   // (branch_ids del ERP), se pasa al primero permitido. Sin métodos por sede
   // configurados la lista no cambia y esto no hace nada.
@@ -753,6 +759,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           window.dispatchEvent(new CustomEvent('cart-updated'))
           // Pedido creado: la mesa del QR ya cumplió (el siguiente pedido no sale como «comer aquí»).
           if (orderType === 'dine_in') limpiarMesa(organizationSubdomain || '')
+
+          // Bold: abrir su pago directo, sin la página intermedia /checkout/bold (2026-11-21).
+          // Si no se puede (librería sin cargar, red), esa página queda de respaldo.
+          if (BOLD_CODES.has(paymentMethod) && (await abrirBoldDesdeUrl(initData.checkoutUrl))) return
 
           // Redirigir a la pasarela de pago
           window.location.href = initData.checkoutUrl

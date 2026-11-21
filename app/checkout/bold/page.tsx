@@ -1,57 +1,16 @@
 'use client'
 
 /**
- * Página intermedia del Botón de pagos de Bold.
- *
- * Antes se cargaba la librería y DESPUÉS se agregaba un `<script data-bold-button>`: la
- * librería solo busca esos botones al cargar, así que el botón nunca aparecía y la página
- * quedaba en «Procesando pago con Bold» (lo vio el dueño el 2026-11-21 con llaves de prueba).
- *
- * Ahora se usa la integración personalizada documentada por Bold
- * (developers.bold.co › Botón de pagos › Integración personalizada): `new BoldCheckout({...})`
- * y `checkout.open()`. Se abre solo una vez al cargar y queda el botón «Pagar con Bold» por si
- * el navegador no lo abrió. La firma de integridad la arma el servidor (`checkout/init`).
+ * Página intermedia del Botón de pagos de Bold: RESPALDO. El checkout abre Bold directo al
+ * tocar «Pagar» (`abrirBoldDesdeUrl`); aquí solo se llega si eso no pudo (o con un enlace
+ * guardado). Abre Bold sola una vez y deja el botón «Pagar con Bold» por si el navegador no
+ * lo abrió. Antes se agregaba un `<script data-bold-button>` después de cargar la librería y
+ * el botón nunca aparecía (2026-11-21).
  */
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-
-const URL_LIBRERIA_BOLD = 'https://checkout.bold.co/library/boldPaymentButton.js'
-
-interface InstanciaBold {
-  open: () => void
-}
-type ConstructorBold = new (config: Record<string, string>) => InstanciaBold
-
-function constructorBold(): ConstructorBold | null {
-  const w = window as unknown as { BoldCheckout?: ConstructorBold }
-  return typeof w.BoldCheckout === 'function' ? w.BoldCheckout : null
-}
-
-/** Carga la librería una sola vez; resuelve cuando `BoldCheckout` existe. */
-function cargarLibreriaBold(): Promise<void> {
-  if (constructorBold()) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    let script = document.querySelector<HTMLScriptElement>(`script[src="${URL_LIBRERIA_BOLD}"]`)
-    const listo = () => (constructorBold() ? resolve() : reject(new Error('BoldCheckout no disponible')))
-    if (script) {
-      script.addEventListener('load', listo, { once: true })
-      script.addEventListener('error', () => reject(new Error('No cargó la librería de Bold')), { once: true })
-      // Ya había cargado antes de escuchar: comprobar en el siguiente ciclo.
-      setTimeout(() => constructorBold() && resolve(), 0)
-      return
-    }
-    script = document.createElement('script')
-    script.src = URL_LIBRERIA_BOLD
-    script.async = true
-    script.onload = listo
-    script.onerror = () => {
-      script?.remove()
-      reject(new Error('No cargó la librería de Bold'))
-    }
-    document.head.appendChild(script)
-  })
-}
+import { cargarLibreriaBold, configBoldDesdeParametros, crearCheckoutBold, type InstanciaBold } from '@/lib/payments/boldCheckoutCliente'
 
 function BoldButtonContent() {
   const { ruta } = useRutaSitio()
@@ -61,15 +20,8 @@ function BoldButtonContent() {
   const [estado, setEstado] = useState<'cargando' | 'listo' | 'error'>('cargando')
   const [intento, setIntento] = useState(0)
 
-  const apiKey = searchParams.get('apiKey') || ''
-  const orderId = searchParams.get('orderId') || ''
-  const amount = searchParams.get('amount') || ''
-  const currency = searchParams.get('currency') || 'COP'
-  const description = searchParams.get('description') || ''
-  const integritySignature = searchParams.get('integritySignature') || ''
-  const redirectionUrl = searchParams.get('redirectionUrl') || ''
-  const customerData = searchParams.get('customerData') || ''
-  const billingAddress = searchParams.get('billingAddress') || ''
+  const parametros = searchParams.toString()
+  const config = configBoldDesdeParametros(new URLSearchParams(parametros))
 
   const abrir = useCallback(() => {
     try {
@@ -81,23 +33,15 @@ function BoldButtonContent() {
   }, [])
 
   useEffect(() => {
-    if (!apiKey || !orderId || !amount) return
+    const cfg = configBoldDesdeParametros(new URLSearchParams(parametros))
+    if (!cfg) return
     let vigente = true
     setEstado('cargando')
     cargarLibreriaBold()
       .then(() => {
         if (!vigente) return
-        const Bold = constructorBold()
-        if (!Bold) throw new Error('BoldCheckout no disponible')
-        const config: Record<string, string> = { orderId, currency, amount, apiKey }
-        if (description) config.description = description
-        if (integritySignature) config.integritySignature = integritySignature
-        if (redirectionUrl) config.redirectionUrl = redirectionUrl
-        if (customerData) config.customerData = customerData
-        if (billingAddress) config.billingAddress = billingAddress
-        checkoutRef.current = new Bold(config)
+        checkoutRef.current = crearCheckoutBold(cfg)
         setEstado('listo')
-        // Se abre solo una vez; si el navegador lo impide, queda el botón.
         if (!abiertoRef.current) {
           abiertoRef.current = true
           abrir()
@@ -110,9 +54,9 @@ function BoldButtonContent() {
     return () => {
       vigente = false
     }
-  }, [apiKey, orderId, amount, currency, description, integritySignature, redirectionUrl, customerData, billingAddress, intento, abrir])
+  }, [parametros, intento, abrir])
 
-  if (!apiKey || !orderId || !amount) {
+  if (!config) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8">
@@ -128,7 +72,7 @@ function BoldButtonContent() {
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
         <h1 className="text-xl font-bold text-gray-900 mb-2">Pago con Bold</h1>
         <p className="text-gray-500 text-sm mb-6">
-          Pedido: <strong>{orderId}</strong> — ${Number(amount).toLocaleString('es-CO')} {currency}
+          Pedido: <strong>{config.orderId}</strong> — ${Number(config.amount).toLocaleString('es-CO')} {config.currency}
         </p>
 
         {estado === 'cargando' && <p className="text-gray-400 text-sm mb-6" role="status">Abriendo el pago seguro de Bold…</p>}
