@@ -162,12 +162,19 @@ const METHOD_ICONS: Record<string, string> = {
 
 // Códigos que corresponden a Wompi (pasarela colombiana)
 const WOMPI_CODES = new Set(['wompi', 'wompi_co'])
+// Mercado Pago: el ERP lo enlaza como 'mp'; 'mp_checkout' es el código viejo del conector.
+const MERCADOPAGO_CODES = new Set(['mp', 'mp_checkout'])
 
-// Ícono de Wompi: billetera verde sobre fondo verde claro, cuadrado redondeado
-function WompiIcon() {
+// Ícono de pasarela: billetera sobre fondo claro, cuadrado redondeado.
+// Wompi en verde y Mercado Pago en azul (sus colores), sin usar sus logos.
+function IconoPasarela({ tono }: { tono: 'verde' | 'azul' }) {
+  const estilo =
+    tono === 'verde'
+      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400'
+      : 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400'
   return (
-    <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0 border border-green-200 dark:border-green-800">
-      <Wallet className="w-5 h-5 text-green-600 dark:text-green-400" />
+    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${estilo}`}>
+      <Wallet className="w-5 h-5" aria-hidden="true" />
     </div>
   )
 }
@@ -855,7 +862,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     const isWompi = WOMPI_CODES.has(m.code)
     return {
       id: m.code,
-      icon: isWompi ? <WompiIcon /> : <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>,
+      icon: isWompi ? (
+        <IconoPasarela tono="verde" />
+      ) : MERCADOPAGO_CODES.has(m.code) ? (
+        <IconoPasarela tono="azul" />
+      ) : (
+        <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>
+      ),
       label: m.name,
       description: m.description || null,
       isWompi,
