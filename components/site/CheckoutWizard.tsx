@@ -164,14 +164,19 @@ const METHOD_ICONS: Record<string, string> = {
 const WOMPI_CODES = new Set(['wompi', 'wompi_co'])
 // Mercado Pago: el ERP lo enlaza como 'mp'; 'mp_checkout' es el código viejo del conector.
 const MERCADOPAGO_CODES = new Set(['mp', 'mp_checkout'])
+// Bold: 'bold_link' es el método del link de pago (el único de Bold que va en la tienda).
+const BOLD_CODES = new Set(['bold', 'bold_link'])
 
 // Ícono de pasarela: billetera sobre fondo claro, cuadrado redondeado.
-// Wompi en verde y Mercado Pago en azul (sus colores), sin usar sus logos.
-function IconoPasarela({ tono }: { tono: 'verde' | 'azul' }) {
-  const estilo =
-    tono === 'verde'
-      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400'
-      : 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400'
+// Wompi en verde, Mercado Pago en azul y Bold en rojo (sus colores), sin usar sus logos.
+const ESTILO_PASARELA = {
+  verde: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400',
+  azul: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400',
+  rojo: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
+} as const
+
+function IconoPasarela({ tono }: { tono: keyof typeof ESTILO_PASARELA }) {
+  const estilo = ESTILO_PASARELA[tono]
   return (
     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${estilo}`}>
       <Wallet className="w-5 h-5" aria-hidden="true" />
@@ -866,6 +871,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         <IconoPasarela tono="verde" />
       ) : MERCADOPAGO_CODES.has(m.code) ? (
         <IconoPasarela tono="azul" />
+      ) : BOLD_CODES.has(m.code) ? (
+        <IconoPasarela tono="rojo" />
       ) : (
         <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>
       ),
