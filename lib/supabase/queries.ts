@@ -275,9 +275,11 @@ const getWebSalesByProductUncached = async (organizationId: number): Promise<Rec
       .order('id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
     if (error) {
-      // Se lanza (no se devuelve un mapa a medias): así unstable_cache conserva el
-      // último resultado bueno en vez de guardar uno incompleto 10 minutos.
-      throw new Error(`[queries] getWebSalesByProduct: ${error.message || error}`)
+      // Con la base lenta, relanzar la consulta en cada visita la hunde más
+      // (incidente 2026-11-21). Se devuelve lo que haya (o vacío) y queda en
+      // caché: la portada pierde el orden de «más vendidos» unos minutos y nada más.
+      console.error('[queries] getWebSalesByProduct error:', error.message || error)
+      break
     }
     for (const item of data || []) {
       if (item.product_id == null) continue
