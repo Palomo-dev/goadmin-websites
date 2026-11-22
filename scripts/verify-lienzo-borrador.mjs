@@ -78,6 +78,14 @@ try {
   igual(lienzo.parametrosDelLienzo({ marco: '1', preview: '1', hora: '21:30' }), { preview: '1', hora: '21:30' }, 'lienzo: «Ver como» (hora) también pasa')
   igual(lienzo.parametrosDelLienzo({ marco: '1' }), {}, 'Vista previa (barra): sin preview, la página no recibe nada, como antes')
   igual(lienzo.parametrosDelLienzo({ preview: ['1', '1'], hora: '9:30', mesa: 'x', sitio: 'y' }), {}, 'lienzo: listas, horas mal formadas y otros parámetros se descartan')
+  // Ficha de producto y categoría con la plantilla del borrador (lienzo del editor, 2026-11-22).
+  const uuid = '0d5bad5c-9f77-42cf-b9a1-45f7418284c9'
+  igual(lienzo.plantillaDetalleDeRuta(['productos', uuid]), { tipo: 'producto', id: uuid }, 'vista previa: productos/<uuid> pinta la ficha con el borrador')
+  igual(lienzo.plantillaDetalleDeRuta(['categorias', 'celulares']), { tipo: 'categoria', slug: 'celulares' }, 'vista previa: categorias/<slug> pinta la categoría con el borrador')
+  igual(lienzo.plantillaDetalleDeRuta(['productos', '123']), null, 'vista previa: un id que no es uuid sigue por el catch-all')
+  igual(lienzo.plantillaDetalleDeRuta(['productos']), null, 'vista previa: /productos (listado) sigue por el catch-all')
+  igual(lienzo.plantillaDetalleDeRuta(['nosotros']), null, 'vista previa: una página normal sigue por el catch-all')
+  igual(lienzo.plantillaDetalleDeRuta(['categorias', '../x']), null, 'vista previa: un slug raro no se acepta')
 
   // ─── 2. Página oculta solo en la vista previa ───────────────────────────────────────────────
   const vista = await import(pathToFileURL(await cargarTs(ROOT, 'lib/website/v2/vistaPublica.ts', tmp)).href)
@@ -106,6 +114,7 @@ try {
   const previa = await leer('app/vista-previa/[token]/[[...slug]]/page.tsx')
   check(/searchParams: Promise\.resolve\(parametrosDelLienzo\(busqueda\)\)/.test(previa), 'vista-previa: la capa interior pasa preview/hora a la página')
   check(/if \(!verificacion\.ok\) \{[\s\S]{0,120}notFound\(\)/.test(previa) && /if \(orgDelHost !== carga\.o\) \{[\s\S]{0,160}notFound\(\)/.test(previa), 'vista-previa: sigue exigiendo firma válida y la organización del host')
+  check(/borrador\.sitio\.branchId === null \? plantillaDetalleDeRuta\(ruta\) : null/.test(previa) && previa.indexOf('plantillaDetalleDeRuta(ruta)') > previa.indexOf('fijarSitioVistaPrevia(carga.o, borrador.sitio)'), 'vista-previa: la ficha y la categoría del principal se pintan DESPUÉS de fijar el borrador')
   const lector = await leer('lib/website/v2/lectorPublico.ts')
   check(/const enBorrador = sitioVistaPreviaDe\(organizationId\) !== null[\s\S]{0,200}\{ incluirOcultas: enBorrador \}/.test(lector), 'getPaginaPublica: las ocultas solo con el borrador de la vista previa fijado')
   const catchAll = await leer('app/[[...slug]]/page.tsx')

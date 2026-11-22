@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import CatchAllPage from '@/app/[[...slug]]/page'
+import ProductoDetailPage from '@/app/productos/[id]/page'
+import CategoriaSlugPage from '@/app/categorias/[slug]/page'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { createAdminClient } from '@/lib/supabase/server'
 import { urlEditorSegura, verificarTokenVistaPrevia } from '@/lib/website/v2/enlaceVistaPrevia'
 import { getSitioBorradorV2 } from '@/lib/website/v2/lectorPublico'
 import { fijarSitioVistaPrevia } from '@/lib/website/v2/vistaPreviaBorrador'
-import { parametrosDelLienzo } from '@/lib/website/v2/lienzoVistaPrevia'
+import { parametrosDelLienzo, plantillaDetalleDeRuta } from '@/lib/website/v2/lienzoVistaPrevia'
 import { BarraVistaPrevia, type SitioSelector } from '@/components/site/BarraVistaPrevia'
 
 /**
@@ -114,6 +116,13 @@ export default async function VistaPreviaBorradorPage({
   // ── Capa interior: el sitio armado con el borrador ──
   if (busqueda.marco === '1') {
     fijarSitioVistaPrevia(carga.o, borrador.sitio)
+    // Ficha de producto y página de categoría del sitio principal: con el borrador fijado leen la
+    // plantilla del BORRADOR (getPlantillaPublica), así el lienzo del editor ve lo que se edita.
+    const detalle = borrador.sitio.branchId === null ? plantillaDetalleDeRuta(ruta) : null
+    if (detalle?.tipo === 'producto') return ProductoDetailPage({ params: Promise.resolve({ id: detalle.id }) })
+    if (detalle?.tipo === 'categoria') {
+      return CategoriaSlugPage({ params: Promise.resolve({ slug: detalle.slug }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
+    }
     // Sitio de una sede: su prefijo de ruta, para que productos, stock y carta salgan de esa sede.
     const sede = borrador.sitio.branchId !== null ? sedes.get(borrador.sitio.branchId) : undefined
     const conSede = sede?.slug && sede.is_web_published ? [sede.slug, ...ruta] : ruta
