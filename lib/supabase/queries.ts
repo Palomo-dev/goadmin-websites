@@ -262,6 +262,19 @@ function variantCountFor(product: any, info: VariantChildrenInfo): number | unde
 const getWebSalesByProductUncached = async (organizationId: number): Promise<Record<number, number>> => {
   const supabase = getSupabaseForPublicRead()
   const salesMap: Record<number, number> = {}
+  // La base suma por producto en una sola consulta (migración 20261122015222,
+  // solo service_role). Si la función no está, se sigue con la paginación de antes.
+  const { data: sumas, error: errorSumas } = await (supabase as any).rpc('fn_tienda_ventas_web_por_producto', {
+    p_organization_id: organizationId,
+  })
+  if (!errorSumas && Array.isArray(sumas)) {
+    for (const fila of sumas as { product_id: number | null; cantidad: number | string | null }[]) {
+      if (fila.product_id == null) continue
+      salesMap[fila.product_id] = Number(fila.cantidad || 0)
+    }
+    return salesMap
+  }
+  if (errorSumas) console.error('[queries] fn_tienda_ventas_web_por_producto:', errorSumas.message || errorSumas)
   const PAGE_SIZE = 1000
   let from = 0
   let hasMore = true
