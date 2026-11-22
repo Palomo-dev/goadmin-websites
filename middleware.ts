@@ -329,6 +329,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Favoritos: la página es pública (/favoritos, Figma 2764:61164). La ruta vieja de la cuenta
+  // redirige antes de que el layout de /mi-cuenta mande a iniciar sesión. Conserva el prefijo de
+  // sede (`/<sede>/mi-cuenta/favoritos` → `/<sede>/favoritos`) y la consulta.
+  if (/\/mi-cuenta\/favoritos\/?$/.test(url.pathname)) {
+    const destino = request.nextUrl.clone()
+    destino.pathname = url.pathname.replace(/\/mi-cuenta\/favoritos\/?$/, '/favoritos')
+    return NextResponse.redirect(destino, 308)
+  }
+
   // --- Refresco de sesión Supabase Auth ---
   // Esto mantiene las cookies de sesión JWT válidas entre requests
   // Se reenvían las cabeceras de la petición sin las de sede (cabecerasSinSede).

@@ -43,7 +43,7 @@ import { Price } from '@/components/site/CurrencyProvider'
 import { getAvailableStock, isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useFavorites } from '@/lib/hooks/useFavorites'
-import { useAuthCustomer } from '@/lib/hooks/useAuthCustomer'
+import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
 import { ProductQuickView } from '@/components/site/ProductQuickView'
 import { useDialogoVariantes } from '@/components/site/DialogoVariantes'
 import { ShareDialog } from '@/components/site/ShareDialog'
@@ -991,14 +991,17 @@ export function ProductCard({
   const [shareOpen, setShareOpen] = useState(false)
   const added = isAdded || internalAdded
 
-  // Auto-detectar cliente autenticado si no se pasan props explícitos
   const effectiveOrgId = organizationId ?? product.organization_id ?? null
-  const { customer: autoCustomer } = useAuthCustomer(effectiveOrgId)
-  const effectiveCustomerId = customerId ?? autoCustomer?.id ?? null
 
-  // Favoritos
-  const { isFavorite, toggleFavorite } = useFavorites({ customerId: effectiveCustomerId, organizationId: effectiveOrgId })
+  // Favoritos: un solo almacén para la página (dispositivo sin sesión, cuenta con sesión; la
+  // organización y el cliente los resuelve el servidor). `customerId` queda por compatibilidad.
+  const { isFavorite, toggleFavorite } = useFavorites()
   const fav = isFavorite(Number(product.id))
+  // Precio que ve el visitante al guardarlo: «Bajó de precio» en /favoritos.
+  const alternarFavorito = (id: number) => {
+    void toggleFavorite(id, getProductPrice(product))
+  }
+  const { favoritos: opcionesFavoritos } = useOpcionesTienda()
 
   const price = getProductPrice(product)
   const comparePrice = getProductComparePrice(product)
@@ -1179,6 +1182,9 @@ export function ProductCard({
       effectiveBadges = [...propias, ...extras]
     }
   }
+  // Encabezado › Favoritos › «Corazón en las tarjetas» apagado: ningún corazón, diga lo que diga
+  // el estilo de la tarjeta. Encendido (por defecto) manda el estilo, como hoy.
+  if (!opcionesFavoritos.corazonTarjetas) effectiveButtons = effectiveButtons.filter((btn) => btn.action !== 'wishlist')
 
   // «Unidades vendidas» del estilo de tarjeta: la misma etiqueta en toda variante y plantilla,
   // aunque la sección tenga su propia lista de etiquetas. La lista horizontal de hoy ya la escribe.
@@ -1335,7 +1341,7 @@ export function ProductCard({
                     iconOnly={iconOnly}
                     cardStyle={mergedCardStyle}
                     isFavorite={fav}
-                    onToggleFavorite={toggleFavorite}
+                    onToggleFavorite={alternarFavorito}
                     onQuickView={() => setQuickViewOpen(true)}
                     onShare={() => setShareOpen(true)}
                     iconoElegir={iconoElegir}
@@ -1418,7 +1424,7 @@ export function ProductCard({
             iconOnly={iconOnly}
             cardStyle={mergedCardStyle}
             isFavorite={fav}
-            onToggleFavorite={toggleFavorite}
+            onToggleFavorite={alternarFavorito}
             onQuickView={() => setQuickViewOpen(true)}
             onShare={() => setShareOpen(true)}
             iconoElegir={iconoElegir}
@@ -1648,7 +1654,7 @@ export function ProductCard({
         primaryColor={primaryColor}
         onAddToCart={handleAdd}
         isFavorite={fav}
-        onToggleFavorite={toggleFavorite}
+        onToggleFavorite={alternarFavorito}
         onShare={() => { setQuickViewOpen(false); setShareOpen(true) }}
       />
 

@@ -22,6 +22,7 @@ import { mapaDeTags, soldOutReturnLabel, toMenuItem, type MenuItem, type MenuSou
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { textoPlano } from '@/lib/texto/textoPlano'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
+import { useFavorites } from '@/lib/hooks/useFavorites'
 
 // ── Types ──
 
@@ -153,7 +154,10 @@ export function MenuView({
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set())
-  const [favorites, setFavorites] = useState<Set<number>>(new Set(initialFavorites))
+  // Favoritos: el almacén único de la tienda (tabla de la cuenta, o metadata de respaldo). Antes
+  // partía de `initialFavorites` (metadata) y escribía por su cuenta; la prop queda por compatibilidad.
+  void initialFavorites
+  const { favorites, toggleFavorite: alternarFavorito } = useFavorites()
 
   // QR de mesa (?mesa= / ?table=): validada en el servidor contra restaurant_tables y guardada
   // en sessionStorage con caducidad (lib/restaurant/useMesaQR.ts). Id inválido → sin mesa.
@@ -313,33 +317,10 @@ export function MenuView({
     addToCart(product, 1, '', [], [])
   }
 
-  const toggleFavorite = async (e: React.MouseEvent, productId: number) => {
+  const toggleFavorite = (e: React.MouseEvent, productId: number) => {
     e.stopPropagation()
-    if (!customerId || !organizationId) return
-    const isFav = favorites.has(productId)
-    const action = isFav ? 'remove' : 'add'
-
-    // Optimistic update
-    setFavorites(prev => {
-      const next = new Set(prev)
-      isFav ? next.delete(productId) : next.add(productId)
-      return next
-    })
-
-    try {
-      await fetch('/api/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, organizationId, productId, action }),
-      })
-    } catch {
-      // Revert on error
-      setFavorites(prev => {
-        const next = new Set(prev)
-        isFav ? next.add(productId) : next.delete(productId)
-        return next
-      })
-    }
+    if (!customerId) return
+    void alternarFavorito(productId)
   }
 
   return (

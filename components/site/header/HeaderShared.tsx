@@ -19,6 +19,7 @@ import {
 import { atributoAlBajar, botonConOpcionesNuevas, diametroCirculo, estiloPildora, medidasBoton, opcionesBoton, radioBoton, segundoBotonConOpciones, variablesPildora, type OpcionesBoton } from '@/lib/website/pildora';
 import { SearchBarInput } from '../SearchBarInput';
 import { CartIndicator } from '../CartIndicator';
+import { AccesoFavoritosCabecera } from '../favoritos/AccesoFavoritosCabecera';
 import { CurrencySelector } from '../CurrencySelector';
 import { useCurrency } from '../CurrencyProvider';
 import { createClient } from '@/lib/supabase/client';
@@ -746,7 +747,8 @@ export function HeaderActions({
       />
     </IconoConCirculo>
   )
-  // Favoritos (solo si el sitio lo prendió y la tienda vende productos: /mi-cuenta/favoritos).
+  // Favoritos (solo si el sitio lo prendió y la tienda vende productos). Al tocarlo, el panel
+  // lateral o /favoritos según Encabezado › Favoritos (Figma 2772:62317), con contador.
   const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(Heart, presFavoritos) : contenedor ? (
     <ContenedorIcono base={contenedor} clave="favorites" colores={coloresCaja}>
       <Heart style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)} />
@@ -780,14 +782,14 @@ export function HeaderActions({
       <MonedaBarraMovil key="currency" opciones={opMoneda} claseColor={claseColorIcono(claseIcono, heredarColor)} />
     ) : null,
     favorites: !isMobile && showCart && opIconos.favoritos ? (
-      <Link
+      <AccesoFavoritosCabecera
         key="favorites"
-        href="/mi-cuenta/favoritos"
-        aria-label={presFavoritos?.texto ? undefined : textoIcono(opIconos, 'favoritos')}
+        ariaLabel={presFavoritos?.texto ? undefined : textoIcono(opIconos, 'favoritos')}
+        primaryColor={primaryColor}
         className={presFavoritos && estiloPropio(presFavoritos.estilo) ? claseEnlaceNuevo(presFavoritos.estilo) : 'p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors'}
       >
         {iconoFavoritos}
-      </Link>
+      </AccesoFavoritosCabecera>
     ) : null,
     cart: showHeaderCart ? (
       <CartIndicator

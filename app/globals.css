@@ -1163,6 +1163,53 @@ header a[data-categoria-activa][data-categoria-activa] {
 
 /* Cajón del carrito abierto (CartDrawer): el botón flotante del chat (Shadow DOM con z-index
    máximo) no tapa «Comprar ahora» ni «Ver carrito completo». */
-html[data-carrito-abierto] [data-gochat-widget] {
+html[data-carrito-abierto] [data-gochat-widget],
+html[data-favoritos-abierto] [data-gochat-widget] {
   display: none !important;
+}
+
+/* Favoritos (Figma 2767:61793): al marcar, el corazón se llena con un pulso corto (1 → 1,25 → 1
+   en 300 ms) y el contador de la cabecera rebota. Con «reducir movimiento», solo cambia el color. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes latido-favorito {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  .latido-favorito {
+    animation: latido-favorito 300ms ease-out;
+  }
+  @keyframes rebote-contador-favoritos {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-3px); }
+  }
+  .rebote-contador-favoritos {
+    animation: rebote-contador-favoritos 300ms ease-out;
+  }
+  @keyframes aviso-favoritos-entra {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .aviso-favoritos {
+    animation: aviso-favoritos-entra 200ms ease-out;
+  }
+}
+
+/* Botón principal del carrito, modo «mientras está abierto» (Figma 2774:64169): el texto entra
+   con fundido de 300 ms o deslizando. Con «reducir movimiento» no hay animación (sin efecto). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes texto-boton-fundido {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .texto-boton-fundido {
+    animation: texto-boton-fundido 300ms ease-out;
+  }
+  @keyframes texto-boton-deslizar {
+    from { opacity: 0; transform: translateY(60%); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .texto-boton-deslizar {
+    animation: texto-boton-deslizar 300ms ease-out;
+  }
 }

@@ -13,7 +13,8 @@ import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib
 import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-import { avanceEnvioGratis, opcionesCarrito, partirMensajeMonto, textoBotonCarrito, type OpcionesCarrito } from '@/lib/website/v2/cabeceraTienda'
+import { avanceEnvioGratis, opcionesCarrito, partirMensajeMonto, type OpcionesCarrito } from '@/lib/website/v2/cabeceraTienda'
+import { TextoBotonCarrito, usePausaBoton } from './TextoBotonCarrito'
 
 interface CartModifier {
   modifierId: number
@@ -76,18 +77,10 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   const { formatPrice } = useCurrency()
   // Promociones automáticas (mismo motor que checkout y /api/orders)
   const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
-  // Botón principal: «Dinámico» elige un texto cada vez que se abre el carrito y se queda mientras
-  // está abierto (decisión del dueño, 2026-11-22); «Texto fijo», siempre el mismo. Antes se elegía
-  // una sola vez por visita. Cambiar los textos en el editor (vista previa) también lo recalcula.
-  // Se elige durante el render (estado derivado), no en un efecto: así el cajón no pinta un cuadro
-  // con el texto anterior antes de cambiarlo.
-  const claveBoton = JSON.stringify(opciones.boton)
-  const [checkoutButtonText, setCheckoutButtonText] = useState(() => textoBotonCarrito(opciones.boton))
-  const [eleccionBoton, setEleccionBoton] = useState({ abierto: isOpen, clave: claveBoton })
-  if (eleccionBoton.abierto !== isOpen || eleccionBoton.clave !== claveBoton) {
-    setEleccionBoton({ abierto: isOpen, clave: claveBoton })
-    if (isOpen) setCheckoutButtonText(textoBotonCarrito(opciones.boton))
-  }
+  // Botón principal (Figma 2773:62797 – 2775:64409): fijo, al abrir (azar sin repetir / en orden),
+  // mientras está abierto (rota cada N s, se pausa con el mouse) o según el carrito. Lo elige
+  // TextoBotonCarrito; sin configuración nueva, el de la fila legacy, como hoy.
+  const [botonPausado, pausaBoton] = usePausaBoton()
 
   // El botón flotante del chat (Shadow DOM con z-index máximo) no tapa los botones del cajón:
   // mientras está abierto se oculta (regla en app/globals.css).
@@ -175,6 +168,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   const conEnvioGratis = topeEnvio > 0 && items.length > 0
   const envioLogrado = conEnvioGratis && subtotal >= topeEnvio
   const mensajeFalta = partirMensajeMonto(opciones.envioGratis.mensaje)
+  // «Según el carrito»: tope de envío gratis, subtotal y si hay algo en oferta (precio anterior o promoción).
+  const estadoBoton = {
+    subtotal,
+    topeEnvioGratis: topeEnvio,
+    hayOferta: promoDiscount > 0 || items.some((item) => item.comparePrice != null && Number(item.comparePrice) > item.price),
+  }
   const avance = Math.round(avanceEnvioGratis(subtotal, topeEnvio) * 100)
 
   if (!isOpen) return null
@@ -434,8 +433,8 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 los botones quedaban pegados. */}
             <div className="flex flex-col gap-2.5 pt-1">
               <Button asChild className="w-full h-12 text-base font-semibold" style={{ backgroundColor: primaryColor }}>
-                <Link href={ruta('/checkout')} onClick={onClose} data-boton-carrito="principal">
-                  {checkoutButtonText}
+                <Link href={ruta('/checkout')} onClick={onClose} data-boton-carrito="principal" data-modo-boton={opciones.boton.modo} {...pausaBoton}>
+                  <TextoBotonCarrito boton={opciones.boton} abierto={isOpen} estado={estadoBoton} alcance="cajon" pausado={opciones.boton.pausar !== false && botonPausado} />
                 </Link>
               </Button>
 

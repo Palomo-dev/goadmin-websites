@@ -17,6 +17,8 @@ import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProd
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { usePadresEnCarrito } from '@/lib/orders/usePadresEnCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
+import { TextoBotonCarrito, usePausaBoton } from '@/components/site/TextoBotonCarrito'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -100,6 +102,12 @@ export function CartPageClient({
     const options = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
     return options[Math.floor(Math.random() * options.length)]
   })
+  // «Comprar» de /carrito (Figma 2777:64932): con «Usar lo mismo en Comprar» (por defecto) cambia
+  // igual que el botón del cajón; apagado, con su propia configuración. Sin botón en el documento
+  // (`botonPagina` nulo), el texto de hoy.
+  const { carrito: opcionesCarrito } = useOpcionesTienda()
+  const botonPagina = opcionesCarrito.botonPagina
+  const [botonPausado, pausaBoton] = usePausaBoton()
   const cartKey = getCartKey(organizationSubdomain, branchId)
   const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`
 
@@ -188,6 +196,17 @@ export function CartPageClient({
     : 0
   // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
   const total = Math.max(0, subtotal + tax + shipping - promoDiscount)
+  // «Según el carrito» con los mismos datos que el cajón: tope de envío gratis y ofertas.
+  const estadoBoton = {
+    subtotal,
+    topeEnvioGratis: cartSettings.enableShipping ? cartSettings.freeShippingThreshold : 0,
+    hayOferta: promoDiscount > 0 || items.some((item) => item.comparePrice != null && Number(item.comparePrice) > item.price),
+  }
+  const textoComprar = botonPagina ? (
+    <TextoBotonCarrito boton={botonPagina} abierto estado={estadoBoton} alcance="pagina" pausado={botonPagina.pausar !== false && botonPausado} />
+  ) : (
+    checkoutButtonText
+  )
 
   // Progreso para envío gratis
   const freeShippingProgress = cartSettings.freeShippingThreshold > 0
@@ -456,7 +475,7 @@ export function CartPageClient({
                     className="w-full h-12 font-semibold text-base"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    {checkoutButtonText}
+                    {textoComprar}
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Button>
                   <p role="status" className="text-xs text-red-600 dark:text-red-400">
@@ -464,12 +483,12 @@ export function CartPageClient({
                   </p>
                 </div>
               ) : (
-              <Link href={ruta('/checkout')} className="block mt-6">
+              <Link href={ruta('/checkout')} className="block mt-6" data-boton-carrito="pagina" data-modo-boton={botonPagina?.modo ?? 'hoy'} {...pausaBoton}>
                 <Button
                   className="w-full h-12 font-semibold text-base"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  {checkoutButtonText}
+                  {textoComprar}
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>

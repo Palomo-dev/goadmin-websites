@@ -4,13 +4,17 @@ import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { MenuInferior } from './MenuInferior'
 import { menuFlotanteDesdeEncabezado, pildoraMovil } from '@/lib/website/pildora'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import SiteHeader from './SiteHeader'
 import { SiteFooter } from './SiteFooter'
 import { ZonaGlobalPreview } from './ZonaGlobalPreview'
 import { AjustesVivosProvider } from './AjustesVivosContext'
 import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPreview'
 import { CartDrawer } from './CartDrawer'
+import { FavoritosDrawer } from './favoritos/FavoritosDrawer'
+import { AvisoFavoritos } from './favoritos/AvisoFavoritos'
+import { OpcionesTiendaProvider } from './OpcionesTiendaContext'
+import { EVENTO_ABRIR_FAVORITOS } from '@/lib/favoritos/almacen'
 import { CountdownBanner } from './CountdownBanner'
 import { ContadoresDe } from './ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
@@ -52,7 +56,7 @@ import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, opcionesPlantillaTienda, variantesFuenteTienda, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 import { headerSobreHero, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { contarUnidadesCarrito } from '@/lib/cart'
-import { opcionesCarrito, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
+import { opcionesCarrito, opcionesFavoritos, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -169,6 +173,23 @@ export function OrganizationLayoutCliente({
   pasosMesa = null,
 }: OrganizationLayoutProps) {
   const [cartOpen, setCartOpen] = useState(false)
+  // Panel de favoritos (Figma 2767:61943): lo abre el corazón de la cabecera y «Ver favoritos» del
+  // aviso con el evento `abrir-favoritos`. Mientras está abierto, «Agregar» de una fila no abre
+  // el carrito encima (el ref se lee en el oyente de `cart-updated`).
+  const [favoritosOpen, setFavoritosOpen] = useState(false)
+  const favoritosAbiertoRef = useRef(false)
+  const cerrarFavoritos = useCallback(() => {
+    favoritosAbiertoRef.current = false
+    setFavoritosOpen(false)
+  }, [])
+  useEffect(() => {
+    const abrir = () => {
+      favoritosAbiertoRef.current = true
+      setFavoritosOpen(true)
+    }
+    window.addEventListener(EVENTO_ABRIR_FAVORITOS, abrir)
+    return () => window.removeEventListener(EVENTO_ABRIR_FAVORITOS, abrir)
+  }, [])
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
   // Fuera del preview `vivos` es null y todo queda exactamente como antes.
   const vivos = useAjustesVivosPreview()
@@ -192,6 +213,7 @@ export function OrganizationLayoutCliente({
       if (!subio) return
       const ruta = window.location.pathname
       if (ruta.includes('/checkout') || ruta.includes('/carrito') || ruta.includes('/retomar')) return
+      if (favoritosAbiertoRef.current) return
       setCartOpen(true)
     }
     window.addEventListener('cart-updated', alActualizar)
@@ -202,6 +224,7 @@ export function OrganizationLayoutCliente({
   // carrito con su botón (documento o, si no, `cart_button_mode`/`_texts` de la fila legacy).
   const opMonedaTienda = opcionesMoneda(settings)
   const opCarrito = opcionesCarrito(settings)
+  const opFavoritos = opcionesFavoritos(settings)
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -376,6 +399,7 @@ export function OrganizationLayoutCliente({
     <ModoMesaProvider value={modoMesa}>
     <PasosMesaProvider value={modoMesa ? pasosMesa : null}>
     <TarjetaProductoProvider valor={temaEfectivo?.tarjetaProducto ?? null}>
+    <OpcionesTiendaProvider value={{ favoritos: opFavoritos, carrito: opCarrito }}>
     <div
       ref={rootRef}
       className={`min-h-screen flex flex-col ${isDark ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
@@ -500,6 +524,21 @@ export function OrganizationLayoutCliente({
           branchId={branchId}
         />
       )}
+
+      {/* Panel lateral de favoritos y avisos «Agregado / Quitado · Deshacer» (Figma 2762:61067) */}
+      {!frozenReason && !modoMesa && (
+        <>
+          <FavoritosDrawer
+            isOpen={favoritosOpen}
+            onClose={cerrarFavoritos}
+            primaryColor={primaryColor}
+            organizationSubdomain={subdomain}
+            branchId={branchId}
+            opciones={opFavoritos}
+          />
+          <AvisoFavoritos />
+        </>
+      )}
       
       {/* Píxeles y scripts propios: misma regla que /checkout (lib/seo/reglaPixeles.ts). Los
           scripts propios se inyectan client-side después de Meta, para el Event Setup Tool. */}
@@ -568,6 +607,7 @@ export function OrganizationLayoutCliente({
       {/* AddToCart (Meta Pixel / gtag) para cualquier camino que agregue al carrito */}
       <CartEventTracker organizationSubdomain={subdomain} branchId={branchId} />
     </div>
+    </OpcionesTiendaProvider>
     </TarjetaProductoProvider>
     </PasosMesaProvider>
     </ModoMesaProvider>

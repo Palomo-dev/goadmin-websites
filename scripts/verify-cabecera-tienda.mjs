@@ -75,13 +75,16 @@ check(segmentoMonedas(monedasVisibles(disp, null, 'COP'), 'COP').resto.length ==
 
 // 3. Fuente.
 const cajon = readFileSync(new URL('../components/site/CartDrawer.tsx', import.meta.url), 'utf8')
-check(/if \(isOpen\) setCheckoutButtonText\(textoBotonCarrito\(opciones\.boton\)\)/.test(cajon) && cajon.includes('eleccionBoton.abierto !== isOpen'), 'el cajón elige el texto del botón cada vez que se abre')
+// Modos del botón (Figma 2773:62797 – 2775:64409): el texto lo elige TextoBotonCarrito con el
+// estado del cajón; «al abrir» elige durante el render al pasar a abierto (sin cuadro viejo).
+const textoBoton = readFileSync(new URL('../components/site/TextoBotonCarrito.tsx', import.meta.url), 'utf8')
+check(cajon.includes('<TextoBotonCarrito boton={opciones.boton} abierto={isOpen}') && textoBoton.includes('eleccion.abierto !== abierto') && textoBoton.includes('indiceAlAbrir('), 'el cajón elige el texto del botón cada vez que se abre')
 check(cajon.includes('flex flex-col gap-2.5'), 'botones del cajón en columna con espacio entre ellos')
 check(!/<Link[^>]*>\s*<Button/.test(cajon), 'ningún <Button> dentro de un <Link> en línea (quedaban pegados)')
 check(cajon.includes("setAttribute('data-carrito-abierto'"), 'el cajón marca el documento mientras está abierto')
 check(!cajon.includes('cartButtonConfig'), 'el cajón ya no recibe la configuración vieja suelta')
 const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8')
-check(/html\[data-carrito-abierto\] \[data-gochat-widget\]\s*\{\s*display: none !important;/.test(css), 'el chat se oculta con el cajón abierto')
+check(/html\[data-carrito-abierto\] \[data-gochat-widget\][^{]*\{\s*display: none !important;/.test(css), 'el chat se oculta con el cajón abierto')
 const api = readFileSync(new URL('../app/api/currency/route.ts', import.meta.url), 'utf8')
 check(api.includes("countryIso3 && !inicialBase"), '/api/currency: inicial=base no detecta el país')
 check(api.includes('monedaPermitida(code, baseCurrency, listaVisible)'), '/api/currency filtra las monedas visibles')

@@ -16,6 +16,7 @@ import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
+import { BotonGuardarFicha } from '@/components/site/favoritos/BotonGuardarFicha'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -359,6 +360,11 @@ export function ProductDetailActions({
         >
           {outOfStock ? (restaurante ? 'Agotado' : 'Sin stock') : comprando ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />Abriendo el pago…</>) : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
         </Button>
+
+        {/* Favoritos (Figma 2767:61793 B): «Guardar» / «En favoritos». No en la carta del restaurante. */}
+        {!restaurante && (
+          <BotonGuardarFicha productId={Number(product.id)} precio={price} className={buttonsLayout === 'inline' ? 'flex-shrink-0' : 'w-full'} />
+        )}
       </div>
       )}
     </div>

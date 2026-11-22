@@ -73,7 +73,8 @@ const COMPONENTES = [
   'components/site/ProductQuickView.tsx',
   'components/site/ExpandableDescription.tsx',
   'app/productos/[id]/page.tsx',
-  'app/mi-cuenta/favoritos/page.tsx',
+  // app/mi-cuenta/favoritos/page.tsx salió (2026-11-22): redirige a /favoritos, cuyas tarjetas
+  // (components/site/favoritos) no pintan la descripción.
 ]
 for (const ruta of COMPONENTES) {
   const fuente = await leer(ruta)

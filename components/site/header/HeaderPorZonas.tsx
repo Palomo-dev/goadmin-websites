@@ -17,6 +17,7 @@ import {
 } from './HeaderShared'
 import { BuscadorCromo } from './BuscadorCromo'
 import { CartIndicator } from '../CartIndicator'
+import { AccesoFavoritosCabecera } from '../favoritos/AccesoFavoritosCabecera'
 import { CurrencySelector } from '../CurrencySelector'
 import { MENU_MOVIL, zonasConMenus, type BotonHeader, type ConstructorEncabezado, type ElementoZona, type IconoElemento, type MegaItem, type ZonaHeader } from '@/lib/website/constructorEncabezado'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './ContenedorIcono'
@@ -163,9 +164,10 @@ function Elemento(props: {
   else if (el.type === 'account') nodo = constructor.contenedor ? (
     <Link href="/mi-cuenta" aria-label="Cuenta"><ContenedorIcono base={constructor.contenedor} clave="account" colores={colores}><User style={trazoContenedor(constructor.contenedor, 'account')} /></ContenedorIcono></Link>
   ) : <Link href="/mi-cuenta" aria-label="Cuenta"><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>
+  // Favoritos: panel lateral o /favoritos según Encabezado › Favoritos (Figma 2772:62317), con contador.
   else if (el.type === 'favorites') nodo = constructor.contenedor ? (
-    <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><ContenedorIcono base={constructor.contenedor} clave="favorites" colores={colores}><Heart style={trazoContenedor(constructor.contenedor, 'favorites')} /></ContenedorIcono></Link>
-  ) : <Link href="/favoritos" aria-label={icono?.label || 'Favoritos'}><CajaIcono icono={icono} primary={primaryColor}><Heart style={estiloTrazo(icono)} /></CajaIcono></Link>
+    <AccesoFavoritosCabecera className="inline-flex" ariaLabel={icono?.label || 'Favoritos'} primaryColor={primaryColor}><ContenedorIcono base={constructor.contenedor} clave="favorites" colores={colores}><Heart style={trazoContenedor(constructor.contenedor, 'favorites')} /></ContenedorIcono></AccesoFavoritosCabecera>
+  ) : <AccesoFavoritosCabecera className="inline-flex" ariaLabel={icono?.label || 'Favoritos'} primaryColor={primaryColor}><CajaIcono icono={icono} primary={primaryColor}><Heart style={estiloTrazo(icono)} /></CajaIcono></AccesoFavoritosCabecera>
   else if (el.type === 'whatsapp') nodo = <a href={enlaceWhatsapp(settings, constructor)}><CajaIcono icono={icono} primary={primaryColor}>WhatsApp</CajaIcono></a>
   else if (el.type === 'phone' && organization.phone) nodo = <a href={`tel:${organization.phone}`}><CajaIcono icono={icono} primary={primaryColor}><Phone style={estiloTrazo(icono)} /></CajaIcono></a>
   else if (el.type === 'text') nodo = <span className="text-sm">{el.label}</span>

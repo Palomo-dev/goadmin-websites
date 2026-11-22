@@ -375,6 +375,14 @@ async function enrichListing(
 }
 
 /**
+ * `enrichListing` para quien ya tiene los productos (favoritos: `getProductsByIdsCatalog` no
+ * calcula `variant_count`, `sales_count` ni `requires_choice`). Misma consulta, sin copiarla.
+ */
+export async function enriquecerListadoPublico(organizationId: number, products: any[]): Promise<any[]> {
+  return enrichListing(getSupabaseForPublicRead(), organizationId, products)
+}
+
+/**
  * Ids de productos con al menos un grupo de modificadores obligatorio con opciones activas.
  * Una consulta por organización (pocas filas: solo grupos `required` o con mínimo), cacheada
  * con el catálogo. Si falla, lista vacía: el servidor sigue exigiendo el grupo (422) y el
