@@ -34,7 +34,8 @@ import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
-import { normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
+import { normalizarAjustesAccionesFicha, normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
+import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
@@ -400,6 +401,14 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
     // Sin bloques nuevos: ninguna consulta extra, la ficha de siempre.
   }
 
+  // Botones de compra (Figma 2779:65038). WhatsApp: el número del sitio (Configuración › Contacto),
+  // de la misma lectura en caché que usa el botón flotante (sin consulta nueva). La barra fija del
+  // celular respeta «Barra fija en el celular» (`sticky_mobile`) y «Precio dentro del botón».
+  const whatsappFicha = (await getAjustesSitio(organization.id)).whatsapp?.numero ?? null
+  const contenidoAcciones = (seccionesFicha.find((s) => s.section_type === 'product_actions' && s.is_visible !== false)?.content ?? {}) as Record<string, unknown>
+  const barraFija = contenidoAcciones.sticky_mobile !== false
+  const precioEnBarra = normalizarAjustesAccionesFicha(contenidoAcciones).showPriceInButton
+
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
       {/* JSON-LD Product */}
@@ -438,6 +447,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           prefijoSede={prefijo}
           ordenAtributos={ordenAtributos}
           extrasFicha={extrasFicha}
+          whatsapp={whatsappFicha}
         />
       ) : (
       <div className="container mx-auto px-4 py-12">
@@ -509,6 +519,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
                 restaurante={restaurante}
                 puedePedir={puedePedir}
                 ordenAtributos={ordenAtributos}
+                whatsapp={whatsappFicha}
               />
             </div>
             
@@ -583,7 +594,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
 
       {/* Sticky Add to Cart (mobile) */}
       {/* Un padre sin variantes no tiene nada que agregar: sin barra fija. */}
-      {price && stickyPermitido && !(isParent && variants.length === 0) && (
+      {price && stickyPermitido && barraFija && !(isParent && variants.length === 0) && (
         <StickyAddToCart
           productId={product.id}
           productName={product.name}
@@ -598,6 +609,8 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           stockLevels={product.stock_levels}
           branchId={branchId}
           ordenAtributos={ordenAtributos}
+          conFavorito={!esRestaurante}
+          precioEnBoton={precioEnBarra}
         />
       )}
     </OrganizationLayout>

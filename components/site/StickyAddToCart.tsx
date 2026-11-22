@@ -10,6 +10,8 @@ import { emitirVariante, escucharVariante, escucharCantidad } from '@/lib/produc
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
+import { BotonGuardarFicha } from '@/components/site/favoritos/BotonGuardarFicha'
+import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
 
 interface VariantData {
   id: number
@@ -36,6 +38,13 @@ interface StickyAddToCartProps {
   branchId?: number | null
   /** `display_order` del catálogo. Sin él, XS…XXXL y números de menor a mayor. */
   ordenAtributos?: OrdenAtributos | null
+  /**
+   * Corazón pequeño al lado de «Agregar» (Figma 2781:65848). `false` en el restaurante; también
+   * se oculta solo con «Corazón en la ficha» apagado (BotonGuardarFicha).
+   */
+  conFavorito?: boolean
+  /** «Agregar al carrito · $ X» (`product_actions.show_price_in_button`). */
+  precioEnBoton?: boolean
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -67,6 +76,8 @@ export function StickyAddToCart({
   stockLevels,
   branchId,
   ordenAtributos = null,
+  conFavorito = false,
+  precioEnBoton = false,
 }: StickyAddToCartProps) {
   const [added, setAdded] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -235,7 +246,6 @@ export function StickyAddToCart({
   }
 
   const activePrice = getActivePrice()
-  const activeCp = getActiveComparePrice()
   const hasVariants = isParent && variants.length > 0
 
   return (
@@ -290,29 +300,21 @@ export function StickyAddToCart({
           <p role="status" className="px-4 pt-2 text-center text-sm text-amber-700">{aviso || AVISO_TOPE_CARRITO}</p>
         )}
 
-        {/* Barra principal */}
+        {/* Barra principal (Figma 2781:65848): siempre «Agregar al carrito» relleno + corazón
+            pequeño, sea cual sea la distribución de la ficha. */}
         <div className="container mx-auto px-4 py-3">
+          {hasVariants && selectedVariant?.variant_data && (
+            <p className="mb-2 truncate text-xs text-gray-500">
+              {Object.entries(selectedVariant.variant_data).map(([k, v]) => `${k}: ${v}`).join(' • ')}
+            </p>
+          )}
           <div className="flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                {activeCp && activeCp > activePrice && (
-                  <span className="text-xs text-gray-400 line-through">{formatPrice(activeCp)}</span>
-                )}
-                <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                  {formatPrice(activePrice)}
-                </span>
-              </div>
-              {hasVariants && selectedVariant?.variant_data && (
-                <p className="text-xs text-gray-500 truncate">
-                  {Object.entries(selectedVariant.variant_data).map(([k, v]) => `${k}: ${v}`).join(' • ')}
-                </p>
-              )}
-            </div>
-
             {hasVariants && !expanded && (
               <button
+                type="button"
                 onClick={() => setExpanded(true)}
-                className="p-2 rounded-full border border-gray-300 hover:bg-gray-50"
+                aria-label="Elegir opciones"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] border border-gray-300 hover:bg-gray-50"
               >
                 <ChevronUp className="h-4 w-4 text-gray-600" />
               </button>
@@ -320,18 +322,25 @@ export function StickyAddToCart({
 
             <Button
               onClick={handleAddToCart}
-              className={`px-6 py-2 transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
+              className={`h-12 min-w-0 flex-1 rounded-[10px] px-4 text-[15px] font-semibold transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
               style={!added && !outOfStock && !sinCupo ? { backgroundColor: primaryColor } : {}}
               disabled={outOfStock || sinCupo}
             >
               {added ? (
-                <><Check className="h-4 w-4 mr-1" /> Agregado</>
+                <><Check className="h-5 w-5 mr-2" /> Agregado</>
               ) : outOfStock ? (
-                <><ShoppingCart className="h-4 w-4 mr-1" /> Sin stock</>
+                <><ShoppingCart className="h-5 w-5 mr-2" /> Sin stock</>
               ) : (
-                <><ShoppingCart className="h-4 w-4 mr-1" /> Agregar al carrito</>
+                <>
+                  <ShoppingCart className="h-5 w-5 mr-2 shrink-0" />
+                  <span className="truncate">
+                    {precioEnBoton ? textoBotonConPrecio('Agregar al carrito', formatPrice(activePrice)) : 'Agregar al carrito'}
+                  </span>
+                </>
               )}
             </Button>
+
+            {conFavorito && <BotonGuardarFicha productId={productId} precio={price} />}
           </div>
         </div>
       </div>

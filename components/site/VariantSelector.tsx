@@ -1,7 +1,7 @@
 'use client'
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
-import { useState, useEffect, useMemo, useRef, useId } from 'react'
+import { useState, useEffect, useMemo, useRef, useId, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Package, Loader2, ShoppingCart, X, Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
@@ -13,6 +13,7 @@ import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelect
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { textoAyudaVariante, textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
+import type { AgregarFicha, CantidadFicha, ComprarFicha } from './ficha/FilasAccionesFicha'
 
 interface VariantProduct {
   id: number
@@ -36,6 +37,19 @@ interface VariantProduct {
 
 /** Clave del padre en el mapa de grupos: el selector no necesita su id real. */
 const PADRE = 0
+
+/**
+ * Lo que la ficha necesita para pintar sus botones configurables (`product_actions`) con la
+ * variante elegida: la cantidad, «Agregar», «Comprar ahora» y la variante para WhatsApp. La
+ * lógica de carrito y stock sigue siendo la de este selector.
+ */
+export interface AccionesVarianteFicha {
+  cantidad: CantidadFicha
+  agregar: AgregarFicha
+  comprar: ComprarFicha | null
+  /** «Color: Negro · Talla: M» de la variante elegida; `null` sin elegir. */
+  variante: string | null
+}
 
 interface VariantSelectorProps {
   parentName: string
@@ -69,6 +83,11 @@ interface VariantSelectorProps {
    * elija. Ausente = hoy (se preselecciona la primera disponible).
    */
   ayudaVariante?: boolean
+  /**
+   * Ficha (modo `inline`): pinta la cantidad y los botones con la distribución del bloque
+   * `product_actions` en vez de los de siempre. Ausente = los de siempre (p. ej. el diálogo).
+   */
+  pintarAcciones?: (acciones: AccionesVarianteFicha) => ReactNode
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -96,6 +115,7 @@ export function VariantSelector({
   branchId,
   precioEnBoton = false,
   ayudaVariante = false,
+  pintarAcciones,
 }: VariantSelectorProps) {
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [mods, setMods] = useState<SelectedModifier[]>([])
@@ -220,6 +240,50 @@ export function VariantSelector({
   }, [selectedVariant?.id])
   const imageUrl = selectedVariant ? getVariantImageUrl(selectedVariant) : null
   const hasAttributeGroups = Object.keys(attributeGroups).length > 0
+
+  /** Los mismos estados y acciones de los botones de siempre, para la distribución de la ficha. */
+  const accionesFicha = (): AccionesVarianteFicha => {
+    const ayuda = ayudaVariante && !selectedVariant
+      ? textoAyudaVariante(Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0])
+      : null
+    const reemplazo = added
+      ? { texto: '¡Agregado al carrito!', estado: 'exito' as const }
+      : variants.length === 0
+        ? { texto: 'No disponible', estado: 'deshabilitado' as const }
+        : ayuda
+          ? { texto: ayuda, estado: 'deshabilitado' as const }
+          : outOfStock
+            ? { texto: 'Sin stock', estado: 'deshabilitado' as const }
+            : null
+    return {
+      cantidad: {
+        valor: quantity,
+        onMenos: () => setQuantity((q) => Math.max(1, q - 1)),
+        onMas: () => setQuantity((q) => siguienteCantidad(q, cupo)),
+        masDeshabilitado: cupo !== null && quantity >= cupo,
+      },
+      agregar: {
+        onClick: handleAddToCart,
+        deshabilitado: !selectedVariant || !price || outOfStock || sinCupo,
+        reemplazo,
+        precio: precioEnBoton && price ? formatPrice(Number(price)) : null,
+      },
+      comprar: onBuyNow
+        ? {
+            onClick: () => {
+              if (!selectedVariant) return
+              if (modifierRef.current && !modifierRef.current.validate()) return
+              onBuyNow(selectedVariant, quantity, mods)
+            },
+            deshabilitado: !selectedVariant || !price || outOfStock,
+            pendiente: buyNowPending,
+          }
+        : null,
+      variante: selectedVariant?.variant_data && Object.keys(selectedVariant.variant_data).length > 0
+        ? Object.entries(selectedVariant.variant_data).map(([k, v]) => `${k}: ${v}`).join(' · ')
+        : selectedVariant?.name ?? null,
+    }
+  }
 
   const content = (
     <div className="space-y-4">
@@ -371,6 +435,18 @@ export function VariantSelector({
         <ProductModifierSelector key={claveGrupos} ref={modifierRef} groups={gruposLinea} primaryColor={primaryColor} onChange={setMods} />
       )}
 
+      {pintarAcciones ? (
+        <>
+          {enTope && (
+            <p role="status" className="text-sm text-amber-700">{avisoCupo(cupo!, enCarrito)}</p>
+          )}
+          {sinCupo && (
+            <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
+          )}
+          {pintarAcciones(accionesFicha())}
+        </>
+      ) : (
+      <>
       {/* Selector de cantidad */}
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-gray-700">Cantidad:</span>
@@ -454,6 +530,8 @@ export function VariantSelector({
             'Comprar ahora'
           )}
         </Button>
+      )}
+      </>
       )}
     </div>
   )

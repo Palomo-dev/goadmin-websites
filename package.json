@@ -84,6 +84,7 @@
     "verify:contador-cantidad": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contador-cantidad.mjs",
     "verify:vista-previa-referencias": "node --disable-warning=ExperimentalWarning scripts/verify-vista-previa-referencias.mjs",
     "verify:ficha-diff": "node scripts/pruebas/ficha-diff.mjs",
+    "verify:acciones-ficha": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-acciones-ficha.mjs",
     "verify:opciones-ficha": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-opciones-ficha.mjs",
     "verify:shell-plantillas": "node --disable-warning=ExperimentalWarning scripts/verify-shell-plantillas.mjs",
     "verify:select-tarjeta": "node --env-file=.env.local scripts/verify-select-tarjeta.mjs",

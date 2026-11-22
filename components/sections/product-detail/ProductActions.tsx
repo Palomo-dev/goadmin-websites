@@ -2,8 +2,9 @@
 
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { normalizarAjustesAccionesFicha } from '@/lib/website/v2/contrato/seccionesTienda'
+import { leerAccionesFicha } from '@/lib/website/v2/accionesFicha'
 
-export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'button_hint'] as const
+export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'button_hint', 'actions', 'preset'] as const
 
 interface ProductActionsProps {
   content: {
@@ -14,6 +15,10 @@ interface ProductActionsProps {
     show_price_in_button?: boolean
     /** Plantillas de tienda: `auto` = «Elige tu talla» hasta elegir variante. Ausente = lo de hoy. */
     button_hint?: 'none' | 'auto'
+    /** Botones configurables (Figma 2779:65038): lista ordenada; ver lib/website/v2/accionesFicha.ts. */
+    actions?: unknown
+    /** Distribución lista que coincide con `actions` (la escribe el editor). */
+    preset?: string
   }
   primaryColor?: string
   data?: {
@@ -31,6 +36,8 @@ interface ProductActionsProps {
     restaurante?: { textoAgotado: string | null } | null
     puedePedir?: boolean
     ordenAtributos?: Record<string, Record<string, number>> | null
+    /** Número de WhatsApp del sitio (Configuración › Contacto), del servidor. */
+    whatsapp?: string | null
   }
 }
 
@@ -39,6 +46,8 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
   if (!product) return null
   // Claves nuevas de las plantillas de tienda; ausentes = `false` / `'none'` = lo de hoy.
   const ajustes = normalizarAjustesAccionesFicha(content as Record<string, unknown>)
+  // Sin `actions` ni `preset`: «Clásica» (o «Dos a la mitad» con buttons_layout inline).
+  const { acciones } = leerAccionesFicha(content as Record<string, unknown>)
 
   return (
     <div id="product-actions">
@@ -55,6 +64,8 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
         trackStock={data?.trackStock}
         stockLevels={data?.stockLevels}
         buttonsLayout={content.buttons_layout || 'stacked'}
+        acciones={acciones}
+        whatsapp={data?.whatsapp ?? null}
         branchId={data?.branchId ?? null}
         restaurante={data?.restaurante ?? null}
         puedePedir={data?.puedePedir ?? true}

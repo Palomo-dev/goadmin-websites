@@ -4,19 +4,16 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { useState, useRef, useEffect, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-import { Button } from '@/components/ui/button'
-import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
-import { Zap, Minus, Plus, Loader2 } from 'lucide-react'
 import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
 import { emitirCantidad } from '@/lib/products/varianteSeleccionada'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
-import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
-import { BotonGuardarFicha } from '@/components/site/favoritos/BotonGuardarFicha'
+import { FilasAccionesFicha } from '@/components/site/ficha/FilasAccionesFicha'
+import { leerAccionesFicha, type AccionFicha } from '@/lib/website/v2/accionesFicha'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -40,7 +37,15 @@ interface ProductDetailActionsProps {
   modifierGroups?: ModifierGroup[]
   trackStock?: boolean
   stockLevels?: { qty_on_hand: number; qty_reserved: number }[]
+  /** Compatibilidad: sin `acciones`, `inline` = «Dos a la mitad»; lo demás, «Clásica». */
   buttonsLayout?: 'stacked' | 'inline' | 'split'
+  /**
+   * Botones de la ficha (`product_actions.actions`, Figma 2779:65038), ya leídos con
+   * `leerAccionesFicha`. Ausente = la distribución de `buttonsLayout` («Clásica» por defecto).
+   */
+  acciones?: readonly AccionFicha[] | null
+  /** Número de WhatsApp del sitio (Configuración › Contacto). Sin él, «Pedir por WhatsApp» no sale. */
+  whatsapp?: string | null
   branchId?: number | null
   /**
    * Modo restaurante (organización type_id = 1, decidido en el servidor): «Agotado hoy en
@@ -79,6 +84,8 @@ export function ProductDetailActions({
   trackStock,
   stockLevels,
   buttonsLayout = 'stacked',
+  acciones = null,
+  whatsapp = null,
   branchId,
   restaurante = null,
   puedePedir = true,
@@ -88,6 +95,9 @@ export function ProductDetailActions({
 }: ProductDetailActionsProps) {
   const router = useRouter()
   const { ruta } = useRutaSitio()
+  const botones = acciones ?? leerAccionesFicha({ buttons_layout: buttonsLayout }).acciones
+  // La carta del restaurante no lleva corazón (como siempre).
+  const favorito = restaurante ? null : { productId: Number(product.id), precio: price }
   const { formatPrice } = useCurrency()
   const [nota, setNota] = useState('')
   const sub = () => organizationSubdomain || window.location.hostname.split('.')[0]
@@ -237,6 +247,18 @@ export function ProductDetailActions({
           branchId={branchId}
           precioEnBoton={precioEnBoton}
           ayudaVariante={ayudaVariante}
+          pintarAcciones={(a) => (
+            <FilasAccionesFicha
+              acciones={botones}
+              primaryColor={primaryColor}
+              cantidad={a.cantidad}
+              agregar={a.agregar}
+              comprar={a.comprar}
+              favorito={favorito}
+              whatsapp={{ numero: whatsapp, producto: product.name, variante: a.variante }}
+              compartir={{ titulo: product.name }}
+            />
+          )}
         />
         {campoNota}
       </div>
@@ -288,31 +310,6 @@ export function ProductDetailActions({
 
       {campoNota}
 
-      {/* Selector de cantidad */}
-      {puedePedir && (
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700">Cantidad:</span>
-        <div className={`flex items-center border rounded-lg ${outOfStock ? 'opacity-50 pointer-events-none' : ''}`}>
-          <button
-            type="button"
-            onClick={() => setQuantity(q => Math.max(1, q - 1))}
-            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="px-4 py-2 min-w-[3rem] text-center font-semibold">{quantity}</span>
-          <button
-            type="button"
-            onClick={() => setQuantity(q => siguienteCantidad(q, cupo))}
-            disabled={cupo !== null && quantity >= cupo}
-            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      )}
-
       {/* Precio con extras (base + extras: no es un descuento, no va tachado) */}
       {modifiersExtraTotal > 0 && (
         <div className="flex items-baseline gap-2">
@@ -330,42 +327,34 @@ export function ProductDetailActions({
         <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
       )}
 
-      {/* Botones de acción */}
+      {/* Botones de acción: la distribución del bloque (Figma 2779:65038; sin configurar, «Clásica»). */}
       {puedePedir && (
-      <div className={buttonsLayout === 'inline' ? 'flex gap-3' : 'space-y-3'}>
-        <AddToCartButton
-          productId={product.id}
-          productName={product.name}
-          price={effectivePrice}
-          imageUrl={imageUrl}
+        <FilasAccionesFicha
+          acciones={botones}
           primaryColor={primaryColor}
-          variant="full"
-          quantity={quantity}
-          organizationSubdomain={organizationSubdomain}
-          onClick={handleAddWithQuantity}
-          disabled={outOfStock || sinCupo}
-          className={buttonsLayout === 'inline' ? 'flex-1' : undefined}
-          branchId={branchId}
-          etiqueta={precioEnBoton ? textoBotonConPrecio('Agregar al carrito', formatPrice(effectivePrice)) : undefined}
+          cantidad={{
+            valor: quantity,
+            onMenos: () => setQuantity((q) => Math.max(1, q - 1)),
+            onMas: () => setQuantity((q) => siguienteCantidad(q, cupo)),
+            masDeshabilitado: cupo !== null && quantity >= cupo,
+            deshabilitado: outOfStock,
+          }}
+          agregar={{
+            onClick: handleAddWithQuantity,
+            deshabilitado: outOfStock || sinCupo,
+            reemplazo: outOfStock ? { texto: restaurante ? 'Agotado' : 'Sin stock', estado: 'deshabilitado' } : null,
+            precio: precioEnBoton ? formatPrice(effectivePrice) : null,
+          }}
+          comprar={{
+            onClick: handleBuyNowSimple,
+            deshabilitado: outOfStock || comprando,
+            pendiente: comprando,
+            agotado: outOfStock ? (restaurante ? 'Agotado' : 'Sin stock') : null,
+          }}
+          favorito={favorito}
+          whatsapp={{ numero: whatsapp, producto: product.name }}
+          compartir={{ titulo: product.name }}
         />
-
-        <Button
-          size="lg"
-          variant="outline"
-          className={buttonsLayout === 'inline' ? 'flex-1' : 'w-full'}
-          style={{ borderColor: primaryColor, color: primaryColor }}
-          onClick={handleBuyNowSimple}
-          disabled={outOfStock || comprando}
-          aria-busy={comprando}
-        >
-          {outOfStock ? (restaurante ? 'Agotado' : 'Sin stock') : comprando ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />Abriendo el pago…</>) : (<><Zap className="h-5 w-5 mr-2" />Comprar ahora</>)}
-        </Button>
-
-        {/* Favoritos (Figma 2767:61793 B): «Guardar» / «En favoritos». No en la carta del restaurante. */}
-        {!restaurante && (
-          <BotonGuardarFicha productId={Number(product.id)} precio={price} className={buttonsLayout === 'inline' ? 'flex-shrink-0' : 'w-full'} />
-        )}
-      </div>
       )}
     </div>
   )

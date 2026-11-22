@@ -154,7 +154,9 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
 
   const acciones = await fuente('app/productos/[id]/ProductDetailActions.tsx')
   check(acciones.includes('precioEnBoton = false,') && acciones.includes('ayudaVariante = false,'), 'acciones: las opciones nuevas valen false por defecto')
-  check(acciones.includes("etiqueta={precioEnBoton ? textoBotonConPrecio('Agregar al carrito', formatPrice(effectivePrice)) : undefined}"), 'acciones: sin precio en el botón, la etiqueta de siempre')
+  // Botones configurables (Figma 2779:65038, 2026-11-22): el precio llega solo con la opción y
+  // FilasAccionesFicha lo agrega al texto de «Agregar» (scripts/verify-acciones-ficha.mjs).
+  check(acciones.includes('precio: precioEnBoton ? formatPrice(effectivePrice) : null,'), 'acciones: sin precio en el botón, la etiqueta de siempre')
   const boton = await fuente('components/site/AddToCartButton.tsx')
   check(boton.includes("{etiqueta ?? 'Agregar al carrito'}"), 'botón: sin etiqueta, «Agregar al carrito»')
   const selector = await fuente('components/site/VariantSelector.tsx')

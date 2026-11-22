@@ -108,6 +108,8 @@ interface ProductDetailRendererProps {
   ordenAtributos?: OrdenAtributos | null
   /** Plantillas de tienda: datos de los bloques nuevos (ver {@link ExtrasFicha}). */
   extrasFicha?: ExtrasFicha | null
+  /** Número de WhatsApp del sitio: «Pedir por WhatsApp» de los botones de compra. */
+  whatsapp?: string | null
 }
 
 export function ProductDetailRenderer({
@@ -129,6 +131,7 @@ export function ProductDetailRenderer({
   prefijoSede = '',
   ordenAtributos = null,
   extrasFicha = null,
+  whatsapp = null,
 }: ProductDetailRendererProps) {
   const volver = restaurante
     ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
@@ -164,6 +167,7 @@ export function ProductDetailRenderer({
     restaurante,
     puedePedir,
     ordenAtributos,
+    whatsapp,
   }
 
   // ---- Urgencia: aviso de stock bajo + contador (igual que el layout de antes) ----
