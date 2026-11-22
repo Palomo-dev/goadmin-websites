@@ -431,3 +431,18 @@ export function menusPublicosDesdeDocumento(
     footerPaginas,
   }
 }
+
+/**
+ * El menú de páginas del pie (`paginas-pie`) tal como lo guardó el editor, para su título.
+ * `menusPublicosDesdeDocumento` lo separa como `footerPaginas` y el contexto solo pasa sus ítems
+ * (footerNavTree), así que el nombre se pierde por el camino. Lo lee OrganizationLayout.
+ * - `null`: el pie del documento no incluye el menú (o no existe).
+ * - `{ nombre }`: está en el pie; `nombre` es el guardado (puede ser «Páginas del pie» o vacío:
+ *   el título por defecto lo decide `tituloPaginasPie`).
+ */
+export function paginasPieDesdeDocumento(documento: DocumentoSitio): { nombre: string | null } | null {
+  if (!documento.shell?.footer?.menuIds?.includes(MENU_PAGINAS_PIE)) return null
+  const menu = documento.menus?.find((m) => m.id === MENU_PAGINAS_PIE)
+  if (!menu) return null
+  return { nombre: typeof menu.nombre === 'string' ? menu.nombre : null }
+}

@@ -113,6 +113,11 @@ export interface OrganizationLayoutProps {
   datosSede?: DatosSedeLayout
   /** Estilo general del sitio V2 (OrganizationLayout). `null`/ausente = legacy, como siempre. */
   temaSitio?: TemaPublico | null
+  /**
+   * Menú de páginas del pie del sitio V2 (OrganizationLayout), para el título de su columna.
+   * Ausente = legacy; `null` = V2 sin ese menú en el pie. Ver SiteFooter.
+   */
+  paginasPie?: { nombre: string | null } | null
   /** Píxeles tipados de Sitio web › Analítica (OrganizationLayout). Ausentes = los de hoy. */
   pixeles?: PixelesSitio | null
   /** Código a medida del ERP (OrganizationLayout). Ausente o vacío = nada nuevo. */
@@ -155,6 +160,7 @@ export function OrganizationLayoutCliente({
   branchId,
   datosSede,
   temaSitio,
+  paginasPie,
   pixeles,
   codigoPropio,
   extrasShell,
@@ -464,6 +470,7 @@ export function OrganizationLayoutCliente({
           footerNavTree={arbolPie}
           menuCategories={menuCategories}
           menus={menus}
+          paginasPie={paginasPie}
           horarioSede={datosSede?.horarioPie ?? null}
         />
         </ZonaGlobalPreview>

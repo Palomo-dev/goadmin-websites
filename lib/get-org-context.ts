@@ -1,4 +1,5 @@
 import { categoriasVisibles } from '@/lib/website/busquedasPopulares'
+import { menuItemToPageWithChildren } from '@/lib/website/pieSitio'
 import { headers } from 'next/headers'
 import { cache } from 'react'
 import {
@@ -25,7 +26,7 @@ import {
   menusPublicosDesdeDocumento,
   type MenusPublicos,
 } from '@/lib/website/v2/vistaPublica'
-import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWithChildren } from '@/types/database'
+import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren } from '@/types/database'
 import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
 import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
 import { urlsSitio } from '@/lib/seo/sede'
@@ -403,49 +404,4 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
     icon: item.icon ?? undefined,
     badge: item.badge ?? undefined,
   }
-}
-
-/**
- * Convierte un WebsiteMenuItemWithChildren a WebsitePageWithChildren (formato del header legacy).
- * Esto permite que el menú nombrado funcione con las variantes de header existentes
- * que esperan WebsitePageWithChildren[] como navTree.
- */
-function menuItemToPageWithChildren(item: WebsiteMenuItemWithChildren): WebsitePageWithChildren {
-  let title = item.custom_label || ''
-  let slug = item.custom_url || ''
-
-  if (item.item_type === 'page' || item.item_type === 'policy') {
-    if (item.page) {
-      title = item.page.title
-      slug = item.page.slug
-    }
-  } else if (item.item_type === 'category') {
-    if (item.category) {
-      title = item.category.name
-      slug = `categorias/${item.category.slug}`
-    }
-  } else if (item.item_type === 'custom_link') {
-    title = item.custom_label || ''
-    slug = item.custom_url || ''
-  }
-
-  return {
-    id: item.id,
-    organization_id: item.organization_id,
-    slug,
-    title,
-    is_published: true,
-    show_in_header: true,
-    show_in_footer: false,
-    header_order: item.display_order,
-    footer_order: 0,
-    parent_page_id: item.parent_item_id,
-    linked_category_id: item.category_id,
-    menu_icon: item.icon,
-    menu_badge: item.badge,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    children: item.children.map(menuItemToPageWithChildren),
-    level: 0,
-  } as WebsitePageWithChildren
 }

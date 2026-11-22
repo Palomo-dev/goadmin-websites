@@ -57,6 +57,12 @@ export interface PieTemaProps {
   claseFondo: string
   estiloFondo: React.CSSProperties | undefined
   menus: WebsiteMenuWithItems[] | undefined
+  /**
+   * Menú de páginas del pie (`paginas-pie`), que llega aparte de `menus`: título ya resuelto
+   * (tituloPaginasPie: el nombre del editor o «Tienda») y enlaces ya con el prefijo de la sede.
+   * Se pinta como la primera columna de menú, con el mismo aspecto. Ausente/null = sin columna.
+   */
+  paginasPie?: { titulo: string; enlaces: Enlace[] } | null
   redes: Record<string, string | undefined>
   textoPie: string
   mostrarHechoCon: boolean
@@ -125,7 +131,11 @@ export function PieTema(p: PieTemaProps) {
   const iconoTxt = textoSobreAcentoSiHex(p.primaryColor) ?? '#ffffff'
 
   // Menús del pie: «Tratamiento de datos» va a la barra inferior; el resto, una columna por menú.
-  const menus = (p.menus ?? []).map((m) => ({ titulo: m.name, enlaces: prefijarItemsNav(enlacesDeMenu(m.items), prefijo) ?? [] }))
+  // El de páginas del pie va primero (como en el pie legacy); los menús nombrados, con su nombre.
+  const menus = [
+    ...(p.paginasPie ? [{ clave: 'paginas-pie', titulo: p.paginasPie.titulo, enlaces: p.paginasPie.enlaces.filter((e) => e.name) }] : []),
+    ...(p.menus ?? []).map((m, i) => ({ clave: `${i}-${m.name}`, titulo: m.name, enlaces: prefijarItemsNav(enlacesDeMenu(m.items), prefijo) ?? [] })),
+  ]
   const abajo = menus.flatMap((m) => m.enlaces.filter((e) => TRATAMIENTO.test(e.name)))
   const columnasMenu = menus
     .map((m) => ({ ...m, enlaces: m.enlaces.filter((e) => !TRATAMIENTO.test(e.name)) }))
@@ -173,8 +183,8 @@ export function PieTema(p: PieTemaProps) {
   }
   // Orden de las láminas: ubicación, horario, menús, contacto y, al final, el menú legal.
   const esLegal = (titulo: string) => /^legal/i.test(titulo.trim())
-  const columnaMenu = (m: { titulo: string; enlaces: Enlace[] }): Columna => ({
-    clave: `menu-${m.titulo}`,
+  const columnaMenu = (m: { clave: string; titulo: string; enlaces: Enlace[] }): Columna => ({
+    clave: `menu-${m.clave}`,
       titulo: m.titulo,
       contenido: (
         <ul className="space-y-2">

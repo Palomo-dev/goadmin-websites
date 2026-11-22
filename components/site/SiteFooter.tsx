@@ -19,6 +19,7 @@ import { opcionesPlantillaTienda } from '@/lib/website/encabezadoPie'
 import { hrefDeSlug, logoSegunFondo, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+import { claseRejillaPie, claseRejillaTresColumnas, columnasMenusPie, tituloPaginasPie } from '@/lib/website/columnasPie'
 
 /** ¿El color propio del pie es oscuro (se lee mejor el blanco)? Solo con un hex válido. */
 const fondoOscuroSiHex = (color: string): boolean => textoSobreAcentoSiHex(color) === '#FFFFFF'
@@ -32,6 +33,14 @@ interface SiteFooterProps {
   footerNavTree?: WebsitePageWithChildren[]
   menuCategories?: MenuCategory[]
   menus?: WebsiteMenuWithItems[]
+  /**
+   * Menú de páginas del pie del sitio V2 (`paginas-pie`, sus ítems llegan en footerNavTree):
+   * - ausente (`undefined`): sitio legacy. La columna de páginas cae, como siempre, a la
+   *   navegación de la plantilla si no hay páginas en el pie.
+   * - `null`: sitio V2 cuyo pie no incluye ese menú: sin columna de páginas (ni la de la plantilla).
+   * - `{ nombre }`: el nombre guardado en el editor, título de la columna (tituloPaginasPie).
+   */
+  paginasPie?: { nombre: string | null } | null
   /**
    * Horario de la sede (`branches.opening_hours`, ya revisado: el por defecto del ERP no
    * llega). Si es null se usa `website_settings.business_hours`.
@@ -121,20 +130,6 @@ function getFooterBgClass(bg: string | undefined, customColor: string | null | u
       return 'bg-gray-900 dark:bg-gray-900/80 text-white'
     default:
       return 'bg-gray-900 dark:bg-gray-900/80 text-white'
-  }
-}
-
-// Clase de grid dinámico según número de columnas
-function getFooterGridClass(columns: number | undefined): string {
-  switch (columns) {
-    case 2:
-      return 'grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12'
-    case 3:
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12'
-    case 5:
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12'
-    default:
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12'
   }
 }
 
@@ -229,6 +224,7 @@ export function SiteFooter({
   footerNavTree,
   menuCategories,
   menus,
+  paginasPie,
   horarioSede = null,
 }: SiteFooterProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
@@ -250,7 +246,7 @@ export function SiteFooter({
   // Configuración nueva (Fase 5)
   const footerBackground = settings?.footer_background || 'dark'
   const footerCustomBgColor = settings?.footer_custom_bg_color ?? null
-  const footerColumns = settings?.footer_columns || 4
+  // `footer_columns` ya no fija la rejilla: se calcula con las columnas que se pintan (claseRejillaPie).
   const footerShowContact = settings?.footer_show_contact !== false
   const footerShowHours = settings?.footer_show_hours !== false
   const footerShowSocial = settings?.footer_show_social !== false
@@ -270,7 +266,6 @@ export function SiteFooter({
     : footerBackground === 'custom' && footerCustomBgColor
       ? { backgroundColor: footerCustomBgColor }
       : undefined
-  const footerGridClass = getFooterGridClass(footerColumns)
 
   // Visibilidad de redes y horarios en móvil
   const showSocialInFooter = footerShowSocial && Object.keys(socialLinks).length > 0
@@ -278,13 +273,16 @@ export function SiteFooter({
   const showHoursInFooter = footerShowHours && filasHorarioPie.length > 0
   const showHoursInMobile = footerShowHours && mobileFooterShowHours && filasHorarioPie.length > 0
 
-  // Categorías en footer (nuevo flag o fallback al anterior)
-  const showCategoriesInFooter =
-    (footerShowCategories || settings?.show_categories_in_header === true) &&
-    !!menuCategories &&
-    menuCategories.length > 0
+  // Bloque «Categorías» del pie: solo con `footer_show_categories` (Pie de página › Contenido, default
+  // false). Antes también salía con `show_categories_in_header`; las del encabezado no cambian.
+  const showCategoriesInFooter = footerShowCategories && !!menuCategories && menuCategories.length > 0
 
-  // Construir nav items jerárquicos desde footerNavTree (prioridad) o footerNav plano
+  // Sitio V2: `paginasPie` viene definido (null u objeto). Legacy: ausente.
+  const esSitioV2 = paginasPie !== undefined
+
+  // Construir nav items jerárquicos desde footerNavTree (prioridad) o footerNav plano.
+  // Legacy sin páginas en el pie: la navegación de la plantilla, como siempre. V2: solo lo que el
+  // menú de páginas del pie trae (si el cliente lo quitó o lo vació, no hay columna).
   const navItems: FooterNavItem[] = footerNavTree && footerNavTree.length > 0
     ? buildFooterNavItems(footerNavTree)
     : footerNav && footerNav.length > 0
@@ -294,21 +292,19 @@ export function SiteFooter({
           icon: p.menu_icon,
           badge: p.menu_badge,
         }))
-      : prefijarItemsNav((template?.navigation || []).map((n) => ({ name: n.name, href: n.href })), prefijo) ?? []
+      : esSitioV2
+        ? []
+        : prefijarItemsNav((template?.navigation || []).map((n) => ({ name: n.name, href: n.href })), prefijo) ?? []
+  // Título de la columna de páginas: el nombre del menú en el editor; «Tienda» si no tiene o sigue
+  // con el del importador («Páginas del pie»). Legacy (sin nombre): «Tienda».
+  const tituloPaginas = tituloPaginasPie(paginasPie?.nombre)
 
   // Items de categorías (con el prefijo de la sede si se sirve por ruta)
   const categoryItems = showCategoriesInFooter ? prefijarItemsNav(buildCategoryItems(menuCategories!), prefijo) ?? [] : []
 
-  // Menús nombrados agrupados por columna (sistema nuevo)
-  const footerMenusByColumn: Record<number, FooterNavItem[]> = {}
-  if (menus && menus.length > 0) {
-    for (const menu of menus) {
-      const col = menu.footer_column ?? 1
-      if (!footerMenusByColumn[col]) footerMenusByColumn[col] = []
-      footerMenusByColumn[col].push(...(prefijarItemsNav(buildMenuGroupItems(menu.items), prefijo) ?? []))
-    }
-  }
-  const hasFooterMenus = Object.keys(footerMenusByColumn).length > 0
+  // Menús nombrados por columna, cada uno con su nombre; los que no tienen enlaces no se pintan.
+  const columnasMenus = columnasMenusPie(menus, (items: WebsiteMenuItemWithChildren[]) =>
+    (prefijarItemsNav(buildMenuGroupItems(items), prefijo) ?? []).filter((i) => !!i.name))
 
   // TikTok: ningún sitio lo tenía (se omitía). WhatsApp en redes: solo con footer_show_whatsapp,
   // para no cambiar los sitios que lo tienen en social_links y hoy no lo muestran.
@@ -357,6 +353,9 @@ export function SiteFooter({
         claseFondo={footerBgClass}
         estiloFondo={footerBgStyle}
         menus={menus}
+        paginasPie={esSitioV2 && navItems.length > 0
+          ? { titulo: tituloPaginas, enlaces: navItems.map((i) => ({ name: i.name, href: i.href })) }
+          : null}
         redes={socialLinks as Record<string, string | undefined>}
         textoPie={settings?.footer_text || ''}
         mostrarHechoCon={showPoweredBy}
@@ -576,7 +575,7 @@ export function SiteFooter({
     return conTarjeta(
       <footer className={footerBgClass} style={footerBgStyle}>
         <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className={claseRejillaTresColumnas(1 + (navItems.length > 0 ? 1 : 0) + (footerShowContact ? 1 : 0))}>
             {/* Columna 1: Logo + descripción + redes */}
             <div>
               <FooterSection title={organization.name}>
@@ -625,20 +624,18 @@ export function SiteFooter({
               </FooterSection>
             </div>
 
-            {/* Columna 2: Enlaces jerárquicos */}
+            {/* Columna 2: páginas del pie, con el nombre del menú (sin enlaces, no se pinta) */}
+            {navItems.length > 0 && (
             <div>
-              <FooterSection title="Enlaces">
+              <FooterSection title={tituloPaginas}>
                 <ul className="space-y-3">
-                  {navItems.length > 0 ? (
-                    navItems.slice(0, 8).map((item, i) => (
-                      <FooterLinkItem key={i} item={item} />
-                    ))
-                  ) : (
-                    <li className="text-current opacity-50 text-sm">Sin enlaces</li>
-                  )}
+                  {navItems.slice(0, 8).map((item, i) => (
+                    <FooterLinkItem key={i} item={item} />
+                  ))}
                 </ul>
               </FooterSection>
             </div>
+            )}
 
             {/* Columna 3: Contacto */}
             {footerShowContact && (
@@ -797,20 +794,19 @@ export function SiteFooter({
               </FooterSection>
             </div>
 
-            {/* Columna derecha: Enlaces + categorías + newsletter en sub-grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {/* Enlaces */}
+            {/* Columna derecha: páginas + categorías + newsletter en sub-grid (sin huecos) */}
+            <div className={`grid grid-cols-1 ${(navItems.length > 0 || categoryItems.length > 0) && (showHoursInFooter || footerShowNewsletter) ? 'sm:grid-cols-2' : ''} gap-8`}>
+              {/* Páginas del pie, con el nombre del menú */}
+              {(navItems.length > 0 || categoryItems.length > 0) && (
               <div>
-                <FooterSection title="Enlaces" mobileStyle={mobileFooterStyle}>
-                  <ul className="space-y-3">
-                    {navItems.length > 0 ? (
-                      navItems.slice(0, 8).map((item, i) => (
+                <FooterSection title={tituloPaginas} mobileStyle={mobileFooterStyle}>
+                  {navItems.length > 0 && (
+                    <ul className="space-y-3">
+                      {navItems.slice(0, 8).map((item, i) => (
                         <FooterLinkItem key={i} item={item} />
-                      ))
-                    ) : (
-                      <li className="text-current opacity-50 text-sm">Sin enlaces</li>
-                    )}
-                  </ul>
+                      ))}
+                    </ul>
+                  )}
 
                   {categoryItems.length > 0 && (
                     <div className="mt-6 pt-4 border-t border-white/20">
@@ -829,8 +825,10 @@ export function SiteFooter({
                   )}
                 </FooterSection>
               </div>
+              )}
 
               {/* Horarios + Newsletter */}
+              {(showHoursInFooter || footerShowNewsletter) && (
               <div>
                 {showHoursInFooter && (
                   <FooterSection title="Horarios" mobileStyle={showHoursInMobile ? mobileFooterStyle : 'hidden'}>
@@ -865,6 +863,7 @@ export function SiteFooter({
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -894,10 +893,22 @@ export function SiteFooter({
   }
 
   // ===== Layout: default (columnas dinámicas, comportamiento original mejorado) =====
+  // Solo se pintan las columnas con contenido y la rejilla tiene exactamente esas (sin huecos ni
+  // una columna sola en otra fila). Legacy conserva su columna de páginas aunque esté vacía (cae a
+  // la navegación de la plantilla o a Productos/Servicios/Nosotros/Contacto, como siempre).
+  const contactoConDatos = footerShowContact && !!(organization.address || organization.phone || organization.email)
+  const conColumnaPaginas = !esSitioV2 || navItems.length > 0 || categoryItems.length > 0 || footerShowNewsletter
+  const columnasPintadas =
+    1 +
+    (contactoConDatos ? 1 : 0) +
+    (showHoursInFooter ? 1 : 0) +
+    (conColumnaPaginas ? 1 : 0) +
+    (opcionesShell.pie.mapa ? 1 : 0) +
+    columnasMenus.length
   return conTarjeta(
     <footer className={footerBgClass} style={footerBgStyle}>
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className={footerGridClass}>
+        <div className={claseRejillaPie(columnasPintadas)} data-pie-columnas={columnasPintadas}>
           {/* Logo y descripción */}
           <div className="lg:col-span-1">
             <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
@@ -952,8 +963,8 @@ export function SiteFooter({
             </FooterSection>
           </div>
 
-          {/* Información de contacto */}
-          {footerShowContact && (
+          {/* Información de contacto (sin dirección, teléfono ni correo no hay columna) */}
+          {contactoConDatos && (
           <div>
             <FooterSection title="Contacto" mobileStyle={mobileFooterStyle}>
               <ul className="space-y-4">
@@ -1004,9 +1015,11 @@ export function SiteFooter({
             </div>
           )}
 
-          {/* Enlaces jerárquicos + Categorías + Newsletter */}
+          {/* Páginas del pie (con el nombre del menú) + Categorías + Newsletter */}
+          {conColumnaPaginas && (
           <div>
-            <FooterSection title="Enlaces" mobileStyle={mobileFooterStyle}>
+            <FooterSection title={tituloPaginas} mobileStyle={mobileFooterStyle}>
+              {(navItems.length > 0 || !esSitioV2) && (
               <ul className="space-y-3">
                 {navItems.length > 0 ? (
                   navItems.slice(0, 8).map((item, i) => (
@@ -1037,6 +1050,7 @@ export function SiteFooter({
                   </>
                 )}
               </ul>
+              )}
 
               {/* Categorías como sub-sección */}
               {categoryItems.length > 0 && (
@@ -1080,6 +1094,7 @@ export function SiteFooter({
               )}
             </FooterSection>
           </div>
+          )}
 
           {/* Mapa con «Cómo llegar» (footer_show_map) */}
           {opcionesShell.pie.mapa && (
@@ -1088,20 +1103,18 @@ export function SiteFooter({
             </div>
           )}
 
-          {/* Menús nombrados en columnas adicionales (sistema nuevo) */}
-          {hasFooterMenus && Object.entries(footerMenusByColumn)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([col, items]) => (
-              <div key={`menu-col-${col}`}>
-                <FooterSection title="Enlaces" mobileStyle={mobileFooterStyle}>
-                  <ul className="space-y-3">
-                    {items.map((item, i) => (
-                      <FooterLinkItem key={i} item={item} />
-                    ))}
-                  </ul>
-                </FooterSection>
-              </div>
-            ))}
+          {/* Menús nombrados en columnas adicionales, cada uno con su nombre (solo los que tienen enlaces) */}
+          {columnasMenus.map((c) => (
+            <div key={`menu-col-${c.columna}`}>
+              <FooterSection title={c.titulo} mobileStyle={mobileFooterStyle}>
+                <ul className="space-y-3">
+                  {c.enlaces.map((item, i) => (
+                    <FooterLinkItem key={i} item={item} />
+                  ))}
+                </ul>
+              </FooterSection>
+            </div>
+          ))}
         </div>
       </div>
 
