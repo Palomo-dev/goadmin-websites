@@ -44,6 +44,8 @@ const CLAVES_PERMITIDAS = new Set([
   'first_section_offset_px',
   // Contador regresivo en el pago (el resto entra por el prefijo `countdown_`).
   'checkout_show_countdown',
+  // Botón del cajón del carrito en la fila legacy (sitios sin borrador). En V2 va en `header_carrito`.
+  'cart_button_mode', 'cart_button_texts',
 ])
 /** Nunca en vivo: cambian qué datos se cargan, eso sí necesita guardar. */
 const CLAVES_EXCLUIDAS = new Set(['header_menu_id', 'header_mega_menu_id'])

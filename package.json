@@ -74,6 +74,7 @@
     "verify:franja": "node --disable-warning=ExperimentalWarning scripts/verify-franja.mjs",
     "verify:iconos-categoria": "node --disable-warning=ExperimentalWarning scripts/verify-iconos-categoria.mjs",
     "verify:selector-moneda": "node --disable-warning=ExperimentalWarning scripts/verify-selector-moneda.mjs",
+    "verify:cabecera-tienda": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-cabecera-tienda.mjs",
     "verify:boton-categorias": "node --disable-warning=ExperimentalWarning scripts/verify-boton-categorias.mjs",
     "verify:domicilio-transportadora": "node --disable-warning=ExperimentalWarning scripts/verify-domicilio-transportadora.mjs",
     "verify:categorias-carrusel": "node --disable-warning=ExperimentalWarning scripts/verify-categorias-carrusel.mjs",

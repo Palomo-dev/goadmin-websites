@@ -8,6 +8,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { IconoConCirculo, propsTrazoIcono } from './header/IconoEncabezado'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
 import { contenedorDe, type ContenedorIconos } from '@/lib/website/constructorEncabezado'
+import { AccionCabecera, InsigniaContador, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, type PresentacionIcono } from './header/AccionCabecera'
 
 interface CartIndicatorProps {
   primaryColor: string
@@ -29,21 +30,28 @@ interface CartIndicatorProps {
   colores?: ColoresCaja
   /** Clase del ícono. En el celular, `--hdr-mobile-icon`. */
   claseIcono?: string
+  /**
+   * Opciones nuevas de la cabecera (`header_iconos`): estilo, texto, tamaño, trazo y contador.
+   * Sin ellas (`null`), el ícono y el contador de hoy, sin ningún cambio.
+   */
+  presentacion?: PresentacionIcono | null
 }
 
-export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, contenedor = null, colores, claseIcono }: CartIndicatorProps) {
+export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, contenedor = null, colores, claseIcono, presentacion = null }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
   const trazo = propsTrazoIcono(relleno)
   const clase = claseIcono ?? (circulo || heredarColor ? 'h-6 w-6 text-current' : 'h-6 w-6 text-gray-700 dark:text-gray-300')
   const caja = contenedor ? contenedorDe(contenedor, 'cart') : null
+  // Tamaño y trazo nuevos (si los hay) pisan los de hoy; sin `presentacion`, el estilo vacío no cambia nada.
+  const glifo = presentacion ? estiloGlifo(presentacion) : undefined
   const icono = caja ? (
     <ContenedorIcono base={contenedor!} clave="cart" colores={colores || { primary: primaryColor, accent: primaryColor, secondary: primaryColor }}>
-      <Icon style={trazoContenedor(contenedor!, 'cart', relleno)} />
+      <Icon style={presentacion ? estiloGlifo(presentacion, trazoContenedor(contenedor!, 'cart', relleno)) : trazoContenedor(contenedor!, 'cart', relleno)} />
     </ContenedorIcono>
   ) : (
     <IconoConCirculo circulo={circulo} primaryColor={primaryColor}>
-      <Icon className={clase} {...trazo} />
+      <Icon className={clase} {...trazo} style={glifo} />
     </IconoConCirculo>
   )
   const [itemCount, setItemCount] = useState(0)
@@ -80,6 +88,45 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       {itemCount > 99 ? '99+' : itemCount}
     </span>
   )
+
+  if (presentacion) {
+    const propio = estiloPropio(presentacion.estilo)
+    const colorContador = caja?.badgeColor || primaryColor
+    const claseNumero = caja?.badgeShape === 'circle' ? 'w-5 h-5 rounded-full' : undefined
+    const esquina = caja?.badgePosition === 'top-left' ? '-top-1 -left-1' : '-top-1 -right-1'
+    const contador = <InsigniaContador cantidad={itemCount} contador={presentacion.contador} color={colorContador} className={propio ? '-top-2 -right-2' : esquina} claseNumero={claseNumero} />
+    const contenido = propio ? (
+      <AccionCabecera
+        estilo={presentacion.estilo}
+        texto={presentacion.texto}
+        primaryColor={primaryColor}
+        icono={<Icon className="shrink-0 text-current" {...trazo} style={estiloGlifo(presentacion, presentacion.px ? undefined : { width: 20, height: 20 })} />}
+        insignia={contador}
+      />
+    ) : (
+      <>
+        {icono}
+        {contador}
+      </>
+    )
+    const etiqueta = presentacion.texto ? undefined : 'Carrito'
+    // Color del texto y del ícono en los estilos nuevos: el de la barra (heredado o el del celular).
+    const colorPropio = !propio || presentacion.estilo === 'relleno'
+      ? ''
+      : ` ${claseColorIcono(claseIcono, heredarColor)}`
+    if (cartBehavior === 'redirect') {
+      return (
+        <Link href={ruta('/checkout')} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`}>
+          {contenido}
+        </Link>
+      )
+    }
+    return (
+      <button type="button" onClick={onClick} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`}>
+        {contenido}
+      </button>
+    )
+  }
 
   // Si el comportamiento es 'redirect', navegar directamente a /checkout
   if (cartBehavior === 'redirect') {

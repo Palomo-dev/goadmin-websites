@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Minus, Trash2, ShoppingBag, Tag } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, Tag, Truck } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { ContadoresDe } from './ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
@@ -13,6 +13,7 @@ import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib
 import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { avanceEnvioGratis, opcionesCarrito, partirMensajeMonto, textoBotonCarrito, type OpcionesCarrito } from '@/lib/website/v2/cabeceraTienda'
 
 interface CartModifier {
   modifierId: number
@@ -58,24 +59,44 @@ interface CartDrawerProps {
     taxIncluded: boolean
   } | null
   countdownConfig?: CountdownConfig
-  cartButtonConfig?: {
-    mode: 'dynamic' | 'fixed'
-    texts: string[]
-  }
+  /**
+   * Cajón del carrito (Figma 2753:59335, `header_carrito` + respaldo `cart_button_mode`/`_texts`).
+   * Sin opciones, los textos y el botón de hoy.
+   */
+  opciones?: OpcionesCarrito
   branchId?: number | null
 }
 
-export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, cartButtonConfig, branchId }: CartDrawerProps) {
+const CARRITO_POR_DEFECTO = opcionesCarrito(null)
+
+
+export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, opciones = CARRITO_POR_DEFECTO, branchId }: CartDrawerProps) {
   const { ruta } = useRutaSitio()
   const [items, setItems] = useState<CartItem[]>([])
   const { formatPrice } = useCurrency()
   // Promociones automáticas (mismo motor que checkout y /api/orders)
   const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
-  const [checkoutButtonText] = useState(() => {
-    const texts = cartButtonConfig?.texts?.length ? cartButtonConfig.texts : ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
-    if (cartButtonConfig?.mode === 'fixed') return texts[0]
-    return texts[Math.floor(Math.random() * texts.length)]
-  })
+  // Botón principal: «Dinámico» elige un texto cada vez que se abre el carrito y se queda mientras
+  // está abierto (decisión del dueño, 2026-11-22); «Texto fijo», siempre el mismo. Antes se elegía
+  // una sola vez por visita. Cambiar los textos en el editor (vista previa) también lo recalcula.
+  // Se elige durante el render (estado derivado), no en un efecto: así el cajón no pinta un cuadro
+  // con el texto anterior antes de cambiarlo.
+  const claveBoton = JSON.stringify(opciones.boton)
+  const [checkoutButtonText, setCheckoutButtonText] = useState(() => textoBotonCarrito(opciones.boton))
+  const [eleccionBoton, setEleccionBoton] = useState({ abierto: isOpen, clave: claveBoton })
+  if (eleccionBoton.abierto !== isOpen || eleccionBoton.clave !== claveBoton) {
+    setEleccionBoton({ abierto: isOpen, clave: claveBoton })
+    if (isOpen) setCheckoutButtonText(textoBotonCarrito(opciones.boton))
+  }
+
+  // El botón flotante del chat (Shadow DOM con z-index máximo) no tapa los botones del cajón:
+  // mientras está abierto se oculta (regla en app/globals.css).
+  useEffect(() => {
+    if (!isOpen) return
+    const raiz = document.documentElement
+    raiz.setAttribute('data-carrito-abierto', '')
+    return () => raiz.removeAttribute('data-carrito-abierto')
+  }, [isOpen])
   
   const cartKey = getCartKey(organizationSubdomain, branchId)
   
@@ -149,6 +170,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
     : 0
   // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
   const total = Math.max(0, subtotal + tax + shippingCost - promoDiscount)
+  // Envío gratis arriba, con su barra (Figma 2753:59474 / 59693). Solo con envío y tope configurados.
+  const topeEnvio = shippingSettings?.enableShipping ? shippingSettings.freeShippingThreshold : 0
+  const conEnvioGratis = topeEnvio > 0 && items.length > 0
+  const envioLogrado = conEnvioGratis && subtotal >= topeEnvio
+  const mensajeFalta = partirMensajeMonto(opciones.envioGratis.mensaje)
+  const avance = Math.round(avanceEnvioGratis(subtotal, topeEnvio) * 100)
 
   if (!isOpen) return null
   
@@ -166,7 +193,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
             <ShoppingBag className="w-5 h-5" style={{ color: primaryColor }} />
-            Tu Carrito
+            {opciones.titulo}
             {items.length > 0 && (
               <span 
                 className="px-2 py-0.5 text-xs rounded-full text-white"
@@ -184,6 +211,41 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           </button>
         </div>
         
+        {/* Envío gratis: lo que falta (o el «Listo») con la barra de avance */}
+        {conEnvioGratis && (
+          <div
+            className={`px-4 py-3 border-b dark:border-gray-700 ${envioLogrado ? 'bg-green-50 dark:bg-green-900/20' : 'bg-blue-50 dark:bg-blue-900/20'}`}
+            data-envio-gratis={envioLogrado ? 'logrado' : 'falta'}
+          >
+            <p className={`flex items-center gap-2 text-sm ${envioLogrado ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300'}`}>
+              <Truck className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              {envioLogrado ? (
+                <span>{opciones.envioGratis.logrado}</span>
+              ) : (
+                <span>
+                  {mensajeFalta.antes}
+                  <Price value={topeEnvio - subtotal} className="font-bold" style={{ color: primaryColor }} />
+                  {mensajeFalta.despues}
+                </span>
+              )}
+            </p>
+            {opciones.envioGratis.barra && (
+              <div
+                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/80 dark:bg-gray-700"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={avance}
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-300"
+                  style={{ width: `${avance}%`, backgroundColor: envioLogrado ? '#16A34A' : primaryColor }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
@@ -191,7 +253,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
               <p className="text-gray-500 dark:text-gray-400 mb-4">Tu carrito está vacío</p>
               <Button onClick={onClose} variant="outline" className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800">
-                Continuar Comprando
+                {opciones.seguirComprando}
               </Button>
             </div>
           ) : (
@@ -296,9 +358,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           )}
         </div>
         
-        {/* Footer */}
+        {/* Footer: cifras arriba, alineadas; debajo los botones en columna con espacio entre ellos */}
         {items.length > 0 && (
-          <div className="border-t dark:border-gray-700 p-4 space-y-4">
+          <div className="border-t dark:border-gray-700 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-3" data-pie-carrito="">
             <div className="flex items-center justify-between text-sm text-gray-900 dark:text-white">
               <span>Subtotal</span>
               <Price value={subtotal} />
@@ -331,20 +393,12 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             {/* Envío */}
             {shippingSettings?.enableShipping && (
               <>
+                {/* El aviso de envío gratis va arriba, con su barra; aquí solo la cifra. */}
                 {shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? (
-                  <>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
-                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                        <span>¡Te faltan</span>
-                        <Price value={shippingSettings.freeShippingThreshold - subtotal} className="font-bold" style={{ color: primaryColor }} />
-                        <span>para envío gratis!</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Envío</span>
-                      <Price value={shippingSettings.shippingFlatRate} className="font-medium text-gray-900 dark:text-white" />
-                    </div>
-                  </>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Envío</span>
+                    <Price value={shippingSettings.shippingFlatRate} className="font-medium text-gray-900 dark:text-white" />
+                  </div>
                 ) : (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Envío</span>
@@ -375,27 +429,42 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               )}
             </div>
             
-            <Link href={ruta('/checkout')} onClick={onClose}>
-              <Button 
-                className="w-full h-12 font-semibold"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {checkoutButtonText}
+            {/* Botones (Figma 2753:59474): principal a todo el ancho, «Ver carrito completo» con
+                borde debajo y «Seguir comprando» como enlace. Antes los <Link> eran en línea y
+                los botones quedaban pegados. */}
+            <div className="flex flex-col gap-2.5 pt-1">
+              <Button asChild className="w-full h-12 text-base font-semibold" style={{ backgroundColor: primaryColor }}>
+                <Link href={ruta('/checkout')} onClick={onClose} data-boton-carrito="principal">
+                  {checkoutButtonText}
+                </Link>
               </Button>
-            </Link>
 
-            <Link href={ruta('/carrito')} onClick={onClose}>
-              <Button variant="outline" className="w-full h-10 dark:border-gray-600 dark:text-white">
-                Ver carrito completo
-              </Button>
-            </Link>
-            
-            <button
-              onClick={onClose}
-              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            >
-              Continuar Comprando
-            </button>
+              {opciones.enlace.mostrar && (opciones.enlace.estilo === 'borde' ? (
+                <Button asChild variant="outline" className="w-full h-11 font-semibold dark:border-gray-600 dark:text-white">
+                  <Link href={ruta('/carrito')} onClick={onClose} data-boton-carrito="secundario">
+                    {opciones.enlace.texto}
+                  </Link>
+                </Button>
+              ) : (
+                <Link
+                  href={ruta('/carrito')}
+                  onClick={onClose}
+                  data-boton-carrito="secundario"
+                  className="block w-full py-1 text-center text-sm font-semibold underline underline-offset-4"
+                  style={{ color: primaryColor }}
+                >
+                  {opciones.enlace.texto}
+                </Link>
+              ))}
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-1 text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                {opciones.seguirComprando}
+              </button>
+            </div>
           </div>
         )}
       </div>

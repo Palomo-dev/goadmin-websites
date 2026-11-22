@@ -60,7 +60,9 @@ await rm(dir, { recursive: true, force: true })
 // ─── 1. Contrato ─────────────────────────────────────────────────────────────────────────────
 const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
-const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder'])
+// Cabecera de la tienda (2026-11-22): header_iconos, header_moneda y header_carrito los valida
+// lib/website/v2/cabeceraTienda.ts (scripts/verify-cabecera-tienda.mjs).
+const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder', 'header_iconos', 'header_moneda', 'header_carrito'])
 // 70 + las 6 de las plantillas de tienda (P0 2026-11: header_cta_shape, buttons_uppercase_active,
 // footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style) + las 15 del
 // encabezado píldora y el botón principal (2026-11-07: header_cta_size/width/height/style/icon/
@@ -68,7 +70,8 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // header_float_offset, header_pill_position) + las 7 del segundo botón y los botones del tema
 // (2026-11-07: header_cta2_shape/size/style/icon/icon_side/uppercase, buttons_theme_active).
 // +2 (2026-11-19): header_categories_button y header_categories_button_text (botón «Todas las categorías»).
-check(nuevas.length === 100, `se esperaban 100 opciones nuevas y hay ${nuevas.length}`)
+// +3 (2026-11-22): header_iconos, header_moneda y header_carrito (cabecera de la tienda, Figma 2747:57859).
+check(nuevas.length === 103, `se esperaban 103 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -229,6 +232,9 @@ const CONSUMIDORES = {
   header_menu4_links: ['lib/website/constructorEncabezado.ts', 'header_menu4_links'],
   header_extra_buttons_style: ['lib/website/constructorEncabezado.ts', 'header_extra_buttons_style'],
   header_icons_box: ['lib/website/constructorEncabezado.ts', 'header_icons_box'],
+  header_iconos: ['lib/website/v2/cabeceraTienda.ts', '.header_iconos'],
+  header_moneda: ['lib/website/v2/cabeceraTienda.ts', '.header_moneda'],
+  header_carrito: ['lib/website/v2/cabeceraTienda.ts', '.header_carrito'],
   header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
   first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],
   mobile_menu_bg_color: ['lib/headerColors.ts', 'mobile_menu_bg_color'],

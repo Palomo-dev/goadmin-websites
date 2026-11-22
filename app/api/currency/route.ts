@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
+import { monedaPermitida } from '@/lib/website/v2/cabeceraTienda'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,10 @@ const ISO2_TO_ISO3: Record<string, string> = {
  * locale y monedas disponibles.
  * Query params:
  *  - currency: código de moneda para selección manual (opcional)
+ *  - visibles: «COP,USD» monedas visibles del selector (`header_moneda.visibles`, opcional). La
+ *    base siempre; una elección o un país con moneda no visible caen en la base.
+ *  - inicial=base: sin elección manual, la moneda base (no se detecta el país).
+ * Sin `visibles` ni `inicial`, la respuesta es la de siempre.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +58,14 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createAdminClient() || createPublicClient()
-    const manualCurrency = request.nextUrl.searchParams.get('currency')
+    const manualPedida = request.nextUrl.searchParams.get('currency')
+    const visibles = (request.nextUrl.searchParams.get('visibles') || '')
+      .split(',')
+      .map((c) => c.trim().toUpperCase())
+      .filter((c) => /^[A-Z]{3}$/.test(c))
+      .slice(0, 20)
+    const listaVisible = visibles.length > 0 ? visibles : null
+    const inicialBase = request.nextUrl.searchParams.get('inicial') === 'base'
 
     // 1. Moneda base de la organización
     const { data: orgCurrency } = await (supabase as any)
@@ -63,6 +75,7 @@ export async function GET(request: NextRequest) {
       .eq('is_base', true)
       .maybeSingle()
     const baseCurrency = (orgCurrency?.currency_code || 'COP').trim()
+    const manualCurrency = manualPedida && monedaPermitida(manualPedida.trim(), baseCurrency, listaVisible) ? manualPedida : null
 
     // 2. Detectar país del visitante (Vercel geo header ISO-2)
     const countryIso2 = headersList.get('x-vercel-ip-country') || ''
@@ -83,14 +96,14 @@ export async function GET(request: NextRequest) {
         .limit(1)
         .maybeSingle()
       if (countryForCurrency?.locale) locale = countryForCurrency.locale
-    } else if (countryIso3) {
+    } else if (countryIso3 && !inicialBase) {
       const { data: country } = await (supabase as any)
         .from('countries')
         .select('code, default_currency_code, locale')
         .eq('code', countryIso3)
         .eq('is_active', true)
         .maybeSingle()
-      if (country?.default_currency_code) {
+      if (country?.default_currency_code && monedaPermitida(country.default_currency_code.trim(), baseCurrency, listaVisible)) {
         targetCurrency = country.default_currency_code.trim()
         locale = country.locale || 'es-CO'
         countryCode = country.code
@@ -141,6 +154,7 @@ export async function GET(request: NextRequest) {
       .filter((c: any) => {
         const code = c.default_currency_code?.trim()
         if (!code || seen.has(code)) return false
+        if (!monedaPermitida(code, baseCurrency, listaVisible)) return false
         seen.add(code)
         return true
       })

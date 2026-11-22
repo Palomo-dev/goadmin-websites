@@ -1160,3 +1160,9 @@ header a[data-categoria-activa][data-categoria-activa] {
     max-width: min(100%, 36vw);
   }
 }
+
+/* Cajón del carrito abierto (CartDrawer): el botón flotante del chat (Shadow DOM con z-index
+   máximo) no tapa «Comprar ahora» ni «Ver carrito completo». */
+html[data-carrito-abierto] [data-gochat-widget] {
+  display: none !important;
+}

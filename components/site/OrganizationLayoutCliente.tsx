@@ -52,6 +52,7 @@ import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, opcionesPlantillaTienda, variantesFuenteTienda, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 import { headerSobreHero, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { contarUnidadesCarrito } from '@/lib/cart'
+import { opcionesCarrito, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -197,6 +198,10 @@ export function OrganizationLayoutCliente({
     return () => window.removeEventListener('cart-updated', alActualizar)
   }, [subdomain, branchId, frozenReason, modoMesa])
   const effectiveShowCurrencyCode = showCurrencyCode ?? settings?.show_currency_code ?? false
+  // Cabecera de la tienda (Figma 2747:57859): monedas visibles y moneda al entrar; el cajón del
+  // carrito con su botón (documento o, si no, `cart_button_mode`/`_texts` de la fila legacy).
+  const opMonedaTienda = opcionesMoneda(settings)
+  const opCarrito = opcionesCarrito(settings)
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -362,7 +367,7 @@ export function OrganizationLayoutCliente({
   
   return (
     <AjustesVivosProvider value={vivos?.ajustes ?? null}>
-    <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition}>
+    <CurrencyProvider showCurrencyCode={effectiveShowCurrencyCode} currencyPosition={effectiveCurrencyPosition} monedasVisibles={opMonedaTienda.visibles} alEntrar={opMonedaTienda.alEntrar}>
     <ProveedorListaCarrusel paginacion={temaEfectivo?.paginacion ?? null} carrusel={temaEfectivo?.carrusel ?? null}>
     <RutaSitioProvider prefijo={prefijo} horarioSede={datosSede?.horarioPie ?? null}>
     <TemaColoresProvider value={'data-tema-colores' in temaVars.datos}>
@@ -491,10 +496,7 @@ export function OrganizationLayoutCliente({
           }}
           taxSettings={taxSettings}
           countdownConfig={settings?.countdown_enabled || (settings as { conversion?: unknown } | null)?.conversion ? settings : undefined}
-          cartButtonConfig={{
-            mode: settings?.cart_button_mode || 'dynamic',
-            texts: settings?.cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento']
-          }}
+          opciones={opCarrito}
           branchId={branchId}
         />
       )}

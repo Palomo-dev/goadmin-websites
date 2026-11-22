@@ -38,6 +38,8 @@ export const COPIAS = [
   ['lib/website/v2/tokensDiseno.ts', 'src/lib/website/v2/tokensDiseno.ts'],
   ['lib/website/v2/presetsDiseno.ts', 'src/lib/website/v2/presetsDiseno.ts'],
   ['lib/website/v2/iconosEncabezado.ts', 'src/lib/website/v2/iconosEncabezado.ts'],
+  // Cabecera de la tienda (Figma 2747:57859): íconos, selector de moneda y cajón del carrito.
+  ['lib/website/v2/cabeceraTienda.ts', 'src/lib/website/v2/cabeceraTienda.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
   // Tarjeta de producto: el editor (ERP) y la tienda leen el mismo preset y la misma fusión.

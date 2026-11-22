@@ -38,6 +38,9 @@ import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
+import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesIconos, opcionesMoneda, textoIcono, type IconoConTexto, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
+import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
+import { ListaMonedas } from '../CurrencySelector';
 
 // ============================================================
 // SHARED TYPES
@@ -642,6 +645,7 @@ export function HeaderActions({
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   // header_show_currency (panel «Encabezado»): `false` quita la moneda; default, como siempre.
   const { opciones: opcionesShell } = useEncabezadoPie();
+  const { currency: monedaActual } = useCurrency();
 
   useEffect(() => {
     const supabase = createClient();
@@ -681,6 +685,27 @@ export function HeaderActions({
   const SearchIconComp = iconoDe('search', Search);
   const claseIconoAccion = estiloIconos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`;
 
+  // Cabecera de la tienda (Figma 2747:57859, `header_iconos` / `header_moneda`). Sin opciones
+  // nuevas `presentar` devuelve null y cada ícono sigue exactamente por el camino de hoy.
+  const ajustesCabecera = settings as unknown as Record<string, unknown> | null;
+  const opIconos = opcionesIconos(ajustesCabecera);
+  const opMoneda = opcionesMoneda(ajustesCabecera);
+  const presentar = (clave: IconoConTexto, codigo?: string): PresentacionIcono | null =>
+    opIconos.configurado ? presentacionIcono(opIconos, textoIcono(opIconos, clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera)) : null;
+  const presCuenta = presentar('cuenta');
+  const presFavoritos = presentar('favoritos');
+  /** Clase del enlace en los estilos nuevos (sin el `p-2`) con el color de la barra. */
+  const claseEnlaceNuevo = (estilo: PresentacionIcono['estilo']) =>
+    `${claseEnvoltorio(estilo)}${estilo === 'relleno' ? '' : ` ${claseColorIcono(isMobile ? claseIcono : undefined, heredarColor)}`}`;
+  const iconoNuevo = (Icono: typeof User, pres: PresentacionIcono) => (
+    <AccionCabecera
+      estilo={pres.estilo}
+      texto={pres.texto}
+      primaryColor={primaryColor}
+      icono={<Icono className="shrink-0 text-current" {...trazo} style={estiloGlifo(pres, pres.px ? undefined : { width: 20, height: 20 })} />}
+    />
+  );
+
   // Fase 12B: Orden de acciones configurable
   const actionsOrder: string[] = (() => {
     const raw = settings?.actions_order;
@@ -706,11 +731,29 @@ export function HeaderActions({
   }
   const iconoCuenta = (Icono: typeof User, sesion: boolean) => contenedor ? (
     <ContenedorIcono base={contenedor} clave="account" colores={coloresCaja}>
-      <Icono style={trazoContenedor(contenedor, 'account', estiloIconos.relleno)} />
+      <Icono style={presCuenta ? estiloGlifo(presCuenta, trazoContenedor(contenedor, 'account', estiloIconos.relleno)) : trazoContenedor(contenedor, 'account', estiloIconos.relleno)} />
     </ContenedorIcono>
   ) : (
     <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
-      <Icono className={claseIconoAccion} style={sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined} {...trazo} />
+      <Icono
+        className={claseIconoAccion}
+        style={
+          presCuenta
+            ? estiloGlifo(presCuenta, sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined)
+            : sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined
+        }
+        {...trazo}
+      />
+    </IconoConCirculo>
+  )
+  // Favoritos (solo si el sitio lo prendió y la tienda vende productos: /mi-cuenta/favoritos).
+  const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(Heart, presFavoritos) : contenedor ? (
+    <ContenedorIcono base={contenedor} clave="favorites" colores={coloresCaja}>
+      <Heart style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)} />
+    </ContenedorIcono>
+  ) : (
+    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
+      <Heart className={claseIconoAccion} style={presFavoritos ? estiloGlifo(presFavoritos) : undefined} {...trazo} />
     </IconoConCirculo>
   )
   const actionElements: Record<string, React.ReactNode | null> = {
@@ -729,7 +772,22 @@ export function HeaderActions({
         circulo={contenedor ? false : estiloIconos.circulo}
         contenedor={contenedor}
         colores={coloresCaja}
+        opciones={opMoneda}
+        presentacion={presentar('moneda', monedaActual)}
       />
+    ) : isMobile && !hideCurrency && opcionesShell.moneda && opMoneda.movil === 'barra' ? (
+      // «En la barra» (Figma 2750:59257): bandera o código junto al carrito; abre la hoja.
+      <MonedaBarraMovil key="currency" opciones={opMoneda} claseColor={claseColorIcono(claseIcono, heredarColor)} />
+    ) : null,
+    favorites: !isMobile && showCart && opIconos.favoritos ? (
+      <Link
+        key="favorites"
+        href="/mi-cuenta/favoritos"
+        aria-label={presFavoritos?.texto ? undefined : textoIcono(opIconos, 'favoritos')}
+        className={presFavoritos && estiloPropio(presFavoritos.estilo) ? claseEnlaceNuevo(presFavoritos.estilo) : 'p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors'}
+      >
+        {iconoFavoritos}
+      </Link>
     ) : null,
     cart: showHeaderCart ? (
       <CartIndicator
@@ -746,10 +804,15 @@ export function HeaderActions({
         contenedor={contenedor}
         colores={coloresCaja}
         claseIcono={circuloSimple ? 'h-6 w-6 text-current' : isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
+        presentacion={presentar('carrito')}
       />
     ) : null,
     auth: (!isMobile || mostrarCuentaMovil) && showHeaderAuth && !hideAuth ? (
-      isLoggedIn ? (
+      presCuenta && estiloPropio(presCuenta.estilo) ? (
+        <Link key="auth" href={isLoggedIn ? '/mi-cuenta' : '/auth'} className={claseEnlaceNuevo(presCuenta.estilo)} title={isLoggedIn ? 'Mi Cuenta' : undefined} aria-label={presCuenta.texto ? undefined : 'Mi cuenta'}>
+          {iconoNuevo(isLoggedIn ? AuthLoggedInIconComp : AuthIconComp, presCuenta)}
+        </Link>
+      ) : isLoggedIn ? (
         <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
           {iconoCuenta(AuthLoggedInIconComp, true)}
         </Link>
@@ -761,12 +824,20 @@ export function HeaderActions({
     ) : null,
   };
 
+  // Favoritos no estaba en el orden guardado: va justo antes del carrito (Figma C1/C3).
+  const ordenFinal = actionElements.favorites && !actionsOrder.includes('favorites')
+    ? (() => {
+        const i = actionsOrder.indexOf('cart');
+        return i < 0 ? [...actionsOrder, 'favorites'] : [...actionsOrder.slice(0, i), 'favorites', ...actionsOrder.slice(i)];
+      })()
+    : actionsOrder;
+
   // Celular con cuenta visible: un ícono más en la fila; menos separación para que logo, buscar,
   // carrito y menú no se aplasten. Sin cuenta en el celular, la separación de siempre.
   const filaApretada = isMobile && actionElements.auth != null;
   return (
     <div className={`flex items-center ${filaApretada ? 'gap-1' : 'space-x-4'} flex-shrink-0`} data-acciones-encabezado="">
-      {actionsOrder.map((action) => actionElements[action]).filter(Boolean)}
+      {ordenFinal.map((action) => actionElements[action]).filter(Boolean)}
     </div>
   );
 }
@@ -1658,9 +1729,12 @@ export function MobileMenuButton({
 export function MobileCurrencyChips({ primaryColor, settings }: { primaryColor?: string; settings?: HeaderVariantProps['settings'] }) {
   // Mismo ícono que la moneda del computador (`resolverIconoEncabezado`); sin configurar, Globe.
   const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
-  const { currency, availableCurrencies, setCurrency, loading } = useCurrency();
+  const { currency, baseCurrency, availableCurrencies: todas, setCurrency, loading } = useCurrency();
   const [open, setOpen] = useState(false);
   const { opciones: opcionesShell } = useEncabezadoPie();
+  // Monedas visibles (`header_moneda.visibles`): sin elegir, todas y en el orden de hoy.
+  const visibles = opcionesMoneda(settings as unknown as Record<string, unknown> | null).visibles;
+  const availableCurrencies = visibles ? monedasVisibles(todas, visibles, baseCurrency) : todas;
 
   if (loading || availableCurrencies.length <= 1 || !opcionesShell.moneda) return null;
 
@@ -1736,18 +1810,146 @@ export function BloqueMonedaMovil({
   /** Ajustes del encabezado: el ícono de la moneda sale de aquí (sin configurar, Globe). */
   settings?: HeaderVariantProps['settings'];
 }) {
-  const { loading, availableCurrencies } = useCurrency();
+  const { loading, availableCurrencies, baseCurrency } = useCurrency();
   const { opciones: opcionesShell } = useEncabezadoPie();
   const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
-  if (!opcionesShell.moneda || loading || availableCurrencies.length <= 1) return null;
+  // «En el celular» (`header_moneda.movil`, Figma 2750): hoja (hoy), lista en el menú, chips o en la barra.
+  const op = opcionesMoneda(settings as unknown as Record<string, unknown> | null);
+  const visibles = op.visibles ? monedasVisibles(availableCurrencies, op.visibles, baseCurrency) : availableCurrencies;
+  if (!opcionesShell.moneda || loading || visibles.length <= 1) return null;
+  // En la barra: la moneda sale junto al carrito (HeaderActions); el menú ya no la repite.
+  if (op.movil === 'barra') return null;
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-3 text-sm text-[var(--mm-cur-text)]">
         <IconoMoneda className="h-4 w-4" />
         <span>Moneda</span>
       </div>
-      <MobileCurrencyChips primaryColor={primaryColor} settings={settings} />
+      {op.movil === 'chips' ? (
+        <ChipsMonedaMovil lista={visibles} primaryColor={primaryColor} />
+      ) : op.movil === 'lateral' ? (
+        <ListaMonedaMenuMovil lista={visibles} />
+      ) : (
+        <MobileCurrencyChips primaryColor={primaryColor} settings={settings} />
+      )}
     </div>
+  );
+}
+
+type MonedaVisible = { code: string; country: string };
+
+/** «Chips» (Figma 2750:59110): las monedas como chips con bandera; un toque cambia. */
+function ChipsMonedaMovil({ lista, primaryColor }: { lista: MonedaVisible[]; primaryColor?: string }) {
+  const { currency, setCurrency } = useCurrency();
+  const marca = primaryColor || 'var(--primary-color, #111827)';
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Moneda">
+      {lista.map((m) => {
+        const elegida = m.code === currency;
+        return (
+          <button
+            key={m.code}
+            type="button"
+            aria-pressed={elegida}
+            onClick={() => setCurrency(m.code)}
+            className="flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+            style={elegida
+              ? { borderColor: marca, color: marca, boxShadow: `inset 0 0 0 1px ${marca}` }
+              : { borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
+          >
+            <BanderaMoneda codigo={m.code} />
+            {m.code}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** «Menú lateral» (Figma 2750:58869): la fila de la moneda despliega la lista dentro del menú. */
+function ListaMonedaMenuMovil({ lista }: { lista: MonedaVisible[] }) {
+  const { currency, baseCurrency, setCurrency } = useCurrency();
+  const [abierta, setAbierta] = useState(false);
+  const actual = lista.find((c) => c.code === currency);
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => setAbierta((v) => !v)}
+        aria-expanded={abierta}
+        className="flex w-full items-center justify-between rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+        style={{ borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
+      >
+        <span className="flex items-center gap-2">
+          <BanderaMoneda codigo={currency} />
+          <span className="font-semibold">{currency}</span>
+          <span className="opacity-70">{actual ? datosMoneda(actual.code, actual.country).nombre : ''}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 text-[var(--mm-cur-icon)] transition-transform ${abierta ? 'rotate-180' : ''}`} />
+      </button>
+      {abierta && (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white py-1" data-superficie-propia="">
+          <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} onElegir={(code) => { setCurrency(code); setAbierta(false); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Hoja inferior de la cabecera nueva (Figma 2750:58955): «Elige la moneda», bandera, código y
+ * nombre, la actual marcada y la nota de conversión.
+ */
+export function HojaMonedas({ abierta, onCerrar, lista }: { abierta: boolean; onCerrar: () => void; lista: MonedaVisible[] }) {
+  const { currency, baseCurrency, setCurrency } = useCurrency();
+  if (!abierta) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center" onClick={onCerrar}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Elige la moneda"
+        className="relative w-full rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] text-[#111827] shadow-2xl animate-in slide-in-from-bottom duration-200 sm:max-w-sm sm:rounded-2xl"
+        data-superficie-propia=""
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div aria-hidden="true" className="mx-auto mt-2 h-1 w-9 rounded-full bg-gray-300 sm:hidden" />
+        <div className="flex items-center justify-between px-4 pb-2 pt-3">
+          <h3 className="text-base font-semibold">Elige la moneda</h3>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-full p-1.5 hover:bg-gray-100">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto pb-2">
+          <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} onElegir={(code) => { setCurrency(code); onCerrar(); }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** «En la barra» (Figma 2750:59257): píldora con bandera (estilo Bandera) o el código, junto al carrito. */
+function MonedaBarraMovil({ opciones, claseColor }: { opciones: OpcionesMoneda; claseColor: string }) {
+  const { currency, baseCurrency, availableCurrencies, loading } = useCurrency();
+  const [abierta, setAbierta] = useState(false);
+  const lista = monedasVisibles(availableCurrencies, opciones.visibles, baseCurrency);
+  if (loading || lista.length <= 1) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierta(true)}
+        aria-label={`Moneda: ${currency}`}
+        aria-haspopup="dialog"
+        className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${claseColor}`}
+        style={{ borderColor: 'color-mix(in srgb, currentColor 45%, transparent)' }}
+      >
+        {opciones.estilo === 'bandera' && <BanderaMoneda codigo={currency} />}
+        {currency}
+      </button>
+      <HojaMonedas abierta={abierta} onCerrar={() => setAbierta(false)} lista={lista} />
+    </>
   );
 }
 

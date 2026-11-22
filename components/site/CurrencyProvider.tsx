@@ -36,7 +36,12 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 const STORAGE_KEY = 'site_currency'
 
-export function CurrencyProvider({ children, showCurrencyCode = false, currencyPosition = 'left' }: { children: React.ReactNode; showCurrencyCode?: boolean; currencyPosition?: 'left' | 'right' }) {
+/**
+ * `monedasVisibles` y `alEntrar` (Encabezado › Selector de moneda, `header_moneda`): sin ellos la
+ * petición a /api/currency es la de siempre. Con ellos, el servidor filtra la lista y elige la
+ * moneda inicial (la del país solo si está visible; o siempre la base).
+ */
+export function CurrencyProvider({ children, showCurrencyCode = false, currencyPosition = 'left', monedasVisibles = null, alEntrar = 'pais' }: { children: React.ReactNode; showCurrencyCode?: boolean; currencyPosition?: 'left' | 'right'; monedasVisibles?: readonly string[] | null; alEntrar?: 'pais' | 'base' }) {
   const [state, setState] = useState({
     baseCurrency: 'COP',
     currency: 'COP',
@@ -47,9 +52,15 @@ export function CurrencyProvider({ children, showCurrencyCode = false, currencyP
     loading: true,
   })
 
+  const visiblesClave = monedasVisibles && monedasVisibles.length > 0 ? monedasVisibles.join(',') : ''
   const fetchCurrency = useCallback(async (manualCode?: string) => {
     try {
-      const url = manualCode ? `/api/currency?currency=${manualCode}` : '/api/currency'
+      const params = new URLSearchParams()
+      if (manualCode) params.set('currency', manualCode)
+      if (visiblesClave) params.set('visibles', visiblesClave)
+      if (alEntrar === 'base') params.set('inicial', 'base')
+      const consulta = params.toString()
+      const url = consulta ? `/api/currency?${consulta}` : '/api/currency'
       const res = await fetch(url)
       if (!res.ok) throw new Error('currency fetch failed')
       const data = await res.json()
@@ -65,7 +76,7 @@ export function CurrencyProvider({ children, showCurrencyCode = false, currencyP
     } catch {
       setState(prev => ({ ...prev, loading: false }))
     }
-  }, [])
+  }, [visiblesClave, alEntrar])
 
   useEffect(() => {
     let manual: string | undefined
