@@ -275,8 +275,9 @@ const getWebSalesByProductUncached = async (organizationId: number): Promise<Rec
       .order('id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
     if (error) {
-      console.error('[queries] getWebSalesByProduct error:', error.message || error)
-      break
+      // Se lanza (no se devuelve un mapa a medias): así unstable_cache conserva el
+      // último resultado bueno en vez de guardar uno incompleto 10 minutos.
+      throw new Error(`[queries] getWebSalesByProduct: ${error.message || error}`)
     }
     for (const item of data || []) {
       if (item.product_id == null) continue
@@ -4049,11 +4050,30 @@ export const getMenuCatalogProducts = cache(
 export const getProductosConEleccion = cache(
   cacheCatalog('getProductosConEleccion', getProductosConEleccionUncached, (...args) => args[0])
 )
-// Ventas web por producto de una organización: una consulta por org cada
-// CATALOG_TTL, compartida por todos los listados de la misma petición.
-export const getWebSalesByProduct = cache(
-  cacheCatalog('getWebSalesByProduct', getWebSalesByProductUncached, (...args) => args[0])
+// Ventas web por producto de una organización («más vendidos»).
+//
+// Incidente 2026-11-21 (org 358, ~1.700 visitas a la portada en 30 min): con la
+// caché del catálogo (30 s y la etiqueta `catalogo-<org>`, que el ERP invalida
+// en cada cambio de stock) esta consulta paginada se recalculaba sin parar; al
+// lentearse la base, sus fallos no quedaban en caché y cada visita la relanzaba
+// completa (10.815 consultas en media hora) y frenó también al ERP.
+// Ahora: caché propia de 10 minutos, fuera de la etiqueta del catálogo (el orden
+// de «más vendidos» no necesita estar al segundo); si la base falla se sirve el
+// último resultado guardado, y sin ninguno, un mapa vacío (la tienda no se cae).
+export const VENTAS_WEB_TTL = 600
+const getWebSalesByProductCacheada = cacheStructural(
+  'getWebSalesByProduct',
+  getWebSalesByProductUncached,
+  VENTAS_WEB_TTL
 )
+export const getWebSalesByProduct = cache(async (organizationId: number): Promise<Record<number, number>> => {
+  try {
+    return await getWebSalesByProductCacheada(organizationId)
+  } catch (err) {
+    console.error('[queries] getWebSalesByProduct sin datos:', err instanceof Error ? err.message : err)
+    return {}
+  }
+})
 
 // Platos elegidos por id para `signature_dishes` cuando no están entre los
 // 500 que precarga getOrganizationProducts (cartas grandes). Misma consulta
