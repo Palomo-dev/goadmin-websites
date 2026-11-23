@@ -9,7 +9,7 @@
  * - qué cobra el pedido y si se puede pedir a domicilio (fuera de cobertura o bajo el mínimo, no);
  * - qué dice la tarjeta «Domicilio» y la barra «Te faltan $X para envío gratis».
  */
-import type { CotizacionEnvio } from './cotizacionLogistica'
+import { promesaEntrega, type CotizacionEnvio, type UnidadPromesa } from './cotizacionLogistica'
 
 /**
  * Lo único de la cotización que sale al navegador (/api/shipping/quote → checkout): precio, zona
@@ -86,23 +86,44 @@ export function envioDeZona(c: CotizacionPublica): EnvioZona {
   }
 }
 
-/** «45–60 min», «60 min» o el texto de la zona («Mismo día»). */
-export function tiempoZona(c: CotizacionPublica): string | null {
-  const t = c.tiempo
-  if (!t) return null
-  if (t.texto && t.texto.trim()) return t.texto.trim()
-  if (t.min_minutos != null && t.max_minutos != null) return t.min_minutos === t.max_minutos ? `${t.min_minutos} min` : `${t.min_minutos}–${t.max_minutos} min`
-  const uno = t.max_minutos ?? t.min_minutos
-  return uno != null ? `${uno} min` : null
+const UNIDADES: Record<UnidadPromesa, [string, string]> = {
+  minutos: ['min', 'min'],
+  horas: ['hora', 'horas'],
+  dias: ['día', 'días'],
 }
 
-/** «Llega hoy · 45–60 min», «Mañana», «Sale el lun 24 nov». `fechaCorta` formatea el `date` sin convertir zona. */
+/**
+ * «45–60 min», «2–4 horas», «3–15 días», «hasta 15 días» o el texto de la zona («Mismo día»).
+ * La unidad sale del contrato (`promesaEntrega`): un envío nacional no se muestra en minutos.
+ */
+export function tiempoZona(c: Pick<CotizacionPublica, 'tiempo'>): string | null {
+  const p = promesaEntrega(c.tiempo)
+  if (!p) return null
+  if (p.texto) return p.texto
+  if (p.hasta === null) return null
+  const [uno, varios] = UNIDADES[p.unidad]
+  const palabra = (n: number) => (n === 1 ? uno : varios)
+  if (p.desde === null) return `${p.unidad === 'minutos' ? '' : 'hasta '}${p.hasta} ${palabra(p.hasta)}`
+  if (p.desde === p.hasta) return `${p.hasta} ${palabra(p.hasta)}`
+  return `${p.desde}–${p.hasta} ${palabra(p.hasta)}`
+}
+
+/**
+ * Qué dice la tarjeta «Domicilio» sobre cuándo llega. `fechaCorta` formatea el `date` sin convertir zona.
+ * - Domicilio del mismo día (minutos u horas): «Llega hoy · 45–60 min» o «Sale el lun 24 nov · 45–60 min».
+ * - Envío de días (nacional) o con texto propio: «Sale hoy · llega en 3–15 días»,
+ *   «Sale el lun 24 nov · llega en máximo 15 días» o «Sale hoy · 2 a 5 días hábiles».
+ * «Llega hoy» solo se promete cuando la entrega cabe en el día (2026-11-23).
+ */
 export function llegadaZona(c: CotizacionPublica, fechaCorta: (fecha: string) => string): string | null {
   const tiempo = tiempoZona(c)
   const d = c.despacho
   if (!d) return tiempo
-  if (d.hoy) return tiempo ? `Llega hoy · ${tiempo}` : 'Llega hoy'
-  return `Sale el ${fechaCorta(d.fecha)}${tiempo ? ` · ${tiempo}` : ''}`
+  const p = promesaEntrega(c.tiempo)
+  const sale = d.hoy ? 'Sale hoy' : `Sale el ${fechaCorta(d.fecha)}`
+  if (p?.mismoDia && !p.texto) return d.hoy ? `Llega hoy · ${tiempo}` : `${sale} · ${tiempo}`
+  if (!tiempo) return sale
+  return p?.texto ? `${sale} · ${tiempo}` : `${sale} · llega en ${tiempo.replace(/^hasta /, 'máximo ')}`
 }
 
 export interface BarraEnvioGratis {

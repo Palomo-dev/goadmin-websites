@@ -6,7 +6,7 @@
  * 1. Sin zonas configuradas (o sin cotización) la tienda cobra como antes.
  * 2. En zona: el precio de la zona (gratis si aplica); fuera de zona con tarifa general: esa
  *    tarifa; fuera de cobertura o bajo el mínimo: bloqueado.
- * 3. Tarjeta «Domicilio», «Llega hoy · 45–60 min» y la barra «Te faltan $X para envío gratis».
+ * 3. Tarjeta «Domicilio», «Llega hoy · 45–60 min» / «Sale hoy · llega en 3–15 días» y la barra «Te faltan $X para envío gratis».
  * 4. Municipio DANE por nombre (sin tildes, «Bogotá, D.C.»), y la RPC con canal web.
  * 5. Rastreo: primer nombre, código solo con token y contraentrega, dirección incompleta.
  * 6. /api/orders cobra SIEMPRE el envío del servidor (ya no acepta `shipping: 0`).
@@ -62,6 +62,17 @@ igual(dz.tiempoZona(base), '45–60 min', 'tiempo en minutos')
 igual(dz.tiempoZona({ ...base, tiempo: { min_minutos: null, max_minutos: null, texto: 'Mismo día' } }), 'Mismo día', 'texto de la zona')
 igual(dz.llegadaZona(base, (f) => f), 'Llega hoy · 45–60 min', 'llega hoy')
 igual(dz.llegadaZona({ ...base, despacho: { ...base.despacho, hoy: false, fecha: '2026-11-24' } }, (f) => `lun ${f}`), 'Sale el lun 2026-11-24 · 45–60 min', 'sale otro día (fecha plana)')
+// Envío nacional en días y domicilio en horas: nunca «Llega hoy» si no cabe en el día (2026-11-23).
+const dias = (min, max) => ({ ...base, tiempo: { min_minutos: min, max_minutos: max, texto: null } })
+igual(dz.tiempoZona(dias(3 * 1440, 15 * 1440)), '3–15 días', 'nacional en días')
+igual(dz.tiempoZona(dias(null, 15 * 1440)), 'hasta 15 días', 'solo máximo en días')
+igual(dz.tiempoZona(dias(1440, 1440)), '1 día', 'un día')
+igual(dz.tiempoZona(dias(120, 240)), '2–4 horas', 'horas')
+igual(dz.llegadaZona(dias(3 * 1440, 15 * 1440), (f) => f), 'Sale hoy · llega en 3–15 días', 'días: sale hoy, no llega hoy')
+igual(dz.llegadaZona(dias(null, 15 * 1440), (f) => f), 'Sale hoy · llega en máximo 15 días', 'días: solo máximo')
+igual(dz.llegadaZona({ ...dias(3 * 1440, 7 * 1440), despacho: { ...base.despacho, hoy: false, fecha: '2026-11-24' } }, (f) => `lun ${f}`), 'Sale el lun 2026-11-24 · llega en 3–7 días', 'días: sale otro día')
+igual(dz.llegadaZona(dias(120, 240), (f) => f), 'Llega hoy · 2–4 horas', 'horas: llega hoy')
+igual(dz.llegadaZona({ ...base, tiempo: { min_minutos: null, max_minutos: null, texto: '2 a 5 días hábiles' } }, (f) => f), 'Sale hoy · 2 a 5 días hábiles', 'texto propio: no promete llega hoy')
 igual(dz.barraEnvioGratis(base), { falta: 65000, desde: 120000, porcentaje: 46 }, 'te faltan $65.000 (46 %)')
 igual(dz.barraEnvioGratis({ ...base, envio_gratis: true }), null, 'ya es gratis: sin barra')
 igual(dz.detalleZona(base), 'Lo lleva la tienda · Zona 2 · Chapinero', 'detalle en zona')
