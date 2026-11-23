@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { MARCA_SESION_CORTA } from '@/lib/auth/sesionCorta'
 import { createAuthClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
@@ -85,6 +87,8 @@ export async function POST(request: NextRequest) {
     // Auto-login: establecer sesión con cookies para redirigir directo a /mi-cuenta
     const authClient = await createAuthClient()
     const { data: loginData } = await authClient.auth.signInWithPassword({ email, password })
+    // Cuenta nueva = la sesión larga de siempre: se borra una marca de «Recordarme» que haya quedado.
+    if (loginData?.session) (await cookies()).delete(MARCA_SESION_CORTA)
     
     return NextResponse.json({ 
       success: true, 

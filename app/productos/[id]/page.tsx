@@ -35,6 +35,7 @@ import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
 import { normalizarAjustesAccionesFicha, normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
+import { leerBarraFija } from '@/lib/website/v2/barraFija'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
@@ -408,6 +409,10 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   const contenidoAcciones = (seccionesFicha.find((s) => s.section_type === 'product_actions' && s.is_visible !== false)?.content ?? {}) as Record<string, unknown>
   const barraFija = contenidoAcciones.sticky_mobile !== false
   const precioEnBarra = normalizarAjustesAccionesFicha(contenidoAcciones).showPriceInButton
+  // Barra fija al bajar (Figma 2836:69391, propuesta 9): opciones del celular y barra del
+  // computador (`sticky`). Sin claves, la de hoy en el celular y ninguna en el computador.
+  const opcionesBarra = leerBarraFija(contenidoAcciones)
+  const barraEscritorio = opcionesBarra.escritorio.encendida
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
@@ -592,9 +597,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
       </div>
       )}
 
-      {/* Sticky Add to Cart (mobile) */}
+      {/* Barra fija de compra: la del celular (hoy) y, si se encendió, la del computador. */}
       {/* Un padre sin variantes no tiene nada que agregar: sin barra fija. */}
-      {price && stickyPermitido && barraFija && !(isParent && variants.length === 0) && (
+      {price && stickyPermitido && (barraFija || barraEscritorio) && !(isParent && variants.length === 0) && (
         <StickyAddToCart
           productId={product.id}
           productName={product.name}
@@ -611,6 +616,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
           ordenAtributos={ordenAtributos}
           conFavorito={!esRestaurante}
           precioEnBoton={precioEnBarra}
+          celular={opcionesBarra.celular}
+          escritorio={opcionesBarra.escritorio}
+          organization={barraEscritorio && opcionesBarra.escritorio.posicion === 'replace' ? organization : null}
         />
       )}
     </OrganizationLayout>

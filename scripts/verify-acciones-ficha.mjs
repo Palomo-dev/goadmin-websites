@@ -79,7 +79,7 @@ const boton = leer('components/site/ficha/BotonAccionFicha.tsx')
 check(boton.includes("tamano === 'pequeno' ? 'w-12 shrink-0 px-0'") && boton.includes('h-12'), 'Pequeño: cuadrado de 48 px')
 
 const barra = leer('components/site/StickyAddToCart.tsx')
-check(barra.includes('{conFavorito && <BotonGuardarFicha'), 'barra fija: corazón al lado de Agregar')
+check(barra.includes('const conCorazon = conFavorito && op.favorito') && barra.includes('{conCorazon && !filaInfoArriba && <BotonGuardarFicha'), 'barra fija: corazón al lado de Agregar (se apaga con «Corazón de favoritos»)')
 const pagina = leer('app/productos/[id]/page.tsx')
 check(pagina.includes('conFavorito={!esRestaurante}'), 'barra fija: sin corazón en el restaurante')
 check(pagina.includes('const barraFija = contenidoAcciones.sticky_mobile !== false'), 'barra fija: respeta «Barra fija en el celular»')

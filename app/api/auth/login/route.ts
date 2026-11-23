@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createAuthClient } from '@/lib/supabase/server'
+import { MARCA_SESION_CORTA, opcionesMarcaSesionCorta } from '@/lib/auth/sesionCorta'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { organizationId, email, password } = body
+    // «Recordarme»: solo `false` acorta la sesión; sin el campo (clientes viejos), la de siempre.
+    const recordarme = body.recordarme !== false
 
     if (!organizationId || !email || !password) {
       return NextResponse.json(
@@ -14,7 +18,8 @@ export async function POST(request: NextRequest) {
     }
 
     // createAuthClient: usa service role key + escribe cookies de sesión en la respuesta
-    const supabase = await createAuthClient()
+    // (sin vencimiento si no marcó «Recordarme»: lib/auth/sesionCorta.ts)
+    const supabase = await createAuthClient({ sesionCorta: !recordarme })
 
     // Intentar login con Supabase Auth (las cookies se setean automáticamente)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -33,6 +38,12 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // La marca acompaña a las cookies que acaba de escribir el ingreso: la leen el middleware y el
+    // navegador para no volver a ponerles vencimiento al refrescar el token.
+    const cookieStore = await cookies()
+    if (recordarme) cookieStore.delete(MARCA_SESION_CORTA)
+    else cookieStore.set(MARCA_SESION_CORTA, '1', opcionesMarcaSesionCorta(request.nextUrl.protocol === 'https:'))
+
     // Verificar que el usuario es cliente de esta organización
     const { data: customer } = await supabase
       .from('customers')

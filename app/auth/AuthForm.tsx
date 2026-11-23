@@ -38,13 +38,15 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
   })
 
   const [loginData, setLoginData] = useState({ email: '', password: '' })
+  // Marcada por defecto: la sesión larga de siempre; quien la desmarca, solo hasta cerrar el navegador.
+  const [recordarme, setRecordarme] = useState(true)
   const [registerData, setRegisterData] = useState({
     firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: ''
   })
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    await ingresar(loginData)
+    await ingresar({ ...loginData, recordarme })
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -131,7 +133,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
               </div>
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center text-gray-700 dark:text-gray-300">
-                  <input type="checkbox" className="rounded border-gray-300 dark:border-gray-600 mr-2" />
+                  <input type="checkbox" className="rounded border-gray-300 dark:border-gray-600 mr-2" checked={recordarme} onChange={(e) => setRecordarme(e.target.checked)} />
                   Recordarme
                 </label>
                 <button type="button" onClick={() => { setActiveTab('forgot'); setError(''); setSuccess(''); setForgotEmail(loginData.email) }} className="hover:underline" style={{ color: primaryColor }}>¿Olvidaste tu contraseña?</button>

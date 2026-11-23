@@ -1,27 +1,26 @@
 'use client'
-import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
-import { useState, useEffect, useMemo, useId } from 'react'
+import { useState, useRef, useId, type CSSProperties } from 'react'
 import { ShoppingCart, Check, X, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { estadoStockCompra, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO } from '@/lib/stock'
-import { getProductQtyInCart, useCartProductQty } from '@/lib/cart'
-import { emitirVariante, escucharVariante, escucharCantidad } from '@/lib/products/varianteSeleccionada'
+import { AVISO_TOPE_CARRITO } from '@/lib/stock'
 import { useCurrency } from '@/components/site/CurrencyProvider'
-import { getCartKey as getCartKeyUtil } from '@/lib/utils'
-import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
+import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { BotonGuardarFicha } from '@/components/site/favoritos/BotonGuardarFicha'
 import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
-
-interface VariantData {
-  id: number
-  name: string
-  variant_data?: Record<string, string>
-  track_stock?: boolean
-  stock_levels?: { qty_on_hand: number; qty_reserved: number }[] | null
-  product_prices?: { price: number; compare_price?: number | null }[]
-  product_images?: { storage_path: string | null; is_primary: boolean; shared_images?: { storage_path: string } | null }[]
-}
+import {
+  CELULAR_POR_DEFECTO,
+  TEXTO_CORTO_BARRA_FIJA,
+  textoBotonBarra,
+  type EstiloBarraFija,
+  type OpcionesBarraCelular,
+  type OpcionesBarraEscritorio,
+} from '@/lib/website/v2/barraFija'
+import { useCompraBarraFija, type CompraBarraFija, type VariantData } from '@/components/site/barraFija/useCompraBarraFija'
+import { CantidadCompacta, InfoProductoBarra } from '@/components/site/barraFija/PartesBarraFija'
+import { useEmpujeChat, useVisibilidadBarra, vibrarSuave, volarAlCarrito } from '@/components/site/barraFija/efectosBarraFija'
+import { BarraFijaEscritorio } from '@/components/site/barraFija/BarraFijaEscritorio'
+import type { OrganizationWithDetails } from '@/types/database'
 
 interface StickyAddToCartProps {
   productId: number
@@ -45,21 +44,32 @@ interface StickyAddToCartProps {
   conFavorito?: boolean
   /** «Agregar al carrito · $ X» (`product_actions.show_price_in_button`). */
   precioEnBoton?: boolean
+  /**
+   * Barra del celular (`product_actions.sticky` + `sticky_mobile`, lib/website/v2/barraFija.ts).
+   * Sin ella, la de hoy. Apagada (`encendida: false`), no se pinta.
+   */
+  celular?: OpcionesBarraCelular | null
+  /** Barra del computador (`sticky.desktop`). Sin ella o apagada, no hay barra desde 1024 px (hoy). */
+  escritorio?: OpcionesBarraEscritorio | null
+  /** Logo de «en lugar de la cabecera» (el mismo componente de la cabecera). */
+  organization?: OrganizationWithDetails | null
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
-
-function getCartKey(orgSubdomain?: string, branchId?: number | null): string {
-  const subdomain = orgSubdomain || window.location.hostname.split('.')[0]
-  return getCartKeyUtil(subdomain, branchId)
-}
-
-function getVariantImg(variant: VariantData): string | null {
-  if (!variant.product_images || variant.product_images.length === 0) return null
-  const primary = variant.product_images.find(img => img.is_primary) || variant.product_images[0]
-  const path = primary.storage_path || primary.shared_images?.storage_path
-  if (!path) return null
-  return urlPublicaStorage(path, 'product-images', SUPABASE_URL)
+/** Contenedor de la barra del celular según el estilo (Figma 2857:71321). `flat` = el de hoy. */
+function clasesContenedorCelular(estilo: EstiloBarraFija, visible: boolean): string {
+  if (estilo === 'floating') {
+    return `fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition-transform duration-300 lg:hidden ${
+      visible ? 'translate-y-0' : 'translate-y-[calc(100%+2rem)]'
+    }`
+  }
+  if (estilo === 'glass') {
+    return `fixed bottom-0 left-0 right-0 z-50 border-t border-white/60 bg-white/70 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:hidden ${
+      visible ? 'translate-y-0' : 'translate-y-full'
+    }`
+  }
+  return `fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 lg:hidden ${
+    visible ? 'translate-y-0' : 'translate-y-full'
+  }`
 }
 
 export function StickyAddToCart({
@@ -78,175 +88,125 @@ export function StickyAddToCart({
   ordenAtributos = null,
   conFavorito = false,
   precioEnBoton = false,
+  celular = null,
+  escritorio = null,
+  organization = null,
 }: StickyAddToCartProps) {
-  const [added, setAdded] = useState(false)
-  const [aviso, setAviso] = useState<string | null>(null)
-  const [visible, setVisible] = useState(false)
-  const [expanded, setExpanded] = useState(false)
-  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
-  const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
-  const ORIGEN = useId()
-  // Cantidad elegida en el selector principal, por producto/variante (sin dato: 1, como antes).
-  const [cantidades, setCantidades] = useState<Record<number, number>>({})
-  useEffect(() => escucharCantidad(ORIGEN, (id, cantidad) => setCantidades((c) => ({ ...c, [id]: cantidad }))), [ORIGEN])
-  const [subdominio, setSubdominio] = useState(organizationSubdomain || '')
-  useEffect(() => {
-    if (!organizationSubdomain) setSubdominio(window.location.hostname.split('.')[0])
-  }, [organizationSubdomain])
-  const { formatPrice } = useCurrency()
-
-  // Padre con variantes: manda la variante elegida (el padre suele tener stock 0).
-  const { stock: stockDisponible, agotado: outOfStock } = estadoStockCompra({
-    producto: { track_stock: trackStock, stock_levels: stockLevels },
-    esPadre: isParent,
-    variantes: variants,
-    variante: selectedVariant,
+  // Una sola lógica de compra para las dos barras (variantes, stock, tope, agregar).
+  const compra = useCompraBarraFija({
+    productId,
+    productName,
+    price,
+    comparePrice,
+    imageUrl,
+    isParent,
+    variants,
+    organizationSubdomain,
+    trackStock,
+    stockLevels,
+    branchId,
+    ordenAtributos,
   })
+  const op = celular ?? CELULAR_POR_DEFECTO
+  return (
+    <>
+      {op.encendida && (
+        <BarraCelular
+          compra={compra}
+          op={op}
+          productId={productId}
+          productName={productName}
+          price={price}
+          primaryColor={primaryColor}
+          conFavorito={conFavorito}
+          precioEnBoton={precioEnBoton}
+        />
+      )}
+      {escritorio?.encendida && (
+        <BarraFijaEscritorio
+          compra={compra}
+          op={escritorio}
+          texto={op.texto}
+          alAgregar={op.alAgregar}
+          productId={productId}
+          productName={productName}
+          price={price}
+          primaryColor={primaryColor}
+          conFavorito={conFavorito}
+          precioEnBoton={precioEnBoton}
+          organization={organization}
+        />
+      )}
+    </>
+  )
+}
 
-  const idLinea = isParent && selectedVariant ? selectedVariant.id : productId
-  const enCarrito = useCartProductQty(subdominio, branchId, subdominio ? idLinea : null)
-  const cupo = cupoDisponible(stockDisponible, enCarrito)
-  const sinCupo = !outOfStock && cupo === 0
-
-  // Extraer grupos de atributos
-  const attributeGroups = useMemo(() => {
-    const groups: Record<string, Set<string>> = {}
-    variants.forEach(v => {
-      if (v.variant_data) {
-        Object.entries(v.variant_data).forEach(([key, value]) => {
-          if (!groups[key]) groups[key] = new Set()
-          groups[key].add(value)
-        })
-      }
-    })
-    const result: Record<string, string[]> = {}
-    Object.entries(groups).forEach(([key, values]) => {
-      result[key] = ordenarValoresAtributo(key, Array.from(values), ordenAtributos)
-    })
-    return result
-  }, [variants, ordenAtributos])
-
-  // Pre-seleccionar primera variante
-  useEffect(() => {
-    if (variants.length > 0 && !selectedVariant) {
-      const inicial = primeraVarianteDisponible(variants)!
-      setSelectedVariant(inicial)
-      setSelectedAttributes(inicial.variant_data || {})
-    }
-  }, [variants])
-
-  // Sincroniza con el otro selector de la ficha (barra fija ⇄ selector principal).
-  useEffect(() => {
-    return escucharVariante(ORIGEN, (id) => {
-      const v = variants.find((x) => Number(x.id) === id)
-      if (!v) return
-      setSelectedVariant(v)
-      setSelectedAttributes(v.variant_data || {})
-    })
-  }, [variants, ORIGEN])
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setVisible(window.scrollY > 400)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const findMatchingVariant = (attrs: Record<string, string>) => {
-    return variants.find(v => {
-      if (!v.variant_data) return false
-      return Object.entries(attrs).every(([key, value]) => v.variant_data![key] === value)
-    })
-  }
-
-  const handleAttributeSelect = (attrName: string, value: string) => {
-    const newAttrs = { ...selectedAttributes, [attrName]: value }
-    setSelectedAttributes(newAttrs)
-    const matching = findMatchingVariant(newAttrs)
-    if (matching) {
-      setSelectedVariant(matching)
-      emitirVariante(Number(matching.id), ORIGEN)
-    }
-  }
-
-  const getActivePrice = () => {
-    if (isParent && selectedVariant) {
-      return Number(selectedVariant.product_prices?.[0]?.price || price)
-    }
-    return price
-  }
-
-  const getActiveComparePrice = () => {
-    if (isParent && selectedVariant) {
-      return selectedVariant.product_prices?.[0]?.compare_price ? Number(selectedVariant.product_prices[0].compare_price) : null
-    }
-    return comparePrice
-  }
+/**
+ * Barra del celular (hasta 1023 px). Sin opciones, la de hoy (Figma 2856:71203, B0a–B0d): plana,
+ * «Agregar al carrito» ancho + corazón, línea de la variante y ^ para la hoja de opciones.
+ * Opciones (2857:71321): estilo flotante o vidrio (B2, B3), miniatura y precio (B1), cantidad y
+ * «Comprar ahora» (B2), texto propio (B3), vuela al carrito y vibración (B4), chat encima (B5).
+ */
+function BarraCelular({
+  compra,
+  op,
+  productId,
+  productName,
+  price,
+  primaryColor,
+  conFavorito,
+  precioEnBoton,
+}: {
+  compra: CompraBarraFija
+  op: OpcionesBarraCelular
+  productId: number
+  productName: string
+  price: number
+  primaryColor: string
+  conFavorito: boolean
+  precioEnBoton: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const { visible } = useVisibilidadBarra(op.aparece)
+  const barraRef = useRef<HTMLDivElement>(null)
+  const botonRef = useRef<HTMLButtonElement>(null)
+  useEmpujeChat(useId(), barraRef, visible, true)
+  const { formatPrice } = useCurrency()
+  const {
+    added,
+    aviso,
+    outOfStock,
+    sinCupo,
+    attributeGroups,
+    selectedAttributes,
+    selectedVariant,
+    hasVariants,
+    activePrice,
+    handleAttributeSelect,
+  } = compra
 
   const handleAddToCart = () => {
-    if (outOfStock) return
-    try {
-      const cartKey = getCartKey(organizationSubdomain, branchId)
-      const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-      const activePrice = getActivePrice()
-      const activeCp = getActiveComparePrice()
-
-      // Tope: unidades del producto ya en el carrito (todas sus líneas) contra el stock disponible.
-      const idProducto = isParent && selectedVariant ? selectedVariant.id : productId
-      const yaEnCarrito = getProductQtyInCart(organizationSubdomain || window.location.hostname.split('.')[0], branchId, idProducto)
-      const cupoAhora = cupoDisponible(stockDisponible, yaEnCarrito)
-      if (cupoAhora === 0) {
-        setAviso(AVISO_TOPE_CARRITO)
-        setTimeout(() => setAviso(null), 3000)
-        return
-      }
-      // La cantidad elegida arriba, sin pasar del cupo.
-      const elegida = Math.max(1, Math.trunc(cantidades[idProducto] ?? 1) || 1)
-      const n = cupoAhora === null ? elegida : Math.min(elegida, cupoAhora)
-
-      if (isParent && selectedVariant) {
-        const variantImgUrl = getVariantImg(selectedVariant) || imageUrl
-        const idx = cart.findIndex((c: any) => c.id === selectedVariant.id)
-        if (idx >= 0) {
-          cart[idx].quantity += n
-        } else {
-          cart.push({
-            id: selectedVariant.id,
-            name: selectedVariant.name,
-            price: activePrice,
-            quantity: n,
-            ...(variantImgUrl && { imageUrl: variantImgUrl }),
-            ...(activeCp && { comparePrice: activeCp }),
-            ...(selectedVariant.variant_data && { variantAttributes: selectedVariant.variant_data })
-          })
-        }
-      } else {
-        const idx = cart.findIndex((c: any) => c.id === productId)
-        if (idx >= 0) {
-          cart[idx].quantity += n
-        } else {
-          cart.push({
-            id: productId,
-            name: productName,
-            price: activePrice,
-            quantity: n,
-            ...(imageUrl && { imageUrl }),
-            ...(activeCp && { comparePrice: activeCp })
-          })
-        }
-      }
-
-      localStorage.setItem(cartKey, JSON.stringify(cart))
-      window.dispatchEvent(new CustomEvent('cart-updated'))
-      setAdded(true)
-      setExpanded(false)
-      setTimeout(() => setAdded(false), 2000)
-    } catch (e) {}
+    const desde = botonRef.current?.getBoundingClientRect() ?? null
+    if (!compra.agregar()) return
+    setExpanded(false)
+    if (op.vibracion) vibrarSuave()
+    if (op.alAgregar === 'fly' && desde) volarAlCarrito(desde, compra.imagenActiva, primaryColor)
   }
 
-  const activePrice = getActivePrice()
-  const hasVariants = isParent && variants.length > 0
+  // B1: miniatura en la misma fila que el botón · B2: miniatura arriba (con cantidad o «Comprar ahora»).
+  const filaInfoArriba = op.miniatura && (op.cantidad || op.comprarAhora)
+  const infoEnLinea = op.miniatura && !filaInfoArriba
+  const conCorazon = conFavorito && op.favorito
+  // El botón comparte la fila con la miniatura o con «Comprar ahora»: texto corto.
+  const corto = infoEnLinea || op.comprarAhora
+  const textoAgregar = op.texto ?? (corto ? TEXTO_CORTO_BARRA_FIJA : textoBotonBarra(null))
+  const agregarConBorde = op.comprarAhora
+  const bloqueado = outOfStock || sinCupo
+  const estiloAgregar: CSSProperties = added || bloqueado
+    ? {}
+    : agregarConBorde
+      ? { borderColor: primaryColor, color: primaryColor }
+      : { backgroundColor: primaryColor }
 
   return (
     <>
@@ -255,11 +215,7 @@ export function StickyAddToCart({
         <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 lg:hidden ${
-          visible ? 'translate-y-0' : 'translate-y-full'
-        }`}
-      >
+      <div ref={barraRef} className={clasesContenedorCelular(op.estilo, visible)} data-barra-fija={op.estilo === 'flat' ? undefined : op.estilo}>
         {/* Panel expandido de variantes */}
         {expanded && hasVariants && (
           <div className="px-4 pt-4 pb-2 border-b max-h-[50vh] overflow-y-auto">
@@ -303,6 +259,12 @@ export function StickyAddToCart({
         {/* Barra principal (Figma 2781:65848): siempre «Agregar al carrito» relleno + corazón
             pequeño, sea cual sea la distribución de la ficha. */}
         <div className="container mx-auto px-4 py-3">
+          {filaInfoArriba && (
+            <div className="mb-3 flex items-center gap-3">
+              <InfoProductoBarra compra={compra} nombre={productName} />
+              {conCorazon && <BotonGuardarFicha productId={productId} precio={price} />}
+            </div>
+          )}
           {hasVariants && selectedVariant?.variant_data && (
             <p className="mb-2 truncate text-xs text-gray-500">
               {Object.entries(selectedVariant.variant_data).map(([k, v]) => `${k}: ${v}`).join(' • ')}
@@ -320,10 +282,15 @@ export function StickyAddToCart({
               </button>
             )}
 
+            {infoEnLinea && <InfoProductoBarra compra={compra} nombre={productName} />}
+
+            {op.cantidad && <CantidadCompacta compra={compra} />}
+
             <Button
+              ref={botonRef}
               onClick={handleAddToCart}
-              className={`h-12 min-w-0 flex-1 rounded-[10px] px-4 text-[15px] font-semibold transition-all ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
-              style={!added && !outOfStock && !sinCupo ? { backgroundColor: primaryColor } : {}}
+              className={`h-12 min-w-0 ${infoEnLinea ? 'shrink-0' : 'flex-1'} rounded-[10px] px-4 text-[15px] font-semibold transition-all ${agregarConBorde && !added ? 'border-2 bg-white hover:bg-gray-50' : ''} ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
+              style={estiloAgregar}
               disabled={outOfStock || sinCupo}
             >
               {added ? (
@@ -334,13 +301,24 @@ export function StickyAddToCart({
                 <>
                   <ShoppingCart className="h-5 w-5 mr-2 shrink-0" />
                   <span className="truncate">
-                    {precioEnBoton ? textoBotonConPrecio('Agregar al carrito', formatPrice(activePrice)) : 'Agregar al carrito'}
+                    {precioEnBoton ? textoBotonConPrecio(textoAgregar, formatPrice(activePrice)) : textoAgregar}
                   </span>
                 </>
               )}
             </Button>
 
-            {conFavorito && <BotonGuardarFicha productId={productId} precio={price} />}
+            {op.comprarAhora && !outOfStock && (
+              <Button
+                onClick={compra.comprarAhora}
+                disabled={sinCupo || compra.comprando}
+                className="h-12 min-w-0 flex-1 rounded-[10px] px-4 text-[15px] font-semibold"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <span className="truncate">Comprar ahora</span>
+              </Button>
+            )}
+
+            {conCorazon && !filaInfoArriba && <BotonGuardarFicha productId={productId} precio={price} />}
           </div>
         </div>
       </div>

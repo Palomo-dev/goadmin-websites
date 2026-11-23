@@ -2,8 +2,7 @@
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useRef, useEffect, useId } from 'react'
-import { useRouter } from 'next/navigation'
-import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { useIrAlCheckout } from '@/components/site/ficha/useIrAlCheckout'
 import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
@@ -93,8 +92,6 @@ export function ProductDetailActions({
   precioEnBoton = false,
   ayudaVariante = false,
 }: ProductDetailActionsProps) {
-  const router = useRouter()
-  const { ruta } = useRutaSitio()
   const botones = acciones ?? leerAccionesFicha({ buttons_layout: buttonsLayout }).acciones
   // La carta del restaurante no lleva corazón (como siempre).
   const favorito = restaurante ? null : { productId: Number(product.id), precio: price }
@@ -104,31 +101,9 @@ export function ProductDetailActions({
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([])
   const [quantity, setQuantity] = useState(1)
-  const [comprando, setComprando] = useState(false)
-
-  // /checkout es dinámico: traer su límite de carga por adelantado para que
-  // «Comprar ahora» responda al instante.
-  useEffect(() => {
-    router.prefetch(ruta('/checkout'))
-  }, [router])
-
-  // Al volver con «Atrás» la página puede restaurarse tal cual: soltar el botón.
-  useEffect(() => {
-    const alVolver = () => setComprando(false)
-    window.addEventListener('pageshow', alVolver)
-    return () => window.removeEventListener('pageshow', alVolver)
-  }, [])
-
-  // Navegación con respuesta visible y respaldo: si la navegación del cliente
-  // no arranca en unos segundos, se hace una navegación completa.
-  const irAlCheckout = () => {
-    const desde = window.location.pathname
-    setComprando(true)
-    router.push(ruta('/checkout'))
-    window.setTimeout(() => {
-      if (window.location.pathname === desde) window.location.assign(ruta('/checkout'))
-    }, 6000)
-  }
+  // «Comprar ahora»: prefetch de /checkout, respaldo de navegación y botón suelto al volver
+  // (el mismo que usa la barra fija).
+  const { comprando, irAlCheckout } = useIrAlCheckout()
 
   const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = price + modifiersExtraTotal

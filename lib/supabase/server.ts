@@ -1,10 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/database'
+import { MARCA_SESION_CORTA, opcionesCookieSesion } from '@/lib/auth/sesionCorta'
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // «Recordarme» sin marcar: las cookies refrescadas siguen siendo de sesión (lib/auth/sesionCorta.ts).
+  const corta = cookieStore.get(MARCA_SESION_CORTA)?.value === '1'
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +20,7 @@ export async function createServerSupabaseClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, opcionesCookieSesion(value, options, corta))
             )
           } catch {
             // Server Component - ignore
@@ -28,9 +31,14 @@ export async function createServerSupabaseClient() {
   )
 }
 
-// Cliente para operaciones auth (login/register): usa service role key + escribe cookies en la respuesta
-export async function createAuthClient() {
+/**
+ * Cliente para operaciones auth (login/register): usa service role key + escribe cookies en la respuesta.
+ * `sesionCorta` («Recordarme» sin marcar): las cookies de sesión van sin vencimiento y el navegador
+ * las borra al cerrarse (lib/auth/sesionCorta.ts). Sin la opción, la sesión larga de siempre.
+ */
+export async function createAuthClient(opciones: { sesionCorta?: boolean } = {}) {
   const cookieStore = await cookies()
+  const corta = opciones.sesionCorta === true
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +49,7 @@ export async function createAuthClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, opcionesCookieSesion(value, options, corta))
             )
           } catch {}
         },

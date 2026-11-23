@@ -41,7 +41,7 @@ import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
+import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, textoCuentaConSesion, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
 import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, formaSimpleIcono, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
 import { EnlaceAccesoMenu, EnlaceCuenta } from '@/components/site/cuenta';
 import { ListaMonedas } from '../CurrencySelector';
@@ -647,17 +647,25 @@ export function HeaderActions({
   branchId?: number | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Nombre del cliente con sesión («Hola, Ana» en el ícono de cuenta): sale de la misma sesión,
+  // de `user_metadata.first_name` que guarda el registro. Sin consulta adicional.
+  const [nombreCliente, setNombreCliente] = useState<string | null>(null);
   // header_show_currency (panel «Encabezado»): `false` quita la moneda; default, como siempre.
   const { opciones: opcionesShell } = useEncabezadoPie();
   const { currency: monedaActual } = useCurrency();
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const fijar = (session: { user?: { user_metadata?: Record<string, unknown> } } | null) => {
       setIsLoggedIn(!!session);
+      const meta = session?.user?.user_metadata ?? {};
+      setNombreCliente(typeof meta.first_name === 'string' ? meta.first_name : typeof meta.full_name === 'string' ? meta.full_name : null);
+    };
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      fijar(session);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
+      fijar(session);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -694,10 +702,15 @@ export function HeaderActions({
   const opIconos = opcionesIconos(ajustesCabecera);
   const opMoneda = opcionesMoneda(ajustesCabecera);
   // Cada ícono con su forma propia (`header_iconos.por_icono`, Figma 2831:68544) o la general.
+  // La cuenta con sesión dice «Hola, {nombre}» (`header_cuenta.textoSesion`); sin nombre, el texto
+  // sin sesión. Solo se ve en los estilos con texto (presentacionIcono decide si hay texto).
+  const opCuenta = opcionesCuenta(ajustesCabecera);
+  const textoDe = (clave: IconoConTexto, codigo?: string): string =>
+    clave === 'cuenta' && isLoggedIn ? textoCuentaConSesion(opCuenta.textoSesion, nombreCliente, textoIcono(opIconos, 'cuenta')) : textoIcono(opIconos, clave, codigo);
   const presentar = (clave: IconoConTexto, codigo?: string): PresentacionIcono | null =>
-    opIconos.configurado ? presentacionIcono(opIconos, textoIcono(opIconos, clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera), clave) : null;
+    opIconos.configurado ? presentacionIcono(opIconos, textoDe(clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera), clave) : null;
   // Iniciar sesión (Figma 2834:68670): con «Página» (sin valor) el ícono sigue siendo el enlace.
-  const modoCuenta = opcionesCuenta(ajustesCabecera).modo;
+  const modoCuenta = opCuenta.modo;
   const presCuenta = presentar('cuenta');
   const presFavoritos = presentar('favoritos');
   /** Clase del enlace en los estilos nuevos (sin el `p-2`) con el color de la barra. */

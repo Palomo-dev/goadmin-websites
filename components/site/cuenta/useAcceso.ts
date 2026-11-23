@@ -16,6 +16,11 @@ import { ERROR_INGRESO_GENERICO } from '@/lib/website/v2/cabeceraTienda'
 export interface DatosIngreso {
   email: string
   password: string
+  /**
+   * «Recordarme». `false` = la sesión dura hasta cerrar el navegador; `true` o sin el campo = la
+   * sesión larga de siempre (lib/auth/sesionCorta.ts).
+   */
+  recordarme?: boolean
 }
 
 export interface DatosRegistro {
@@ -75,7 +80,7 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, email: datos.email, password: datos.password }),
+          body: JSON.stringify({ organizationId, email: datos.email, password: datos.password, recordarme: datos.recordarme !== false }),
         })
         const data = await res.json()
         if (data.error) {

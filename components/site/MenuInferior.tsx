@@ -14,8 +14,11 @@
  *   ícono + texto, el botón destacado (`centerId`) en un círculo relleno y el activo marcado con
  *   `indicator` (fill/dot/line). También la pinta OrganizationLayoutCliente con los enlaces del
  *   encabezado cuando la composición `pill` pide la píldora abajo (lib/website/pildora.ts).
+ * - Favoritos (`favorites`): abre el panel lateral o la página /favoritos, como el corazón de la
+ *   cabecera (`header_favoritos.alTocar`), con el mismo contador (ContadorFavoritos). El almacén de
+ *   favoritos solo se lee si el menú tiene ese botón (ConFavoritos).
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -29,11 +32,31 @@ import { CLASE_FONDO_ENCABEZADO, estiloBarraEncabezado, marcaFondoEncabezado, va
 import { ModalCategorias, useUnidadesCarrito } from './header/mobile/MobileTabs'
 import { ProductSearch } from './ProductSearch'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { useOpcionesTienda } from './OpcionesTiendaContext'
+import { ContadorFavoritos } from './favoritos/AccesoFavoritosCabecera'
+import { abrirPanelFavoritos, useFavoritos } from '@/lib/favoritos/almacen'
+import { contadorFavoritos } from '@/lib/website/v2/cabeceraTienda'
 
 const ICONO: Record<IconoMenu, typeof Home> = {
   home: Home, grid: LayoutGrid, search: Search, bag: ShoppingBag, cart: ShoppingCart, user: User, menu: Menu,
   phone: Phone, whatsapp: MessageCircle, 'map-pin': MapPin, calendar: CalendarDays, 'calendar-check': CalendarCheck,
   package: Package, truck: Truck, tag: Tag, percent: Percent, star: Star, heart: Heart, sparkles: Sparkles, link: Link2,
+}
+
+/** Insignia (carrito y favoritos) de cada variante: la misma que pintaba el carrito. */
+const INSIGNIA_PESTANAS = 'absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center'
+const INSIGNIA_FLOTANTE = 'absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center'
+const INSIGNIA_ACCIONES = INSIGNIA_PESTANAS
+
+/**
+ * Cantidad de favoritos para el aria-label del botón «Favoritos». Es un componente (no un hook en
+ * MenuInferior) para que el almacén solo se lea, y se pida a /api/favorites, cuando el menú
+ * tiene ese botón.
+ */
+function ConFavoritos({ children }: { children: (cantidad: number, conContador: boolean) => ReactNode }) {
+  const { favoritos } = useOpcionesTienda()
+  const { items } = useFavoritos()
+  return <>{children(items.length, contadorFavoritos(items.length, favoritos.contador) !== null)}</>
 }
 
 type Props = Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'menuCategories' | 'branchId'> & {
@@ -51,9 +74,10 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
   const [buscar, setBuscar] = useState(false)
   const unidades = useUnidadesCarrito(organization.subdomain || '', branchId)
   const temaMenu = useTemaMenuMovil(primaryColor)
+  const { favoritos } = useOpcionesTienda()
   const corte = ((settings as { mobile_breakpoint?: number | null } | null | undefined)?.mobile_breakpoint ?? 768) - 0.02
   // La píldora flotante es navegación, como las pestañas: en todas las rutas.
-  const botones = menu.enabled && (menu.variant === 'tabs' || menu.variant === 'floating' || rutaAdmiteAcciones) ? botonesVisibles(menu, destinos) : []
+  const botones = menu.enabled && (menu.variant === 'tabs' || menu.variant === 'floating' || rutaAdmiteAcciones) ? botonesVisibles(menu, { ...destinos, favoritos: favoritos.alTocar }) : []
   const visible = botones.length > 0
 
   useEffect(() => {
@@ -68,11 +92,32 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
     if (d.evento === 'search') setBuscar(true)
     else if (d.evento === 'categories') setCategorias(true)
     else if (d.evento === 'cart') onCartClick?.()
+    else if (d.evento === 'favorites') abrirPanelFavoritos()
     else document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')?.click()
   }
   const href = (d: DestinoBoton) => (d.tipo === 'ruta' ? ruta(d.href) : d.tipo === 'externo' ? d.href : '')
   const activo = (d: DestinoBoton) => d.tipo === 'ruta' && (d.href === '/' ? pathname === ruta('/') || pathname === '/' : pathname.startsWith(ruta(d.href)))
   const conTexto = menu.style.labels !== 'never'
+  /**
+   * Pinta un botón con su insignia y su aria-label: el carrito con sus unidades; Favoritos con el
+   * contador de la cabecera (ContadorFavoritos, con la clase de insignia de cada variante). Los
+   * botones de acción nunca pintaron las unidades del carrito: `conCarrito = false` los deja igual.
+   */
+  const conInsignia = (b: BotonMenu, claseInsignia: string, pintar: (insignia: ReactNode, aria: string | undefined) => ReactNode, conCarrito = true) => {
+    if (b.action === 'favorites') {
+      return (
+        <ConFavoritos key={b.id}>
+          {(cantidad, conContador) => pintar(<ContadorFavoritos primaryColor={primaryColor} className={claseInsignia} />, conContador ? `${b.label || 'Favoritos'}, ${cantidad}` : undefined)}
+        </ConFavoritos>
+      )
+    }
+    const insignia = conCarrito && b.action === 'cart' && unidades > 0 && (
+      <span className={claseInsignia} style={{ backgroundColor: primaryColor }}>
+        {unidades > 99 ? '99+' : unidades}
+      </span>
+    )
+    return pintar(insignia, conCarrito && b.action === 'cart' && unidades > 0 ? `${b.label || 'Carrito'}, ${unidades}` : undefined)
+  }
   const ocultarEscritorio = `@media (min-width:${corte + 0.02}px){[data-menu-inferior]{display:none!important}}`
 
   const extras = (
@@ -110,7 +155,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
           }}
         >
           <ul className="mx-auto flex max-w-md items-stretch gap-2">
-            {botones.map(({ boton: b, destino: d }) => {
+            {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_ACCIONES, (insignia, aria) => {
               const Icono = ICONO[b.icon]
               const principal = b.id === principalId
               const fondo = menu.style.active ?? primaryColor
@@ -121,12 +166,16 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
               return (
                 <li key={b.id} className="flex flex-1">
                   {enlace(b, d, clase, estilo, <>
-                    <Icono className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    {insignia ? (
+                      <span className="relative flex-shrink-0"><Icono className="h-4 w-4" aria-hidden="true" />{insignia}</span>
+                    ) : (
+                      <Icono className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    )}
                     {conTexto && <span className="truncate">{b.label}</span>}
-                  </>)}
+                  </>, aria)}
                 </li>
               )
-            })}
+            }, false))}
           </ul>
         </nav>
         {extras}
@@ -167,15 +216,10 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
               color: inactivoColor,
             }}
           >
-            {botones.map(({ boton: b, destino: d }) => {
+            {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_FLOTANTE, (insignia, aria) => {
               const Icono = ICONO[b.icon]
               const centro = b.id === menu.style.centerId
               const esActivo = !centro && activo(d)
-              const insignia = b.action === 'cart' && unidades > 0 && (
-                <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center" style={{ backgroundColor: primaryColor }}>
-                  {unidades > 99 ? '99+' : unidades}
-                </span>
-              )
               const etiqueta = conTexto && <span className="max-w-[72px] truncate text-[10px] font-medium leading-none">{b.label}</span>
               const contenido = centro ? (
                 <span className="flex h-full flex-col items-center justify-center gap-1" style={{ color: texto }}>
@@ -198,13 +242,12 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
                   {esActivo && indicador === 'line' && <span className="absolute bottom-0 h-0.5 w-4 rounded-full" style={{ backgroundColor: activoColor }} aria-hidden="true" />}
                 </span>
               )
-              const aria = b.action === 'cart' && unidades > 0 ? `${b.label || 'Carrito'}, ${unidades}` : undefined
               return (
                 <li key={b.id} className={`flex ${completo ? 'flex-1' : 'min-w-[56px]'} justify-center`} aria-current={esActivo ? 'page' : undefined}>
                   {enlace(b, d, 'flex h-full w-full items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2', { outlineColor: primaryColor }, contenido, aria)}
                 </li>
               )
-            })}
+            }))}
           </ul>
         </nav>
         {extras}
@@ -225,16 +268,11 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
         {...marcaFondoEncabezado(settings)}
       >
         <div className="grid h-14" style={{ gridTemplateColumns: `repeat(${botones.length}, minmax(0, 1fr))` }}>
-          {botones.map(({ boton: b, destino: d }) => {
+          {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_PESTANAS, (insignia, aria) => {
             const Icono = ICONO[b.icon]
             const centro = b.id === menu.style.centerId
             const esActivo = activo(d)
             const color = esActivo && colorActivo ? colorActivo : colorInactivo
-            const insignia = b.action === 'cart' && unidades > 0 && (
-              <span className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-white text-[10px] leading-4 font-bold text-center" style={{ backgroundColor: primaryColor }}>
-                {unidades > 99 ? '99+' : unidades}
-              </span>
-            )
             const contenido = centro ? (
               <span className="flex flex-col items-center justify-center gap-0.5 h-full">
                 <span className="relative -mt-5 flex h-12 w-12 items-center justify-center rounded-full shadow-lg" style={{ backgroundColor: colorActivo ?? primaryColor, color: textoSobreAcentoSiHex(colorActivo ?? primaryColor) ?? '#ffffff' }}>
@@ -248,9 +286,8 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
                 {conTexto && <span className="text-[10px] font-medium">{b.label}</span>}
               </span>
             )
-            const aria = b.action === 'cart' && unidades > 0 ? `${b.label || 'Carrito'}, ${unidades}` : undefined
             return <span key={b.id} className="flex items-center justify-center" aria-current={esActivo ? 'page' : undefined}>{enlace(b, d, 'flex h-full w-full items-center justify-center', undefined, contenido, aria)}</span>
-          })}
+          }))}
         </div>
       </nav>
       {extras}

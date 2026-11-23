@@ -479,6 +479,7 @@ export function AccesoCuenta({ opciones, organizationId, organizationName, prima
                   textoBoton={opciones.boton}
                   compacto={formato === 'ventana'}
                   beneficios={conBeneficios}
+                  textosBeneficios={opciones.textosBeneficios}
                   pestanas={formato === 'dialogo'}
                   onIrAFuera={formato === 'ventana' ? irAFuera : undefined}
                   alEntrar={alEntrar}

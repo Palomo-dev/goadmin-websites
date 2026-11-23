@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { MARCA_SESION_CORTA, opcionesCookieSesion } from '@/lib/auth/sesionCorta'
 import { esSlugReservado } from '@/lib/outlet/rutaSitio'
 import {
   CABECERA_SONDA,
@@ -351,6 +352,8 @@ export async function middleware(request: NextRequest) {
     console.error('[middleware] Falta SUPABASE_SERVICE_ROLE_KEY: la resolución de dominios de sucursal quedará deshabilitada')
   }
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // «Recordarme» sin marcar: el refresco del token no vuelve a poner 400 días (lib/auth/sesionCorta.ts).
+  const sesionCorta = request.cookies.get(MARCA_SESION_CORTA)?.value === '1'
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -366,7 +369,7 @@ export async function middleware(request: NextRequest) {
           )
           supabaseResponse = NextResponse.next({ request: { headers: cabecerasSinSede(request) } })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, opcionesCookieSesion(value, options, sesionCorta))
           )
         },
       },

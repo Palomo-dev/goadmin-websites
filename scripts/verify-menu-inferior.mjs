@@ -80,5 +80,21 @@ const fuenteMenu = readFileSync(new URL('../components/site/MenuInferior.tsx', i
 check(fuenteMenu.includes("menu.variant === 'floating'") && fuenteMenu.includes('data-menu-inferior="flotante"'), 'MenuInferior pinta la píldora flotante')
 check(/env\(safe-area-inset-bottom\)/.test(fuenteMenu.slice(fuenteMenu.indexOf("menu.variant === 'floating') {"))), 'floating respeta el área segura de abajo')
 
+// Favoritos (2026-11-23): acción nueva con el corazón; abre el panel o /favoritos como la cabecera.
+const { ACCIONES_MENU, DEFECTO_ACCION } = await import('../lib/website/menuInferior.ts')
+check(ACCIONES_MENU.includes('favorites') && ACCIONES_MENU.length === 18, 'favorites es una de las 18 acciones')
+check(DEFECTO_ACCION.favorites.label === 'Favoritos' && DEFECTO_ACCION.favorites.icon === 'heart', 'Favoritos con el corazón')
+const fav = { id: 'fav', action: 'favorites', label: 'Favoritos', icon: 'heart', visible: true }
+check(destinoBoton(fav, D)?.tipo === 'evento' && destinoBoton(fav, D)?.evento === 'favorites', 'sin header_favoritos: abre el panel')
+check(destinoBoton(fav, { ...D, favoritos: 'panel' })?.evento === 'favorites', 'alTocar panel: abre el panel')
+check(destinoBoton(fav, { ...D, favoritos: 'pagina' })?.href === '/favoritos', 'alTocar pagina: va a /favoritos')
+const conFav = leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'tabs', items: [fav], style: { labels: 'always' } } } })
+check(conFav?.items[0]?.action === 'favorites' && JSON.stringify(leerMenuInferior({ mobile_header: { bottom_nav: aGuardar(conFav) } })) === JSON.stringify(conFav), 'favorites: se lee y hace ida y vuelta')
+check(fuenteMenu.includes("d.evento === 'favorites') abrirPanelFavoritos()"), 'MenuInferior abre el panel de favoritos')
+check(fuenteMenu.includes('favoritos: favoritos.alTocar') && fuenteMenu.includes('<ContadorFavoritos'), 'MenuInferior usa header_favoritos.alTocar y el contador de la cabecera')
+check(/function ConFavoritos[\s\S]*?useFavoritos\(\)/.test(fuenteMenu) && !fuenteMenu.slice(fuenteMenu.indexOf('export function MenuInferior(')).includes('useFavoritos()'), 'el almacén de favoritos solo se lee con el botón Favoritos')
+const fuenteCabecera = readFileSync(new URL('../components/site/favoritos/AccesoFavoritosCabecera.tsx', import.meta.url), 'utf8')
+check(fuenteCabecera.includes('export function ContadorFavoritos') && fuenteCabecera.includes('<ContadorFavoritos primaryColor={primaryColor} />'), 'el corazón de la cabecera y el menú comparten el contador')
+
 if (problemas.length) { console.error(`verify-menu-inferior: ${problemas.length} de ${casos} fallan`); for (const p of problemas) console.error(' -', p); process.exit(1) }
 console.log(`verify-menu-inferior: ${casos} casos OK`)

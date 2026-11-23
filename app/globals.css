@@ -1217,3 +1217,43 @@ html[data-cuenta-abierta] [data-gochat-widget] {
     animation: texto-boton-deslizar 300ms ease-out;
   }
 }
+/* Barra fija de compra de la ficha (Figma 2836:69391, propuesta 9; components/site/barraFija).
+   «En lugar de la cabecera» (D2), solo desde 1024 px: mientras la barra se ve, la cabecera sube
+   fuera de la pantalla; al subir la página vuelve. Sin el atributo (lo de hoy), nada cambia. */
+@media (min-width: 1024px) {
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > header,
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > div.sticky,
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > [data-hdr-bp] > header {
+    transition: transform 300ms ease;
+  }
+  html[data-barra-fija-cabecera="oculta"] [data-raiz-sitio] > header,
+  html[data-barra-fija-cabecera="oculta"] [data-raiz-sitio] > div.sticky,
+  html[data-barra-fija-cabecera="oculta"] [data-raiz-sitio] > [data-hdr-bp] > header {
+    transform: translateY(-100%);
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > header,
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > div.sticky,
+  html[data-barra-fija-cabecera] [data-raiz-sitio] > [data-hdr-bp] > header {
+    transition: none;
+  }
+}
+
+/* «Vuela al carrito» (B4): el ícono del carrito late al llegar la miniatura. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes latido-carrito {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  .latido-carrito {
+    animation: latido-carrito 400ms ease-out;
+  }
+}
+
+/* Botón de chat anterior (#go-chat-btn): también sube sobre la barra fija mientras se ve. El
+   widget actual (Shadow DOM) lee la misma variable desde su raíz (efectosBarraFija.ts). */
+#go-chat-btn {
+  translate: 0 calc(-1 * var(--empuje-chat-barra-fija, 0px));
+}

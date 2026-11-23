@@ -37,6 +37,7 @@ interface CartIndicatorProps {
   presentacion?: PresentacionIcono | null
 }
 
+/* `data-icono-carrito`: destino de «Vuela al carrito» de la barra fija (components/site/barraFija). */
 export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, organizationSubdomain, icon: IconProp, branchId, heredarColor = false, relleno = false, circulo = false, contenedor = null, colores, claseIcono, presentacion = null }: CartIndicatorProps) {
   const { ruta } = useRutaSitio()
   const Icon = IconProp || ShoppingCart
@@ -116,13 +117,13 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       : ` ${claseColorIcono(claseIcono, heredarColor)}`
     if (cartBehavior === 'redirect') {
       return (
-        <Link href={ruta('/checkout')} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`}>
+        <Link href={ruta('/checkout')} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`} data-icono-carrito="">
           {contenido}
         </Link>
       )
     }
     return (
-      <button type="button" onClick={onClick} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`}>
+      <button type="button" onClick={onClick} aria-label={etiqueta} className={`${claseEnvoltorio(presentacion.estilo)}${colorPropio}`} data-icono-carrito="">
         {contenido}
       </button>
     )
@@ -134,6 +135,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       <Link 
         href={ruta('/checkout')}
         className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
+        data-icono-carrito=""
       >
         {icono}
         {badge}
@@ -147,6 +149,7 @@ export function CartIndicator({ primaryColor, cartBehavior = 'drawer', onClick, 
       type="button"
       onClick={onClick}
       className="relative p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors"
+      data-icono-carrito=""
     >
       {icono}
       {badge}

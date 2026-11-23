@@ -23,6 +23,13 @@ import {
   rutaAcceso,
 } from '../lib/website/v2/cabeceraTienda.ts'
 import { OPCIONES_SHELL } from '../lib/website/v2/mapeoAjustes.ts'
+import {
+  BENEFICIOS_CUENTA_POR_DEFECTO,
+  TEXTO_SESION_CUENTA_POR_DEFECTO,
+  primerNombreIcono,
+  textoCuentaConSesion,
+} from '../lib/website/v2/cabeceraTienda.ts'
+import { MARCA_SESION_CORTA, hayMarcaSesionCorta, opcionesCookieSesion, opcionesMarcaSesionCorta } from '../lib/auth/sesionCorta.ts'
 
 const problemas = []
 let casos = 0
@@ -87,6 +94,50 @@ check(acceso.includes('router.refresh()') && !/location\.reload\(\)/.test(acceso
 for (const menu of ['components/site/header/mobile/MobileDrawer.tsx', 'components/site/header/HeaderShared.tsx', 'components/site/header/HeaderMinimal.tsx']) {
   check(/<EnlaceAccesoMenu[\s\S]*?href="\/auth"/.test(leer(menu)), `${menu}: «Iniciar sesión» abre la misma hoja`)
 }
+
+// 5. Beneficios editables (Figma E-A1 2839:69662, M2 2835:69308): vacío = el texto de siempre.
+const sinTextos = opcionesCuenta({})
+check(
+  sinTextos.textosBeneficios.titulo === 'Con tu cuenta puedes' &&
+    sinTextos.textosBeneficios.lineas.join('|') === BENEFICIOS_CUENTA_POR_DEFECTO.lineas.join('|'),
+  'sin textos propios, los beneficios de siempre',
+)
+const conTextos = opcionesCuenta({ header_cuenta: { beneficiosTitulo: '  Ventajas  ', beneficio2: 'Lista de deseos', beneficio3: '   ', beneficio1: 'x'.repeat(200) } })
+check(conTextos.configurado && conTextos.textosBeneficios.titulo === 'Ventajas', 'título propio recortado')
+check(conTextos.textosBeneficios.lineas[1] === 'Lista de deseos' && conTextos.textosBeneficios.lineas[2] === BENEFICIOS_CUENTA_POR_DEFECTO.lineas[2], 'línea vacía = la de siempre')
+check(conTextos.textosBeneficios.lineas[0].length === 80, 'cada línea, máximo 80 caracteres')
+check(formulario.includes('<BeneficiosCuenta textos={textosBeneficios} />') && formulario.includes('{textos.titulo}'), 'el panel pinta los textos del editor')
+check(acceso.includes('textosBeneficios={opciones.textosBeneficios}'), 'AccesoCuenta pasa los textos de los beneficios')
+
+// 6. «Hola, {nombre}» con sesión (solo en los estilos con texto).
+check(opcionesCuenta({}).textoSesion === TEXTO_SESION_CUENTA_POR_DEFECTO && TEXTO_SESION_CUENTA_POR_DEFECTO === 'Hola, {nombre}', 'sin opción, «Hola, {nombre}»')
+check(textoCuentaConSesion('Hola, {nombre}', 'Ana María', 'Mi cuenta') === 'Hola, Ana', 'primer nombre')
+check(textoCuentaConSesion('Hola, {nombre}', null, 'Mi cuenta') === 'Mi cuenta' && textoCuentaConSesion('Hola, {nombre}', '  ', 'Ingresar') === 'Ingresar', 'sin nombre, el texto sin sesión')
+check(textoCuentaConSesion('Mi perfil', null, 'Mi cuenta') === 'Mi perfil', 'plantilla sin {nombre} tal cual')
+check(primerNombreIcono('Maximilianoooooo') === 'Maximilianooo…', 'nombre largo cortado')
+check(opcionesCuenta({ header_cuenta: { textoSesion: 'Bienvenida, {nombre}' } }).textoSesion === 'Bienvenida, {nombre}', 'texto con sesión propio')
+check(/clave === 'cuenta' && isLoggedIn \? textoCuentaConSesion\(opCuenta\.textoSesion, nombreCliente, textoIcono\(opIconos, 'cuenta'\)\)/.test(cabecera), 'la cabecera usa el texto con sesión solo con sesión')
+check(cabecera.includes('meta.first_name') && !/from\('customers'\)/.test(cabecera), 'el nombre sale de la sesión, sin consulta')
+
+// 7. «Recordarme»: sin marcar = cookies de sesión; marcada = la sesión larga de siempre.
+const larga = { path: '/', sameSite: 'lax', httpOnly: false, maxAge: 400 * 24 * 60 * 60 }
+check(opcionesCookieSesion('token', larga, false) === larga, 'marcada: las opciones de siempre')
+const corta = opcionesCookieSesion('token', larga, true)
+check(!('maxAge' in corta) && !('expires' in corta) && corta.path === '/' && corta.sameSite === 'lax' && corta.httpOnly === false, 'sin marcar: sin vencimiento, mismos path, sameSite y httpOnly')
+check(opcionesCookieSesion('', { ...larga, maxAge: 0 }, true).maxAge === 0, 'un borrado se deja como está')
+check(hayMarcaSesionCorta(`a=1; ${MARCA_SESION_CORTA}=1; b=2`) && !hayMarcaSesionCorta('a=1') && !hayMarcaSesionCorta(`${MARCA_SESION_CORTA}=0`), 'lee la marca de la cabecera Cookie')
+const marca = opcionesMarcaSesionCorta(true)
+check(!('maxAge' in marca) && marca.secure === true && marca.sameSite === 'lax', 'la marca es cookie de sesión, secure en https')
+const login = leer('app/api/auth/login/route.ts')
+check(login.includes('body.recordarme !== false') && login.includes('createAuthClient({ sesionCorta: !recordarme })'), 'el login lee «Recordarme» (sin el campo, sesión larga)')
+check(login.includes('cookieStore.delete(MARCA_SESION_CORTA)') && login.includes('cookieStore.set(MARCA_SESION_CORTA'), 'el login pone o quita la marca')
+check(leer('app/api/auth/logout/route.ts').includes('.delete(MARCA_SESION_CORTA)'), 'cerrar sesión borra la marca')
+check(leer('middleware.ts').includes('opcionesCookieSesion(value, options, sesionCorta)'), 'el refresco del middleware respeta la sesión corta')
+check(leer('lib/supabase/client.ts').includes('opcionesCookieSesion(value, options, corta)'), 'el navegador respeta la sesión corta')
+check((leer('lib/supabase/server.ts').match(/opcionesCookieSesion\(value, options, corta\)/g) ?? []).length === 2, 'los clientes de servidor respetan la sesión corta')
+check(formulario.includes('checked={recordarme}') && pagina.includes('checked={recordarme}'), 'la casilla ya no es decorativa (panel y /auth)')
+check(formulario.includes('recordarme: compacto ? true : recordarme'), 'la ventana, sin casilla, deja la sesión larga')
+check(leer('components/site/cuenta/useAcceso.ts').includes('recordarme: datos.recordarme !== false'), 'useAcceso manda «Recordarme»')
 
 if (problemas.length) {
   console.error(`✗ verify-acceso-cuenta: ${problemas.length} de ${casos} fallaron`)

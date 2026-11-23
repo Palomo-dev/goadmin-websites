@@ -4,7 +4,7 @@ import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
 import { normalizarAjustesAccionesFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 import { leerAccionesFicha } from '@/lib/website/v2/accionesFicha'
 
-export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'button_hint', 'actions', 'preset'] as const
+export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'button_hint', 'actions', 'preset', 'sticky'] as const
 
 interface ProductActionsProps {
   content: {
@@ -19,6 +19,8 @@ interface ProductActionsProps {
     actions?: unknown
     /** Distribución lista que coincide con `actions` (la escribe el editor). */
     preset?: string
+    /** Barra fija al bajar (celular y computador, Figma 2836:69391): la lee la página de la ficha con lib/website/v2/barraFija.ts. */
+    sticky?: unknown
   }
   primaryColor?: string
   data?: {

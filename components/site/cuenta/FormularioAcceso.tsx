@@ -5,13 +5,15 @@
  * (Figma «16 Sitio web» 2834:68670: S1–S5, D1–D3, V1, C1–C2). La lógica de sesión es la de la
  * página /auth (useAcceso): mismos endpoints y validaciones. Aquí solo cambia la presentación:
  * - Ingresar: correo, contraseña con ojo, «Recordarme», «¿Olvidaste…?», error sin pistas.
+ *   «Recordarme» sin marcar = sesión solo mientras el navegador esté abierto (lib/auth/sesionCorta.ts);
+ *   la ventana compacta no lo muestra y deja la sesión larga de siempre.
  * - Crear cuenta: nombre, apellido, correo, celular, contraseña, confirmación y términos.
  * - Recuperar: correo → «Revisa tu correo» (la misma respuesta exista o no la cuenta).
  */
 import { useId, useState, type ReactNode } from 'react'
 import { AlertCircle, Eye, EyeOff, Heart, Loader2, Lock, Mail, MailCheck, MapPin, Package, User } from 'lucide-react'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
-import { mensajeRecuperar } from '@/lib/website/v2/cabeceraTienda'
+import { BENEFICIOS_CUENTA_POR_DEFECTO, mensajeRecuperar, type TextosBeneficiosCuenta } from '@/lib/website/v2/cabeceraTienda'
 import { useAcceso, type TipoEntrada } from './useAcceso'
 
 export type VistaFormulario = 'ingresar' | 'registro' | 'recuperar' | 'enviado'
@@ -158,19 +160,19 @@ const Separador = () => (
   </div>
 )
 
-/** «Con tu cuenta puedes» (panel, diálogo y hoja; la ventana no los muestra). */
-export function BeneficiosCuenta() {
-  const items: { icono: typeof Package; texto: string }[] = [
-    { icono: Package, texto: 'Ver tus pedidos y en qué va cada uno' },
-    { icono: Heart, texto: 'Tener tus favoritos guardados en cualquier dispositivo' },
-    { icono: MapPin, texto: 'Guardar tus direcciones para pagar más rápido' },
-  ]
+/**
+ * «Con tu cuenta puedes» (panel, diálogo y hoja; la ventana no los muestra). Título y líneas del
+ * editor (`header_cuenta.beneficiosTitulo`, `beneficio1..3`); sin ellos, los de siempre.
+ */
+export function BeneficiosCuenta({ textos = BENEFICIOS_CUENTA_POR_DEFECTO }: { textos?: TextosBeneficiosCuenta }) {
+  const iconos = [Package, Heart, MapPin] as const
+  const items: { icono: typeof Package; texto: string }[] = textos.lineas.map((texto, i) => ({ icono: iconos[i], texto }))
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5" data-beneficios-cuenta="">
-      <p className="mb-2 text-[13px] font-semibold text-gray-900">Con tu cuenta puedes</p>
+      <p className="mb-2 text-[13px] font-semibold text-gray-900">{textos.titulo}</p>
       <ul className="flex flex-col gap-2">
-        {items.map(({ icono: Icono, texto }) => (
-          <li key={texto} className="flex items-start gap-2 text-[13px] text-gray-700">
+        {items.map(({ icono: Icono, texto }, i) => (
+          <li key={i} className="flex items-start gap-2 text-[13px] text-gray-700">
             <Icono aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--primary-color)' }} />
             {texto}
           </li>
@@ -189,6 +191,8 @@ export interface FormularioAccesoProps {
   /** Ventana: compacta, sin «Recordarme» ni beneficios. */
   compacto?: boolean
   beneficios?: boolean
+  /** Título y líneas de «Con tu cuenta puedes» (los del editor o los de siempre). */
+  textosBeneficios?: TextosBeneficiosCuenta
   /** Diálogo: pestañas Ingresar / Crear cuenta arriba (Figma M4, D1). */
   pestanas?: boolean
   /**
@@ -206,12 +210,16 @@ export function FormularioAcceso({
   textoBoton,
   compacto = false,
   beneficios = false,
+  textosBeneficios,
   pestanas = false,
   onIrAFuera,
   alEntrar,
 }: FormularioAccesoProps) {
   const { enviando, error, exito, limpiar, ingresar, registrar, recuperar } = useAcceso({ organizationId, alEntrar })
   const [ingreso, setIngreso] = useState({ email: '', password: '' })
+  // Sin marcar (como se ve hoy) = sesión hasta cerrar el navegador. La ventana no tiene la casilla.
+  // Marcada por defecto: la sesión larga de siempre; quien la desmarca, solo hasta cerrar el navegador.
+  const [recordarme, setRecordarme] = useState(true)
   const [claveInvalida, setClaveInvalida] = useState(false)
   const [registro, setRegistro] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '' })
   const [correoRecuperar, setCorreoRecuperar] = useState('')
@@ -362,7 +370,7 @@ export function FormularioAcceso({
         className="flex flex-col gap-4"
         onSubmit={async (e) => {
           e.preventDefault()
-          const entro = await ingresar(ingreso)
+          const entro = await ingresar({ ...ingreso, recordarme: compacto ? true : recordarme })
           if (!entro) {
             setClaveInvalida(true)
             setIngreso((x) => ({ ...x, password: '' }))
@@ -393,7 +401,7 @@ export function FormularioAcceso({
         <div className={`flex items-center text-[13px] ${compacto ? 'justify-end' : 'justify-between'}`}>
           {!compacto && (
             <label className="flex items-center gap-2 text-gray-700">
-              <input type="checkbox" className="rounded border-gray-300" />
+              <input type="checkbox" className="rounded border-gray-300" checked={recordarme} onChange={(e) => setRecordarme(e.target.checked)} />
               Recordarme
             </label>
           )}
@@ -411,7 +419,7 @@ export function FormularioAcceso({
           </p>
         </>
       )}
-      {beneficios && !compacto && <BeneficiosCuenta />}
+      {beneficios && !compacto && <BeneficiosCuenta textos={textosBeneficios} />}
     </div>
   )
 }
