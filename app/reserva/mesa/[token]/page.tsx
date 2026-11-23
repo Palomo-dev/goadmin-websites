@@ -1,10 +1,8 @@
-import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CalendarDays, Clock, MapPin, Phone, Users } from 'lucide-react'
-import { getOrganizationByHost, getWebsiteFooterNav, getWebsiteHeaderNav, getMetaPixelId } from '@/lib/supabase/queries'
-import { getTemplate, getTemplateByBusinessType } from '@/lib/templates'
-import { checkFrozenStatus } from '@/lib/get-org-context'
+import { getMetaPixelId } from '@/lib/supabase/queries'
+import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -26,16 +24,9 @@ export const dynamic = 'force-dynamic'
  * contacto de la sede.
  */
 
-async function getOrg() {
-  const h = await headers()
-  const identifier = h.get('x-custom-domain') || h.get('x-subdomain')
-  if (!identifier) return null
-  return getOrganizationByHost(identifier)
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const org = await getOrg()
-  return { title: org ? `Tu reserva | ${org.name}` : 'Tu reserva', robots: { index: false, follow: false } }
+  const ctx = await getOrgContext()
+  return { title: ctx ? `Tu reserva | ${ctx.organization.name}` : 'Tu reserva', robots: { index: false, follow: false } }
 }
 
 const ETIQUETAS: Record<string, { texto: string; clase: string }> = {
@@ -54,22 +45,16 @@ function enlaceWhatsApp(telefono: string | null): string | null {
 }
 
 export default async function ReservaMesaPage({ params }: { params: Promise<{ token: string }> }) {
-  const org = await getOrg()
-  if (!org) return <NotFoundPage />
+  // Mismo contexto que el resto del sitio: cabecera, colores y menús del sitio publicado (V2).
+  const ctx = await getOrgContext()
+  if (!ctx) return <NotFoundPage />
+  const { organization: org, primaryColor, template, headerNav, footerNav, frozenReason, branchId } = ctx
   const { token } = await params
 
   const supabase = createAdminClient()
   const reserva = supabase && tokenValido(token) ? await leerReservaPorToken(supabase, org.id, token) : null
 
-  const primaryColor = org.website_settings?.primary_color || org.primary_color || '#8B6914'
-  const templateId = org.website_settings?.template_id || 'modern'
-  const template = getTemplate(templateId) || getTemplateByBusinessType(org.type_id)
-  const frozenReason = await checkFrozenStatus(org.id, org.status)
-  const [headerNav, footerNav, metaPixelId] = await Promise.all([
-    getWebsiteHeaderNav(org.id),
-    getWebsiteFooterNav(org.id),
-    getMetaPixelId(org.id),
-  ])
+  const metaPixelId = await getMetaPixelId(org.id)
 
   const estado = reserva
     ? reserva.deposito?.estado === 'pending' && reserva.status === 'pending'
@@ -112,6 +97,7 @@ export default async function ReservaMesaPage({ params }: { params: Promise<{ to
       footerNav={footerNav}
       metaPixelId={metaPixelId}
       frozenReason={frozenReason}
+      branchId={branchId}
     >
       <main className="mx-auto w-full max-w-xl px-4 py-12 sm:py-16">
         {!reserva ? (
