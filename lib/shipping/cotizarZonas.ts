@@ -9,7 +9,7 @@
  * se busca en `municipalities` (mismo país, mismo departamento, mismo nombre sin tildes). El barrio
  * y el código postal van tal cual; la base los normaliza.
  */
-import { direccionParaCotizar, leerCotizacion, type CotizacionEnvio } from './cotizacionLogistica'
+import { direccionParaCotizar, itemsParaCotizar, leerCotizacion, type CotizacionEnvio, type ItemCotizacion } from './cotizacionLogistica'
 
 type ClienteSupabase = { from: (tabla: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any }
 
@@ -56,13 +56,33 @@ export async function municipioDane(supabase: ClienteSupabase, d: DireccionCheck
   return codigoDeMunicipio(d.ciudad, data)
 }
 
+/** Opciones de la RPC: método de pago y los productos (la base suma su peso). Vacío = como antes. */
+export function opcionesCotizacion(
+  metodoPago: string | null | undefined,
+  items: ReadonlyArray<{ product_id?: unknown; cantidad?: unknown }> | null | undefined,
+): { metodo_pago?: string; items?: ItemCotizacion[] } {
+  const out: { metodo_pago?: string; items?: ItemCotizacion[] } = {}
+  if (metodoPago) out.metodo_pago = metodoPago
+  const lista = itemsParaCotizar(items)
+  if (lista.length > 0) out.items = lista
+  return out
+}
+
 /**
  * Cotiza el domicilio propio. Devuelve null si la RPC falla (el llamador sigue con el cálculo de
  * siempre): nunca se cobra un envío inventado.
  */
 export async function cotizarDomicilioWeb(
   supabase: ClienteSupabase,
-  e: { organizationId: number; branchId: number | null; direccion: DireccionCheckout; subtotal: number; metodoPago?: string | null },
+  e: {
+    organizationId: number
+    branchId: number | null
+    direccion: DireccionCheckout
+    subtotal: number
+    metodoPago?: string | null
+    /** Productos del pedido: la base suma su peso para las reglas de despacho por peso. */
+    items?: ReadonlyArray<{ product_id?: unknown; cantidad?: unknown }>
+  },
 ): Promise<CotizacionEnvio | null> {
   try {
     const dane = await municipioDane(supabase, e.direccion)
@@ -72,7 +92,7 @@ export async function cotizarDomicilioWeb(
       p_direccion: direccionParaCotizar({ municipio_dane: dane, barrio: e.direccion.barrio ?? null, codigo_postal: e.direccion.codigoPostal ?? null }),
       p_canal: 'web',
       p_subtotal: Math.max(Number(e.subtotal) || 0, 0),
-      p_opciones: e.metodoPago ? { metodo_pago: e.metodoPago } : {},
+      p_opciones: opcionesCotizacion(e.metodoPago, e.items),
     })
     if (error) {
       console.error('[Envío] La cotización por zona falló', { organizationId: e.organizationId, message: error.message })

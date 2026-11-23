@@ -62,6 +62,16 @@ igual(dz.tiempoZona(base), '45–60 min', 'tiempo en minutos')
 igual(dz.tiempoZona({ ...base, tiempo: { min_minutos: null, max_minutos: null, texto: 'Mismo día' } }), 'Mismo día', 'texto de la zona')
 igual(dz.llegadaZona(base, (f) => f), 'Llega hoy · 45–60 min', 'llega hoy')
 igual(dz.llegadaZona({ ...base, despacho: { ...base.despacho, hoy: false, fecha: '2026-11-24' } }, (f) => `lun ${f}`), 'Sale el lun 2026-11-24 · 45–60 min', 'sale otro día (fecha plana)')
+// Peso del pedido (2026-11-23): solo ids y cantidades válidos, sumados por producto; vacío = como antes.
+igual(cz.opcionesCotizacion(null, []), {}, 'sin método ni productos: opciones vacías')
+igual(cz.opcionesCotizacion('cod', [{ product_id: 7, cantidad: 2 }, { product_id: '7', cantidad: 1 }, { product_id: 'x', cantidad: 3 }, { product_id: 9, cantidad: 0 }]),
+  { metodo_pago: 'cod', items: [{ product_id: 7, cantidad: 3 }] }, 'productos: suma por id y descarta basura')
+check(/items: lineas\.map\(\(l\) => \(\{ product_id: l\.productId, cantidad: l\.cantidad \}\)\)/.test(readFileSync(join(ROOT, 'app/api/orders/route.ts'), 'utf8')), '/api/orders manda las líneas validadas a la cotización (peso)')
+// /tracking por guía no muestra quién recibió (cualquiera puede escribir una guía).
+const pagTracking = readFileSync(join(ROOT, 'app/tracking/page.tsx'), 'utf8')
+check(!/recipient_name|recipient_relationship/.test(pagTracking), '/tracking no pinta quién recibió')
+check(!/recipient_name/.test(readFileSync(join(ROOT, 'lib/supabase/queries.ts'), 'utf8').split('export async function getShipmentByTracking')[1]?.split('export async function')[0] ?? 'recipient_name'), 'getShipmentByTracking no lee quién recibió')
+
 // Envío nacional en días y domicilio en horas: nunca «Llega hoy» si no cabe en el día (2026-11-23).
 const dias = (min, max) => ({ ...base, tiempo: { min_minutos: min, max_minutos: max, texto: null } })
 igual(dz.tiempoZona(dias(3 * 1440, 15 * 1440)), '3–15 días', 'nacional en días')

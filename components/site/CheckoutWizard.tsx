@@ -546,6 +546,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   // Domicilio por zona: el servidor ubica la dirección (municipio DANE por país, departamento y
   // ciudad; barrio) y responde si la tienda tiene zonas. Informativo: /api/orders vuelve a cotizar.
   const conDomicilioPropio = hasDelivery && gruposDomicilio.includes('own')
+  // Cambia si cambian los productos o cantidades: la cotización vuelve a sumar el peso.
+  const clavePesoCarrito = cartItems.map((item) => `${idProductoCarrito(item) ?? 0}x${item.quantity}`).join(',')
   useEffect(() => {
     if (!organizationId || !conDomicilioPropio) {
       setCotZona(null)
@@ -560,6 +562,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           body: JSON.stringify({
             ...(sedePromocion != null ? { branchId: sedePromocion } : {}),
             subtotal,
+            // Productos del carrito: el servidor suma su peso para las reglas de despacho por peso.
+            items: cartItems.map((item) => ({ product_id: idProductoCarrito(item), cantidad: item.quantity })),
             direccion: {
               ciudad: customerData.city,
               pais: customerData.countryCode,
@@ -578,7 +582,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       vigente = false
       clearTimeout(timeout)
     }
-  }, [organizationId, conDomicilioPropio, sedePromocion, subtotal, customerData.city, customerData.countryCode, customerData.stateCode, customerData.barrio])
+  }, [organizationId, conDomicilioPropio, sedePromocion, subtotal, clavePesoCarrito, customerData.city, customerData.countryCode, customerData.stateCode, customerData.barrio])
 
   // Tarifas del domicilio elegido (con un solo tipo activo, todas). Se elige la más económica,
   // salvo que el cliente ya tenga una de ese grupo; sin tarifas, la plana de los ajustes.

@@ -13,7 +13,8 @@ const SIN_CACHE = { 'Cache-Control': 'no-store' }
 /**
  * POST /api/shipping/quote — «Domicilio» por zona en el checkout (logística Fase 1).
  *
- * Body: { branchId?, subtotal, direccion: { ciudad, pais, departamento, barrio, codigoPostal } }
+ * Body: { branchId?, subtotal, direccion: { ciudad, pais, departamento, barrio, codigoPostal },
+ *         items?: [{ product_id, cantidad }] }
  * Respuesta: { usaZonas, cotizacion } — `usaZonas: false` si la tienda no tiene zonas: el checkout
  * sigue con la tarifa plana o las tarifas de Transporte, como siempre.
  *
@@ -58,6 +59,8 @@ export async function POST(request: NextRequest) {
       branchId,
       subtotal: Number(body?.subtotal) || 0,
       metodoPago: texto(body?.metodoPago, 40),
+      // Solo ids y cantidades del carrito: la base suma el peso (reglas de despacho por peso).
+      items: Array.isArray(body?.items) ? body.items : [],
       direccion: {
         ciudad: texto(d.ciudad),
         pais: texto(d.pais, 3),

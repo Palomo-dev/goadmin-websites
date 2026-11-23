@@ -126,13 +126,11 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
                 )}
               </div>
 
-              {/* Proof of delivery */}
+              {/* Entrega: solo la fecha. Quién recibió no se muestra por guía (cualquiera puede
+                  escribir una guía); está en el enlace seguro que llega al correo del cliente. */}
               {shipment.proof_of_delivery && (
                 <div className="mt-4 bg-green-50 rounded-lg p-3 text-sm">
-                  <div className="font-medium text-green-700 mb-1">Entregado a: {shipment.proof_of_delivery.recipient_name}</div>
-                  {shipment.proof_of_delivery.recipient_relationship && (
-                    <div className="text-green-600 text-xs">Parentesco: {shipment.proof_of_delivery.recipient_relationship}</div>
-                  )}
+                  <div className="font-medium text-green-700">Entregado</div>
                   {shipment.proof_of_delivery.delivered_at && (
                     <div className="text-green-600 text-xs">
                       {new Date(shipment.proof_of_delivery.delivered_at).toLocaleString('es-CO')}
@@ -140,6 +138,9 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
                   )}
                 </div>
               )}
+              <p className="mt-4 text-xs text-gray-500">
+                ¿Es tu pedido? Abre el enlace del correo de confirmación para ver la dirección, el domiciliario y quién lo recibió.
+              </p>
             </div>
 
             {/* Timeline */}

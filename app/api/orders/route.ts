@@ -602,6 +602,8 @@ export async function POST(request: NextRequest) {
           branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
           subtotal: calculatedSubtotal,
           metodoPago: typeof paymentMethod === 'string' ? paymentMethod : null,
+          // Las líneas ya validadas por el servidor: la base suma su peso (reglas por peso).
+          items: lineas.map((l) => ({ product_id: l.productId, cantidad: l.cantidad })),
           direccion: {
             ciudad: leer(direccionEnvio.city) ?? leer(customer.city),
             pais: leer(direccionEnvio.country) ?? leer(customer.countryCode),
