@@ -1162,9 +1162,11 @@ header a[data-categoria-activa][data-categoria-activa] {
 }
 
 /* Cajón del carrito abierto (CartDrawer): el botón flotante del chat (Shadow DOM con z-index
-   máximo) no tapa «Comprar ahora» ni «Ver carrito completo». */
+   máximo) no tapa «Comprar ahora» ni «Ver carrito completo». Tampoco la hoja de monedas del
+   celular (HojaMonedas, `data-moneda-abierta`). */
 html[data-carrito-abierto] [data-gochat-widget],
-html[data-favoritos-abierto] [data-gochat-widget] {
+html[data-favoritos-abierto] [data-gochat-widget],
+html[data-moneda-abierta] [data-gochat-widget] {
   display: none !important;
 }
 

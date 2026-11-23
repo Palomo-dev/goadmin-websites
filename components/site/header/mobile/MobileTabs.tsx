@@ -20,6 +20,7 @@ import {
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
+  useBloqueoScrollFondo,
   getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
@@ -286,6 +287,8 @@ export function ModalCategorias({
   const temaMenu = useTemaMenuMovil(primaryColor);
   const navItems = buildNavItems(navTree);
   const { ruta } = useRutaSitio();
+  // Montada solo mientras está abierta: la página de atrás no se desplaza.
+  useBloqueoScrollFondo(true);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
@@ -293,7 +296,7 @@ export function ModalCategorias({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+      <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto overscroll-contain`} data-scroll-menu="" style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
         <div className="flex items-center justify-between px-4 h-14 border-b border-[color:var(--mm-divider)]">
           <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
           <button

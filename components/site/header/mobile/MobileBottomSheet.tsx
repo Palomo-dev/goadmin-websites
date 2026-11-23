@@ -133,7 +133,7 @@ export default function MobileBottomSheet({
                   data-hoja-menu=""
                 >
                   <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-gray-300 dark:bg-gray-700 mt-3 mb-2" />
-                  <div className="min-h-0 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-y-auto">
+                  <div className="min-h-0 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain" data-scroll-menu="">
                     <Drawer.Title className="text-sm font-semibold text-[var(--mm-title)] uppercase tracking-wide mb-3">
                       Menú
                     </Drawer.Title>

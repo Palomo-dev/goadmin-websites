@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type React from 'react';
+import { createPortal } from 'react-dom';
+import * as DialogoMoneda from '@radix-ui/react-dialog';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X, ShoppingBasket, Store, CircleUserRound, LogIn, CircleDollarSign, Languages } from 'lucide-react';
@@ -1725,76 +1727,24 @@ export function MobileMenuButton({
 // MOBILE SHARED COMPONENTS
 // ============================================================
 
-// Selector de moneda móvil con chips (restaurado del header original).
-// Sin `bg-gray-*`: con fondo de encabezado, esa clase saca el botón de la regla
-// que hereda el color del texto y el control queda oscuro sobre la barra oscura.
-export function MobileCurrencyChips({ primaryColor, settings }: { primaryColor?: string; settings?: HeaderVariantProps['settings'] }) {
-  // Mismo ícono que la moneda del computador (`resolverIconoEncabezado`); sin configurar, Globe.
-  const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
-  const { currency, baseCurrency, availableCurrencies: todas, setCurrency, loading } = useCurrency();
-  const [open, setOpen] = useState(false);
-  const { opciones: opcionesShell } = useEncabezadoPie();
-  // Monedas visibles (`header_moneda.visibles`): sin elegir, todas y en el orden de hoy.
-  const visibles = opcionesMoneda(settings as unknown as Record<string, unknown> | null).visibles;
-  const availableCurrencies = visibles ? monedasVisibles(todas, visibles, baseCurrency) : todas;
-
-  if (loading || availableCurrencies.length <= 1 || !opcionesShell.moneda) return null;
-
-  const current = availableCurrencies.find((c) => c.code === currency);
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
-        style={{ borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
-      >
-        <span className="flex items-center gap-2">
-          <IconoMoneda className="h-4 w-4 text-[var(--mm-cur-icon)]" />
-          {current ? `${current.code} — ${current.country}` : currency}
-        </span>
-        <ChevronDown className="h-4 w-4 text-[var(--mm-cur-icon)]" />
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div
-            className="relative bg-white dark:bg-gray-900 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom duration-200"
-            data-superficie-propia=""
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar moneda</h3>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-[var(--header-hover)]">
-                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
-            <div className="space-y-1 max-h-64 overflow-y-auto">
-              {availableCurrencies.map((c) => (
-                <button
-                  key={c.code}
-                  onClick={() => {
-                    setCurrency(c.code);
-                    setOpen(false);
-                  }}
-                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                    c.code === currency
-                      ? 'font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-[var(--header-hover)]'
-                  }`}
-                  style={c.code === currency && primaryColor ? { color: primaryColor, backgroundColor: `${primaryColor}10` } : undefined}
-                >
-                  <span>{c.code}</span>
-                  <span className="text-xs text-gray-400">{c.country}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+// Bloqueo del scroll de la página mientras un menú móvil está abierto. Con contador: si se abren
+// dos capas (menú y otra encima), el `overflow` de antes vuelve solo cuando se cierra la última.
+let bloqueosScrollFondo = 0;
+let overflowAntesDelBloqueo = '';
+export function useBloqueoScrollFondo(activo: boolean) {
+  useEffect(() => {
+    if (!activo) return;
+    const body = document.body;
+    if (bloqueosScrollFondo === 0) {
+      overflowAntesDelBloqueo = body.style.overflow;
+      body.style.overflow = 'hidden';
+    }
+    bloqueosScrollFondo += 1;
+    return () => {
+      bloqueosScrollFondo = Math.max(0, bloqueosScrollFondo - 1);
+      if (bloqueosScrollFondo === 0) body.style.overflow = overflowAntesDelBloqueo;
+    };
+  }, [activo]);
 }
 
 /**
@@ -1815,7 +1765,7 @@ export function BloqueMonedaMovil({
   const { loading, availableCurrencies, baseCurrency } = useCurrency();
   const { opciones: opcionesShell } = useEncabezadoPie();
   const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
-  // «En el celular» (`header_moneda.movil`, Figma 2750): hoja (hoy), lista en el menú, chips o en la barra.
+  // «En el celular» (`header_moneda.movil`, Figma 2750): hoja (por defecto), lista en el menú, chips o en la barra.
   const op = opcionesMoneda(settings as unknown as Record<string, unknown> | null);
   const visibles = op.visibles ? monedasVisibles(availableCurrencies, op.visibles, baseCurrency) : availableCurrencies;
   if (!opcionesShell.moneda || loading || visibles.length <= 1) return null;
@@ -1832,7 +1782,7 @@ export function BloqueMonedaMovil({
       ) : op.movil === 'lateral' ? (
         <ListaMonedaMenuMovil lista={visibles} />
       ) : (
-        <MobileCurrencyChips primaryColor={primaryColor} settings={settings} />
+        <FilaMonedaHoja lista={visibles} estilo={op.estilo} Icono={IconoMoneda} />
       )}
     </div>
   );
@@ -1868,11 +1818,89 @@ function ChipsMonedaMovil({ lista, primaryColor }: { lista: MonedaVisible[]; pri
   );
 }
 
-/** «Menú lateral» (Figma 2750:58869): la fila de la moneda despliega la lista dentro del menú. */
+/**
+ * «Hoja» (por defecto): la fila del menú muestra la moneda con el estilo del computador
+ * (`header_moneda.estilo`) y abre la hoja inferior aprobada (HojaMonedas, Figma 2750:58955).
+ * Sin `bg-gray-*`: con fondo de encabezado, esa clase saca el botón de la regla que hereda el
+ * color del texto y el control queda oscuro sobre la barra oscura.
+ */
+function FilaMonedaHoja({ lista, estilo, Icono }: { lista: MonedaVisible[]; estilo: OpcionesMoneda['estilo']; Icono: React.ElementType }) {
+  const { currency } = useCurrency();
+  const [abierta, setAbierta] = useState(false);
+  const refFila = useRef<HTMLButtonElement>(null);
+  const actual = lista.find((c) => c.code === currency);
+  const nombre = datosMoneda(currency, actual?.country).nombre;
+  let contenido: React.ReactNode;
+  if (estilo === 'bandera') {
+    contenido = (
+      <>
+        <BanderaMoneda codigo={currency} />
+        <span className="font-semibold">{currency}</span>
+        <span className="min-w-0 truncate opacity-70">{nombre}</span>
+      </>
+    );
+  } else if (estilo === 'simbolo') {
+    contenido = (
+      <>
+        <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ backgroundColor: 'var(--primary-color, #111827)', color: '#FFFFFF' }}>
+          {datosMoneda(currency).simbolo}
+        </span>
+        <span className="font-semibold">{currency}</span>
+      </>
+    );
+  } else if (estilo === 'icono') {
+    contenido = (
+      <>
+        <Icono aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--mm-cur-icon)]" />
+        <span className="font-semibold">{currency}</span>
+      </>
+    );
+  } else if (estilo === 'codigo' || estilo === 'segmento') {
+    contenido = <span className="font-semibold">{currency}</span>;
+  } else {
+    // Sin estilo elegido (el selector de hoy): ícono, código y nombre.
+    contenido = (
+      <>
+        <Icono aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--mm-cur-icon)]" />
+        <span className="font-semibold">{currency}</span>
+        <span className="min-w-0 truncate opacity-70">{nombre}</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <button
+        ref={refFila}
+        type="button"
+        onClick={() => setAbierta(true)}
+        aria-haspopup="dialog"
+        aria-expanded={abierta}
+        aria-label={`Moneda: ${currency}${nombre && nombre !== currency ? ` (${nombre})` : ''}`}
+        data-estilo-moneda={estilo ?? undefined}
+        className="flex w-full items-center justify-between gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--mm-hover-bg)]"
+        style={{ borderColor: 'var(--mm-cur-border)', color: 'var(--mm-cur-value)', backgroundColor: 'var(--mm-cur-bg)' }}
+      >
+        <span className="flex min-w-0 items-center gap-2">{contenido}</span>
+        <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--mm-cur-icon)]" />
+      </button>
+      <HojaMonedas abierta={abierta} onCerrar={() => setAbierta(false)} lista={lista} refRetorno={refFila} />
+    </>
+  );
+}
+
+/**
+ * «Menú lateral» (Figma 2750:58869): la fila de la moneda despliega la lista dentro del menú.
+ * Sin altura máxima ni overflow propio: la lista crece y la desplaza el scroll del menú (uno
+ * solo). Al abrirla se trae a la vista entera.
+ */
 function ListaMonedaMenuMovil({ lista }: { lista: MonedaVisible[] }) {
   const { currency, baseCurrency, setCurrency } = useCurrency();
   const [abierta, setAbierta] = useState(false);
+  const refLista = useRef<HTMLDivElement>(null);
   const actual = lista.find((c) => c.code === currency);
+  useEffect(() => {
+    if (abierta) refLista.current?.scrollIntoView({ block: 'nearest' });
+  }, [abierta]);
   return (
     <div className="flex flex-col gap-2">
       <button
@@ -1890,44 +1918,104 @@ function ListaMonedaMenuMovil({ lista }: { lista: MonedaVisible[] }) {
         <ChevronDown className={`h-4 w-4 text-[var(--mm-cur-icon)] transition-transform ${abierta ? 'rotate-180' : ''}`} />
       </button>
       {abierta && (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white py-1" data-superficie-propia="">
-          <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} onElegir={(code) => { setCurrency(code); setAbierta(false); }} />
+        <div ref={refLista} className="rounded-lg border border-gray-200 bg-white py-1" data-superficie-propia="" data-lista-moneda-menu="">
+          <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} compacta onElegir={(code) => { setCurrency(code); setAbierta(false); }} />
         </div>
       )}
     </div>
   );
 }
 
+// Corta en la raíz del portal los eventos que React propaga por el árbol de componentes: sin
+// esto, deslizar la lista de la hoja arrastraba el menú inferior (vaul) que la contiene.
+const cortarPropagacion = (e: React.SyntheticEvent) => e.stopPropagation();
+
+/** Color de marca y fuente del sitio, leídos donde se abrió la hoja (o en la raíz del sitio). */
+function estiloHeredadoDelSitio(origen: HTMLElement | null | undefined): React.CSSProperties | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const el = origen ?? document.querySelector<HTMLElement>('[data-raiz-sitio]');
+  if (!el) return undefined;
+  const cs = window.getComputedStyle(el);
+  const marca = cs.getPropertyValue('--primary-color').trim();
+  return { ...(marca ? { ['--primary-color' as string]: marca } : {}), fontFamily: cs.fontFamily } as React.CSSProperties;
+}
+
 /**
  * Hoja inferior de la cabecera nueva (Figma 2750:58955): «Elige la moneda», bandera, código y
  * nombre, la actual marcada y la nota de conversión.
+ *
+ * Va con `createPortal` al `document.body` (en el editor, el del iframe de la vista previa): un
+ * `fixed` dentro del panel del menú (que tiene transform u overflow) quedaba atrapado ahí y no se
+ * veía como modal. Es un diálogo de Radix: bloquea el scroll de fondo, se cierra con Escape o
+ * tocando fuera, devuelve el foco a la fila y se apila bien sobre el menú inferior (vaul, otro
+ * diálogo de Radix). Queda por encima del menú, la barra inferior y el botón del chat.
  */
-export function HojaMonedas({ abierta, onCerrar, lista }: { abierta: boolean; onCerrar: () => void; lista: MonedaVisible[] }) {
+export function HojaMonedas({
+  abierta,
+  onCerrar,
+  lista,
+  refRetorno,
+}: {
+  abierta: boolean;
+  onCerrar: () => void;
+  lista: MonedaVisible[];
+  /** A dónde vuelve el foco al cerrar (la fila o la píldora que la abrió). */
+  refRetorno?: React.RefObject<HTMLElement>;
+}) {
   const { currency, baseCurrency, setCurrency } = useCurrency();
-  if (!abierta) return null;
+  // En el body ya no hereda lo que define la raíz del sitio (`--primary-color` de la marca y la
+  // fuente del tema): se copian del elemento que la abrió al abrirse.
+  const heredado = useMemo(() => (abierta ? estiloHeredadoDelSitio(refRetorno?.current) : undefined), [abierta]);
+  // El botón flotante del chat (Shadow DOM con z-index máximo) se oculta mientras está abierta.
+  useEffect(() => {
+    if (!abierta) return;
+    const raiz = document.documentElement;
+    raiz.setAttribute('data-moneda-abierta', '');
+    return () => raiz.removeAttribute('data-moneda-abierta');
+  }, [abierta]);
+  if (!abierta || typeof document === 'undefined') return null;
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center" onClick={onCerrar}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Elige la moneda"
-        className="relative w-full rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] text-[#111827] shadow-2xl animate-in slide-in-from-bottom duration-200 sm:max-w-sm sm:rounded-2xl"
-        data-superficie-propia=""
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div aria-hidden="true" className="mx-auto mt-2 h-1 w-9 rounded-full bg-gray-300 sm:hidden" />
-        <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <h3 className="text-base font-semibold">Elige la moneda</h3>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-full p-1.5 hover:bg-gray-100">
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
-        <div className="max-h-[60vh] overflow-y-auto pb-2">
-          <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} onElegir={(code) => { setCurrency(code); onCerrar(); }} />
-        </div>
-      </div>
-    </div>
+    <DialogoMoneda.Root open onOpenChange={(v) => { if (!v) onCerrar(); }}>
+      {createPortal(
+        <div
+          data-hoja-monedas=""
+          style={heredado}
+          onClick={cortarPropagacion}
+          onPointerDown={cortarPropagacion}
+          onPointerMove={cortarPropagacion}
+          onPointerUp={cortarPropagacion}
+          onTouchStart={cortarPropagacion}
+          onTouchMove={cortarPropagacion}
+          onTouchEnd={cortarPropagacion}
+          onKeyDown={cortarPropagacion}
+        >
+          <DialogoMoneda.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" style={{ zIndex: 2147483646 }} />
+          <DialogoMoneda.Content
+            aria-describedby={undefined}
+            onCloseAutoFocus={(e) => {
+              if (!refRetorno?.current) return;
+              e.preventDefault();
+              refRetorno.current.focus({ preventScroll: true });
+            }}
+            className="fixed inset-x-0 bottom-0 mx-auto flex max-h-[85dvh] w-full flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] text-[#111827] shadow-2xl outline-none animate-in slide-in-from-bottom duration-200 sm:bottom-auto sm:top-1/2 sm:max-w-sm sm:-translate-y-1/2 sm:rounded-2xl"
+            style={{ zIndex: 2147483647 }}
+            data-superficie-propia=""
+          >
+            <div aria-hidden="true" className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-gray-300 sm:hidden" />
+            <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
+              <DialogoMoneda.Title className="text-base font-semibold">Elige la moneda</DialogoMoneda.Title>
+              <DialogoMoneda.Close aria-label="Cerrar" className="rounded-full p-1.5 hover:bg-gray-100">
+                <X className="h-5 w-5 text-gray-500" />
+              </DialogoMoneda.Close>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+              <ListaMonedas lista={lista} actual={currency} base={baseCurrency} titulo={null} onElegir={(code) => { setCurrency(code); onCerrar(); }} />
+            </div>
+          </DialogoMoneda.Content>
+        </div>,
+        document.body,
+      )}
+    </DialogoMoneda.Root>
   );
 }
 
@@ -1935,22 +2023,25 @@ export function HojaMonedas({ abierta, onCerrar, lista }: { abierta: boolean; on
 function MonedaBarraMovil({ opciones, claseColor }: { opciones: OpcionesMoneda; claseColor: string }) {
   const { currency, baseCurrency, availableCurrencies, loading } = useCurrency();
   const [abierta, setAbierta] = useState(false);
+  const refPildora = useRef<HTMLButtonElement>(null);
   const lista = monedasVisibles(availableCurrencies, opciones.visibles, baseCurrency);
   if (loading || lista.length <= 1) return null;
   return (
     <>
       <button
+        ref={refPildora}
         type="button"
         onClick={() => setAbierta(true)}
         aria-label={`Moneda: ${currency}`}
         aria-haspopup="dialog"
+        aria-expanded={abierta}
         className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${claseColor}`}
         style={{ borderColor: 'color-mix(in srgb, currentColor 45%, transparent)' }}
       >
         {opciones.estilo === 'bandera' && <BanderaMoneda codigo={currency} />}
         {currency}
       </button>
-      <HojaMonedas abierta={abierta} onCerrar={() => setAbierta(false)} lista={lista} />
+      <HojaMonedas abierta={abierta} onCerrar={() => setAbierta(false)} lista={lista} refRetorno={refPildora} />
     </>
   );
 }

@@ -11,6 +11,9 @@
  *    modos fijo / al abrir; `{monto}`; monedas visibles y moneda al entrar.
  * 3. En el fuente: el cajón elige el texto al abrirse, ordena los botones en columna con espacio,
  *    oculta el chat mientras está abierto y /api/currency sin parámetros nuevos responde igual.
+ * 4. Moneda en el celular: «hoja» abre HojaMonedas con portal al body (modal real, con el estilo
+ *    del computador en la fila); «lateral» despliega la lista sin max-height ni scroll anidado; los
+ *    menús móviles bloquean el scroll de la página y contienen el suyo (overscroll-behavior).
  */
 import { readFileSync } from 'node:fs'
 import {
@@ -92,6 +95,56 @@ const proveedor = readFileSync(new URL('../components/site/CurrencyProvider.tsx'
 check(proveedor.includes("const url = consulta ? `/api/currency?${consulta}` : '/api/currency'"), 'sin opciones nuevas la petición es la de siempre')
 const vivos = readFileSync(new URL('../components/site/useAjustesVivosPreview.ts', import.meta.url), 'utf8')
 check(vivos.includes("'cart_button_mode', 'cart_button_texts'"), 'vista previa en vivo del botón del carrito (fila legacy)')
+
+// 4. Moneda en el celular (queja 2026-11-22: en «Menú lateral» la lista abría un segundo scroll
+//    y en «hoja» salía el modal viejo atrapado dentro del panel del menú).
+const compartido = readFileSync(new URL('../components/site/header/HeaderShared.tsx', import.meta.url), 'utf8')
+const tramo = (desde, hasta) => {
+  const i = compartido.indexOf(desde)
+  const j = compartido.indexOf(hasta, i + 1)
+  return i < 0 || j < 0 ? '' : compartido.slice(i, j)
+}
+const bloqueMovil = tramo('export function BloqueMonedaMovil', '\ntype MonedaVisible')
+const filaHoja = tramo('function FilaMonedaHoja', '\nfunction ListaMonedaMenuMovil')
+const lateral = tramo('function ListaMonedaMenuMovil', '\n// Corta en la raíz del portal')
+const hoja = tramo('export function HojaMonedas', '\n/** «En la barra»')
+const barra = tramo('function MonedaBarraMovil', '\n// Sección de auth para drawers móviles')
+check(!compartido.includes('MobileCurrencyChips'), 'hoja: el modal viejo (MobileCurrencyChips, «COP — Colombia» sin banderas) ya no existe')
+check(/\) : \(\s*<FilaMonedaHoja /.test(bloqueMovil), 'hoja (por defecto): el menú pinta FilaMonedaHoja')
+check(filaHoja.includes('<HojaMonedas ') && filaHoja.includes('refRetorno={refFila}'), 'hoja: la fila abre HojaMonedas y le pasa a dónde devolver el foco')
+check(filaHoja.includes("estilo === 'bandera'") && filaHoja.includes('<BanderaMoneda codigo={currency} />') && filaHoja.includes("estilo === 'simbolo'") && filaHoja.includes("estilo === 'icono'") && filaHoja.includes("estilo === 'segmento'"), 'hoja: la fila muestra la moneda con el estilo del computador (bandera, símbolo, ícono, código)')
+check(/createPortal\([\s\S]*document\.body,?\s*\)/.test(hoja), 'hoja: HojaMonedas va con createPortal(…, document.body)')
+check(hoja.includes('<DialogoMoneda.Root') && hoja.includes('<DialogoMoneda.Content') && hoja.includes('<DialogoMoneda.Title'), 'hoja: es un diálogo (Radix) que bloquea el scroll de fondo, cierra con Escape y se apila sobre vaul')
+check(hoja.includes('onCloseAutoFocus') && hoja.includes('refRetorno.current.focus('), 'hoja: devuelve el foco al cerrar')
+check(hoja.includes('zIndex: 2147483647') && hoja.includes("setAttribute('data-moneda-abierta'"), 'hoja: por encima del menú, la barra inferior y el chat')
+check(hoja.includes('onPointerMove={cortarPropagacion}'), 'hoja: deslizar la lista no arrastra el menú inferior que la contiene')
+check(hoja.includes('data-superficie-propia=""'), 'hoja: conserva data-superficie-propia (colores)')
+check(/html\[data-moneda-abierta\] \[data-gochat-widget\][^{]*\{\s*display: none !important;/.test(css), 'hoja: el chat se oculta mientras está abierta')
+check(barra.includes('<HojaMonedas ') && barra.includes('refRetorno={refPildora}'), 'en la barra: la píldora abre la misma hoja (con portal)')
+check(lateral.length > 0 && !/max-h-|overflow-(y-)?(auto|scroll|hidden)/.test(lateral), 'lateral: la lista desplegada no lleva max-height ni overflow propio')
+check(lateral.includes("scrollIntoView({ block: 'nearest' })"), 'lateral: al desplegar, la lista se trae a la vista entera')
+check(lateral.includes('compacta'), 'lateral: filas compactas (36 px, una línea)')
+const selector = readFileSync(new URL('../components/site/CurrencySelector.tsx', import.meta.url), 'utf8')
+check(selector.includes("compacta ? 'h-9' : 'h-10'"), 'ListaMonedas: «compacta» baja la fila de 40 a 36 px')
+const menus = {
+  'mobile/MobileDrawer.tsx': 'useBloqueoScrollFondo(open)',
+  'mobile/MobileFullscreen.tsx': 'useBloqueoScrollFondo(open)',
+  'mobile/MobileTabs.tsx': 'useBloqueoScrollFondo(true)',
+  'mobile/MobileBottomSheet.tsx': '<Drawer.Root open={open}',
+  'mobile/HeaderMovilConfigurable.tsx': '<MobileMenuShell ',
+  'HeaderMinimal.tsx': "document.body.style.overflow = 'hidden'",
+}
+for (const [archivo, bloqueo] of Object.entries(menus)) {
+  const f = readFileSync(new URL(`../components/site/header/${archivo}`, import.meta.url), 'utf8')
+  check(f.includes(bloqueo), `${archivo}: bloquea el scroll de la página mientras el menú está abierto`)
+  check(/overflow-y-auto overscroll-contain[^"`]*["`][^>]*data-scroll-menu=""/.test(f), `${archivo}: el scroll del menú lleva overscroll-behavior: contain`)
+}
+const shell = readFileSync(new URL('../components/site/header/mobile/MobileMenuShell.tsx', import.meta.url), 'utf8')
+check(shell.includes("document.body.style.overflow = 'hidden'"), 'MobileMenuShell bloquea el scroll del body')
+for (const archivo of ['mobile/MobileDrawer.tsx', 'mobile/HeaderMovilConfigurable.tsx', 'HeaderMinimal.tsx']) {
+  const f = readFileSync(new URL(`../components/site/header/${archivo}`, import.meta.url), 'utf8')
+  check(!/<nav className="[^"]*overflow-y-auto/.test(f), `${archivo}: la navegación no tiene scroll propio (uno solo para todo el menú)`)
+}
 
 if (problemas.length) {
   console.error(`✗ verify-cabecera-tienda: ${problemas.length} de ${casos} fallaron`)

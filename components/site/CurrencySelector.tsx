@@ -177,7 +177,7 @@ function MenuMonedasHoy({ lista, actual, onElegir, compacto }: { lista: { code: 
  * Menú de monedas de la cabecera nueva (Figma 2748:95713): «MONEDA», bandera, código y nombre,
  * la actual marcada y la nota de conversión. Lo usan el selector del computador y la hoja del celular.
  */
-export function ListaMonedas({ lista, actual, base, onElegir, titulo = 'Moneda', mayusculas = true }: { lista: { code: string; country: string }[]; actual: string; base: string; onElegir: (code: string) => void; titulo?: string | null; mayusculas?: boolean }) {
+export function ListaMonedas({ lista, actual, base, onElegir, titulo = 'Moneda', mayusculas = true, compacta = false }: { lista: { code: string; country: string }[]; actual: string; base: string; onElegir: (code: string) => void; titulo?: string | null; mayusculas?: boolean; /** Filas de 36 px (lista dentro del menú móvil); sin esto, 40 px. */ compacta?: boolean }) {
   return (
     <div className="text-left text-[#111827]">
       {titulo && <p className={`px-3 pb-1 pt-2 text-[11px] font-semibold text-[#6B7280] ${mayusculas ? 'uppercase tracking-wide' : ''}`}>{titulo}</p>}
@@ -191,7 +191,7 @@ export function ListaMonedas({ lista, actual, base, onElegir, titulo = 'Moneda',
               role="option"
               aria-selected={elegida}
               onClick={() => onElegir(c.code)}
-              className="flex h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none"
+              className={`flex ${compacta ? 'h-9' : 'h-10'} w-full items-center gap-3 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-gray-100 focus-visible:bg-gray-100 focus-visible:outline-none`}
               style={elegida ? { backgroundColor: `color-mix(in srgb, ${COLOR_MARCA} 10%, white)` } : undefined}
             >
               <BanderaMoneda codigo={c.code} />

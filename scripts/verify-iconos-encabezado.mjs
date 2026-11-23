@@ -44,9 +44,11 @@ check(resolverIconoEncabezado('cart', { cart_icon: 'store' }).nombre === 'store'
 check(resolverIconoEncabezado('account', { auth_icon: 'log-in' }).nombre === 'log-in', 'cuenta log-in')
 
 // El bloque de moneda del menú móvil ya no pinta un Globe fijo.
-const bloque = fuente.slice(fuente.indexOf('export function MobileCurrencyChips'), fuente.indexOf('// Sección de auth para drawers móviles'))
+// (El modal viejo MobileCurrencyChips se borró: la fila «hoja» recibe el ícono del rótulo.)
+const bloque = fuente.slice(fuente.indexOf('export function BloqueMonedaMovil'), fuente.indexOf('// Sección de auth para drawers móviles'))
 check(!/<Globe\b/.test(bloque), 'el menú móvil no tiene Globe fijo')
-check((bloque.match(/getLucideIcon\(resolverIconoEncabezado\('currency', settings\)\.nombre, Globe\)/g) ?? []).length === 2, 'chips y rótulo resuelven el ícono con Globe de respaldo')
+check((bloque.match(/getLucideIcon\(resolverIconoEncabezado\('currency', settings\)\.nombre, Globe\)/g) ?? []).length === 1, 'el rótulo resuelve el ícono con Globe de respaldo')
+check(bloque.includes('<FilaMonedaHoja lista={visibles} estilo={op.estilo} Icono={IconoMoneda} />'), 'la fila «hoja» usa el mismo ícono que el rótulo')
 for (const archivo of ['HeaderMinimal.tsx', 'mobile/MobileDrawer.tsx', 'mobile/MobileBottomSheet.tsx', 'mobile/MobileFullscreen.tsx', 'mobile/MobileTabs.tsx', 'mobile/HeaderMovilConfigurable.tsx']) {
   const f = readFileSync(new URL(`../components/site/header/${archivo}`, import.meta.url), 'utf8')
   check(!/<BloqueMonedaMovil(?![^>]*settings=\{settings\})/.test(f), `${archivo} pasa settings a BloqueMonedaMovil`)

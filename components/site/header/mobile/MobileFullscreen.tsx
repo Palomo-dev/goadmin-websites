@@ -15,6 +15,7 @@ import {
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
+  useBloqueoScrollFondo,
   MobileAuthSection,
   useAuthState,
   getLucideIcon,
@@ -56,6 +57,8 @@ export default function MobileFullscreen({
   pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
+  // Abierta, la página de atrás no se desplaza (un solo scroll: el de la pantalla del menú).
+  useBloqueoScrollFondo(open);
   const isLoggedIn = useAuthState();
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
@@ -157,7 +160,7 @@ export default function MobileFullscreen({
 
       {/* Overlay fullscreen */}
       {open && (
-        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto shadow-2xl`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto overscroll-contain shadow-2xl`} data-scroll-menu="" style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
           <div className="flex items-center justify-between px-4 border-b border-[color:var(--mm-divider)]" style={{ minHeight: mp.altoFila }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(32, Math.round((settings?.logo_height || 48) * 0.7))} />
             <button

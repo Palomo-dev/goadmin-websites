@@ -273,12 +273,15 @@ function ContenidoMenu({
         {panel?.showLogo ? <HeaderLogo organization={organization} primaryColor={primaryColor} height={36} /> : <span className="font-bold">Menú</span>}
         <button type="button" aria-label="Cerrar menú" onClick={onCerrar} className="p-2"><X className="h-5 w-5" /></button>
       </div>
+      {/* Un solo scroll (con overscroll contenido) para todo lo de abajo: la lista de monedas
+          desplegada no abre un segundo scroll. El bloqueo del body lo hace MobileMenuShell. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-scroll-menu="">
       {panel?.showSearch && (
         <div className="px-4 pb-2">
           <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
         </div>
       )}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+      <nav className="flex-1 space-y-1 p-4">
         {items.map((item) => (
           <ItemNav key={item.name} item={item} onCerrar={onCerrar} />
         ))}
@@ -295,6 +298,7 @@ function ContenidoMenu({
         </div>
       )}
       <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="border-t p-4" />
+      </div>
     </>
   )
 }

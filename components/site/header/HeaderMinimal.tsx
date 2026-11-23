@@ -327,9 +327,11 @@ function ContenidoMenuMinimal({
   showHeaderAuth: boolean;
   onCerrar: () => void;
 }) {
+  // Un solo scroll (con overscroll contenido) para navegación, moneda y sesión: la lista de
+  // monedas desplegada no abre un segundo scroll ni mueve la página de fondo.
   return (
-    <>
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-scroll-menu="">
+      <nav className="flex-1 p-4 space-y-1">
         {items.map((item) => (
           <DrawerNavItem key={item.name} item={item} primaryColor={primaryColor} onNavigate={onCerrar} />
         ))}
@@ -388,7 +390,7 @@ function ContenidoMenuMinimal({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }
 

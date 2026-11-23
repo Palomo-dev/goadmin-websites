@@ -15,6 +15,7 @@ import {
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
+  useBloqueoScrollFondo,
   useAuthState,
   getLucideIcon,
   type HeaderVariantProps,
@@ -61,6 +62,8 @@ export default function MobileDrawer({
   pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
+  // Abierto, la página de atrás no se desplaza (un solo scroll: el del cajón).
+  useBloqueoScrollFondo(open);
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
@@ -186,8 +189,11 @@ export default function MobileDrawer({
               </button>
             </div>
 
+            {/* Un solo scroll para navegación, moneda y sesión: la lista de monedas desplegada no
+                abre un segundo scroll ni pasa el desplazamiento a la página de fondo. */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-scroll-menu="">
             {/* Navigation links */}
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            <nav className="flex-1 p-4 space-y-1">
               {allItems.map((item) => (
                 <DrawerNavItem
                   key={item.name}
@@ -252,6 +258,7 @@ export default function MobileDrawer({
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
