@@ -4,8 +4,24 @@
  *
  *   node --disable-warning=ExperimentalWarning scripts/verify-menu-inferior.mjs
  */
-import { leerMenuInferior, menuInicial, aGuardar, destinoBoton, botonesVisibles, telDe, whatsappDe, barraGuardada } from '../lib/website/menuInferior.ts'
-import { normalizarOpcionShell } from '../lib/website/v2/mapeoAjustes.ts'
+import { register } from 'node:module'
+
+// menuInferior.ts importa `./v2/glifosTienda` sin extensión (como lo pide el bundler): con
+// --experimental-strip-types Node necesita la extensión, así que se la pone este gancho.
+const GANCHO = `
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+export async function resolve(esp, ctx, next) {
+  if ((esp.startsWith('./') || esp.startsWith('../')) && !esp.endsWith('.ts') && !esp.endsWith('.mjs') && !esp.endsWith('.js') && ctx.parentURL) {
+    const url = new URL(esp + '.ts', ctx.parentURL)
+    if (existsSync(fileURLToPath(url))) return { url: url.href, shortCircuit: true }
+  }
+  return next(esp, ctx)
+}
+`
+register(`data:text/javascript,${encodeURIComponent(GANCHO)}`, import.meta.url)
+const { leerMenuInferior, menuInicial, aGuardar, destinoBoton, botonesVisibles, telDe, whatsappDe, barraGuardada } = await import('../lib/website/menuInferior.ts')
+const { normalizarOpcionShell } = await import('../lib/website/v2/mapeoAjustes.ts')
 
 const problemas = []
 let casos = 0
@@ -155,6 +171,22 @@ check(M.repetidosArriba(dedupe, '/carrito').size === 0 && M.repetidosArriba(dedu
 check(M.repetidosArriba({ ...dedupe, enabled: false }, '/').size === 0, 'No repetir: con el menú apagado, nada')
 check(M.repetidosArriba(leer('tabs', { labels: 'always', dedupeHeader: true }, base5.map((b) => (b.id === 'd' ? { ...b, visible: false } : b))), '/').has('cart') === false, 'No repetir: un botón oculto sigue arriba')
 check(M.repetidosArriba(leer('actions', { labels: 'always', dedupeHeader: true }, [base5[3]]), '/mi-cuenta').size === 0, 'No repetir: Acciones no sale en la cuenta, la cabecera conserva el carrito')
+
+// Íconos con más estilos (Figma 2852:70951): `icon` admite el objeto de Phosphor y `style.iconStyle`.
+const conGlifo = M.leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'tabs', items: [
+  { id: 'c', action: 'cart', label: 'Carrito', icon: { set: 'phosphor', name: 'ShoppingCart', weight: 'duotone' }, visible: true },
+  { id: 'h', action: 'home', label: 'Inicio', icon: 'home', visible: true },
+  { id: 'x', action: 'favorites', label: 'Fav', icon: { set: 'phosphor', name: '../../etc', weight: 'x' }, visible: true },
+], style: { labels: 'always', iconStyle: { weight: 'fill', size: 22, shadow: 'soft', bg: { shape: 'circle', color: '#2563EB' }, active: '#2563EB', inactive: '#475569', scope: 'item' } } } } })
+check(conGlifo.items[0].glyph?.name === 'ShoppingCart' && conGlifo.items[0].glyph?.weight === 'duotone' && conGlifo.items[0].icon === 'bag', 'icono de Phosphor: glyph y el de la acción como respaldo')
+check(!('glyph' in conGlifo.items[1]) && conGlifo.items[1].icon === 'home', 'un texto sigue siendo el Lucide de siempre')
+check(!('glyph' in conGlifo.items[2]) && conGlifo.items[2].icon === 'heart', 'nombre que no es de Phosphor: lo de hoy')
+check(JSON.stringify(conGlifo.style.iconStyle) === JSON.stringify({ weight: 'fill', size: 22, shadow: 'soft', bg: { shape: 'circle', color: '#2563EB' }, active: '#2563EB', inactive: '#475569', scope: 'item' }), 'iconStyle se lee entero')
+const guardadoGlifo = M.aGuardar(conGlifo)
+check(JSON.stringify(guardadoGlifo.items[0].icon) === JSON.stringify({ set: 'phosphor', name: 'ShoppingCart', weight: 'duotone' }) && guardadoGlifo.items[1].icon === 'home', 'se guarda el objeto en icon')
+check(JSON.stringify(M.leerMenuInferior({ mobile_header: { bottom_nav: guardadoGlifo } })) === JSON.stringify(conGlifo), 'glyph e iconStyle: ida y vuelta')
+check(!('iconStyle' in leer('tabs', { labels: 'always', iconStyle: { weight: 'neon', size: 99, shadow: 'none', bg: { shape: 'none' } } }).style), 'iconStyle sin nada válido = sin la clave (lo de hoy)')
+check(!('iconStyle' in M.aGuardar(leer('tabs', { labels: 'always' })).style), 'sin tocar nada no se escribe iconStyle')
 
 if (problemas.length) { console.error(`verify-menu-inferior: ${problemas.length} de ${casos} fallan`); for (const p of problemas) console.error(' -', p); process.exit(1) }
 console.log(`verify-menu-inferior: ${casos} casos OK`)

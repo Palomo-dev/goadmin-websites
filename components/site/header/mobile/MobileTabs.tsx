@@ -6,6 +6,7 @@ import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionU
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
 import { ChevronDown, Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
+import { iconoCabecera } from '@/components/site/iconos/iconoCabecera';
 import { ProductSearch } from '../../ProductSearch';
 import { contarUnidadesCarrito } from '@/lib/cart';
 import { estiloIconosEncabezado } from '@/lib/website/encabezadoEstilo';
@@ -71,7 +72,7 @@ export default function MobileTabs({
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const cromoMovil = ajustesCromoMovil(settings);
-  const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
+  const SearchTabIcon = iconoCabecera(getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search), 'buscar', resolverIconoEncabezado('search', settings).nombre, settings);
 
   return (
     <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
@@ -187,9 +188,9 @@ export function BarraPestanas({
     accent: settings?.accent_color || primaryColor,
     secondary: settings?.secondary_color || '#1E40AF',
   }
-  const SearchTabIcon = getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search);
-  const CartTabIcon = getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag);
-  const AuthTabIcon = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User);
+  const SearchTabIcon = iconoCabecera(getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search), 'buscar', resolverIconoEncabezado('search', settings).nombre, settings);
+  const CartTabIcon = iconoCabecera(getLucideIcon(resolverIconoEncabezado('cart', settings).nombre, ShoppingBag), 'carrito', resolverIconoEncabezado('cart', settings).nombre, settings);
+  const AuthTabIcon = iconoCabecera(getLucideIcon(resolverIconoEncabezado('account', settings).nombre, User), 'cuenta', resolverIconoEncabezado('account', settings).nombre, settings);
   const iconoTab = (Icono: typeof ShoppingBag, clave: 'cart' | 'account') => contenedor ? (
     <ContenedorIcono base={contenedor} clave={clave} colores={coloresCaja}>
       <Icono style={trazoContenedor(contenedor, clave, estiloIconos.relleno)} />

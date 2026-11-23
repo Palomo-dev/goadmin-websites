@@ -40,6 +40,7 @@ import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
 import { ICONOS_BUSCAR_LUCIDE } from './iconoBuscar';
+import { iconoCabecera } from '@/components/site/iconos/iconoCabecera';
 import { colorGuardado, iconoSobreFondo } from '@/lib/website/colorCirculoIconos';
 import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
@@ -697,13 +698,19 @@ export function HeaderActions({
     header_icons_circle: settings?.header_icons_circle,
   });
   const trazo = propsTrazoIcono(estiloIconos.relleno);
-  const iconoDe = (accion: 'search' | 'cart' | 'account' | 'currency', respaldo: typeof ShoppingBag) =>
-    getLucideIcon(resolverIconoEncabezado(accion, settings).nombre, respaldo);
+  // Dibujo del catálogo nuevo y «Estilo de los íconos» (Figma 2852:70951): `iconoCabecera`
+  // devuelve el mismo componente de hoy si el sitio no eligió nada nuevo.
+  const CLAVE_GLIFO = { search: 'buscar', cart: 'carrito', account: 'cuenta', currency: 'moneda' } as const;
+  const iconoDe = (accion: 'search' | 'cart' | 'account' | 'currency', respaldo: typeof ShoppingBag) => {
+    const nombre = resolverIconoEncabezado(accion, settings).nombre;
+    return iconoCabecera(getLucideIcon(nombre, respaldo), CLAVE_GLIFO[accion], nombre, settings);
+  };
   const CartIconComp = iconoDe('cart', ShoppingBag);
   const AuthIconComp = iconoDe('account', User);
-  const AuthLoggedInIconComp = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, UserCircle);
+  const AuthLoggedInIconComp = iconoCabecera(getLucideIcon(resolverIconoEncabezado('account', settings).nombre, UserCircle), 'cuenta', resolverIconoEncabezado('account', settings).nombre, settings);
   const CurrencyIconComp = iconoDe('currency', Globe);
   const SearchIconComp = iconoDe('search', Search);
+  const HeartComp = iconoCabecera(Heart, 'favoritos', 'heart', settings);
 
   // Cabecera de la tienda (Figma 2747:57859, `header_iconos` / `header_moneda`). Sin opciones
   // nuevas `presentar` devuelve null y cada ícono sigue exactamente por el camino de hoy.
@@ -791,13 +798,13 @@ export function HeaderActions({
   )
   // Favoritos (solo si el sitio lo prendió y la tienda vende productos). Al tocarlo, el panel
   // lateral o /favoritos según Encabezado › Favoritos (Figma 2772:62317), con contador.
-  const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(Heart, presFavoritos) : cajaFavoritos.contenedor ? (
+  const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(HeartComp, presFavoritos) : cajaFavoritos.contenedor ? (
     <ContenedorIcono base={cajaFavoritos.contenedor} clave="favorites" colores={coloresCaja}>
-      <Heart style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)} />
+      <HeartComp style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)} />
     </ContenedorIcono>
   ) : (
     <IconoConCirculo circulo={cajaFavoritos.circulo} primaryColor={primaryColor}>
-      <Heart className={cajaFavoritos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`} style={presFavoritos ? estiloGlifo(presFavoritos) : undefined} {...trazo} />
+      <HeartComp className={cajaFavoritos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`} style={presFavoritos ? estiloGlifo(presFavoritos) : undefined} {...trazo} />
     </IconoConCirculo>
   )
   const actionElements: Record<string, React.ReactNode | null> = {
@@ -1818,7 +1825,7 @@ export function BloqueMonedaMovil({
 }) {
   const { loading, availableCurrencies, baseCurrency } = useCurrency();
   const { opciones: opcionesShell } = useEncabezadoPie();
-  const IconoMoneda = getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe);
+  const IconoMoneda = iconoCabecera(getLucideIcon(resolverIconoEncabezado('currency', settings).nombre, Globe), 'moneda', resolverIconoEncabezado('currency', settings).nombre, settings);
   // «En el celular» (`header_moneda.movil`, Figma 2750): hoja (por defecto), lista en el menú, chips o en la barra.
   const op = opcionesMoneda(settings as unknown as Record<string, unknown> | null);
   const visibles = op.visibles ? monedasVisibles(availableCurrencies, op.visibles, baseCurrency) : availableCurrencies;

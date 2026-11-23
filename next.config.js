@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Íconos del catálogo nuevo (app/api/iconos/[peso]/[nombre]): la ruta lee los SVG de
+    // @phosphor-icons/core con fs, así que hay que decirle a Vercel que los lleve en la función.
+    outputFileTracingIncludes: {
+      '/api/iconos/[peso]/[nombre]': ['./node_modules/@phosphor-icons/core/assets/**/*.svg'],
+    },
+  },
   images: {
     // Supabase Storage sirve las imágenes con `cache-control: public, max-age=3600`.
     // Vercel usa max(minimumCacheTTL, max-age del origen) como TTL de la imagen

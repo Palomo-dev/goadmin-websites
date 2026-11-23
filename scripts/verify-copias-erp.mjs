@@ -38,6 +38,9 @@ export const COPIAS = [
   ['lib/website/v2/tokensDiseno.ts', 'src/lib/website/v2/tokensDiseno.ts'],
   ['lib/website/v2/presetsDiseno.ts', 'src/lib/website/v2/presetsDiseno.ts'],
   ['lib/website/v2/iconosEncabezado.ts', 'src/lib/website/v2/iconosEncabezado.ts'],
+  // Íconos con más estilos (Figma 2852:70951, propuesta 8): estilo, Phosphor y catálogo del selector.
+  ['lib/website/v2/glifosTienda.ts', 'src/lib/website/v2/glifosTienda.ts'],
+  ['lib/website/v2/catalogoIconos.ts', 'src/lib/website/v2/catalogoIconos.ts'],
   // Cabecera de la tienda (Figma 2747:57859): íconos, selector de moneda y cajón del carrito.
   ['lib/website/v2/cabeceraTienda.ts', 'src/lib/website/v2/cabeceraTienda.ts'],
   // Botones de compra de la ficha (Figma 2779:65038): distribuciones, regla de filas y WhatsApp.

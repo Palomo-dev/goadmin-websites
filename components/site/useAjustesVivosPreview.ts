@@ -55,12 +55,15 @@ function clavePermitida(clave: string): boolean {
   return CLAVES_PERMITIDAS.has(clave) || PREFIJOS_PERMITIDOS.some((p) => clave.startsWith(p))
 }
 
-/** Hasta 4 niveles: `mobile_header.bottom_nav.items[i].campo` (menú inferior v2) cabe entero. */
+/**
+ * Hasta 5 niveles: `mobile_header.bottom_nav.items[i].icon.name` (ícono del catálogo nuevo) y
+ * `mobile_header.bottom_nav.style.iconStyle.bg.color` (Figma 2852:70951) caben enteros.
+ */
 function valorSimple(v: unknown, profundidad = 0): boolean {
   if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) {
     return typeof v !== 'string' || v.length <= 2000
   }
-  if (profundidad > 3) return false
+  if (profundidad > 4) return false
   if (Array.isArray(v)) return v.length <= 50 && v.every((x) => valorSimple(x, profundidad + 1))
   if (typeof v === 'object') {
     const entradas = Object.entries(v as Record<string, unknown>)

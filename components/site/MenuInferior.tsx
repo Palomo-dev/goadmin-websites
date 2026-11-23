@@ -43,7 +43,9 @@ import { CLASE_FONDO_ENCABEZADO, estiloBarraEncabezado, marcaFondoEncabezado, va
 import { ModalCategorias, useUnidadesCarrito } from './header/mobile/MobileTabs'
 import { InsigniaContador } from './header/AccionCabecera'
 import { ProductSearch } from './ProductSearch'
-import { iconoBuscar } from './header/iconoBuscar'
+import { iconoBuscar, dibujoBuscar } from './header/iconoBuscar'
+import { conGlifo } from './iconos/GlifoTienda'
+import type { EstiloGlifos } from '@/lib/website/v2/glifosTienda'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { useOpcionesTienda } from './OpcionesTiendaContext'
 import { abrirPanelFavoritos, useFavoritos } from '@/lib/favoritos/almacen'
@@ -56,6 +58,12 @@ const ICONO: Record<IconoMenu, typeof Home> = {
   phone: Phone, whatsapp: MessageCircle, 'map-pin': MapPin, calendar: CalendarDays, 'calendar-check': CalendarCheck,
   package: Package, truck: Truck, tag: Tag, percent: Percent, star: Star, heart: Heart, sparkles: Sparkles, link: Link2,
   store: Store, list: List, basket: ShoppingBasket, 'user-circle': CircleUserRound, gift: Gift,
+}
+
+/** El estilo de los íconos sin su fondo (para los botones que ya pintan uno propio). */
+function sinFondo(e: EstiloGlifos): EstiloGlifos | null {
+  const { bg: _bg, ...resto } = e
+  return Object.keys(resto).length > 0 ? resto : null
 }
 
 /** Insignia (carrito y favoritos) de cada variante: la misma que pintaba el carrito. */
@@ -204,7 +212,27 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
   const tocar = toque ? alTocarMenu(toque) : undefined
   // Buscar usa el dibujo elegido en Encabezado › Íconos (el mismo de todos los buscadores).
   const IconoBuscar = iconoBuscar(settings)
-  const iconoDe = (icono: IconoMenu) => (icono === 'search' ? IconoBuscar : ICONO[icono])
+  const dibujoLupa = dibujoBuscar(settings)
+  const estiloIconos = menu.style.iconStyle ?? null
+  /**
+   * Ícono de un botón con su dibujo (Lucide de siempre o del catálogo nuevo) y el «Estilo de los
+   * íconos» del menú (Figma 2852:70951). Sin dibujo nuevo ni estilo, el mismo componente de hoy.
+   * `sobreFondo`: el botón ya pinta su círculo o su píldora (destacado, aparte, botón principal,
+   * activo con su nombre): el ícono no suma otro fondo ni toma los colores activo/inactivo.
+   */
+  const iconoDe = (b: BotonMenu, o: { activo?: boolean; sobreFondo?: boolean } = {}) => {
+    const esBuscar = b.icon === 'search'
+    const base = esBuscar ? dibujoLupa.base : ICONO[b.icon]
+    const estilo: EstiloGlifos | null = estiloIconos && o.sobreFondo ? sinFondo(estiloIconos) : estiloIconos
+    const color = o.sobreFondo ? null : (o.activo ? estiloIconos?.active : estiloIconos?.inactive) ?? null
+    return conGlifo(base, {
+      glifo: b.glyph ?? (esBuscar ? dibujoLupa.glifo : null),
+      nombre: esBuscar ? dibujoLupa.nombre : b.icon,
+      estilo,
+      color,
+      fondo: o.activo && !o.sobreFondo ? (estiloIconos?.active ?? menu.style.active ?? primaryColor) : null,
+    })
+  }
 
   /**
    * Pinta un botón con su contador y su aria-label. Sin `style.badges.cart` el carrito lleva el
@@ -308,8 +336,8 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
         >
           <ul className="mx-auto flex max-w-md items-stretch gap-2">
             {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_ACCIONES, (insignia, aria) => {
-              const Icono = iconoDe(b.icon)
               const principal = b.id === principalId
+              const Icono = iconoDe(b, { sobreFondo: principal })
               const fondo = menu.style.active ?? primaryColor
               const clase = 'flex min-h-[44px] flex-1 items-center justify-center gap-1.5 px-2 text-[13px] font-semibold transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'
               const estilo: CSSProperties = principal
@@ -353,10 +381,10 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
       ? estiloBarraEncabezado(settings, 'top')
       : { backgroundColor: vidrio ? 'color-mix(in srgb, var(--background-color, #ffffff) 72%, transparent)' : 'var(--background-color, #ffffff)' }
     const botonPildora = (b: BotonMenu, d: DestinoBoton, insignia: ReactNode, aria: string | undefined) => {
-      const Icono = iconoDe(b.icon)
       const centro = b.id === menu.style.centerId
       const esActivo = !centro && activo(d)
       const soloActivo = efecto === 'label'
+      const Icono = iconoDe(b, { activo: esActivo, sobreFondo: centro || (soloActivo && esActivo) })
       const verTexto = soloActivo ? esActivo : conTexto
       const etiqueta = verTexto && <span className="max-w-[72px] truncate text-[10px] font-medium leading-none">{b.label}</span>
       const partes = partesActivo(efecto, esActivo, activoColor)
@@ -418,7 +446,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
               {enIsla.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_FLOTANTE, (insignia, aria) => botonPildora(b, d, insignia, aria)))}
           </ul>
           {aparte && conInsignia(aparte.boton, INSIGNIA_FLOTANTE, (insignia, aria) => {
-            const Icono = iconoDe(aparte.boton.icon)
+            const Icono = iconoDe(aparte.boton, { sobreFondo: true })
             return (
               <span key={aparte.boton.id} className="pointer-events-auto flex shrink-0">
                 {enlace(
@@ -463,9 +491,9 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
         <div ref={contRef as RefObject<HTMLDivElement>} className={`grid h-14${efecto === 'slide' ? ' relative' : ''}`} style={{ gridTemplateColumns: `repeat(${botones.length}, minmax(0, 1fr))` }}>
           {deslizante(colorActivo ?? primaryColor)}
           {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_PESTANAS, (insignia, aria) => {
-            const Icono = iconoDe(b.icon)
             const centro = b.id === menu.style.centerId
             const esActivo = activo(d)
+            const Icono = iconoDe(b, { activo: esActivo, sobreFondo: centro || (efecto === 'label' && esActivo) })
             const color = esActivo && colorActivo ? colorActivo : colorInactivo
             const soloActivo = efecto === 'label'
             const verTexto = soloIconos || soloActivo ? false : conTexto
