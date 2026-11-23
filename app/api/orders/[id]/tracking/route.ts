@@ -12,6 +12,8 @@ import {
 } from '@/lib/orders/estados-pedido'
 import { ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
 import { fechaHoraPedido, horaPedido } from '@/lib/restaurant/ventanaPedido'
+import { direccionIncompleta, leerRastreoLogistica, type CanalesAyuda } from '@/lib/orders/rastreoPublico'
+import { grupoDeTransportadora } from '@/lib/shipping/opcionesDomicilio'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,12 +37,21 @@ function mesaDeNotas(notas: string | null): string | null {
  *
  * - Solo pedidos de la organización del HOST (antes cualquier sitio rastreaba pedidos de cualquier
  *   organización). Sin organización en el host u otro dueño: 404, sin confirmar que existe.
- * - Datos personales (dirección, notas, coordenadas, fotos y teléfono del repartidor) solo con el
- *   token de seguimiento del enlace (`?t=`, lib/orders/tokenSeguimiento.ts). Sin él: estado,
- *   línea de tiempo, totales y nombre de pila.
+ * - Datos personales (dirección, notas, coordenadas) y TODO lo del envío (guía, transportadora,
+ *   intentos, rastreo de logística) solo con el token de seguimiento del enlace (`?t=`,
+ *   lib/orders/tokenSeguimiento.ts). Sin él o con uno inválido: estado del pedido, línea de
+ *   tiempo (sin guía ni transportadora), totales y nombre de pila del cliente.
+ * - Nunca, ni con el token: teléfono del domiciliario ni fotos o firmas de la prueba de entrega
+ *   (el bucket `shipment-pod` es privado desde el 2026-11-23; `photo_urls` ya no se lee).
  * - Horas formateadas en la zona de la sede (`branches.timezone` → `organizations.timezone`), y
  *   la zona va en la respuesta para que el navegador formatee igual.
  * - Límite por IP (el seguimiento consulta cada 15 s).
+ * - Logística Fase 1 (`logistica`): `logistica_rastreo_publico` (solo service role) con el
+ *   domiciliario por su primer nombre, «Pagas al recibir», el historial canónico y el código de
+ *   entrega SOLO con el token válido (lib/orders/rastreoPublico.ts). La dirección, incompleta y
+ *   solo con el token (`direccionIncompleta`).
+ * - `ayuda`: los canales de Contacto de la tienda (WhatsApp, teléfono y correo del sitio; si no,
+ *   los de la organización). Son públicos: los mismos del pie del sitio.
  */
 export async function GET(
   request: NextRequest,
@@ -105,7 +116,7 @@ export async function GET(
         expected_delivery_date,
         picked_at, dispatched_at, delivered_at,
         transport_carriers (
-          id, name, contact_phone
+          id, name, contact_phone, carrier_type
         )
       `)
       .eq('organization_id', orgId)
@@ -116,16 +127,37 @@ export async function GET(
       .maybeSingle()
 
     let deliveryAttempts: any[] = []
-    if (shipment) {
+    if (shipment && verificado) {
       const { data: attempts } = await supabase
         .from('delivery_attempts')
-        .select('attempt_number, attempted_at, status, failure_reason_text, driver_notes, latitude, longitude, photo_urls')
+        .select('attempt_number, attempted_at, status, failure_reason_text, driver_notes, latitude, longitude')
         .eq('shipment_id', shipment.id)
         .order('attempt_number', { ascending: true })
       deliveryAttempts = attempts || []
     }
 
-    const timeline = buildTimeline(order, shipment, orgTypeId, zona)
+    // Logística Fase 1: rastreo canónico del envío (solo con el token válido) y canales de Ayuda
+    // de la tienda.
+    const [{ data: rastreo, error: errorRastreo }, { data: ajustesSitio }, { data: orgContacto }] = await Promise.all([
+      shipment && verificado
+        ? supabase.rpc('logistica_rastreo_publico', { p_organization_id: orgId, p_web_order_id: order.id })
+        : Promise.resolve({ data: null, error: null }),
+      supabase.from('website_settings').select('whatsapp_number, contact_phone, contact_email').eq('organization_id', orgId).is('branch_id', null).maybeSingle(),
+      supabase.from('organizations').select('phone, email').eq('id', orgId).maybeSingle(),
+    ])
+    if (errorRastreo) console.error('[Tracking] logistica_rastreo_publico falló', { orgId, error: errorRastreo.message })
+    const logistica = verificado ? leerRastreoLogistica(rastreo, verificado) : null
+    const ayuda: CanalesAyuda = {
+      whatsapp: ajustesSitio?.whatsapp_number || null,
+      telefono: ajustesSitio?.contact_phone || orgContacto?.phone || null,
+      correo: ajustesSitio?.contact_email || orgContacto?.email || null,
+    }
+
+    // Sin token, la línea de tiempo solo con las horas del envío (sin guía ni transportadora).
+    const shipmentTimeline = shipment && !verificado
+      ? { dispatched_at: shipment.dispatched_at, delivered_at: shipment.delivered_at }
+      : shipment
+    const timeline = buildTimeline(order, shipmentTimeline, orgTypeId, zona)
     const comerAqui = esComerAqui(order.delivery_type, order.internal_notes)
 
     return NextResponse.json({
@@ -138,6 +170,8 @@ export async function GET(
         mesa: comerAqui ? mesaDeNotas(order.internal_notes) : null,
         sede: sede?.name ?? null,
         deliveryAddress: verificado ? order.delivery_address : null,
+        // Lo que se muestra: incompleta, para cuidar los datos (Figma 2804:13320).
+        direccionIncompleta: verificado ? direccionIncompleta(order.delivery_address) : null,
         isScheduled: order.is_scheduled,
         scheduledAt: order.scheduled_at,
         tipAmount: order.tip_amount,
@@ -156,36 +190,45 @@ export async function GET(
         organizationId: order.organization_id,
         branchId: order.branch_id,
       },
-      shipment: shipment ? {
+      shipment: shipment && verificado ? {
         id: shipment.id,
         shipmentNumber: shipment.shipment_number,
         status: shipment.status,
         trackingNumber: shipment.tracking_number,
         externalTrackingUrl: shipment.external_tracking_url,
+        // Teléfono solo de una transportadora de tercero (empresa); nunca en domicilio propio (otro
+        // `carrier_type` o modo `own`): ahí puede ser el del domiciliario. Para hablar, «Ayuda».
+        // Mismo criterio de grupo que el checkout (grupoDeTransportadora).
         carrier: shipment.transport_carriers
-          ? { name: shipment.transport_carriers.name, contact_phone: verificado ? shipment.transport_carriers.contact_phone : null }
+          ? {
+              name: shipment.transport_carriers.name,
+              contact_phone: grupoDeTransportadora(shipment.transport_carriers.carrier_type) === 'third_party' && logistica?.modo !== 'own'
+                ? shipment.transport_carriers.contact_phone
+                : null,
+            }
           : null,
         pickedAt: shipment.picked_at,
         dispatchedAt: shipment.dispatched_at,
         deliveredAt: shipment.delivered_at,
         expectedDeliveryDate: shipment.expected_delivery_date,
-        latitude: verificado ? shipment.delivery_latitude : null,
-        longitude: verificado ? shipment.delivery_longitude : null,
+        latitude: shipment.delivery_latitude,
+        longitude: shipment.delivery_longitude,
       } : null,
       deliveryAttempts: deliveryAttempts.map(a => ({
         attemptNumber: a.attempt_number,
         attemptedAt: a.attempted_at,
         status: a.status,
         failureReason: a.failure_reason_text,
-        driverNotes: verificado ? a.driver_notes : null,
-        latitude: verificado ? a.latitude : null,
-        longitude: verificado ? a.longitude : null,
-        photoUrls: verificado ? a.photo_urls : null,
+        driverNotes: a.driver_notes,
+        latitude: a.latitude,
+        longitude: a.longitude,
       })),
       timeline,
       orgTypeId,
       zona,
       verificado,
+      logistica,
+      ayuda,
     }, { headers: SIN_CACHE })
   } catch (err) {
     console.error('Error in tracking API:', err)

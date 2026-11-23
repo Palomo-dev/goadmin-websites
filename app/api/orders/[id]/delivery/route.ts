@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/orders/[id]/delivery
  *
  * Retorna información de delivery para un pedido:
- * - Datos del conductor asignado (nombre, teléfono, foto)
+ * - Datos del conductor asignado (solo el primer nombre: sin apellido, teléfono ni foto)
  * - Datos del vehículo (placa, tipo, color, marca, modelo)
  * - Último evento GPS (lat, lng, timestamp)
  * - Estado del shipment
@@ -20,9 +20,13 @@ export const dynamic = 'force-dynamic'
  *                                → transport_events (último GPS)
  *
  * Solo pedidos de la organización del HOST (404 si no), y conductor, vehículo, GPS y prueba de
- * entrega solo con el token de seguimiento (`?t=`, lib/orders/tokenSeguimiento.ts): sin él, el
- * estado del envío y nada más. Antes cualquier sitio devolvía teléfono, GPS y fotos de entrega
+ * entrega solo con el token de seguimiento (`?t=`, lib/orders/tokenSeguimiento.ts): sin él (o
+ * con uno inválido) solo `hasDelivery`, sin datos del envío (ni guía ni fechas; 2026-11-23). Antes cualquier sitio devolvía teléfono, GPS y fotos de entrega
  * de pedidos de cualquier organización.
+ *
+ * Logística Fase 1 (2026-11-23): ni con el token salen fotos ni firmas de la prueba de entrega
+ * (el bucket `shipment-pod` es privado: no se leen sus URL) ni la foto de perfil ni el teléfono
+ * del domiciliario. Para hablar con la tienda, «Ayuda» del rastreo.
  */
 export async function GET(
   request: NextRequest,
@@ -80,6 +84,10 @@ export async function GET(
         message: 'No hay envío asociado a este pedido',
       })
     }
+    // Sin token: ningún dato del envío.
+    if (!verificado) {
+      return NextResponse.json({ hasDelivery: true, shipment: null, driver: null, vehicle: null, lastEvent: null, proofOfDelivery: null })
+    }
 
     const result: any = {
       hasDelivery: true,
@@ -91,18 +99,13 @@ export async function GET(
         pickedAt: shipment.picked_at,
         deliveredAt: shipment.delivered_at,
         dispatchedAt: shipment.dispatched_at,
-        deliveryLatitude: verificado ? shipment.delivery_latitude : null,
-        deliveryLongitude: verificado ? shipment.delivery_longitude : null,
+        deliveryLatitude: shipment.delivery_latitude,
+        deliveryLongitude: shipment.delivery_longitude,
       },
       driver: null,
       vehicle: null,
       lastEvent: null,
       proofOfDelivery: null,
-    }
-
-    // Sin token: solo el estado del envío.
-    if (!verificado) {
-      return NextResponse.json(result)
     }
 
     const meta = shipment.metadata || {}
@@ -117,7 +120,7 @@ export async function GET(
             id,
             organization_members (
               id, organization_id,
-              profiles ( id, first_name, last_name, phone, avatar_url )
+              profiles ( id, first_name )
             )
           )
         `)
@@ -127,11 +130,11 @@ export async function GET(
       // Solo un conductor de esta misma organización.
       if (driver && Number(driver.employments?.organization_members?.organization_id) === orgId) {
         const profile = driver.employments?.organization_members?.profiles
+        // Logística Fase 1: del domiciliario el cliente solo ve el primer nombre (sin apellido,
+        // teléfono ni foto); para hablar, «Ayuda» lleva a los canales de la tienda.
         result.driver = {
           id: driver.id,
-          name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
-          phone: profile?.phone || null,
-          avatarUrl: profile?.avatar_url || null,
+          name: profile?.first_name ? String(profile.first_name).trim().split(/\s+/)[0] : null,
           licenseCategory: driver.license_category,
         }
       }
@@ -186,7 +189,8 @@ export async function GET(
     if (shipment.status === 'delivered') {
       const { data: pod } = await (supabase as any)
         .from('proof_of_delivery')
-        .select('id, delivered_at, recipient_name, recipient_relationship, signature_url, photo_urls, customer_rating, customer_feedback, notes')
+        // Sin `signature_url` ni `photo_urls`: la prueba de entrega no sale a la tienda.
+        .select('id, delivered_at, recipient_name, recipient_relationship, customer_rating, customer_feedback, notes')
         .eq('shipment_id', shipment.id)
         .order('delivered_at', { ascending: false })
         .limit(1)
@@ -197,8 +201,6 @@ export async function GET(
           deliveredAt: pod.delivered_at,
           recipientName: pod.recipient_name,
           recipientRelationship: pod.recipient_relationship,
-          signatureUrl: pod.signature_url,
-          photoUrls: pod.photo_urls,
           rating: pod.customer_rating,
           feedback: pod.customer_feedback,
           notes: pod.notes,

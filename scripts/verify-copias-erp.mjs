@@ -58,6 +58,8 @@ export const COPIAS = [
   ['lib/website/v2/contrasteColor.ts', 'src/lib/utils/contrasteColor.ts'],
   // Teléfono con país: parseo, validación por país y E.164 (los usa components/site/TelefonoPais.tsx).
   ['lib/utils/telefono.ts', 'src/lib/utils/telefono.ts'],
+  // Logística Fase 1: contrato de la cotización de envío por zona (`logistica_cotizar_envio`).
+  ['lib/shipping/cotizacionLogistica.ts', 'src/lib/logistica/cotizacion.ts'],
   ['lib/data/countryPhoneCodes.ts', 'src/lib/data/countryPhoneCodes.ts'],
   // Contador regresivo: el editor (vista previa) y la tienda calculan el mismo objetivo, con cambio de horario.
   ['lib/website/relojContador.ts', 'src/lib/website/relojContador.ts'],

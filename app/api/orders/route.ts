@@ -29,6 +29,8 @@ import { horarioDeSede, hoyEnZona } from '@/lib/restaurant/horario'
 import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { gruposActivos } from '@/lib/shipping/opcionesDomicilio'
+import { cotizarDomicilioWeb } from '@/lib/shipping/cotizarZonas'
+import { envioDeZona, usaZonas } from '@/lib/shipping/domicilioZonas'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { insertarConNumero } from '@/lib/orders/numeroPedido'
@@ -59,8 +61,12 @@ const redondear2 = (n: number): number => Math.round(n * 100) / 100
 /** Pasarelas cuyo webhook envía el correo al pasar el pago a `paid` (app/api/webhooks/wompi_co). */
 const PASARELAS_CON_CORREO_AL_PAGAR: ReadonlySet<string> = new Set(['wompi', 'wompi_co'])
 
-/** Interruptor de despliegue: cobrar el envío calculado en el servidor (por defecto, solo observar). */
-const ENVIO_SERVIDOR_OBLIGATORIO = process.env.ORDERS_ENFORCE_SERVER_SHIPPING === 'true'
+/** Mensajes de los domicilios que el servidor no acepta (logística Fase 1, zonas). */
+const MENSAJE_BLOQUEO_ENVIO: Record<string, string> = {
+  FUERA_DE_COBERTURA: 'Tu dirección está fuera de nuestras zonas de domicilio. Elige otra dirección, transportadora o recoger.',
+  PEDIDO_MINIMO_DOMICILIO: 'Tu pedido no llega al mínimo para domicilio en tu zona.',
+  TARIFA_ENVIO_INVALIDA: 'La tarifa de envío cambió. Vuelve a elegir cómo recibir tu pedido.',
+}
 
 /**
  * El insert con `dine_in` falló porque la base aún no tiene la migración E1: CHECK de
@@ -83,8 +89,11 @@ function rechazaComerAqui(error: { code?: string; message?: string } | null): bo
  *   que vio otro precio: en ese caso 409 PRECIOS_CAMBIARON con los precios nuevos.
  * - Subtotal, impuesto, promociones y cupón se recalculan sobre esos precios. El `subtotal`, el
  *   `total` y el `couponDiscount` del cliente se ignoran (solo se registra el desfase).
- * - Envío: lo decide el servidor con lib/shipping/resolveShipping.ts (tarifa elegida o tarifa
- *   plana); se cobra cuando ORDERS_ENFORCE_SERVER_SHIPPING=true, si no solo se registra el desfase.
+ * - Envío: lo decide SIEMPRE el servidor; el `shipping` del navegador se ignora (antes se cobraba
+ *   salvo con ORDERS_ENFORCE_SERVER_SHIPPING=true y aceptaba `shipping: 0`). Domicilio propio con
+ *   zonas configuradas: `logistica_cotizar_envio` (lib/shipping/cotizarZonas.ts); fuera de
+ *   cobertura o bajo el mínimo, 422. Sin zonas, transportadora o sin cotización: la tarifa elegida
+ *   o la plana (lib/shipping/resolveShipping.ts), como antes.
  *   Propina: sale del cliente, nunca negativa.
  */
 export async function POST(request: NextRequest) {
@@ -566,19 +575,54 @@ export async function POST(request: NextRequest) {
         })
     const taxTotal = impuesto.total
     const taxForTotal = impuesto.sumaAlTotal
-    // ── Envío: decidido en el servidor (lib/shipping/resolveShipping.ts) ──
-    // Misma función que /api/shipping/calculate: la tarifa que eligió el checkout
-    // (`shippingRateId`, de esta organización, vigente y aplicable a la ciudad) o la tarifa plana de
-    // los ajustes, sobre el subtotal del servidor. Detrás de ORDERS_ENFORCE_SERVER_SHIPPING (igual
-    // que la firma de Wompi): en `false` solo se registra la diferencia y se cobra el envío del
-    // cliente; en `true` se cobra el del servidor. Si el servidor no puede decidir (tarifa ajena o
-    // sin ajustes), se cobra el del cliente como siempre.
+    // ── Envío: decidido SIEMPRE en el servidor ──
+    // El `shipping` del navegador solo sirve para registrar el desfase (y para inferir el tipo de
+    // entrega de un checkout viejo sin `deliveryType`): nunca se cobra.
+    // 1. Domicilio propio con zonas (logística Fase 1): la zona de la dirección
+    //    (`logistica_cotizar_envio`, canal web, subtotal del servidor). Fuera de cobertura o bajo
+    //    el pedido mínimo: 422.
+    // 2. Sin zonas, transportadora o cotización caída: la tarifa que eligió el checkout
+    //    (`shippingRateId`, de esta organización, vigente y aplicable a la ciudad) o la tarifa plana
+    //    de los ajustes (lib/shipping/resolveShipping.ts, la misma de /api/shipping/calculate). Una
+    //    tarifa ajena o inexistente: 409 para que el checkout la vuelva a pedir.
     // Domicilio o Transportadora (lib/shipping/opcionesDomicilio.ts): el grupo que eligió el
     // cliente, validado contra «Cómo reciben el pedido» de la tienda.
     const tiposEntrega = contexto.ajustes?.tiposEntrega ?? null
     const tipoGuardado = mesaPedido ? 'dine_in' : tipoEntregaCliente(deliveryType, resolvedShipping, tiposEntrega, grupoEnvio)
+    const envioCliente = resolvedShipping
+    let zonaEnvio: { id: string | null; nombre: string | null } | null = null
     if (!mesaPedido) {
-      const envioServidor = await resolverEnvio(supabase as any, {
+      let envioDecidido: number | null = null
+      let fuenteEnvio = 'sin_envio'
+      if (tipoGuardado === 'delivery_own') {
+        const direccionEnvio = (deliveryAddress && typeof deliveryAddress === 'object' ? deliveryAddress : {}) as Record<string, unknown>
+        const leer = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+        const cotizacion = await cotizarDomicilioWeb(supabase as any, {
+          organizationId: contextOrgId,
+          branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
+          subtotal: calculatedSubtotal,
+          metodoPago: typeof paymentMethod === 'string' ? paymentMethod : null,
+          direccion: {
+            ciudad: leer(direccionEnvio.city) ?? leer(customer.city),
+            pais: leer(direccionEnvio.country) ?? leer(customer.countryCode),
+            departamento: leer(direccionEnvio.state_code) ?? leer(customer.stateCode),
+            barrio: leer(direccionEnvio.neighborhood) ?? leer(customer.neighborhood),
+            codigoPostal: leer(direccionEnvio.postal_code),
+          },
+        })
+        if (usaZonas(cotizacion)) {
+          const envio = envioDeZona(cotizacion)
+          if (!envio.ok) {
+            console.warn('[Orders] Domicilio rechazado por la zona', { organizationId: contextOrgId, codigo: envio.codigo })
+            return NextResponse.json({ error: MENSAJE_BLOQUEO_ENVIO[envio.codigo], code: envio.codigo }, { status: 422 })
+          }
+          envioDecidido = envio.costo
+          fuenteEnvio = envio.fueraDeZona ? 'tarifa_general' : 'zona'
+          zonaEnvio = { id: envio.zonaId, nombre: envio.zonaNombre }
+        }
+      }
+      if (envioDecidido === null) {
+        const envioServidor = await resolverEnvio(supabase as any, {
         organizationId: contextOrgId,
         esDomicilio: esDomicilio(tipoGuardado),
         tarifaId: typeof shippingRateId === 'string' && shippingRateId ? shippingRateId : null,
@@ -589,17 +633,25 @@ export async function POST(request: NextRequest) {
         ajustes: contexto.ajustes,
         hoy: hoyEnZona(contexto.zona),
       })
-      if (envioServidor && Math.abs(envioServidor.costo - resolvedShipping) > 0.5) {
-        console.warn('[Orders] Envío del cliente distinto al del servidor', {
-          organizationId: contextOrgId, cliente: resolvedShipping, servidor: envioServidor.costo,
-          fuente: envioServidor.fuente, aplicado: ENVIO_SERVIDOR_OBLIGATORIO ? 'servidor' : 'cliente',
+        if (envioServidor) {
+          envioDecidido = envioServidor.costo
+          fuenteEnvio = envioServidor.fuente
+        } else if (typeof shippingRateId === 'string' && shippingRateId) {
+          // Tarifa ajena, vencida o de otro grupo: no se cobra lo que diga el navegador.
+          console.warn('[Orders] Tarifa de envío inválida', { organizationId: contextOrgId, shippingRateId })
+          return NextResponse.json({ error: MENSAJE_BLOQUEO_ENVIO.TARIFA_ENVIO_INVALIDA, code: 'TARIFA_ENVIO_INVALIDA' }, { status: 409 })
+        } else {
+          // Sin ajustes del sitio (sin fila de website_settings): no hay envío configurado que cobrar.
+          envioDecidido = 0
+          fuenteEnvio = 'sin_ajustes'
+        }
+      }
+      if (Math.abs(envioDecidido - envioCliente) > 0.5) {
+        console.warn('[Orders] Envío del cliente distinto al del servidor (se cobra el del servidor)', {
+          organizationId: contextOrgId, cliente: envioCliente, servidor: envioDecidido, fuente: fuenteEnvio,
         })
       }
-      if (ENVIO_SERVIDOR_OBLIGATORIO && envioServidor) {
-        resolvedShipping = envioServidor.costo
-      } else {
-        // Observación (o sin decisión del servidor): se cobra el envío del cliente, como antes.
-      }
+      resolvedShipping = envioDecidido
     } else {
       // Comer aquí: sin envío (ya puesto en 0 al validar la mesa).
     }
@@ -634,12 +686,18 @@ export async function POST(request: NextRequest) {
         // se reintenta abajo con el mapeo temporal a `pickup`.
         delivery_type: tipoGuardado,
         ...(mesaPedido && { restaurant_table_id: mesaPedido.id }),
-        delivery_address: mesaPedido ? {} : deliveryAddress || {
-          address: customer.address,
-          city: customer.city,
-          ...(customer.countryCode && { country: customer.countryCode }),
-          ...(customer.stateName && { state: customer.stateName, department: customer.department || customer.stateName }),
-          ...(customer.stateCode && { state_code: customer.stateCode }),
+        delivery_address: mesaPedido ? {} : {
+          ...(deliveryAddress || {
+            address: customer.address,
+            city: customer.city,
+            ...(customer.countryCode && { country: customer.countryCode }),
+            ...(customer.stateName && { state: customer.stateName, department: customer.department || customer.stateName }),
+            ...(customer.stateCode && { state_code: customer.stateCode }),
+          }),
+          // Zona con que el SERVIDOR cotizó el domicilio (logística Fase 1); nunca la del navegador.
+          // `undefined` pisa (y JSON quita) una zona que viniera en la dirección del navegador.
+          shipping_zone_id: zonaEnvio?.id ?? undefined,
+          shipping_zone: zonaEnvio?.nombre ?? undefined,
         },
         payment_status: 'pending',
         payment_method: paymentMethod,

@@ -82,6 +82,7 @@
     "verify:acceso-cuenta": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-acceso-cuenta.mjs",
     "verify:boton-categorias": "node --disable-warning=ExperimentalWarning scripts/verify-boton-categorias.mjs",
     "verify:domicilio-transportadora": "node --disable-warning=ExperimentalWarning scripts/verify-domicilio-transportadora.mjs",
+    "verify:zonas-envio": "node --disable-warning=ExperimentalWarning scripts/verify-zonas-envio.mjs",
     "verify:categorias-carrusel": "node --disable-warning=ExperimentalWarning scripts/verify-categorias-carrusel.mjs",
     "verify:carril-chips": "node --disable-warning=ExperimentalWarning scripts/verify-carril-chips.mjs",
     "verify:vista-lista": "node --disable-warning=ExperimentalWarning scripts/verify-vista-lista.mjs",

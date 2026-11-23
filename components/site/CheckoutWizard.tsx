@@ -9,6 +9,7 @@ import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, 
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType, type OpcionDomicilio } from '@/components/site/OrderTypeSelector'
 import { gruposActivos, resumenDomicilio, tarifasDelGrupo, textoDias, type GrupoEnvio } from '@/lib/shipping/opcionesDomicilio'
+import { barraEnvioGratis, detalleZona, envioDeZona, llegadaZona, type CotizacionPublica } from '@/lib/shipping/domicilioZonas'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/site/OrderConfirmation'
@@ -291,6 +292,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const [dynamicShippingRates, setDynamicShippingRates] = useState<{ id: string; name: string; cost: number; service_level: string; carrier_name: string | null; grupo?: GrupoEnvio; dias?: number | null }[]>([])
   const [selectedShippingRate, setSelectedShippingRate] = useState<string | null>(null)
   const [dynamicShippingCost, setDynamicShippingCost] = useState<number | null>(null)
+  // Domicilio por zona (logística Fase 1, Figma 2830:75378): la cotización del servidor
+  // (/api/shipping/quote). `null` = la tienda no tiene zonas: todo queda como antes.
+  const [cotZona, setCotZona] = useState<CotizacionPublica | null>(null)
 
   const [customerData, setCustomerData] = useState({
     firstName: '',
@@ -299,6 +303,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     phone: '',
     address: '',
     city: '',
+    // Barrio: con zonas de domicilio, ubica la dirección (logística Fase 1).
+    barrio: '',
     notes: '',
     countryCode: '',
     stateCode: '',
@@ -501,8 +507,18 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const flatShipping = settings.enableShipping && needsShipping
     ? (settings.freeShippingThreshold > 0 && subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFlatRate)
     : 0
-  // Usar shipping dinámico si hay tarifas, sino fallback a flat rate
-  const shipping = dynamicShippingCost !== null && needsShipping ? dynamicShippingCost : flatShipping
+  // Domicilio propio con zonas: lo que dice la zona (fuera de cobertura no hay domicilio: 0 y el
+  // envío queda bloqueado). Sin zonas: envío dinámico si hay tarifas, si no la tarifa plana.
+  const envioZona = needsShipping && grupoEnvio === 'own' && cotZona ? envioDeZona(cotZona) : null
+  const shipping = envioZona
+    ? (envioZona.ok ? envioZona.costo : 0)
+    : dynamicShippingCost !== null && needsShipping ? dynamicShippingCost : flatShipping
+  const barraGratis = envioZona?.ok && cotZona ? barraEnvioGratis(cotZona) : null
+  const bloqueoZona = envioZona && !envioZona.ok
+    ? (envioZona.codigo === 'PEDIDO_MINIMO_DOMICILIO'
+        ? `El pedido mínimo para domicilio en tu zona es ${fmtPrice(cotZona?.pedido_minimo ?? 0)}: te faltan ${fmtPrice(cotZona?.falta_para_minimo ?? 0)}.`
+        : 'Tu dirección está fuera de nuestras zonas de domicilio. Elige otra dirección, transportadora o recoger.')
+    : null
   const total = subtotal + tax + shipping + tipAmount - couponDiscount - promoDiscount
 
   // Tarifas de Transporte › Tarifas de envío («Web»), por ciudad. Se piden desde el principio (sin
@@ -527,6 +543,43 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     return () => clearTimeout(timeout)
   }, [customerData.city, organizationId, hasDelivery, subtotal])
 
+  // Domicilio por zona: el servidor ubica la dirección (municipio DANE por país, departamento y
+  // ciudad; barrio) y responde si la tienda tiene zonas. Informativo: /api/orders vuelve a cotizar.
+  const conDomicilioPropio = hasDelivery && gruposDomicilio.includes('own')
+  useEffect(() => {
+    if (!organizationId || !conDomicilioPropio) {
+      setCotZona(null)
+      return
+    }
+    let vigente = true
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/shipping/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...(sedePromocion != null ? { branchId: sedePromocion } : {}),
+            subtotal,
+            direccion: {
+              ciudad: customerData.city,
+              pais: customerData.countryCode,
+              departamento: customerData.stateCode,
+              barrio: customerData.barrio,
+            },
+          }),
+        })
+        const data = await res.json()
+        if (vigente) setCotZona(data?.usaZonas && data.cotizacion ? (data.cotizacion as CotizacionPublica) : null)
+      } catch {
+        if (vigente) setCotZona(null)
+      }
+    }, 500)
+    return () => {
+      vigente = false
+      clearTimeout(timeout)
+    }
+  }, [organizationId, conDomicilioPropio, sedePromocion, subtotal, customerData.city, customerData.countryCode, customerData.stateCode, customerData.barrio])
+
   // Tarifas del domicilio elegido (con un solo tipo activo, todas). Se elige la más económica,
   // salvo que el cliente ya tenga una de ese grupo; sin tarifas, la plana de los ajustes.
   const tarifasGrupo = tarifasDelGrupo(dynamicShippingRates, grupoEnvio, gruposDomicilio)
@@ -545,7 +598,19 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   }, [claveTarifasGrupo])
 
   // Tarjetas «Domicilio» / «Transportadora» con su tiempo y su precio (como en el diseño aprobado).
+  const fechaCorta = (fecha: string) =>
+    new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${fecha}T12:00:00Z`))
   const opcionesDomicilio: OpcionDomicilio[] = gruposDomicilio.map((g) => {
+    if (g === 'own' && cotZona) {
+      const e = envioDeZona(cotZona)
+      return {
+        grupo: g,
+        titulo: 'Domicilio',
+        detalle: detalleZona(cotZona),
+        tiempo: e.ok ? llegadaZona(cotZona, fechaCorta) : null,
+        precio: !e.ok ? '—' : e.costo === 0 ? 'Gratis' : fmtPrice(e.costo),
+      }
+    }
     const r = resumenDomicilio(
       g,
       tarifasDelGrupo(dynamicShippingRates, g, gruposDomicilio),
@@ -600,6 +665,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
+    // Fuera de cobertura o bajo el mínimo de la zona: el servidor también lo rechaza (422).
+    if (bloqueoZona) {
+      setPaymentError(bloqueoZona)
+      return
+    }
     setSubmitting(true)
     setPaymentError(null)
 
@@ -628,7 +698,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         shipping,
         // Tarifa elegida de /api/shipping/calculate: el servidor recalcula el envío con ella (sin
         // tarifa dinámica, null = tarifa plana de los ajustes).
-        shippingRateId: needsShipping && dynamicShippingCost !== null ? selectedShippingRate : null,
+        shippingRateId: needsShipping && !envioZona && dynamicShippingCost !== null ? selectedShippingRate : null,
         total,
         paymentMethod
       }
@@ -644,7 +714,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           country: customerData.countryCode,
           state: customerData.stateName,
           state_code: customerData.stateCode,
-          department: customerData.department
+          department: customerData.department,
+          ...(customerData.barrio.trim() ? { neighborhood: customerData.barrio.trim() } : {})
         }
       }
 
@@ -1375,6 +1446,55 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                         />
                       </div>
 
+                      {/* Domicilio por zona (Figma 2830:75378 y 2830:75453): barrio, zona y envío gratis */}
+                      {orderType === 'delivery' && grupoEnvio === 'own' && cotZona && (
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor="checkout-barrio" className="block text-sm font-medium text-gray-700 mb-1">Barrio</label>
+                            <Input
+                              id="checkout-barrio"
+                              value={customerData.barrio}
+                              onChange={(e) => setCustomerData({ ...customerData, barrio: e.target.value })}
+                              placeholder="Chapinero"
+                              autoComplete="address-level3"
+                            />
+                          </div>
+                          {envioZona && !envioZona.ok && (
+                            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                              {bloqueoZona}
+                            </div>
+                          )}
+                          {envioZona?.ok && envioZona.fueraDeZona && (
+                            <div role="status" className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                              <p className="font-medium text-gray-900">Tu dirección está fuera de nuestras zonas de domicilio</p>
+                              <p className="mt-0.5">Puedes pagar la tarifa general de domicilio ({fmtPrice(envioZona.costo)}){gruposDomicilio.includes('third_party') ? ' o elegir transportadora' : ''}.</p>
+                            </div>
+                          )}
+                          {barraGratis && (
+                            <div aria-live="polite">
+                              <div className="flex items-center justify-between text-sm text-gray-700">
+                                <span>Te faltan {fmtPrice(barraGratis.falta)} para envío gratis</span>
+                                <span className="text-xs text-gray-500">{barraGratis.porcentaje} %</span>
+                              </div>
+                              <div
+                                className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-gray-200"
+                                role="progressbar"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={barraGratis.porcentaje}
+                                aria-label="Progreso hacia el envío gratis"
+                              >
+                                <div className="h-full rounded-full" style={{ width: `${barraGratis.porcentaje}%`, backgroundColor: primaryColor }} />
+                              </div>
+                              <p className="mt-1 text-xs text-gray-500">Envío gratis desde {fmtPrice(barraGratis.desde)} en tu zona.</p>
+                            </div>
+                          )}
+                          {envioZona?.ok && envioZona.fueraDeZona && (
+                            <p className="text-xs text-gray-500">El envío gratis solo aplica dentro de las zonas de domicilio.</p>
+                          )}
+                        </div>
+                      )}
+
                       {/* Botón guardar dirección para usuarios autenticados */}
                       {isAuthenticated && customerData.address && customerData.city && (
                         <button
@@ -1668,7 +1788,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                       {impuestoVisto.resumen.nombre} incluido en el precio: {fmtPrice(impuestoIncluido)}
                     </p>
                   )}
-                  {needsShipping && settings.enableShipping && (
+                  {needsShipping && (settings.enableShipping || !!envioZona) && (
                     <div className="mt-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">{settings.shippingTitle || (isRestaurant ? 'Domicilio' : 'Envío')}</span>
@@ -1745,7 +1865,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                   )}
                 </div>
 
-                {needsShipping && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
+                {needsShipping && !envioZona && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
                   <p className="text-xs text-green-600 text-center mt-2">
                     ¡Envío gratis por compras mayores a {fmtPrice(settings.freeShippingThreshold)}!
                   </p>

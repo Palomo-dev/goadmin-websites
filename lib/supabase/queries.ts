@@ -3205,12 +3205,13 @@ export async function getShipmentByTracking(
     .eq('reference_id', shipmentId)
     .order('event_time', { ascending: false })
 
-  // Proof of delivery si entregado
+  // Proof of delivery si entregado. Sin `photo_urls` ni `signature_url` (logística Fase 1,
+  // 2026-11-23): el bucket `shipment-pod` es privado y la tienda no lee ni pinta esas URL.
   let pod = null
   if ((shipment as any).status === 'delivered') {
     const { data: podData } = await supabase
       .from('proof_of_delivery')
-      .select('recipient_name, recipient_relationship, delivered_at, photo_urls')
+      .select('recipient_name, recipient_relationship, delivered_at')
       .eq('shipment_id', shipmentId)
       .order('delivered_at', { ascending: false })
       .limit(1)

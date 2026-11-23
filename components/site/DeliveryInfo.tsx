@@ -17,9 +17,8 @@ interface DeliveryData {
   }
   driver?: {
     id: string
+    /** Solo el primer nombre (logística Fase 1: sin apellido, teléfono ni foto). */
     name: string
-    phone?: string
-    avatarUrl?: string
     licenseCategory?: string
   }
   vehicle?: {
@@ -43,8 +42,6 @@ interface DeliveryData {
     deliveredAt: string
     recipientName: string
     recipientRelationship?: string
-    signatureUrl?: string
-    photoUrls?: string[]
     rating?: number
     feedback?: string
     notes?: string
@@ -76,11 +73,12 @@ interface DeliveryInfoProps {
   orderIdentifier: string
   /** Token de seguimiento (`?t=`): sin él la API solo devuelve el estado del envío. */
   token?: string | null
+  /** Ya no se usa (era el color del botón «Llamar conductor», quitado en logística Fase 1). */
   primaryColor?: string
   pollingInterval?: number
 }
 
-export function DeliveryInfo({ orderIdentifier, token, primaryColor = '#3B82F6', pollingInterval = 15000 }: DeliveryInfoProps) {
+export function DeliveryInfo({ orderIdentifier, token, pollingInterval = 15000 }: DeliveryInfoProps) {
   const [data, setData] = useState<DeliveryData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -148,12 +146,8 @@ export function DeliveryInfo({ orderIdentifier, token, primaryColor = '#3B82F6',
       {/* Conductor + Vehículo */}
       {driver && (
         <div className="px-4 py-3 border-t flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden">
-            {driver.avatarUrl ? (
-              <img src={driver.avatarUrl} alt={driver.name} className="w-full h-full object-cover" />
-            ) : (
-              '👤'
-            )}
+          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden" aria-hidden="true">
+            👤
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate">{driver.name}</p>
@@ -165,16 +159,6 @@ export function DeliveryInfo({ orderIdentifier, token, primaryColor = '#3B82F6',
               </p>
             )}
           </div>
-          {driver.phone && isActive && (
-            <a
-              href={`tel:${driver.phone}`}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-              title="Llamar conductor"
-            >
-              📞
-            </a>
-          )}
         </div>
       )}
 
@@ -194,13 +178,7 @@ export function DeliveryInfo({ orderIdentifier, token, primaryColor = '#3B82F6',
               {new Date(proofOfDelivery.deliveredAt).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
-          {proofOfDelivery.photoUrls && proofOfDelivery.photoUrls.length > 0 && (
-            <div className="flex gap-2 mt-2">
-              {proofOfDelivery.photoUrls.slice(0, 3).map((url, i) => (
-                <img key={i} src={url} alt={`Evidencia ${i + 1}`} className="w-12 h-12 rounded object-cover border" />
-              ))}
-            </div>
-          )}
+          {/* Sin fotos ni firma de la prueba de entrega (bucket privado, logística Fase 1). */}
         </div>
       )}
     </div>

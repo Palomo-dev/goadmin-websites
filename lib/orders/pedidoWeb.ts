@@ -16,9 +16,15 @@ const TIPOS_ENTREGA_GUARDABLES = ['pickup', 'delivery_own', 'delivery_third_part
  * «delivery» (Domicilio o Transportadora) → el del grupo elegido (`grupoEnvio`) si la tienda lo
  * tiene activo en «Cómo reciben el pedido»; si no, el que tenga (solo tercero → tercero). Un valor
  * fuera del CHECK de la tabla no se guarda tal cual.
+ *
+ * `delivery_own` / `delivery_third_party` directos también se validan contra los tipos activos
+ * (2026-11-23, logística Fase 1): antes pasaban tal cual, y mandar `delivery_third_party` a una
+ * tienda sin transportadora saltaba la cobertura y el mínimo de las zonas de domicilio.
  */
 export function tipoEntregaCliente(deliveryType: unknown, envio: number, tiposEntrega?: readonly string[] | null, grupoEnvio?: unknown): string {
   if (deliveryType === 'delivery') return tipoDomicilioGuardado(grupoEnvio, tiposEntrega)
+  if (deliveryType === 'delivery_own') return tipoDomicilioGuardado('own', tiposEntrega)
+  if (deliveryType === 'delivery_third_party') return tipoDomicilioGuardado('third_party', tiposEntrega)
   if (typeof deliveryType === 'string' && TIPOS_ENTREGA_GUARDABLES.includes(deliveryType)) return deliveryType
   return envio > 0 ? tipoDomicilioGuardado(grupoEnvio, tiposEntrega) : 'pickup'
 }

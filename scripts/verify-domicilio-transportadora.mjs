@@ -63,6 +63,9 @@ igual(pw.tipoEntregaCliente('delivery', 0, ['pickup', 'delivery_own', 'delivery_
 igual(pw.tipoEntregaCliente('pickup', 0, null, 'third_party'), 'pickup', 'recoger no cambia')
 igual(pw.tipoEntregaCliente('envio_raro', 0, null, null), 'pickup', 'un tipo fuera del CHECK no se guarda tal cual')
 igual(pw.tipoEntregaCliente(undefined, 5000, ['delivery_third_party'], null), 'delivery_third_party', 'sin tipo con envío: el de la tienda')
+igual(pw.tipoEntregaCliente('delivery_third_party', 0, ['pickup', 'delivery_own'], null), 'delivery_own', 'transportadora directa sin tenerla activa: propio (no salta las zonas)')
+igual(pw.tipoEntregaCliente('delivery_own', 0, ['delivery_third_party'], null), 'delivery_third_party', 'propio directo sin tenerlo activo: el de la tienda')
+igual(pw.tipoEntregaCliente('delivery_third_party', 0, ['delivery_own', 'delivery_third_party'], null), 'delivery_third_party', 'transportadora directa activa: se respeta')
 
 // 5. Cálculo y cobro
 const FILAS = [
