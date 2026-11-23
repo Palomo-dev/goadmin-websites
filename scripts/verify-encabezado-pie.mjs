@@ -62,7 +62,7 @@ const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 // Cabecera de la tienda (2026-11-22): header_iconos, header_moneda, header_carrito y header_favoritos los valida
 // lib/website/v2/cabeceraTienda.ts (scripts/verify-cabecera-tienda.mjs).
-const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder', 'header_iconos', 'header_moneda', 'header_carrito', 'header_favoritos'])
+const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder', 'header_iconos', 'header_moneda', 'header_carrito', 'header_favoritos', 'header_cuenta'])
 // 70 + las 6 de las plantillas de tienda (P0 2026-11: header_cta_shape, buttons_uppercase_active,
 // footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style) + las 15 del
 // encabezado píldora y el botón principal (2026-11-07: header_cta_size/width/height/style/icon/
@@ -72,7 +72,8 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // +2 (2026-11-19): header_categories_button y header_categories_button_text (botón «Todas las categorías»).
 // +3 (2026-11-22): header_iconos, header_moneda y header_carrito (cabecera de la tienda, Figma 2747:57859).
 // +1 (2026-11-22): header_favoritos (corazón, panel y página /favoritos, Figma 2762:61067).
-check(nuevas.length === 104, `se esperaban 104 opciones nuevas y hay ${nuevas.length}`)
+// +1 (2026-11-22): header_cuenta (iniciar sesión: página, panel, ventana o diálogo, Figma 2834:68670).
+check(nuevas.length === 105, `se esperaban 105 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -237,6 +238,7 @@ const CONSUMIDORES = {
   header_moneda: ['lib/website/v2/cabeceraTienda.ts', '.header_moneda'],
   header_carrito: ['lib/website/v2/cabeceraTienda.ts', '.header_carrito'],
   header_favoritos: ['lib/website/v2/cabeceraTienda.ts', '.header_favoritos'],
+  header_cuenta: ['lib/website/v2/cabeceraTienda.ts', '.header_cuenta'],
   header_transparent_over_hero: ['lib/website/espacioHeader.ts', 'header_transparent_over_hero'],
   first_section_offset_px: ['lib/website/espacioHeader.ts', 'first_section_offset_px'],
   mobile_menu_bg_color: ['lib/headerColors.ts', 'mobile_menu_bg_color'],

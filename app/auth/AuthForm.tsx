@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
+import { useAcceso } from '@/components/site/cuenta/useAcceso'
 
 interface AuthFormProps {
   organizationId: number
@@ -16,16 +16,26 @@ interface AuthFormProps {
   primaryColor: string
 }
 
+/**
+ * Página /auth: ingresar, registrarse y recuperar la contraseña. Se ve como siempre; la lógica de
+ * sesión es la misma del panel, la ventana, el diálogo y la hoja (useAcceso).
+ */
 export function AuthForm({ organizationId, organizationName, logoUrl, primaryColor }: AuthFormProps) {
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login'
+  const pestana = searchParams.get('tab')
+  const initialTab = pestana === 'register' ? 'register' : pestana === 'forgot' ? 'forgot' : 'login'
 
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>(initialTab)
   const [forgotEmail, setForgotEmail] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const irACuenta = useCallback(() => {
+    window.location.href = '/mi-cuenta'
+  }, [])
+  const { enviando: submitting, error, exito: success, setError, setExito: setSuccess, ingresar, registrar, recuperar } = useAcceso({
+    organizationId,
+    pagina: true,
+    alEntrar: irACuenta,
+  })
 
   const [loginData, setLoginData] = useState({ email: '', password: '' })
   const [registerData, setRegisterData] = useState({
@@ -34,91 +44,12 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
-    setError('')
-
-    try {
-      // Auth via API route (server-side persiste cookies automáticamente)
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId, email: loginData.email, password: loginData.password })
-      })
-      const data = await res.json()
-
-      if (data.error) {
-        setError(data.error)
-        return
-      }
-
-      // Sincronizar sesión en el browser client (las cookies ya fueron seteadas por el server)
-      if (data.session?.access_token && data.session?.refresh_token) {
-        const supabase = createClient()
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
-        })
-      }
-
-      setSuccess('¡Bienvenido de vuelta!')
-      window.location.href = '/mi-cuenta'
-    } catch {
-      setError('Error al iniciar sesión. Intenta de nuevo.')
-    } finally {
-      setSubmitting(false)
-    }
+    await ingresar(loginData)
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
-    setError('')
-
-    if (registerData.password !== registerData.confirmPassword) {
-      setError('Las contraseñas no coinciden')
-      setSubmitting(false)
-      return
-    }
-    if (registerData.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
-      setSubmitting(false)
-      return
-    }
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId,
-          firstName: registerData.firstName,
-          lastName: registerData.lastName,
-          email: registerData.email,
-          phone: registerData.phone,
-          password: registerData.password
-        })
-      })
-      const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-      } else {
-        // Sincronizar sesión en browser client si hay tokens
-        if (data.session?.access_token && data.session?.refresh_token) {
-          const supabase = createClient()
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          })
-        }
-        setSuccess(data.message || '¡Cuenta creada exitosamente!')
-        // Redirigir a /mi-cuenta (cookies ya seteadas por el server)
-        window.location.href = '/mi-cuenta'
-      }
-    } catch {
-      setError('Error al crear la cuenta. Intenta de nuevo.')
-    } finally {
-      setSubmitting(false)
-    }
+    await registrar(registerData)
   }
 
   return (
@@ -209,7 +140,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
                 {submitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
             </form>
-          ) : (
+          ) : activeTab === 'register' ? (
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -264,30 +195,12 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
                 {submitting ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
             </form>
-          )}
+          ) : null}
 
           {activeTab === 'forgot' && (
             <form onSubmit={async (e) => {
               e.preventDefault()
-              setSubmitting(true)
-              setError('')
-              try {
-                const res = await fetch('/api/auth/forgot-password', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: forgotEmail })
-                })
-                const data = await res.json()
-                if (data.error) {
-                  setError(data.error)
-                } else {
-                  setSuccess(data.message)
-                }
-              } catch {
-                setError('Error al enviar el enlace. Intenta de nuevo.')
-              } finally {
-                setSubmitting(false)
-              }
+              await recuperar(forgotEmail)
             }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico</label>

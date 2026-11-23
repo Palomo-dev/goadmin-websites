@@ -38,6 +38,9 @@ import {
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './SubmenuCategoria';
+import { FilaFavoritosMenu } from '@/components/site/favoritos/FilaFavoritosMenu';
+import { EnlaceAccesoMenu } from '@/components/site/cuenta';
+import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 
 /**
  * MobileDrawer
@@ -78,6 +81,8 @@ export default function MobileDrawer({
   const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
 
   const showHeaderAuth = settings?.show_header_auth !== false;
+  // Iniciar sesión (Figma 2834:68670): con un modo distinto de «Página», las filas abren la hoja.
+  const modoCuenta = opcionesCuenta(settings as Record<string, unknown> | null).modo;
 
   // Construir item "Categorías" si está habilitado
   const showCategories =
@@ -203,16 +208,20 @@ export default function MobileDrawer({
                 />
               ))}
 
+              {/* Favoritos (Figma 2832:68496, G2): en el celular va aquí, no en la barra de arriba. */}
+              <FilaFavoritosMenu settings={settings} visible={showCart} className="flex w-full items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors" onNavigate={() => setOpen(false)} />
+
               {/* Mi Cuenta — solo si está logueado */}
               {isLoggedIn && showHeaderAuth && (
-                <Link
+                <EnlaceAccesoMenu
+                  modo={modoCuenta}
                   href="/mi-cuenta"
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
-                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
+                  onNavigate={() => setOpen(false)}
                 >
                   <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
                   Mi Cuenta
-                </Link>
+                </EnlaceAccesoMenu>
               )}
             </nav>
 
@@ -238,22 +247,25 @@ export default function MobileDrawer({
                   </button>
                 ) : (
                   <>
-                    <Link
+                    <EnlaceAccesoMenu
+                      modo={modoCuenta}
                       href="/auth"
                       className="block w-full text-center px-4 py-2.5 rounded-lg font-medium transition-opacity hover:opacity-90"
                       style={ESTILO_BOTON_ENTRAR}
-                      onClick={() => setOpen(false)}
+                      onNavigate={() => setOpen(false)}
                     >
                       Iniciar sesión
-                    </Link>
-                    <Link
+                    </EnlaceAccesoMenu>
+                    <EnlaceAccesoMenu
+                      modo={modoCuenta}
+                      vista="registro"
                       href="/auth?tab=register"
                       className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
                       style={ESTILO_BOTON_REGISTRO}
-                      onClick={() => setOpen(false)}
+                      onNavigate={() => setOpen(false)}
                     >
                       Registrarse
-                    </Link>
+                    </EnlaceAccesoMenu>
                   </>
                 )}
               </div>

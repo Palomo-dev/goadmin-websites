@@ -1,5 +1,7 @@
 'use client';
 
+import { EnlaceAccesoMenu } from '@/components/site/cuenta';
+import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
@@ -156,14 +158,15 @@ export default function MobileBottomSheet({
                     {/* V2 con tema y sin cuenta en el encabezado (Carta QR): sin «Mi Cuenta». Legacy: como siempre. */}
                     {!(temaColores && settings?.show_header_auth === false) && (
                     <div className="mt-4 pt-4 border-t border-[color:var(--mm-divider)]">
-                      <Link
+                      <EnlaceAccesoMenu
+                        modo={opcionesCuenta(settings as Record<string, unknown> | null).modo}
                         href="/auth"
                         className="block w-full text-center py-2.5 rounded-lg text-sm font-medium"
                         style={ESTILO_BOTON_ENTRAR}
-                        onClick={() => setOpen(false)}
+                        onNavigate={() => setOpen(false)}
                       >
                         Mi Cuenta
-                      </Link>
+                      </EnlaceAccesoMenu>
                     </div>
                     )}
                   </div>

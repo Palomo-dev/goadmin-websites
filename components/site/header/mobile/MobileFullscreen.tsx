@@ -1,5 +1,7 @@
 'use client';
 
+import { FilaFavoritosMenu } from '@/components/site/favoritos/FilaFavoritosMenu';
+import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
@@ -182,9 +184,12 @@ export default function MobileFullscreen({
               />
             ))}
 
+            {/* Favoritos (Figma 2832:68496): en el celular va en el menú, no en la barra de arriba. */}
+            <FilaFavoritosMenu settings={settings} visible={showCart} className="flex w-full items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors" onNavigate={() => setOpen(false)} />
+
             <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="px-4 py-4 border-t border-[color:var(--mm-divider)]" />
 
-            <MobileAuthSection isLoggedIn={isLoggedIn} primaryColor={primaryColor} onNavigate={() => setOpen(false)} />
+            <MobileAuthSection isLoggedIn={isLoggedIn} primaryColor={primaryColor} onNavigate={() => setOpen(false)} modoCuenta={opcionesCuenta(settings as Record<string, unknown> | null).modo} />
           </nav>
         </div>
       )}

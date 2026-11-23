@@ -41,8 +41,9 @@ import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesIconos, opcionesMoneda, textoIcono, type IconoConTexto, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
-import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
+import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
+import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, formaSimpleIcono, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
+import { EnlaceAccesoMenu, EnlaceCuenta } from '@/components/site/cuenta';
 import { ListaMonedas } from '../CurrencySelector';
 
 // ============================================================
@@ -686,15 +687,17 @@ export function HeaderActions({
   const AuthLoggedInIconComp = getLucideIcon(resolverIconoEncabezado('account', settings).nombre, UserCircle);
   const CurrencyIconComp = iconoDe('currency', Globe);
   const SearchIconComp = iconoDe('search', Search);
-  const claseIconoAccion = estiloIconos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`;
 
   // Cabecera de la tienda (Figma 2747:57859, `header_iconos` / `header_moneda`). Sin opciones
   // nuevas `presentar` devuelve null y cada ícono sigue exactamente por el camino de hoy.
   const ajustesCabecera = settings as unknown as Record<string, unknown> | null;
   const opIconos = opcionesIconos(ajustesCabecera);
   const opMoneda = opcionesMoneda(ajustesCabecera);
+  // Cada ícono con su forma propia (`header_iconos.por_icono`, Figma 2831:68544) o la general.
   const presentar = (clave: IconoConTexto, codigo?: string): PresentacionIcono | null =>
-    opIconos.configurado ? presentacionIcono(opIconos, textoIcono(opIconos, clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera)) : null;
+    opIconos.configurado ? presentacionIcono(opIconos, textoIcono(opIconos, clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera), clave) : null;
+  // Iniciar sesión (Figma 2834:68670): con «Página» (sin valor) el ícono sigue siendo el enlace.
+  const modoCuenta = opcionesCuenta(ajustesCabecera).modo;
   const presCuenta = presentar('cuenta');
   const presFavoritos = presentar('favoritos');
   /** Clase del enlace en los estilos nuevos (sin el `p-2`) con el color de la barra. */
@@ -727,23 +730,38 @@ export function HeaderActions({
   const contenedor = cajaIconosEncabezado(settings)
   // Círculo acento sin caja del constructor: el color del ícono lo pone el círculo, no la barra móvil.
   const circuloSimple = !contenedor && estiloIconos.circulo
+  // «Solo ícono» o «Círculo» propios de un ícono (o los de «En el celular») pisan la caja y el
+  // círculo del sitio; sin forma propia, `formaSimpleIcono` devuelve lo de hoy.
+  const formaDe = (pres: PresentacionIcono | null) => formaSimpleIcono(pres, contenedor, estiloIconos.circulo)
+  const claseConCirculo = (circulo: boolean, tam: 'h-5 w-5' | 'h-6 w-6') => (circulo ? `${tam} text-current` : isMobile ? `${tam} text-[var(--hdr-mobile-icon)]` : undefined)
+  // Buscar no tiene texto: solo su forma propia «Solo ícono» o «Círculo» (Figma A2, tarjeta Buscar).
+  const formaBuscar = opIconos.porIcono.buscar
+  const presBuscar: Pick<PresentacionIcono, 'estilo' | 'formaPropia'> | null =
+    formaBuscar === 'icono' || formaBuscar === 'circulo' ? { estilo: formaBuscar, formaPropia: true } : null
+  const cajaBuscar = presBuscar ? formaSimpleIcono(presBuscar, contenedor, estiloIconos.circulo) : null
+  const presCarrito = presentar('carrito')
+  const cajaCarrito = formaDe(presCarrito)
+  const presMoneda = !isMobile ? presentar('moneda', monedaActual) : null
+  const cajaMoneda = formaDe(presMoneda)
+  const cajaCuenta = formaDe(presCuenta)
+  const cajaFavoritos = formaDe(presFavoritos)
   const coloresCaja = {
     primary: primaryColor,
     accent: settings?.accent_color || primaryColor,
     secondary: settings?.secondary_color || '#1E40AF',
   }
-  const iconoCuenta = (Icono: typeof User, sesion: boolean) => contenedor ? (
-    <ContenedorIcono base={contenedor} clave="account" colores={coloresCaja}>
-      <Icono style={presCuenta ? estiloGlifo(presCuenta, trazoContenedor(contenedor, 'account', estiloIconos.relleno)) : trazoContenedor(contenedor, 'account', estiloIconos.relleno)} />
+  const iconoCuenta = (Icono: typeof User, sesion: boolean) => cajaCuenta.contenedor ? (
+    <ContenedorIcono base={cajaCuenta.contenedor} clave="account" colores={coloresCaja}>
+      <Icono style={presCuenta ? estiloGlifo(presCuenta, trazoContenedor(cajaCuenta.contenedor, 'account', estiloIconos.relleno)) : trazoContenedor(cajaCuenta.contenedor, 'account', estiloIconos.relleno)} />
     </ContenedorIcono>
   ) : (
-    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
+    <IconoConCirculo circulo={cajaCuenta.circulo} primaryColor={primaryColor}>
       <Icono
-        className={claseIconoAccion}
+        className={cajaCuenta.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`}
         style={
           presCuenta
-            ? estiloGlifo(presCuenta, sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined)
-            : sesion && !heredarColor && !estiloIconos.circulo ? { color: primaryColor } : undefined
+            ? estiloGlifo(presCuenta, sesion && !heredarColor && !cajaCuenta.circulo ? { color: primaryColor } : undefined)
+            : sesion && !heredarColor && !cajaCuenta.circulo ? { color: primaryColor } : undefined
         }
         {...trazo}
       />
@@ -751,20 +769,24 @@ export function HeaderActions({
   )
   // Favoritos (solo si el sitio lo prendió y la tienda vende productos). Al tocarlo, el panel
   // lateral o /favoritos según Encabezado › Favoritos (Figma 2772:62317), con contador.
-  const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(Heart, presFavoritos) : contenedor ? (
-    <ContenedorIcono base={contenedor} clave="favorites" colores={coloresCaja}>
-      <Heart style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(contenedor, 'favorites', estiloIconos.relleno)} />
+  const iconoFavoritos = presFavoritos && estiloPropio(presFavoritos.estilo) ? iconoNuevo(Heart, presFavoritos) : cajaFavoritos.contenedor ? (
+    <ContenedorIcono base={cajaFavoritos.contenedor} clave="favorites" colores={coloresCaja}>
+      <Heart style={presFavoritos ? estiloGlifo(presFavoritos, trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)) : trazoContenedor(cajaFavoritos.contenedor, 'favorites', estiloIconos.relleno)} />
     </ContenedorIcono>
   ) : (
-    <IconoConCirculo circulo={estiloIconos.circulo} primaryColor={primaryColor}>
-      <Heart className={claseIconoAccion} style={presFavoritos ? estiloGlifo(presFavoritos) : undefined} {...trazo} />
+    <IconoConCirculo circulo={cajaFavoritos.circulo} primaryColor={primaryColor}>
+      <Heart className={cajaFavoritos.circulo || heredarColor ? 'h-6 w-6 text-current' : `h-6 w-6 ${claseIcono}`} style={presFavoritos ? estiloGlifo(presFavoritos) : undefined} {...trazo} />
     </IconoConCirculo>
   )
   const actionElements: Record<string, React.ReactNode | null> = {
     search: cromoOverlay?.tipo === 'icon_overlay' ? (
       <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
     ) : showSearchIcon && searchStyle === 'icon' ? (
-      <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} circulo={circuloSimple} claseIcono={circuloSimple ? 'h-5 w-5 text-current' : isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
+      cajaBuscar ? (
+        <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={cajaBuscar.contenedor} colores={coloresCaja} circulo={cajaBuscar.circulo} claseIcono={claseConCirculo(cajaBuscar.circulo, 'h-5 w-5')} />
+      ) : (
+        <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} circulo={circuloSimple} claseIcono={circuloSimple ? 'h-5 w-5 text-current' : isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
+      )
     ) : null,
     currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
       <CurrencySelector
@@ -773,11 +795,11 @@ export function HeaderActions({
         icon={CurrencyIconComp}
         heredarColor={heredarColor}
         relleno={estiloIconos.relleno}
-        circulo={contenedor ? false : estiloIconos.circulo}
-        contenedor={contenedor}
+        circulo={cajaMoneda.circulo}
+        contenedor={cajaMoneda.contenedor}
         colores={coloresCaja}
         opciones={opMoneda}
-        presentacion={presentar('moneda', monedaActual)}
+        presentacion={presMoneda}
       />
     ) : isMobile && !hideCurrency && opcionesShell.moneda && opMoneda.movil === 'barra' ? (
       // «En la barra» (Figma 2750:59257): bandera o código junto al carrito; abre la hoja.
@@ -804,26 +826,26 @@ export function HeaderActions({
         branchId={branchId}
         heredarColor={heredarColor}
         relleno={estiloIconos.relleno}
-        circulo={contenedor ? false : estiloIconos.circulo}
-        contenedor={contenedor}
+        circulo={cajaCarrito.circulo}
+        contenedor={cajaCarrito.contenedor}
         colores={coloresCaja}
-        claseIcono={circuloSimple ? 'h-6 w-6 text-current' : isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
-        presentacion={presentar('carrito')}
+        claseIcono={presCarrito?.formaPropia ? claseConCirculo(cajaCarrito.circulo, 'h-6 w-6') : circuloSimple ? 'h-6 w-6 text-current' : isMobile ? 'h-6 w-6 text-[var(--hdr-mobile-icon)]' : undefined}
+        presentacion={presCarrito}
       />
     ) : null,
     auth: (!isMobile || mostrarCuentaMovil) && showHeaderAuth && !hideAuth ? (
       presCuenta && estiloPropio(presCuenta.estilo) ? (
-        <Link key="auth" href={isLoggedIn ? '/mi-cuenta' : '/auth'} className={claseEnlaceNuevo(presCuenta.estilo)} title={isLoggedIn ? 'Mi Cuenta' : undefined} aria-label={presCuenta.texto ? undefined : 'Mi cuenta'}>
+        <EnlaceCuenta key="auth" modo={modoCuenta} href={isLoggedIn ? '/mi-cuenta' : '/auth'} className={claseEnlaceNuevo(presCuenta.estilo)} title={isLoggedIn ? 'Mi Cuenta' : undefined} ariaLabel={presCuenta.texto ? undefined : 'Mi cuenta'}>
           {iconoNuevo(isLoggedIn ? AuthLoggedInIconComp : AuthIconComp, presCuenta)}
-        </Link>
+        </EnlaceCuenta>
       ) : isLoggedIn ? (
-        <Link key="auth" href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
+        <EnlaceCuenta key="auth" modo={modoCuenta} href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
           {iconoCuenta(AuthLoggedInIconComp, true)}
-        </Link>
+        </EnlaceCuenta>
       ) : (
-        <Link key="auth" href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">
+        <EnlaceCuenta key="auth" modo={modoCuenta} href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">
           {iconoCuenta(AuthIconComp, false)}
-        </Link>
+        </EnlaceCuenta>
       )
     ) : null,
   };
@@ -2051,44 +2073,51 @@ export function MobileAuthSection({
   isLoggedIn,
   primaryColor,
   onNavigate,
+  modoCuenta = 'pagina',
 }: {
   isLoggedIn: boolean;
   primaryColor: string;
   onNavigate: () => void;
+  /** Iniciar sesión (Figma 2834:68670): con un modo distinto de «Página», abren la hoja. */
+  modoCuenta?: ModoCuenta;
 }) {
   if (!isLoggedIn) {
     return (
       <div className="p-4 border-t border-[color:var(--mm-divider)] space-y-2">
-        <Link
+        <EnlaceAccesoMenu
+          modo={modoCuenta}
           href="/auth"
           className="block w-full text-center px-4 py-2.5 rounded-lg font-medium transition-opacity hover:opacity-90"
           style={ESTILO_BOTON_ENTRAR}
-          onClick={onNavigate}
+          onNavigate={onNavigate}
         >
           Iniciar sesión
-        </Link>
-        <Link
+        </EnlaceAccesoMenu>
+        <EnlaceAccesoMenu
+          modo={modoCuenta}
+          vista="registro"
           href="/auth?tab=register"
           className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
           style={ESTILO_BOTON_REGISTRO}
-          onClick={onNavigate}
+          onNavigate={onNavigate}
         >
           Registrarse
-        </Link>
+        </EnlaceAccesoMenu>
       </div>
     );
   }
 
   return (
     <div className="p-4 border-t border-[color:var(--mm-divider)] space-y-2">
-      <Link
+      <EnlaceAccesoMenu
+        modo={modoCuenta}
         href="/mi-cuenta"
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
-        onClick={onNavigate}
+        className="flex w-full items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[var(--mm-fg)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] font-medium transition-colors"
+        onNavigate={onNavigate}
       >
         <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
         Mi Cuenta
-      </Link>
+      </EnlaceAccesoMenu>
       <button
         onClick={async () => {
           const supabase = createClient();

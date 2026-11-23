@@ -1,5 +1,7 @@
 'use client';
 
+import { EnlaceAccesoMenu } from '@/components/site/cuenta';
+import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu as MenuIcon, X, LogOut, UserCircle, ChevronDown, Search } from 'lucide-react';
@@ -370,22 +372,26 @@ function ContenidoMenuMinimal({
             </button>
           ) : (
             <>
-              <Link
+              {/* Iniciar sesión (Figma 2834:68670): con un modo distinto de «Página», abren el acceso. */}
+              <EnlaceAccesoMenu
+                modo={opcionesCuenta(settings as Record<string, unknown> | null).modo}
                 href="/auth"
                 className="block w-full text-center px-4 py-2.5 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
-                onClick={onCerrar}
+                onNavigate={onCerrar}
               >
                 Iniciar sesión
-              </Link>
-              <Link
+              </EnlaceAccesoMenu>
+              <EnlaceAccesoMenu
+                modo={opcionesCuenta(settings as Record<string, unknown> | null).modo}
+                vista="registro"
                 href="/auth?tab=register"
                 className="block w-full text-center px-4 py-2.5 rounded-lg font-medium border transition-colors"
                 style={{ borderColor: primaryColor, color: primaryColor }}
-                onClick={onCerrar}
+                onNavigate={onCerrar}
               >
                 Registrarse
-              </Link>
+              </EnlaceAccesoMenu>
             </>
           )}
         </div>

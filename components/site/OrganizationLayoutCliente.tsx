@@ -13,6 +13,7 @@ import { useAjustesVivosPreview, type ItemMenuVivo } from './useAjustesVivosPrev
 import { CartDrawer } from './CartDrawer'
 import { FavoritosDrawer } from './favoritos/FavoritosDrawer'
 import { AvisoFavoritos } from './favoritos/AvisoFavoritos'
+import { AccesoCuenta } from './cuenta/AccesoCuenta'
 import { OpcionesTiendaProvider } from './OpcionesTiendaContext'
 import { EVENTO_ABRIR_FAVORITOS } from '@/lib/favoritos/almacen'
 import { CountdownBanner } from './CountdownBanner'
@@ -56,7 +57,7 @@ import { PieMesa } from './footer/PieMesa'
 import { EXTRAS_VACIOS, opcionesEncabezadoPie, opcionesPlantillaTienda, variantesFuenteTienda, type AccionBarra, type ExtrasEncabezadoPie } from '@/lib/website/encabezadoPie'
 import { headerSobreHero, RESPALDO_HEADER_PX } from '@/lib/website/espacioHeader'
 import { contarUnidadesCarrito } from '@/lib/cart'
-import { opcionesCarrito, opcionesFavoritos, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
+import { opcionesCarrito, opcionesCuenta, opcionesFavoritos, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
 
 /** Menú en edición del ERP → la forma de árbol que pinta el encabezado (solo preview). */
 function arbolDesdeMenuVivo(items: ItemMenuVivo[], organizationId: number, nivel = 0): WebsitePageWithChildren[] {
@@ -225,6 +226,7 @@ export function OrganizationLayoutCliente({
   const opMonedaTienda = opcionesMoneda(settings)
   const opCarrito = opcionesCarrito(settings)
   const opFavoritos = opcionesFavoritos(settings)
+  const opCuenta = opcionesCuenta(settings)
   const effectiveCurrencyPosition = currencyPosition ?? settings?.currency_position ?? 'left'
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -538,6 +540,12 @@ export function OrganizationLayoutCliente({
           />
           <AvisoFavoritos />
         </>
+      )}
+
+      {/* Iniciar sesión desde el ícono de cuenta: panel, ventana, diálogo u hoja (Figma 2834:68670).
+          Con «Página» (sin valor, lo de hoy) no se monta: el ícono sigue siendo el enlace a /auth. */}
+      {!frozenReason && !modoMesa && opCuenta.modo !== 'pagina' && (
+        <AccesoCuenta opciones={opCuenta} organizationId={organization.id} organizationName={organization.name} primaryColor={primaryColor} />
       )}
       
       {/* Píxeles y scripts propios: misma regla que /checkout (lib/seo/reglaPixeles.ts). Los

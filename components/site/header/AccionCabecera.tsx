@@ -28,9 +28,12 @@ import {
   PX_TAMANO_ICONO,
   contadorCarrito,
   datosMoneda,
+  estiloDeIcono,
+  estiloEnPantalla,
   posicionTextoIcono,
   type ContadorCarrito,
   type EstiloIconos,
+  type IconoCabecera,
   type OpcionesIconos,
 } from '@/lib/website/v2/cabeceraTienda'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
@@ -45,15 +48,25 @@ export interface PresentacionIcono {
   /** Grosor del trazo; `null` = el de hoy. */
   trazo: number | null
   contador: ContadorCarrito
+  /**
+   * «Solo ícono» o «Círculo» elegidos para este ícono (forma propia, Figma 2831:68544, o la forma
+   * de «En el celular»), no heredados del sitio: pisan el círculo de acento y la caja de los
+   * íconos ({@link formaSimpleIcono}). `false` = el camino de hoy.
+   */
+  formaPropia: boolean
 }
 
 /**
- * Presentación de un ícono en el computador o en el celular. En el celular solo «Con texto» lleva
- * texto (debajo, como el Figma 2752:59411); píldora, relleno y al lado quedan en solo ícono para
- * que la barra quepa en 390 px.
+ * Presentación de un ícono en el computador o en el celular. `icono` toma su forma propia
+ * (`header_iconos.por_icono`) o el estilo general. En el celular, Píldora, Relleno y «al lado»
+ * pasan a la forma de «En el celular» (Figma 2831:68365); con «Automático», a solo ícono o
+ * círculo según la caja del sitio (lo de hoy). «Con texto» lleva el texto debajo, en S.
  */
-export function presentacionIcono(op: OpcionesIconos, texto: string | null, movil: boolean, heredado: 'icono' | 'circulo'): PresentacionIcono {
-  const estilo: EstiloIconos = movil && op.estilo !== 'texto' && op.estilo !== 'icono' && op.estilo !== 'circulo' ? heredado : op.estilo
+export function presentacionIcono(op: OpcionesIconos, texto: string | null, movil: boolean, heredado: 'icono' | 'circulo', icono?: IconoCabecera): PresentacionIcono {
+  const elegido: EstiloIconos = icono ? estiloDeIcono(op, icono) : op.estilo
+  const estilo = estiloEnPantalla(elegido, movil, op.movil, heredado)
+  const propia = icono ? op.porIcono[icono] !== undefined : false
+  const desdeCelular = estilo !== elegido && op.movil !== 'auto'
   const conTexto = op.mostrarTexto && (estilo === 'texto' || estilo === 'texto_lado' || estilo === 'pildora' || estilo === 'relleno')
   return {
     estilo,
@@ -61,7 +74,26 @@ export function presentacionIcono(op: OpcionesIconos, texto: string | null, movi
     px: op.tamano ? PX_TAMANO_ICONO[op.tamano] : movil && estilo === 'texto' ? PX_TAMANO_ICONO.s : null,
     trazo: op.trazo ? ANCHO_TRAZO_ICONO[op.trazo] : null,
     contador: op.contador,
+    formaPropia: (estilo === 'icono' || estilo === 'circulo') && (desdeCelular || (propia && estilo === elegido)),
   }
+}
+
+/**
+ * Círculo y caja de un ícono pintado por el camino de hoy («Solo ícono» o «Círculo»). Sin forma
+ * propia, lo del sitio (la caja manda sobre el círculo de acento, como siempre). «Solo ícono»
+ * propio quita círculo y caja; «Círculo» propio usa la caja si ya es un círculo y, si no, el
+ * círculo de acento.
+ */
+export function formaSimpleIcono<C extends { shape: string }>(
+  pres: Pick<PresentacionIcono, 'estilo' | 'formaPropia'> | null,
+  contenedor: C | null,
+  circuloSitio: boolean,
+): { circulo: boolean; contenedor: C | null } {
+  if (pres?.formaPropia && pres.estilo === 'icono') return { circulo: false, contenedor: null }
+  if (pres?.formaPropia && pres.estilo === 'circulo') {
+    return contenedor && contenedor.shape === 'circle' ? { circulo: false, contenedor } : { circulo: true, contenedor: null }
+  }
+  return { circulo: contenedor ? false : circuloSitio, contenedor }
 }
 
 /** `true` si el estilo lo pinta este componente (no el camino de hoy). */
