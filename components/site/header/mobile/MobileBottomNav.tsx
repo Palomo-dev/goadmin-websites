@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Heart, Home, LayoutGrid, Link2, MessageCircle, Search, ShoppingBag, ShoppingCart, Tag, User } from 'lucide-react'
+import { Heart, Home, LayoutGrid, Link2, MessageCircle, Search, ShoppingBag, ShoppingCart, Tag, User, type LucideIcon } from 'lucide-react'
 import type { BarraApp, ItemBarra } from '@/lib/website/menuMovil'
 import { contarUnidadesCarrito } from '@/lib/cart'
 import { FueraDelEncabezado } from '../CapaFijaEncabezado'
@@ -32,7 +32,10 @@ export function MobileBottomNav({
   onMenu,
   onSearch,
   onCart,
+  iconoBuscar,
 }: {
+  /** Dibujo de Buscar elegido en el editor (`iconoBuscar(settings)`); sin él, la lupa de hoy. */
+  iconoBuscar?: LucideIcon
   barra: BarraApp
   primaryColor: string
   unidades: number
@@ -75,7 +78,7 @@ export function MobileBottomNav({
           const central = barra.centerId === item.id
           const encendido = item.href ? pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href)) : false
           const color = encendido || central ? activo : inactivo
-          const Icono = ICONO[item.icon] ?? Home
+          const Icono = (item.icon === 'search' && iconoBuscar) || ICONO[item.icon] || Home
           const cuerpo = (
             <>
               <span className="relative">

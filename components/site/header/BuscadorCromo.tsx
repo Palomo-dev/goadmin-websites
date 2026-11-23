@@ -1,6 +1,6 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { Search, type LucideIcon } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
@@ -9,6 +9,7 @@ import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
 import { ajustesBuscadorMovil, buscadorIgualEscritorio, buscadorMovilConEstilo } from '@/lib/website/opcionUnica'
+import { iconoBuscar } from './iconoBuscar'
 
 /** La barra de hoy si no hay cromo nuevo. El overlay no ocupa la barra. */
 export function barraSiCromo(
@@ -29,7 +30,7 @@ export function barraSiCromo(
   const categorias = cromo.tipo === 'mega'
     ? (props.categorias ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
     : undefined
-  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} enFila={props.enFila ?? true} />
+  return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} enFila={props.enFila ?? true} icono={iconoBuscar(settings)} />
 }
 
 const RADIO: Record<CromoBuscador['radius'], string> = {
@@ -53,7 +54,13 @@ export function BuscadorCromo({
   colores,
   lupaEnCampo = false,
   enFila = true,
+  icono: Icono = Search,
 }: {
+  /**
+   * Dibujo de Buscar elegido en el editor (`iconoBuscar(settings)`): la lupa del campo, el botón de
+   * la barra y el ícono que abre encima. Sin él, la lupa de hoy.
+   */
+  icono?: LucideIcon
   presentacion: CromoBuscador
   /**
    * En la fila del encabezado de escritorio. «Barra compacta» (`mini`) ocupa ahí un espacio fijo
@@ -70,7 +77,6 @@ export function BuscadorCromo({
   contenedor?: ContenedorIconos | null
   colores?: ColoresCaja
 }) {
-  const Icono = Search
   const { ruta } = useRutaSitio()
   const [categoria, setCategoria] = useState('')
   const [texto, setTexto] = useState('')
@@ -147,7 +153,7 @@ export function BuscadorCromo({
           style={{ backgroundColor: primaryColor, borderRadius: presentacion.radius === 'pill' ? 999 : 8 }}
           aria-label="Buscar"
         >
-          {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
+          {presentacion.button === 'icon' ? <Icono className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
     </div>
@@ -210,7 +216,7 @@ export function BuscadorCromo({
           style={{ backgroundColor: primaryColor, borderRadius: radioInterno }}
           aria-label="Buscar"
         >
-          {presentacion.button === 'icon' ? <Search className="h-4 w-4" /> : 'Buscar'}
+          {presentacion.button === 'icon' ? <Icono className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
     </div>
@@ -247,6 +253,8 @@ export function BuscadorCromoCompacto({
   className?: string
 }) {
   const { ruta } = useRutaSitio()
+  // El botón lleva el mismo dibujo que la lupa del campo (el elegido en el editor).
+  const IconoBoton: LucideIcon = icon ?? iconoBuscar(settings)
   // Misma presentación que BuscadorCromo en computador; sin cromo, cuadrada con puntas redondeadas.
   const cromo = leerConstructor(settings)?.buscador
   const radio = cromo && cromo.radius !== 'pill' && cromo.radius !== 'circle' ? cromo.radius : 'rounded'
@@ -279,7 +287,7 @@ export function BuscadorCromoCompacto({
           primaryColor={primaryColor}
           className="w-full"
           size="sm"
-          icon={icon ?? Search}
+          icon={IconoBoton}
           cromo={{
             radius: radio,
             border: cromo?.border,
@@ -303,7 +311,7 @@ export function BuscadorCromoCompacto({
         style={{ backgroundColor: primaryColor }}
         aria-label="Buscar"
       >
-        <Search className="h-4 w-4" />
+        <IconoBoton className="h-4 w-4" />
       </button>
     </div>
   )
@@ -375,5 +383,5 @@ export function BuscadorMovilComoEscritorio(props: {
   const cromo = leerConstructor(props.settings)?.buscador
   if (cromo?.tipo === 'mega') return <BuscadorCromoCompacto {...props} categorias={props.categorias ?? []} />
   if (!cromo) return null
-  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} lupaEnCampo enFila={false} />
+  return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} icono={props.icon ?? iconoBuscar(props.settings)} lupaEnCampo enFila={false} />
 }

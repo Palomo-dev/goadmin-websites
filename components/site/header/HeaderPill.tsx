@@ -27,7 +27,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { iconoBuscar } from './iconoBuscar';
 import {
   HeaderLogo,
   HeaderActions,
@@ -37,7 +37,6 @@ import {
   NavList,
   SearchBarInline,
   buildNavItems,
-  getLucideIcon,
   type HeaderVariantProps,
   headerBgStyle,
   accentColor,
@@ -105,7 +104,7 @@ export default function HeaderPill({
   }, [ruta, claveMenu]);
 
   // Buscador en barra: junto a los íconos, como en «Logo centrado» (la píldora va en el centro).
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const SearchIconComp = iconoBuscar(settings);
   const barra = barraSiCromo(settings, settings?.search_style === 'bar' ? (
     <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-56" size="md" icon={SearchIconComp} />
   ) : null, { primaryColor, organizationId, categorias: menuCategories, className: 'w-56', enFila: true });

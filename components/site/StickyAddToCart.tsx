@@ -20,6 +20,7 @@ import { useCompraBarraFija, type CompraBarraFija, type VariantData } from '@/co
 import { CantidadCompacta, InfoProductoBarra } from '@/components/site/barraFija/PartesBarraFija'
 import { useEmpujeChat, useVisibilidadBarra, vibrarSuave, volarAlCarrito } from '@/components/site/barraFija/efectosBarraFija'
 import { BarraFijaEscritorio } from '@/components/site/barraFija/BarraFijaEscritorio'
+import { useAvisoBarraFijaCelular } from '@/components/site/menuInferior/estadoMenuInferior'
 import type { OrganizationWithDetails } from '@/types/database'
 
 interface StickyAddToCartProps {
@@ -170,6 +171,9 @@ function BarraCelular({
   const { visible } = useVisibilidadBarra(op.aparece)
   const barraRef = useRef<HTMLDivElement>(null)
   const botonRef = useRef<HTMLButtonElement>(null)
+  // El menú de abajo se oculta o se apila mientras la barra se ve (Figma 2844:70510 F1/F2). Va
+  // antes del empuje del chat: apilada, la barra sube y su alto medido ya lo incluye.
+  useAvisoBarraFijaCelular(visible)
   useEmpujeChat(useId(), barraRef, visible, true)
   const { formatPrice } = useCurrency()
   const {
@@ -215,7 +219,7 @@ function BarraCelular({
         <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setExpanded(false)} />
       )}
 
-      <div ref={barraRef} className={clasesContenedorCelular(op.estilo, visible)} data-barra-fija={op.estilo === 'flat' ? undefined : op.estilo}>
+      <div ref={barraRef} className={clasesContenedorCelular(op.estilo, visible)} data-barra-fija={op.estilo === 'flat' ? undefined : op.estilo} data-barra-fija-celular="">
         {/* Panel expandido de variantes */}
         {expanded && hasVariants && (
           <div className="px-4 pt-4 pb-2 border-b max-h-[50vh] overflow-y-auto">

@@ -1009,6 +1009,112 @@ header a[data-categoria-activa][data-categoria-activa] {
   }
 }
 
+/* Menú inferior (Figma 2836:69391 «Menú inferior: propuestas de mejora», aprobado 2026-11-23).
+   components/site/MenuInferior.tsx y components/site/menuInferior/. Sin las claves nuevas, nada
+   de esto cambia lo que se ve, salvo las páginas especiales, que valen para TODAS las tiendas. */
+[data-menu-inferior] {
+  --mi-dur: 240ms;
+}
+/* Escondido al bajar (S2) u oculto por la barra fija de compra en la ficha (F1). */
+nav[data-menu-inferior][data-oculto] {
+  transform: translateY(calc(100% + var(--mi-sep, 0px) + 24px + env(safe-area-inset-bottom)));
+}
+nav[data-menu-inferior][data-oculto]:not([inert]):focus-within {
+  transform: none;
+}
+/* «Oscurecer fondo» al tocar: un círculo muy suave bajo el dedo (8 %). Sin movimiento. */
+[data-mi-toque="darken"] [data-mi-boton]:active [data-mi-icono] {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+  box-shadow: 0 0 0 8px color-mix(in srgb, currentColor 8%, transparent);
+}
+[data-mi-toque] [data-mi-boton] {
+  -webkit-tap-highlight-color: transparent;
+}
+[data-mi-toque="ripple"] [data-mi-boton] {
+  position: relative;
+}
+.mi-onda {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  background-color: var(--mi-activo, currentColor);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  nav[data-menu-inferior] {
+    transition: transform var(--mi-dur) ease;
+  }
+  [data-mi-deslizante] {
+    transition: transform var(--mi-dur) ease, width var(--mi-dur) ease, height var(--mi-dur) ease;
+  }
+  [data-mi-toque] [data-mi-icono] {
+    transition: transform calc(var(--mi-dur) * 0.6) ease;
+  }
+  [data-mi-toque="scale"] [data-mi-boton]:active [data-mi-icono] {
+    transform: scale(0.9);
+  }
+  [data-mi-toque="tilt"] [data-mi-boton]:active [data-mi-icono] {
+    transform: rotate(-12deg);
+  }
+  @keyframes mi-rebote-activo {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1.1); }
+  }
+  .mi-rebote-activo {
+    animation: mi-rebote-activo var(--mi-dur) ease-out forwards;
+  }
+  @keyframes mi-rebote-toque {
+    0% { transform: scale(0.9); }
+    60% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  .mi-rebote-toque {
+    animation: mi-rebote-toque calc(var(--mi-dur) * 1.5) ease-out;
+  }
+  @keyframes mi-onda {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0.3; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+  .mi-onda {
+    animation: mi-onda calc(var(--mi-dur) * 2) ease-out forwards;
+  }
+}
+
+/* Páginas especiales (Figma 2844:70510) para las barras de abajo de antes: BarraPestanas, la
+   barra tipo app (MobileBottomNav) y la del constructor. `data-pagina-menu` lo pone
+   CoordinadorMenuInferior; `data-barra-fija-celular`, la barra fija de compra de la ficha. */
+@media (max-width: 1023px) {
+  /* F3: checkout, carrito completo y confirmación del pedido, sin menú ni su hueco. */
+  html[data-pagina-menu="sin-menu"] :is([data-barra-inferior], [data-barra-app], [data-barra-constructor]) {
+    display: none !important;
+  }
+  html[data-pagina-menu="sin-menu"] body {
+    padding-bottom: 0 !important;
+  }
+  html[data-pagina-menu="sin-menu"] body:is(.con-barra-app, .con-barra-constructor) [data-raiz-sitio] {
+    padding-bottom: 0 !important;
+  }
+  /* F1: en la ficha, la barra de compra toma el lugar del menú mientras se ve. */
+  html[data-pagina-menu="ficha"][data-barra-fija-celular="visible"] :is([data-barra-inferior], [data-barra-app], [data-barra-constructor]) {
+    transform: translateY(calc(100% + 1.5rem));
+  }
+  /* F2 «Apilar»: la barra de compra se apoya encima del menú inferior. */
+  html[data-menu-apilado][data-barra-fija-celular="visible"] [data-barra-fija-celular] {
+    bottom: var(--menu-inferior-alto, 0px) !important;
+  }
+  html[data-menu-apilado][data-barra-fija-celular="visible"] [data-barra-fija-celular][data-barra-fija="floating"] {
+    bottom: calc(var(--menu-inferior-alto, 0px) + 0.5rem) !important;
+  }
+}
+@media (max-width: 1023px) and (prefers-reduced-motion: no-preference) {
+  :is([data-barra-inferior], [data-barra-app], [data-barra-constructor]) {
+    transition: transform 200ms ease;
+  }
+}
+
 /*
  * Fila del encabezado en el celular (< 768 px; atributo `data-fila-movil`): logo, íconos, botón
  * principal y menú caben en el ancho sin quitar ni mover nada. Solo cambian tamaños y espacios:

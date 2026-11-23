@@ -27,6 +27,9 @@ import { useCurrency } from '../CurrencyProvider';
 import { createClient } from '@/lib/supabase/client';
 import NavDropdown from './NavDropdown';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
+import { usePathname } from 'next/navigation';
+import { quitarPrefijo } from '@/lib/outlet/rutaSitio';
+import { leerMenuInferior, repetidosArriba } from '@/lib/website/menuInferior';
 import { useTemaColores } from '../TemaColoresContext';
 import { useMarcaBotonTema } from '../BotonesTemaContext';
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
@@ -36,6 +39,7 @@ import { colorDivisorEfectivo, colorHexValido, colorHoverEfectivo, divisorEncend
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { atributosMenuMovil, variablesMenuMovil, type TemaMenuMovil } from '@/lib/headerColors';
 import { IconoConCirculo, propsTrazoIcono } from './IconoEncabezado';
+import { ICONOS_BUSCAR_LUCIDE } from './iconoBuscar';
 import { colorGuardado, iconoSobreFondo } from '@/lib/website/colorCirculoIconos';
 import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
@@ -118,6 +122,8 @@ const ICON_MAP: Record<string, any> = {
   'log-in': LogIn,
   'circle-dollar-sign': CircleDollarSign,
   'languages': Languages,
+  // Dibujos de Buscar (lupa con líneas, con check, con más, binoculares…): los mismos en todos los buscadores.
+  ...ICONOS_BUSCAR_LUCIDE,
 };
 
 export function getLucideIcon(name: string | null | undefined, fallback: any): any {
@@ -653,6 +659,9 @@ export function HeaderActions({
   // header_show_currency (panel «Encabezado»): `false` quita la moneda; default, como siempre.
   const { opciones: opcionesShell } = useEncabezadoPie();
   const { currency: monedaActual } = useCurrency();
+  // «No repetir arriba» del menú inferior (Figma 2843:70716, opcional y apagado por defecto).
+  const { prefijo: prefijoRuta } = useRutaSitio();
+  const rutaActual = usePathname() ?? '/';
 
   useEffect(() => {
     const supabase = createClient();
@@ -793,7 +802,7 @@ export function HeaderActions({
   )
   const actionElements: Record<string, React.ReactNode | null> = {
     search: cromoOverlay?.tipo === 'icon_overlay' ? (
-      <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} />
+      <BuscadorCromo key="search" presentacion={cromoOverlay} primaryColor={primaryColor} contenedor={contenedor} colores={coloresCaja} icono={SearchIconComp} />
     ) : showSearchIcon && searchStyle === 'icon' ? (
       cajaBuscar ? (
         <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={cajaBuscar.contenedor} colores={coloresCaja} circulo={cajaBuscar.circulo} claseIcono={claseConCirculo(cajaBuscar.circulo, 'h-5 w-5')} />
@@ -862,6 +871,16 @@ export function HeaderActions({
       )
     ) : null,
   };
+
+  // «No repetir arriba»: en el celular, lo que ya está en el menú inferior no sale aquí. Sin la
+  // opción (por defecto) o en checkout, carrito y ficha, la cabecera no cambia.
+  if (isMobile) {
+    const repetidos = repetidosArriba(leerMenuInferior(settings), quitarPrefijo(rutaActual, prefijoRuta));
+    if (repetidos.has('search')) actionElements.search = null;
+    if (repetidos.has('cart')) actionElements.cart = null;
+    if (repetidos.has('account')) actionElements.auth = null;
+    if (repetidos.has('favorites')) actionElements.favorites = null;
+  }
 
   // Favoritos no estaba en el orden guardado: va justo antes del carrito (Figma C1/C3).
   const ordenFinal = actionElements.favorites && !actionsOrder.includes('favorites')

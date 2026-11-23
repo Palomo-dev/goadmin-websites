@@ -4,7 +4,8 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo'
 import Link from 'next/link'
-import { Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { iconoBuscar } from '../iconoBuscar'
 import { headerSobreHero } from '@/lib/website/espacioHeader'
 import {
   HeaderLogo,
@@ -14,7 +15,6 @@ import {
   SearchBarInline,
   buildNavItems,
   BloqueMonedaMovil,
-  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   CLASE_FONDO_ENCABEZADO,
@@ -69,7 +69,7 @@ export function HeaderMovilConfigurable({
     ? (presentacion.buscador === 'fullscreen' && efectivo === 'icon' ? 'fullscreen' : efectivo)
     : presentacion.buscador ?? efectivo
   const cromoMovil = ajustesCromoMovil(settings)
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search)
+  const SearchIconComp = iconoBuscar(settings)
   const altoLogo = layout?.logoSize ?? Math.max(36, Math.round((settings?.logo_height || 48) * 0.85))
   // «Sobre portada» es una sola opción para computador y celular; el `transparent_hero` del celular se respeta.
   const transparenteHero = !!layout?.transparentHero || headerSobreHero(settings as Parameters<typeof headerSobreHero>[0])
@@ -201,6 +201,7 @@ export function HeaderMovilConfigurable({
           onMenu={() => setAbierto(true)}
           onSearch={abrirBuscar}
           onCart={onCartClick}
+          iconoBuscar={SearchIconComp}
         />
       )}
     </>
@@ -278,7 +279,7 @@ function ContenidoMenu({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-scroll-menu="">
       {panel?.showSearch && (
         <div className="px-4 pb-2">
-          <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" />
+          <SearchBarInline primaryColor={primaryColor} organizationId={organization.id} className="w-full" size="sm" icon={iconoBuscar(settings)} />
         </div>
       )}
       <nav className="flex-1 space-y-1 p-4">

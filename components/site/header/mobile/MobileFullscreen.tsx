@@ -8,7 +8,8 @@ import { useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
+import { iconoBuscar } from '../iconoBuscar';
 import {
   HeaderLogo,
   HeaderActions,
@@ -20,7 +21,6 @@ import {
   useBloqueoScrollFondo,
   MobileAuthSection,
   useAuthState,
-  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
@@ -71,7 +71,7 @@ export default function MobileFullscreen({
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const cromoMovil = ajustesCromoMovil(settings);
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const SearchIconComp = iconoBuscar(settings);
 
   // Construir item "Categorías" si está habilitado
   const showCategories =

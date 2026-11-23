@@ -55,6 +55,7 @@ export function MobileCTABar({ acciones, primaryColor }: { acciones: AccionesBar
       <div className="h-[calc(4.5rem+env(safe-area-inset-bottom))] md:hidden" aria-hidden="true" />
       <nav
         aria-label="Acciones rápidas"
+        data-barra-cta=""
         className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden dark:border-gray-800 dark:bg-gray-900/95"
       >
         <ul className="mx-auto flex max-w-md items-stretch gap-2">

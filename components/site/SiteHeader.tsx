@@ -36,6 +36,7 @@ import MobileFullscreen from './header/mobile/MobileFullscreen'
 import MobileTabs from './header/mobile/MobileTabs'
 import { HeaderMovilConfigurable } from './header/mobile/HeaderMovilConfigurable'
 import { MobileBottomNav, useUnidadesBarra } from './header/mobile/MobileBottomNav'
+import { iconoBuscar } from './header/iconoBuscar'
 import { leerPresentacionMovil } from '@/lib/website/menuMovil'
 import type { MenuCategory } from './header/HeaderShared'
 import { logoMovil } from '@/lib/website/logoEncabezado'
@@ -322,7 +323,7 @@ function LegacyDesktopHeader({
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-              <ProductSearch primaryColor={primaryColor} />
+              <ProductSearch primaryColor={primaryColor} icon={iconoBuscar(settings)} />
               <CurrencySelector />
               {(showCart ?? showHeaderCart) && (
                 <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
@@ -340,7 +341,7 @@ function LegacyDesktopHeader({
 
             {/* Mobile Actions */}
             <div className="flex md:hidden items-center gap-2">
-              <ProductSearch primaryColor={primaryColor} />
+              <ProductSearch primaryColor={primaryColor} icon={iconoBuscar(settings)} />
               {(showCart ?? showHeaderCart) && (
                 <CartIndicator onClick={onCartClick} primaryColor={primaryColor} organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
               )}
@@ -507,7 +508,7 @@ export default function SiteHeader({
       return (
         <>
           {legado}
-          <BarraSobreLegado barra={presentacion.barra} primaryColor={primaryColor} organization={organization} branchId={branchId} onCartClick={onCartClick} />
+          <BarraSobreLegado barra={presentacion.barra} primaryColor={primaryColor} organization={organization} branchId={branchId} onCartClick={onCartClick} icono={iconoBuscar(settings)} />
         </>
       )
     }
@@ -538,8 +539,10 @@ export default function SiteHeader({
 }
 
 function BarraSobreLegado({
-  barra, primaryColor, organization, branchId, onCartClick,
+  barra, primaryColor, organization, branchId, onCartClick, icono,
 }: {
+  /** Dibujo de Buscar del sitio: la pestaña Buscar y el panel que abre. */
+  icono?: ReturnType<typeof iconoBuscar>
   barra: NonNullable<ReturnType<typeof leerPresentacionMovil>>['barra']
   primaryColor: string
   organization: SiteHeaderProps['organization']
@@ -563,8 +566,9 @@ function BarraSobreLegado({
       // aria-label y, sin ese botón (buscador en barra u oculto), no hacía nada.
       onSearch={() => setBuscar(true)}
       onCart={onCartClick}
+      iconoBuscar={icono}
     />
-    {buscar && <ProductSearch primaryColor={primaryColor} abierto sinDisparador pantallaCompleta alCerrar={() => setBuscar(false)} />}
+    {buscar && <ProductSearch primaryColor={primaryColor} icon={icono} abierto sinDisparador pantallaCompleta alCerrar={() => setBuscar(false)} />}
     </>
   )
 }

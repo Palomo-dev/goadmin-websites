@@ -54,6 +54,36 @@ for (const archivo of ['HeaderMinimal.tsx', 'mobile/MobileDrawer.tsx', 'mobile/M
   check(!/<BloqueMonedaMovil(?![^>]*settings=\{settings\})/.test(f), `${archivo} pasa settings a BloqueMonedaMovil`)
 }
 
+// Dibujo de Buscar (queja del dueño 2026-11-23: «cambié el ícono del buscador y no cambió»).
+// Todas las opciones del editor (ICONOS_BUSCAR, contrato compartido) existen en lucide y en el mapa
+// de la tienda, y TODOS los buscadores leen el mismo resolver: nadie pinta una lupa fija.
+const { ICONOS_BUSCAR } = await import('../lib/website/v2/iconosEncabezado.ts')
+const modBuscar = readFileSync(new URL('../components/site/header/iconoBuscar.ts', import.meta.url), 'utf8')
+const PASCAL = (n) => n.split('-').map((p) => p[0].toUpperCase() + p.slice(1)).join('')
+check(ICONOS_BUSCAR.length >= 6, 'Buscar ofrece al menos 6 dibujos')
+for (const nombre of ICONOS_BUSCAR) {
+  check(Boolean(lucide[PASCAL(nombre)]), `lucide-react instalado exporta ${PASCAL(nombre)}`)
+  check(new RegExp(`['"]?${nombre}['"]?: ${PASCAL(nombre)},`).test(modBuscar), `iconoBuscar.ts tiene '${nombre}'`)
+}
+check(modBuscar.includes("resolverIconoEncabezado('search'"), 'iconoBuscar usa resolverIconoEncabezado')
+check(mapa.includes('...ICONOS_BUSCAR_LUCIDE'), 'ICON_MAP incluye los dibujos de Buscar (MobileTabs y la lupa suelta)')
+check(resolverIconoEncabezado('search', { search_icon: 'binoculars' }).nombre === 'binoculars', 'search_icon binoculars')
+const leer = (ruta) => readFileSync(new URL(`../components/site/${ruta}`, import.meta.url), 'utf8')
+const cromo = leer('header/BuscadorCromo.tsx')
+check(!/<Search className/.test(cromo), 'BuscadorCromo: ni el botón de la barra ni el del compacto pintan la lupa fija')
+check(!/const Icono = Search/.test(cromo), 'BuscadorCromo: la lupa del campo es la elegida')
+check(cromo.includes('icono={iconoBuscar(settings)}'), 'barraSiCromo pasa el dibujo (barra visible, compacta, grande, píldora)')
+check(cromo.includes('icono={props.icon ?? iconoBuscar(props.settings)}'), 'el buscador del celular como computador lleva el dibujo')
+check(!/<Search className/.test(leer('ProductSearch.tsx')), 'ProductSearch: la lupa del panel abierto es la elegida')
+check(leer('header/HeaderShared.tsx').includes('colores={coloresCaja} icono={SearchIconComp} />'), 'el ícono que abre encima (icon_overlay) lleva el dibujo')
+for (const archivo of ['HeaderCentered', 'HeaderClassic', 'HeaderMega', 'HeaderMinimal', 'HeaderPill', 'HeaderSplit', 'mobile/HeaderMovilConfigurable', 'mobile/MobileBottomSheet', 'mobile/MobileDrawer', 'mobile/MobileFullscreen']) {
+  const f = leer(`header/${archivo}.tsx`)
+  check(!f.includes('settings?.search_icon'), `${archivo}: no lee solo search_icon (se saltaba header_icons)`)
+  check(f.includes('iconoBuscar(settings)'), `${archivo}: usa iconoBuscar(settings)`)
+}
+check(leer('header/HeaderPorZonas.tsx').match(/iconoBuscar\(settings\)/g)?.length === 2, 'HeaderPorZonas: barra con estilo y barra simple con el dibujo')
+check(leer('header/mobile/MobileBottomNav.tsx').includes("item.icon === 'search' && iconoBuscar"), 'barra inferior (v1): la pestaña Buscar con el dibujo')
+
 if (problemas.length) {
   console.error(`✗ ${problemas.length}/${casos} fallaron:\n- ${problemas.join('\n- ')}`)
   process.exit(1)

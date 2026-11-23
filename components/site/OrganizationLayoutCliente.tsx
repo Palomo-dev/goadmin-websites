@@ -1,7 +1,8 @@
 'use client'
 
-import { leerMenuInferior } from '@/lib/website/menuInferior'
+import { leerMenuInferior, paginaMenu } from '@/lib/website/menuInferior'
 import { MenuInferior } from './MenuInferior'
+import { CoordinadorMenuInferior } from './menuInferior/CoordinadorMenuInferior'
 import { menuFlotanteDesdeEncabezado, pildoraMovil } from '@/lib/website/pildora'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -267,6 +268,9 @@ export function OrganizationLayoutCliente({
   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
   // En modo mesa la barra del sitio (Reservar / Pedir) no va: la mesa tiene su propia barra.
   const menuInferiorV2 = leerMenuInferior(settings)
+  // Páginas especiales del menú de abajo (Figma 2844:70510, todas las tiendas): sin menú en
+  // checkout, carrito y pedido; en la ficha cede el lugar a la barra fija de compra.
+  const paginaMenuInferior = paginaMenu(quitarPrefijo(pathname, prefijo))
   // Composición `pill` con la píldora abajo (header_pill_position abajo/ambas) y sin menú inferior
   // v2 guardado: una píldora flotante con los enlaces del menú del encabezado (lib/website/pildora.ts).
   // Con «tabs» el celular ya trae su barra de pestañas abajo: no se suma otra. Ocupa el lugar de la
@@ -584,6 +588,7 @@ export function OrganizationLayoutCliente({
           branchId={branchId}
           onCartClick={() => setCartOpen(true)}
           rutaAdmiteAcciones={rutaConBarraMovil(quitarPrefijo(pathname, prefijo))}
+          pagina={paginaMenuInferior}
         />
       )}
       {menuPildoraAbajo && (
@@ -598,8 +603,10 @@ export function OrganizationLayoutCliente({
           branchId={branchId}
           onCartClick={() => setCartOpen(true)}
           rutaAdmiteAcciones
+          pagina={paginaMenuInferior}
         />
       )}
+      {!frozenReason && !modoMesa && <CoordinadorMenuInferior pagina={paginaMenuInferior} />}
       {barraMovil && !barraAutoConTema && <MobileCTABar acciones={barraMovil} primaryColor={primaryColor} />}
       {/* Barra fija del celular con la lista de acciones del sitio (cualquier giro) */}
       {barraMovilGiro && <BarraMovilGiro acciones={barraMovilGiro} primaryColor={primaryColor} breakpoint={(settings as { mobile_breakpoint?: number | null } | undefined)?.mobile_breakpoint ?? null} />}

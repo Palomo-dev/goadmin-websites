@@ -99,6 +99,30 @@ function aplicarEmpuje() {
   }
 }
 
+/**
+ * Otra barra de abajo (el menú inferior, Figma 2844:70510 F4) registra cuánto sube la burbuja; 0
+ * la quita. Manda el mayor de todas, como con la barra de la ficha. El widget del chat carga
+ * tarde (`lazyOnload`): mientras no esté, se reintenta unas veces para inyectarle la regla.
+ */
+export function registrarEmpujeChat(id: string, px: number) {
+  if (px > 0) empujes.set(id, px)
+  else empujes.delete(id)
+  aplicarEmpuje()
+  if (px > 0) reintentarChat(0)
+}
+
+let reintento: ReturnType<typeof setTimeout> | null = null
+function reintentarChat(n: number) {
+  if (reintento || n >= 10) return
+  const listo = (document.querySelector('[data-gochat-widget]') as HTMLElement | null)?.shadowRoot?.getElementById(ID_ESTILO_CHAT)
+  if (listo) return
+  reintento = setTimeout(() => {
+    reintento = null
+    aplicarEmpuje()
+    reintentarChat(n + 1)
+  }, 1500)
+}
+
 /** Mientras la barra se ve abajo, el chat sube su alto + 12 px (B5); al irse, baja. */
 export function useEmpujeChat(id: string, ref: RefObject<HTMLElement | null>, visible: boolean, abajo: boolean) {
   useEffect(() => {

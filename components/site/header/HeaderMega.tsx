@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { iconoBuscar } from './iconoBuscar';
 import {
   HeaderLogo,
   HeaderActions,
@@ -12,7 +13,6 @@ import {
   NavLink,
   SearchBarInline,
   buildNavItems,
-  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
@@ -58,7 +58,7 @@ export default function HeaderMega({
   const searchStyle = settings?.search_style;
   const ctaText = settings?.header_cta_text ?? '';
   const ctaHref = settings?.header_cta_url ?? undefined;
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const SearchIconComp = iconoBuscar(settings);
   const [megaOpen, setMegaOpen] = useState(false);
   const { ruta } = useRutaSitio();
   const { opciones } = useEncabezadoPie();

@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 
 import { Search } from 'lucide-react';
+import { iconoBuscar } from './iconoBuscar';
 import {
   HeaderLogo,
   HeaderActions,
@@ -12,7 +13,6 @@ import {
   NavList,
   SearchBarInline,
   buildNavItems,
-  getLucideIcon,
   type HeaderVariantProps,
   headerBgStyle,
   navBgStyle,
@@ -42,7 +42,7 @@ export default function HeaderSplit({
   const organizationId = organization.id;
   const showSearchBar = settings?.search_style === 'bar';
   const ctaText = settings?.header_cta_text ?? '';
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const SearchIconComp = iconoBuscar(settings);
 
   // Botón «Todas las categorías» (lib/website/botonCategorias.ts): junto al logo, antes del menú.
   const { ruta } = useRutaSitio();

@@ -108,7 +108,11 @@ async function compilar(ruta, salidaPropia = null) {
 }
 
 /** Clases sin espacios de más y en el mismo orden: el navegador las lee igual. */
-const normalizar = (html) => html.replace(/class="([^"]*)"/g, (_, c) => `class="${c.trim().split(/\s+/).join(' ')}"`)
+// `data-barra-fija-celular` (2026-11-23): marca invisible para que el menú inferior se oculte o se
+// apile mientras la barra se ve (Figma 2844:70510 F1/F2); no cambia lo que se ve.
+const normalizar = (html) => html
+  .replace(/ data-barra-fija-celular=""/g, '')
+  .replace(/class="([^"]*)"/g, (_, c) => `class="${c.trim().split(/\s+/).join(' ')}"`)
 
 await rm(TMP, { recursive: true, force: true })
 await mkdir(join(TMP, '__stubs'), { recursive: true })

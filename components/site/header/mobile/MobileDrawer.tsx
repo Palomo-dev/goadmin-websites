@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from 'next/link';
-import { X, ChevronDown, LogOut, UserCircle, Search } from 'lucide-react';
+import { X, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { iconoBuscar } from '../iconoBuscar';
 import {
   HeaderLogo,
   HeaderActions,
@@ -17,7 +18,6 @@ import {
   BloqueMonedaMovil,
   useBloqueoScrollFondo,
   useAuthState,
-  getLucideIcon,
   type HeaderVariantProps,
   type NavItem,
   type MenuCategory,
@@ -78,7 +78,7 @@ export default function MobileDrawer({
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const cromoMovil = ajustesCromoMovil(settings);
   const showSearchBar = searchStyle === 'bar';
-  const SearchIconComp = getLucideIcon(settings?.search_icon as string, Search);
+  const SearchIconComp = iconoBuscar(settings);
 
   const showHeaderAuth = settings?.show_header_auth !== false;
   // Iniciar sesión (Figma 2834:68670): con un modo distinto de «Página», las filas abren la hoja.
