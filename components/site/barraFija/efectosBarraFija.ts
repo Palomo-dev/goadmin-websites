@@ -135,7 +135,12 @@ export function useEmpujeChat(id: string, ref: RefObject<HTMLElement | null>, vi
     }
     medir()
     window.addEventListener('resize', medir)
+    // El alto también cambia sin cambiar la ventana (la barra del pago pasa de una a dos líneas al
+    // elegir contraentrega): se vuelve a medir con el alto real.
+    const observador = typeof ResizeObserver !== 'undefined' && ref.current ? new ResizeObserver(medir) : null
+    if (observador && ref.current) observador.observe(ref.current)
     return () => {
+      observador?.disconnect()
       window.removeEventListener('resize', medir)
       empujes.delete(id)
       aplicarEmpuje()

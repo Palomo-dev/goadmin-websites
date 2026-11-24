@@ -108,6 +108,7 @@
     "verify:correo-pedido": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-correo-pedido.mjs",
     "verify:editor-tienda": "node --disable-warning=ExperimentalWarning scripts/verify-editor-tienda.mjs",
     "verify:rutas-prohibidas": "node scripts/verify-rutas-prohibidas.mjs",
+    "verify:barra-pago": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-barra-pago.mjs",
     "verify:contraentrega": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contraentrega.mjs",
     "verify:cuenta-cliente": "node --disable-warning=ExperimentalWarning scripts/verify-cuenta-cliente.mjs",
     "verify:volver": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-volver.mjs",

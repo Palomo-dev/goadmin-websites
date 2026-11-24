@@ -19,6 +19,7 @@ import { CartEventTracker } from '@/components/site/CartEventTracker'
 import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
+import { normalizarEstiloBarraPago } from '@/components/site/checkout/barraPago'
 
 export const dynamic = 'force-dynamic'
 
@@ -118,6 +119,9 @@ export default async function CheckoutPage() {
     conversion: (organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio; conversionFines?: Record<string, string | null> } | null)?.conversion ?? null,
     conversionFines: (organization.website_settings as { conversionFines?: Record<string, string | null> } | null)?.conversionFines ?? null,
     showPaymentLogos: wsRow?.checkout_show_payment_logos ?? true,
+    // Barra fija del pago en celular (A/B/C, ERP › Ventas en línea › Checkout). Se lee de la fila
+    // completa (select('*')), como countdown_style: sin la columna o sin valor, C.
+    barraPagoMovil: normalizarEstiloBarraPago((organization.website_settings as { checkout_mobile_bar_style?: unknown } | null)?.checkout_mobile_bar_style),
     showCountdown: wsRow?.checkout_show_countdown ?? false,
     countdownConfig: {
       countdown_enabled: wsRow?.countdown_enabled ?? false,

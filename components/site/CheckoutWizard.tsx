@@ -1,11 +1,11 @@
 'use client'
 
 import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Banknote, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Wallet, Tag } from 'lucide-react'
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, Truck, Check, ShoppingBag, Building2, Loader2, MapPin, ChevronDown, AlertTriangle, Tag } from 'lucide-react'
 import Link from 'next/link'
 import { OrderTypeSelector, type OrderType, type OpcionDomicilio } from '@/components/site/OrderTypeSelector'
 import { gruposActivos, resumenDomicilio, tarifasDelGrupo, textoDias, type GrupoEnvio } from '@/lib/shipping/opcionesDomicilio'
@@ -36,7 +36,13 @@ import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
 import { abrirBoldDesdeUrl, cargarLibreriaBold } from '@/lib/payments/boldCheckoutCliente'
 import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
-import { DetalleContraentrega, MotivoContraentrega, ResumenPagoContraentrega, textoBotonAnticipo, useContraentrega } from '@/components/site/contraentrega/OpcionContraentrega'
+import { DetalleContraentrega, MotivoContraentrega, ResumenPagoContraentrega, lineaOpcionContraentrega, textoBotonAnticipo, useContraentrega } from '@/components/site/contraentrega/OpcionContraentrega'
+import { textoMedios } from '@/lib/contraentrega/textosContraentrega'
+import { BarraPagoMovil } from './checkout/BarraPagoMovil'
+import { contenidoBarraPago, normalizarEstiloBarraPago, type CasoBarraPago, type EstiloBarraPago } from './checkout/barraPago'
+import { descripcionMetodo, iconoMetodo, metodoDeRespaldo, metodoDeTraspaso, metodoPreseleccionado, nombrePasarelaMetodo, type TipoEntregaResumen } from './checkout/resumenPago'
+import { ChipEntregaResumen, MediosPagoAceptados, SellosConfianza } from './checkout/ResumenPagoPiezas'
+import { TarjetaMetodoPago } from './checkout/TarjetaMetodoPago'
 
 interface CartModifier {
   typeId: number
@@ -117,6 +123,8 @@ interface CheckoutSettings {
   showPaymentLogos?: boolean
   showCountdown?: boolean
   countdownConfig?: CountdownConfig
+  /** Estilo de la barra fija del pago en celular (ERP › Ventas en línea › Checkout). Sin valor: C. */
+  barraPagoMovil?: EstiloBarraPago | null
 }
 
 /** Sede del pedido (restaurante): la misma que usa /api/orders para validar el horario. */
@@ -152,42 +160,11 @@ interface CheckoutWizardProps {
   rutaSeguirPidiendo?: string
 }
 
-const METHOD_ICONS: Record<string, string> = {
-  cash: '💵',
-  transfer: '🏦',
-  card: '💳',
-  wompi_co: '💳',
-  mp_checkout: '🟦',
-  payu_co: '💚',
-  stripe_payments: '💳',
-  paypal_checkout: '🅿️',
-  wompi: '💳',
-  bold_link: '🟠',
-}
-
-// Códigos que corresponden a Wompi (pasarela colombiana)
-const WOMPI_CODES = new Set(['wompi', 'wompi_co'])
-// Mercado Pago: el ERP lo enlaza como 'mp'; 'mp_checkout' es el código viejo del conector.
-const MERCADOPAGO_CODES = new Set(['mp', 'mp_checkout'])
 // Bold: 'bold_link' es el método del link de pago (el único de Bold que va en la tienda).
 const BOLD_CODES = new Set(['bold', 'bold_link'])
 
-// Ícono de pasarela: billetera sobre fondo claro, cuadrado redondeado.
-// Wompi en verde, Mercado Pago en azul y Bold en rojo (sus colores), sin usar sus logos.
-const ESTILO_PASARELA = {
-  verde: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400',
-  azul: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400',
-  rojo: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
-} as const
-
-function IconoPasarela({ tono, Icono = Wallet }: { tono: keyof typeof ESTILO_PASARELA; Icono?: typeof Wallet }) {
-  const estilo = ESTILO_PASARELA[tono]
-  return (
-    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${estilo}`}>
-      <Icono className="w-5 h-5" aria-hidden="true" />
-    </div>
-  )
-}
+// Ícono de cada método (billetera de la pasarela en su color, billete del efectivo, banco de la
+// transferencia): checkout/resumenPago.ts `iconoMetodo` y checkout/TarjetaMetodoPago.tsx.
 
 const DEFAULT_SETTINGS: CheckoutSettings = {
   checkoutMode: 'steps',
@@ -272,6 +249,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   const [paymentMethod, setPaymentMethod] = useState<string>(
     availableMethods.length > 0 ? availableMethods[0].code : 'cash'
   )
+  // Método que pidió el chat al mandar al checkout (?metodo=<código>). null = como hoy. Se olvida
+  // en cuanto el cliente elige otro método a mano.
+  const [metodoPedido, setMetodoPedido] = useState<string | null>(null)
+  const elegirMetodo = (codigo: string) => {
+    setMetodoPedido(null)
+    setPaymentMethod(codigo)
+  }
   // Bold elegido: su librería se carga mientras la persona termina el formulario, para que
   // «Pagar» abra el pago de Bold al instante (sin la página intermedia).
   useEffect(() => {
@@ -357,6 +341,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       const urlParams = new URLSearchParams(window.location.search)
       const cartParam = urlParams.get('cart')
       const customerParam = urlParams.get('customer')
+      const metodoParam = urlParams.get('metodo')
+      let metodoEnCliente: unknown = null
       if (cartParam) {
         try {
           const cartFromUrl = JSON.parse(cartParam)
@@ -370,13 +356,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         try {
           const customerFromUrl = JSON.parse(customerParam)
           if (customerFromUrl && typeof customerFromUrl === 'object') {
-            setCustomerData(prev => ({ ...prev, ...customerFromUrl }))
-            localStorage.setItem(`checkout_customer_${subdomain}`, JSON.stringify(customerFromUrl))
+            // `metodo` dentro de `customer` (si el chat lo manda ahí) no es un dato del cliente.
+            const { metodo, ...datosCliente } = customerFromUrl as Record<string, unknown>
+            metodoEnCliente = metodo
+            setCustomerData(prev => ({ ...prev, ...datosCliente }))
+            localStorage.setItem(`checkout_customer_${subdomain}`, JSON.stringify(datosCliente))
           }
         } catch {}
       }
+      // Método que pidió el chat («contraentrega» → cash): se preselecciona si aplica (efecto de abajo).
+      const metodoChat = metodoDeTraspaso(metodoParam, metodoEnCliente)
+      if (metodoChat) {
+        setMetodoPedido(metodoChat)
+      } else {
+        // Sin método en el traspaso: el primero, como hoy.
+      }
       // Limpiar query params de la URL sin recargar
-      if (cartParam || customerParam) {
+      if (cartParam || customerParam || metodoParam) {
         const cleanUrl = window.location.pathname
         window.history.replaceState({}, '', cleanUrl)
       }
@@ -540,7 +536,49 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     direccion: { ciudad: customerData.city, pais: customerData.countryCode, departamento: customerData.stateCode, barrio: customerData.barrio },
   })
   const ceBloqueada = paymentMethod === 'cash' && !!ce.estado && !ce.estado.disponible
+  // Método pedido por el chat: se elige si está activo en la tienda web y aplica a este pedido
+  // (contraentrega fuera de zona o bajo el mínimo no se fuerza: queda el primero disponible y la
+  // opción muestra su motivo). Sin método pedido, no hace nada (lo de hoy).
+  const disponibleCe = ce.estado ? ce.estado.disponible : null
+  useEffect(() => {
+    if (!metodoPedido) return
+    const activos = availableMethods.map((m) => m.code)
+    const elegido = metodoPreseleccionado(metodoPedido, activos, metodoPedido === 'cash' ? disponibleCe : null)
+    if (elegido) {
+      if (paymentMethod !== elegido) setPaymentMethod(elegido)
+    } else if (paymentMethod === metodoPedido) {
+      const respaldo = metodoDeRespaldo(metodoPedido, activos)
+      if (respaldo) setPaymentMethod(respaldo)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metodoPedido, availableMethods, disponibleCe])
   const textoPagar = (paymentMethod === 'cash' ? textoBotonAnticipo(ce.estado, ce.pasarela, fmtPrice) : null) ?? `Pagar ${fmtPrice(total)}`
+  // Barra fija del pago en celular (Figma 3059:80757): el caso de hoy en el estilo de la tienda.
+  const metodoElegido = availableMethods.find((m) => m.code === paymentMethod) ?? null
+  const ceDisponible = paymentMethod === 'cash' && ce.estado?.disponible ? ce.estado : null
+  const casoBarra: CasoBarraPago = ceDisponible?.anticipo
+    ? {
+        tipo: 'anticipo',
+        total: fmtPrice(total),
+        hoy: fmtPrice(ceDisponible.anticipo.monto),
+        alRecibir: fmtPrice(ceDisponible.alRecibir),
+        pasarela: ceDisponible.pasarelas.find((p) => p.codigo === ce.pasarela)?.nombre ?? (ce.pasarela ? nombrePasarelaMetodo(ce.pasarela) : null),
+      }
+    : ceDisponible
+      ? { tipo: 'sin_anticipo', total: fmtPrice(total), alRecibir: fmtPrice(ceDisponible.alRecibir), medios: textoMedios(ceDisponible.medios) }
+      : {
+          tipo: 'pago',
+          total: fmtPrice(total),
+          productos: cartItems.reduce((n, i) => n + i.quantity, 0),
+          envio: orderType === 'delivery' ? (shipping > 0 ? 'incluido' : 'gratis') : null,
+          pasarela: metodoElegido?.type === 'gateway' ? nombrePasarelaMetodo(metodoElegido.code) : null,
+          ahorro: promoDiscount > 0 ? fmtPrice(promoDiscount) : null,
+        }
+  const contenidoBarra = contenidoBarraPago(normalizarEstiloBarraPago(settings.barraPagoMovil), casoBarra)
+  // Alto real de la barra del celular (con el área segura) para el espaciador; 0 en computador.
+  const [altoBarraMovil, setAltoBarraMovil] = useState(0)
+  const ponerAltoBarra = useCallback((alto: number) => setAltoBarraMovil(alto), [])
+  const irAlResumen = () => document.getElementById('resumen-pedido')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Acciones de la opción apagada (pantalla 09 E y F): solo existen con condiciones en la sede.
   const quitarNoAplican = (productIds: number[]) => {
     const ids = new Set(productIds)
@@ -1026,28 +1064,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   // --- WIZARD PRINCIPAL ---
 
   // Construir opciones de pago desde los métodos habilitados para website
-  const paymentOptions = availableMethods.map(m => {
-    const isWompi = WOMPI_CODES.has(m.code)
-    return {
-      id: m.code,
-      icon: isWompi ? (
-        <IconoPasarela tono="verde" />
-      ) : MERCADOPAGO_CODES.has(m.code) ? (
-        <IconoPasarela tono="azul" />
-      ) : BOLD_CODES.has(m.code) ? (
-        <IconoPasarela tono="rojo" />
-      ) : m.code === 'cash' && !m.icon ? (
-        // Efectivo / contraentrega: el mismo cuadro que las pasarelas, en verde con un billete
-        // (pedido del dueño, 2026-11-24), en vez del emoji 💵.
-        <IconoPasarela tono="verde" Icono={Banknote} />
-      ) : (
-        <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>
-      ),
-      label: m.name,
-      description: m.description || null,
-      isWompi,
-    }
-  })
+  const paymentOptions = availableMethods.map(m => ({
+    id: m.code,
+    // El ícono elegido en el ERP (lucide) o el de su tipo; nunca la palabra suelta.
+    icono: iconoMetodo(m),
+    label: m.name,
+    // La que escribió la tienda manda; si no, un texto por tipo («Pago en línea con Wompi»…).
+    description: descripcionMetodo(m, orderType === 'delivery'),
+  }))
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
@@ -1719,41 +1743,35 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
               </CardHeader>
               {(!isOnePage || openSections.payment) && (
               <CardContent>
-                <div className="space-y-3">
-                  {paymentOptions.map((method) => (
-                    <div key={method.id}>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod(method.id)}
-                      aria-disabled={method.id === 'cash' && !!ce.estado && !ce.estado.disponible}
-                      className={`w-full p-4 rounded-lg border-2 flex items-center gap-4 transition-colors text-left ${
-                        paymentMethod === method.id
-                          ? 'border-current'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      style={paymentMethod === method.id ? { borderColor: primaryColor, color: primaryColor } : {}}
-                    >
-                      {method.icon}
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-gray-900 block">{method.label}</span>
-                        {method.description && (
-                          <span className="text-xs text-gray-500 block mt-0.5">{method.description}</span>
+                <div className="space-y-3" role="radiogroup" aria-label="Método de pago">
+                  {paymentOptions.map((method) => {
+                    // Contraentrega con condiciones: la línea con sus montos (en el color de la tienda si está elegida).
+                    const lineaCe = method.id === 'cash' ? lineaOpcionContraentrega(ce.estado, fmtPrice) : null
+                    const elegido = paymentMethod === method.id
+                    return (
+                      <TarjetaMetodoPago
+                        key={method.id}
+                        id={method.id}
+                        titulo={method.label}
+                        descripcion={lineaCe ?? method.description}
+                        descripcionEnColor={!!lineaCe && elegido}
+                        icono={method.icono}
+                        seleccionada={elegido}
+                        color={primaryColor}
+                        apagada={method.id === 'cash' && !!ce.estado && !ce.estado.disponible}
+                        onSeleccionar={() => elegirMetodo(method.id)}
+                      >
+                        {/* Contraentrega con condiciones: motivo si no aplica, desglose y pasarela del anticipo si sí. */}
+                        {method.id === 'cash' && ce.estado && (
+                          !ce.estado.disponible
+                            ? <MotivoContraentrega estado={ce.estado} fmt={fmtPrice} hrefSeguirComprando={conPrefijo('/productos', prefijoSede)} hrefIngresar={isAuthenticated ? null : conPrefijo('/cuenta', prefijoSede)} ciudad={customerData.city} onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican} />
+                            : paymentMethod === 'cash' && (
+                              <DetalleContraentrega estado={ce.estado} total={total} fmt={fmtPrice} pasarela={ce.pasarela} onPasarela={ce.setPasarela} color={primaryColor} sinMontos />
+                            )
                         )}
-                      </div>
-                      {paymentMethod === method.id && (
-                        <Check className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
-                      )}
-                    </button>
-                    {/* Contraentrega con condiciones: motivo si no aplica, desglose y pasarela del anticipo si sí. */}
-                    {method.id === 'cash' && ce.estado && (
-                      !ce.estado.disponible
-                        ? <MotivoContraentrega estado={ce.estado} fmt={fmtPrice} hrefSeguirComprando={conPrefijo('/productos', prefijoSede)} hrefIngresar={isAuthenticated ? null : conPrefijo('/cuenta', prefijoSede)} ciudad={customerData.city} onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican} />
-                        : paymentMethod === 'cash' && (
-                          <DetalleContraentrega estado={ce.estado} total={total} fmt={fmtPrice} pasarela={ce.pasarela} onPasarela={ce.setPasarela} color={primaryColor} />
-                        )
-                    )}
-                    </div>
-                  ))}
+                      </TarjetaMetodoPago>
+                    )
+                  })}
                 </div>
 
                 {paymentError && (
@@ -1810,7 +1828,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
         {/* Order Summary Sidebar */}
         <div>
-          <Card className="sticky top-4">
+          <Card id="resumen-pedido" className="sticky top-4 scroll-mt-4">
             <CardHeader>
               <CardTitle>Resumen</CardTitle>
             </CardHeader>
@@ -1818,18 +1836,15 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
               <div className="space-y-3">
                 {/* Tipo de pedido */}
                 {(hasDelivery || hasPickup) && (
-                  <div className="flex items-center gap-2 text-xs font-medium rounded-lg p-2 mb-2"
-                    style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
-                  >
-                    {orderType === 'delivery' ? (etiquetaDomicilio === 'Transportadora' ? '📦 Transportadora' : '🛵 Domicilio') : orderType === 'pickup' ? '🏪 Recoger' : '🍽️ Comer aquí'}
-                    {isScheduled && scheduledAt && (
-                      <span className="text-gray-500 ml-auto">
-                        {sedePedido
+                  <ChipEntregaResumen
+                    tipo={(orderType === 'delivery' ? (etiquetaDomicilio === 'Transportadora' ? 'transportadora' : 'domicilio') : orderType === 'pickup' ? 'recoger' : 'comer_aqui') satisfies TipoEntregaResumen}
+                    color={primaryColor}
+                    momento={isScheduled && scheduledAt
+                      ? (sedePedido
                           ? momentoPedido(scheduledAt, sedePedido.zona)
-                          : new Date(scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </span>
-                    )}
-                  </div>
+                          : new Date(scheduledAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }))
+                      : null}
+                  />
                 )}
 
                 {cartItems.map((item) => (
@@ -1962,30 +1977,14 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                   </p>
                 )}
 
-                {/* Trust Badges */}
+                {/* Sellos de confianza: fila de 3 con íconos de línea (Figma 3061:82007, versión 1). */}
                 {settings.showTrustBadges && settings.trustBadges && settings.trustBadges.length > 0 && (
-                  <div className="border-t pt-3 mt-3 space-y-2">
-                    {settings.trustBadges.map((badge, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="text-sm">{badge.icon}</span>
-                        <span>{badge.text}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <SellosConfianza sellos={settings.trustBadges} color={primaryColor} />
                 )}
 
-                {/* Payment Logos */}
+                {/* Medios de pago: los métodos activos de la tienda web (los del paso de pago), no una lista fija. */}
                 {settings.showPaymentLogos && (
-                  <div className="border-t pt-3 mt-3">
-                    <p className="text-xs text-gray-400 mb-2">Métodos de pago aceptados</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-blue-700">VISA</span>
-                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-red-600">Mastercard</span>
-                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-blue-500">PSE</span>
-                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-green-600">Nequi</span>
-                      <span className="bg-gray-100 rounded px-2 py-1 text-xs font-semibold text-gray-600">💵 Efectivo</span>
-                    </div>
-                  </div>
+                  <MediosPagoAceptados metodos={availableMethods} aDomicilio={orderType === 'delivery'} />
                 )}
               </div>
             </CardContent>
@@ -1994,8 +1993,21 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       </div>
 
       {/* Sticky bottom bar - solo en one-page */}
+      {/* Celular: la barra del pago en el estilo de la tienda (A, B o C; por defecto C). */}
       {isOnePage && cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3">
+        <BarraPagoMovil
+          contenido={contenidoBarra}
+          color={primaryColor}
+          deshabilitado={submitting || !canSubmitOnePage || ceBloqueada}
+          procesando={submitting}
+          onPagar={() => handleSubmit()}
+          onDetalle={irAlResumen}
+          onAlto={ponerAltoBarra}
+        />
+      )}
+      {/* Computador (md en adelante): la barra de siempre. */}
+      {isOnePage && cartItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3 hidden md:block">
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
               Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
@@ -2024,8 +2036,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         </div>
       )}
 
-      {/* Spacer para el sticky bar */}
-      {isOnePage && cartItems.length > 0 && <div className="h-20" />}
+      {/* Espaciador de la barra: en celular, su alto real (con el área segura del iPhone); en computador, el de siempre. */}
+      {isOnePage && cartItems.length > 0 && (
+        <>
+          <div className="md:hidden" style={{ height: altoBarraMovil }} aria-hidden="true" />
+          <div className="hidden h-20 md:block" aria-hidden="true" />
+        </>
+      )}
     </div>
   )
 }

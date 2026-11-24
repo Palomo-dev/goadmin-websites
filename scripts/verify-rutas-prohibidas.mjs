@@ -137,6 +137,27 @@ const PROHIBIDAS = [
  *   (con `removeItem`, el mismo del carrito). Con anticipo, el resumen y la barra fija muestran «Pagas
  *   hoy / Pagas al recibir» (08 / 10); el cobro no cambia. Sin condiciones: como hoy.
  * Vence el 2026-12-10. Comprobado por scripts/verify-contraentrega.mjs.
+ *
+ * 2026-11-24 — Barra fija del pago en celular A/B/C (Figma «16 Sitio web» 3059:80757, aprobada por
+ * el dueño; por defecto C), resumen del pago versión 1 (3061:82007) y opciones de pago como en
+ * contraentrega 08 / 10 / 10c. Solo PINTA; no toca el payload de /api/orders, el cobro ni el flujo
+ * de `handleSubmit`. Lo nuevo vive fuera de las rutas del dinero (components/site/checkout/
+ * barraPago.ts, resumenPago.ts, BarraPagoMovil.tsx, ResumenPagoPiezas.tsx, TarjetaMetodoPago.tsx);
+ * en ella, solo:
+ * - components/site/CheckoutWizard.tsx: (1) en celular (`md:hidden`) la barra nueva con el estilo
+ *   de `website_settings.checkout_mobile_bar_style` (sin valor: C) y su `else`: en computador
+ *   (`hidden md:block`) la barra de siempre, sin cambios; el espaciador usa el alto real de la
+ *   barra en celular y el `h-20` de siempre en computador. (2) El botón con contraentrega
+ *   disponible SIN anticipo dice «Confirmar pedido» (antes «Pagar $ X» sin cobrar nada en línea);
+ *   sin condiciones o con anticipo, el texto de antes. (3) Cada método en una tarjeta con radio a
+ *   la izquierda e ícono a la derecha; el ícono elegido en el ERP (`website_icon`) se pinta como
+ *   ícono de lucide, no como palabra; el desglose de contraentrega, el motivo y el selector de
+ *   pasarela siguen ahí. (4) Resumen: chip de entrega, sellos y «Medios de pago» de los métodos
+ *   activos, sin emojis salvo los propios de la tienda. (5) El traspaso del chat (`?cart=`,
+ *   `?customer=`) acepta `?metodo=<código>`: se preselecciona solo si está activo en la tienda web
+ *   y aplica al pedido (contraentrega no disponible no se fuerza); el cliente lo cambia; sin
+ *   parámetro, su `else`: el primer método, como hoy.
+ * Vence el 2026-12-10. Comprobado por scripts/verify-barra-pago.mjs (3 estilos × 4 casos).
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -158,6 +179,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/webhooks/mercadopago/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo de la organización dueña del pago, pago parcial' },
   { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo en la consulta del pedido' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-10', motivo: 'Contraentrega: opción con condiciones y pago del anticipo' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-10', motivo: 'Barra del pago en celular A/B/C, «Confirmar pedido» sin anticipo, resumen v1, tarjetas de pago y ?metodo= del chat' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

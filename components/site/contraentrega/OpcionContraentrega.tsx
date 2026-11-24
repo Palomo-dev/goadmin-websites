@@ -175,6 +175,7 @@ export function DetalleContraentrega({
   pasarela,
   onPasarela,
   color,
+  sinMontos = false,
 }: {
   estado: EstadoContraentrega
   total: number
@@ -182,6 +183,11 @@ export function DetalleContraentrega({
   pasarela: string | null
   onPasarela: (codigo: string) => void
   color: string
+  /**
+   * La tarjeta del método ya dice «Paga hoy $ X y $ Y al recibir» / «Pagas $ X al recibir»
+   * (`lineaOpcionContraentrega`): no se repite aquí. Sin la prop, como antes.
+   */
+  sinMontos?: boolean
 }) {
   const a = estado.anticipo
   // «efectivo, datáfono o Nequi» (sin pasar «Nequi» a minúsculas).
@@ -192,16 +198,18 @@ export function DetalleContraentrega({
     return (
       <div className="mt-2 space-y-1 text-sm text-gray-600">
         <p>{descripcion}</p>
-        <p className="text-gray-900">Pagas {fmt(estado.alRecibir)} al recibir.</p>
+        {!sinMontos && <p className="text-gray-900">Pagas {fmt(estado.alRecibir)} al recibir.</p>}
       </div>
     )
   }
   const delEnvio = a.base === 'envio'
   return (
     <div className="mt-2 space-y-3 text-sm">
-      <p className="font-medium" style={{ color }}>
-        Paga hoy {fmt(a.monto)}{delEnvio ? ' del envío' : ''} y {fmt(estado.alRecibir)} al recibir.
-      </p>
+      {!sinMontos && (
+        <p className="font-medium" style={{ color }}>
+          Paga hoy {fmt(a.monto)}{delEnvio ? ' del envío' : ''} y {fmt(estado.alRecibir)} al recibir.
+        </p>
+      )}
       <p className="text-gray-600">{descripcion}</p>
       <div className="rounded-lg border border-gray-200 bg-white p-3">
         <div className="flex justify-between text-gray-900"><span>Hoy, en línea{delEnvio ? ' · el envío' : ''}</span><span className="font-semibold">{fmt(a.monto)}</span></div>
@@ -275,9 +283,28 @@ export function ResumenPagoContraentrega({
   )
 }
 
-/** Texto del botón de pagar: «Pagar anticipo $ 9.000 [con Wompi]» o `null` (el de siempre). */
+/**
+ * Texto del botón de pagar con contraentrega disponible:
+ * - con anticipo: «Pagar anticipo $ 9.000 [con Wompi]»;
+ * - SIN anticipo: «Confirmar pedido» (no se cobra nada en línea; antes decía «Pagar $ 64.900»,
+ *   corregido el 2026-11-24, Figma 3059:80757 caso c);
+ * - sin condiciones o no disponible: `null` (el de siempre).
+ */
 export function textoBotonAnticipo(estado: EstadoContraentrega | null, pasarela: string | null, fmt: (n: number) => string): string | null {
-  if (!estado?.disponible || !estado.anticipo) return null
+  if (!estado?.disponible) return null
+  if (!estado.anticipo) return 'Confirmar pedido'
   const nombre = estado.pasarelas.length > 1 ? estado.pasarelas.find((p) => p.codigo === pasarela)?.nombre ?? null : null
   return `Pagar anticipo ${fmt(estado.anticipo.monto)}${nombre ? ` con ${nombre}` : ''}`
+}
+
+/**
+ * Línea pequeña de la tarjeta «Pago contra entrega» (Figma 10/10c): «Paga hoy $ 20.000 y $ 44.900
+ * al recibir.» o «Pagas $ 64.900 al recibir: efectivo, datáfono o Nequi.». `null` sin condiciones o
+ * si la opción no aplica (entonces la descripción de siempre).
+ */
+export function lineaOpcionContraentrega(estado: EstadoContraentrega | null, fmt: (n: number) => string): string | null {
+  if (!estado?.disponible) return null
+  const a = estado.anticipo
+  if (a) return `Paga hoy ${fmt(a.monto)}${a.base === 'envio' ? ' del envío' : ''} y ${fmt(estado.alRecibir)} al recibir.`
+  return `Pagas ${fmt(estado.alRecibir)} al recibir: ${textoMedios(estado.medios)}.`
 }
