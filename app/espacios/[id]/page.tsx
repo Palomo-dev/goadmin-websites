@@ -3,13 +3,15 @@ import { isValidUUID } from '@/lib/utils'
 import { createPublicClient } from '@/lib/supabase/server'
 import { getSpaceById } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { SpaceGallery } from '@/components/site/spaces/SpaceGallery'
 import { SpaceInfo } from '@/components/site/spaces/SpaceInfo'
 import { SpaceServices } from '@/components/site/spaces/SpaceServices'
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { SpaceBookingForm } from './SpaceBookingForm'
 import { AvailabilityCalendar } from '@/components/site/AvailabilityCalendar'
 
@@ -71,13 +73,15 @@ export default async function EspacioDetallePage({ params }: { params: Promise<{
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <BarraVolverMovil
+        padre={{ href: '/espacios', etiqueta: 'Espacios' }}
+        etiquetaActual={String(space.label ?? 'Espacio')}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-8">
-          <Link href="/espacios" className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a espacios
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): ← al inicio de las migas en escritorio; en el celular, la barra. */}
+        <EncabezadoPagina tipo="ficha" className="mb-8" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Espacios', href: '/espacios' }, { etiqueta: String(space.label ?? 'Espacio') }]} padre={{ href: '/espacios', etiqueta: 'Espacios' }} primaryColor={primaryColor} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Columna izquierda: Galería + Info + Servicios */}

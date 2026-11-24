@@ -1,10 +1,12 @@
 import { Suspense } from 'react'
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { INICIO } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { AuthForm } from './AuthForm'
 import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 
@@ -31,13 +33,15 @@ export default async function AuthPage() {
       footerNav={footerNav}
       frozenReason={frozenReason}
     >
+      <BarraVolverMovil
+        padre={INICIO}
+        etiquetaActual="Ingresar"
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <main className="container mx-auto px-4 py-12">
-        <div className="mb-8">
-          <Link href="/" className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al inicio
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): a donde venía el cliente o al inicio. */}
+        <EncabezadoPagina tipo="ficha" className="mb-8" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Ingresar' }]} padre={INICIO} primaryColor={primaryColor} />
 
         <Suspense fallback={
           <div className="flex justify-center py-20">

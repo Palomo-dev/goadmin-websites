@@ -6,10 +6,10 @@
  * no hay configuración personalizada (cero regresión).
  */
 
-import Link from 'next/link'
-import { ChevronRight, Home } from 'lucide-react'
-import { EnlaceSitio } from '@/components/site/EnlaceSitio'
 import { disposicionEncabezadoCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
+import { navegacionCategoria } from '@/lib/navegacion/volver'
+import { BotonVolver } from '@/components/site/volver/BotonVolver'
+import { MigasTienda } from '@/components/site/volver/EncabezadoPagina'
 
 export const CONTENT_KEYS = ['show_image', 'show_breadcrumb', 'show_count', 'layout'] as const
 
@@ -29,7 +29,7 @@ interface CategoryHeaderProps {
   }
 }
 
-export function CategoryHeader({ content, data }: CategoryHeaderProps) {
+export function CategoryHeader({ content, primaryColor, data }: CategoryHeaderProps) {
   const category = data?.category
   if (!category) return null
 
@@ -40,29 +40,21 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
   const showCount = content.show_count !== false
   // `split_text` solo cambia el bloque de texto (sin foto de portada); `stack` = lo de hoy.
   const partido = disposicionEncabezadoCategoria(content as Record<string, unknown>) === 'split_text'
+  // «Volver» (Figma 2992:74856): Inicio › categoría padre › categoría; el ← va a la padre o al inicio.
+  const nav = navegacionCategoria({ categoria: category.name, padre: parentCategory ?? null })
+  const conPortada = showImage && Boolean(category.image_url)
+  /** ← cuadrado junto al título (escritorio). */
+  const volver = <span className="hidden md:inline-flex" data-volver-titulo=""><BotonVolver padre={nav.padre} primaryColor={primaryColor} /></span>
 
   return (
     <div className="mb-8">
-      {showBreadcrumb && (
-        <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">
-          <Link href="/" className="flex items-center hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-            <Home className="h-4 w-4" />
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <EnlaceSitio href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-            Productos
-          </EnlaceSitio>
-          {parentCategory && (
-            <>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-              <Link href={`/categorias/${parentCategory.slug}`} className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-                {parentCategory.name}
-              </Link>
-            </>
-          )}
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-medium text-gray-900 dark:text-white truncate">{category.name}</span>
-        </nav>
+      {/* Migas (escritorio; en el celular va la barra «← Volver a …»). Con portada, el título va
+          dentro de la foto y el ← al inicio de las migas (Figma 2992:74983). */}
+      {(showBreadcrumb || conPortada) && (
+        <div className="mb-6 hidden items-center gap-3 md:flex" style={{ ['--volver-miga' as string]: primaryColor }} data-volver-migas="">
+          {conPortada && <BotonVolver padre={nav.padre} primaryColor={primaryColor} />}
+          {showBreadcrumb && <MigasTienda migas={nav.migas} />}
+        </div>
       )}
 
       {showImage && category.image_url && (
@@ -85,7 +77,10 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
       {(!showImage || !category.image_url) && partido && (
         <div className="grid gap-4 md:grid-cols-2 md:items-end md:gap-12">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+            <div className="flex items-center gap-3.5" data-volver-fila="">
+              {volver}
+              <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+            </div>
             {showCount && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
                 {total} {total === 1 ? 'producto' : 'productos'}
@@ -100,7 +95,10 @@ export function CategoryHeader({ content, data }: CategoryHeaderProps) {
 
       {(!showImage || !category.image_url) && !partido && (
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+          <div className="flex items-center gap-3.5" data-volver-fila="">
+            {volver}
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+          </div>
           {category.description && (
             <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-2xl">{category.description}</p>
           )}

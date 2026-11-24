@@ -9,7 +9,7 @@ import { Metadata } from 'next'
 import { cache } from 'react'
 import Link from 'next/link'
 import { permanentRedirect } from 'next/navigation'
-import { ArrowLeft, ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
+import { ShoppingCart, Package, Truck, Shield, Star, Layers } from 'lucide-react'
 import { AddToCartButton } from '@/components/site/AddToCartButton'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
 import { StickyAddToCart } from '@/components/site/StickyAddToCart'
@@ -40,8 +40,14 @@ import { FichaEnVivo } from '@/components/sections/product-detail/FichaEnVivo'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
+import { getRelacionadosFicha } from '@/lib/queries/tienda/relacionados'
+import { leerOpcionesDescripcion, leerOpcionesRelacionados, relacionadosPideDatos } from '@/lib/website/v2/seccionesFicha'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { textoPlanoONulo } from '@/lib/texto/textoPlano'
+import { caminoCategoria, navegacionFicha } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,10 +97,15 @@ const getProduct = cache(async (productUuid: string, organizationId: number, bra
   return conCarta ?? null
 })
 
-async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8, branchId?: number | null): Promise<any[]> {
+/**
+ * Relacionados de siempre: misma categoría, luego misma etiqueta, luego al azar. Con
+ * `prioridadEtiqueta` (fuente «Misma etiqueta» de la sección), la etiqueta va primero.
+ * `sku` y `tag_id` viajan para «Comprados juntos» (línea del carrito) y el orden por etiqueta.
+ */
+async function getRelatedProducts(organizationId: number, categoryId: number | null, tagId: number | null, currentProductId: number, limit: number = 8, branchId?: number | null, prioridadEtiqueta = false): Promise<any[]> {
   const supabase = createAdminClient() || createPublicClient()
   const selectFields = `
-    id, uuid, name, is_parent, track_stock,
+    id, uuid, name, sku, tag_id, is_parent, track_stock,
     product_prices (id, price, compare_price, effective_to),
     product_images (
       id, storage_path, is_primary, display_order,
@@ -110,8 +121,25 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     ? await getAllowedCategoryIds(organizationId, branchId)
     : null
 
-  // 1. Por categoría
-  if (categoryId) {
+  // 1. Por categoría (con «Misma etiqueta», la etiqueta primero)
+  const porEtiqueta = async () => {
+    let q = (supabase as any)
+      .from('products')
+      .select(selectFields)
+      .eq('product_images.archivo_disponible', true)
+      .is('product_prices.effective_to', null)
+      .eq('organization_id', organizationId)
+      .eq('tag_id', tagId)
+      .eq('status', 'active')
+      .is('parent_product_id', null)
+      .neq('id', currentProductId)
+      .limit(limit)
+    if (allowedCategoryIds) q = q.in('category_id', allowedCategoryIds)
+    const { data } = await q
+    if (data) data.forEach((p: any) => collected.set(p.id, p))
+  }
+  if (prioridadEtiqueta && tagId) await porEtiqueta()
+  if (categoryId && collected.size < limit) {
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
@@ -128,8 +156,8 @@ async function getRelatedProducts(organizationId: number, categoryId: number | n
     if (data) data.forEach((p: any) => collected.set(p.id, p))
   }
 
-  // 2. Por tag
-  if (tagId && collected.size < limit) {
+  // 2. Por tag (si no fue primero)
+  if (!prioridadEtiqueta && tagId && collected.size < limit) {
     let q = (supabase as any)
       .from('products')
       .select(selectFields)
@@ -311,13 +339,18 @@ export default async function ProductoDetailPage({
   // La barra fija del celular agrega sin opciones: no se ofrece si hay un grupo obligatorio.
   const stickyPermitido = puedePedir && !exigeEleccion(modifierGroups)
 
-  // Obtener productos relacionados por categoría, tag y aleatorio
-  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId)
-
   // F9.2 — Buscar plantilla de detalle de producto editable
   // Sitio V2: `plantillas/product-detail` de la revisión publicada; legacy: igual que antes.
   const productDetailTemplate = await getPlantillaPublica(organization.id, 'product_detail', branchId,
     () => getWebsitePageByType(organization.id, 'product_detail'))
+
+  // Obtener productos relacionados por categoría, tag y aleatorio. Fuente «Misma etiqueta» de la
+  // sección (Figma 2989:74523): la etiqueta primero. Sin sección o sin fuente, como siempre.
+  const bloqueRelacionados = (productDetailTemplate?.website_page_sections ?? [])
+    .find((s) => s.section_type === 'related_products' && s.is_visible !== false)
+  const opcionesRelacionados = leerOpcionesRelacionados(bloqueRelacionados?.content as Record<string, unknown> | null)
+  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId,
+    opcionesRelacionados.fuente === 'tag')
 
   // Construir URLs de imágenes
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -393,23 +426,34 @@ export default async function ProductoDetailPage({
   // depende de su contenido (fuente, productos, límite): ese recarga el lienzo al guardarse (ERP).
   const conPaginador = enLienzo || tieneBloque(seccionesFicha, TIPO_PAGINADOR_FICHA)
   const bloqueLook = seccionesFicha.find((s) => s.section_type === TIPO_COMPLETA_EL_LOOK && s.is_visible !== false)
-  const conFichaTecnica = enLienzo || seccionesFicha.some((s) => s.section_type === 'product_specs'
+  const conFichaTecnica = enLienzo || seccionesFicha.some((s) => (s.section_type === 'product_specs'
     && (s.section_variant === 'icon_grid' || s.section_variant === 'panel') && s.is_visible !== false)
-  if (conPaginador || bloqueLook || conFichaTecnica) {
+    // Descripción con opciones (Figma 2990:74500): su ficha técnica también lleva «Categoría».
+    || (s.section_type === 'product_description' && s.is_visible !== false && leerOpcionesDescripcion(s.content as Record<string, unknown> | null).conOpciones))
+  // Relacionados elegidos a mano y comprados juntos (Figma 2988:73769): solo si la sección los
+  // pide; en el lienzo, siempre (así cambiar la fuente o el estilo se ve en vivo).
+  const pideRelacionados = bloqueRelacionados ? relacionadosPideDatos(bloqueRelacionados.content as Record<string, unknown> | null) : { manual: false, juntos: false }
+  const conRelacionados = enLienzo || pideRelacionados.manual || pideRelacionados.juntos
+  if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) {
     const look = bloqueLook ? normalizarCompletaElLook(bloqueLook.content as Record<string, unknown> | null) : null
-    const [paginador, productosLook] = await Promise.all([
+    const [paginador, productosLook, relacionados] = await Promise.all([
       conPaginador ? getPaginadorFicha(organization.id, product.category_id ?? null, Number(product.id), branchId) : Promise.resolve(null),
       look
         ? getCompletaElLook(organization.id, Number(product.id), product.tag_id ?? null, look.source, look.productIds, look.limit, branchId)
         : Promise.resolve(null),
+      conRelacionados
+        ? getRelacionadosFicha(organization.id, Number(product.id), enLienzo || pideRelacionados.juntos, branchId)
+        : Promise.resolve(null),
     ])
-    const categoria = conFichaTecnica && product.category_id
+    // «Categoría» de la ficha técnica y «Ver todos» de los relacionados (en memoria, sin consulta).
+    const categoria = (conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) && product.category_id
       ? (ctx.categoriasTienda ?? []).find((c) => Number(c.id) === Number(product.category_id)) ?? null
       : null
     extrasFicha = {
       paginador,
       look: productosLook,
       categoria: categoria ? { name: categoria.name, slug: categoria.slug } : null,
+      relacionados,
     }
   } else {
     // Sin bloques nuevos: ninguna consulta extra, la ficha de siempre.
@@ -442,7 +486,24 @@ export default async function ProductoDetailPage({
         conFavorito: !esRestaurante,
       }
     : null
+  // «Volver» (Figma 2992:74856): padre = la categoría del producto (o la carta / Productos) y migas
+  // del árbol de categorías que el contexto ya cargó: sin consultas nuevas.
+  const navegacion = navegacionFicha({
+    camino: esRestaurante ? [] : caminoCategoria(ctx.categoriasTienda, product.category_id ?? null),
+    esRestaurante,
+    producto: product.name,
+  })
+  const barraVolver = (
+    <BarraVolverMovil
+      padre={navegacion.padre}
+      etiquetaActual={product.name}
+      primaryColor={primaryColor}
+      colorCabecera={colorCabeceraDe(organization.website_settings)}
+      acciones={{ buscar: true, carrito: { subdominio: organization.subdomain || '', branchId } }}
+    />
+  )
   const propsFicha = {
+    navegacion,
     organization,
     primaryColor,
     templatePage: productDetailTemplate,
@@ -469,6 +530,7 @@ export default async function ProductoDetailPage({
     // puente en vivo.
     return (
       <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
+        {barraVolver}
         <FichaEnVivo ficha={propsFicha} barra={barraBase} />
       </OrganizationLayout>
     )
@@ -492,20 +554,13 @@ export default async function ProductoDetailPage({
         contentName={product.name}
         value={price?.price ? Number(price.price) : undefined}
       />
+      {barraVolver}
       {hasTemplateSections ? (
         <ProductDetailRenderer {...propsFicha} />
       ) : (
       <div className="container mx-auto px-4 py-12">
-        {/* Breadcrumb */}
-        <div className="mb-8">
-          <Link 
-            href={conPrefijo(esRestaurante ? '/menu' : '/productos', prefijo)}
-            className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {esRestaurante ? 'Volver a la carta' : 'Volver a productos'}
-          </Link>
-        </div>
+        {/* Migas y ← (escritorio). En el celular, la barra «← Volver a …» de arriba. */}
+        <EncabezadoPagina tipo="ficha" migas={navegacion.migas} padre={navegacion.padre} primaryColor={primaryColor} className="mb-8" />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Galería de imágenes */}

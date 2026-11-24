@@ -1,6 +1,9 @@
 import { getOrgContext } from '@/lib/get-org-context'
 import { getOrgServiceCatalog } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { QuoteForm } from './QuoteForm'
 import { Metadata } from 'next'
@@ -37,7 +40,21 @@ export default async function CotizarPage({ searchParams }: { searchParams: Prom
       footerNav={footerNav}
       frozenReason={frozenReason}
     >
+      {/* «Volver» (Figma 2993:75364): a Servicios o a donde venía el cliente. */}
+      <BarraVolverMovil
+        padre={{ href: '/servicios', etiqueta: 'Servicios' }}
+        etiquetaActual="Solicitar cotización"
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <EncabezadoPagina
+          tipo="ficha"
+          className="mb-8"
+          migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Servicios', href: '/servicios' }, { etiqueta: 'Solicitar cotización' }]}
+          padre={{ href: '/servicios', etiqueta: 'Servicios' }}
+          primaryColor={primaryColor}
+        />
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${primaryColor}15` }}>
             <span className="text-3xl">📋</span>

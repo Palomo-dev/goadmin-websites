@@ -2,11 +2,13 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { isValidUUID } from '@/lib/utils'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { PaseCheckoutClient } from './PaseCheckoutClient'
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,13 +86,15 @@ export default async function PaseCheckoutPage({ params }: { params: Promise<{ i
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <BarraVolverMovil
+        padre={{ href: '/pases', etiqueta: 'Planes' }}
+        etiquetaActual={String(passType.name ?? 'Plan')}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link href="/pases" className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a planes
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): ← al inicio de las migas en escritorio; en el celular, la barra. */}
+        <EncabezadoPagina tipo="ficha" className="mb-8" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Planes', href: '/pases' }, { etiqueta: String(passType.name ?? 'Plan') }]} padre={{ href: '/pases', etiqueta: 'Planes' }} primaryColor={primaryColor} />
 
         <PaseCheckoutClient
           passType={passType}

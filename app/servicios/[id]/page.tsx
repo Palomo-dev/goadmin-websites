@@ -5,6 +5,9 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,13 +50,21 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       footerNav={footerNav}
       frozenReason={frozenReason}
     >
+      {/* «Volver» (Figma 2993:75364): servicio → Servicios, o a donde venía el cliente. */}
+      <BarraVolverMovil
+        padre={{ href: '/servicios', etiqueta: 'Servicios' }}
+        etiquetaActual={name}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Breadcrumb */}
-        <nav className="mb-8">
-          <Link href="/servicios" className="text-sm text-gray-500 dark:text-gray-400 hover:underline flex items-center gap-1">
-            ← Volver a servicios
-          </Link>
-        </nav>
+        <EncabezadoPagina
+          tipo="ficha"
+          className="mb-8"
+          migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Servicios', href: '/servicios' }, { etiqueta: name }]}
+          padre={{ href: '/servicios', etiqueta: 'Servicios' }}
+          primaryColor={primaryColor}
+        />
 
         {/* Header */}
         <div className="flex items-start gap-6 mb-8">

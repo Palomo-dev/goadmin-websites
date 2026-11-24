@@ -18,6 +18,7 @@ import { AccesoCuenta } from './cuenta/AccesoCuenta'
 import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 import { OpcionesTiendaProvider } from './OpcionesTiendaContext'
 import { EVENTO_ABRIR_FAVORITOS } from '@/lib/favoritos/almacen'
+import { EVENTO_ABRIR_CARRITO } from './volver/BarraVolverMovil'
 import { CountdownBanner } from './CountdownBanner'
 import { ContadoresDe } from './ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
@@ -192,6 +193,12 @@ export function OrganizationLayoutCliente({
     }
     window.addEventListener(EVENTO_ABRIR_FAVORITOS, abrir)
     return () => window.removeEventListener(EVENTO_ABRIR_FAVORITOS, abrir)
+  }, [])
+  // El carrito de la barra «← Volver a …» del celular (BarraVolverMovil) abre el mismo cajón.
+  useEffect(() => {
+    const abrir = () => setCartOpen(true)
+    window.addEventListener(EVENTO_ABRIR_CARRITO, abrir)
+    return () => window.removeEventListener(EVENTO_ABRIR_CARRITO, abrir)
   }, [])
   // Solo en el lienzo del editor (?preview=1): ajustes y menú en edición, sin guardar.
   // Fuera del preview `vivos` es null y todo queda exactamente como antes.

@@ -6,7 +6,8 @@
  * membresía, pases… siguen ahí según el negocio).
  * - Escritorio: tarjeta lateral con iniciales, nombre y correo, el ítem activo resaltado y
  *   «Cerrar sesión» abajo.
- * - Celular: en Inicio, la lista con la cifra de cada acceso; en las demás páginas, «‹ Mi cuenta».
+ * - Celular: en Inicio, la lista con la cifra de cada acceso; en las demás páginas, la barra
+ *   «← Volver a Mi cuenta» (VolverMiCuenta).
  */
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -16,7 +17,6 @@ import {
   CalendarDays,
   Car,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   CircleUser,
   ClipboardList,
@@ -33,6 +33,9 @@ import {
 } from 'lucide-react'
 import { itemActivo, type ClaveMenuCuenta, type ItemMenuCuenta } from '@/lib/cuenta/reglasCuenta'
 import { cerrarSesionTienda } from './useAcceso'
+import { navegacionCuenta } from '@/lib/navegacion/volver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 const ICONOS: Record<ClaveMenuCuenta, LucideIcon> = {
   inicio: Home,
@@ -107,15 +110,22 @@ export function MenuLateralCuenta({ items, nombre, correo, iniciales }: { items:
   )
 }
 
-/** «‹ Mi cuenta» en el celular, en todas las páginas menos Inicio (Figma G 2977:72598). */
-export function VolverMiCuenta() {
-  const ruta = (usePathname() || '').replace(/\/+$/, '')
-  if (ruta === '/mi-cuenta') return null
+/**
+ * «Volver» de las páginas de Mi cuenta (Figma 2993:75276 y regla 2992:74856), en todas menos
+ * Inicio: en el celular, la barra «← Volver a Mi cuenta» (o a la sección, en un detalle: «Volver a
+ * Mis pedidos»); en escritorio, el ← al inicio de las migas Inicio › Mi cuenta › sección. Antes era
+ * «‹ Mi cuenta» solo en el celular (Figma G 2977:72598) y cada detalle traía su «Volver» suelto.
+ */
+export function VolverMiCuenta({ items, primaryColor, colorCabecera }: { items: ItemMenuCuenta[]; primaryColor?: string | null; colorCabecera?: string | null }) {
+  const ruta = usePathname() || ''
+  const nav = navegacionCuenta(ruta, items)
+  if (!nav) return null
   return (
-    <Link href="/mi-cuenta" className="mb-3 flex items-center gap-1.5 text-sm font-medium text-slate-600 md:hidden">
-      <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-      Mi cuenta
-    </Link>
+    <>
+      {/* Hija directa de la columna (no de un envoltorio) para quedar pegada al bajar. */}
+      <BarraVolverMovil className="-mx-4 -mt-5 mb-4" padre={nav.padre} etiquetaActual={nav.actual} primaryColor={primaryColor} colorCabecera={colorCabecera} />
+      <EncabezadoPagina tipo="ficha" migas={nav.migas} padre={nav.padre} primaryColor={primaryColor} className="mb-5" />
+    </>
   )
 }
 

@@ -34,9 +34,9 @@
  * La lógica transaccional (checkout, pagos) NO se expone aquí.
  */
 
-import Link from 'next/link'
 import type React from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
+import type { DestinoPadre, Miga } from '@/lib/navegacion/volver'
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
 import { ColumnaInfoFija } from '@/components/sections/product-detail/ColumnaInfoFija'
 import { ContadorColumnas } from '@/components/site/ContadorColumnas'
@@ -46,7 +46,6 @@ import { avisoStock, conversionManda, type ConversionSitio } from '@/lib/website
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections, WebsitePageSection } from '@/types/database'
 import { buildDefaultProductDetailSections, TIPO_URGENCIA_FICHA } from '@/lib/defaultProductDetailSections'
-import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import {
   TIPOS_ANCHO_COMPLETO_TIENDA,
@@ -57,6 +56,7 @@ import {
   resolverDisenoFicha,
   type PaginadorFichaDatos,
 } from './fichaTienda'
+import type { RelacionadosFichaDatos } from './RelatedProductsSection'
 
 function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
@@ -83,6 +83,8 @@ export interface ExtrasFicha {
   look?: any[] | null
   /** `product_specs · icon_grid/panel`, fila «Categoría». */
   categoria?: { name: string; slug?: string | null } | null
+  /** `related_products`: elegidos a mano y comprados juntos (solo si la sección los pide). */
+  relacionados?: RelacionadosFichaDatos | null
 }
 
 interface ProductDetailRendererProps {
@@ -102,7 +104,7 @@ interface ProductDetailRendererProps {
   /** Modo restaurante (type_id = 1): ficha de plato, sin beneficios de e-commerce por defecto. */
   restaurante?: { textoAgotado: string | null } | null
   puedePedir?: boolean
-  /** `''` o `'/sede-norte'` (sede servida por prefijo de ruta): «Volver a la carta» de la sede. */
+  /** `''` o `'/sede-norte'` (sede servida por prefijo de ruta): enlaces de los bloques de la sede. */
   prefijoSede?: string
   /** Orden del catálogo de variantes (`variant_values.display_order`). */
   ordenAtributos?: OrdenAtributos | null
@@ -110,6 +112,8 @@ interface ProductDetailRendererProps {
   extrasFicha?: ExtrasFicha | null
   /** Número de WhatsApp del sitio: «Pedir por WhatsApp» de los botones de compra. */
   whatsapp?: string | null
+  /** Migas y ← de la ficha (lib/navegacion/volver, `navegacionFicha`). Sin ellas, Inicio › Productos/Carta. */
+  navegacion?: { padre: DestinoPadre; migas: Miga[] } | null
 }
 
 export function ProductDetailRenderer({
@@ -132,10 +136,14 @@ export function ProductDetailRenderer({
   ordenAtributos = null,
   extrasFicha = null,
   whatsapp = null,
+  navegacion = null,
 }: ProductDetailRendererProps) {
-  const volver = restaurante
-    ? { href: conPrefijo('/menu', prefijoSede), texto: 'Volver a la carta' }
-    : { href: conPrefijo('/productos', prefijoSede), texto: 'Volver a productos' }
+  // Padre del ← sin `navegacion`: la carta o Productos, como el «Volver a …» de antes. Las rutas van
+  // sin prefijo: EncabezadoPagina antepone el de la sede.
+  const padreVolver: DestinoPadre = navegacion?.padre
+    ?? (restaurante ? { href: '/menu', etiqueta: 'la carta' } : { href: '/productos', etiqueta: 'Productos' })
+  const migasVolver: Miga[] = navegacion?.migas
+    ?? [{ etiqueta: 'Inicio', href: '/' }, { etiqueta: restaurante ? 'Carta' : 'Productos', href: padreVolver.href }, { etiqueta: String(product?.name ?? '') }]
   const hasSections = Boolean(templatePage && templatePage.website_page_sections.length > 0)
 
   const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? null
@@ -208,10 +216,16 @@ export function ProductDetailRenderer({
     sectionData.paginadorFicha = extrasFicha.paginador ?? null
     sectionData.lookFicha = extrasFicha.look ?? []
     sectionData.categoriaFicha = extrasFicha.categoria ?? null
+    sectionData.relacionadosFicha = extrasFicha.relacionados ?? null
     sectionData.prefijoSede = prefijoSede
   } else {
     // Sin extras: los datos de siempre.
   }
+  // Descripción con «Preguntas frecuentes»: las del bloque `product_faq` de la plantilla, si lo hay.
+  const bloqueFaq = visibles.find((s) => s.section_type === 'product_faq')
+  sectionData.faqFicha = Array.isArray((bloqueFaq?.content as Record<string, unknown> | null)?.items)
+    ? ((bloqueFaq?.content as Record<string, unknown>).items as unknown[])
+    : null
   /** Tipos que ya llevan su ancla (solo el primer bloque de cada tipo la lleva). */
   const anclasPuestas = new Set<string>()
 
@@ -262,17 +276,10 @@ export function ProductDetailRenderer({
     return urgenciaTrasInfo ? [bloque, urgencia(`${section.id}__urgencia`)] : bloque
   }
 
-  // Breadcrumb
+  // Migas con el ← al inicio (Figma 2992:74983, tipo «Ficha»), solo en escritorio: en el celular va
+  // la barra «← Volver a …» que pinta la página.
   const breadcrumbBlock = showBreadcrumb && (
-    <div className="mb-8">
-      <Link
-        href={volver.href}
-        className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        {volver.texto}
-      </Link>
-    </div>
+    <EncabezadoPagina tipo="ficha" migas={migasVolver} padre={padreVolver} primaryColor={primaryColor} className="mb-8" />
   )
 
   // Layout según columns

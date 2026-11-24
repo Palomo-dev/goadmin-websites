@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { textoPlano } from '@/lib/texto/textoPlano'
 
 interface ExpandableDescriptionProps {
@@ -71,8 +71,27 @@ function renderInlineMarkdown(text: string): React.ReactNode {
   return parts.length === 1 ? parts[0] : <>{parts}</>
 }
 
+/** Viñeta de cada ítem: «punto» (la de siempre), «check» de color o «número». */
+export type VinetaTexto = 'punto' | 'check' | 'numero'
+
+function marcaVineta(vineta: VinetaTexto, i: number): React.ReactNode {
+  if (vineta === 'check') {
+    return (
+      <span
+        aria-hidden="true"
+        className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color, #2563eb) 15%, transparent)', color: 'var(--primary-color, #2563eb)' }}
+      >
+        <Check className="h-3 w-3" strokeWidth={3} />
+      </span>
+    )
+  }
+  if (vineta === 'numero') return <span className="text-gray-400 mt-0 shrink-0 tabular-nums">{i + 1}.</span>
+  return <span className="text-gray-400 mt-1 shrink-0">•</span>
+}
+
 // Convierte texto plano con \n, bullets, headings y separadores a JSX
-function renderRichText(text: string): React.ReactNode {
+export function renderRichText(text: string, vineta: VinetaTexto = 'punto'): React.ReactNode {
   const lines = text.split('\n')
   const blocks: React.ReactNode[] = []
   let currentList: string[] = []
@@ -84,7 +103,7 @@ function renderRichText(text: string): React.ReactNode {
         <ul key={key++} className="list-none space-y-1 my-2 pl-1">
           {currentList.map((item, i) => (
             <li key={i} className="flex items-start gap-2 text-gray-600 dark:text-gray-300 leading-relaxed">
-              <span className="text-gray-400 mt-1 shrink-0">•</span>
+              {marcaVineta(vineta, i)}
               <span>{renderInlineMarkdown(item)}</span>
             </li>
           ))}

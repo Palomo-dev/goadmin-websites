@@ -94,7 +94,7 @@ export function AppointmentForm({ organizationId, services, primaryColor, presel
           Te hemos enviado un correo de confirmación. Nuestro equipo revisará tu solicitud y te contactará pronto.
         </p>
         <a href="/servicios" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium" style={{ backgroundColor: primaryColor }}>
-          ← Volver a servicios
+          Volver a Servicios
         </a>
       </div>
     )

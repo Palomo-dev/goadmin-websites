@@ -1,6 +1,19 @@
 'use client'
 
-import { ExpandableDescription } from '@/components/site/ExpandableDescription'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronDown, Clock, RefreshCw, Truck } from 'lucide-react'
+import { ExpandableDescription, renderRichText } from '@/components/site/ExpandableDescription'
+import { textoPlano } from '@/lib/texto/textoPlano'
+import { textoDimensiones, textoGarantia, textoPeso } from '@/lib/website/v2/contrato/seccionesTienda'
+import {
+  ETIQUETAS_FILA_FICHA,
+  PX_TEXTO,
+  leerFilasPropias,
+  leerOpcionesDescripcion,
+  type FilaFicha,
+  type OpcionesDescripcion,
+  type ParteDescripcion,
+} from '@/lib/website/v2/seccionesFicha'
 
 export const CONTENT_KEYS = ['layout', 'max_height', 'show_specs'] as const
 
@@ -9,13 +22,30 @@ interface ProductDescriptionProps {
     layout?: string
     max_height?: number
     show_specs?: boolean
+    [clave: string]: unknown
   }
   primaryColor?: string
-  data?: { product?: any }
+  data?: {
+    product?: any
+    categoriaFicha?: { name?: string | null } | null
+    faqFicha?: Array<{ question?: string; answer?: string }> | null
+  }
 }
 
-export function ProductDescription({ content, data }: ProductDescriptionProps) {
+/**
+ * Descripción de la ficha. Sin claves nuevas, lo de siempre (título + «Ver más» por letras). Con
+ * las opciones de la sección (Figma 2990:74500, `lib/website/v2/seccionesFicha.ts`): Texto con
+ * «Ver más» (por líneas y con degradado), Pestañas, Acordeón o Ficha técnica en tabla, con las
+ * partes Descripción, Especificaciones, Envío y devoluciones y Preguntas frecuentes.
+ */
+export function ProductDescription({ content, primaryColor = '#3B82F6', data }: ProductDescriptionProps) {
   const product = data?.product
+  const opciones = useMemo(() => leerOpcionesDescripcion(content as Record<string, unknown>), [content])
+  if (opciones.conOpciones && product) {
+    return <DescripcionConOpciones o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} />
+  } else {
+    // Sin opciones nuevas: lo de siempre.
+  }
   if (!product?.description) return null
 
   return (
@@ -23,5 +53,247 @@ export function ProductDescription({ content, data }: ProductDescriptionProps) {
       <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Descripción</h3>
       <ExpandableDescription text={product.description} maxLength={content.max_height || 180} />
     </div>
+  )
+}
+
+// ─── Con opciones (Figma 2990:74500 / 2990:74788) ─────────────────────────────────────────
+
+function textoColumna(valor: unknown): string | null {
+  if (typeof valor !== 'string') return null
+  const t = valor.trim().replace(/\s+/g, ' ')
+  return t ? t.slice(0, 120) : null
+}
+
+/** Filas de la ficha técnica: columnas de `products` elegidas + filas propias del producto. */
+export function filasFicha(product: any, categoria: string | null, o: Pick<OpcionesDescripcion, 'filas' | 'ocultarVacias' | 'filasPropias'>): { nombre: string; valor: string }[] {
+  const valorDe = (f: FilaFicha): string | null => {
+    switch (f) {
+      case 'marca': return textoColumna(product?.brand)
+      case 'referencia': return textoColumna(product?.reference)
+      case 'medidas': return textoDimensiones(product?.length_cm, product?.width_cm, product?.height_cm)
+      case 'peso': return textoPeso(product?.weight_kg)
+      case 'garantia': return textoGarantia(product?.warranty_months)
+      case 'categoria': return textoColumna(categoria)
+      default: return null
+    }
+  }
+  const filas = o.filas
+    .map((f) => ({ nombre: ETIQUETAS_FILA_FICHA[f], valor: valorDe(f) ?? '' }))
+    .filter((f) => !o.ocultarVacias || f.valor)
+    .map((f) => ({ nombre: f.nombre, valor: f.valor || '—' }))
+  return o.filasPropias ? [...filas, ...leerFilasPropias(product?.specifications)] : filas
+}
+
+const ENVIO = [
+  { icono: Clock, titulo: 'Tiempo de entrega', texto: '24-48 horas hábiles' },
+  { icono: Truck, titulo: 'Costo de envío', texto: 'Calculado al finalizar la compra' },
+  { icono: RefreshCw, titulo: 'Cambios y devoluciones', texto: '30 días para devoluciones' },
+]
+
+interface PropsConOpciones {
+  o: OpcionesDescripcion
+  product: any
+  categoria: string | null
+  faq: Array<{ question?: string; answer?: string }> | null
+  primaryColor: string
+}
+
+function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: PropsConOpciones) {
+  const descripcion = useMemo(() => textoPlano(product?.description ?? ''), [product?.description])
+  const filas = useMemo(() => filasFicha(product, categoria, o), [product, categoria, o])
+  const preguntas = (faq ?? []).filter((f) => f?.question && f?.answer)
+  const estiloTexto: CSSProperties = { fontSize: PX_TEXTO[o.tamanoTexto] }
+  const ancho = o.ancho === 'comodo' ? 'max-w-[760px]' : ''
+
+  // Partes con contenido (sin contenido no se pintan ni su pestaña).
+  const partes = o.partes.filter((p) => {
+    if (p === 'descripcion') return Boolean(descripcion.trim())
+    if (p === 'especificaciones') return filas.length > 0
+    if (p === 'preguntas') return preguntas.length > 0
+    return true
+  })
+  if (partes.length === 0) return null
+
+  const tabla = (
+    <dl className={`overflow-hidden text-sm ${o.tabla === 'sin' ? '' : 'rounded-xl border border-gray-200 dark:border-gray-700'}`} data-ficha-tabla={o.tabla}>
+      {filas.map((f, i) => (
+        <div
+          key={`${f.nombre}-${i}`}
+          className={`grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 px-4 py-2.5 ${o.tabla === 'rayada' && i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''} ${o.tabla === 'lineas' && i > 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
+        >
+          <dt className="text-gray-600 dark:text-gray-300">{f.nombre}</dt>
+          <dd className="font-medium text-gray-900 dark:text-white">{f.valor}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+
+  const cuerpo = (p: ParteDescripcion, recortar: boolean): ReactNode => {
+    if (p === 'descripcion') return recortar && o.estilo === 'ver_mas' ? <TextoVerMas texto={descripcion} o={o} /> : <div style={estiloTexto}>{renderRichText(descripcion, o.vinetas)}</div>
+    if (p === 'especificaciones') return tabla
+    if (p === 'envio') {
+      return (
+        <ul className="space-y-3">
+          {ENVIO.map(({ icono: Icono, titulo, texto }) => (
+            <li key={titulo} className="flex items-start gap-3">
+              <Icono className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" aria-hidden="true" />
+              <span>
+                <span className="block text-sm font-medium text-gray-900 dark:text-white">{titulo}</span>
+                <span className="block text-sm text-gray-600 dark:text-gray-300">{texto}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    return (
+      <dl className="space-y-3">
+        {preguntas.map((f, i) => (
+          <div key={i}>
+            <dt className="text-sm font-medium text-gray-900 dark:text-white">{f.question}</dt>
+            <dd className="mt-1 text-sm text-gray-600 dark:text-gray-300">{f.answer}</dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+
+  // A · Texto con «Ver más»: cada parte con su título, apiladas.
+  if (o.estilo === 'ver_mas') {
+    return (
+      <div className={`space-y-8 ${ancho}`} data-descripcion="ver_mas">
+        {partes.map((p) => (
+          <section key={p}>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{o.titulos[p]}</h3>
+            {cuerpo(p, true)}
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  // D · Ficha técnica en tabla: descripción (y envío/preguntas) a la izquierda, tabla a la derecha.
+  if (o.estilo === 'tabla') {
+    const izquierda = partes.filter((p) => p !== 'especificaciones')
+    return (
+      <div className="grid gap-8 lg:grid-cols-2" data-descripcion="tabla">
+        <div className="space-y-6">
+          {izquierda.map((p) => (
+            <section key={p}>
+              <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">{o.titulos[p]}</h3>
+              {cuerpo(p, false)}
+            </section>
+          ))}
+        </div>
+        {partes.includes('especificaciones') && (
+          <section>
+            <h3 className="mb-3 text-xl font-bold text-gray-900 dark:text-white">{o.titulos.especificaciones}</h3>
+            {tabla}
+          </section>
+        )}
+      </div>
+    )
+  }
+
+  // B · Pestañas (en celular, acordeón si así se eligió) y C · Acordeón.
+  return (
+    <PestanasOAcordeon o={o} partes={partes} cuerpo={(p) => cuerpo(p, false)} primaryColor={primaryColor} ancho={ancho} />
+  )
+}
+
+/** «Ver más» por líneas (con degradado) o por letras (como hoy) si no se eligieron líneas. */
+function TextoVerMas({ texto, o }: { texto: string; o: OpcionesDescripcion }) {
+  const [abierto, setAbierto] = useState(false)
+  if (o.lineas === null) return <ExpandableDescription text={texto} maxLength={o.letras} />
+  const largo = texto.split('\n').filter((l) => l.trim()).length > o.lineas || texto.length > o.lineas * 90
+  const alto = `${o.lineas * 1.65}em`
+  return (
+    <div>
+      <div className="relative overflow-hidden" style={{ fontSize: PX_TEXTO[o.tamanoTexto], maxHeight: !abierto && largo ? alto : undefined }}>
+        {renderRichText(texto, o.vinetas)}
+        {!abierto && largo && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent dark:from-gray-900" />}
+      </div>
+      {largo && (
+        <button
+          type="button"
+          onClick={() => setAbierto((v) => !v)}
+          aria-expanded={abierto}
+          className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
+          style={{ color: 'var(--primary-color, #2563eb)' }}
+        >
+          {abierto ? 'Ver menos' : 'Ver más'}
+          <ChevronDown className={`h-4 w-4 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PestanasOAcordeon({
+  o, partes, cuerpo, primaryColor, ancho,
+}: { o: OpcionesDescripcion; partes: ParteDescripcion[]; cuerpo: (p: ParteDescripcion) => ReactNode; primaryColor: string; ancho: string }) {
+  const inicial = partes.includes(o.abierta) ? o.abierta : partes[0]
+  const [activa, setActiva] = useState<ParteDescripcion>(inicial)
+  const [abiertas, setAbiertas] = useState<Set<ParteDescripcion>>(new Set([inicial]))
+  const colorActivo = o.colorPestana === 'tienda' ? primaryColor : 'currentColor'
+
+  const alternar = (p: ParteDescripcion) =>
+    setAbiertas((s) => {
+      const n = new Set(o.variasAbiertas ? s : [])
+      if (s.has(p)) n.delete(p)
+      else n.add(p)
+      return n
+    })
+
+  const acordeon = (clase: string) => (
+    <div className={`divide-y divide-gray-200 border-y border-gray-200 dark:divide-gray-700 dark:border-gray-700 ${ancho} ${clase}`} data-descripcion="acordeon">
+      {partes.map((p) => {
+        const abierta = abiertas.has(p)
+        return (
+          <section key={p}>
+            <h3>
+              <button type="button" onClick={() => alternar(p)} aria-expanded={abierta} className="flex w-full items-center justify-between py-4 text-left font-semibold text-gray-900 dark:text-white">
+                {o.titulos[p]}
+                <ChevronDown className={`h-4 w-4 transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </button>
+            </h3>
+            {abierta && <div className="pb-5">{cuerpo(p)}</div>}
+          </section>
+        )
+      })}
+    </div>
+  )
+
+  if (o.estilo === 'acordeon') return acordeon('')
+
+  // Pestañas: en celular, acordeón si se eligió «Acordeón».
+  const pestanas = (
+    <div className={o.celular === 'acordeon' ? 'hidden md:block' : ''} data-descripcion="pestanas">
+      <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+        {partes.map((p) => {
+          const sel = p === activa
+          return (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={sel}
+              onClick={() => setActiva(p)}
+              className={`-mb-px shrink-0 border-b-2 pb-2 text-sm ${sel ? 'font-semibold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+              style={sel ? { borderColor: colorActivo } : undefined}
+            >
+              {o.titulos[p]}
+            </button>
+          )
+        })}
+      </div>
+      <div role="tabpanel" className={`pt-5 ${ancho}`}>{cuerpo(activa)}</div>
+    </div>
+  )
+  return (
+    <>
+      {pestanas}
+      {o.celular === 'acordeon' && acordeon('md:hidden')}
+    </>
   )
 }

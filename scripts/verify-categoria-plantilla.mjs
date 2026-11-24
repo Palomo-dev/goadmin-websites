@@ -148,13 +148,59 @@ const DATOS_PAGINA = {
   currentSubcategory: '',
   currentView: 'grid',
 }
+/**
+ * Regla «Volver» (Figma EAvjINVRnlzFM70GVoWXgl 2992:74856, aprobada por el dueño el 2026-11-24):
+ * las migas y el ← de la categoría cambian A PROPÓSITO en todas las tiendas (migas Inicio › padre ›
+ * categoría y ← cuadrado junto al título). Lo demás del encabezado sigue igual a main, así que se
+ * compara sin ellos: de main se quita la `<nav>` de migas vieja; de la rama, los elementos marcados
+ * `data-volver-migas` y `data-volver-titulo`, y se desenvuelve `data-volver-fila`. La regla nueva
+ * la prueba scripts/verify-volver.mjs.
+ */
+function rangoElemento(html, desde) {
+  const inicio = html.lastIndexOf('<', desde)
+  const etiqueta = /^<([a-z0-9]+)/i.exec(html.slice(inicio))?.[1]
+  if (!etiqueta) return null
+  const re = new RegExp(`<${etiqueta}\\b|</${etiqueta}>`, 'gi')
+  re.lastIndex = inicio
+  let nivel = 0
+  let m
+  while ((m = re.exec(html))) {
+    nivel += m[0].startsWith('</') ? -1 : 1
+    if (nivel === 0) return { inicio, finApertura: html.indexOf('>', inicio) + 1, inicioCierre: m.index, fin: m.index + m[0].length }
+  }
+  return null
+}
+function sinVolver(html) {
+  let h = html
+  for (const marca of ['data-volver-migas', 'data-volver-titulo']) {
+    let i
+    while ((i = h.indexOf(marca)) >= 0) {
+      const r = rangoElemento(h, i)
+      if (!r) break
+      h = h.slice(0, r.inicio) + h.slice(r.fin)
+    }
+  }
+  let i
+  while ((i = h.indexOf('data-volver-fila')) >= 0) {
+    const r = rangoElemento(h, i)
+    if (!r) break
+    h = h.slice(0, r.inicio) + h.slice(r.finApertura, r.inicioCierre) + h.slice(r.fin)
+  }
+  const nav = h.indexOf('<nav')
+  if (nav >= 0) {
+    const r = rangoElemento(h, nav + 1)
+    if (r) h = h.slice(0, r.inicio) + h.slice(r.fin)
+  }
+  return h
+}
+
 const VARIANTES_DATOS = [DATOS_PAGINA, { ...DATOS_PAGINA, currentSubcategory: 'sofas', currentSort: 'newest', total: 1 }, { ...DATOS_PAGINA, subcategories: [], category: { ...DATOS_PAGINA.category, image_url: null, description: null } }]
 for (const data of VARIANTES_DATOS) {
   for (const content of [{}, { show_image: false }, { show_breadcrumb: false, show_count: false }, { layout: 'stack' }, { layout: 'raro' }, { layout: 'split_text', show_image: true }]) {
     // `split_text` con foto de portada visible: la foto manda y se pinta como hoy.
     if (content.layout === 'split_text' && !data.category.image_url) continue
     const props = { content, data, primaryColor: '#111111' }
-    check(pintar(headerA.CategoryHeader, props) === pintar(headerB.CategoryHeader, props), `CategoryHeader ${JSON.stringify(content)}: cambió frente a ${BASE_REF}`)
+    check(sinVolver(pintar(headerA.CategoryHeader, props)) === sinVolver(pintar(headerB.CategoryHeader, props)), `CategoryHeader ${JSON.stringify(content)}: cambió frente a ${BASE_REF} (fuera de las migas y el ←)`)
   }
   for (const content of [{}, { show_sort: false }, { show_view_toggle: false }, { subcategory_style: 'chips' }, { subcategory_style: 'raro', search: 'si' }, { search: false }]) {
     const props = { content, data, primaryColor: '#1F3FD8' }
@@ -306,8 +352,15 @@ check(
 const hoyBase = base['components/sections/category-detail/CategoryDetailRenderer.tsx']
 // El respaldo (plantilla sin secciones), línea por línea igual al de main. Desde 2026-11-24 es
 // `const respaldo = (` (el lienzo del editor lo reutiliza) en vez de `return (`: se normaliza.
+// Desde 2026-11-24 (regla «Volver», Figma 2992:74856) el bloque de migas cambia a propósito: se
+// compara sin él (de main, `{/* Breadcrumbs */}` … `</nav>`; de la rama, `{/* Migas y ←` … el
+// `</div>` que cierra `data-volver-migas`).
+const sinMigasFuente = (t) =>
+  t
+    .replace(/\n {6}\{\/\* Breadcrumbs \*\/\}\n[\s\S]*?\n {6}<\/nav>\n/, '\n')
+    .replace(/\n {6}\{\/\* Migas y ←[\s\S]*?data-volver-migas=""[\s\S]*?\n {6}<\/div>\n/, '\n')
 const respaldoDe = (t) => {
-  const cuerpo = t.replace(/\r\n/g, '\n')
+  const cuerpo = sinMigasFuente(t.replace(/\r\n/g, '\n'))
   const desde = cuerpo.slice(cuerpo.indexOf('// ---- Fallback: layout hardcodeado actual')).replace('  return (\n', '  const respaldo = (\n')
   return desde.slice(0, desde.indexOf('\n  )\n') + 5)
 }

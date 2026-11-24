@@ -3,11 +3,13 @@ import { isValidUUID } from '@/lib/utils'
 import { getTripById } from '@/lib/supabase/queries'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { TripDetailClient } from './TripDetailClient'
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,13 +68,14 @@ export default async function ViajeDetailPage({ params, searchParams }: { params
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <BarraVolverMovil
+        padre={{ href: '/viajes', etiqueta: 'Viajes' }}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link href="/viajes" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a búsqueda
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): ← al inicio de las migas en escritorio; en el celular, la barra. */}
+        <EncabezadoPagina tipo="ficha" className="mb-8" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Viajes', href: '/viajes' }, { etiqueta: 'Viaje' }]} padre={{ href: '/viajes', etiqueta: 'Viajes' }} primaryColor={primaryColor} />
 
         <TripDetailClient
           trip={trip}
