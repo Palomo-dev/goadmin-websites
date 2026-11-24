@@ -552,7 +552,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metodoPedido, availableMethods, disponibleCe])
-  const textoPagar = (paymentMethod === 'cash' ? textoBotonAnticipo(ce.estado, ce.pasarela, fmtPrice) : null) ?? `Pagar ${fmtPrice(total)}`
+  // Efectivo SIN condiciones de contraentrega (dueño, 2026-11-24): no se cobra nada en línea, así
+  // que el botón dice «Confirmar pedido» (antes «Pagar $ X»). Con condiciones, lo decide
+  // textoBotonAnticipo; los demás métodos, como siempre.
+  const efectivoSinCondiciones = paymentMethod === 'cash' && !ce.estado?.disponible
+  const textoPagar = (paymentMethod === 'cash' ? textoBotonAnticipo(ce.estado, ce.pasarela, fmtPrice) : null)
+    ?? (efectivoSinCondiciones ? 'Confirmar pedido' : `Pagar ${fmtPrice(total)}`)
   // Barra fija del pago en celular (Figma 3059:80757): el caso de hoy en el estilo de la tienda.
   const metodoElegido = availableMethods.find((m) => m.code === paymentMethod) ?? null
   const ceDisponible = paymentMethod === 'cash' && ce.estado?.disponible ? ce.estado : null
@@ -566,7 +571,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       }
     : ceDisponible
       ? { tipo: 'sin_anticipo', total: fmtPrice(total), alRecibir: fmtPrice(ceDisponible.alRecibir), medios: textoMedios(ceDisponible.medios) }
-      : {
+      : efectivoSinCondiciones
+        ? { tipo: 'sin_anticipo', total: fmtPrice(total), alRecibir: fmtPrice(total), medios: 'efectivo' }
+        : {
           tipo: 'pago',
           total: fmtPrice(total),
           productos: cartItems.reduce((n, i) => n + i.quantity, 0),
