@@ -4,6 +4,7 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
 import { claveResend } from '@/lib/orders/claveResend'
+import { consultarMetodoPasarela } from '@/lib/orders/metodoPasarela'
 import { evaluateCartPromotions } from '@/lib/promotions'
 import { getDefaultTax } from '@/lib/supabase/queries'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
@@ -935,9 +936,12 @@ export async function POST(request: NextRequest) {
         // Marca y clave de envío: From pedidos@<dominio verificado> con Reply-To de la tienda, como el
         // correo de pago confirmado. Si alguna falla, el correo sale como antes (respaldo de la plataforma).
         const sbCorreo = supabase as any
-        const [marca, apiKey] = await Promise.all([
+        // `faltaPagoEnLinea`: Mercado Pago, Bold… (Wompi no llega aquí): el correo dice que falta el
+        // pago en vez de «lo estamos revisando». Si la consulta falla, false: el texto de siempre.
+        const [marca, apiKey, faltaPagoEnLinea] = await Promise.all([
           cargarMarcaPedido(sbCorreo, contextOrgId, resolvedBranchId ?? null).catch(() => null),
           claveResend(sbCorreo).catch(() => null),
+          consultarMetodoPasarela(sbCorreo, contextOrgId, typeof paymentMethod === 'string' ? paymentMethod : null).catch(() => false),
         ])
         sendOrderConfirmationEmail({
           orderNumber: webOrder.order_number,
@@ -956,6 +960,8 @@ export async function POST(request: NextRequest) {
           ...(marca ? { marca } : {}),
           trackingUrl: `${origin}${rutaSeguimiento(contextOrgId, webOrder)}`,
           paymentStatus: 'pending',
+          esRestaurante: contexto.esRestaurante,
+          faltaPagoEnLinea,
           tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · ${etiquetaMesa(mesaPedido.name)}` : ''}`,
           programadoPara: isScheduled && programadoParaGuardado ? momentoPedido(programadoParaGuardado, contexto.zona) : null,
         }, { apiKey }).catch(err => console.error('[Orders] Email error:', err))

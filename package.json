@@ -47,6 +47,7 @@
     "verify:paginacion-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-paginacion-categoria.mjs",
     "verify:paginacion-carrusel": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-paginacion-carrusel.mjs",
     "verify:carrito-pendiente": "node --disable-warning=ExperimentalWarning scripts/verify-carrito-pendiente.mjs",
+    "verify:recordatorio-pago": "node --disable-warning=ExperimentalWarning scripts/verify-recordatorio-pago.mjs",
     "verify:consulta-pedido": "node --disable-warning=ExperimentalWarning scripts/verify-consulta-pedido.mjs",
     "verify:promo-minimo": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-minimo.mjs",
     "verify:destacados-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-destacados-categoria.mjs",

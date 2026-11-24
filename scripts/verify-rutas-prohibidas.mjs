@@ -65,6 +65,15 @@ const PROHIBIDAS = [
  * - app/api/checkout/init/route.ts: endurece; un pedido web cerrado (vencido, cancelado, rechazado
  *   o reembolsado) ya no se cobra (409 PEDIDO_CERRADO), con su `else` de antes para lo demás.
  * Vence el 2026-12-08. Comprobado por scripts/verify-consulta-pedido.mjs.
+ *
+ * 2026-11-24 — Correo «Recibimos tu pedido» con el texto correcto (decía «llegó al restaurante» en
+ * todas las tiendas):
+ * - app/api/orders/route.ts: SOLO el bloque del correo, después de crear el pedido. Pasa
+ *   `esRestaurante` (ya calculado en `contexto`) y `faltaPagoEnLinea` (`consultarMetodoPasarela`,
+ *   misma regla que la consulta del pedido), dentro del `Promise.all` que ya cargaba la marca y la
+ *   clave. Sin `if` nuevos; si la consulta falla, `false` y el correo sale como antes. No toca el
+ *   pedido, el cobro, el stock ni la respuesta.
+ * Vence el 2026-12-08. Comprobado por scripts/verify-recordatorio-pago.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -74,6 +83,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-07', motivo: 'Logística Fase 1: domicilio por zona' },
   { ruta: 'lib/checkout/metodosPagoSitio.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: extracción de los medios de pago del checkout' },
   { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: no se cobra un pedido web cerrado' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-08', motivo: 'Correo «Recibimos tu pedido»: texto por tipo de negocio y pago pendiente' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

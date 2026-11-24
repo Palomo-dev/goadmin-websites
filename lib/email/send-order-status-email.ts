@@ -44,7 +44,8 @@ const STATUS_CONFIG: Record<string, { emoji: string; title: string; message: str
   rejected: {
     emoji: '⛔',
     title: 'No pudimos aceptar tu pedido',
-    message: 'El restaurante no pudo aceptar tu pedido. Si ya pagaste, te devolveremos el dinero.',
+    // Sirve a cualquier tienda, no solo a restaurantes.
+    message: 'No pudimos aceptar tu pedido. Si ya pagaste, te devolveremos el dinero.',
     color: '#EF4444',
   },
 }

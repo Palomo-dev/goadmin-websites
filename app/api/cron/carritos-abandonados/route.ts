@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { cronAutorizado } from '@/lib/orders/cronAutorizado'
 import { ErrorReclamoCola, procesarColaCompraPendiente } from '@/lib/orders/procesarColaCompraPendiente'
+// Proyecto `goadmin-websites` (alias 8fs1). El otro proyecto no envía.
+import { otroProyecto } from '@/lib/orders/proyectoCola'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -17,14 +19,6 @@ export const maxDuration = 60
  * Autenticación igual que `/api/revalidate/sitios-v2`: falla cerrado.
  * La base llama con el secreto del vault.
  */
-
-/** Proyecto `goadmin-websites` (alias 8fs1). El otro proyecto no envía. */
-const PROYECTO_COLA_COMPRA_PENDIENTE = 'prj_VJXk9thDpwIrOGzc6K6SHTKROlhL'
-
-function otroProyecto(): boolean {
-  const id = process.env.VERCEL_PROJECT_ID
-  return !!id && id !== PROYECTO_COLA_COMPRA_PENDIENTE
-}
 
 async function procesar(request: NextRequest) {
   const supabase = createAdminClient()
