@@ -40,6 +40,8 @@ export type ResultadoRetoma =
   | { tipo: 'en_curso'; numero: string; rutaSeguimiento: string }
   | {
       tipo: 'retomar'
+      /** «Volver a comprar» un pedido entregado (no es una compra que quedó pendiente). */
+      recompra: boolean
       numero: string
       nombre: string
       lineas: LineaRetoma[]
@@ -59,7 +61,12 @@ interface FilaItem {
   notes: string | null
 }
 
-export async function cargarRetoma(organizationId: number, orderId: string): Promise<ResultadoRetoma> {
+/**
+ * `recompra`: «Volver a comprar» desde la consulta de un pedido ENTREGADO (Figma «21 Logística» ›
+ * 10). Arma el mismo carrito con los precios de hoy. Sin `recompra`, o si el pedido no está
+ * entregado, se decide como siempre (`decisionRetoma`).
+ */
+export async function cargarRetoma(organizationId: number, orderId: string, opciones: { recompra?: boolean } = {}): Promise<ResultadoRetoma> {
   const supabase = createAdminClient()
   if (!supabase) {
     console.error('[retomar] Falta SUPABASE_SERVICE_ROLE_KEY')
@@ -77,7 +84,13 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
     return { tipo: 'error' }
   }
   if (!pedido) return { tipo: 'no_encontrado' }
-  const decision = decisionRetoma(pedido.status, pedido.payment_status)
+  let decision: ReturnType<typeof decisionRetoma>
+  const recompra = opciones.recompra === true && pedido.status === 'delivered'
+  if (recompra) {
+    decision = 'retomar'
+  } else {
+    decision = decisionRetoma(pedido.status, pedido.payment_status)
+  }
   if (decision === 'pagado') {
     return {
       tipo: 'pagado',
@@ -151,7 +164,7 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
     })
   }
   if (lineasCliente.length === 0) {
-    return { tipo: 'retomar', ...base, lineas: [], omitidos }
+    return { tipo: 'retomar', recompra, ...base, lineas: [], omitidos }
   }
 
   const productIds = lineasCliente.map((l) => l.productId)
@@ -193,7 +206,7 @@ export async function cargarRetoma(organizationId: number, orderId: string): Pro
   for (const p of resuelto.problemas) {
     omitidos.push({ nombre: p.nombre, detalle: p.detalle })
   }
-  return { tipo: 'retomar', ...base, lineas, omitidos }
+  return { tipo: 'retomar', recompra, ...base, lineas, omitidos }
 }
 
 function baseImagen(): string {

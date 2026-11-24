@@ -14,6 +14,12 @@ import { ZONA_POR_DEFECTO } from '@/lib/restaurant/horario'
 import { fechaHoraPedido, horaPedido } from '@/lib/restaurant/ventanaPedido'
 import { direccionIncompleta, leerRastreoLogistica, type CanalesAyuda } from '@/lib/orders/rastreoPublico'
 import { grupoDeTransportadora } from '@/lib/shipping/opcionesDomicilio'
+import { getWebsitePaymentMethods } from '@/lib/checkout/metodosPagoSitio'
+import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
+import { fotosDeProductos } from '@/lib/orders/fotosLinea'
+import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
+import { decisionRetoma } from '@/lib/orders/compraPendiente'
+import { apartadoHasta, nombrePublicoSede, vistaPedido } from '@/lib/orders/consultaPedido'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,6 +90,7 @@ export async function GET(
         estimated_ready_at, estimated_delivery_at,
         confirmed_at, ready_at, delivered_at, cancelled_at, cancellation_reason,
         customer_name, customer_notes, internal_notes, payment_status,
+        payment_method, payment_method_detail, sale_id,
         created_at, updated_at
       `)
       .eq('organization_id', orgId)
@@ -160,6 +167,77 @@ export async function GET(
     const timeline = buildTimeline(order, shipmentTimeline, orgTypeId, zona)
     const comerAqui = esComerAqui(order.delivery_type, order.internal_notes)
 
+    // Consulta del pedido (Figma «21 Logística» › 10, 2026-11-24). `ligero=1` lo manda la consulta
+    // que se repite cada 15 s: no vuelve a leer productos, medios de pago ni factura (no cambian).
+    const ligero = request.nextUrl.searchParams.get('ligero') === '1'
+    const porPagar = order.status === 'pending' && order.payment_status !== 'paid'
+    const metodoPedido: string = String(order.payment_method || '')
+    const [nativoRes, plazoRes, metodosSitio, itemsRes, facturaRes] = await Promise.all([
+      // Pasarela = método no nativo (misma regla de `fn_web_order_metodo_nativo` y del vencimiento).
+      porPagar && metodoPedido
+        ? supabase.rpc('fn_web_order_metodo_nativo', { p_organization_id: orgId, p_metodo: metodoPedido })
+        : Promise.resolve({ data: null, error: null }),
+      porPagar
+        ? supabase.rpc('fn_web_order_plazo_minutos', { p_organization_id: orgId, p_payment_method: metodoPedido || null, p_por_defecto: 30 })
+        : Promise.resolve({ data: null, error: null }),
+      porPagar && !ligero ? getWebsitePaymentMethods(orgId) : Promise.resolve(null),
+      ligero
+        ? Promise.resolve({ data: null, error: null })
+        : supabase
+            .from('web_order_items')
+            .select('product_id, product_name, quantity, unit_price, total')
+            .eq('web_order_id', order.id)
+            .order('created_at', { ascending: true }),
+      verificado && !ligero && order.sale_id && order.status === 'delivered'
+        ? supabase
+            .from('invoice_sales')
+            .select('id, number, total, status, document_type')
+            .eq('organization_id', orgId)
+            .eq('sale_id', order.sale_id)
+            .order('created_at', { ascending: true })
+        : Promise.resolve({ data: null, error: null }),
+    ])
+    if (nativoRes.error) console.error('[Tracking] fn_web_order_metodo_nativo falló', { orgId, error: nativoRes.error.message })
+    if (plazoRes.error) console.error('[Tracking] fn_web_order_plazo_minutos falló', { orgId, error: plazoRes.error.message })
+    if (itemsRes.error) console.error('[Tracking] No se pudieron leer los productos', { orgId, error: itemsRes.error.message })
+    const MANUALES = new Set(['transfer', 'cash', 'bancolombia_transfer', 'bancolombia_collect', 'pse', 'mesa'])
+    const esPasarela = porPagar && !!metodoPedido && !MANUALES.has(metodoPedido) && nativoRes.data === false
+    const metodosPasarela = metodosSitio
+      ? filtrarMetodosPorSede(metodosSitio, order.branch_id).filter((m: any) => m.type === 'gateway').map((m: any) => ({ code: String(m.code), name: String(m.name) }))
+      : null
+    const nombreMetodo = metodosPasarela?.find((m) => m.code === metodoPedido)?.name ?? null
+    const vista = vistaPedido({ status: order.status, paymentStatus: order.payment_status, esPasarela })
+
+    let items: { productId: number | null; name: string; quantity: number; unitPrice: number; total: number; imageUrl: string | null }[] | null = null
+    if (!ligero && Array.isArray(itemsRes.data)) {
+      const filas = itemsRes.data as { product_id: number | null; product_name: string | null; quantity: unknown; unit_price: unknown; total: unknown }[]
+      const fotos = await fotosDeProductos(supabase, orgId, filas.map((f) => Number(f.product_id)).filter((id) => Number.isInteger(id) && id > 0))
+      const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+      items = filas.map((f) => {
+        const id = Number.isInteger(Number(f.product_id)) && Number(f.product_id) > 0 ? Number(f.product_id) : null
+        return {
+          productId: id,
+          name: String(f.product_name || 'Producto'),
+          quantity: num(f.quantity),
+          unitPrice: num(f.unit_price),
+          total: num(f.total),
+          imageUrl: id !== null ? fotos.get(id) ?? null : null,
+        }
+      })
+    }
+
+    const facturas = Array.isArray(facturaRes.data) ? (facturaRes.data as { id: string; number: string | null; total: unknown; status: string | null; document_type: string | null }[]) : []
+    const facturaValida = facturas.find((f) => (f.document_type || 'invoice') === 'invoice' && !['void', 'voided', 'cancelled', 'draft', 'rejected'].includes(String(f.status || '')))
+    const factura = facturaValida ? { id: facturaValida.id, numero: facturaValida.number, total: Number(facturaValida.total) || 0 } : null
+
+    // Retomar (pedido vencido o cancelado por falta de pago) y volver a comprar (entregado): el mismo
+    // enlace firmado de «Retomar mi compra», solo con el token.
+    const enlaceRetomar = verificado ? rutaRetomar(orgId, order.id) : null
+    const rutas = {
+      retomar: enlaceRetomar && decisionRetoma(order.status, order.payment_status) === 'retomar' ? enlaceRetomar : null,
+      recompra: enlaceRetomar && order.status === 'delivered' ? `${enlaceRetomar}&recompra=1` : null,
+    }
+
     return NextResponse.json({
       order: {
         id: order.id,
@@ -168,7 +246,13 @@ export async function GET(
         paymentStatus: order.payment_status,
         deliveryType: comerAqui ? 'dine_in' : order.delivery_type,
         mesa: comerAqui ? mesaDeNotas(order.internal_notes) : null,
-        sede: sede?.name ?? null,
+        // Nombre público de la sede: «Sucursal 562» y parecidos no se muestran.
+        sede: nombrePublicoSede(sede?.name),
+        paymentMethod: metodoPedido || null,
+        paymentMethodName: nombreMetodo,
+        // «Tarjeta terminada en 4821»: solo con el token.
+        paymentDetail: verificado ? order.payment_method_detail ?? null : null,
+        estimatedDeliveryDate: shipment?.expected_delivery_date ?? null,
         deliveryAddress: verificado ? order.delivery_address : null,
         // Lo que se muestra: incompleta, para cuidar los datos (Figma 2804:13320).
         direccionIncompleta: verificado ? direccionIncompleta(order.delivery_address) : null,
@@ -229,6 +313,16 @@ export async function GET(
       verificado,
       logistica,
       ayuda,
+      vista,
+      pago: {
+        esPasarela,
+        apartadoHasta: porPagar && typeof plazoRes.data === 'number' ? apartadoHasta(order.created_at, plazoRes.data) : null,
+        // null en la consulta ligera: el navegador conserva la lista anterior.
+        metodos: metodosPasarela,
+      },
+      items,
+      factura,
+      rutas,
     }, { headers: SIN_CACHE })
   } catch (err) {
     console.error('Error in tracking API:', err)

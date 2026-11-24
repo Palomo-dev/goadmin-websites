@@ -48,13 +48,13 @@ export default async function RetomarPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ t?: string | string[] }>
+  searchParams: Promise<{ t?: string | string[]; recompra?: string | string[] }>
 }) {
   const org = await getOrg()
   if (!org) return <NotFoundPage />
 
   const { id } = await params
-  const { t } = await searchParams
+  const { t, recompra } = await searchParams
   const token = typeof t === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(t) ? t : null
   if (!isValidUUID(id) || !token || !tokenSeguimientoValido(org.id, id, token)) {
     return <NotFoundPage />
@@ -62,7 +62,7 @@ export default async function RetomarPage({
 
   const color = colorMarca(org.website_settings?.primary_color) ?? colorMarca(org.primary_color) ?? '#111827'
   const textoBoton = textoSobreColor(color)
-  const retoma = await cargarRetoma(org.id, id)
+  const retoma = await cargarRetoma(org.id, id, { recompra: recompra === '1' })
   if (retoma.tipo === 'no_encontrado') return <NotFoundPage />
 
   if (retoma.tipo === 'error') {
@@ -111,7 +111,12 @@ export default async function RetomarPage({
   }
 
   const saludo = retoma.nombre.trim() ? `Hola ${retoma.nombre.trim()}, ` : 'Hola, '
-  const cuerpo = retoma.lineas.length > 0
+  // «Volver a comprar» (pedido entregado) o «Retomar mi compra» (pedido que no se pagó).
+  const cuerpo = retoma.recompra
+    ? retoma.lineas.length > 0
+      ? `estos son los productos de tu pedido ${retoma.numero}, con los precios de hoy.`
+      : `los productos de tu pedido ${retoma.numero} ya no están disponibles.`
+    : retoma.lineas.length > 0
     ? `tu pedido ${retoma.numero} no se completó. Tus productos siguen disponibles.`
     : retoma.omitidos.length > 0
       ? `tu pedido ${retoma.numero} no se completó. Estos productos ya no están.`
@@ -120,7 +125,7 @@ export default async function RetomarPage({
   return (
     <Tarjeta color={color}>
       <p className="text-sm font-medium text-gray-500">{org.name}</p>
-      <h1 className="mt-2 text-2xl font-bold text-gray-900">Tu compra quedó pendiente</h1>
+      <h1 className="mt-2 text-2xl font-bold text-gray-900">{retoma.recompra ? 'Volver a comprar' : 'Tu compra quedó pendiente'}</h1>
       <p className="mt-3 text-gray-600">
         {saludo}{cuerpo}
       </p>
