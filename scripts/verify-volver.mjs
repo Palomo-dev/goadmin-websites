@@ -218,7 +218,6 @@ const CON_BARRA = [
   'app/productos/[id]/page.tsx',
   'app/categorias/[slug]/page.tsx',
   'app/carrito/page.tsx',
-  'app/checkout/page.tsx',
   'app/pedido/[id]/page.tsx',
   'components/site/cuenta/MenuMiCuenta.tsx',
   'app/servicios/[id]/page.tsx',
@@ -231,7 +230,15 @@ const CON_BARRA = [
   'app/auth/page.tsx',
   'app/reserva/[id]/page.tsx',
 ]
-for (const rel of CON_BARRA) check(leer(rel).includes('<BarraVolverMovil'), `${rel}: falta la barra «← Volver a …» del celular`)
+for (const rel of CON_BARRA) check(leer(rel).includes('<BarraVolverMovil'), `${rel}: falta el «‹ Volver» del celular`)
+// El pago no lleva «‹ Volver» en el celular: su cabecera ya tiene «Seguir comprando» (dueño, 2026-11-24).
+check(!leer('app/checkout/page.tsx').includes('<BarraVolverMovil'), 'app/checkout/page.tsx: el pago no repite «Volver» en el celular')
+// Celular como el computador pero pequeño (dueño, 2026-11-24): ← cuadrado de 32 px + destino, sin quedarse pegado.
+{
+  const barra = leer('components/site/volver/BarraVolverMovil.tsx')
+  check(!/sticky/.test(barra), 'el «‹ Volver» del celular no se queda pegado al bajar')
+  check(/h-8 w-8/.test(barra) && /estiloBotonVolver\(primaryColor\)/.test(barra), 'el «Volver» del celular es el ← cuadrado del computador en pequeño (32 px)')
+}
 const CON_BOTON = [
   'components/sections/product-detail/ProductDetailRenderer.tsx',
   'app/productos/[id]/page.tsx',

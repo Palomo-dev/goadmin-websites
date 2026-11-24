@@ -18,8 +18,6 @@ import { PixelesSitio } from '@/components/site/PixelesSitio'
 import { CartEventTracker } from '@/components/site/CartEventTracker'
 import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
-import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
-import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 export const dynamic = 'force-dynamic'
@@ -156,14 +154,8 @@ export default async function CheckoutPage() {
 
       {/* Contenido */}
       <main className="flex-grow">
-        {/* «Volver» (Figma 2993:75127): el pago vuelve al carrito (o a donde venía el cliente). El
-            encabezado va fuera del CheckoutWizard; sus «Atrás» entre pasos siguen dentro. */}
-        <BarraVolverMovil
-          padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}
-          etiquetaActual="Finalizar compra"
-          primaryColor={primaryColor}
-          colorCabecera={colorCabeceraDe(ajustesEncabezado)}
-        />
+        {/* En el celular el pago no lleva «‹ Volver»: su cabecera ya tiene «Seguir comprando»
+            (el dueño la vio repetida, 2026-11-24). En computador, migas + ← (abajo). */}
         {pedidoApagado ? (
           <div className="max-w-lg mx-auto text-center py-16 px-4" role="status">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">No recibimos pedidos en línea</h1>
