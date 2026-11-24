@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
+import { getInfoMoneda, getMonedaBase, getPaisDeMoneda, getPaisPorCodigo, getPaisesActivos, getTasasRecientes } from '@/lib/moneda/datosMoneda'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { monedaPermitida } from '@/lib/website/v2/cabeceraTienda'
 
@@ -57,7 +58,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
     }
 
-    const supabase = createAdminClient() || createPublicClient()
+    // Las consultas de aquí abajo salen de `lib/moneda/datosMoneda.ts`: las mismas de siempre,
+    // guardadas entre peticiones (esta ruta se llama una vez por página vista).
     const manualPedida = request.nextUrl.searchParams.get('currency')
     const visibles = (request.nextUrl.searchParams.get('visibles') || '')
       .split(',')
@@ -68,13 +70,7 @@ export async function GET(request: NextRequest) {
     const inicialBase = request.nextUrl.searchParams.get('inicial') === 'base'
 
     // 1. Moneda base de la organización
-    const { data: orgCurrency } = await (supabase as any)
-      .from('organization_currencies')
-      .select('currency_code')
-      .eq('organization_id', organization.id)
-      .eq('is_base', true)
-      .maybeSingle()
-    const baseCurrency = (orgCurrency?.currency_code || 'COP').trim()
+    const baseCurrency = ((await getMonedaBase(organization.id)) || 'COP').trim()
     const manualCurrency = manualPedida && monedaPermitida(manualPedida.trim(), baseCurrency, listaVisible) ? manualPedida : null
 
     // 2. Detectar país del visitante (Vercel geo header ISO-2)
@@ -88,21 +84,10 @@ export async function GET(request: NextRequest) {
 
     if (manualCurrency) {
       targetCurrency = manualCurrency.trim().toUpperCase()
-      const { data: countryForCurrency } = await (supabase as any)
-        .from('countries')
-        .select('code, locale')
-        .eq('default_currency_code', targetCurrency)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle()
+      const countryForCurrency = await getPaisDeMoneda(targetCurrency)
       if (countryForCurrency?.locale) locale = countryForCurrency.locale
     } else if (countryIso3 && !inicialBase) {
-      const { data: country } = await (supabase as any)
-        .from('countries')
-        .select('code, default_currency_code, locale')
-        .eq('code', countryIso3)
-        .eq('is_active', true)
-        .maybeSingle()
+      const country = await getPaisPorCodigo(countryIso3)
       if (country?.default_currency_code && monedaPermitida(country.default_currency_code.trim(), baseCurrency, listaVisible)) {
         targetCurrency = country.default_currency_code.trim()
         locale = country.locale || 'es-CO'
@@ -111,12 +96,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Obtener tasas más recientes (base USD) para base y destino
-    const { data: rates } = await (supabase as any)
-      .from('currency_rates')
-      .select('code, rate, rate_date')
-      .in('code', [baseCurrency, targetCurrency])
-      .order('rate_date', { ascending: false })
-      .limit(10)
+    const rates = await getTasasRecientes(baseCurrency, targetCurrency)
 
     const latestRate: Record<string, number> = {}
     for (const r of rates || []) {
@@ -137,17 +117,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Info de la moneda destino (símbolo, decimales)
-    const { data: currencyInfo } = await (supabase as any)
-      .from('currencies')
-      .select('code, symbol, decimals, name')
-      .eq('code', targetCurrency)
-      .maybeSingle()
+    const currencyInfo = await getInfoMoneda(targetCurrency)
 
     // 6. Monedas disponibles para el selector (activas y con país asociado)
-    const { data: availableCountries } = await (supabase as any)
-      .from('countries')
-      .select('code, name, default_currency_code, locale')
-      .eq('is_active', true)
+    const availableCountries = await getPaisesActivos()
 
     const seen = new Set<string>()
     const availableCurrencies = (availableCountries || [])

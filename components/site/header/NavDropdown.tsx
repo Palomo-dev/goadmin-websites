@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import type React from 'react';
 import { usePanelBajoEnlace } from './menuDeslizable';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { ChevronRight } from 'lucide-react';
 import type { NavItem } from './HeaderShared';
 

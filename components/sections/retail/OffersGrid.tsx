@@ -2,7 +2,7 @@
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ProductCard } from '@/components/sections/products/ProductCard'

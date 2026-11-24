@@ -3,7 +3,7 @@ import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerParkingPasses } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 export const dynamic = 'force-dynamic'
 

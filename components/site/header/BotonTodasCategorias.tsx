@@ -10,7 +10,7 @@
  * Qué listar y el texto salen de `botonCategoriasBarra` (lib/website/botonCategorias.ts).
  */
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { ArrowRight, ChevronDown, ChevronRight, Menu } from 'lucide-react';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { colorTextoSobre, type EntradaCategoria } from '@/lib/website/botonCategorias';

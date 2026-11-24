@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { CalendarDays, Check, ExternalLink, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { X, ShoppingCart, Check, Heart, Share2, Star, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Price } from '@/components/site/CurrencyProvider'

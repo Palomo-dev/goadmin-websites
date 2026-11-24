@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBusquedasRecientes, useCerrarBuscador, usePosicionPanel, useResultadosBusqueda, type ResultadoBusqueda } from './buscador/comportamiento';
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda';

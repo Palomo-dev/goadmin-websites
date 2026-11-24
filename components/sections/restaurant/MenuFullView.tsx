@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { usePathname } from 'next/navigation'
 import { ArrowRight, ArrowUpRight, Clock, FileText, ImageIcon } from 'lucide-react'
 import Image from 'next/image'

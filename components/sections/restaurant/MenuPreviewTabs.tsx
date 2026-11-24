@@ -14,7 +14,7 @@
  * editor ↔ sitio: `max_categories` es opcional y el editor aún no lo ofrece.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import type { OrganizationWithDetails } from '@/types/database'
 import { Price } from '@/components/site/CurrencyProvider'
 import { buildMenuGroups, type MenuSourceCategory, type MenuSourceProduct } from '@/lib/menu/menuFull'

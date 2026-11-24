@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from '@/lib/website/botonSitio'

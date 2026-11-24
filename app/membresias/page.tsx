@@ -3,7 +3,7 @@ import { getMembershipPlans } from '@/lib/supabase/queries'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { MembershipPlans } from '@/components/site/sections/gym/MembershipPlans'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 export const dynamic = 'force-dynamic'
 

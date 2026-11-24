@@ -2,7 +2,7 @@
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'

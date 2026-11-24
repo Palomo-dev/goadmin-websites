@@ -4,7 +4,7 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { isValidUUID } from '@/lib/utils'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Bed, CalendarDays, CheckCircle2, Clock, XCircle, ArrowLeft, Users, CreditCard } from 'lucide-react'
 import { CancelReservationButton } from './CancelReservationButton'
 

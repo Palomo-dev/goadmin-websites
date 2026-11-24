@@ -5,7 +5,7 @@
  * Reutiliza el estilo de CategoriesSection de la F4.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
 
 export const CONTENT_KEYS = ['title', 'layout'] as const

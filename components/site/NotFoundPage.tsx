@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Button } from '@/components/ui/button'
 
 interface NotFoundPageProps {

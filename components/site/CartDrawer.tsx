@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Button } from '@/components/ui/button'
 import { X, Plus, Minus, Trash2, ShoppingBag, Tag, Truck } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'

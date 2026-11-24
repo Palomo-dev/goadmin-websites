@@ -7,7 +7,7 @@
  * productos. Al tocarla, lo mismo que el corazón: el panel lateral o /favoritos (Encabezado ›
  * Favoritos), con el contador.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronRight, Heart } from 'lucide-react'
 import { abrirPanelFavoritos, useFavoritos } from '@/lib/favoritos/almacen'
 import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'

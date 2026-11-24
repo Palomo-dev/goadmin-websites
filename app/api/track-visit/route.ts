@@ -14,7 +14,8 @@ type TablaVisitas = { insert(fila: FilaVisita): PromiseLike<{ error: unknown }> 
 
 /**
  * Registra una visita (page view) en la tabla website_visits.
- * Recibe: sessionId, pagePath, referrer (y `organizationId`, que solo se contrasta).
+ * Recibe: sessionId, pagePath, referrer, `nueva` (¿se acaba de crear la sesión?) y
+ * `organizationId`, que solo se contrasta.
  *
  * - La organización sale del HOST (`getOrgIdDelHost`, las mismas cabeceras que
  *   `getOrgContext`), nunca del body. Si el body trae otra: 403 y se registra.
@@ -68,17 +69,26 @@ export async function POST(request: NextRequest) {
     // País, región y ciudad aproximados (nunca IP ni coordenadas).
     const ubicacion = ubicacionDesdeCabeceras(request.headers)
 
-    // Verificar si es visitante nuevo (session_id no existe en las últimas 24h)
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { data: existingSession } = await supabase
-      .from('website_visits')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('session_id', sessionId)
-      .gt('created_at', yesterday)
-      .limit(1)
-
-    const isNewVisitor = !existingSession || existingSession.length === 0
+    // ¿Visitante nuevo? El navegador sabe si ACABA de crear el `session_id` (vive en
+    // sessionStorage: nace con la primera página de la visita) y lo dice en `nueva`. Antes se
+    // averiguaba con una consulta más por cada página vista (~13.000 al día el 2026-11-24).
+    // Es un dato de analítica, no de seguridad: quien quisiera falsearlo ya podía mandar un
+    // `session_id` distinto en cada petición. Sin `nueva` (un navegador con el código anterior
+    // en caché), se consulta como antes: session_id sin visitas en las últimas 24 h.
+    let isNewVisitor: boolean
+    if (typeof body.nueva === 'boolean') {
+      isNewVisitor = body.nueva
+    } else {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const { data: existingSession } = await supabase
+        .from('website_visits')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('session_id', sessionId)
+        .gt('created_at', yesterday)
+        .limit(1)
+      isNewVisitor = !existingSession || existingSession.length === 0
+    }
 
     const fila: FilaVisita = {
       organization_id: organizationId,

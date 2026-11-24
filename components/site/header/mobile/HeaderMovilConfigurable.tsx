@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { buscadorMovilEfectivo, barraSuperiorMovil, buscadorIgualEscritorio } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { X } from 'lucide-react'
 import { iconoBuscar } from '../iconoBuscar'
 import { headerSobreHero } from '@/lib/website/espacioHeader'

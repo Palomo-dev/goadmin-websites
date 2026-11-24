@@ -20,7 +20,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Check, Clock, ImageIcon } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'

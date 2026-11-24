@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { usePathname } from 'next/navigation'
 import { Menu as MenuIcon, X } from 'lucide-react'
 import type { MegaItem, MenuConstruido } from '@/lib/website/constructorEncabezado'

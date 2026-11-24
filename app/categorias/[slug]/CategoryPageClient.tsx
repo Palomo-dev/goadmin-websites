@@ -3,7 +3,7 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Package, Grid3X3, List, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { resolverPaginacion } from '@/lib/website/v2/paginacionCarrusel'
 import { Paginacion } from '@/components/site/Paginacion'

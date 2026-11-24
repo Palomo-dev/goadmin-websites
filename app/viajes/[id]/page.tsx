@@ -6,7 +6,7 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { TripDetailClient } from './TripDetailClient'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'

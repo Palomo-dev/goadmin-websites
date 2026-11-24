@@ -16,7 +16,7 @@
  */
 
 import { useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CardVisual } from '@/lib/restaurant/secciones'

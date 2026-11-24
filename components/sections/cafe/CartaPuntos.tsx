@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useId, useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Price } from '@/components/site/CurrencyProvider'

@@ -5,7 +5,7 @@ import { FilaLogoMovil } from './FilaLogoMovil';
 import { useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { X, ChevronDown, LogOut, UserCircle } from 'lucide-react';
 import { iconoBuscar } from '../iconoBuscar';
 import {

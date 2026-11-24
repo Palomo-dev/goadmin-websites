@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import type { RutaSeccion } from '@/lib/website/datosSecciones'
 
 interface RoutesCardsProps {

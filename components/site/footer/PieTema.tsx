@@ -19,7 +19,7 @@
  * Boletín: desde 2026-11-20 el correo se guarda (POST /api/newsletter → website_newsletter_subscribers,
  * ERP 20261120041740). La columna sale solo si el sitio enciende `footer_show_newsletter`.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import {
   ChevronRight, Clock, Facebook, HelpCircle, Instagram, Linkedin, Mail, MapPin, MessageCircle, Navigation, Phone, RotateCcw,

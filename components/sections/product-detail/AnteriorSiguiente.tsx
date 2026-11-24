@@ -6,7 +6,7 @@
  * este bloque, y llegan en `data.paginadorFicha`. Sin vecinos, no se pinta.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { CLAVES_SECCION_TIENDA, normalizarPaginadorFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'

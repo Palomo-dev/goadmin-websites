@@ -9,7 +9,7 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
  */
 
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { ProductCard } from '@/components/sections/products/ProductCard'

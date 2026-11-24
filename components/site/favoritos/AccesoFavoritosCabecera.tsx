@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { abrirPanelFavoritos, useFavoritos } from '@/lib/favoritos/almacen'
 import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'

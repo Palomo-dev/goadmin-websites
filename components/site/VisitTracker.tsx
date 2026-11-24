@@ -25,6 +25,9 @@ export function VisitTracker({ organizationId }: VisitTrackerProps) {
 
       // Generar o recuperar session_id
       let sessionId = sessionStorage.getItem('wv_session_id')
+      // `nueva`: la sesión se crea aquí mismo, así que esta es la primera página de la visita.
+      // El servidor lo usa para `is_new_visitor` sin tener que buscar la sesión en la base.
+      const nueva = !sessionId
       if (!sessionId) {
         sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
         sessionStorage.setItem('wv_session_id', sessionId)
@@ -37,6 +40,7 @@ export function VisitTracker({ organizationId }: VisitTrackerProps) {
           body: JSON.stringify({
             organizationId,
             sessionId,
+            nueva,
             pagePath: path,
             referrer: document.referrer || null,
           }),

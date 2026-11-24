@@ -20,7 +20,7 @@
  * (iniciarFavoritos(true) → juntarEnCuenta) y el error de ingreso no dice qué falló.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { useRouter } from 'next/navigation'
 import * as Dialogo from '@radix-ui/react-dialog'
 import { ArrowLeft, ChevronRight, Heart, LogOut, MapPin, Package, User, UserPlus, X } from 'lucide-react'

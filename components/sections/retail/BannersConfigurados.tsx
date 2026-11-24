@@ -6,7 +6,7 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
  * existen: si no, PromoBannersGrid sigue con el render de hoy.
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { ArrowRight, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner } from '@/lib/website/presentacionTienda'

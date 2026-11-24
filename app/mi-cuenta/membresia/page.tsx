@@ -5,7 +5,7 @@ import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { MembershipQR } from '@/components/site/sections/gym/MembershipQR'
 import { FreezeRequestForm } from '@/components/site/sections/gym/FreezeRequestForm'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 export const dynamic = 'force-dynamic'
 

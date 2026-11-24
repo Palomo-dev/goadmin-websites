@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 import * as DialogoMoneda from '@radix-ui/react-dialog';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X, ShoppingBasket, Store, CircleUserRound, LogIn, CircleDollarSign, Languages } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';

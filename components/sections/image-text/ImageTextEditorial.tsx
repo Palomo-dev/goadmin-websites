@@ -10,7 +10,7 @@
  *
  * Sin 'use client': el manifiesto lee `ImageTextEditorial.CONTENT_KEYS`.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowRight } from 'lucide-react'
 import { CLAVES_SECCION_TIENDA, normalizarImagenTextoEditorial } from '@/lib/website/v2/contrato/seccionesTienda'
 import { EditorHint } from '../restaurant/EditorHint'

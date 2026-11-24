@@ -5,7 +5,7 @@
  * con «Ver todo» y sus subcategorías (categories.parent_id). Usa la clase de enlace del menú que la
  * contiene, para verse igual que sus vecinas. Una categoría sin hijas sigue siendo un enlace normal.
  */
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { ChevronDown } from 'lucide-react';
 import type { NavItem } from '../HeaderShared';
 import { IconoGuardado } from '@/components/site/IconoGuardado';

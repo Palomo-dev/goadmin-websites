@@ -19,7 +19,7 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import * as Dialog from '@radix-ui/react-dialog'
 import { AlertTriangle, ImageIcon, Loader2, Minus, Plus, X } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'

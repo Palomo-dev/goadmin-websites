@@ -5,7 +5,7 @@ import { getCustomerInvoiceDetail } from '@/lib/queries/customer-portal'
 import { createPublicClient } from '@/lib/supabase/server'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { InvoicePayButton } from './InvoicePayButton'
 
 export const dynamic = 'force-dynamic'

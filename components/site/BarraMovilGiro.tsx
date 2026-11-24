@@ -14,7 +14,7 @@
  * el encabezado móvil), con espacio para el área segura y un espaciador para no tapar el pie.
  */
 import { useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { CalendarCheck, CalendarDays, MessageCircle, Navigation, Phone, ShoppingBag, Sparkles } from 'lucide-react'
 import type { AccionBarra } from '@/lib/website/encabezadoPie'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'

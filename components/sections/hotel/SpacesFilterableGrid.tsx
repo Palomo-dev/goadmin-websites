@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import {
   Calendar, Users, MapPin, Bed, Filter, X, ChevronDown,
   Search, Moon, SlidersHorizontal, ArrowUpDown

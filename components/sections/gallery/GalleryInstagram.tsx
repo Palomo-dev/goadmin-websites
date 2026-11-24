@@ -11,7 +11,7 @@
  *
  * Sin 'use client': el manifiesto lee `GalleryInstagram.CONTENT_KEYS`.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 import { CLAVES_SECCION_TIENDA, normalizarGaleriaInstagram } from '@/lib/website/v2/contrato/seccionesTienda'
 import { posicionLlamadoInstagram, urlPerfilInstagram, usuarioInstagram } from '@/lib/website/portadaTienda'

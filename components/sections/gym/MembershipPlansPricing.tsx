@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import type { MembershipPlanPublic } from '@/lib/supabase/queries'
 import { formatPeriodo } from '@/lib/memberships/periodo'
 import { PrecioAnterior } from '@/components/site/PrecioAnterior'

@@ -20,7 +20,7 @@
  * lateral puede aparecer en vivo). Fuera del lienzo, todo igual.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronRight, Home } from 'lucide-react'
 import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'

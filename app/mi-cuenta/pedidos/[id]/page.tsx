@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronLeft, Package } from 'lucide-react'
 import { getOrgContext } from '@/lib/get-org-context'
 import { isValidUUID } from '@/lib/utils'

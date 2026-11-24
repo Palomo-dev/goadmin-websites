@@ -3,7 +3,7 @@
 import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { cssBreakpointHeader } from '@/lib/website/breakpointHeader'
 import { useState, useEffect, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { Menu, X, Phone, Mail, User, LogOut, UserCircle, Search, Globe, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'

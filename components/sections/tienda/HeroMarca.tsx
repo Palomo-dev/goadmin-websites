@@ -19,7 +19,7 @@
  * muestran con CSS (siempre en escritorio; al enfocar o tocar en el celular); el tamaño de la marca
  * lo ajusta LetreroMarca al ancho real.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { CLAVES_SECCION_TIENDA, normalizarPortadaMarca } from '@/lib/website/v2/contrato/seccionesTienda'

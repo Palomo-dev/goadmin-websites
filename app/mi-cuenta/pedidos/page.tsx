@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Package, Search } from 'lucide-react'
 import { getOrgContext } from '@/lib/get-org-context'
 import { NotFoundPage } from '@/components/site/NotFoundPage'

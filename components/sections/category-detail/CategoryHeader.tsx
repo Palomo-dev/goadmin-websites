@@ -6,7 +6,7 @@
  * no hay configuración personalizada (cero regresión).
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronRight, Home } from 'lucide-react'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
 import { disposicionEncabezadoCategoria } from '@/lib/website/v2/contrato/seccionesTienda'

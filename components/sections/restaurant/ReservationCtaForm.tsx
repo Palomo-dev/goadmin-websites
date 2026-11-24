@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { useCotizacionDeposito, useReservaMesa } from '@/lib/restaurant/useReservaMesa'
 import { formatoMonto, montoParaPersonas, textoDeposito } from '@/lib/restaurant/deposito-modelo'
 import { TelefonoPais, telefonoValido } from '@/components/site/TelefonoPais'

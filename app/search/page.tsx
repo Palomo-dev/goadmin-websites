@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { ChevronRight, Home } from 'lucide-react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'

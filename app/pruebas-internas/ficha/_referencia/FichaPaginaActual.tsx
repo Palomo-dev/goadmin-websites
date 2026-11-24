@@ -8,7 +8,7 @@
  * no se usa en producción. El arnés lo compara con el renderer solo como dato informativo.
  * Las variables son las mismas de la página; se reciben como props.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowLeft, Truck, Shield, Package, Star } from 'lucide-react'
 import { ProductImageGallery } from '@/components/site/ProductImageGallery'
 import { ProductReviews } from '@/components/site/reviews/ProductReviews'

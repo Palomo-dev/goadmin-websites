@@ -8,7 +8,7 @@
  *   «Cerrar sesión» abajo.
  * - Celular: en Inicio, la lista con la cifra de cada acceso; en las demás páginas, «‹ Mi cuenta».
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {

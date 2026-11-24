@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { HeroBookingWidget } from './HeroBookingWidget'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 import { OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'

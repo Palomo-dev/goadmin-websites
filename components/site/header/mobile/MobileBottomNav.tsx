@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { usePathname } from 'next/navigation'
 import { Heart, Home, LayoutGrid, Link2, MessageCircle, Search, ShoppingBag, ShoppingCart, Tag, User, type LucideIcon } from 'lucide-react'
 import type { BarraApp, ItemBarra } from '@/lib/website/menuMovil'

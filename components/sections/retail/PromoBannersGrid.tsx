@@ -1,5 +1,5 @@
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
 import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner } from '@/lib/website/presentacionTienda'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { useRouter } from 'next/navigation'
 import { Heart, LockKeyhole, LogIn, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'

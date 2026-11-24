@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { Facebook, Twitter, Instagram, Linkedin, Youtube, MapPin, Phone, Mail, Clock, ChevronDown, MessageCircle } from 'lucide-react'
 import type { OrganizationWithDetails, WebsiteSettings, WebsitePage, WebsitePageWithChildren, WebsiteMenuWithItems, WebsiteMenuItemWithChildren, Json } from '@/types/database'

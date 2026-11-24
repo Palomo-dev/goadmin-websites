@@ -8,7 +8,7 @@ import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { ChevronDown } from 'lucide-react';
 import { iconoBuscar } from '../iconoBuscar';
 import { Drawer } from 'vaul';

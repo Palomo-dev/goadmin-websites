@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 interface BookingTransportBannerProps {
   content: {

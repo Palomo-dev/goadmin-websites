@@ -3,7 +3,7 @@ import { getTicketByNumber } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowLeft, CheckCircle, Clock, XCircle, MapPin, Calendar, Bus, Hash, CreditCard } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'

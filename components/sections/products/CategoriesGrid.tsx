@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { CategoryCard, type CategoryCardStyle } from './CategoryCard'
 import { EstilosCategoria } from './EstilosCategoria'

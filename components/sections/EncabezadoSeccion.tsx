@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import {
   CLASE_PESO,
   CLASE_TAM_TITULO,

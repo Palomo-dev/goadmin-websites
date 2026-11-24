@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Search, Package, Loader2, ShoppingBag, Clock, CheckCircle, XCircle, Truck, CreditCard, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 interface OrderResult {
   id: string

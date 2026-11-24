@@ -3,7 +3,7 @@
  * H 2977:72694). Sin estado: las pinta el servidor. Las acciones salen de `accionesPedido`
  * (lib/cuenta/reglasCuenta.ts) y el detalle es la página del pedido rediseñada.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { FileText, Lock, Package, ShoppingBag, Star, Truck } from 'lucide-react'
 import type { Paso, TonoInsignia } from '@/lib/orders/consultaPedido'
 import type { PedidoCuenta } from '@/lib/cuenta/cuentaCliente'

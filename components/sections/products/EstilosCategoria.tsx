@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria, tieneIconoCategoria } from '@/lib/website/iconosCategoria'

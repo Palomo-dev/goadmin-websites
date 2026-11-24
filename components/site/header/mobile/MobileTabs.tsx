@@ -4,7 +4,7 @@ import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { useEffect, useState } from 'react';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { ChevronDown, Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { iconoCabecera } from '@/components/site/iconos/iconoCabecera';
 import { ProductSearch } from '../../ProductSearch';

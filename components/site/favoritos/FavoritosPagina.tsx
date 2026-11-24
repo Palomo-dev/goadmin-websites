@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronRight, Heart, LockKeyhole, LogIn, Share2, ShoppingCart } from 'lucide-react'
 import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'

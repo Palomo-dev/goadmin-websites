@@ -17,7 +17,7 @@
  */
 
 import { useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { CalendarDays, Navigation, Phone, ShoppingBag } from 'lucide-react'
 import type { AccionesBarraMovil } from '@/lib/outlet/sedeLayout'
 

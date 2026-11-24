@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Car, Shield, Clock, Check, Droplets, Star, MapPin } from 'lucide-react'
 
 interface PasesClientProps {

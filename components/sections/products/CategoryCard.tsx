@@ -16,7 +16,7 @@
  * al hover, fallback 🏷️, etc.), de modo que ningún sitio existente cambie.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { IconoCategoria } from './IconoCategoria'
 import { colorIconoCategoria, estiloFondoIcono, fondoIconoCategoria } from '@/lib/website/iconosCategoria'

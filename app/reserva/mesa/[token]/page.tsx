@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { CalendarDays, Clock, MapPin, Phone, Users } from 'lucide-react'
 import { getMetaPixelId } from '@/lib/supabase/queries'
 import { getOrgContext } from '@/lib/get-org-context'

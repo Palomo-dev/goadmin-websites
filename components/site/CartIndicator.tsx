@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ShoppingCart, type LucideIcon } from 'lucide-react'
 import { contarUnidadesCarrito } from '@/lib/cart'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'

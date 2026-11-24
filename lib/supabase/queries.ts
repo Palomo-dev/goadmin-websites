@@ -389,6 +389,7 @@ export async function enriquecerListadoPublico(organizationId: number, products:
  * selector del detalle también; solo se pierde el aviso «Elegir» del listado.
  */
 const getProductosConEleccionUncached = async (organizationId: number): Promise<number[]> => {
+  if (!(await orgUsaModificadores(organizationId))) return []
   const supabase = getSupabaseForPublicRead() as any
   const { data, error } = await supabase
     .from('product_modifier_groups')
@@ -739,7 +740,10 @@ export const getOrganizationByHost = cache(async (identifier: string): Promise<O
  * Devuelve `null` si la organización no tiene ninguna sucursal marcada, para que
  * el sitio siga usando el inventario de todas las sucursales (comportamiento previo).
  */
-export const getWebStockBranchIds = cache(async (organizationId: number): Promise<number[] | null> => {
+/** Fallo de una consulta guardada con `cacheStructural`: se lanza para que no se guarde un vacío. */
+class ErrorConsultaGuardada extends Error {}
+
+const leerWebStockBranchIds = async (organizationId: number): Promise<number[] | null> => {
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase
@@ -748,9 +752,53 @@ export const getWebStockBranchIds = cache(async (organizationId: number): Promis
     .eq('organization_id', organizationId)
     .eq('is_web_stock_source', true)
 
-  if (error || !data || data.length === 0) return null
+  if (error) throw new ErrorConsultaGuardada(error.message)
+  if (!data || data.length === 0) return null
   return data.map((b: any) => b.id as number)
+}
+
+// Solo decide de qué sucursales se MUESTRA el inventario (listados y ficha); el pedido lee
+// `branches` por su cuenta. Se guarda un minuto entre peticiones: el 2026-11-24 era la consulta
+// más repetida de la tienda (~23.000 al día, una o más por cada petición).
+const getWebStockBranchIdsGuardada = cacheStructural('getWebStockBranchIds', leerWebStockBranchIds, CONTENT_TTL)
+
+export const getWebStockBranchIds = cache(async (organizationId: number): Promise<number[] | null> => {
+  try {
+    return await getWebStockBranchIdsGuardada(organizationId)
+  } catch {
+    // Fallo de la base: como antes, `null` (inventario de todas las sucursales) y sin guardarlo.
+    return null
+  }
 })
+
+/**
+ * ¿La organización tiene algún grupo de modificadores? Los modificadores son de restaurantes; una
+ * tienda sin ninguno consultaba igual la tabla en cada ficha (~27.000 consultas al día el
+ * 2026-11-24, todas vacías). Se guarda un minuto: el primer grupo que cree un negocio tarda como
+ * mucho eso en verse en el sitio, igual que cualquier otro contenido.
+ */
+const orgUsaModificadoresGuardada = cacheStructural(
+  'orgUsaModificadores',
+  async (organizationId: number): Promise<boolean> => {
+    const { data, error } = await getSupabaseForPublicRead()
+      .from('product_modifier_groups')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .limit(1)
+    if (error) throw new ErrorConsultaGuardada(error.message)
+    return (data ?? []).length > 0
+  },
+  CONTENT_TTL,
+)
+
+/** Ante un fallo responde `true`: se consulta la tabla como antes y nada deja de mostrarse. */
+async function orgUsaModificadores(organizationId: number): Promise<boolean> {
+  try {
+    return await orgUsaModificadoresGuardada(organizationId)
+  } catch {
+    return true
+  }
+}
 
 /**
  * Obtiene los productos de una organización para mostrar en el sitio.
@@ -2889,6 +2937,7 @@ function gruposParaCliente(grupos: any[]): any[] {
  * con sus opciones (modificadores) activas
  */
 export async function getProductModifierGroups(productId: number, organizationId?: number) {
+  if (typeof organizationId === 'number' && !(await orgUsaModificadores(organizationId))) return []
   const supabase = getSupabaseForPublicRead()
 
   let query = supabase
@@ -2913,6 +2962,7 @@ export async function getProductModifierGroupsDe(productIds: number[], organizat
   const ids = Array.from(new Set(productIds.filter((id) => Number.isInteger(id) && id > 0)))
   const map = new Map<number, any[]>()
   if (ids.length === 0) return map
+  if (!(await orgUsaModificadores(organizationId))) return map
   const supabase = getSupabaseForPublicRead()
   for (let i = 0; i < ids.length; i += 200) {
     const { data, error } = await supabase
@@ -2945,6 +2995,7 @@ export async function getProductModifierGroupsDe(productIds: number[], organizat
  * Sin los grupos vacíos, igual que `getProductModifierGroups`.
  */
 export async function getProductModifierGroupsByOrg(organizationId: number) {
+  if (!(await orgUsaModificadores(organizationId))) return new Map<number, any[]>()
   const supabase = getSupabaseForPublicRead()
 
   const { data, error } = await supabase

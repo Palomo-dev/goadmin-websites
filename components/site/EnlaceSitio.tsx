@@ -8,7 +8,7 @@
  * Sin sede por prefijo el `href` queda tal cual: el sitio principal no cambia.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import type { ComponentProps } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 

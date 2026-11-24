@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { TripSearchWidget } from '@/components/site/transport/TripSearchWidget'
 import { Clock, Bus, MapPin, Users, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 
 interface Stop {
   id: string

@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Calendar, MapPin, Copy, Mail, Download } from 'lucide-react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { useState } from 'react'
 
 interface ReservationConfirmationProps {

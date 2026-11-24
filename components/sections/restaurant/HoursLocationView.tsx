@@ -15,7 +15,7 @@
  */
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ChevronRight, ImageIcon, MapPin, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildCardStyle, resolveImageFitClass, resolveImageRatioClass } from '@/lib/sectionStyle'

@@ -14,7 +14,7 @@
  * Sin 'use client': el manifiesto lee `HeroFlotante.CONTENT_KEYS`. `subtitle` es la clave de
  * siempre de las portadas (pedido a P0: sumarla a `CLAVES_SECCION_TIENDA['hero.floating']`).
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ArrowUpRight, Play } from 'lucide-react'
 import { CLAVES_SECCION_TIENDA, normalizarPortadaFlotante } from '@/lib/website/v2/contrato/seccionesTienda'
 import { categoriasDePortada, partirResumen, textoResumenDe } from '@/lib/website/portadaTienda'

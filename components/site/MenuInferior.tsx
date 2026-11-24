@@ -29,7 +29,7 @@
  * colores (`theme`) y efectos del activo y al tocar. Sin las claves nuevas se pinta lo de hoy.
  */
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { usePathname } from 'next/navigation'
 import {
   CalendarCheck, CalendarDays, CircleUserRound, Gift, Heart, Home, LayoutGrid, Link2, List, MapPin, Menu, MessageCircle, Package, Percent,

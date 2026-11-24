@@ -2,7 +2,7 @@
 import { capaPersonalizada, estiloTitulo, OPACIDAD_CAPA_POR_DEFECTO } from '@/lib/website/capaHero'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { BASE_CARRUSEL_HERO, resolverCarrusel } from '@/lib/website/v2/paginacionCarrusel'

@@ -3,7 +3,7 @@
 import { EnlaceAccesoMenu } from '@/components/site/cuenta';
 import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/site/Enlace'
 import { Menu as MenuIcon, X, LogOut, UserCircle, ChevronDown, Search } from 'lucide-react';
 import { iconoBuscar } from './iconoBuscar';
 import {

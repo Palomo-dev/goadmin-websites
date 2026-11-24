@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { ShoppingBag, UtensilsCrossed, X } from 'lucide-react'
 import { Price } from '@/components/site/CurrencyProvider'
 import { getCartKey } from '@/lib/utils'

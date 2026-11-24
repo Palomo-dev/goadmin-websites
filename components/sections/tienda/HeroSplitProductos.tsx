@@ -13,7 +13,7 @@
  * Sin 'use client': el manifiesto lee `HeroSplitProductos.CONTENT_KEYS`. El precio va con `Price`
  * (moneda de la organización), el mismo de las tarjetas de producto.
  */
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Price } from '@/components/site/CurrencyProvider'
 import { getProductImageUrl, getProductPrice } from '@/lib/products/datosTarjeta'
 import { CLAVES_SECCION_TIENDA, MAX_PRODUCTOS_PORTADA, normalizarProductosPortada } from '@/lib/website/v2/contrato/seccionesTienda'

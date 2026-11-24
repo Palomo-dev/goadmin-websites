@@ -34,7 +34,7 @@
  * La lógica transaccional (checkout, pagos) NO se expone aquí.
  */
 
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import type React from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'

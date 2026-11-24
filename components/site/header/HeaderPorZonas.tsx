@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { Globe, Heart, Phone, Search, ShoppingCart, User } from 'lucide-react'
 import { iconoBuscar } from './iconoBuscar'
 import {

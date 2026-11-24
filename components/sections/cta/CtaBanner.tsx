@@ -1,5 +1,5 @@
 import { BotonesAdicionales } from './BotonesAdicionales'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import { BOTON_PRIMARIO } from '@/lib/website/botonSitio'
 
 interface CtaBannerProps {

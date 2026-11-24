@@ -30,7 +30,7 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
  */
 
 import { useState, useEffect, type CSSProperties, type MouseEvent } from 'react'
-import Link from 'next/link'
+import Link from '@/components/site/Enlace'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
