@@ -4,7 +4,10 @@
  * Formularios del acceso a la cuenta para el panel, la ventana, el diálogo y la hoja del celular
  * (Figma «16 Sitio web» 2834:68670: S1–S5, D1–D3, V1, C1–C2). La lógica de sesión es la de la
  * página /auth (useAcceso): mismos endpoints y validaciones. Aquí solo cambia la presentación:
- * - Ingresar: correo, contraseña con ojo, «Recordarme», «¿Olvidaste…?», error sin pistas.
+ * - Ingresar (desde el 2026-11-24, Figma 2975:71911): lo principal es el código de 6 dígitos al
+ *   correo (IngresoCodigo.tsx); «Continuar con Google» si la tienda lo activó; «Ingresar con
+ *   contraseña» abre la vista de siempre.
+ * - Contraseña: correo, contraseña con ojo, «Recordarme», «¿Olvidaste…?», error sin pistas.
  *   «Recordarme» sin marcar = sesión solo mientras el navegador esté abierto (lib/auth/sesionCorta.ts);
  *   la ventana compacta no lo muestra y deja la sesión larga de siempre.
  * - Crear cuenta: nombre, apellido, correo, celular, contraseña, confirmación y términos.
@@ -15,8 +18,13 @@ import { AlertCircle, Eye, EyeOff, Heart, Loader2, Lock, Mail, MailCheck, MapPin
 import { TelefonoPais } from '@/components/site/TelefonoPais'
 import { BENEFICIOS_CUENTA_POR_DEFECTO, mensajeRecuperar, type TextosBeneficiosCuenta } from '@/lib/website/v2/cabeceraTienda'
 import { useAcceso, type TipoEntrada } from './useAcceso'
+import { PasoCodigo, PasoCorreo } from './IngresoCodigo'
 
-export type VistaFormulario = 'ingresar' | 'registro' | 'recuperar' | 'enviado'
+/**
+ * `ingresar` = pedir el código (lo principal); `codigo` = escribir los 6 dígitos; `contrasena` =
+ * ingresar con contraseña (el formulario de siempre).
+ */
+export type VistaFormulario = 'ingresar' | 'codigo' | 'contrasena' | 'registro' | 'recuperar' | 'enviado'
 
 /** Textos de la cabecera de cada vista (el de ingresar es el título del editor). */
 export function tituloVista(vista: VistaFormulario, tituloIngresar: string): string {
@@ -195,6 +203,8 @@ export interface FormularioAccesoProps {
   textosBeneficios?: TextosBeneficiosCuenta
   /** Diálogo: pestañas Ingresar / Crear cuenta arriba (Figma M4, D1). */
   pestanas?: boolean
+  /** «Continuar con Google» (`header_cuenta.google`; apagado mientras la tienda no lo active). */
+  google?: boolean
   /**
    * «Crear cuenta» y «¿Olvidaste…?» fuera de este formulario (desde la ventana: el panel o la
    * página). Sin él, se quedan aquí.
@@ -212,10 +222,13 @@ export function FormularioAcceso({
   beneficios = false,
   textosBeneficios,
   pestanas = false,
+  google = false,
   onIrAFuera,
   alEntrar,
 }: FormularioAccesoProps) {
-  const { enviando, error, exito, limpiar, ingresar, registrar, recuperar } = useAcceso({ organizationId, alEntrar })
+  const { enviando, error, exito, limpiar, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo } = useAcceso({ organizationId, alEntrar })
+  const [correoCodigo, setCorreoCodigo] = useState('')
+  const [enviadoEn, setEnviadoEn] = useState<number | null>(null)
   const [ingreso, setIngreso] = useState({ email: '', password: '' })
   // Sin marcar (como se ve hoy) = sesión hasta cerrar el navegador. La ventana no tiene la casilla.
   // Marcada por defecto: la sesión larga de siempre; quien la desmarca, solo hasta cerrar el navegador.
@@ -237,22 +250,72 @@ export function FormularioAcceso({
 
   const intro = (texto: string) => <p className="text-sm leading-snug text-gray-600">{texto}</p>
 
-  const tabs = pestanas && (vista === 'ingresar' || vista === 'registro') && (
+  const enIngresar = vista === 'ingresar' || vista === 'contrasena'
+  const tabs = pestanas && (enIngresar || vista === 'registro') && (
     <div role="tablist" aria-label="Acceso" className="flex rounded-lg bg-gray-100 p-1">
       {(['ingresar', 'registro'] as const).map((v) => (
         <button
           key={v}
           type="button"
           role="tab"
-          aria-selected={vista === v}
+          aria-selected={v === 'ingresar' ? enIngresar : vista === v}
           onClick={() => ir(v)}
-          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${vista === v ? 'bg-white text-gray-900 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${(v === 'ingresar' ? enIngresar : vista === v) ? 'bg-white text-gray-900 shadow' : 'text-gray-600 hover:text-gray-900'}`}
         >
           {v === 'ingresar' ? 'Ingresar' : 'Crear cuenta'}
         </button>
       ))}
     </div>
   )
+
+  if (vista === 'ingresar') {
+    return (
+      <div className="flex flex-col gap-4">
+        {tabs}
+        <PasoCorreo
+          correo={correoCodigo}
+          onCorreo={setCorreoCodigo}
+          enviando={enviando}
+          error={error}
+          google={google}
+          siguiente={typeof window !== 'undefined' ? window.location.pathname : undefined}
+          compacto={compacto}
+          sinIntro={pestanas}
+          onEnviar={async () => {
+            if (await pedirCodigo(correoCodigo)) {
+              setEnviadoEn(Date.now())
+              setIngreso((x) => ({ ...x, email: x.email || correoCodigo }))
+              onVista('codigo')
+            }
+          }}
+          onContrasena={() => {
+            setIngreso((x) => ({ ...x, email: x.email || correoCodigo }))
+            ir('contrasena')
+          }}
+        />
+        {beneficios && !compacto && <BeneficiosCuenta textos={textosBeneficios} />}
+      </div>
+    )
+  }
+
+  if (vista === 'codigo') {
+    return (
+      <PasoCodigo
+        correo={correoCodigo}
+        enviando={enviando}
+        error={error}
+        enviadoEn={enviadoEn}
+        compacto={compacto}
+        onCambiarCorreo={() => ir('ingresar')}
+        onReenviar={async () => {
+          if (await pedirCodigo(correoCodigo)) setEnviadoEn(Date.now())
+        }}
+        onEntrar={(codigo, recordarmeCodigo) => {
+          void entrarConCodigo({ email: correoCodigo, codigo, recordarme: recordarmeCodigo })
+        }}
+      />
+    )
+  }
 
   if (vista === 'enviado') {
     return (
@@ -262,7 +325,7 @@ export function FormularioAcceso({
         </span>
         <p className="text-lg font-semibold text-gray-900">Revisa tu correo</p>
         <p className="text-sm leading-snug text-gray-600">{mensajeRecuperar(correoRecuperar)}</p>
-        <button type="button" onClick={() => ir('ingresar')} className="h-11 w-full rounded-lg border border-gray-300 text-sm font-semibold text-gray-900 hover:bg-gray-50">
+        <button type="button" onClick={() => ir('contrasena')} className="h-11 w-full rounded-lg border border-gray-300 text-sm font-semibold text-gray-900 hover:bg-gray-50">
           Volver a ingresar
         </button>
         <p className="text-[13px] text-gray-600">
@@ -300,7 +363,7 @@ export function FormularioAcceso({
           Enviar enlace
         </BotonPrincipal>
         <p className="text-center text-[13px]">
-          <Enlace onClick={() => ir('ingresar')}>Volver a ingresar</Enlace>
+          <Enlace onClick={() => ir('contrasena')}>Volver a ingresar</Enlace>
         </p>
       </form>
     )
@@ -365,7 +428,7 @@ export function FormularioAcceso({
   }
 
   return (
-    <div className="flex flex-col gap-4" data-vista-acceso="ingresar">
+    <div className="flex flex-col gap-4" data-vista-acceso="contrasena">
       <form
         className="flex flex-col gap-4"
         onSubmit={async (e) => {
@@ -411,6 +474,9 @@ export function FormularioAcceso({
           {textoBoton}
         </BotonPrincipal>
       </form>
+      <p className="text-center text-[13px] text-gray-600">
+        <Enlace onClick={() => ir('ingresar')}>Prefiero recibir un código al correo</Enlace>
+      </p>
       {!pestanas && (
         <>
           <Separador />

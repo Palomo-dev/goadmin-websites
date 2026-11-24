@@ -8,30 +8,42 @@ import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
 import { useAcceso } from '@/components/site/cuenta/useAcceso'
+import { PasoCodigo, PasoCorreo } from '@/components/site/cuenta/IngresoCodigo'
+import { destinoInterno } from '@/lib/cuenta/reglasCuenta'
 
 interface AuthFormProps {
   organizationId: number
   organizationName: string
   logoUrl?: string | null
   primaryColor: string
+  /** «Continuar con Google» (`header_cuenta.google`; apagado mientras la tienda no lo active). */
+  google?: boolean
 }
 
 /**
- * Página /auth: ingresar, registrarse y recuperar la contraseña. Se ve como siempre; la lógica de
- * sesión es la misma del panel, la ventana, el diálogo y la hoja (useAcceso).
+ * Página /auth: ingresar, registrarse y recuperar la contraseña. Desde el 2026-11-24 (Figma
+ * 2975:71911) ingresar es primero con el código de 6 dígitos al correo; «Ingresar con contraseña»
+ * abre el formulario de siempre. La lógica de sesión es la misma del panel, la ventana, el diálogo
+ * y la hoja (useAcceso). `?siguiente=/ruta` vuelve a esa ruta del sitio después de entrar.
  */
-export function AuthForm({ organizationId, organizationName, logoUrl, primaryColor }: AuthFormProps) {
+export function AuthForm({ organizationId, organizationName, logoUrl, primaryColor, google = false }: AuthFormProps) {
   const searchParams = useSearchParams()
   const pestana = searchParams.get('tab')
   const initialTab = pestana === 'register' ? 'register' : pestana === 'forgot' ? 'forgot' : 'login'
 
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>(initialTab)
+  // Ingresar: primero el código; `?modo=contrasena` (enlaces viejos o quien la prefiere) abre la contraseña.
+  const [modoIngreso, setModoIngreso] = useState<'correo' | 'codigo' | 'contrasena'>(searchParams.get('modo') === 'contrasena' ? 'contrasena' : 'correo')
+  const [correoCodigo, setCorreoCodigo] = useState('')
+  const [enviadoEn, setEnviadoEn] = useState<number | null>(null)
+  const siguiente = destinoInterno(searchParams.get('siguiente'))
+  const errorGoogle = searchParams.get('error') === 'google'
   const [forgotEmail, setForgotEmail] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const irACuenta = useCallback(() => {
-    window.location.href = '/mi-cuenta'
-  }, [])
-  const { enviando: submitting, error, exito: success, setError, setExito: setSuccess, ingresar, registrar, recuperar } = useAcceso({
+    window.location.href = siguiente
+  }, [siguiente])
+  const { enviando: submitting, error, exito: success, setError, setExito: setSuccess, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo } = useAcceso({
     organizationId,
     pagina: true,
     alEntrar: irACuenta,
@@ -105,14 +117,58 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
             </div>
           )}
 
-          {error && (
+          {errorGoogle && !error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm">No pudimos entrar con Google. Intenta con el código al correo.</div>
+          )}
+          {error && !(activeTab === 'login' && modoIngreso !== 'contrasena') && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm">{error}</div>
           )}
           {success && (
             <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-lg text-sm">{success}</div>
           )}
 
-          {activeTab === 'login' ? (
+          {activeTab === 'login' && modoIngreso === 'correo' ? (
+            <div style={{ ['--primary-color' as string]: primaryColor }}>
+              <PasoCorreo
+                correo={correoCodigo}
+                onCorreo={setCorreoCodigo}
+                enviando={submitting}
+                error={error}
+                google={google}
+                siguiente={siguiente}
+                onEnviar={async () => {
+                  if (await pedirCodigo(correoCodigo)) {
+                    setEnviadoEn(Date.now())
+                    setModoIngreso('codigo')
+                  }
+                }}
+                onContrasena={() => {
+                  setError('')
+                  setLoginData((d) => ({ ...d, email: d.email || correoCodigo }))
+                  setModoIngreso('contrasena')
+                }}
+              />
+            </div>
+          ) : activeTab === 'login' && modoIngreso === 'codigo' ? (
+            <div style={{ ['--primary-color' as string]: primaryColor }}>
+              <PasoCodigo
+                correo={correoCodigo}
+                enviando={submitting}
+                error={error}
+                enviadoEn={enviadoEn}
+                onCambiarCorreo={() => {
+                  setError('')
+                  setModoIngreso('correo')
+                }}
+                onReenviar={async () => {
+                  if (await pedirCodigo(correoCodigo)) setEnviadoEn(Date.now())
+                }}
+                onEntrar={(codigo, recordarmeCodigo) => {
+                  void entrarConCodigo({ email: correoCodigo, codigo, recordarme: recordarmeCodigo })
+                }}
+              />
+            </div>
+          ) : activeTab === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico</label>
@@ -141,6 +197,11 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
               <Button type="submit" className="w-full" style={{ backgroundColor: primaryColor }} disabled={submitting}>
                 {submitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
+              <div className="text-center">
+                <button type="button" onClick={() => { setError(''); setModoIngreso('correo') }} className="text-sm hover:underline" style={{ color: primaryColor }}>
+                  Prefiero recibir un código al correo
+                </button>
+              </div>
             </form>
           ) : activeTab === 'register' ? (
             <form onSubmit={handleRegister} className="space-y-4">

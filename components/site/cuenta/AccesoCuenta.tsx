@@ -228,12 +228,14 @@ type VistaHost = VistaFormulario | 'menu'
 
 export interface AccesoCuentaProps {
   opciones: OpcionesCuenta
+  /** «Continuar con Google» (lib/cuenta/reglasCuenta.ts `googleEnAcceso`; apagado por defecto). */
+  google?: boolean
   organizationId: number
   organizationName: string
   primaryColor: string
 }
 
-export function AccesoCuenta({ opciones, organizationId, organizationName, primaryColor }: AccesoCuentaProps) {
+export function AccesoCuenta({ opciones, google = false, organizationId, organizationName, primaryColor }: AccesoCuentaProps) {
   const router = useRouter()
   const sesion = useSesionTienda()
   const [abierto, setAbierto] = useState(false)
@@ -361,7 +363,9 @@ export function AccesoCuenta({ opciones, organizationId, organizationName, prima
 
   const enMenu = vista === 'menu'
   const titulo = enMenu ? 'Mi cuenta' : tituloVista(vista, opciones.titulo)
-  const atras = vista === 'recuperar' || vista === 'enviado'
+  // Contraseña vuelve al código; recuperar vuelve a la contraseña (de donde se abrió).
+  const atras = vista === 'contrasena' || vista === 'recuperar' || vista === 'enviado'
+  const volverA: VistaFormulario = vista === 'contrasena' ? 'ingresar' : 'contrasena'
   const IconoTitulo = vista === 'registro' ? UserPlus : User
   const conBeneficios = opciones.beneficios && formato !== 'ventana'
 
@@ -382,7 +386,7 @@ export function AccesoCuenta({ opciones, organizationId, organizationName, prima
       <div className="flex items-start justify-between gap-3 px-6 pb-2 pt-6">
         <div className="flex items-start gap-2">
           {atras && (
-            <button type="button" aria-label="Volver" onClick={() => setVista('ingresar')} className="-ml-1 mt-0.5 rounded-full p-1 hover:bg-gray-100">
+            <button type="button" aria-label="Volver" onClick={() => setVista(volverA)} className="-ml-1 mt-0.5 rounded-full p-1 hover:bg-gray-100">
               <ArrowLeft aria-hidden="true" className="h-5 w-5 text-gray-700" />
             </button>
           )}
@@ -424,7 +428,7 @@ export function AccesoCuenta({ opciones, organizationId, organizationName, prima
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-2.5">
             {atras ? (
-              <button type="button" aria-label="Volver" onClick={() => setVista('ingresar')} className="-ml-1 rounded-full p-1 hover:bg-gray-100">
+              <button type="button" aria-label="Volver" onClick={() => setVista(volverA)} className="-ml-1 rounded-full p-1 hover:bg-gray-100">
                 <ArrowLeft aria-hidden="true" className="h-5 w-5 text-gray-800" />
               </button>
             ) : (
@@ -481,6 +485,7 @@ export function AccesoCuenta({ opciones, organizationId, organizationName, prima
                   beneficios={conBeneficios}
                   textosBeneficios={opciones.textosBeneficios}
                   pestanas={formato === 'dialogo'}
+                  google={google}
                   onIrAFuera={formato === 'ventana' ? irAFuera : undefined}
                   alEntrar={alEntrar}
                 />

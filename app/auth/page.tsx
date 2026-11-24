@@ -6,6 +6,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AuthForm } from './AuthForm'
+import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export default async function AuthPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, effectiveSettings } = ctx
 
   return (
     <OrganizationLayout
@@ -48,6 +49,7 @@ export default async function AuthPage() {
             organizationName={organization.name}
             logoUrl={organization.logo_url}
             primaryColor={primaryColor}
+            google={googleEnAcceso(effectiveSettings)}
           />
         </Suspense>
       </main>

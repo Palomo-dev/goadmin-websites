@@ -40,7 +40,11 @@ export async function getAuthCustomer(organizationId: number): Promise<AuthCusto
       .select('id, organization_id, user_id, email, phone, first_name, last_name, full_name, identification_type, identification_number, doc_type, doc_number, address, city, avatar_url, created_at')
       .eq('organization_id', organizationId)
       .eq('user_id', user.id)
-      .single()
+      // Una ficha por usuario y organización; si quedaron dos (un correo con otras mayúsculas
+      // vinculado al mismo usuario), la más antigua: con `.single()` no salía ninguna.
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
 
     return customer as AuthCustomer | null
   } catch {

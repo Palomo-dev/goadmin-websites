@@ -1,173 +1,202 @@
-import { getOrgContext } from '@/lib/get-org-context'
-import { getAuthCustomer } from '@/lib/get-auth-customer'
-import { getCustomerDashboardCounts, getCustomerRecentActivity, getCustomerServiceDashboard } from '@/lib/queries/customer-portal'
-import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
 import Link from 'next/link'
+import { CalendarDays, CheckCircle2, ClipboardList, Car, Dumbbell, FileText, Heart, MapPin, Package, Ticket, Truck, type LucideIcon } from 'lucide-react'
+import { getOrgContext } from '@/lib/get-org-context'
+import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { getCustomerDashboardCounts, getCustomerServiceDashboard } from '@/lib/queries/customer-portal'
+import { getCuentaCliente, pedidosDeCuenta, resumenCuenta } from '@/lib/cuenta/cuentaCliente'
+import { facturaCompleta, menuCuenta, pedidoEnCurso, textoProductos, type ClaveMenuCuenta } from '@/lib/cuenta/reglasCuenta'
+import { BarraPasos, FilaPedidoReciente, FotosPedido, Insignia, avanceDe } from '@/components/site/cuenta/PedidosCuenta'
+import { ListaMenuCuenta } from '@/components/site/cuenta/MenuMiCuenta'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getOrgContext()
-  if (!ctx) return { title: 'Mi Cuenta' }
-  return {
-    title: `Mi Cuenta | ${ctx.organization.name}`,
-    description: `Tu cuenta en ${ctx.organization.name}`
-  }
+  if (!ctx) return { title: 'Mi cuenta' }
+  return { title: `Mi cuenta | ${ctx.organization.name}`, robots: { index: false, follow: false } }
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendiente', color: '#F59E0B' },
-  confirmed: { label: 'Confirmado', color: '#3B82F6' },
-  preparing: { label: 'Preparando', color: '#8B5CF6' },
-  ready: { label: 'Listo', color: '#10B981' },
-  delivered: { label: 'Entregado', color: '#059669' },
-  completed: { label: 'Completado', color: '#059669' },
-  cancelled: { label: 'Cancelado', color: '#EF4444' },
-  active: { label: 'Activa', color: '#10B981' },
-  checked_in: { label: 'Check-in', color: '#3B82F6' },
-  checked_out: { label: 'Check-out', color: '#6B7280' },
-  no_show: { label: 'No show', color: '#EF4444' },
-}
-
-export default async function MiCuentaDashboard() {
-  const ctx = await getOrgContext()
-  if (!ctx) return <NotFoundPage />
-
-  const { organization, primaryColor } = ctx
-  const typeId = organization.type_id ?? 0
-  const customer = await getAuthCustomer(organization.id)
-
-  // Conteos y actividad real (si hay cliente autenticado)
-  const counts = customer
-    ? await getCustomerDashboardCounts(customer.id, organization.id)
-    : { orders: 0, reservations: 0, addresses: 0, coupons: 0, memberships: 0, checkins: 0, tickets: 0, passes: 0, vehicles: 0, sessions: 0 }
-
-  const serviceDash = (customer && typeId === 4)
-    ? await getCustomerServiceDashboard(customer.id, organization.id)
-    : { upcomingAppointments: 0, pendingInvoices: 0, pendingBalance: 0, totalPaid: 0, openQuotes: 0 }
-
-  const activity = customer
-    ? await getCustomerRecentActivity(customer.id, organization.id)
-    : []
-
-  const greeting = customer?.first_name ? `Hola, ${customer.first_name}` : 'Bienvenido'
-
+function Acceso({ icono: Icono, titulo, detalle, href }: { icono: LucideIcon; titulo: string; detalle: string; href: string }) {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}</h1>
-        <p className="text-gray-500 dark:text-gray-400">Tu panel en {organization.name}</p>
-      </div>
-
-      {!customer && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 text-sm text-yellow-800 dark:text-yellow-400">
-          <Link href="/auth" className="font-medium underline" style={{ color: primaryColor }}>Inicia sesión</Link> para ver tu información personalizada.
-        </div>
-      )}
-
-      {/* Resumen rápido según tipo de negocio */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {typeId === 3 && ( // retail
-          <>
-            <DashCard icon="📦" label="Pedidos" value={String(counts.orders)} href="/mi-cuenta/pedidos" color={primaryColor} />
-            <DashCard icon="📍" label="Direcciones" value={String(counts.addresses)} href="/mi-cuenta/direcciones" color={primaryColor} />
-            <DashCard icon="🎟️" label="Cupones" value={String(counts.coupons)} href="/mi-cuenta/cupones" color={primaryColor} />
-          </>
-        )}
-        {typeId === 1 && ( // restaurant
-          <>
-            <DashCard icon="📦" label="Pedidos" value={String(counts.orders)} href="/mi-cuenta/pedidos" color={primaryColor} />
-            <DashCard icon="📅" label="Reservas" value={String(counts.reservations)} href="/mi-cuenta/reservas" color={primaryColor} />
-            <DashCard icon="🎟️" label="Cupones" value={String(counts.coupons)} href="/mi-cuenta/cupones" color={primaryColor} />
-          </>
-        )}
-        {typeId === 2 && ( // hotel
-          <>
-            <DashCard icon="📅" label="Reservas" value={String(counts.reservations)} href="/mi-cuenta/reservas" color={primaryColor} />
-          </>
-        )}
-        {typeId === 5 && ( // gym
-          <>
-            <DashCard icon="💪" label="Membresía" value={counts.memberships > 0 ? 'Activa' : 'Inactiva'} href="/mi-cuenta/membresia" color={primaryColor} />
-            <DashCard icon="📅" label="Clases" value={String(counts.checkins)} href="/mi-cuenta/clases" color={primaryColor} />
-            <DashCard icon="✅" label="Check-ins" value={String(counts.checkins)} href="/mi-cuenta/checkins" color={primaryColor} />
-          </>
-        )}
-        {typeId === 6 && ( // transport
-          <>
-            <DashCard icon="🎫" label="Tickets" value={String(counts.tickets)} href="/mi-cuenta/tickets" color={primaryColor} />
-          </>
-        )}
-        {typeId === 7 && ( // parking
-          <>
-            <DashCard icon="🎫" label="Pases" value={String(counts.passes)} href="/mi-cuenta/pases" color={primaryColor} />
-            <DashCard icon="🚗" label="Vehículos" value={String(counts.vehicles)} href="/mi-cuenta/vehiculos" color={primaryColor} />
-            <DashCard icon="📋" label="Sesiones" value={String(counts.sessions)} href="/mi-cuenta/historial" color={primaryColor} />
-          </>
-        )}
-        {typeId === 4 && ( // services
-          <>
-            <DashCard icon="📅" label="Próximas citas" value={String(serviceDash.upcomingAppointments)} href="/mi-cuenta/citas" color={primaryColor} />
-            <DashCard icon="📄" label="Facturas pendientes" value={String(serviceDash.pendingInvoices)} href="/mi-cuenta/facturas" color={primaryColor} />
-            <DashCard icon="📋" label="Cotizaciones abiertas" value={String(serviceDash.openQuotes)} href="/mi-cuenta/cotizaciones" color={primaryColor} />
-          </>
-        )}
-      </div>
-
-      {/* Actividad reciente */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-        <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Actividad Reciente</h2>
-        {activity.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
-            <p className="text-3xl mb-2">📋</p>
-            <p>No hay actividad reciente</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {activity.map((item: any) => {
-              const st = STATUS_LABELS[item.status] || { label: item.status, color: '#6B7280' }
-              return (
-                <Link
-                  key={`${item.type}-${item.id}`}
-                  href={item.type === 'order' ? `/mi-cuenta/pedidos/${item.id}` : `/mi-cuenta/reservas`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{item.type === 'order' ? '📦' : '📅'}</span>
-                    <div>
-                      <p className="font-medium text-sm text-gray-900 dark:text-white">{item.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{item.detail}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-medium px-2 py-1 rounded-full" style={{ backgroundColor: `${st.color}15`, color: st.color }}>
-                      {st.label}
-                    </span>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(item.date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                    </p>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    <Link href={href} className="flex min-w-0 flex-1 flex-col gap-2 rounded-[14px] border border-slate-200 bg-white p-[18px] transition-shadow hover:shadow-sm">
+      <span className="flex h-9 w-9 items-center justify-center rounded-[10px]" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 10%, white)' }}>
+        <Icono aria-hidden="true" className="h-[18px] w-[18px]" style={{ color: 'var(--primary-color)' }} strokeWidth={1.75} />
+      </span>
+      <span className="text-[15px] font-semibold text-slate-900">{titulo}</span>
+      <span className="text-[13px] leading-snug text-slate-600">{detalle}</span>
+    </Link>
   )
 }
 
-function DashCard({ icon, label, value, href, color }: {
-  icon: string; label: string; value: string; href: string; color: string
-}) {
+/**
+ * Mi cuenta › Inicio (Figma «16 Sitio web» D 2976:72025 escritorio y H 2977:72694 celular):
+ * saludo, el pedido en curso con su avance y «Seguir pedido», aviso de datos de factura por
+ * completar, accesos con su cifra y pedidos recientes con «Volver a comprar». Las verticales sin
+ * pedidos (hotel, servicios, gimnasio, transporte, parqueadero) conservan sus accesos de siempre.
+ */
+export default async function MiCuentaInicio() {
+  const ctx = await getOrgContext()
+  if (!ctx) return <NotFoundPage />
+  const { organization } = ctx
+  const typeId = organization.type_id ?? 0
+  const esComercio = typeId === 1 || typeId === 3
+  const esRestaurante = typeId === 1
+  const zona = ((organization as { timezone?: string | null }).timezone ?? null) as string | null
+
+  const cuenta = await getCuentaCliente(organization.id)
+  const cliente = cuenta?.cliente ?? null
+  const [pedidos, resumen, conteos, servicios] = await Promise.all([
+    cuenta && esComercio ? pedidosDeCuenta(organization.id, cuenta, { limite: 30 }) : Promise.resolve([]),
+    cliente && esComercio ? resumenCuenta(organization.id, cliente.id) : Promise.resolve(null),
+    cliente && !esComercio && typeId !== 4 ? getCustomerDashboardCounts(cliente.id, organization.id) : Promise.resolve(null),
+    cliente && typeId === 4 ? getCustomerServiceDashboard(cliente.id, organization.id) : Promise.resolve(null),
+  ])
+
+  const nombre = (cliente?.first_name || '').trim().split(/\s+/)[0] || null
+  const enCurso = pedidoEnCurso(pedidos)
+  const avance = enCurso ? avanceDe(enCurso, esRestaurante) : null
+  const recientes = pedidos.filter((p) => p.id !== enCurso?.id).slice(0, 3)
+  const cuantosEnCurso = pedidos.filter((p) => p.grupo === 'en_curso').length
+  const faltaFactura = !!cliente && !facturaCompleta(cliente)
+
+  const cifras: Partial<Record<ClaveMenuCuenta, string>> = {}
+  if (esComercio) {
+    cifras.pedidos = String(pedidos.length)
+    if (resumen) {
+      cifras.direcciones = String(resumen.direcciones)
+      cifras.favoritos = String(resumen.favoritos)
+      cifras.cupones = String(resumen.cupones)
+    }
+  }
+
   return (
-    <a href={href} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition-shadow block">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-2xl">{icon}</span>
-        <span className="text-2xl font-bold" style={{ color }}>{value}</span>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold leading-snug text-slate-900 md:text-[28px]">{nombre ? `Hola, ${nombre}` : 'Hola'}</h1>
+        <p className="hidden text-[15px] text-slate-600 md:block">
+          {esComercio ? 'Aquí ves tus pedidos, tus direcciones y tus datos.' : `Tu cuenta en ${organization.name}.`}
+        </p>
       </div>
-      <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{label}</p>
-    </a>
+
+      {cuenta && !cuenta.verificado && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Confirma tu correo para ver tus pedidos: sal y vuelve a entrar con el código que te enviamos al correo.
+        </p>
+      )}
+
+      {/* Pedido en curso */}
+      {enCurso && avance && (
+        <section className="flex flex-col gap-3.5 rounded-[14px] border border-slate-200 bg-white p-4 md:p-5" aria-label="Tu pedido en curso">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="hidden text-[13px] font-medium text-slate-600 md:block">Tu pedido en curso</p>
+              <p className="text-[15px] font-semibold text-slate-900 md:hidden">Pedido {enCurso.numero}</p>
+              <p className="text-[13px] text-slate-600 md:text-lg md:font-semibold md:text-slate-900">{avance.titulo}</p>
+            </div>
+            <Insignia texto={avance.insignia} tono={avance.tono} />
+          </div>
+          <div className="hidden md:block">
+            <BarraPasos pasos={avance.pasos} />
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+            <div className="hidden md:block">
+              <FotosPedido p={enCurso} />
+            </div>
+            <p className="hidden min-w-0 flex-1 text-sm font-medium text-slate-900 md:block">
+              Pedido {enCurso.numero} · {textoProductos(enCurso.cantidadProductos)}
+            </p>
+            <Link
+              href={enCurso.rutaDetalle}
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 md:py-2.5"
+              style={{ backgroundColor: 'var(--primary-color)' }}
+            >
+              <Truck aria-hidden="true" className="h-4 w-4" /> {enCurso.acciones.includes('pagar') ? 'Pagar mi pedido' : 'Seguir pedido'}
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Datos de factura por completar (escritorio; en el celular va en la fila «Mis datos») */}
+      {faltaFactura && (
+        <div className="hidden items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 md:flex">
+          <FileText aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-amber-700" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">Completa tus datos para la factura electrónica</p>
+            <p className="text-[13px] text-slate-600">Tipo y número de documento. Así tus facturas salen a tu nombre sin pedírtelos en cada compra.</p>
+          </div>
+          <Link href="/mi-cuenta/perfil#factura" className="rounded-[10px] border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+            Completar
+          </Link>
+        </div>
+      )}
+
+      {/* Celular: la lista del menú con sus cifras */}
+      <ListaMenuCuenta items={menuCuenta(typeId)} cifras={cifras} avisos={faltaFactura ? { datos: 'Faltan datos de factura' } : {}} />
+
+      {/* Accesos con su cifra (escritorio) */}
+      <div className="hidden gap-4 md:flex">
+        {esComercio && (
+          <>
+            <Acceso icono={Package} titulo="Mis pedidos" href="/mi-cuenta/pedidos" detalle={`${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'}${cuantosEnCurso ? ` · ${cuantosEnCurso} en curso` : ''}`} />
+            <Acceso
+              icono={MapPin}
+              titulo="Direcciones"
+              href="/mi-cuenta/direcciones"
+              detalle={resumen && resumen.direcciones > 0 ? `${resumen.direcciones} ${resumen.direcciones === 1 ? 'guardada' : 'guardadas'}${resumen.principal ? ` · ${resumen.principal} es la principal` : ''}` : 'Agrega una dirección'}
+            />
+            <Acceso icono={Heart} titulo="Favoritos" href="/favoritos" detalle={resumen && resumen.favoritos > 0 ? textoProductos(resumen.favoritos) : 'Guarda lo que te gusta'} />
+            <Acceso
+              icono={Ticket}
+              titulo="Cupones"
+              href="/mi-cuenta/cupones"
+              detalle={
+                resumen && resumen.cupones > 0
+                  ? `${resumen.cupones} ${resumen.cupones === 1 ? 'disponible' : 'disponibles'}${resumen.cuponVenceEnDias !== null ? ` · 1 vence ${resumen.cuponVenceEnDias === 0 ? 'hoy' : `en ${resumen.cuponVenceEnDias} ${resumen.cuponVenceEnDias === 1 ? 'día' : 'días'}`}` : ''}`
+                  : 'Sin cupones por ahora'
+              }
+            />
+          </>
+        )}
+        {typeId === 2 && conteos && <Acceso icono={CalendarDays} titulo="Mis reservas" href="/mi-cuenta/reservas" detalle={`${conteos.reservations} ${conteos.reservations === 1 ? 'reserva' : 'reservas'}`} />}
+        {typeId === 4 && servicios && (
+          <>
+            <Acceso icono={CalendarDays} titulo="Mis citas" href="/mi-cuenta/citas" detalle={`${servicios.upcomingAppointments} próximas`} />
+            <Acceso icono={FileText} titulo="Facturas" href="/mi-cuenta/facturas" detalle={`${servicios.pendingInvoices} pendientes`} />
+            <Acceso icono={ClipboardList} titulo="Cotizaciones" href="/mi-cuenta/cotizaciones" detalle={`${servicios.openQuotes} abiertas`} />
+          </>
+        )}
+        {typeId === 5 && conteos && (
+          <>
+            <Acceso icono={Dumbbell} titulo="Membresía" href="/mi-cuenta/membresia" detalle={conteos.memberships > 0 ? 'Activa' : 'Inactiva'} />
+            <Acceso icono={CalendarDays} titulo="Mis clases" href="/mi-cuenta/clases" detalle="Reserva y revisa tus clases" />
+            <Acceso icono={CheckCircle2} titulo="Check-ins" href="/mi-cuenta/checkins" detalle={`${conteos.checkins} registrados`} />
+          </>
+        )}
+        {typeId === 6 && conteos && <Acceso icono={Ticket} titulo="Mis tickets" href="/mi-cuenta/tickets" detalle={`${conteos.tickets} ${conteos.tickets === 1 ? 'ticket' : 'tickets'}`} />}
+        {typeId === 7 && conteos && (
+          <>
+            <Acceso icono={Ticket} titulo="Mis pases" href="/mi-cuenta/pases" detalle={`${conteos.passes} activos`} />
+            <Acceso icono={Car} titulo="Vehículos" href="/mi-cuenta/vehiculos" detalle={`${conteos.vehicles} registrados`} />
+            <Acceso icono={ClipboardList} titulo="Historial" href="/mi-cuenta/historial" detalle={`${conteos.sessions} sesiones`} />
+          </>
+        )}
+      </div>
+
+      {/* Pedidos recientes */}
+      {esComercio && recientes.length > 0 && (
+        <section className="hidden flex-col gap-3 rounded-[14px] border border-slate-200 bg-white p-5 md:flex" aria-label="Pedidos recientes">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-900">Pedidos recientes</h2>
+            <Link href="/mi-cuenta/pedidos?vista=anteriores" className="text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
+              Ver todos →
+            </Link>
+          </div>
+          {recientes.map((p) => (
+            <FilaPedidoReciente key={p.id} p={p} esRestaurante={esRestaurante} zona={zona} />
+          ))}
+        </section>
+      )}
+    </div>
   )
 }

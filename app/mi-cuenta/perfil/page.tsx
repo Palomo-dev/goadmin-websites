@@ -1,43 +1,97 @@
-import { getOrgContext } from '@/lib/get-org-context'
-import { getAuthCustomer } from '@/lib/get-auth-customer'
-import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import { ProfileForm } from './ProfileForm'
+import { getOrgContext } from '@/lib/get-org-context'
+import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getCuentaCliente } from '@/lib/cuenta/cuentaCliente'
+import { facturaCompleta, fechaAutorizacionDatos, leerAvisos, leerCumpleanos } from '@/lib/cuenta/reglasCuenta'
+import { enlaceWhatsapp } from '@/lib/website/ajustesSitio'
+import { DatosCliente, type TipoDocumentoOpcion } from './DatosCliente'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getOrgContext()
-  if (!ctx) return { title: 'Mi Perfil' }
-  return {
-    title: `Mi Perfil | ${ctx.organization.name}`,
-    description: `Edita tu perfil en ${ctx.organization.name}`
-  }
+  if (!ctx) return { title: 'Mis datos' }
+  return { title: `Mis datos | ${ctx.organization.name}`, robots: { index: false, follow: false } }
 }
 
-export default async function PerfilPage() {
+/** Respaldo si el catálogo no responde: los tipos más usados (mismos códigos de `country_identification_types`). */
+const TIPOS_RESPALDO: TipoDocumentoOpcion[] = [
+  { code: 'cc', name: 'Cédula de ciudadanía', persona: true, empresa: false },
+  { code: 'nit', name: 'NIT (empresa)', persona: true, empresa: true },
+  { code: 'ce', name: 'Cédula de extranjería', persona: true, empresa: false },
+  { code: 'passport', name: 'Pasaporte', persona: true, empresa: false },
+]
+
+/**
+ * Mis datos (Figma «16 Sitio web» F 2977:72278): datos personales (el correo no se edita aquí),
+ * datos para la factura electrónica (persona natural o empresa), avisos y privacidad, y seguridad
+ * (contraseña opcional, cerrar las demás sesiones, solicitar la eliminación de la cuenta).
+ * La ruta sigue siendo /mi-cuenta/perfil para no romper enlaces.
+ */
+export default async function MisDatosPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
+  const { organization, effectiveSettings } = ctx
+  const cuenta = await getCuentaCliente(organization.id)
+  const cliente = cuenta?.cliente ?? null
+  if (!cuenta || !cliente) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Mis datos</h1>
+        <p className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-600">No encontramos tus datos en esta tienda. Sal y vuelve a entrar con el código que te enviamos al correo.</p>
+      </div>
+    )
+  }
 
-  const { organization, primaryColor } = ctx
-  const customer = await getAuthCustomer(organization.id)
+  const sb = createAdminClient() as any
+  const [tiposRes, consentRes] = sb
+    ? await Promise.all([
+        sb.from('country_identification_types').select('code, name, for_person, for_company, sort_order').eq('country_code', 'COL').eq('is_active', true).order('sort_order', { ascending: true }),
+        sb.from('contact_consents').select('channel, status').eq('organization_id', organization.id).eq('customer_id', cliente.id),
+      ])
+    : [{ data: null }, { data: null }]
+  const tipos: TipoDocumentoOpcion[] = Array.isArray(tiposRes.data) && tiposRes.data.length > 0
+    ? (tiposRes.data as { code: string; name: string; for_person: boolean | null; for_company: boolean | null }[]).map((t) => ({ code: t.code, name: t.name, persona: t.for_person !== false, empresa: t.for_company !== false }))
+    : TIPOS_RESPALDO
+  const consent = (consentRes.data ?? []) as { channel: string; status: string }[]
+  const ofertas = consent.some((c) => c.status === 'opted_in') && !consent.some((c) => c.status === 'opted_out')
+
+  const ajustes = (effectiveSettings ?? {}) as Record<string, unknown>
+  const whatsapp = typeof ajustes.whatsapp_number === 'string' && ajustes.whatsapp_number.replace(/\D/g, '').length >= 7
+    ? enlaceWhatsapp({ numero: ajustes.whatsapp_number, saludo: 'Hola, quiero solicitar la eliminación de mi cuenta en la tienda.' })
+    : null
+  const correoTienda = (typeof ajustes.contact_email === 'string' && ajustes.contact_email) || (organization as { email?: string | null }).email || null
+  const prefs = cliente.preferences as Record<string, unknown> | null
+  const cumple = leerCumpleanos(prefs?.cumpleanos)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Mi Perfil</h1>
-        <p className="text-gray-500">Actualiza tus datos personales</p>
-      </div>
-
-      {!customer ? (
-        <div className="bg-white rounded-xl border p-8 text-center">
-          <p className="text-4xl mb-3">👤</p>
-          <h3 className="font-semibold text-lg mb-1">Inicia sesión</h3>
-          <p className="text-gray-500">Debes iniciar sesión para ver tu perfil</p>
-        </div>
-      ) : (
-        <ProfileForm customer={customer} primaryColor={primaryColor} organizationId={organization.id} />
-      )}
+    <div className="flex flex-col gap-5">
+      <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Mis datos</h1>
+      <DatosCliente
+        correo={cuenta.correo}
+        personales={{
+          first_name: cliente.first_name ?? '',
+          last_name: cliente.last_name ?? '',
+          phone: cliente.phone ?? '',
+          cumpleanos: cumple ? `${String(cumple.mes).padStart(2, '0')}-${String(cumple.dia).padStart(2, '0')}` : '',
+        }}
+        factura={{
+          customer_type: cliente.customer_type === 'company' ? 'company' : 'person',
+          identification_type: cliente.identification_type ?? '',
+          identification_number: cliente.identification_number ?? '',
+          company_name: cliente.company_name ?? '',
+          dv: cliente.dv === null || cliente.dv === undefined ? '' : String(cliente.dv),
+          correo_factura: typeof prefs?.correo_factura === 'string' ? prefs.correo_factura : '',
+          ciudad: cliente.city ?? '',
+          completa: facturaCompleta(cliente),
+        }}
+        avisos={{ ...leerAvisos(prefs), ofertas }}
+        autorizadoEn={fechaAutorizacionDatos(prefs)}
+        tipos={tipos}
+        contactoEliminar={{ whatsapp, correo: correoTienda }}
+        nombreTienda={organization.name}
+      />
     </div>
   )
 }

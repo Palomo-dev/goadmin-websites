@@ -2,11 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAuthClient } from '@/lib/supabase/server'
 import { MARCA_SESION_CORTA, opcionesMarcaSesionCorta } from '@/lib/auth/sesionCorta'
+import { getOrgIdDelHost } from '@/lib/get-org-context'
+import { fichaPorCorreo, vincularClienteDeSesion } from '@/lib/auth/clienteSesion'
+import { correoVerificado } from '@/lib/cuenta/reglasCuenta'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { organizationId, email, password } = body
+    const { email, password } = body
+    // La organización sale del HOST, nunca del body (CLAUDE.md). El `organizationId` que aún manda
+    // el navegador solo se compara para registrar un desfase.
+    const organizationId = await getOrgIdDelHost()
+    if (organizationId === null) {
+      return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+    }
+    if (body.organizationId != null && Number(body.organizationId) !== organizationId) {
+      console.warn('[Login] organizationId del body distinto al del host; se ignora', { organizationId })
+    }
     // «Recordarme»: solo `false` acorta la sesión; sin el campo (clientes viejos), la de siempre.
     const recordarme = body.recordarme !== false
 
@@ -44,40 +56,28 @@ export async function POST(request: NextRequest) {
     if (recordarme) cookieStore.delete(MARCA_SESION_CORTA)
     else cookieStore.set(MARCA_SESION_CORTA, '1', opcionesMarcaSesionCorta(request.nextUrl.protocol === 'https:'))
 
-    // Verificar que el usuario es cliente de esta organización
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .eq('email', email)
-      .single()
-    
-    const customerData = customer as any
-    
+    // Verificar que el usuario es cliente de esta organización (correo con otras mayúsculas incluido)
+    const customerData = authData.user?.email
+      ? await fichaPorCorreo(supabase as any, organizationId, authData.user.email.toLowerCase())
+      : null
+
     if (!customerData) {
       return NextResponse.json(
         { error: 'No tienes cuenta en esta organización' },
         { status: 403 }
       )
     }
-    
-    // Actualizar user_id si no está vinculado
-    if (!customerData.user_id && authData.user) {
-      await (supabase as any)
-        .from('customers')
-        .update({ 
-          user_id: authData.user.id, 
-          is_registered: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', customerData.id)
+
+    // Vincular la ficha al usuario si no lo está (la misma ruta del registro y del código).
+    if (authData.user) {
+      await vincularClienteDeSesion(supabase as any, organizationId, authData.user, { verificado: correoVerificado(authData.user) })
     }
-    
+
     return NextResponse.json({ 
       success: true, 
       user: {
         id: customerData.id,
-        email: customerData.email,
+        email: authData.user?.email ?? email,
         firstName: customerData.first_name,
         lastName: customerData.last_name
       },

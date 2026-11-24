@@ -15,6 +15,7 @@ import { CartDrawer } from './CartDrawer'
 import { FavoritosDrawer } from './favoritos/FavoritosDrawer'
 import { AvisoFavoritos } from './favoritos/AvisoFavoritos'
 import { AccesoCuenta } from './cuenta/AccesoCuenta'
+import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 import { OpcionesTiendaProvider } from './OpcionesTiendaContext'
 import { EVENTO_ABRIR_FAVORITOS } from '@/lib/favoritos/almacen'
 import { CountdownBanner } from './CountdownBanner'
@@ -549,7 +550,7 @@ export function OrganizationLayoutCliente({
       {/* Iniciar sesión desde el ícono de cuenta: panel, ventana, diálogo u hoja (Figma 2834:68670).
           Con «Página» (sin valor, lo de hoy) no se monta: el ícono sigue siendo el enlace a /auth. */}
       {!frozenReason && !modoMesa && opCuenta.modo !== 'pagina' && (
-        <AccesoCuenta opciones={opCuenta} organizationId={organization.id} organizationName={organization.name} primaryColor={primaryColor} />
+        <AccesoCuenta opciones={opCuenta} google={googleEnAcceso(settings)} organizationId={organization.id} organizationName={organization.name} primaryColor={primaryColor} />
       )}
       
       {/* Píxeles y scripts propios: misma regla que /checkout (lib/seo/reglaPixeles.ts). Los

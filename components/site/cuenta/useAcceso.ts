@@ -1,17 +1,20 @@
 'use client'
 
 /**
- * Lógica de sesión de la tienda en UN solo lugar: ingresar, crear cuenta y recuperar la
+ * Lógica de sesión de la tienda en UN solo lugar: código de 6 dígitos al correo (lo principal desde
+ * el 2026-11-24, Figma 2975:71911), ingresar con contraseña, crear cuenta y recuperar la
  * contraseña. La usan la página /auth (AuthForm) y el panel, la ventana, el diálogo y la hoja del
  * celular (FormularioAcceso, Figma «16 Sitio web» 2834:68670). Mismos endpoints de siempre
  * (/api/auth/login, /api/auth/register, /api/auth/forgot-password) y mismas validaciones.
  *
- * Las API fijan las cookies de sesión; aquí se sincroniza la sesión en el cliente del navegador
+ * El código: /api/auth/codigo lo envía y /api/auth/codigo/verificar entra (y crea o vincula la
+ * ficha de la tienda). Las API fijan las cookies de sesión; aquí se sincroniza la sesión en el cliente del navegador
  * para que la cabecera (onAuthStateChange) se entere sin recargar.
  */
 import { useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ERROR_INGRESO_GENERICO } from '@/lib/website/v2/cabeceraTienda'
+import { errorContrasena } from '@/lib/cuenta/reglasCuenta'
 
 export interface DatosIngreso {
   email: string
@@ -34,6 +37,13 @@ export interface DatosRegistro {
 
 export type TipoEntrada = 'ingreso' | 'registro'
 
+export interface DatosCodigo {
+  email: string
+  codigo: string
+  /** «Recordarme en este celular»: `false` = sesión hasta cerrar el navegador. */
+  recordarme?: boolean
+}
+
 interface OpcionesAcceso {
   organizationId: number
   /**
@@ -48,9 +58,8 @@ interface OpcionesAcceso {
 
 /** Valida el registro como siempre. `null` = sin error. */
 export function errorRegistro(datos: Pick<DatosRegistro, 'password' | 'confirmPassword'>): string | null {
-  if (datos.password !== datos.confirmPassword) return 'Las contraseñas no coinciden'
-  if (datos.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres'
-  return null
+  // La misma regla de «Crear contraseña» en Mis datos (lib/cuenta/reglasCuenta.ts).
+  return errorContrasena(datos)
 }
 
 async function sincronizarSesion(session: { access_token?: string; refresh_token?: string } | null | undefined) {
@@ -170,7 +179,61 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
     }
   }, [])
 
-  return { enviando, error, exito, setError, setExito, limpiar, ingresar, registrar, recuperar }
+  /** Pide el código de 6 dígitos. `true` si se envió. */
+  const pedirCodigo = useCallback(async (email: string): Promise<boolean> => {
+    setEnviando(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth/codigo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.error) {
+        setError(data.error || 'No pudimos enviar el código. Intenta de nuevo.')
+        return false
+      }
+      return true
+    } catch {
+      setError('No pudimos enviar el código. Revisa tu conexión.')
+      return false
+    } finally {
+      setEnviando(false)
+    }
+  }, [])
+
+  /** Entra con el código. `true` si entró (la ficha de la tienda queda creada o vinculada). */
+  const entrarConCodigo = useCallback(
+    async (datos: DatosCodigo): Promise<boolean> => {
+      setEnviando(true)
+      setError('')
+      try {
+        const res = await fetch('/api/auth/codigo/verificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: datos.email, codigo: datos.codigo, recordarme: datos.recordarme !== false }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || data.error) {
+          setError(data.error || 'El código no coincide. Revísalo o pide uno nuevo.')
+          return false
+        }
+        await sincronizarSesion(data.session)
+        setExito('¡Bienvenido!')
+        await alEntrar('ingreso')
+        return true
+      } catch {
+        setError('No pudimos verificar el código. Revisa tu conexión.')
+        return false
+      } finally {
+        setEnviando(false)
+      }
+    },
+    [alEntrar],
+  )
+
+  return { enviando, error, exito, setError, setExito, limpiar, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo }
 }
 
 /** Cerrar sesión: el servidor borra las cookies y el cliente del navegador la suelta. */
