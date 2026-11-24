@@ -233,6 +233,12 @@ const CON_BARRA = [
 for (const rel of CON_BARRA) check(leer(rel).includes('<BarraVolverMovil'), `${rel}: falta el «‹ Volver» del celular`)
 // El pago no lleva «‹ Volver» en el celular: su cabecera ya tiene «Seguir comprando» (dueño, 2026-11-24).
 check(!leer('app/checkout/page.tsx').includes('<BarraVolverMovil'), 'app/checkout/page.tsx: el pago no repite «Volver» en el celular')
+// Un solo «volver» en el celular: la ruta completa (EncabezadoPagina enCelular) solo en la ficha del
+// producto, que no pinta la barra; las demás páginas usan BarraVolverMovil (dueño, 2026-11-24: salían dos).
+for (const rel of CON_BARRA.filter((r) => r !== 'app/productos/[id]/page.tsx')) {
+  check(!/<EncabezadoPagina[^>]*\benCelular\b/.test(leer(rel)), `${rel}: con BarraVolverMovil no puede llevar EncabezadoPagina enCelular (salen dos «volver»)`)
+}
+check(/<BarraVolverMovil\s+soloRegistrar/.test(leer('app/productos/[id]/page.tsx')) && /enCelular/.test(leer('app/productos/[id]/page.tsx')), 'la ficha del producto: ruta completa en el celular y la barra solo registra')
 // Celular como el computador pero pequeño (dueño, 2026-11-24): ← cuadrado de 32 px + destino, sin quedarse pegado.
 {
   const barra = leer('components/site/volver/BarraVolverMovil.tsx')

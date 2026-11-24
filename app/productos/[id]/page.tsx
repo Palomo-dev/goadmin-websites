@@ -568,7 +568,7 @@ export default async function ProductoDetailPage({
       ) : (
       <div className="container mx-auto px-4 py-12">
         {/* Migas y ← (escritorio y celular: ruta completa en una línea, pegada a la foto). */}
-        <EncabezadoPagina tipo="ficha" migas={navegacion.migas} padre={navegacion.padre} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
+        <EncabezadoPagina tipo="ficha" enCelular migas={navegacion.migas} padre={navegacion.padre} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Galería de imágenes */}

@@ -5,9 +5,10 @@
  * página»): migas de pan arriba y el botón ← cuadrado junto al título. Tipo «ficha»: el título vive
  * en la columna de compra, así que el ← va al inicio de las migas.
  *
- * Tipo «ficha»: también en el celular (pedido del dueño, 2026-11-24: «mostrar la ruta completa»),
- * con el ← en 32 px y las migas en una línea que se desliza. Tipo «titulo»: en el celular las migas
- * y el ← no se muestran (los reemplaza `BarraVolverMovil`); el título sí.
+ * Tipo «ficha» con `enCelular` (la ficha del producto, pedido del dueño 2026-11-24: «mostrar la
+ * ruta completa»): también en el celular, con el ← en 32 px y las migas en una línea que se
+ * desliza; esa página no pinta `BarraVolverMovil`. Sin `enCelular` (y en tipo «titulo»), en el
+ * celular las migas y el ← no se muestran: los reemplaza `BarraVolverMovil` (si no, salían dos).
  * Las rutas llegan SIN prefijo de sede: aquí se les antepone (`useRutaSitio`).
  */
 import Link from '@/components/site/Enlace'
@@ -58,6 +59,8 @@ export interface EncabezadoPaginaProps {
   /** «Mostrar migas de pan» del editor. Sin migas, el ← sigue junto al título. */
   mostrarMigas?: boolean
   preferirUltimaCategoria?: boolean
+  /** Tipo «ficha»: también en el celular (la página no pinta `BarraVolverMovil`). */
+  enCelular?: boolean
   className?: string
 }
 
@@ -71,6 +74,7 @@ export function EncabezadoPagina({
   acciones,
   mostrarMigas = true,
   preferirUltimaCategoria,
+  enCelular = false,
   className = '',
 }: EncabezadoPaginaProps) {
   const estiloMiga = primaryColor ? ({ ['--volver-miga' as string]: primaryColor } as CSSProperties) : undefined
@@ -78,7 +82,7 @@ export function EncabezadoPagina({
 
   if (tipo === 'ficha') {
     return (
-      <div className={`flex items-center gap-2 md:gap-3 ${className}`} style={estiloMiga} data-encabezado-pagina="ficha">
+      <div className={`${enCelular ? 'flex' : 'hidden md:flex'} items-center gap-2 md:gap-3 ${className}`} style={estiloMiga} data-encabezado-pagina="ficha">
         <BotonVolver compacto padre={padre} primaryColor={primaryColor} preferirUltimaCategoria={preferirUltimaCategoria} />
         {mostrarMigas && <MigasTienda migas={migas} />}
       </div>

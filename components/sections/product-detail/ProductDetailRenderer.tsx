@@ -283,7 +283,7 @@ export function ProductDetailRenderer({
   // Migas con el ← al inicio (Figma 2992:74983, tipo «Ficha»), en escritorio y en el celular (ruta
   // completa en una línea; en el celular, más pegada a la foto: pedido del dueño, 2026-11-24).
   const breadcrumbBlock = showBreadcrumb && (
-    <EncabezadoPagina tipo="ficha" migas={migasVolver} padre={padreVolver} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
+    <EncabezadoPagina tipo="ficha" enCelular migas={migasVolver} padre={padreVolver} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
   )
 
   // Layout según columns
