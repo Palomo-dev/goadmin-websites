@@ -361,6 +361,13 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   const whatsapp = enlaceWhatsApp(ayuda.whatsapp, order.orderNumber)
   const hayAyuda = !!(whatsapp || ayuda.telefono || ayuda.correo)
   const anticipo = order.anticipo ?? null
+  // Lo que se paga al recibir, como lo ve el cliente: con el anticipo pendiente ya se descuenta
+  // (si no, «Anticipo hoy $ 20.000» + «Al recibir $ 134.700» suman más que el total).
+  const alRecibirVista = anticipo
+    ? anticipo.estado === 'paid'
+      ? anticipo.alRecibir
+      : Math.max(0, Number(order.total) - Number(anticipo.monto))
+    : 0
   const anticipoPendiente = !!anticipo && anticipo.estado === 'pending' && order.status === 'pending'
   const anticipoPagado = !!anticipo && anticipo.estado === 'paid' && !isFinal
   const encabezadoBase = encabezadoPedido(vista, {
@@ -620,7 +627,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             )}
             {listaOtrosMedios}
             {errorPago && <p role="alert" className="text-sm text-red-700">{errorPago}</p>}
-            <FilaInfo icono={Banknote} titulo={`Al recibir pagas ${pesos(anticipo.alRecibir)}`} detalle={`${anticipo.medios ? `${anticipo.medios}. ` : ''}${order.deliveryType === 'delivery_own' ? 'El domiciliario te lo cobra al entregarte.' : 'Te lo cobran al entregarte el pedido.'}`} color="#0F172A" />
+            <FilaInfo icono={Banknote} titulo={`Al recibir pagas ${pesos(alRecibirVista)}`} detalle={`${anticipo.medios ? `${anticipo.medios}. ` : ''}${order.deliveryType === 'delivery_own' ? 'El domiciliario te lo cobra al entregarte.' : 'Te lo cobran al entregarte el pedido.'}`} color="#0F172A" />
             <p className="text-xs text-gray-600">Si ya pagaste, puede tardar unos minutos en verse aquí. Esta página se actualiza sola.</p>
           </Tarjeta>
         )}
@@ -813,7 +820,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
                 {anticipo && anticipo.estado !== 'expired' && (
                   <>
                     <div className={`flex justify-between ${anticipo.estado === 'paid' ? 'text-green-700' : 'text-amber-700'}`}><span>{anticipo.estado === 'paid' ? 'Anticipo pagado' : 'Anticipo hoy (pendiente)'}</span><span>{anticipo.estado === 'paid' ? '− ' : ''}{pesos(anticipo.monto)}</span></div>
-                    <div className="flex justify-between font-bold"><span>{anticipo.estado === 'paid' ? 'Por pagar al recibir' : 'Al recibir'}</span><span>{pesos(anticipo.alRecibir)}</span></div>
+                    <div className="flex justify-between font-bold"><span>{anticipo.estado === 'paid' ? 'Por pagar al recibir' : 'Al recibir (después del anticipo)'}</span><span>{pesos(alRecibirVista)}</span></div>
                   </>
                 )}
               </div>
