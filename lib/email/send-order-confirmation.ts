@@ -16,6 +16,7 @@ import {
   textosCorreoCompraPendiente,
   textosCorreoRecibido,
   textosCorreoRecordatorioPago,
+  type FaltaAnticipo,
 } from '@/lib/email/textosCorreoPedido'
 import { impuestoVaIncluido } from '@/lib/email/totalesCorreo'
 
@@ -52,13 +53,19 @@ interface OrderEmailData {
   /**
    * «Termina tu pago»: pedido por pasarela que sigue sin pagar y aún no vence. Mismo sobre; el
    * botón dice «Pagar ahora» y abre la página del pedido con su token. `hasta` ya viene
-   * formateado en la zona de la sede.
+   * formateado en la zona de la sede. Con `anticipo` (contraentrega con el anticipo pendiente):
+   * el valor del anticipo en vez del total y el botón «Pagar anticipo».
    */
-  recordatorioPago?: { hasta: string; mismoDia: boolean } | null
+  recordatorioPago?: { hasta: string; mismoDia: boolean; anticipo?: number | null } | null
   /** `organizations.type_id = 1`. Sin valor, el «Recibimos tu pedido» no habla de restaurante. */
   esRestaurante?: boolean
   /** Pago por pasarela aún sin completar: «Recibimos tu pedido» dice que falta el pago. */
   faltaPagoEnLinea?: boolean
+  /**
+   * Contraentrega con el anticipo aún sin pagar: «Recibimos tu pedido» dice «Falta el anticipo de
+   * $ X para confirmarlo», la hora límite y el botón «Pagar anticipo». Sin él, como siempre.
+   */
+  faltaAnticipo?: FaltaAnticipo | null
   /** «🛵 Domicilio», «🏪 Recoger en el local», «🍽️ Comer aquí · Mesa 4». */
   tipoEntrega?: string | null
   /** Hora programada ya formateada en la zona de la sede («Hoy · 7:30 p. m.»). */
@@ -130,6 +137,7 @@ export async function sendOrderConfirmationEmail(
         hasta: data.recordatorioPago.hasta,
         mismoDia: data.recordatorioPago.mismoDia,
         esRestaurante: data.esRestaurante,
+        anticipo: data.recordatorioPago.anticipo ?? null,
       })
     : null
   const especial = data.compraPendiente ? pendiente : recordatorio
@@ -137,6 +145,7 @@ export async function sendOrderConfirmationEmail(
     orderNumber: data.orderNumber,
     esRestaurante: data.esRestaurante,
     faltaPagoEnLinea: data.faltaPagoEnLinea,
+    faltaAnticipo: data.faltaAnticipo ?? null,
   })
   const titulo = especial ? especial.titulo : pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
   const mensaje = especial

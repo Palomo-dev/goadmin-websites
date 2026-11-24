@@ -9,6 +9,9 @@
  *   con menos de 2 minutos por delante (no vale la pena) ni después de vencer.
  * - Quién: `source = 'website'`, `status = 'pending'`, pago `pending` (o `failed` con el pedido
  *   aún vivo), stock sin liberar, correo válido, método de pasarela, ni mesa ni comer aquí.
+ * - Contraentrega con anticipo (`advance_status = 'pending'`): entra aunque el método sea efectivo;
+ *   el plazo es `advance_due_at` (con él vence el pedido) y el correo pide el ANTICIPO, no el total.
+ *   Con el anticipo pagado o vencido, no.
  * - Una vez: cualquier fila `recordatorio_pago` del pedido en `web_order_email_log` lo deja fuera.
  * - Mismo comprador (organización + correo): solo su pedido más reciente, y si a ese correo ya
  *   se le recordó otro pedido en las últimas 2 horas, no se le vuelve a escribir. Un pedido
@@ -67,6 +70,12 @@ export interface PedidoRecordatorio {
   notasInternas: string | null
   createdAt: string | null
   stockReleasedAt: string | null
+  /**
+   * Contraentrega con anticipo: `advance_status` y `advance_due_at`. Sin anticipo, null (o ausentes):
+   * la regla de siempre por pasarela.
+   */
+  anticipoEstado?: string | null
+  anticipoVence?: string | null
   /** Filas `recordatorio_pago` de este pedido en `web_order_email_log`, cualquier estado. */
   recordatorios: RecordatorioRegistrado[]
 }
@@ -110,6 +119,23 @@ export function venceMs(createdAt: string | null | undefined, plazoMinutos: numb
   return t + plazo * 60_000
 }
 
+/** El pedido tiene anticipo (contraentrega), en cualquier estado. */
+export function tieneAnticipo(pedido: Pick<PedidoRecordatorio, 'anticipoEstado'>): boolean {
+  return typeof pedido.anticipoEstado === 'string' && pedido.anticipoEstado.trim() !== ''
+}
+
+/**
+ * Contraentrega con el anticipo pendiente: el plazo es el del anticipo (`advance_due_at`, el mismo
+ * con que vence el pedido en `expire_pending_web_orders`). Minutos desde la creación, o null.
+ */
+export function plazoAnticipoMinutos(pedido: Pick<PedidoRecordatorio, 'anticipoEstado' | 'anticipoVence' | 'createdAt'>): number | null {
+  if (pedido.anticipoEstado !== 'pending') return null
+  const vence = Date.parse(pedido.anticipoVence || '')
+  const creado = Date.parse(pedido.createdAt || '')
+  if (!Number.isFinite(vence) || !Number.isFinite(creado) || vence <= creado) return null
+  return (vence - creado) / 60_000
+}
+
 /**
  * Lo que se decide sin preguntar a la base. Sirve para no consultar el plazo de pedidos que de
  * todas formas no se escriben.
@@ -122,12 +148,27 @@ export function motivoPrevio(pedido: PedidoRecordatorio, ahora: Date): MotivoSin
   if (pedido.paymentStatus !== 'pending' && pedido.paymentStatus !== 'failed') return 'pago'
   if (pedido.stockReleasedAt) return 'liberado'
   if (esComerAqui(pedido.deliveryType, pedido.notasInternas) || pedido.restaurantTableId) return 'mesa'
-  if (!metodoPuedeSerPasarela(pedido.paymentMethod)) return 'nativo'
+  if (tieneAnticipo(pedido)) {
+    // Contraentrega con anticipo: el método sigue en efectivo; lo que se recuerda es el anticipo.
+    if (pedido.anticipoEstado !== 'pending') return 'pago'
+    if (plazoAnticipoMinutos(pedido) === null) return 'sin_plazo'
+  } else if (!metodoPuedeSerPasarela(pedido.paymentMethod)) {
+    return 'nativo'
+  }
   const creado = Date.parse(pedido.createdAt || '')
   if (!Number.isFinite(creado)) return 'sin_plazo'
   const edad = ahora.getTime() - creado
   if (edad > VENTANA_RECORDATORIO_MS) return 'vencido'
   return null
+}
+
+/**
+ * Plazo del pedido en minutos: el del anticipo si es una contraentrega con anticipo; si no, el de
+ * la base para su método (`fn_web_order_plazo_minutos`).
+ */
+export function plazoDe(pedido: PedidoRecordatorio, contexto: ContextoMetodo | null | undefined): number | null {
+  if (tieneAnticipo(pedido)) return plazoAnticipoMinutos(pedido)
+  return plazoUtil(contexto?.plazoMinutos)
 }
 
 /** `null` = le toca el recordatorio a este pedido (antes de mirar a sus hermanos del mismo correo). */
@@ -138,8 +179,9 @@ export function motivoSinRecordatorio(
 ): MotivoSinRecordatorio | null {
   const previo = motivoPrevio(pedido, ahora)
   if (previo) return previo
-  if (!esMetodoPasarela(pedido.paymentMethod, contexto?.nativo)) return 'nativo'
-  const plazo = plazoUtil(contexto?.plazoMinutos)
+  const anticipo = tieneAnticipo(pedido)
+  if (!anticipo && !esMetodoPasarela(pedido.paymentMethod, contexto?.nativo)) return 'nativo'
+  const plazo = plazoDe(pedido, contexto)
   const vence = venceMs(pedido.createdAt, plazo)
   if (plazo === null || vence === null) return 'sin_plazo'
   const creado = Date.parse(pedido.createdAt || '')
@@ -213,8 +255,8 @@ export function planRecordatorios(
     candidatos.push(pedido)
   }
   // Los que vencen primero, primero: son los que más se pierden si esperan a la próxima corrida.
-  const vence = (p: PedidoRecordatorio) =>
-    venceMs(p.createdAt, contextos.get(clavePar(p.organizationId, p.paymentMethod))?.plazoMinutos) ?? Infinity
+  const contextoDe = (p: PedidoRecordatorio) => contextos.get(clavePar(p.organizationId, p.paymentMethod))
+  const vence = (p: PedidoRecordatorio) => venceMs(p.createdAt, plazoDe(p, contextoDe(p))) ?? Infinity
   candidatos.sort((a, b) => vence(a) - vence(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const enviar: PlanRecordatorios['enviar'] = []
   for (const pedido of candidatos) {
@@ -222,7 +264,7 @@ export function planRecordatorios(
       motivos[pedido.id] = 'tope'
       continue
     }
-    const plazo = contextos.get(clavePar(pedido.organizationId, pedido.paymentMethod))?.plazoMinutos as number
+    const plazo = plazoDe(pedido, contextoDe(pedido)) as number
     enviar.push({ id: pedido.id, plazoMinutos: plazo })
   }
   return { enviar, motivos }
@@ -233,6 +275,7 @@ export function paresPorConsultar(pedidos: readonly PedidoRecordatorio[], ahora:
   const vistos = new Map<string, { organizationId: number; metodo: string }>()
   for (const pedido of pedidos) {
     if (motivoPrevio(pedido, ahora)) continue
+    if (tieneAnticipo(pedido)) continue // el plazo es el del anticipo: no hace falta preguntar
     const metodo = (pedido.paymentMethod || '').trim()
     vistos.set(clavePar(pedido.organizationId, metodo), { organizationId: pedido.organizationId, metodo })
   }

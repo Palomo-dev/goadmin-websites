@@ -113,8 +113,13 @@ const PROHIBIDAS = [
  * - app/api/orders/route.ts: con `paymentMethod === 'cash'` a domicilio y condiciones en la sede,
  *   el SERVIDOR evalúa la regla con sus montos: no disponible → 422 CONTRAENTREGA_NO_DISPONIBLE;
  *   con anticipo → `advance_*` en el insert (pendiente, vence en 30 min) y `anticipo` en la
- *   respuesta; el correo «Recibimos tu pedido» espera al pago del anticipo. Cada `if` con su `else`
- *   de hoy: sin condiciones (las ~40 tiendas actuales) no cambia nada.
+ *   respuesta. Cada `if` con su `else` de hoy: sin condiciones (las ~40 tiendas actuales) no cambia
+ *   nada. 2026-11-24 (aprobado por el dueño): con anticipo pendiente, el bloque del correo llama
+ *   `enviarCorreoAnticipoPendiente` (lib/contraentrega/correoAnticipo.ts: «Falta el anticipo de $ X»,
+ *   hora límite y «Pagar anticipo»), con su `else` sin correo como hoy; antes no salía ningún correo
+ *   hasta pagar el anticipo. El recordatorio (lib/orders/recordatorioPago.ts) incluye el anticipo
+ *   pendiente; el correo de anticipo pagado no cambia. Comprobado por verify-contraentrega y
+ *   verify-recordatorio-pago.
  * - app/api/checkout/init/route.ts: fuente nueva `anticipo_pedido` (id + organización del host,
  *   monto de la base, pasarela activa y permitida) que cobra `ANT-<id>` y solo escribe
  *   `advance_gateway` (el pedido sigue en efectivo); un pedido con el anticipo pagado (`partial`)
@@ -146,7 +151,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-09', motivo: 'Envío gratis después de promociones y cupón' },
   { ruta: 'app/api/shipping/quote/route.ts', hasta: '2026-12-09', motivo: 'Envío gratis después de promociones y cupón (cotización informativa)' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Tienda Promociones V2: resumen por promoción y envío gratis después de descuentos' },
-  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega con condiciones: el servidor decide la opción y el anticipo' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega con condiciones: el servidor decide la opción y el anticipo; correo «Falta el anticipo» al crear el pedido' },
   { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: cobro del anticipo (ANT-<id>) sin pasar el pedido a pasarela' },
   { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo con firma obligatoria, pago parcial' },
   { ruta: 'app/api/webhooks/bold/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo de la organización que firmó, pago parcial' },

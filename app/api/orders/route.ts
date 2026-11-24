@@ -34,6 +34,7 @@ import { cotizarDomicilioWeb } from '@/lib/shipping/cotizarZonas'
 import { evaluarContraentregaServidor, pasarelaElegida, type EvaluacionServidor } from '@/lib/contraentrega/contraentregaServidor'
 import type { TipoEntregaPedido } from '@/lib/contraentrega/reglaContraentrega'
 import { fraseMedios, textoMotivo } from '@/lib/contraentrega/textosContraentrega'
+import { enviarCorreoAnticipoPendiente } from '@/lib/contraentrega/correoAnticipo'
 import { envioDeZona, usaZonas } from '@/lib/shipping/domicilioZonas'
 import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
@@ -1002,8 +1003,14 @@ export async function POST(request: NextRequest) {
       if (mesaPedido && !tieneCorreo(customer.email)) {
         // Ronda de la Carta QR sin correo: no hay a quién escribir. Sigue en la pantalla de la mesa.
       } else if (anticipoPedido) {
-        // Contraentrega con anticipo pendiente: «Recibimos tu pedido» sale cuando el anticipo se paga
-        // (webhook, lib/contraentrega/correoAnticipo.ts), como un pago en línea.
+        // Contraentrega con anticipo pendiente: «Recibimos tu pedido» con «Falta el anticipo de $ X»,
+        // la hora límite y «Pagar anticipo» (lib/contraentrega/correoAnticipo.ts). El recordatorio y el
+        // de anticipo pagado salen aparte (cron y webhook). Se espera: nunca lanza.
+        if (tieneCorreo(customer.email)) {
+          await enviarCorreoAnticipoPendiente(webOrder.id)
+        } else {
+          // Sin correo: no hay a quién escribir (como hoy).
+        }
       } else if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
         const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
         // Marca y clave de envío: From pedidos@<dominio verificado> con Reply-To de la tienda, como el

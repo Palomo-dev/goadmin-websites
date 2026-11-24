@@ -183,6 +183,46 @@ igual(
   'solo se pregunta a la base por los pares que pasan el filtro',
 )
 
+// ── Contraentrega con anticipo (aprobado 2026-11-24) ────────────────────────
+{
+  // Efectivo a domicilio con anticipo pendiente: vence a la hora del anticipo (30 min), no por el método.
+  const conAnticipo = (parcial = {}) => pedido({
+    id: 'ant-1',
+    paymentMethod: 'cash',
+    anticipoEstado: 'pending',
+    anticipoVence: new Date(Date.parse(iso(12 * min)) + 30 * min).toISOString(),
+    ...parcial,
+  })
+  igual(motivo(conAnticipo(), null), null, 'anticipo pendiente a los 12 minutos: sí, aunque el método sea efectivo')
+  igual(motivo(conAnticipo(), { nativo: true, plazoMinutos: 1440 }), null, 'anticipo: el método nativo y el plazo de 24 h del efectivo no cuentan')
+  igual(motivo(conAnticipo({ createdAt: iso(9 * min), anticipoVence: new Date(Date.parse(iso(9 * min)) + 30 * min).toISOString() }), null), 'aun_no', 'anticipo: a los 9 minutos todavía no')
+  igual(motivo(conAnticipo({ createdAt: iso(10 * min), anticipoVence: new Date(Date.parse(iso(10 * min)) + 30 * min).toISOString() }), null), null, 'anticipo: a los 10 minutos sí')
+  igual(motivo(conAnticipo({ createdAt: iso(29 * min), anticipoVence: new Date(Date.parse(iso(29 * min)) + 30 * min).toISOString() }), null), 'vencido', 'anticipo: con menos de 2 minutos para vencer no')
+  igual(motivo(conAnticipo({ anticipoVence: iso(1 * min) }), null), 'vencido', 'anticipo: después de la hora límite no')
+  igual(motivo(conAnticipo({ anticipoVence: null }), null), 'sin_plazo', 'anticipo sin hora límite: no se adivina')
+  igual(motivo(conAnticipo({ anticipoEstado: 'paid', paymentStatus: 'partial' }), null), 'pago', 'anticipo pagado: no')
+  igual(motivo(conAnticipo({ anticipoEstado: 'paid' }), null), 'pago', 'anticipo pagado aunque el pago siga pending: no')
+  igual(motivo(conAnticipo({ anticipoEstado: 'expired', status: 'expired' }), null), 'estado', 'anticipo vencido: no')
+  igual(motivo(conAnticipo({ recordatorios: [{ createdAt: iso(1 * min) }] }), null), 'ya_enviado', 'anticipo: una sola vez por pedido')
+  igual(motivo(pedido({ paymentMethod: 'cash', anticipoEstado: null, anticipoVence: null })), 'nativo', 'efectivo sin anticipo: no (como hoy)')
+  igual(reglas.plazoAnticipoMinutos(conAnticipo()), 30, 'plazo del anticipo = hora límite − creación')
+  igual(reglas.paresPorConsultar([conAnticipo(), pedido()], ahora), [{ organizationId: 7, metodo: 'mercadopago' }], 'el anticipo no pregunta el plazo a la base')
+  // Una sola consulta por lote: el plan sale sin contexto para el efectivo con anticipo.
+  const r = reglas.planRecordatorios([conAnticipo()], ahora, new Map())
+  igual(r.enviar.map((e) => [e.id, e.plazoMinutos]), [['ant-1', 30]], 'el plan incluye el anticipo con su plazo')
+  const mixto = reglas.planRecordatorios([conAnticipo({ email: 'a@ejemplo.com' }), pedido({ id: 'p', email: 'b@ejemplo.com', createdAt: iso(20 * min) })], ahora, ctx, 1)
+  igual(mixto.enviar.map((e) => e.id), ['p'], 'tope: primero el que vence antes (pasarela a 10 min) que el anticipo (a 18 min)')
+  // Textos del recordatorio del anticipo: valor DEL ANTICIPO, no el total; botón «Pagar anticipo».
+  const ta = textos.textosCorreoRecordatorioPago({ orderNumber: 'W-415', nombreTienda: 'Tienda Norte', total: 151000, hasta: '3:18 p. m.', mismoDia: true, anticipo: 9000 })
+  check(ta.mensajeHtml.includes('anticipo de <strong>$9.000</strong>') && !ta.mensajeHtml.includes('151.000'), `anticipo: el valor del anticipo y no el total: ${ta.mensajeHtml}`)
+  check(ta.mensajeHtml.includes('hasta las <strong>3:18 p. m.</strong>'), 'anticipo: la hora en que vence')
+  igual(ta.boton, 'Pagar anticipo', 'anticipo: botón')
+  igual(ta.titulo, 'Termina tu pago', 'anticipo: el mismo «Termina tu pago»')
+  igual(ta.asunto, 'Termina tu pago del pedido W-415 — Tienda Norte', 'anticipo: mismo asunto')
+  igual(textos.textosCorreoRecordatorioPago({ orderNumber: 'W-1', nombreTienda: '', total: 5, hasta: '', mismoDia: true, anticipo: null }).boton, 'Pagar ahora', 'sin anticipo: el recordatorio de siempre')
+  igual(textos.textosCorreoRecordatorioPago({ orderNumber: 'W-1', nombreTienda: '', total: 5, hasta: '', mismoDia: true, anticipo: 0 }).boton, 'Pagar ahora', 'anticipo 0: el recordatorio de siempre')
+}
+
 // ── Reclamo ─────────────────────────────────────────────────────────────────
 const filas = [
   { id: 'b', createdAt: '2026-11-24T20:00:00.100Z' },
@@ -268,6 +308,10 @@ check(corrida.includes('claveResend') && !corrida.includes('process.env.RESEND_A
 check(envio.includes('rutaSeguimiento(') && envio.includes('cargarMarcaPedido(') && envio.includes('origenSitio('), 'el correo lleva la marca, el dominio y el token')
 check(envio.includes("pedido.status === 'pending'"), 'antes de enviar se vuelve a mirar el pedido')
 check(registro.includes("'recordatorio_pago'"), 'el registro conoce el tipo nuevo')
+// Anticipo: una sola consulta por lote (las columnas van en la misma), y el correo vuelve a mirar el anticipo.
+check(/\.select\('[^']*advance_status, advance_due_at[^']*web_order_email_log/.test(corrida), 'la consulta del lote trae el anticipo')
+check((corrida.match(/\.from\('web_orders'\)/g) || []).length === 1, 'una sola consulta de pedidos por lote')
+check(envio.includes("pedido.advance_status === 'pending'") && envio.includes('pedido.advance_due_at') && envio.includes('anticipo: num(pedido.advance_amount)'), 'el recordatorio del anticipo usa su estado, su hora límite y su valor')
 
 if (problemas.length > 0) {
   console.error(`verify-recordatorio-pago: ${problemas.length} problemas en ${casos} casos`)

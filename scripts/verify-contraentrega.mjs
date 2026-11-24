@@ -37,6 +37,7 @@ import {
   textoMedios,
 } from '../lib/contraentrega/textosContraentrega.ts'
 import { esReferenciaAnticipo, idDeReferenciaAnticipo, referenciaAnticipo } from '../lib/contraentrega/referenciaAnticipo.ts'
+import { textosCorreoRecibido, textosCorreoRecordatorioPago } from '../lib/email/textosCorreoPedido.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const fallos = []
@@ -233,6 +234,44 @@ igual('opción: enlaces con Enlace, no <a href>', /<a\s+href/.test(fuente('compo
 igual('checkout: 09 E «Quitar» y 09 F «Cambiar dirección» conectados',
   fuente('components/site/CheckoutWizard.tsx').includes('onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican}'), true)
 igual('init: el anticipo solo escribe advance_gateway', /isAnticipo\) \{[^}]*advance_gateway: pasarelaAnticipo/.test(fuente('app/api/checkout/init/route.ts')), true)
+
+// ── Los 3 correos del anticipo (aprobado 2026-11-24): 1 al crear, máx. 1 recordatorio, 1 al pagar ──
+{
+  // 1. Al crear: «Recibimos tu pedido» con el anticipo pendiente, la hora límite y «Pagar anticipo».
+  const alCrear = textosCorreoRecibido({ orderNumber: 'WO-000415', faltaAnticipo: { monto: 9000, alRecibir: 142000, hasta: '4:30 p. m.', mismoDia: true } })
+  igual('correo 1: falta el anticipo, el resto al recibir y la hora límite', alCrear.mensajeHtml,
+    'Recibimos tu pedido <strong>WO-000415</strong>. Falta el anticipo de <strong>$9.000</strong> para confirmarlo; el resto (<strong>$142.000</strong>) lo pagas al recibir. Paga antes de las <strong>4:30 p. m.</strong>; si no, el pedido se cancela sin cobro.')
+  igual('correo 1: botón «Pagar anticipo»', alCrear.boton, 'Pagar anticipo')
+  igual('correo 1: «antes de la 1:05»', textosCorreoRecibido({ orderNumber: 'W', faltaAnticipo: { monto: 1, alRecibir: 1, hasta: '1:05 p. m.', mismoDia: true } }).mensajeHtml.includes('antes de la <strong>1:05 p. m.</strong>'), true)
+  igual('correo 1: vence otro día → fecha y hora', textosCorreoRecibido({ orderNumber: 'W', faltaAnticipo: { monto: 1, alRecibir: 1, hasta: '25 nov · 12:10 a. m.', mismoDia: false } }).mensajeHtml.includes('antes del <strong>25 nov · 12:10 a. m.</strong>'), true)
+  igual('correo 1: la hora no entra como HTML', textosCorreoRecibido({ orderNumber: 'W', faltaAnticipo: { monto: 1, alRecibir: 1, hasta: '<i>x', mismoDia: true } }).mensajeHtml.includes('<i>'), false)
+  igual('correo 1: sin anticipo, el texto de siempre', textosCorreoRecibido({ orderNumber: 'W-9' }).boton, 'Seguir mi pedido')
+  igual('correo 1: anticipo 0, el texto de siempre', textosCorreoRecibido({ orderNumber: 'W-9', faltaAnticipo: { monto: 0, alRecibir: 5, hasta: 'x', mismoDia: true } }).boton, 'Seguir mi pedido')
+  igual('correo 1: el anticipo manda sobre «falta el pago en línea»', textosCorreoRecibido({ orderNumber: 'W', faltaPagoEnLinea: true, faltaAnticipo: { monto: 9000, alRecibir: 1, hasta: '', mismoDia: true } }).boton, 'Pagar anticipo')
+
+  // 2. Recordatorio: el mismo «Termina tu pago» por el valor DEL ANTICIPO.
+  const rec = textosCorreoRecordatorioPago({ orderNumber: 'WO-000415', nombreTienda: 'T', total: 151000, hasta: '4:30 p. m.', mismoDia: true, anticipo: 9000 })
+  igual('correo 2: valor del anticipo, no del total', [rec.mensajeHtml.includes('$9.000'), rec.mensajeHtml.includes('151.000'), rec.boton], [true, false, 'Pagar anticipo'])
+
+  // Contrato en el fuente: quién envía cada uno y que no se dupliquen.
+  const pedidos = fuente('app/api/orders/route.ts')
+  const correo = fuente('lib/contraentrega/correoAnticipo.ts')
+  const webhook = fuente('lib/contraentrega/anticipoWebhook.ts')
+  const regla = fuente('lib/orders/recordatorioPago.ts')
+  const bloque = pedidos.slice(pedidos.indexOf('} else if (anticipoPedido) {'), pedidos.indexOf('} else if (!PASARELAS_CON_CORREO_AL_PAGAR'))
+  igual('correo 1: la creación lo envía en el ramal del anticipo, con su else', /if \(tieneCorreo\(customer\.email\)\) \{\s*await enviarCorreoAnticipoPendiente\(webOrder\.id\)\s*\} else \{/.test(bloque), true)
+  igual('correo 1: el ramal del anticipo no manda además el «Recibimos tu pedido» genérico', bloque.includes('sendOrderConfirmationEmail('), false)
+  igual('correo 1: una sola llamada desde la creación', (pedidos.match(/enviarCorreoAnticipoPendiente\(/g) || []).length, 1)
+  igual('correo 1: solo con el anticipo pendiente', correo.includes("pedido.advance_status !== 'pending'"), true)
+  igual('correo 1: botón a la página del pedido con su token', correo.includes('rutaSeguimiento(organizationId, pedido)'), true)
+  igual('correo 1: hora límite en la zona de la sede', correo.includes('sede?.timezone || org?.timezone || ZONA_POR_DEFECTO') && correo.includes('pedido.advance_due_at'), true)
+  igual('correo 1: con la marca de la tienda', correo.includes('cargarMarcaPedido(sb, organizationId'), true)
+  igual('correo 2: la regla incluye el anticipo pendiente', regla.includes("pedido.anticipoEstado !== 'pending'") && regla.includes('plazoAnticipoMinutos'), true)
+  igual('correo 3: el webhook no envía el de creación', webhook.includes('enviarCorreoAnticipoPendiente'), false)
+  igual('correo 3: solo en la transición a pagado', (webhook.match(/status === 'pagado'\) \{\s*await enviarCorreoAnticipoPagado/g) || []).length, 2)
+  igual('correo 3: sin cambios (exige pagado y registra pedido_pagado)', correo.includes("pedido.advance_status !== 'paid'") && correo.includes("tipo: 'pedido_pagado'"), true)
+  igual('la página del pedido cobra el anticipo (botón «Pagar anticipo» del correo)', fuente('app/pedido/[id]/OrderTracker.tsx').includes("source: 'anticipo_pedido'"), true)
+}
 
 // ── Carrito lateral (14 / 14b) y ficha (15 / 15b) ─────────────────────────────────────────────
 {

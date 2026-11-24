@@ -4,7 +4,8 @@
  * Vuelve a leer el pedido (pudo pagarse o vencer entre la selección y el envío), arma el mismo
  * sobre que los demás correos del pedido (`sendOrderConfirmationEmail` con la marca de la tienda)
  * y cierra la fila reclamada. El botón «Pagar ahora» abre `/pedido/<n>?t=<token>` en el dominio
- * del sitio: esa página ya trae «Pagar», que va por `/api/checkout/init`.
+ * del sitio: esa página ya trae «Pagar», que va por `/api/checkout/init`. En una contraentrega con
+ * anticipo, el correo pide el anticipo con su hora límite y esa página lo cobra (`anticipo_pedido`).
  *
  * Nunca lanza: un fallo del correo no puede tumbar el cron.
  */
@@ -39,7 +40,7 @@ export async function enviarRecordatorioPago(
   try {
     const { data: pedido, error } = await sb
       .from('web_orders')
-      .select('id, order_number, organization_id, branch_id, status, payment_status, stock_released_at, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, coupon_code, created_at, web_order_items ( product_id, product_name, quantity, unit_price, total )')
+      .select('id, order_number, organization_id, branch_id, status, payment_status, stock_released_at, customer_email, customer_name, subtotal, tax_total, delivery_fee, discount_total, tip_amount, total, coupon_code, created_at, advance_amount, advance_status, advance_due_at, web_order_items ( product_id, product_name, quantity, unit_price, total )')
       .eq('id', entrada.webOrderId)
       .maybeSingle()
     if (error || !pedido?.customer_email) {
@@ -48,13 +49,27 @@ export async function enviarRecordatorioPago(
       return 'error'
     }
     const organizationId = Number(pedido.organization_id)
-    const vivo = pedido.status === 'pending'
-      && (pedido.payment_status === 'pending' || pedido.payment_status === 'failed')
-      && !pedido.stock_released_at
-    const vence = apartadoHasta(pedido.created_at, entrada.plazoMinutos)
+    // Contraentrega con anticipo: vivo mientras el ANTICIPO siga pendiente, y vence a su hora límite
+    // (`advance_due_at`, la misma de `expire_pending_web_orders`). Sin anticipo, como siempre.
+    const conAnticipo = typeof pedido.advance_status === 'string' && pedido.advance_status !== ''
+    let vivo: boolean
+    let vence: string | null
+    if (conAnticipo) {
+      vivo = pedido.status === 'pending'
+        && pedido.advance_status === 'pending'
+        && pedido.payment_status === 'pending'
+        && !pedido.stock_released_at
+        && num(pedido.advance_amount) > 0
+      vence = pedido.advance_due_at ?? null
+    } else {
+      vivo = pedido.status === 'pending'
+        && (pedido.payment_status === 'pending' || pedido.payment_status === 'failed')
+        && !pedido.stock_released_at
+      vence = apartadoHasta(pedido.created_at, entrada.plazoMinutos)
+    }
     const venceT = vence ? Date.parse(vence) : NaN
     if (!vivo || !vence || !Number.isFinite(venceT) || venceT - Date.now() < MARGEN_RECORDATORIO_MS) {
-      await cerrar('omitido', null, vivo ? 'vencido' : `ya no está pendiente (${pedido.status}/${pedido.payment_status})`)
+      await cerrar('omitido', null, vivo ? 'vencido' : `ya no está pendiente (${pedido.status}/${pedido.payment_status}${conAnticipo ? `/anticipo ${pedido.advance_status}` : ''})`)
       return 'omitido'
     }
 
@@ -94,6 +109,8 @@ export async function enviarRecordatorioPago(
       recordatorioPago: {
         hasta: mismoDia ? horaPedido(vence, zona) : fechaHoraPedido(vence, zona),
         mismoDia,
+        // Contraentrega: se pide el anticipo, no el total («Pagar anticipo»).
+        ...(conAnticipo ? { anticipo: num(pedido.advance_amount) } : {}),
       },
     }, { apiKey: entrada.apiKey })
     await cerrar(envio.ok ? 'enviado' : 'error', envio.id, envio.ok ? null : 'no se pudo enviar')

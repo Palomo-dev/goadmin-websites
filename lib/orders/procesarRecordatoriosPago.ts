@@ -2,7 +2,8 @@
  * Corrida del recordatorio «Termina tu pago» (cron `/api/cron/recordatorio-pago`, cada 5 minutos).
  *
  * 1. Una consulta: los pedidos del sitio de las últimas 6 horas (todos los estados, hasta 500),
- *    con sus filas `recordatorio_pago` de `web_order_email_log` embebidas.
+ *    con sus filas `recordatorio_pago` de `web_order_email_log` embebidas y el anticipo de la
+ *    contraentrega (`advance_status`, `advance_due_at`): esos no necesitan las consultas del paso 2.
  * 2. Filtro puro (`motivoPrevio`) y, solo para los pares organización + método que quedan, el
  *    plazo (`fn_web_order_plazo_minutos`, el mismo del vencimiento) y si el método es nativo
  *    (`fn_web_order_metodo_nativo`): consultas por par, no por pedido.
@@ -70,6 +71,8 @@ function aPedido(fila: any): PedidoRecordatorio {
     notasInternas: fila.internal_notes ?? null,
     createdAt: fila.created_at ?? null,
     stockReleasedAt: fila.stock_released_at ?? null,
+    anticipoEstado: fila.advance_status ?? null,
+    anticipoVence: fila.advance_due_at ?? null,
     recordatorios: registros
       .filter((r: any) => r?.tipo === TIPO_RECORDATORIO_PAGO)
       .map((r: any) => ({ createdAt: r.created_at ?? null })),
@@ -103,7 +106,7 @@ export async function procesarRecordatoriosPago(supabase: object): Promise<Resul
   const hasta = new Date(ahora.getTime() - 60_000).toISOString()
   const { data, error } = await sb
     .from('web_orders')
-    .select('id, organization_id, status, payment_status, payment_method, source, customer_email, delivery_type, restaurant_table_id, internal_notes, created_at, stock_released_at, web_order_email_log ( tipo, created_at )')
+    .select('id, organization_id, status, payment_status, payment_method, source, customer_email, delivery_type, restaurant_table_id, internal_notes, created_at, stock_released_at, advance_status, advance_due_at, web_order_email_log ( tipo, created_at )')
     .eq('source', 'website')
     .gte('created_at', desde)
     .lte('created_at', hasta)
