@@ -34,11 +34,18 @@ interface Props {
  * sede (la mayoría de tiendas) no pinta nada y el cajón queda exactamente como hoy. La zona no se
  * revisa aquí: aún no hay dirección (se revisa en el checkout).
  */
+/**
+ * Aviso de contraentrega en el carrito: APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo
+ * mencione»). Se enciende solo cuando la tienda lo active; el interruptor del editor del ERP está
+ * en diseño (Figma «Final del pedido y aviso de contraentrega»). Mientras tanto no se pinta.
+ */
+export const AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO = false
+
 export function AvisoContraentregaCarrito({ items, subtotalProductos, branchId, primaryColor, compacto = false }: Props) {
   const { formatPrice } = useCurrency()
   const ids = items.map((item) => idProductoCarrito(item)).filter((id): id is number => id !== null)
-  const respuesta = useCondicionesContraentrega(branchId, ids, items.length > 0)
-  if (!respuesta || !respuesta.conCondiciones || items.length === 0) return null
+  const respuesta = useCondicionesContraentrega(branchId, ids, AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO && items.length > 0)
+  if (!AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO || !respuesta || !respuesta.conCondiciones || items.length === 0) return null
 
   const condiciones = normalizarCondiciones(respuesta)
   const enCarrito = new Set(ids)

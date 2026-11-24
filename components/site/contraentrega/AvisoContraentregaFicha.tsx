@@ -22,11 +22,18 @@ function idONulo(v: unknown): number | null {
  * pagas al recibir» si el producto aplica, «Este producto se paga en línea» si no. Sin condiciones
  * en la sede (la mayoría de tiendas) no pinta nada: la ficha queda exactamente como hoy.
  */
+/**
+ * Aviso de contraentrega en la ficha: APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo
+ * mencione»). Se enciende solo cuando la tienda lo active; el interruptor del editor del ERP está
+ * en diseño (Figma «Final del pedido y aviso de contraentrega»). Mientras tanto no se pinta.
+ */
+export const AVISO_CONTRAENTREGA_FICHA_ENCENDIDO = false
+
 export function AvisoContraentregaFicha({ product, branchId }: Props) {
   const { formatPrice } = useCurrency()
-  const respuesta = useCondicionesContraentrega(branchId, null)
+  const respuesta = useCondicionesContraentrega(branchId, null, AVISO_CONTRAENTREGA_FICHA_ENCENDIDO)
   const productoId = idONulo(product?.id)
-  if (!respuesta || !respuesta.conCondiciones || productoId === null) return null
+  if (!AVISO_CONTRAENTREGA_FICHA_ENCENDIDO || !respuesta || !respuesta.conCondiciones || productoId === null) return null
 
   const aplica = productoAplica(normalizarCondiciones(respuesta), {
     productoId,
