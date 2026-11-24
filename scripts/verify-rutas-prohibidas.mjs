@@ -57,6 +57,14 @@ const PROHIBIDAS = [
  * Vence el 2026-12-07: para entonces la Fase 1 debe estar en origin/main (y la excepción sobra).
  * Comprobado por scripts/verify-zonas-envio.mjs (cobro del servidor, recorte de la cotización,
  * token del rastreo, sin fotos ni teléfono).
+ *
+ * 2026-11-24 — Consulta del pedido rediseñada (Figma «21 Logística» › 10, aprobada por el dueño):
+ * - lib/checkout/metodosPagoSitio.ts (nueva): EXTRACCIÓN tal cual de `getWebsitePaymentMethods` de
+ *   app/checkout/page.tsx (commit aparte, sin cambios de comportamiento); la usan el checkout y
+ *   «Pagar con otro medio» de la consulta.
+ * - app/api/checkout/init/route.ts: endurece; un pedido web cerrado (vencido, cancelado, rechazado
+ *   o reembolsado) ya no se cobra (409 PEDIDO_CERRADO), con su `else` de antes para lo demás.
+ * Vence el 2026-12-08. Comprobado por scripts/verify-consulta-pedido.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -64,6 +72,8 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/[id]/delivery/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: sin teléfono ni fotos' },
   { ruta: 'app/api/shipping/quote/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: cotización del checkout' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-07', motivo: 'Logística Fase 1: domicilio por zona' },
+  { ruta: 'lib/checkout/metodosPagoSitio.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: extracción de los medios de pago del checkout' },
+  { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: no se cobra un pedido web cerrado' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

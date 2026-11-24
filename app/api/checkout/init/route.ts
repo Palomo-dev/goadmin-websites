@@ -10,6 +10,7 @@ import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 import { urlNotificacionMercadoPago } from '@/lib/payments/pasarelasTienda'
+import { ESTADOS_SIN_ENTREGA } from '@/lib/orders/estados-pedido'
 
 export const dynamic = 'force-dynamic'
 
@@ -624,6 +625,19 @@ export async function POST(request: NextRequest) {
         { error: `${label} ya fue pagado` },
         { status: 400 }
       )
+    }
+
+    // Pedido web cerrado (vencido por falta de pago, cancelado, rechazado o reembolsado): no se
+    // cobra. La consulta del pedido ofrece «Pagar» y «Retomar mi compra»; un pedido vencido ya
+    // liberó su stock y se retoma en un pedido nuevo (`/retomar/<id>`), nunca se cobra este.
+    const esPedidoWeb = !isDepositoMesa && !isAbonoMesa && !isInvoice && !isParkingPass && !isTripTicket && !isMembership && !isReservation
+    if (esPedidoWeb && ESTADOS_SIN_ENTREGA.has(String(order.status || ''))) {
+      return NextResponse.json(
+        { error: 'Este pedido ya no se puede pagar. Retoma tu compra para hacer un pedido nuevo.', code: 'PEDIDO_CERRADO' },
+        { status: 409 }
+      )
+    } else {
+      // Pedido abierto u otra fuente de cobro: sigue como antes.
     }
 
     // 2. Obtener conexión de la pasarela
