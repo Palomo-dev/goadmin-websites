@@ -13,18 +13,23 @@
  * las secciones de listado que la siguen (filtros, subcategorías, productos) a la derecha
  * (`planColumnasCategoria`). Solo entonces se lee el árbol de categorías (`getMenuCategories`,
  * en caché: es la misma llamada que ya hace getOrgContext). Sin esa sección, todo igual que hoy.
+ * Las secciones las pinta `SeccionesCategoria` (síncrono, sin consultas).
+ *
+ * Lienzo del editor del ERP (`enLienzo`, `?preview=1`): las secciones van en `CategoriaEnVivo`,
+ * con el puente en vivo (`PreviewBridge`), y el árbol de categorías se lee siempre (la columna
+ * lateral puede aparecer en vivo). Fuera del lienzo, todo igual.
  */
 
 import Link from 'next/link'
 import { ChevronRight, Home } from 'lucide-react'
-import { SectionRenderer } from '@/components/sections/SectionRenderer'
 import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
-import { SECTION_MAP } from '@/components/sections/SectionRenderer'
 import { getMenuCategories } from '@/lib/supabase/queries'
-import { categoriasHermanas, planColumnasCategoria, VARIANTE_FILTROS_LATERALES } from './columnasCategoria'
+import { categoriasHermanas } from './columnasCategoria'
+import { SeccionesCategoria, usaColumnaLateral } from './SeccionesCategoria'
+import { CategoriaEnVivo } from './CategoriaEnVivo'
 
 interface CategoryDetailRendererProps {
   organization: OrganizationWithDetails
@@ -42,6 +47,8 @@ interface CategoryDetailRendererProps {
   currentView: string
   categorySlug: string
   branchId?: number | null
+  /** Lienzo del editor del ERP (`?preview=1`): secciones con el puente en vivo. */
+  enLienzo?: boolean
 }
 
 export async function CategoryDetailRenderer({
@@ -60,6 +67,7 @@ export async function CategoryDetailRenderer({
   currentView,
   categorySlug,
   branchId,
+  enLienzo = false,
 }: CategoryDetailRendererProps) {
   const hasSections = templatePage && templatePage.website_page_sections.length > 0
 
@@ -81,75 +89,25 @@ export async function CategoryDetailRenderer({
     branchId,
   }
 
-  // ---- Modo plantilla con columna lateral (solo plantillas de tienda) ----
-  const plan = hasSections && templatePage
-    ? planColumnasCategoria(templatePage.website_page_sections, Boolean(SECTION_MAP.category_filters?.[VARIANTE_FILTROS_LATERALES]))
-    : null
-  if (plan && templatePage) {
+  // ---- Modo plantilla: las secciones (con columna lateral si la plantilla la trae) ----
+  if (!enLienzo && hasSections && templatePage) {
     const secciones = templatePage.website_page_sections
-    const esPrimera = (i: number) => i === 0 || secciones.slice(0, i).every((s) => s.is_visible === false)
-    const arbol = await getMenuCategories(organization.id, branchId)
-    const dataLateral = { ...sectionData, categoriasHermanas: categoriasHermanas(arbol, category) }
+    const hermanas = usaColumnaLateral(secciones)
+      ? categoriasHermanas(await getMenuCategories(organization.id, branchId), category)
+      : null
     return (
-      <div className="container mx-auto px-4 py-8">
-        {plan.map((bloque) => bloque.tipo === 'seccion' ? (
-          <SectionRenderer
-            key={bloque.seccion.id}
-            section={bloque.seccion}
-            organization={organization}
-            primaryColor={primaryColor}
-            data={sectionData}
-            isFirst={esPrimera(bloque.indice)}
-          />
-        ) : (
-          <div key={`columnas-${bloque.lateral.id}`} className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-x-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-12">
-            <div className="min-w-0">
-              <SectionRenderer
-                section={bloque.lateral}
-                organization={organization}
-                primaryColor={primaryColor}
-                data={dataLateral}
-                isFirst={esPrimera(bloque.indiceLateral)}
-              />
-            </div>
-            <div className="min-w-0">
-              {bloque.principal.map(({ seccion, indice }) => (
-                <SectionRenderer
-                  key={seccion.id}
-                  section={seccion}
-                  organization={organization}
-                  primaryColor={primaryColor}
-                  data={sectionData}
-                  isFirst={esPrimera(indice)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  // ---- Modo plantilla: renderizar secciones ----
-  if (hasSections && templatePage) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        {templatePage.website_page_sections.map((section, i) => (
-          <SectionRenderer
-            key={section.id}
-            section={section}
-            organization={organization}
-            primaryColor={primaryColor}
-            data={sectionData}
-            isFirst={i === 0 || templatePage.website_page_sections.slice(0, i).every((s) => s.is_visible === false)}
-          />
-        ))}
-      </div>
+      <SeccionesCategoria
+        secciones={secciones}
+        organization={organization}
+        primaryColor={primaryColor}
+        sectionData={sectionData}
+        hermanas={hermanas}
+      />
     )
   }
 
   // ---- Fallback: layout hardcodeado actual (cero regresión) ----
-  return (
+  const respaldo = (
     <div className="container mx-auto px-4 py-8">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">
@@ -222,4 +180,20 @@ export async function CategoryDetailRenderer({
       />
     </div>
   )
+
+  // ---- Lienzo del editor: las secciones con el puente en vivo; sin secciones, el respaldo ----
+  if (enLienzo) {
+    const hermanas = categoriasHermanas(await getMenuCategories(organization.id, branchId), category)
+    return (
+      <CategoriaEnVivo
+        inicial={templatePage?.website_page_sections ?? []}
+        organization={organization}
+        primaryColor={primaryColor}
+        sectionData={sectionData}
+        hermanas={hermanas}
+        respaldo={respaldo}
+      />
+    )
+  }
+  return respaldo
 }

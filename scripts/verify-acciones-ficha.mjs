@@ -81,8 +81,12 @@ check(boton.includes("tamano === 'pequeno' ? 'w-12 shrink-0 px-0'") && boton.inc
 const barra = leer('components/site/StickyAddToCart.tsx')
 check(barra.includes('const conCorazon = conFavorito && op.favorito') && barra.includes('{conCorazon && !filaInfoArriba && <BotonGuardarFicha'), 'barra fija: corazón al lado de Agregar (se apaga con «Corazón de favoritos»)')
 const pagina = leer('app/productos/[id]/page.tsx')
-check(pagina.includes('conFavorito={!esRestaurante}'), 'barra fija: sin corazón en el restaurante')
-check(pagina.includes('const barraFija = contenidoAcciones.sticky_mobile !== false'), 'barra fija: respeta «Barra fija en el celular»')
+// La regla de la barra vive en barraFicha.ts (2026-11-24): la usan la ficha pública y la ficha en
+// vivo del lienzo del editor (FichaEnVivo), que arma la barra con las opciones en vivo.
+const reglaBarra = leer('components/sections/product-detail/barraFicha.ts')
+const enVivo = leer('components/sections/product-detail/FichaEnVivo.tsx')
+check(pagina.includes('conFavorito: !esRestaurante') && pagina.includes('{...barraBase}') && pagina.includes('barra={barraBase}'), 'barra fija: sin corazón en el restaurante')
+check(reglaBarra.includes('barraFija: contenido.sticky_mobile !== false') && pagina.includes('barraDeFicha(seccionesFicha)') && enVivo.includes('barraDeFicha(vivas)'), 'barra fija: respeta «Barra fija en el celular»')
 check(pagina.includes('(await getAjustesSitio(organization.id)).whatsapp?.numero'), 'WhatsApp: número del sitio, de la lectura en caché')
 
 if (problemas.length > 0) {

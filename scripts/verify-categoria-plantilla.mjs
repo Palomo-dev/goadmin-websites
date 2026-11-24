@@ -291,13 +291,34 @@ for (const [fn, columnas] of Object.entries(LECTURAS)) {
 notas.push(URL_BASE && KEY ? 'esquema: selects ejecutados contra la base real' : 'esquema: sin credenciales, comparado con las columnas verificadas por MCP el 2026-11-07')
 
 const renderer = readFileSync(join(ROOT, 'components/sections/category-detail/CategoryDetailRenderer.tsx'), 'utf8')
-const iPlan = renderer.indexOf('if (plan && templatePage)')
+// Desde 2026-11-24 las secciones las pinta SeccionesCategoria (también el lienzo del editor, en
+// vivo): el árbol se pide solo con columna lateral, o en el lienzo (donde la columna puede
+// aparecer en vivo). Nunca en la página pública sin columna lateral.
+const iLateral = renderer.indexOf('usaColumnaLateral(secciones)')
 const iArbol = renderer.indexOf('await getMenuCategories(')
-const iHoy = renderer.indexOf('// ---- Modo plantilla: renderizar secciones ----')
-check(iPlan > -1 && iArbol > iPlan && iArbol < iHoy && renderer.split('getMenuCategories(').length === 2, 'rendimiento: el árbol de categorías solo se pide con columna lateral (una vez)')
+const iLienzo = renderer.indexOf('if (enLienzo) {')
+const iArbolLienzo = renderer.indexOf('await getMenuCategories(', iArbol + 1)
+check(
+  iLateral > -1 && iArbol > iLateral && iArbol - iLateral < 120 && iLienzo > iArbol && iArbolLienzo > iLienzo
+    && renderer.split('getMenuCategories(').length === 3,
+  'rendimiento: el árbol de categorías solo se pide con columna lateral o en el lienzo del editor (una vez)',
+)
 const hoyBase = base['components/sections/category-detail/CategoryDetailRenderer.tsx']
-const tramo = (t) => t.slice(t.indexOf('// ---- Modo plantilla: renderizar secciones ----'))
-check(tramo(renderer) === tramo(hoyBase), 'CategoryDetailRenderer: el camino sin columna lateral (plantilla y respaldo) es el de main, línea por línea')
+// El respaldo (plantilla sin secciones), línea por línea igual al de main. Desde 2026-11-24 es
+// `const respaldo = (` (el lienzo del editor lo reutiliza) en vez de `return (`: se normaliza.
+const respaldoDe = (t) => {
+  const cuerpo = t.replace(/\r\n/g, '\n')
+  const desde = cuerpo.slice(cuerpo.indexOf('// ---- Fallback: layout hardcodeado actual')).replace('  return (\n', '  const respaldo = (\n')
+  return desde.slice(0, desde.indexOf('\n  )\n') + 5)
+}
+check(respaldoDe(renderer).length > 100 && respaldoDe(renderer) === respaldoDe(hoyBase), 'CategoryDetailRenderer: el respaldo (sin plantilla) es el de main, línea por línea')
+// Las secciones apiladas (sin columna lateral): mismo marcado que antes, ahora en SeccionesCategoria.
+const secciones = readFileSync(join(ROOT, 'components/sections/category-detail/SeccionesCategoria.tsx'), 'utf8')
+check(
+  secciones.includes('{secciones.map((section, i) => (') && secciones.includes('isFirst={esPrimera(i)}')
+    && secciones.includes("const esPrimera = (i: number) => i === 0 || secciones.slice(0, i).every((s) => s.is_visible === false)"),
+  'SeccionesCategoria: las secciones apiladas se pintan como antes (isFirst = primera visible)',
+)
 
 for (const n of notas) console.log(`  ✓ ${n}`)
 if (problemas.length) {

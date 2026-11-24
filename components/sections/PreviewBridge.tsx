@@ -119,11 +119,80 @@ interface PreviewBridgeProps {
   ) => React.ReactNode;
 }
 
+/**
+ * Clave del scroll recordado del lienzo: la ruta SIN el token de la vista previa
+ * (`/vista-previa/<token>/productos/<id>` → `/productos/<id>`), porque el token se renueva.
+ */
+export function claveScrollLienzo(pathname: string): string {
+  return `goadmin:lienzo-scroll:${pathname.replace(/^\/vista-previa\/[^/]+/, '') || '/'}`;
+}
+
+/**
+ * El lienzo del editor recuerda su scroll por ruta (sessionStorage del iframe): si el editor tiene
+ * que recargarlo (publicar, restaurar una versión, un bloque que pide datos nuevos al servidor),
+ * vuelve a donde estaba en vez de saltar arriba. Solo dentro de un iframe. Si el editor pide ir a
+ * una sección (`goadmin:scroll`) o la persona desplaza, eso manda: se llama `soltar()`.
+ */
+function useScrollRecordadoLienzo(): () => void {
+  const soltarRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.parent === window) return;
+    const clave = claveScrollLienzo(window.location.pathname);
+    let destino: number | null = null;
+    try {
+      const valor = Number(window.sessionStorage.getItem(clave));
+      if (Number.isFinite(valor) && valor > 0) destino = valor;
+    } catch { /* sin almacenamiento: sin recuerdo */ }
+    let suelto = destino === null;
+    let listo = false;
+    const reponer = () => {
+      if (!suelto && destino !== null) window.scrollTo(0, destino);
+    };
+    const soltar = () => {
+      suelto = true;
+    };
+    soltarRef.current = soltar;
+    reponer();
+    // Las imágenes pueden alargar la página después: se repone otra vez al terminar de cargar.
+    const alCargar = () => {
+      reponer();
+      listo = true;
+    };
+    if (document.readyState === 'complete') listo = true;
+    else window.addEventListener('load', alCargar, { once: true });
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    const alDesplazar = () => {
+      if (!listo || espera) return;
+      espera = setTimeout(() => {
+        espera = null;
+        try {
+          window.sessionStorage.setItem(clave, String(Math.round(window.scrollY)));
+        } catch { /* noop */ }
+      }, 200);
+    };
+    const opciones = { passive: true } as const;
+    window.addEventListener('scroll', alDesplazar, opciones);
+    window.addEventListener('wheel', soltar, opciones);
+    window.addEventListener('touchstart', soltar, opciones);
+    window.addEventListener('keydown', soltar);
+    return () => {
+      if (espera) clearTimeout(espera);
+      window.removeEventListener('load', alCargar);
+      window.removeEventListener('scroll', alDesplazar);
+      window.removeEventListener('wheel', soltar);
+      window.removeEventListener('touchstart', soltar);
+      window.removeEventListener('keydown', soltar);
+    };
+  }, []);
+  return useCallback(() => soltarRef.current(), []);
+}
+
 export function PreviewBridge({ initialSections, children }: PreviewBridgeProps) {
   const [liveSections, setLiveSections] = useState<WebsitePageSection[]>(initialSections);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [avisos, setAvisos] = useState<Record<string, AvisoLienzo>>({});
   const editorOrigin = useRef<string | null>(null);
+  const soltarScrollRecordado = useScrollRecordadoLienzo();
 
   // Aplicar secciones recibidas del editor
   const applySections = useCallback((sections: PreviewSection[]) => {
@@ -175,12 +244,14 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
   const scrollToSection = useCallback((sectionId: string) => {
     const el = document.querySelector(`[data-section-id="${CSS.escape(sectionId)}"]`);
     if (el) {
+      // El editor pide ir a la sección elegida: manda sobre el scroll recordado.
+      soltarScrollRecordado();
       // Las zonas globales son `display: contents` (sin caja): se desplaza a
       // su primer hijo.
       const destino = el.hasAttribute('data-goadmin-zona') ? el.firstElementChild ?? el : el;
       destino.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, []);
+  }, [soltarScrollRecordado]);
 
   // Marca lo seleccionado: la zona global (encabezado o pie) o la sección. La sección lleva
   // `data-goadmin-activa` y `ESTILOS_SECCION_ACTIVA` le pinta el borde azul (Figma A/05a).

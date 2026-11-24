@@ -119,7 +119,10 @@ export default async function VistaPreviaBorradorPage({
     // Ficha de producto y página de categoría del sitio principal: con el borrador fijado leen la
     // plantilla del BORRADOR (getPlantillaPublica), así el lienzo del editor ve lo que se edita.
     const detalle = borrador.sitio.branchId === null ? plantillaDetalleDeRuta(ruta) : null
-    if (detalle?.tipo === 'producto') return ProductoDetailPage({ params: Promise.resolve({ id: detalle.id }) })
+    if (detalle?.tipo === 'producto') {
+      // Con `preview=1` (lienzo del editor) la ficha lleva el puente en vivo de las secciones.
+      return ProductoDetailPage({ params: Promise.resolve({ id: detalle.id }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
+    }
     if (detalle?.tipo === 'categoria') {
       return CategoriaSlugPage({ params: Promise.resolve({ slug: detalle.slug }), searchParams: Promise.resolve(parametrosDelLienzo(busqueda)) })
     }

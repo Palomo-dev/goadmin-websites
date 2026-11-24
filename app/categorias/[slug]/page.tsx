@@ -125,6 +125,7 @@ export default async function CategoriaSlugPage({
         currentView={view}
         categorySlug={slug}
         branchId={branchId}
+        enLienzo={resolvedSearchParams.preview === '1'}
       />
     </OrganizationLayout>
   )

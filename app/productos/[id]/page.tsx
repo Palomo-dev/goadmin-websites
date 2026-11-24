@@ -34,8 +34,9 @@ import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
-import { normalizarAjustesAccionesFicha, normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
-import { leerBarraFija } from '@/lib/website/v2/barraFija'
+import { normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
+import { barraDeFicha } from '@/components/sections/product-detail/barraFicha'
+import { FichaEnVivo } from '@/components/sections/product-detail/FichaEnVivo'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
@@ -215,11 +216,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 }
 
-export default async function ProductoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProductoDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
 
   const { id } = await params
+  // Lienzo del editor del ERP (`?preview=1`): la ficha se pinta con el puente en vivo
+  // (FichaEnVivo). Fuera del lienzo, la ficha de servidor de siempre.
+  const enLienzo = (await searchParams)?.preview === '1'
   if (!isValidUUID(id)) {
     // Id numérico: redirigir a la URL canónica por UUID. Lo demás, como antes.
     const uuid = await uuidDeIdNumerico(id, ctx.organization.id)
@@ -378,9 +388,12 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   // plantilla trae su bloque visible, una vez por render y con la caché del catálogo por org.
   let extrasFicha: ExtrasFicha | null = null
   const seccionesFicha = hasTemplateSections ? productDetailTemplate.website_page_sections : []
-  const conPaginador = tieneBloque(seccionesFicha, TIPO_PAGINADOR_FICHA)
+  // En el lienzo del editor, el paginador y la fila «Categoría» de la ficha técnica se consultan
+  // siempre: así, añadir o cambiar esos bloques se ve en vivo sin recargar. «Completa el look»
+  // depende de su contenido (fuente, productos, límite): ese recarga el lienzo al guardarse (ERP).
+  const conPaginador = enLienzo || tieneBloque(seccionesFicha, TIPO_PAGINADOR_FICHA)
   const bloqueLook = seccionesFicha.find((s) => s.section_type === TIPO_COMPLETA_EL_LOOK && s.is_visible !== false)
-  const conFichaTecnica = seccionesFicha.some((s) => s.section_type === 'product_specs'
+  const conFichaTecnica = enLienzo || seccionesFicha.some((s) => s.section_type === 'product_specs'
     && (s.section_variant === 'icon_grid' || s.section_variant === 'panel') && s.is_visible !== false)
   if (conPaginador || bloqueLook || conFichaTecnica) {
     const look = bloqueLook ? normalizarCompletaElLook(bloqueLook.content as Record<string, unknown> | null) : null
@@ -406,13 +419,60 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
   // de la misma lectura en caché que usa el botón flotante (sin consulta nueva). La barra fija del
   // celular respeta «Barra fija en el celular» (`sticky_mobile`) y «Precio dentro del botón».
   const whatsappFicha = (await getAjustesSitio(organization.id)).whatsapp?.numero ?? null
-  const contenidoAcciones = (seccionesFicha.find((s) => s.section_type === 'product_actions' && s.is_visible !== false)?.content ?? {}) as Record<string, unknown>
-  const barraFija = contenidoAcciones.sticky_mobile !== false
-  const precioEnBarra = normalizarAjustesAccionesFicha(contenidoAcciones).showPriceInButton
   // Barra fija al bajar (Figma 2836:69391, propuesta 9): opciones del celular y barra del
   // computador (`sticky`). Sin claves, la de hoy en el celular y ninguna en el computador.
-  const opcionesBarra = leerBarraFija(contenidoAcciones)
-  const barraEscritorio = opcionesBarra.escritorio.encendida
+  const { barraFija, barraEscritorio, precioEnBarra, opciones: opcionesBarra } = barraDeFicha(seccionesFicha)
+  // Lo que la barra no toma de la plantilla (en el lienzo, FichaEnVivo le pone las opciones en
+  // vivo). Un padre sin variantes no tiene nada que agregar: sin barra fija.
+  const barraBase = price && stickyPermitido && !(isParent && variants.length === 0)
+    ? {
+        productId: product.id,
+        productName: product.name,
+        price: Number(price.price),
+        comparePrice,
+        imageUrl,
+        primaryColor,
+        isParent,
+        variants,
+        organizationSubdomain: organization.subdomain || '',
+        trackStock: product.track_stock,
+        stockLevels: product.stock_levels,
+        branchId,
+        ordenAtributos,
+        conFavorito: !esRestaurante,
+      }
+    : null
+  const propsFicha = {
+    organization,
+    primaryColor,
+    templatePage: productDetailTemplate,
+    product,
+    variants,
+    modifierGroups,
+    relatedProducts,
+    imageUrls: allImageUrls,
+    imageUrl,
+    price,
+    comparePrice,
+    isParent,
+    branchId,
+    restaurante,
+    puedePedir,
+    prefijoSede: prefijo,
+    ordenAtributos,
+    extrasFicha,
+    whatsapp: whatsappFicha,
+  }
+
+  if (enLienzo) {
+    // El lienzo no es una visita real: sin JSON-LD ni evento del píxel, solo la ficha con el
+    // puente en vivo.
+    return (
+      <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
+        <FichaEnVivo ficha={propsFicha} barra={barraBase} />
+      </OrganizationLayout>
+    )
+  }
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
@@ -433,27 +493,7 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
         value={price?.price ? Number(price.price) : undefined}
       />
       {hasTemplateSections ? (
-        <ProductDetailRenderer
-          organization={organization}
-          primaryColor={primaryColor}
-          templatePage={productDetailTemplate}
-          product={product}
-          variants={variants}
-          modifierGroups={modifierGroups}
-          relatedProducts={relatedProducts}
-          imageUrls={allImageUrls}
-          imageUrl={imageUrl}
-          price={price}
-          comparePrice={comparePrice}
-          isParent={isParent}
-          branchId={branchId}
-          restaurante={restaurante}
-          puedePedir={puedePedir}
-          prefijoSede={prefijo}
-          ordenAtributos={ordenAtributos}
-          extrasFicha={extrasFicha}
-          whatsapp={whatsappFicha}
-        />
+        <ProductDetailRenderer {...propsFicha} />
       ) : (
       <div className="container mx-auto px-4 py-12">
         {/* Breadcrumb */}
@@ -598,23 +638,9 @@ export default async function ProductoDetailPage({ params }: { params: Promise<{
       )}
 
       {/* Barra fija de compra: la del celular (hoy) y, si se encendió, la del computador. */}
-      {/* Un padre sin variantes no tiene nada que agregar: sin barra fija. */}
-      {price && stickyPermitido && (barraFija || barraEscritorio) && !(isParent && variants.length === 0) && (
+      {barraBase && (barraFija || barraEscritorio) && (
         <StickyAddToCart
-          productId={product.id}
-          productName={product.name}
-          price={Number(price.price)}
-          comparePrice={comparePrice}
-          imageUrl={imageUrl}
-          primaryColor={primaryColor}
-          isParent={isParent}
-          variants={variants}
-          organizationSubdomain={organization.subdomain || ''}
-          trackStock={product.track_stock}
-          stockLevels={product.stock_levels}
-          branchId={branchId}
-          ordenAtributos={ordenAtributos}
-          conFavorito={!esRestaurante}
+          {...barraBase}
           precioEnBoton={precioEnBarra}
           celular={opcionesBarra.celular}
           escritorio={opcionesBarra.escritorio}
