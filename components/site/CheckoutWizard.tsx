@@ -180,11 +180,11 @@ const ESTILO_PASARELA = {
   rojo: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
 } as const
 
-function IconoPasarela({ tono }: { tono: keyof typeof ESTILO_PASARELA }) {
+function IconoPasarela({ tono, Icono = Wallet }: { tono: keyof typeof ESTILO_PASARELA; Icono?: typeof Wallet }) {
   const estilo = ESTILO_PASARELA[tono]
   return (
     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${estilo}`}>
-      <Wallet className="w-5 h-5" aria-hidden="true" />
+      <Icono className="w-5 h-5" aria-hidden="true" />
     </div>
   )
 }
@@ -1036,6 +1036,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         <IconoPasarela tono="azul" />
       ) : BOLD_CODES.has(m.code) ? (
         <IconoPasarela tono="rojo" />
+      ) : m.code === 'cash' && !m.icon ? (
+        // Efectivo / contraentrega: el mismo cuadro que las pasarelas, en verde con un billete
+        // (pedido del dueño, 2026-11-24), en vez del emoji 💵.
+        <IconoPasarela tono="verde" Icono={Banknote} />
       ) : (
         <span className="text-xl">{m.icon || METHOD_ICONS[m.code] || '💰'}</span>
       ),
