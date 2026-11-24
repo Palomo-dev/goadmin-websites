@@ -276,10 +276,10 @@ export function ProductDetailRenderer({
     return urgenciaTrasInfo ? [bloque, urgencia(`${section.id}__urgencia`)] : bloque
   }
 
-  // Migas con el ← al inicio (Figma 2992:74983, tipo «Ficha»), solo en escritorio: en el celular va
-  // la barra «← Volver a …» que pinta la página.
+  // Migas con el ← al inicio (Figma 2992:74983, tipo «Ficha»), en escritorio y en el celular (ruta
+  // completa en una línea; en el celular, más pegada a la foto: pedido del dueño, 2026-11-24).
   const breadcrumbBlock = showBreadcrumb && (
-    <EncabezadoPagina tipo="ficha" migas={migasVolver} padre={padreVolver} primaryColor={primaryColor} className="mb-8" />
+    <EncabezadoPagina tipo="ficha" migas={migasVolver} padre={padreVolver} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
   )
 
   // Layout según columns

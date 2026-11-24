@@ -5,7 +5,9 @@
  * página»): migas de pan arriba y el botón ← cuadrado junto al título. Tipo «ficha»: el título vive
  * en la columna de compra, así que el ← va al inicio de las migas.
  *
- * En el celular las migas y el ← no se muestran (los reemplaza `BarraVolverMovil`); el título sí.
+ * Tipo «ficha»: también en el celular (pedido del dueño, 2026-11-24: «mostrar la ruta completa»),
+ * con el ← en 32 px y las migas en una línea que se desliza. Tipo «titulo»: en el celular las migas
+ * y el ← no se muestran (los reemplaza `BarraVolverMovil`); el título sí.
  * Las rutas llegan SIN prefijo de sede: aquí se les antepone (`useRutaSitio`).
  */
 import Link from '@/components/site/Enlace'
@@ -18,8 +20,8 @@ import { BotonVolver } from './BotonVolver'
 export function MigasTienda({ migas, className = '' }: { migas: readonly Miga[]; className?: string }) {
   const { ruta } = useRutaSitio()
   return (
-    <nav aria-label="Migas de pan" className={`min-w-0 ${className}`}>
-      <ol className="flex min-w-0 items-center gap-2 text-[13px] leading-none">
+    <nav aria-label="Migas de pan" className={`min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
+      <ol className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs leading-none md:gap-2 md:text-[13px]">
         {migas.map((m, i) => {
           const ultima = i === migas.length - 1
           return (
@@ -76,8 +78,8 @@ export function EncabezadoPagina({
 
   if (tipo === 'ficha') {
     return (
-      <div className={`hidden items-center gap-3 md:flex ${className}`} style={estiloMiga} data-encabezado-pagina="ficha">
-        {boton}
+      <div className={`flex items-center gap-2 md:gap-3 ${className}`} style={estiloMiga} data-encabezado-pagina="ficha">
+        <BotonVolver compacto padre={padre} primaryColor={primaryColor} preferirUltimaCategoria={preferirUltimaCategoria} />
         {mostrarMigas && <MigasTienda migas={migas} />}
       </div>
     )

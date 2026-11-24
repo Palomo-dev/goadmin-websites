@@ -495,6 +495,7 @@ export default async function ProductoDetailPage({
   })
   const barraVolver = (
     <BarraVolverMovil
+      soloRegistrar
       padre={navegacion.padre}
       etiquetaActual={product.name}
       primaryColor={primaryColor}
@@ -559,8 +560,8 @@ export default async function ProductoDetailPage({
         <ProductDetailRenderer {...propsFicha} />
       ) : (
       <div className="container mx-auto px-4 py-12">
-        {/* Migas y ← (escritorio). En el celular, la barra «← Volver a …» de arriba. */}
-        <EncabezadoPagina tipo="ficha" migas={navegacion.migas} padre={navegacion.padre} primaryColor={primaryColor} className="mb-8" />
+        {/* Migas y ← (escritorio y celular: ruta completa en una línea, pegada a la foto). */}
+        <EncabezadoPagina tipo="ficha" migas={navegacion.migas} padre={navegacion.padre} primaryColor={primaryColor} className="-mt-7 mb-5 md:mt-0 md:mb-8" />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Galería de imágenes */}

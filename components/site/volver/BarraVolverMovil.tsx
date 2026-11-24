@@ -31,9 +31,11 @@ export interface BarraVolverMovilProps extends OpcionesVolver {
   /** Se conserva por compatibilidad: ya no muestra Buscar ni carrito. */
   acciones?: { buscar?: boolean; carrito?: { subdominio: string; branchId?: number | null } | null } | null
   className?: string
+  /** Solo registra el nombre de la página (la ficha ya pinta ← + migas en el celular). */
+  soloRegistrar?: boolean
 }
 
-export function BarraVolverMovil({ padre, preferirUltimaCategoria, etiquetaActual, primaryColor, className = '' }: BarraVolverMovilProps) {
+export function BarraVolverMovil({ padre, preferirUltimaCategoria, etiquetaActual, primaryColor, className = '', soloRegistrar = false }: BarraVolverMovilProps) {
   const { href, etiqueta, alPulsar } = useDestinoVolver({ padre, preferirUltimaCategoria })
   const { clase, estilo } = estiloBotonVolver(primaryColor)
 
@@ -41,6 +43,7 @@ export function BarraVolverMovil({ padre, preferirUltimaCategoria, etiquetaActua
     if (etiquetaActual) registrarEtiqueta(window.location.pathname, etiquetaActual)
   }, [etiquetaActual])
 
+  if (soloRegistrar) return null
   const texto = textoVolver(etiqueta)
   const destino = etiqueta.trim() || 'Atrás'
   return (

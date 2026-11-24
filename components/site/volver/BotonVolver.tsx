@@ -17,6 +17,8 @@ export interface BotonVolverProps extends OpcionesVolver {
   primaryColor?: string | null
   /** Con texto «Volver a …» al lado (páginas sin título, p. ej. el pago con Bold). */
   conTexto?: boolean
+  /** 32 px en el celular y 36 px desde md (encabezado de la ficha en el celular). */
+  compacto?: boolean
   className?: string
 }
 
@@ -41,17 +43,17 @@ export function estiloBotonVolver(primaryColor: string | null | undefined): { cl
   }
 }
 
-export function BotonVolver({ padre, preferirUltimaCategoria, primaryColor, conTexto = false, className = '' }: BotonVolverProps) {
+export function BotonVolver({ padre, preferirUltimaCategoria, primaryColor, conTexto = false, compacto = false, className = '' }: BotonVolverProps) {
   const { href, etiqueta, alPulsar } = useDestinoVolver({ padre, preferirUltimaCategoria })
   const { clase, estilo } = estiloBotonVolver(primaryColor)
   const texto = textoVolver(etiqueta)
   const boton = (
     <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${clase}`}
+      className={`flex shrink-0 items-center justify-center rounded-lg transition-colors ${compacto ? 'h-8 w-8 md:h-9 md:w-9' : 'h-9 w-9'} ${clase}`}
       style={estilo}
       aria-hidden={conTexto ? true : undefined}
     >
-      <ChevronLeft className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+      <ChevronLeft className={compacto ? 'h-4 w-4 md:h-5 md:w-5' : 'h-5 w-5'} strokeWidth={1.75} aria-hidden="true" />
     </span>
   )
   if (conTexto) {
