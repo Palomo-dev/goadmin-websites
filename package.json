@@ -19,6 +19,7 @@
     "verify:numero-pedido": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-numero-pedido.mjs",
     "verify:redireccion-principal": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-redireccion-principal.mjs",
     "verify:pasarelas-bold-mp": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-pasarelas-bold-mp.mjs",
+    "verify:anticipo-confirmacion": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-anticipo-confirmacion.mjs",
     "verify:reenvio-wompi": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-reenvio-wompi.mjs",
     "verify:secretos": "node --disable-warning=ExperimentalWarning scripts/verify-secretos-conexion.mjs",
     "verify:carta": "node --env-file=.env.local scripts/verify-carta.mjs",

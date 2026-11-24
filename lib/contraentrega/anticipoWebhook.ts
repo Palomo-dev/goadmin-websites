@@ -10,11 +10,17 @@
  * El resultado lo aplica la base en una transacción (`fn_web_order_anticipo_resultado`,
  * ERP 20261124230000), idempotente por transacción y por estado: el pedido queda con
  * `advance_status='paid'` y `payment_status='partial'` (NO 'paid': falta lo que se cobra en la
- * puerta), y el pago entra a `payments` como cobro de pasarela. El pedido no se confirma solo: lo
- * confirma la tienda en el ERP, como cualquier contraentrega.
+ * puerta), y el pago entra a `payments` como cobro de pasarela.
  *
- * Solo la transición a pagado manda el correo «Recibimos tu pedido» con «Pagaste hoy / Pagas al
- * recibir».
+ * Solo la transición a pagado (`status === 'pagado'`; un reintento responde `ya_pagado`) hace dos
+ * cosas, una vez:
+ * - el correo «Recibimos tu pedido» con «Pagaste hoy / Pagas al recibir»;
+ * - la confirmación automática del pedido en el ERP (pedido del dueño, 2026-11-24): el mismo
+ *   `notifyErpAutoConfirm` de las pasarelas. El ERP la reconoce por el estado del pedido
+ *   (contraentrega, `partial`, anticipo pagado) y la hace con la regla del botón «Confirmar
+ *   pedido»: venta, stock y envío por el resto, sin factura ni pago nuevos. El aviso de WhatsApp
+ *   «confirmado» lo manda el ERP una sola vez; el correo no se repite. Si falla, el pedido queda
+ *   «Pendiente» con el anticipo pagado y el ERP anota el motivo para el equipo.
  */
 
 import { procesarCobroFirmadoWompi, type ResultadoCobroFirmado } from '@/lib/payments/wompi-cobro-firmado'
@@ -22,6 +28,7 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { estadoDepositoWompi } from '@/lib/restaurant/deposito-modelo'
 import { FUENTE_COBRO_ANTICIPO, idDeReferenciaAnticipo } from './contraentregaServidor'
 import { enviarCorreoAnticipoPagado } from './correoAnticipo'
+import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 
 async function pedidoDelAnticipo(supabase: any, referencia: string, organizationId: number | null) {
   const id = idDeReferenciaAnticipo(referencia)
@@ -62,8 +69,9 @@ export async function procesarAnticipoWompi(supabase: any, body: Record<string, 
     despues: async (_db, pedido, resultado) => {
       if (resultado?.status === 'pagado') {
         await enviarCorreoAnticipoPagado(pedido.id)
+        await notifyErpAutoConfirm(pedido.id)
       } else {
-        // Ya pagado, rechazado, pendiente o pedido cerrado: sin correo.
+        // Ya pagado, rechazado, pendiente o pedido cerrado: sin correo ni confirmación.
       }
     },
     respuesta: (pedido, resultado, transaction) => ({
@@ -115,8 +123,10 @@ export async function aplicarAnticipoPasarela(supabase: any, a: AvisoAnticipo): 
   }
   if (data?.status === 'pagado') {
     await enviarCorreoAnticipoPagado(pedido.id).catch((e) => console.error('[Anticipo] Correo', e))
+    // notifyErpAutoConfirm nunca lanza (red y respuestas del ERP quedan en el log).
+    await notifyErpAutoConfirm(pedido.id)
   } else {
-    // Sin transición a pagado: sin correo.
+    // Sin transición a pagado: sin correo ni confirmación.
   }
   return {
     status: 200,
