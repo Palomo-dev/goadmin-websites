@@ -9,6 +9,9 @@
 import { useState, type ReactNode } from 'react'
 import { Loader2, Mail, MessageSquare, Package, Search, Truck } from 'lucide-react'
 import { abrirAccesoCuenta } from '@/components/site/cuenta/eventos'
+import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar'
+import Link from '@/components/site/Enlace'
+import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { NO_ENCONTRADO_SIN_CUENTA, normalizarNumeroPedido, tipoContacto } from '@/lib/cuenta/reglasCuenta'
 
 const CAMPO =
@@ -26,6 +29,8 @@ export function SeguirPedido({
   children?: ReactNode
 }) {
   const [modo, setModo] = useState<'pedido' | 'guia'>(modoInicial)
+  const { sesion } = useAvatarCuenta()
+  const { ruta } = useRutaSitio()
   const [numero, setNumero] = useState('')
   const [contacto, setContacto] = useState('')
   const [guia, setGuia] = useState(guiaInicial)
@@ -144,18 +149,34 @@ export function SeguirPedido({
         </>
       )}
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
-        <p className="text-sm font-semibold">¿Tienes cuenta?</p>
-        <p className="text-[13px] text-slate-600">Entra y verás todos tus pedidos, sin buscar el número.</p>
-        <button
-          type="button"
-          onClick={(e) => abrirAccesoCuenta({ origen: e.currentTarget, respaldo: '/auth?siguiente=/mi-cuenta/pedidos' })}
-          className="self-center text-sm font-semibold hover:underline"
-          style={{ color: 'var(--primary-color)' }}
-        >
-          Ingresar →
-        </button>
-      </div>
+      {/* Con sesión no se invita a «Ingresar»: se lleva a sus pedidos (la misma fuente de sesión que
+          el avatar de la cabecera). Mientras no se sabe (null), no se pinta nada. */}
+      {sesion === true ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
+          <p className="text-sm font-semibold">Ya iniciaste sesión</p>
+          <p className="text-[13px] text-slate-600">Todos tus pedidos están en Mi cuenta, sin buscar el número.</p>
+          <Link
+            href={ruta('/mi-cuenta/pedidos')}
+            className="self-center text-sm font-semibold hover:underline"
+            style={{ color: 'var(--primary-color)' }}
+          >
+            Ver mis pedidos →
+          </Link>
+        </div>
+      ) : sesion === false ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
+          <p className="text-sm font-semibold">¿Tienes cuenta?</p>
+          <p className="text-[13px] text-slate-600">Entra y verás todos tus pedidos, sin buscar el número.</p>
+          <button
+            type="button"
+            onClick={(e) => abrirAccesoCuenta({ origen: e.currentTarget, respaldo: '/auth?siguiente=/mi-cuenta/pedidos' })}
+            className="self-center text-sm font-semibold hover:underline"
+            style={{ color: 'var(--primary-color)' }}
+          >
+            Ingresar →
+          </button>
+        </div>
+      ) : null}
 
       {whatsapp && (
         <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 text-sm font-medium hover:underline" style={{ color: 'var(--primary-color)' }}>
