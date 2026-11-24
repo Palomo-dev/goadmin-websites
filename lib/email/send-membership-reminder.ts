@@ -8,6 +8,8 @@
  *   - El día del vencimiento
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface MembershipReminderData {
   customerEmail: string
   customerName: string
@@ -25,7 +27,8 @@ export async function sendMembershipReminderEmail(data: MembershipReminderData):
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@goadmin.app'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
   const endDateStr = new Date(data.endDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
 
   const urgencyColor = data.daysLeft <= 1 ? '#EF4444' : data.daysLeft <= 3 ? '#F59E0B' : '#3B82F6'
@@ -91,7 +94,7 @@ export async function sendMembershipReminderEmail(data: MembershipReminderData):
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `${data.organizationName} <${fromEmail}>`,
+        from: fromEmail,
         to: [data.customerEmail],
         subject,
         html,

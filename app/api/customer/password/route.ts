@@ -3,13 +3,16 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { errorContrasena } from '@/lib/cuenta/reglasCuenta'
+import { cambiarClaveSinCorreo } from '@/lib/auth/sesionSinCorreo'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/customer/password — crear o cambiar la contraseña (Mis datos › Seguridad, Figma F).
- * Opcional: se puede entrar siempre con el código al correo. Usa la sesión de la cookie
- * (`auth.updateUser`); la misma validación del registro (6 caracteres y confirmación).
+ * Opcional: se puede entrar siempre con el código al correo. El usuario sale de la sesión de la
+ * cookie y la contraseña se cambia con la API de admin (`cambiarClaveSinCorreo`): `updateUser`
+ * podía pedir reautenticación por correo de Supabase, y el comprador nunca recibe correos de
+ * Supabase (regla del dueño 2026-11-24). La misma validación del registro (6 caracteres y confirmación).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +28,10 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient()
     const { data } = await supabase.auth.getUser()
     if (!data?.user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) {
-      const reautenticar = /reauthenticat|nonce/i.test(error.message || '')
-      return NextResponse.json(
-        { error: reautenticar ? 'Por seguridad, sal y vuelve a entrar con el código antes de cambiar la contraseña.' : 'No pudimos guardar la contraseña. Prueba con otra.' },
-        { status: 400 },
-      )
+    const cambio = await cambiarClaveSinCorreo(data.user.id, password)
+    if (!cambio.ok) {
+      console.error('[contraseña] No se pudo guardar', { mensaje: cambio.mensaje })
+      return NextResponse.json({ error: 'No pudimos guardar la contraseña. Prueba con otra.' }, { status: 400 })
     }
     return NextResponse.json({ success: true })
   } catch (err) {

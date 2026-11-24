@@ -8,6 +8,8 @@
  * decir «confirmada»: el equipo aún no la ha aceptado.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface RestaurantTableEmailData {
   reservationId: string
   customerEmail: string
@@ -81,7 +83,8 @@ export async function sendRestaurantTableConfirmationEmail(
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'reservas@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
   const shortId = data.reservationId.substring(0, 8).toUpperCase()
   const textos = textosCorreoReservaMesa(data.status)
   const nombre = escaparHtml(data.customerName)

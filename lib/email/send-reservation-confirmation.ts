@@ -4,6 +4,8 @@
  * Si RESEND_API_KEY no está configurada, no hace nada (silent no-op).
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface ReservationEmailData {
   reservationId: string
   customerEmail: string
@@ -26,7 +28,8 @@ export async function sendReservationConfirmationEmail(data: ReservationEmailDat
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'reservas@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
   const shortId = data.reservationId.substring(0, 8).toUpperCase()
 
   const itemsHtml = data.folioItems.map(item => `

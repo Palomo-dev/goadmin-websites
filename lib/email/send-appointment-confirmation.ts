@@ -3,6 +3,8 @@
  * Usa Resend vía fetch directo — no requiere npm package.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface AppointmentEmailData {
   customerEmail: string
   customerName: string
@@ -22,8 +24,9 @@ export async function sendAppointmentConfirmation(data: AppointmentEmailData): P
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'citas@goadmin.io'
-  const orgName = data.organizationName || 'GoAdmin'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
+  const orgName = data.organizationName || ''
 
   const formattedDate = data.date.toLocaleDateString('es-CO', {
     weekday: 'long',

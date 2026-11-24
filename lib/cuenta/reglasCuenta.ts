@@ -12,12 +12,67 @@ import { ESTADOS_SIN_ENTREGA, esEstadoFinal } from '@/lib/orders/estados-pedido'
 
 // ─── Código de 6 dígitos al correo ────────────────────────────────────────────────────────────
 
-/** Largo del código que manda Supabase (`{{ .Token }}` de la plantilla). */
+/**
+ * Desde el 2026-11-24 el código es de la tienda, no de Supabase: lo genera y lo guarda (solo su
+ * hash) lib/cuenta/codigoTienda.ts en `web_customer_login_codes`, y lo envía la tienda con Resend y
+ * su marca (lib/email/send-codigo-acceso.ts). Regla del dueño: el comprador nunca recibe correos
+ * de Supabase Auth ni de la plataforma.
+ */
+/** Largo del código. */
 export const LARGO_CODIGO = 6
-/** Segundos antes de poder pedir otro código (Supabase tampoco deja antes: `auth.rate_limits.otp.period`). */
+/** Segundos antes de poder pedir otro código (la tabla de códigos lo hace cumplir). */
 export const ESPERA_REENVIO_S = 60
-/** Minutos que dura el código (lo que dice la pantalla; se configura en Supabase › Email OTP Expiration). */
+/** Minutos que dura el código (lo que dice la pantalla y el correo). */
 export const MINUTOS_VIGENCIA_CODIGO = 10
+/** Intentos con un mismo código antes de tener que pedir otro. */
+export const MAX_INTENTOS_CODIGO = 5
+/** Códigos por correo y tienda en la ventana de `VENTANA_CODIGOS_MIN` (todos los propósitos). */
+export const MAX_CODIGOS_VENTANA = 5
+export const VENTANA_CODIGOS_MIN = 10
+
+/** Para qué es el código: entrar, confirmar el correo al crear la cuenta o cambiar la contraseña. */
+export type PropositoCodigo = 'login' | 'verify' | 'reset'
+
+export function propositoCodigo(v: unknown): PropositoCodigo {
+  return v === 'verify' || v === 'reset' ? v : 'login'
+}
+
+/** Resultado de comprobar un código escrito contra el guardado. */
+export type ResultadoCodigo = 'ok' | 'vencido' | 'no_coincide' | 'intentos'
+
+/**
+ * Antes de comparar: sin código vigente (no hay, se usó o venció) → `vencido`; con los intentos
+ * agotados → `intentos`; si no, `probar`.
+ */
+export function estadoAntesDeProbar(
+  fila: { expires_at: string | null; attempts: number | null; used_at?: string | null } | null | undefined,
+  ahoraMs: number,
+): 'vencido' | 'intentos' | 'probar' {
+  if (!fila || fila.used_at) return 'vencido'
+  const vence = fila.expires_at ? Date.parse(fila.expires_at) : NaN
+  if (!Number.isFinite(vence) || vence <= ahoraMs) return 'vencido'
+  if ((fila.attempts ?? 0) >= MAX_INTENTOS_CODIGO) return 'intentos'
+  return 'probar'
+}
+
+/**
+ * ¿Se puede enviar otro código? `espera` si el último salió hace menos de `ESPERA_REENVIO_S`;
+ * `limite` si ya van `MAX_CODIGOS_VENTANA` en la ventana. `creados` = fechas de los recientes.
+ */
+export function puedeEnviarCodigo(creados: (string | null | undefined)[], ahoraMs: number): 'ok' | 'espera' | 'limite' {
+  const tiempos = creados.map((c) => (c ? Date.parse(c) : NaN)).filter((t) => Number.isFinite(t))
+  const enVentana = tiempos.filter((t) => ahoraMs - t < VENTANA_CODIGOS_MIN * 60_000)
+  if (enVentana.length >= MAX_CODIGOS_VENTANA) return 'limite'
+  if (tiempos.some((t) => ahoraMs - t < ESPERA_REENVIO_S * 1000)) return 'espera'
+  return 'ok'
+}
+
+/** Mensaje para el comprador según el resultado. Nunca dice si el correo tiene cuenta. */
+export function mensajeResultadoCodigo(r: Exclude<ResultadoCodigo, 'ok'>): string {
+  if (r === 'vencido') return 'El código venció o ya se usó. Pide uno nuevo.'
+  if (r === 'intentos') return 'Hiciste muchos intentos con este código. Pide uno nuevo.'
+  return 'El código no coincide. Revísalo o pide uno nuevo.'
+}
 
 const PATRON_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -49,8 +104,8 @@ export function textoCuentaRegresiva(segundos: number): string {
 }
 
 /**
- * Mensaje para el cliente según el error de Supabase al verificar. Nunca dice si el correo tiene
- * cuenta: solo si el código venció o no coincide.
+ * Mensaje para el cliente según un error de verificación con forma de error de Supabase. Nunca
+ * dice si el correo tiene cuenta: solo si el código venció o no coincide.
  */
 export function mensajeErrorCodigo(error: { message?: string | null; code?: string | null; status?: number | null } | null | undefined): string {
   const texto = `${error?.code ?? ''} ${error?.message ?? ''}`.toLowerCase()
@@ -62,8 +117,8 @@ export function mensajeErrorCodigo(error: { message?: string | null; code?: stri
 }
 
 /**
- * ¿El correo de la sesión está verificado? Lo está si entró con el código (verifyOtp lo confirma)
- * o si confirmó el correo al registrarse. Solo así se le muestran los pedidos hechos sin cuenta con
+ * ¿El correo de la sesión está verificado? Lo está si entró con el código de la tienda (la sesión
+ * se abre con el correo ya confirmado) o si confirmó el correo al registrarse. Solo así se le muestran los pedidos hechos sin cuenta con
  * ese correo.
  */
 export function correoVerificado(user: { email?: string | null; email_confirmed_at?: string | null; confirmed_at?: string | null } | null | undefined): boolean {

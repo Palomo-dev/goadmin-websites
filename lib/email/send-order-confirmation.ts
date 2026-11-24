@@ -6,10 +6,12 @@
  * Con `marca` (el correo de pago confirmado) el mensaje lleva el logo, el color
  * y el nombre de la tienda. El From es el correo de la tienda solo si su dominio
  * ya está autenticado; si no, Reply-To apunta a ese correo y el envío sale por
- * el dominio de la plataforma, que es el único que el proveedor acepta.
+ * la dirección de respaldo (lib/email/remitenteRespaldo.ts), siempre con el
+ * nombre de la tienda.
  */
 
 import { sobreCorreoPedido, type MarcaCorreoPedido, type SobreCorreoPedido } from '@/lib/email/marcaCorreoPedido'
+import { correoRespaldoTiendas, remitenteTienda } from '@/lib/email/remitenteRespaldo'
 import {
   textosCorreoCompraPendiente,
   textosCorreoRecibido,
@@ -97,10 +99,10 @@ export async function sendOrderConfirmationEmail(
         logoUrl: data.marca.logoUrl,
         color: data.marca.color,
         dominios: data.marca.dominios,
-        respaldo: process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io',
+        respaldo: correoRespaldoTiendas(),
       })
     : null
-  const fromEmail = sobre?.from ?? (process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io')
+  const fromEmail = sobre?.from ?? remitenteTienda({ nombre: data.organizationName }).from
   const colorBoton = sobre?.color ?? '#3B82F6'
   const textoBoton = sobre?.texto ?? '#ffffff'
   const pagado = data.paymentStatus === 'paid'

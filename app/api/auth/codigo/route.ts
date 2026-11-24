@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
 import { normalizarCorreo } from '@/lib/cuenta/reglasCuenta'
+import { emitirCodigo } from '@/lib/cuenta/codigoTienda'
+import { enviarCodigoAcceso } from '@/lib/email/send-codigo-acceso'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/auth/codigo — envía el código de 6 dígitos al correo (Figma «16 Sitio web» 2975:71911).
  *
- * Body: { email }. Usa el OTP de Supabase (`signInWithOtp`, `shouldCreateUser: true`): si es la
- * primera vez, Supabase crea el usuario y la ficha de la tienda se crea al verificar el código
- * (/api/auth/codigo/verificar). No se inventa un OTP propio ni tablas nuevas.
+ * Body: { email }. Desde el 2026-11-24 el código es de la tienda (lib/cuenta/codigoTienda.ts) y lo
+ * envía la tienda con Resend y su marca (lib/email/send-codigo-acceso.ts): el comprador NUNCA
+ * recibe correos de Supabase Auth ni de la plataforma. La cuenta (usuario de Auth y ficha de la
+ * tienda) se crea al verificar el código (/api/auth/codigo/verificar).
  *
- * - Organización del HOST (solo para el límite y el enlace de la tienda), nunca del body.
- * - Límite por IP y por correo (lib/rateLimit.ts, en memoria por instancia); Supabase además
- *   limita un código por minuto por correo y un tope de correos por hora del proyecto.
- * - La respuesta no dice si el correo tenía cuenta: con `shouldCreateUser` el envío es igual.
- * - El correo sale con la plantilla «Magic Link» (o «Confirm signup» si el usuario es nuevo o no
- *   había confirmado) del proyecto: ambas deben llevar `{{ .Token }}`. La plantilla es una sola
- *   para todas las tiendas; `{{ .RedirectTo }}` trae la dirección de esta tienda.
+ * - Organización del HOST (para el límite, el hash y la marca), nunca del body.
+ * - Límite por IP (lib/rateLimit.ts, en memoria) y por correo (en memoria y en la tabla de códigos:
+ *   uno por minuto y pocos por ventana, entre instancias).
+ * - La respuesta no dice si el correo tenía cuenta: el envío es igual.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -39,31 +39,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ya te enviamos varios códigos. Revisa tu correo (también en spam) o espera unos minutos.' }, { status: 429 })
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const clave = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !clave) return NextResponse.json({ error: 'No pudimos enviar el código. Intenta de nuevo.' }, { status: 503 })
+    const admin = createAdminClient()
+    if (!admin) return NextResponse.json({ error: 'No pudimos enviar el código. Intenta de nuevo.' }, { status: 503 })
 
-    // Flujo implícito y sin sesión guardada: aquí solo se pide el envío; la sesión la crea la
-    // verificación (con las cookies de la tienda).
-    const supabase = createClient(url, clave, { auth: { persistSession: false, autoRefreshToken: false, flowType: 'implicit' } })
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || ''
-    const protocolo = request.headers.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: correo,
-      options: {
-        shouldCreateUser: true,
-        // Solo sirve a la plantilla ({{ .RedirectTo }}) para nombrar la tienda; el código se escribe en ella.
-        ...(host ? { emailRedirectTo: `${protocolo}://${host}/auth` } : {}),
-      },
-    })
-    if (error) {
-      const limite = error.status === 429 || /rate limit|security purposes/i.test(error.message || '')
-      console.error('[codigo] Supabase no envió el código', { orgId, status: error.status, code: (error as { code?: string }).code })
-      return NextResponse.json(
-        { error: limite ? 'Espera un minuto antes de pedir otro código.' : 'No pudimos enviar el código. Intenta de nuevo.' },
-        { status: limite ? 429 : 502 },
-      )
+    const emision = await emitirCodigo(admin as any, { organizationId: orgId, correo, proposito: 'login', ip })
+    if (!emision.ok) {
+      if (emision.motivo === 'espera') return NextResponse.json({ error: 'Espera un minuto antes de pedir otro código.' }, { status: 429 })
+      if (emision.motivo === 'limite') {
+        return NextResponse.json({ error: 'Ya te enviamos varios códigos. Revisa tu correo (también en spam) o espera unos minutos.' }, { status: 429 })
+      }
+      return NextResponse.json({ error: 'No pudimos enviar el código. Intenta de nuevo.' }, { status: 502 })
     }
+
+    const enviado = await enviarCodigoAcceso(admin as any, { organizationId: orgId, correo, codigo: emision.codigo, proposito: 'login' })
+    if (!enviado) return NextResponse.json({ error: 'No pudimos enviar el código. Intenta de nuevo.' }, { status: 502 })
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[codigo] Error al enviar el código', error)

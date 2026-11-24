@@ -10,25 +10,28 @@
  * - Contraseña: correo, contraseña con ojo, «Recordarme», «¿Olvidaste…?», error sin pistas.
  *   «Recordarme» sin marcar = sesión solo mientras el navegador esté abierto (lib/auth/sesionCorta.ts);
  *   la ventana compacta no lo muestra y deja la sesión larga de siempre.
- * - Crear cuenta: nombre, apellido, correo, celular, contraseña, confirmación y términos.
- * - Recuperar: correo → «Revisa tu correo» (la misma respuesta exista o no la cuenta).
+ * - Crear cuenta: nombre, apellido, correo, celular, contraseña, confirmación y términos → el código
+ *   que la tienda envía para confirmar el correo (`verificar`); con él se crea la cuenta y entra.
+ * - Recuperar: correo → código de la tienda + nueva contraseña (`enviado`; la misma respuesta
+ *   exista o no la cuenta). Desde el 2026-11-24 ningún correo al comprador sale de Supabase.
  */
 import { useId, useState, type ReactNode } from 'react'
-import { AlertCircle, Eye, EyeOff, Heart, Loader2, Lock, Mail, MailCheck, MapPin, Package, User } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Heart, Loader2, Lock, Mail, MapPin, Package, User } from 'lucide-react'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
-import { BENEFICIOS_CUENTA_POR_DEFECTO, mensajeRecuperar, type TextosBeneficiosCuenta } from '@/lib/website/v2/cabeceraTienda'
+import { BENEFICIOS_CUENTA_POR_DEFECTO, type TextosBeneficiosCuenta } from '@/lib/website/v2/cabeceraTienda'
 import { useAcceso, type TipoEntrada } from './useAcceso'
-import { PasoCodigo, PasoCorreo } from './IngresoCodigo'
+import { PasoCodigo, PasoCorreo, PasoRestablecer } from './IngresoCodigo'
 
 /**
  * `ingresar` = pedir el código (lo principal); `codigo` = escribir los 6 dígitos; `contrasena` =
- * ingresar con contraseña (el formulario de siempre).
+ * ingresar con contraseña (el formulario de siempre); `verificar` = el código que confirma el correo
+ * al crear la cuenta; `enviado` = el código y la nueva contraseña de «¿Olvidaste…?».
  */
-export type VistaFormulario = 'ingresar' | 'codigo' | 'contrasena' | 'registro' | 'recuperar' | 'enviado'
+export type VistaFormulario = 'ingresar' | 'codigo' | 'contrasena' | 'registro' | 'verificar' | 'recuperar' | 'enviado'
 
 /** Textos de la cabecera de cada vista (el de ingresar es el título del editor). */
 export function tituloVista(vista: VistaFormulario, tituloIngresar: string): string {
-  if (vista === 'registro') return 'Crea tu cuenta'
+  if (vista === 'registro' || vista === 'verificar') return 'Crea tu cuenta'
   if (vista === 'recuperar' || vista === 'enviado') return 'Recupera tu contraseña'
   return tituloIngresar
 }
@@ -226,7 +229,7 @@ export function FormularioAcceso({
   onIrAFuera,
   alEntrar,
 }: FormularioAccesoProps) {
-  const { enviando, error, exito, limpiar, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo } = useAcceso({ organizationId, alEntrar })
+  const { enviando, error, exito, limpiar, ingresar, registrar, confirmarRegistro, recuperar, restablecer, pedirCodigo, entrarConCodigo } = useAcceso({ organizationId, alEntrar })
   const [correoCodigo, setCorreoCodigo] = useState('')
   const [enviadoEn, setEnviadoEn] = useState<number | null>(null)
   const [ingreso, setIngreso] = useState({ email: '', password: '' })
@@ -317,28 +320,40 @@ export function FormularioAcceso({
     )
   }
 
+  if (vista === 'verificar') {
+    return (
+      <PasoCodigo
+        correo={registro.email}
+        enviando={enviando}
+        error={error}
+        enviadoEn={enviadoEn}
+        compacto={compacto}
+        onCambiarCorreo={() => ir('registro')}
+        onReenviar={async () => {
+          if (await registrar(registro)) setEnviadoEn(Date.now())
+        }}
+        onEntrar={(codigo, recordarmeCodigo) => {
+          void confirmarRegistro({ ...registro, codigo, recordarme: recordarmeCodigo })
+        }}
+      />
+    )
+  }
+
   if (vista === 'enviado') {
     return (
-      <div className="flex flex-col items-center gap-4 text-center" data-vista-acceso="enviado">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-green-600">
-          <MailCheck aria-hidden="true" className="h-6 w-6" />
-        </span>
-        <p className="text-lg font-semibold text-gray-900">Revisa tu correo</p>
-        <p className="text-sm leading-snug text-gray-600">{mensajeRecuperar(correoRecuperar)}</p>
-        <button type="button" onClick={() => ir('contrasena')} className="h-11 w-full rounded-lg border border-gray-300 text-sm font-semibold text-gray-900 hover:bg-gray-50">
-          Volver a ingresar
-        </button>
-        <p className="text-[13px] text-gray-600">
-          ¿No te llegó?{' '}
-          <Enlace
-            onClick={() => {
-              void recuperar(correoRecuperar)
-            }}
-          >
-            Reenviar enlace
-          </Enlace>
-        </p>
-      </div>
+      <PasoRestablecer
+        correo={correoRecuperar}
+        enviando={enviando}
+        error={error}
+        enviadoEn={enviadoEn}
+        onCambiarCorreo={() => ir('recuperar')}
+        onReenviar={async () => {
+          if (await recuperar(correoRecuperar)) setEnviadoEn(Date.now())
+        }}
+        onGuardar={(datos) => {
+          void restablecer({ email: correoRecuperar, ...datos, recordarme: true })
+        }}
+      />
     )
   }
 
@@ -349,10 +364,13 @@ export function FormularioAcceso({
         data-vista-acceso="recuperar"
         onSubmit={async (e) => {
           e.preventDefault()
-          if (await recuperar(correoRecuperar)) onVista('enviado')
+          if (await recuperar(correoRecuperar)) {
+            setEnviadoEn(Date.now())
+            onVista('enviado')
+          }
         }}
       >
-        {intro('Escribe el correo de tu cuenta y te enviamos un enlace para crear una nueva contraseña. Lo que tienes en el carrito se queda donde está.')}
+        {intro('Escribe el correo de tu cuenta y te enviamos un código para crear una nueva contraseña. Lo que tienes en el carrito se queda donde está.')}
         {error && <Aviso tipo="error">{error}</Aviso>}
         <Campo etiqueta="Correo electrónico" icono={Mail}>
           {(id, clase) => (
@@ -360,7 +378,7 @@ export function FormularioAcceso({
           )}
         </Campo>
         <BotonPrincipal enviando={enviando} textoEnviando="Enviando…">
-          Enviar enlace
+          Enviar código
         </BotonPrincipal>
         <p className="text-center text-[13px]">
           <Enlace onClick={() => ir('contrasena')}>Volver a ingresar</Enlace>
@@ -378,7 +396,10 @@ export function FormularioAcceso({
         data-vista-acceso="registro"
         onSubmit={async (e) => {
           e.preventDefault()
-          await registrar(r)
+          if (await registrar(r)) {
+            setEnviadoEn(Date.now())
+            onVista('verificar')
+          }
         }}
       >
         {tabs}

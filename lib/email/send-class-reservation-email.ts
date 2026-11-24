@@ -3,6 +3,8 @@
  * Usa Resend vía fetch directo — silent no-op si RESEND_API_KEY no está configurada.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface ClassReservationEmailData {
   customerEmail: string
   customerName: string
@@ -23,7 +25,8 @@ export async function sendClassReservationEmail(data: ClassReservationEmailData)
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@goadmin.app'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
   const startDate = new Date(data.startAt)
   const endDate = new Date(data.endAt)
 
@@ -84,7 +87,7 @@ export async function sendClassReservationEmail(data: ClassReservationEmailData)
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `${data.organizationName} <${fromEmail}>`,
+        from: fromEmail,
         to: [data.customerEmail],
         subject: `Clase reservada: ${data.classTitle} — ${dateStr}`,
         html,
@@ -112,7 +115,8 @@ export async function sendClassCancellationEmail(data: Omit<ClassReservationEmai
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return false
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@goadmin.app'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
   const startDate = new Date(data.startAt)
 
   const dateStr = startDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -155,7 +159,7 @@ export async function sendClassCancellationEmail(data: Omit<ClassReservationEmai
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `${data.organizationName} <${fromEmail}>`,
+        from: fromEmail,
         to: [data.customerEmail],
         subject: `Reserva cancelada: ${data.classTitle}`,
         html,

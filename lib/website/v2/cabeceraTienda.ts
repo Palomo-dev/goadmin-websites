@@ -963,7 +963,7 @@ export const ERROR_INGRESO_GENERICO = 'Correo o contraseña incorrectos. Revisa 
 /** Confirmación de «Recuperar»: la misma exista o no la cuenta. */
 export function mensajeRecuperar(correo: string): string {
   const c = correo.trim();
-  return `Si ${c || 'ese correo'} tiene una cuenta en esta tienda, te enviamos un enlace para crear una nueva contraseña.`;
+  return `Si ${c || 'ese correo'} tiene una cuenta en esta tienda, te enviamos un código para crear una nueva contraseña.`;
 }
 
 /** Menú de cuenta con sesión: las rutas reales de /mi-cuenta. */

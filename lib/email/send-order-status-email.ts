@@ -3,6 +3,8 @@
  * Usa Resend vía fetch directo. Si RESEND_API_KEY no está configurada, no-op.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 const STATUS_CONFIG: Record<string, { emoji: string; title: string; message: string; color: string }> = {
   confirmed: {
     emoji: '✅',
@@ -68,7 +70,8 @@ export async function sendOrderStatusEmail(data: OrderStatusEmailData): Promise<
   const config = STATUS_CONFIG[data.newStatus]
   if (!config) return false
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">

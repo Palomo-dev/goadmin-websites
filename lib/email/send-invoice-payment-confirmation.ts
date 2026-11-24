@@ -3,6 +3,8 @@
  * Usa Resend vía fetch directo — no requiere npm package.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface InvoicePaymentEmailData {
   customerEmail: string
   customerName: string
@@ -23,7 +25,8 @@ export async function sendInvoicePaymentConfirmation(data: InvoicePaymentEmailDa
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'facturas@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
 
   const fmt = (amount: number) => new Intl.NumberFormat('es-CO', {
     style: 'currency',

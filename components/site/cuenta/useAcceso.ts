@@ -10,6 +10,10 @@
  * El código: /api/auth/codigo lo envía y /api/auth/codigo/verificar entra (y crea o vincula la
  * ficha de la tienda). Las API fijan las cookies de sesión; aquí se sincroniza la sesión en el cliente del navegador
  * para que la cabecera (onAuthStateChange) se entere sin recargar.
+ *
+ * Desde el 2026-11-24 todos los correos al comprador son de la tienda (código propio con su marca,
+ * nunca de Supabase): crear cuenta envía un código para confirmar el correo (`confirmarRegistro`) y
+ * «¿Olvidaste…?» envía un código para poner la nueva contraseña (`restablecer`).
  */
 import { useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -47,9 +51,8 @@ export interface DatosCodigo {
 interface OpcionesAcceso {
   organizationId: number
   /**
-   * `true` en la página /auth: conserva sus mensajes de hoy y, tras registrarse, siempre va a
-   * Mi cuenta. Los demás modos (panel, ventana, diálogo y hoja) dan un error de ingreso que no
-   * dice si falló el correo o la contraseña, y solo siguen si el registro deja sesión.
+   * `true` en la página /auth: conserva sus mensajes de hoy. Los demás modos (panel, ventana,
+   * diálogo y hoja) dan un error de ingreso que no dice si falló el correo o la contraseña.
    */
   pagina?: boolean
   /** Tras ingresar o registrarse con sesión: la página redirige; los demás modos deciden. */
@@ -110,7 +113,10 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
     [organizationId, pagina, alEntrar],
   )
 
-  /** Crear cuenta. `true` si quedó creada (con o sin sesión, según la confirmación de correo). */
+  /**
+   * Crear cuenta, paso 1: valida y envía el código para confirmar el correo. `true` si se envió;
+   * la cuenta se crea con `confirmarRegistro` (paso 2, con el código).
+   */
   const registrar = useCallback(
     async (datos: DatosRegistro): Promise<boolean> => {
       setEnviando(true)
@@ -139,10 +145,7 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
           setError(data.error)
           return false
         }
-        const conSesion = await sincronizarSesion(data.session)
-        setExito(data.message || '¡Cuenta creada exitosamente!')
-        // Sin sesión (confirmación por correo pendiente) no hay a dónde llevarlo: queda el aviso.
-        if (conSesion || pagina) await alEntrar('registro')
+        setExito(data.message || 'Te enviamos un código a tu correo.')
         return true
       } catch {
         setError('Error al crear la cuenta. Intenta de nuevo.')
@@ -151,10 +154,49 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
         setEnviando(false)
       }
     },
-    [organizationId, pagina, alEntrar],
+    [organizationId],
   )
 
-  /** Enviar el enlace de recuperación. `true` si la API respondió (exista o no la cuenta). */
+  /** Crear cuenta, paso 2: el código del correo con los datos del formulario. `true` si entró. */
+  const confirmarRegistro = useCallback(
+    async (datos: DatosRegistro & { codigo: string; recordarme?: boolean }): Promise<boolean> => {
+      setEnviando(true)
+      setError('')
+      try {
+        const res = await fetch('/api/auth/codigo/verificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proposito: 'verify',
+            email: datos.email,
+            codigo: datos.codigo,
+            recordarme: datos.recordarme !== false,
+            firstName: datos.firstName,
+            lastName: datos.lastName,
+            phone: datos.phone,
+            password: datos.password,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || data.error) {
+          setError(data.error || 'El código no coincide. Revísalo o pide uno nuevo.')
+          return false
+        }
+        await sincronizarSesion(data.session)
+        setExito('¡Cuenta creada!')
+        await alEntrar('registro')
+        return true
+      } catch {
+        setError('No pudimos verificar el código. Revisa tu conexión.')
+        return false
+      } finally {
+        setEnviando(false)
+      }
+    },
+    [alEntrar],
+  )
+
+  /** Enviar el código para cambiar la contraseña. `true` si la API respondió (exista o no la cuenta). */
   const recuperar = useCallback(async (email: string): Promise<boolean> => {
     setEnviando(true)
     setError('')
@@ -172,12 +214,48 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
       setExito(data.message)
       return true
     } catch {
-      setError('Error al enviar el enlace. Intenta de nuevo.')
+      setError('Error al enviar el código. Intenta de nuevo.')
       return false
     } finally {
       setEnviando(false)
     }
   }, [])
+
+  /** Nueva contraseña con el código del correo. `true` si quedó cambiada (y la sesión abierta). */
+  const restablecer = useCallback(
+    async (datos: { email: string; codigo: string; password: string; confirmPassword: string; recordarme?: boolean }): Promise<boolean> => {
+      setEnviando(true)
+      setError('')
+      const invalido = errorContrasena(datos)
+      if (invalido) {
+        setError(invalido)
+        setEnviando(false)
+        return false
+      }
+      try {
+        const res = await fetch('/api/auth/forgot-password/restablecer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...datos, recordarme: datos.recordarme !== false }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || data.error) {
+          setError(data.error || 'No pudimos cambiar la contraseña. Intenta de nuevo.')
+          return false
+        }
+        await sincronizarSesion(data.session)
+        setExito('Tu contraseña quedó cambiada.')
+        await alEntrar('ingreso')
+        return true
+      } catch {
+        setError('No pudimos cambiar la contraseña. Revisa tu conexión.')
+        return false
+      } finally {
+        setEnviando(false)
+      }
+    },
+    [alEntrar],
+  )
 
   /** Pide el código de 6 dígitos. `true` si se envió. */
   const pedirCodigo = useCallback(async (email: string): Promise<boolean> => {
@@ -233,7 +311,7 @@ export function useAcceso({ organizationId, pagina = false, alEntrar }: Opciones
     [alEntrar],
   )
 
-  return { enviando, error, exito, setError, setExito, limpiar, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo }
+  return { enviando, error, exito, setError, setExito, limpiar, ingresar, registrar, confirmarRegistro, recuperar, restablecer, pedirCodigo, entrarConCodigo }
 }
 
 /** Cerrar sesión: el servidor borra las cookies y el cliente del navegador la suelta. */

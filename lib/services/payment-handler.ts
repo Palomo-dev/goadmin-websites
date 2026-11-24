@@ -252,7 +252,7 @@ export async function handleInvoicePayment(
         await sendInvoicePaymentConfirmation({
           customerEmail: customer.email,
           customerName: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.email,
-          organizationName: org?.name || 'GoAdmin',
+          organizationName: org?.name || '',
           invoiceNumber: invoice.number || reference,
           invoiceTotal: Number(invoice.total || 0),
           amountPaid: paymentAmount,

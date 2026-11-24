@@ -8,7 +8,7 @@ import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
 import { useAcceso } from '@/components/site/cuenta/useAcceso'
-import { PasoCodigo, PasoCorreo } from '@/components/site/cuenta/IngresoCodigo'
+import { PasoCodigo, PasoCorreo, PasoRestablecer } from '@/components/site/cuenta/IngresoCodigo'
 import { destinoInterno } from '@/lib/cuenta/reglasCuenta'
 
 interface AuthFormProps {
@@ -25,6 +25,8 @@ interface AuthFormProps {
  * 2975:71911) ingresar es primero con el código de 6 dígitos al correo; «Ingresar con contraseña»
  * abre el formulario de siempre. La lógica de sesión es la misma del panel, la ventana, el diálogo
  * y la hoja (useAcceso). `?siguiente=/ruta` vuelve a esa ruta del sitio después de entrar.
+ * Crear cuenta y «¿Olvidaste…?» siguen con el código que envía la tienda (nunca un correo de
+ * Supabase): confirmar el correo y poner la nueva contraseña.
  */
 export function AuthForm({ organizationId, organizationName, logoUrl, primaryColor, google = false }: AuthFormProps) {
   const searchParams = useSearchParams()
@@ -39,11 +41,14 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
   const siguiente = destinoInterno(searchParams.get('siguiente'))
   const errorGoogle = searchParams.get('error') === 'google'
   const [forgotEmail, setForgotEmail] = useState('')
+  // Segundo paso de crear cuenta y de «¿Olvidaste…?»: el código que envió la tienda.
+  const [pasoRegistro, setPasoRegistro] = useState<'datos' | 'codigo'>('datos')
+  const [pasoOlvido, setPasoOlvido] = useState<'correo' | 'codigo'>('correo')
   const [showPassword, setShowPassword] = useState(false)
   const irACuenta = useCallback(() => {
     window.location.href = siguiente
   }, [siguiente])
-  const { enviando: submitting, error, exito: success, setError, setExito: setSuccess, ingresar, registrar, recuperar, pedirCodigo, entrarConCodigo } = useAcceso({
+  const { enviando: submitting, error, exito: success, setError, setExito: setSuccess, ingresar, registrar, confirmarRegistro, recuperar, restablecer, pedirCodigo, entrarConCodigo } = useAcceso({
     organizationId,
     pagina: true,
     alEntrar: irACuenta,
@@ -63,7 +68,10 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    await registrar(registerData)
+    if (await registrar(registerData)) {
+      setEnviadoEn(Date.now())
+      setPasoRegistro('codigo')
+    }
   }
 
   return (
@@ -88,7 +96,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
               ? `Accede a tu cuenta en ${organizationName}`
               : activeTab === 'register'
               ? `Regístrate en ${organizationName}`
-              : 'Te enviaremos un enlace para restablecer tu contraseña'}
+              : 'Te enviaremos un código para crear una nueva contraseña'}
           </CardDescription>
         </CardHeader>
 
@@ -120,10 +128,10 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
           {errorGoogle && !error && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm">No pudimos entrar con Google. Intenta con el código al correo.</div>
           )}
-          {error && !(activeTab === 'login' && modoIngreso !== 'contrasena') && (
+          {error && !(activeTab === 'login' && modoIngreso !== 'contrasena') && !(activeTab === 'register' && pasoRegistro === 'codigo') && !(activeTab === 'forgot' && pasoOlvido === 'codigo') && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm">{error}</div>
           )}
-          {success && (
+          {success && !(activeTab === 'register' && pasoRegistro === 'codigo') && !(activeTab === 'forgot' && pasoOlvido === 'codigo') && (
             <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-lg text-sm">{success}</div>
           )}
 
@@ -192,7 +200,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
                   <input type="checkbox" className="rounded border-gray-300 dark:border-gray-600 mr-2" checked={recordarme} onChange={(e) => setRecordarme(e.target.checked)} />
                   Recordarme
                 </label>
-                <button type="button" onClick={() => { setActiveTab('forgot'); setError(''); setSuccess(''); setForgotEmail(loginData.email) }} className="hover:underline" style={{ color: primaryColor }}>¿Olvidaste tu contraseña?</button>
+                <button type="button" onClick={() => { setActiveTab('forgot'); setPasoOlvido('correo'); setError(''); setSuccess(''); setForgotEmail(loginData.email) }} className="hover:underline" style={{ color: primaryColor }}>¿Olvidaste tu contraseña?</button>
               </div>
               <Button type="submit" className="w-full" style={{ backgroundColor: primaryColor }} disabled={submitting}>
                 {submitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
@@ -203,6 +211,26 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
                 </button>
               </div>
             </form>
+          ) : activeTab === 'register' && pasoRegistro === 'codigo' ? (
+            <div style={{ ['--primary-color' as string]: primaryColor }}>
+              <PasoCodigo
+                correo={registerData.email}
+                enviando={submitting}
+                error={error}
+                enviadoEn={enviadoEn}
+                onCambiarCorreo={() => {
+                  setError('')
+                  setSuccess('')
+                  setPasoRegistro('datos')
+                }}
+                onReenviar={async () => {
+                  if (await registrar(registerData)) setEnviadoEn(Date.now())
+                }}
+                onEntrar={(codigo, recordarmeCodigo) => {
+                  void confirmarRegistro({ ...registerData, codigo, recordarme: recordarmeCodigo })
+                }}
+              />
+            </div>
           ) : activeTab === 'register' ? (
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -260,10 +288,35 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
             </form>
           ) : null}
 
-          {activeTab === 'forgot' && (
+          {activeTab === 'forgot' && pasoOlvido === 'codigo' && (
+            <div style={{ ['--primary-color' as string]: primaryColor }}>
+              <PasoRestablecer
+                correo={forgotEmail}
+                enviando={submitting}
+                error={error}
+                enviadoEn={enviadoEn}
+                onCambiarCorreo={() => {
+                  setError('')
+                  setSuccess('')
+                  setPasoOlvido('correo')
+                }}
+                onReenviar={async () => {
+                  if (await recuperar(forgotEmail)) setEnviadoEn(Date.now())
+                }}
+                onGuardar={(datos) => {
+                  void restablecer({ email: forgotEmail, ...datos, recordarme: true })
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'forgot' && pasoOlvido === 'correo' && (
             <form onSubmit={async (e) => {
               e.preventDefault()
-              await recuperar(forgotEmail)
+              if (await recuperar(forgotEmail)) {
+                setEnviadoEn(Date.now())
+                setPasoOlvido('codigo')
+              }
             }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico</label>
@@ -273,7 +326,7 @@ export function AuthForm({ organizationId, organizationName, logoUrl, primaryCol
                 </div>
               </div>
               <Button type="submit" className="w-full" style={{ backgroundColor: primaryColor }} disabled={submitting}>
-                {submitting ? 'Enviando...' : 'Enviar enlace de recuperación'}
+                {submitting ? 'Enviando...' : 'Enviar código'}
               </Button>
               <div className="text-center">
                 <button type="button" onClick={() => { setActiveTab('login'); setError(''); setSuccess('') }} className="text-sm hover:underline" style={{ color: primaryColor }}>

@@ -14,11 +14,19 @@
  *   calificar, ver), pedido en curso, buscador;
  * - Mis datos, direcciones (aviso de cobertura) y el menú por tipo de negocio (sin emojis).
  * Y lee el fuente de las rutas: organización del HOST (nunca del body), límite por IP, filtros por
- * organización, OTP de Supabase (sin tablas propias) y /tracking que redirige a /rastrear.
+ * organización y /tracking que redirige a /rastrear.
+ *
+ * Regla del dueño (2026-11-24): el comprador NUNCA recibe correos de Supabase Auth ni de la
+ * plataforma. El código es de la tienda (lib/cuenta/codigoTienda.ts, tabla
+ * web_customer_login_codes) y lo envía la tienda con Resend y su marca. Este script FALLA si en
+ * app/, lib/ o components/ aparece cualquier llamada que dispare un correo de Supabase
+ * (`signInWithOtp`, `signUp`, `resetPasswordForEmail`, `updateUser(`, `.resend(`,
+ * `inviteUserByEmail`, `reauthenticate`), si el correo del código menciona la plataforma, o si un
+ * correo a compradores trae cableada una dirección de la plataforma.
  */
 
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -27,6 +35,7 @@ import { stripTypeScriptTypes } from 'node:module'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dir = await mkdtemp(join(tmpdir(), 'verify-cuenta-cliente-'))
 let r
+let correoCodigo
 try {
   const quitar = async (ruta) => stripTypeScriptTypes(await readFile(join(ROOT, ruta), 'utf8'), { mode: 'strip' })
   await writeFile(join(dir, 'estados-pedido.mjs'), await quitar('lib/orders/estados-pedido.ts'))
@@ -41,6 +50,8 @@ try {
       .replaceAll("from '@/lib/orders/estados-pedido'", "from './estados-pedido.mjs'"),
   )
   r = await import(pathToFileURL(join(dir, 'reglasCuenta.mjs')).href)
+  await writeFile(join(dir, 'correoCodigoAcceso.mjs'), await quitar('lib/email/correoCodigoAcceso.ts'))
+  correoCodigo = await import(pathToFileURL(join(dir, 'correoCodigoAcceso.mjs')).href)
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
@@ -76,6 +87,50 @@ for (const m of ['User not found', 'Signups not allowed for otp', 'Email not con
   check(!/cuenta|registr|exist/i.test(t), `el error del código no revela si el correo tiene cuenta («${m}» → «${t}»)`)
 }
 igual(r.LARGO_CODIGO, 6, 'el código es de 6 dígitos')
+
+// ─── Código propio de la tienda (sin correos de Supabase) ─────────────────────────────────────
+igual(r.MAX_INTENTOS_CODIGO, 5, 'máximo 5 intentos por código')
+igual(r.MINUTOS_VIGENCIA_CODIGO, 10, 'el código vence a los 10 minutos')
+igual(r.propositoCodigo('verify'), 'verify', 'propósito verify')
+igual(r.propositoCodigo('reset'), 'reset', 'propósito reset')
+igual(r.propositoCodigo('cualquiera'), 'login', 'propósito desconocido = login')
+{
+  const ahora = Date.parse('2026-11-24T12:00:00Z')
+  const vigente = { expires_at: '2026-11-24T12:05:00Z', attempts: 0, used_at: null }
+  igual(r.estadoAntesDeProbar(null, ahora), 'vencido', 'sin código vigente: vencido')
+  igual(r.estadoAntesDeProbar(vigente, ahora), 'probar', 'código vigente: se prueba')
+  igual(r.estadoAntesDeProbar({ ...vigente, expires_at: '2026-11-24T11:59:59Z' }, ahora), 'vencido', 'código vencido')
+  igual(r.estadoAntesDeProbar({ ...vigente, used_at: '2026-11-24T11:59:00Z' }, ahora), 'vencido', 'código ya usado: un solo uso')
+  igual(r.estadoAntesDeProbar({ ...vigente, attempts: 4 }, ahora), 'probar', 'cuarto intento fallido: aún se prueba el quinto')
+  igual(r.estadoAntesDeProbar({ ...vigente, attempts: 5 }, ahora), 'intentos', 'cinco intentos: hay que pedir otro')
+  igual(r.puedeEnviarCodigo([], ahora), 'ok', 'primer código: se envía')
+  igual(r.puedeEnviarCodigo(['2026-11-24T11:59:30Z'], ahora), 'espera', 'otro código antes del minuto: espera')
+  igual(r.puedeEnviarCodigo(['2026-11-24T11:58:00Z'], ahora), 'ok', 'pasado el minuto: se envía')
+  const cinco = ['11:51', '11:53', '11:55', '11:57', '11:58'].map((h) => `2026-11-24T${h}:00Z`)
+  igual(r.puedeEnviarCodigo(cinco, ahora), 'limite', 'cinco códigos en 10 minutos: límite')
+  igual(r.puedeEnviarCodigo(['2026-11-24T11:40:00Z', ...cinco.slice(1)], ahora), 'ok', 'fuera de la ventana no cuenta')
+  for (const k of ['vencido', 'no_coincide', 'intentos']) {
+    check(!/cuenta|registr|exist/i.test(r.mensajeResultadoCodigo(k)), `el mensaje «${k}» no revela si el correo tiene cuenta`)
+  }
+}
+
+// ─── Correo del código: solo la marca de la tienda ────────────────────────────────────────────
+{
+  const sobre = { nombre: 'Tienda Norte', logoUrl: 'https://cdn.ejemplo.com/logo.png', color: '#112233', texto: '#ffffff', correo: 'ventas@tienda-norte.co' }
+  const login = correoCodigo.correoCodigoAcceso({ sobre, codigo: '048213', proposito: 'login', minutos: 10 })
+  igual(login.asunto, 'Tu código para entrar a Tienda Norte', 'asunto del código para entrar')
+  check(login.html.includes('048213') && login.texto.includes('048213'), 'el código va en el correo (con el cero inicial)')
+  check(login.html.includes('Vence en 10 minutos') && login.texto.includes('Vence en 10 minutos'), 'el correo dice que vence en 10 minutos')
+  check(login.html.includes('https://cdn.ejemplo.com/logo.png') && login.html.includes('#112233'), 'logo y color de la tienda')
+  for (const proposito of ['login', 'verify', 'reset']) {
+    const c = correoCodigo.correoCodigoAcceso({ sobre, codigo: '123456', proposito, minutos: 10 })
+    const todo = `${c.asunto}\n${c.html}\n${c.texto}`
+    check(!/go\s*admin|goadmin|supabase/i.test(todo), `correo del código (${proposito}) sin la marca de la plataforma`)
+    check(c.asunto.includes('Tienda Norte'), `asunto (${proposito}) con el nombre de la tienda`)
+  }
+  const raro = correoCodigo.correoCodigoAcceso({ sobre: { ...sobre, nombre: 'Tienda <b>\r\nBcc: x' }, codigo: '123456', proposito: 'login', minutos: 10 })
+  check(!/[\r\n]/.test(raro.asunto) && !raro.html.includes('<b>'), 'el nombre de la tienda se escapa y no rompe el asunto')
+}
 
 // ─── Acceso ───────────────────────────────────────────────────────────────────────────────────
 check(r.correoVerificado({ email: 'a@b.co', email_confirmed_at: '2026-11-24T10:00:00Z' }), 'correo confirmado = verificado')
@@ -226,16 +281,75 @@ check(/getOrgContext\(\)/.test(leer('app/api/auth/google/route.ts')), 'Google: o
 
 const codigo = sinComentarios(leer('app/api/auth/codigo/route.ts'))
 check(/checkRateLimit\(`codigo:ip:/.test(codigo) && /checkRateLimit\(`codigo:correo:/.test(codigo), 'enviar el código: límite por IP y por correo')
-check(/signInWithOtp\(/.test(codigo) && /shouldCreateUser:\s*true/.test(codigo), 'enviar el código: OTP de Supabase que crea la cuenta la primera vez')
+check(/emitirCodigo\([^)]*proposito: 'login'/.test(codigo) && /enviarCodigoAcceso\(/.test(codigo), 'enviar el código: código propio de la tienda, enviado con su marca')
 const verificar = sinComentarios(leer('app/api/auth/codigo/verificar/route.ts'))
 check(/checkRateLimit\(`codigo-verificar:ip:/.test(verificar) && /checkRateLimit\(`codigo-verificar:correo:/.test(verificar), 'verificar el código: límite por IP y por correo')
-check(/verifyOtp\(\{\s*email:\s*correo,\s*token:\s*codigo,\s*type:\s*'email'\s*\}\)/.test(verificar), 'verificar: verifyOtp tipo email')
-check(/vincularClienteDeSesion\(admin, orgId, data\.user, \{ verificado: true/.test(verificar), 'verificar: crea o vincula la ficha de la organización del host con el correo verificado')
-for (const ruta of ['app/api/auth/register/route.ts', 'app/api/auth/login/route.ts', 'app/auth/callback/route.ts']) {
+check(/verificarCodigo\(/.test(verificar) && /abrirSesionSinCorreo\(/.test(verificar), 'verificar: código propio y sesión sin correo de Supabase')
+check(/vincularClienteDeSesion\(admin, orgId, sesion\.user, \{\s*verificado: true/.test(verificar), 'verificar: crea o vincula la ficha de la organización del host con el correo verificado')
+for (const ruta of ['app/api/auth/codigo/verificar/route.ts', 'app/api/auth/login/route.ts', 'app/auth/callback/route.ts', 'app/api/auth/forgot-password/restablecer/route.ts']) {
   check(/vincularClienteDeSesion\(/.test(leer(ruta)), `${ruta}: la misma ruta para crear o vincular la ficha`)
 }
-for (const ruta of ['app/api/auth/codigo/route.ts', 'app/api/auth/codigo/verificar/route.ts', 'lib/auth/clienteSesion.ts']) {
-  check(!/\.from\('(?:[a-z_]*otp[a-z_]*|codigos?[a-z_]*)'\)/.test(leer(ruta)), `${ruta}: sin tablas propias de códigos`)
+const registro = sinComentarios(leer('app/api/auth/register/route.ts'))
+check(/emitirCodigo\([^)]*proposito: 'verify'/.test(registro) && /enviarCodigoAcceso\(/.test(registro), 'registrarse: confirma el correo con el código de la tienda')
+check(!/vincularClienteDeSesion\(/.test(registro), 'registrarse: la ficha se vincula solo con el correo verificado (al confirmar el código)')
+const olvido = sinComentarios(leer('app/api/auth/forgot-password/route.ts'))
+check(/getOrgIdDelHost\(\)/.test(olvido) && /emitirCodigo\([^)]*proposito: 'reset'/.test(olvido), 'olvidé mi contraseña: código de la tienda (reset), organización del host')
+check(/checkRateLimit\(`recuperar:ip:/.test(olvido) && /checkRateLimit\(`recuperar:correo:/.test(olvido), 'olvidé mi contraseña: límite por IP y por correo')
+const restablecer = sinComentarios(leer('app/api/auth/forgot-password/restablecer/route.ts'))
+check(/getOrgIdDelHost\(\)/.test(restablecer) && /verificarCodigo\([^)]*proposito: 'reset'/.test(restablecer) && /abrirSesionSinCorreo\(/.test(restablecer), 'nueva contraseña: código reset y sesión sin correo')
+const codigoTienda = sinComentarios(leer('lib/cuenta/codigoTienda.ts'))
+check(/createHmac\('sha256'/.test(codigoTienda) && /SUPABASE_SERVICE_ROLE_KEY/.test(codigoTienda) && /timingSafeEqual/.test(codigoTienda), 'código: HMAC con pepper del servidor y comparación en tiempo constante')
+check(/randomInt\(/.test(codigoTienda) && !/Math\.random/.test(codigoTienda), 'código: aleatorio criptográfico')
+check((codigoTienda.match(/\.eq\('organization_id', organizationId\)/g) || []).length >= 4, 'código: cada consulta filtra por organización')
+check(/\.eq\('attempts', intentos\)/.test(codigoTienda) && /\.is\('used_at', null\)/.test(codigoTienda), 'código: intento contado sin carreras y un solo uso')
+const sesionSinCorreo = sinComentarios(leer('lib/auth/sesionSinCorreo.ts'))
+check(/createUser\(\{[\s\S]*?email_confirm: true/.test(sesionSinCorreo), 'sesión: usuario nuevo con admin.createUser y correo confirmado (sin correo)')
+check(/generateLink\(\{ type: 'magiclink'/.test(sesionSinCorreo) && /verifyOtp\(\{ type: 'magiclink', token_hash/.test(sesionSinCorreo), 'sesión: generateLink (no envía) + verifyOtp con token_hash')
+check(/password && \(!entrada\.soloClaveSiNueva \|\| !fila\.email_confirmed_at\)/.test(sesionSinCorreo) && /soloClaveSiNueva: !!registro/.test(sinComentarios(leer('app/api/auth/codigo/verificar/route.ts'))), 'registro: no cambia la contraseña de una cuenta ya confirmada (p. ej. usuario del ERP)')
+
+// Ningún correo de Supabase Auth para compradores (app/, lib/, components/).
+const PROHIBIDAS = [
+  [/\bsignInWithOtp\s*\(/, 'signInWithOtp'],
+  [/\.signUp\s*\(/, 'signUp'],
+  [/\bresetPasswordForEmail\s*\(/, 'resetPasswordForEmail'],
+  [/\bupdateUser\s*\(/, 'updateUser('],
+  [/\.resend\s*\(/, '.resend('],
+  [/\binviteUserByEmail\s*\(/, 'inviteUserByEmail'],
+  [/\breauthenticate\s*\(/, 'reauthenticate'],
+]
+function archivosFuente(carpeta) {
+  const raiz = join(ROOT, carpeta)
+  if (!existsSync(raiz)) return []
+  const lista = []
+  for (const nombre of readdirSync(raiz)) {
+    if (nombre === 'node_modules' || nombre.startsWith('.')) continue
+    const ruta = join(raiz, nombre)
+    if (statSync(ruta).isDirectory()) lista.push(...archivosFuente(`${carpeta}/${nombre}`))
+    else if (/\.(ts|tsx|js|jsx|mjs)$/.test(nombre)) lista.push(`${carpeta}/${nombre}`)
+  }
+  return lista
+}
+let revisados = 0
+for (const archivo of ['app', 'lib', 'components'].flatMap(archivosFuente)) {
+  revisados++
+  const fuente = sinComentarios(leer(archivo))
+  for (const [patron, nombre] of PROHIBIDAS) {
+    if (patron.test(fuente)) check(false, `${archivo}: llama ${nombre} (dispara un correo de Supabase al comprador)`)
+  }
+}
+check(revisados > 100, `se revisaron los fuentes de app/, lib/ y components/ (${revisados})`)
+
+// Correos a compradores: remitente central, sin direcciones ni marca de la plataforma cableadas.
+const respaldo = sinComentarios(leer('lib/email/remitenteRespaldo.ts'))
+check(/process\.env\.CORREO_RESPALDO_TIENDAS/.test(respaldo) && /console\.warn\(/.test(respaldo), 'respaldo: lee CORREO_RESPALDO_TIENDAS y avisa si falta')
+// Van al equipo de la tienda, no a un comprador: pueden nombrar la plataforma.
+const AL_EQUIPO = new Set(['lib/email/send-contact-notice.ts', 'lib/email/send-restaurant-team-notice.ts'])
+for (const archivo of archivosFuente('lib/email').filter((a) => /\/send-[^/]+\.ts$/.test(a))) {
+  if (AL_EQUIPO.has(archivo)) continue
+  const fuente = sinComentarios(leer(archivo))
+  check(!/@goadmin\.(io|app|co)/i.test(fuente), `${archivo}: sin dirección de la plataforma cableada`)
+  check(!/GO ?Admin/i.test(fuente), `${archivo}: sin la marca de la plataforma en el correo`)
+  check(/remitenteTienda\(|correoRespaldoTiendas\(/.test(fuente), `${archivo}: remitente con el nombre de la tienda (lib/email/remitenteRespaldo.ts)`)
 }
 
 const buscar = sinComentarios(leer('app/api/cuenta/buscar-pedido/route.ts'))

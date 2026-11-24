@@ -4,6 +4,8 @@
  * Usa Resend vía fetch directo — no requiere npm package.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface TicketEmailData {
   ticketNumber: string
   passengerEmail: string
@@ -30,7 +32,8 @@ export async function sendTicketConfirmationEmail(data: TicketEmailData): Promis
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'boletos@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
 
   const formattedDate = new Date(data.tripDate).toLocaleDateString('es-CO', {
     weekday: 'long',

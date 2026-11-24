@@ -4,9 +4,11 @@
  * El comprador ve el nombre, el logo y el color de la tienda. El From solo
  * puede ser el dominio predeterminado que el proveedor ya autenticó
  * (`email_domains.is_default` y `verified`): `"Tienda" <from_email>`.
- * Si no hay uno, el From es `"Tienda" <pedidos@goadmin.io>`. Reply-To es el
- * correo de la tienda cuando es distinto. Un dominio autenticado que no es
- * el predeterminado no se usa como From.
+ * Si no hay uno, el From es `"Tienda" <respaldo>`: la dirección de respaldo
+ * la decide `correoRespaldoTiendas()` (lib/email/remitenteRespaldo.ts) y el
+ * nombre visible es SIEMPRE el de la tienda, nunca el de la plataforma.
+ * Reply-To es el correo de la tienda cuando es distinto. Un dominio
+ * autenticado que no es el predeterminado no se usa como From.
  *
  * Código puro: sin React, Next ni Supabase.
  */
@@ -38,7 +40,11 @@ export interface SobreCorreoPedido {
 }
 
 const COLOR_POR_DEFECTO = '#111827'
-const RESPALDO_POR_DEFECTO = 'pedidos@goadmin.io'
+/**
+ * Dirección de respaldo de siempre, solo mientras no exista `CORREO_RESPALDO_TIENDAS`.
+ * No se usa directamente: la lee `correoRespaldoTiendas()` (lib/email/remitenteRespaldo.ts).
+ */
+export const RESPALDO_LEGADO = 'pedidos@goadmin.io'
 
 export function correoValido(valor: unknown): string | null {
   if (typeof valor !== 'string') return null
@@ -181,7 +187,8 @@ function formatoDesde(nombre: string, correo: string): string {
 
 /**
  * From del correo de la tienda. Solo el dominio predeterminado y verificado.
- * Si no hay, el respaldo de la plataforma. Reply-To es el correo de la tienda.
+ * Si no hay, la dirección de respaldo con el nombre de la tienda. Reply-To es el
+ * correo de la tienda.
  */
 export function resolverRemitente(entrada: {
   nombre: string
@@ -199,7 +206,7 @@ export function resolverRemitente(entrada: {
       propio: true,
     }
   }
-  const respaldo = correoValido(entrada.respaldo) ?? RESPALDO_POR_DEFECTO
+  const respaldo = correoValido(entrada.respaldo) ?? RESPALDO_LEGADO
   return {
     from: formatoDesde(entrada.nombre, respaldo),
     replyTo: correo && correo !== respaldo ? correo : null,

@@ -1,17 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { MARCA_SESION_CORTA } from '@/lib/auth/sesionCorta'
-import { createAuthClient, createPublicClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
-import { fichaPorCorreo, vincularClienteDeSesion } from '@/lib/auth/clienteSesion'
-import { correoVerificado, normalizarCorreo } from '@/lib/cuenta/reglasCuenta'
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import { fichaPorCorreo } from '@/lib/auth/clienteSesion'
+import { errorContrasena, normalizarCorreo } from '@/lib/cuenta/reglasCuenta'
+import { emitirCodigo } from '@/lib/cuenta/codigoTienda'
+import { enviarCodigoAcceso } from '@/lib/email/send-codigo-acceso'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * POST /api/auth/register — «Crear cuenta» con contraseña.
+ *
+ * Desde el 2026-11-24 no usa `auth.signUp` (mandaba el correo «Confirm signup» de Supabase con la
+ * marca de la plataforma). Ahora:
+ * 1. Valida el formulario y envía el código de la tienda (propósito `verify`) con su marca
+ *    (lib/email/send-codigo-acceso.ts). Aquí no se crea nada: ni usuario ni ficha.
+ * 2. La pantalla pide el código y lo manda con los datos a /api/auth/codigo/verificar
+ *    (`proposito: 'verify'`): con el correo probado se crea el usuario
+ *    (`auth.admin.createUser`, sin correo), se fija la contraseña, se abre la sesión y se crea o
+ *    vincula la ficha (lib/auth/clienteSesion.ts). Los pedidos sin cuenta solo se vinculan así,
+ *    con el correo verificado.
+ *
+ * La organización sale del HOST, nunca del body (CLAUDE.md).
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { firstName, lastName, phone, password } = body
+    const ip = getClientIP(request)
+    if (!checkRateLimit(`registro:ip:${ip}`, 6, 10 * 60 * 1000).allowed) {
+      return NextResponse.json({ error: 'Hiciste muchos intentos. Espera unos minutos.' }, { status: 429 })
+    }
+    const body = await request.json().catch(() => ({}))
+    const { firstName, lastName, password } = body
     const email = normalizarCorreo(body.email)
-    // La organización sale del HOST, nunca del body (CLAUDE.md).
     const organizationId = await getOrgIdDelHost()
     if (organizationId === null) {
       return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
@@ -20,77 +41,45 @@ export async function POST(request: NextRequest) {
       console.warn('[Register] organizationId del body distinto al del host; se ignora', { organizationId })
     }
 
-    if (!organizationId || !firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !password) {
+      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+    }
+    const invalido = errorContrasena({ password: String(password), confirmPassword: String(password) })
+    if (invalido) return NextResponse.json({ error: invalido }, { status: 400 })
+
+    const admin = createAdminClient()
+    if (!admin) return NextResponse.json({ error: 'No pudimos crear la cuenta. Intenta de nuevo.' }, { status: 503 })
+
+    // Ya registrado en esta tienda: que entre (con código o contraseña), como antes.
+    const existingCustomer = await fichaPorCorreo(admin as any, organizationId, email)
+    if (existingCustomer?.is_registered && existingCustomer.user_id) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos' },
-        { status: 400 }
+        { error: 'Ya existe una cuenta con este correo electrónico. Entra con un código a tu correo.' },
+        { status: 400 },
       )
     }
 
-    // Cliente para queries (admin si disponible, público como fallback)
-    const adminClient = createAdminClient()
-    const queryClient = adminClient || createPublicClient()
+    if (!checkRateLimit(`registro:correo:${organizationId}:${email}`, 3, 10 * 60 * 1000).allowed) {
+      return NextResponse.json({ error: 'Ya te enviamos varios códigos. Revisa tu correo (también en spam) o espera unos minutos.' }, { status: 429 })
+    }
+    const emision = await emitirCodigo(admin as any, { organizationId, correo: email, proposito: 'verify', ip })
+    if (!emision.ok) {
+      const espera = emision.motivo === 'espera' || emision.motivo === 'limite'
+      return NextResponse.json(
+        { error: espera ? 'Espera un minuto antes de pedir otro código.' : 'No pudimos enviar el código. Intenta de nuevo.' },
+        { status: espera ? 429 : 502 },
+      )
+    }
+    const enviado = await enviarCodigoAcceso(admin as any, { organizationId, correo: email, codigo: emision.codigo, proposito: 'verify' })
+    if (!enviado) return NextResponse.json({ error: 'No pudimos enviar el código. Intenta de nuevo.' }, { status: 502 })
 
-    // Verificar si ya existe un customer con este email en esta organización
-    const existingCustomer = await fichaPorCorreo(queryClient as any, organizationId, email)
-    
-    if (existingCustomer?.is_registered) {
-      return NextResponse.json(
-        { error: 'Ya existe una cuenta con este correo electrónico' },
-        { status: 400 }
-      )
-    }
-    
-    // Crear usuario en Supabase Auth (usar queryClient para signUp)
-    const { data: authData, error: authError } = await queryClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone
-        }
-      }
-    })
-    
-    if (authError) {
-      console.error('Auth signup error:', authError)
-      return NextResponse.json(
-        { error: authError.message },
-        { status: 400 }
-      )
-    }
-    
-    // Crear o actualizar customer: la misma ruta del ingreso y del código (lib/auth/clienteSesion.ts).
-    // Registrarse reemplaza nombre, apellido y teléfono, como siempre.
-    if (authData.user) {
-      await vincularClienteDeSesion(queryClient as any, organizationId, authData.user, {
-        firstName,
-        lastName,
-        phone,
-        sobrescribir: true,
-        verificado: correoVerificado(authData.user),
-      })
-    }
-    
-    // Auto-login: establecer sesión con cookies para redirigir directo a /mi-cuenta
-    const authClient = await createAuthClient()
-    const { data: loginData } = await authClient.auth.signInWithPassword({ email, password })
-    // Cuenta nueva = la sesión larga de siempre: se borra una marca de «Recordarme» que haya quedado.
-    if (loginData?.session) (await cookies()).delete(MARCA_SESION_CORTA)
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: '¡Cuenta creada exitosamente!',
-      user: authData.user,
-      session: loginData?.session || null
+    return NextResponse.json({
+      success: true,
+      verificar: true,
+      message: `Te enviamos un código a ${email} para confirmar tu correo.`,
     })
   } catch (error) {
     console.error('Register API error:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

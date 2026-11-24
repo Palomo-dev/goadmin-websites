@@ -12,7 +12,7 @@
  *   regresiva, aviso de los pedidos hechos sin cuenta y «Recordarme en este celular».
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlertCircle, ChevronLeft, Globe, Loader2, Lock, Mail, Package } from 'lucide-react'
+import { AlertCircle, ChevronLeft, Eye, EyeOff, Globe, KeyRound, Loader2, Lock, Mail, Package } from 'lucide-react'
 import {
   LARGO_CODIGO,
   MINUTOS_VIGENCIA_CODIGO,
@@ -273,6 +273,131 @@ export function PasoCodigo({ correo, enviando, error, enviadoEn, onCambiarCorreo
           Recordarme en este dispositivo
         </label>
       )}
+    </form>
+  )
+}
+
+export interface PasoRestablecerProps {
+  correo: string
+  enviando: boolean
+  error: string
+  /** Momento (ms) en que se envió el último código: la cuenta regresiva del reenvío. */
+  enviadoEn: number | null
+  onCambiarCorreo: () => void
+  onReenviar: () => void
+  onGuardar: (datos: { codigo: string; password: string; confirmPassword: string }) => void
+}
+
+/**
+ * «¿Olvidaste tu contraseña?», paso 2 (desde el 2026-11-24): el código que la tienda envió al correo
+ * y la nueva contraseña, en una sola pantalla. Al guardar, la sesión queda abierta. Mismo estilo
+ * que el paso de los 6 dígitos.
+ */
+export function PasoRestablecer({ correo, enviando, error, enviadoEn, onCambiarCorreo, onReenviar, onGuardar }: PasoRestablecerProps) {
+  const [codigo, setCodigo] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [ver, setVer] = useState(false)
+  const [ahora, setAhora] = useState(() => Date.now())
+
+  useEffect(() => {
+    const t = window.setInterval(() => setAhora(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  const faltan = segundosParaReenviar(enviadoEn, ahora)
+  const claseClave = `${CLASE_CAMPO} pr-11`
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      data-vista-acceso="restablecer"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onGuardar({ codigo: codigo.replace(/\D/g, ''), password, confirmPassword })
+      }}
+    >
+      <button type="button" onClick={onCambiarCorreo} className="flex items-center gap-1.5 self-start text-sm font-medium text-slate-600 hover:text-slate-900">
+        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+        Cambiar correo
+      </button>
+      <p className="text-2xl font-semibold leading-snug text-slate-900">Revisa tu correo</p>
+      <p className="text-[15px] leading-snug text-slate-600">
+        Si <span className="font-medium text-slate-900">{correo}</span> tiene una cuenta en esta tienda, te enviamos un código de {LARGO_CODIGO} dígitos. Vence en {MINUTOS_VIGENCIA_CODIGO} minutos.
+      </p>
+      {error && <AvisoError>{error}</AvisoError>}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="restablecer-codigo" className="text-[13px] font-medium text-slate-900">
+          Código
+        </label>
+        <div className="relative">
+          <KeyRound aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            id="restablecer-codigo"
+            data-primer-campo=""
+            required
+            inputMode="numeric"
+            pattern="[0-9 ]*"
+            autoComplete="one-time-code"
+            maxLength={LARGO_CODIGO + 2}
+            disabled={enviando}
+            className={`${CLASE_CAMPO} tracking-[0.3em]`}
+            placeholder="000000"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/[^\d ]/g, ''))}
+          />
+        </div>
+      </div>
+      {(
+        [
+          ['restablecer-clave', 'Nueva contraseña', password, setPassword, 'Mínimo 6 caracteres'],
+          ['restablecer-confirmar', 'Confirmar contraseña', confirmPassword, setConfirmPassword, 'Repite tu contraseña'],
+        ] as const
+      ).map(([id, etiqueta, valor, fijar, ayuda], i) => (
+        <div key={id} className="flex flex-col gap-1.5">
+          <label htmlFor={id} className="text-[13px] font-medium text-slate-900">
+            {etiqueta}
+          </label>
+          <div className="relative">
+            <Lock aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id={id}
+              type={ver ? 'text' : 'password'}
+              required
+              minLength={6}
+              autoComplete="new-password"
+              disabled={enviando}
+              className={claseClave}
+              placeholder={ayuda}
+              value={valor}
+              onChange={(e) => fijar(e.target.value)}
+            />
+            {i === 0 && (
+              <button
+                type="button"
+                onClick={() => setVer((v) => !v)}
+                aria-label={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {ver ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      <BotonPrincipal enviando={enviando} textoEnviando="Guardando…">
+        Cambiar contraseña
+      </BotonPrincipal>
+      <p className="flex flex-wrap items-center justify-center gap-1.5 text-[13px]">
+        <span className="text-slate-600">¿No te llegó? Revisa en spam o</span>
+        {faltan > 0 ? (
+          <span className="font-medium text-slate-400" aria-live="polite">reenvía en {textoCuentaRegresiva(faltan)}</span>
+        ) : (
+          <button type="button" onClick={onReenviar} disabled={enviando} className="font-semibold hover:underline disabled:opacity-60" style={{ color: 'var(--primary-color)' }}>
+            reenvía el código
+          </button>
+        )}
+      </p>
     </form>
   )
 }

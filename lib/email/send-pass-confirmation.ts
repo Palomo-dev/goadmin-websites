@@ -4,6 +4,8 @@
  * Usa Resend vía fetch directo — no requiere npm package.
  */
 
+import { remitenteTienda } from '@/lib/email/remitenteRespaldo'
+
 interface ParkingPassEmailData {
   customerEmail: string
   customerName: string
@@ -34,7 +36,8 @@ export async function sendParkingPassConfirmationEmail(data: ParkingPassEmailDat
     return false
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'parking@goadmin.io'
+  // Nombre de la tienda y dirección de respaldo sin marca de la plataforma (lib/email/remitenteRespaldo.ts).
+  const fromEmail = remitenteTienda({ nombre: data.organizationName }).from
 
   const formattedStart = new Date(data.startDate).toLocaleDateString('es-CO', {
     year: 'numeric',
