@@ -197,14 +197,22 @@ function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: Pr
 
   // B · Pestañas (en celular, acordeón si así se eligió) y C · Acordeón.
   return (
-    <PestanasOAcordeon o={o} partes={partes} cuerpo={(p) => cuerpo(p, false)} primaryColor={primaryColor} ancho={ancho} />
+    // `key`: «Abierta al cargar» se ve en vivo en el lienzo (el estado nace con ella).
+    <PestanasOAcordeon key={o.abierta} o={o} partes={partes} cuerpo={(p) => cuerpo(p, false)} primaryColor={primaryColor} ancho={ancho} />
   )
 }
 
 /** «Ver más» por líneas (con degradado) o por letras (como hoy) si no se eligieron líneas. */
 function TextoVerMas({ texto, o }: { texto: string; o: OpcionesDescripcion }) {
   const [abierto, setAbierto] = useState(false)
-  if (o.lineas === null) return <ExpandableDescription text={texto} maxLength={o.letras} />
+  // Por letras (como hoy), con la viñeta y el tamaño del texto elegidos (antes no llegaban aquí).
+  if (o.lineas === null) {
+    return (
+      <div style={{ fontSize: PX_TEXTO[o.tamanoTexto] }}>
+        <ExpandableDescription text={texto} maxLength={o.letras} vineta={o.vinetas} />
+      </div>
+    )
+  }
   const largo = texto.split('\n').filter((l) => l.trim()).length > o.lineas || texto.length > o.lineas * 90
   const alto = `${o.lineas * 1.65}em`
   return (

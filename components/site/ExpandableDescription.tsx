@@ -7,6 +7,8 @@ import { textoPlano } from '@/lib/texto/textoPlano'
 interface ExpandableDescriptionProps {
   text: string
   maxLength?: number
+  /** Viñeta de las listas al abrir (Descripción › Estilo › Viñetas). Sin ella, el punto de siempre. */
+  vineta?: VinetaTexto
 }
 
 // Verifica si una línea es un "título" (todo en mayúsculas, sin puntuación final, corto)
@@ -156,7 +158,7 @@ export function renderRichText(text: string, vineta: VinetaTexto = 'punto'): Rea
   return <>{blocks}</>
 }
 
-export function ExpandableDescription({ text: textoOriginal, maxLength = 200 }: ExpandableDescriptionProps) {
+export function ExpandableDescription({ text: textoOriginal, maxLength = 200, vineta }: ExpandableDescriptionProps) {
   // Descripciones pegadas desde un editor llegan con HTML: se pinta su texto, nunca el HTML.
   const text = useMemo(() => textoPlano(textoOriginal), [textoOriginal])
   const [expanded, setExpanded] = useState(false)
@@ -171,8 +173,8 @@ export function ExpandableDescription({ text: textoOriginal, maxLength = 200 }: 
         </p>
       )
     }
-    return renderRichText(text)
-  }, [text, expanded, maxLength, shouldTruncate])
+    return renderRichText(text, vineta)
+  }, [text, expanded, maxLength, shouldTruncate, vineta])
 
   return (
     <div>

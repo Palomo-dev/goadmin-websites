@@ -350,7 +350,10 @@ export default async function ProductoDetailPage({
   const bloqueRelacionados = (productDetailTemplate?.website_page_sections ?? [])
     .find((s) => s.section_type === 'related_products' && s.is_visible !== false)
   const opcionesRelacionados = leerOpcionesRelacionados(bloqueRelacionados?.content as Record<string, unknown> | null)
-  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, 8, branchId,
+  // «Cantidad máxima» 12 traía 8: se piden los que la sección muestra (8 como mínimo, lo de siempre).
+  // En el lienzo, el máximo del panel (12), para que cambiar la cantidad se vea sin recargar.
+  const cantidadRelacionados = enLienzo ? 12 : Math.max(8, opcionesRelacionados.cantidad)
+  const relatedProducts = await getRelatedProducts(organization.id, product.category_id || null, product.tag_id || null, product.id, cantidadRelacionados, branchId,
     opcionesRelacionados.fuente === 'tag')
 
   // Construir URLs de imágenes

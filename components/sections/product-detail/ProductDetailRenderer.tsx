@@ -38,6 +38,7 @@ import type React from 'react'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import type { DestinoPadre, Miga } from '@/lib/navegacion/volver'
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
+import { buildSurfaceStyle } from '@/lib/sectionStyle'
 import { ColumnaInfoFija } from '@/components/sections/product-detail/ColumnaInfoFija'
 import { ContadorColumnas } from '@/components/site/ContadorColumnas'
 import { soloContador } from '@/lib/website/contadorColumnas'
@@ -241,7 +242,12 @@ export function ProductDetailRenderer({
     if (section.section_type === TIPO_URGENCIA_FICHA) return urgencia(section.id)
     const settings = (section.settings || {}) as Record<string, unknown>
     const Bloque = SECTION_MAP[section.section_type]?.[section.section_variant]
-    const nodo = Bloque && TIPOS_BLOQUE_FICHA.has(section.section_type) && Object.keys(settings).length === 0 ? (
+    const directo = Bloque && TIPOS_BLOQUE_FICHA.has(section.section_type) && Object.keys(settings).length === 0
+    // Directo (sin SectionWrapper), «Avanzado › Radio de borde, Sombra» (y fondo, borde y color de
+    // texto guardados en el contenido) no llegaban a ninguna parte: van en una caja alrededor del
+    // bloque. Sin esas claves, ninguna caja: el marcado de hoy.
+    const superficie = directo ? buildSurfaceStyle((section.content || {}) as Record<string, unknown>) : null
+    const bloqueDirecto = directo ? (
       <Bloque
         key={section.id}
         content={(section.content || {}) as Record<string, any>}
@@ -251,6 +257,18 @@ export function ProductDetailRenderer({
         sectionVariant={section.section_variant}
         sectionId={section.id}
       />
+    ) : null
+    const nodo = directo ? (
+      superficie?.className ? (
+        <div
+          key={section.id}
+          data-superficie-ficha=""
+          className={`${superficie.className}${superficie.visible ? ' p-4 md:p-6' : ''}`}
+          style={superficie.style}
+        >
+          {bloqueDirecto}
+        </div>
+      ) : bloqueDirecto
     ) : (
       <SectionRenderer
         key={section.id}

@@ -198,23 +198,13 @@ function px(n: unknown, fallback = 0): string {
 }
 
 /**
- * Construye el estilo de una sección (contenedor externo).
- *
- * Precedencia de colores:
- *   content.bg_color / content.text_color  >  settings.bg_color / settings.text_color
- *   (formato viejo en settings, para no romper sitios existentes).
+ * Fondo, color de texto, radio, sombra y borde de una sección (Avanzado y Estilo), sin ancho ni
+ * relleno. La usan `buildSectionStyle` (mismo orden de clases que siempre) y `buildSurfaceStyle`
+ * (bloques de la ficha que se pintan sin SectionWrapper). Devuelve `true` si pinta algo visible
+ * alrededor del contenido (fondo, borde o sombra).
  */
-export function buildSectionStyle(
-  content: StyleContent | null | undefined,
-  settings: LegacySettings | null | undefined,
-  sectionType?: string,
-): StyleResult {
-  const c = content ?? {};
-  const s = settings ?? {};
-
-  const style: CSSProperties = {};
-  const classes: string[] = ['w-full'];
-
+function pintarSuperficie(c: StyleContent, s: LegacySettings, style: CSSProperties, classes: string[]): boolean {
+  let visible = false;
   // --- Fondo ---
   const bgType = (c.bg_type as string) ?? 'none';
   const bgColor = (c.bg_color as string) ?? (s.bg_color as string) ?? null;
@@ -222,11 +212,13 @@ export function buildSectionStyle(
   if (bgType === 'color' && bgColor) {
     (style as Record<string, string>)['--sec-bg'] = bgColor;
     classes.push('bg-[var(--sec-bg)]');
+    visible = true;
   } else if (bgType === 'gradient') {
     const from = (c.bg_gradient_from as string) ?? '#000000';
     const to = (c.bg_gradient_to as string) ?? '#ffffff';
     const dir = GRADIENT_DIR[(c.bg_gradient_dir as string)] ?? '135deg';
     style.backgroundImage = `linear-gradient(${dir}, ${from}, ${to})`;
+    visible = true;
   } else if (bgType === 'image' && c.bg_image) {
     const overlay = typeof c.bg_overlay === 'number' ? c.bg_overlay : 0;
     if (overlay > 0) {
@@ -238,10 +230,12 @@ export function buildSectionStyle(
     style.backgroundSize = 'cover';
     style.backgroundPosition = 'center';
     style.backgroundRepeat = 'no-repeat';
+    visible = true;
   } else if (bgColor && bgType !== 'none') {
     // bg_type ausente pero hay color heredado (compat)
     (style as Record<string, string>)['--sec-bg'] = bgColor;
     classes.push('bg-[var(--sec-bg)]');
+    visible = true;
   }
 
   // --- Color de texto ---
@@ -261,7 +255,10 @@ export function buildSectionStyle(
   // --- Sombra ---
   const shadow = (c.shadow as string) ?? 'none';
   const shadowClass = SHADOW_CLASS[shadow] ?? SHADOW_CLASS.none;
-  if (shadowClass && shadow !== 'none') classes.push(shadowClass);
+  if (shadowClass && shadow !== 'none') {
+    classes.push(shadowClass);
+    visible = true;
+  }
 
   // --- Borde ---
   const borderWidth = typeof c.border_width === 'number' ? c.border_width : 0;
@@ -270,7 +267,43 @@ export function buildSectionStyle(
     style.borderWidth = px(borderWidth);
     if (c.border_color) style.borderColor = c.border_color as string;
     style.borderStyle = 'solid';
+    visible = true;
   }
+  return visible;
+}
+
+/**
+ * Solo la superficie de una sección (fondo, color de texto, radio, sombra y borde), sin ancho del
+ * contenedor ni `w-full`: para los bloques de la ficha que se pintan sin SectionWrapper, donde
+ * «Avanzado › Radio de borde / Sombra» no llegaba a ninguna parte. `visible` = hay fondo, borde
+ * o sombra (el bloque lleva relleno para que el contenido no toque el borde). Sin ninguna de esas
+ * claves, `className` vacío.
+ */
+export function buildSurfaceStyle(content: StyleContent | null | undefined): StyleResult & { visible: boolean } {
+  const style: CSSProperties = {};
+  const classes: string[] = [];
+  const visible = pintarSuperficie(content ?? {}, {}, style, classes);
+  return { className: classes.join(' '), style, visible };
+}
+
+/**
+ * Construye el estilo de una sección (contenedor externo).
+ *
+ * Precedencia de colores:
+ *   content.bg_color / content.text_color  >  settings.bg_color / settings.text_color
+ *   (formato viejo en settings, para no romper sitios existentes).
+ */
+export function buildSectionStyle(
+  content: StyleContent | null | undefined,
+  settings: LegacySettings | null | undefined,
+  sectionType?: string,
+): StyleResult {
+  const c = content ?? {};
+  const s = settings ?? {};
+
+  const style: CSSProperties = {};
+  const classes: string[] = ['w-full'];
+  pintarSuperficie(c, s, style, classes);
 
   // --- Ancho del contenedor / full bleed ---
   const isHero = sectionType === 'hero';

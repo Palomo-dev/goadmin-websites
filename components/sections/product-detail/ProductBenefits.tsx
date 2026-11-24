@@ -7,7 +7,10 @@ import {
 import { buildCardStyle } from '@/lib/sectionStyle'
 import {
   MEDIDAS_ICONO,
+  MEDIDAS_ICONO_INSIGNIA,
   TONOS_MULTICOLOR,
+  beneficiosConColorPropio,
+  espacioBeneficios,
   leerItemsBeneficios,
   leerOpcionesBeneficios,
   type BeneficioFichaItem,
@@ -69,16 +72,20 @@ interface ProductBenefitsProps {
  * rejilla de 2 columnas con separador superior. `columns`, `gap` e `items` la ajustan; el estilo
  * de tarjeta (`card_*`) solo se aplica si el contenido trae alguna clave `card_`.
  *
- * Con alguna clave nueva (`lib/website/v2/seccionesFicha.ts`, Figma 2984:72581) se pinta con
- * opciones: estilo (Lista, Tarjetas, Franja, Insignias), color, fondo, forma y tamaño del ícono,
- * columnas en celular, alineación, líneas entre ítems y descripción.
+ * Con alguna clave nueva (`lib/website/v2/seccionesFicha.ts`, Figma 2984:72581) o con un color
+ * propio en algún beneficio, se pinta con opciones: estilo (Lista, Tarjetas, Franja, Insignias),
+ * color, fondo, forma y tamaño del ícono, columnas en celular, alineación, líneas entre ítems y
+ * descripción. Qué opción se usa en cada estilo: `SOLO_EN_ESTILOS_BENEFICIOS` (el panel oculta el
+ * resto). Radio, sombra y fondo de la sección (Avanzado) los pone ProductDetailRenderer.
  */
 export function ProductBenefits({ content, primaryColor = '#3B82F6', data }: ProductBenefitsProps) {
   // Restaurante sin beneficios propios: los de e-commerce («Envío rápido 24-48 horas»,
   // «Garantía 30 días») no aplican a un plato. Con ítems configurados, se pintan.
   if (data?.restaurante && !content.items?.length) return null
   const opciones = leerOpcionesBeneficios(content)
-  if (opciones.conOpciones) {
+  // Un color propio en un beneficio no existía antes: también pinta con opciones (si no, el color
+  // elegido en Contenido no se vería).
+  if (opciones.conOpciones || beneficiosConColorPropio(content)) {
     const items = content.items?.length ? leerItemsBeneficios(content) : DEFAULT_BENEFITS.map((b) => ({ ...b, color: null }))
     return <BeneficiosConOpciones items={items} opciones={opciones} primaryColor={primaryColor} />
   } else {
@@ -143,10 +150,16 @@ function colorDeItem(item: BeneficioFichaItem, i: number, o: OpcionesBeneficios,
 }
 
 /** Cuadro del ícono: forma × fondo × tamaño; sobre fondo sólido, el ícono pasa a blanco o negro. */
-function IconoBeneficio({ item, i, o, primaryColor }: { item: BeneficioFichaItem; i: number; o: OpcionesBeneficios; primaryColor: string }) {
+function IconoBeneficio({ item, i, o, primaryColor, medidas = MEDIDAS_ICONO }: {
+  item: BeneficioFichaItem
+  i: number
+  o: OpcionesBeneficios
+  primaryColor: string
+  medidas?: typeof MEDIDAS_ICONO
+}) {
   const Icon = ICON_MAP[item.icon] || Star
   const { color, hex } = colorDeItem(item, i, o, primaryColor)
-  const medida = MEDIDAS_ICONO[o.tamano]
+  const medida = medidas[o.tamano]
   const forma = o.forma === 'circulo' ? 'rounded-full' : 'rounded-lg'
   const estilo: React.CSSProperties = { width: medida.caja, height: medida.caja }
   let colorIcono = color
@@ -166,7 +179,7 @@ function IconoBeneficio({ item, i, o, primaryColor }: { item: BeneficioFichaItem
 
 function BeneficiosConOpciones({ items, opciones: o, primaryColor }: { items: BeneficioFichaItem[]; opciones: OpcionesBeneficios; primaryColor: string }) {
   const centro = o.alineacion === 'centro'
-  const gap = o.gap ?? 16
+  const gap = espacioBeneficios(o)
   const textos = (item: BeneficioFichaItem) => (
     <span className={`min-w-0 ${centro ? 'text-center' : ''}`}>
       <span className="block text-sm font-medium text-gray-900 dark:text-white">{item.title}</span>
@@ -176,17 +189,19 @@ function BeneficiosConOpciones({ items, opciones: o, primaryColor }: { items: Be
     </span>
   )
 
-  // Insignias compactas: pastillas que se acomodan solas.
+  // Insignias compactas: pastillas con fondo suave que se acomodan solas, en computador y en el
+  // celular (Figma 2984:72581 «D»). Sin descripción ni columnas; tamaño del ícono, espacio,
+  // borde y fondo de la pastilla sí se usan.
   if (o.estilo === 'insignias') {
     return (
-      <ul className={`flex flex-wrap pt-6 border-t dark:border-gray-700 ${centro ? 'justify-center' : ''}`} style={{ gap: Math.min(gap, 12) }} data-beneficios="insignias">
+      <ul className={`flex flex-wrap pt-6 border-t dark:border-gray-700 ${centro ? 'justify-center' : ''}`} style={{ gap }} data-beneficios="insignias">
         {items.map((item, i) => (
           <li
             key={i}
-            className={`inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 ${o.borde === 'linea' ? 'border border-gray-200 dark:border-gray-700' : ''} ${o.borde === 'sombra' ? 'shadow-sm' : ''}`}
+            className={`inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 ${o.fondoItem ? '' : 'bg-gray-50 dark:bg-gray-800/60'} ${o.borde === 'linea' ? 'border border-gray-200 dark:border-gray-700' : ''} ${o.borde === 'sombra' ? 'shadow-sm' : ''}`}
             style={{ backgroundColor: o.fondoItem ?? undefined }}
           >
-            <IconoBeneficio item={item} i={i} o={{ ...o, tamano: 'sm' }} primaryColor={primaryColor} />
+            <IconoBeneficio item={item} i={i} o={o} primaryColor={primaryColor} medidas={MEDIDAS_ICONO_INSIGNIA} />
             <span className="text-[13px] font-medium text-gray-900 dark:text-white">{item.title}</span>
           </li>
         ))}

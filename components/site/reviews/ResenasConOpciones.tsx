@@ -285,7 +285,7 @@ export function ResenasConOpciones({ opciones: o, reviews, totalReviews, avgRati
   if (o.estilo === 'compacta') {
     const destacadas = ordenarResenas(reviews, 'helpful').slice(0, 2)
     return (
-      <section className={`mt-8 rounded-xl ${claseTarjeta || 'border border-gray-200'} p-5`} data-resenas="compacta">
+      <section className={`mt-8 rounded-xl ${claseTarjeta} p-5`} data-resenas="compacta">
         <div className="flex flex-wrap items-center gap-2">
           <Estrellas valor={promedio} color={colorEstrella} />
           <span className="text-sm font-semibold text-gray-900 dark:text-white">{promedio.toFixed(1)}</span>

@@ -151,6 +151,9 @@ export function ProductReviews({
   if (opciones?.conOpciones) {
     return (
       <ResenasConOpciones
+        // «Opiniones por página» y «Orden al abrir» fijan el estado inicial: con la `key` se ven en
+        // vivo en el lienzo al cambiarlas.
+        key={`${opciones.porPagina}-${opciones.orden}`}
         opciones={opciones}
         reviews={allReviews}
         totalReviews={totalReviews}
