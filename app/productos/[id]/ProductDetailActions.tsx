@@ -221,6 +221,7 @@ export function ProductDetailActions({
     if (!puedePedir) return null
     return (
       <div className="space-y-3 pt-4">
+        {/* Contraentrega: línea discreta debajo del precio (Figma 3073:83567); apagada por defecto. */}
         <AvisoContraentregaFicha product={product} branchId={branchId} />
         <VariantSelector
           parentName={product.name}
@@ -272,6 +273,10 @@ export function ProductDetailActions({
 
   return (
     <div className="space-y-3 pt-4">
+      {/* Contraentrega: línea discreta, lo primero debajo del precio (Figma 3073:83567). Apagada por
+          defecto (casilla del editor); sin condiciones en la sede, nada. */}
+      {puedePedir && <AvisoContraentregaFicha product={product} branchId={branchId} />}
+
       {/* Selector de modificadores (nuevo sistema ERP) */}
       {modifierGroups.length > 0 && (
         <ProductModifierSelector
@@ -315,9 +320,6 @@ export function ProductDetailActions({
       {puedePedir && sinCupo && (
         <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
       )}
-
-      {/* Contraentrega con condiciones (Figma 3019:76125 › 15/15b); sin condiciones, nada */}
-      {puedePedir && <AvisoContraentregaFicha product={product} branchId={branchId} />}
 
       {/* Botones de acción: la distribución del bloque (Figma 2779:65038; sin configurar, «Clásica»). */}
       {puedePedir && (

@@ -11,6 +11,10 @@
  * - Número del pedido pequeño, con «Copiar»; barra de 4 pasos; productos con foto; entrega con el
  *   nombre público de la sede (nunca «Sucursal 562»); «¿Dudas?» con WhatsApp.
  * - Entregado: factura, calificación por producto y «Volver a comprar estos productos».
+ * - Final de la página (Figma «16 Sitio web» › opción A, 3067:82354 a 3068:82776, aprobado el
+ *   2026-11-24): «Seguir comprando/pidiendo» como botón secundario a todo el ancho, lo último de la
+ *   página; entregado, encima va «Volver a comprar estos productos». El botón gris «Actualizar» se
+ *   cambió por la línea «Se actualiza solo · hace N s» debajo de los pasos (tocarla actualiza).
  * - Lo de logística aprobado (Figma 2804:13320) se queda igual: quién lo lleva, código de entrega,
  *   «Pagas al recibir», novedad, mapa, guía e intentos de entrega.
  */
@@ -18,9 +22,10 @@
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import {
   Loader2, RefreshCw, MapPin, Phone, Clock, ExternalLink, Mail, MessageCircle, Banknote, X, Copy, Check,
-  Lock, XCircle, Truck, Store, Package, ChevronDown, FileText, Star, ShoppingBag, CreditCard, PackageCheck, Info,
+  Lock, XCircle, Truck, Store, Package, ChevronDown, FileText, Star, ShoppingBag, CreditCard, PackageCheck, Info, CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Enlace from '@/components/site/Enlace'
 import { DeliveryInfo } from '@/components/site/DeliveryInfo'
 import { EstimatedTime } from '@/components/site/EstimatedTime'
 import { DeliveryMap } from '@/components/site/DeliveryMap'
@@ -198,6 +203,80 @@ function FilaInfo({ icono: Icono, titulo, detalle, color }: { icono: typeof Cloc
   )
 }
 
+/** Cada cuánto se mueve el «hace N s» de la línea (solo la línea se vuelve a pintar). */
+const RELOJ_LINEA_MS = 5000
+
+function haceCuanto(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `hace ${s} s`
+  return `hace ${Math.floor(s / 60)} min`
+}
+
+/**
+ * Línea «↻ Se actualiza solo · hace N s» debajo de los pasos (Figma 3067:82625). Es un botón:
+ * tocarla consulta el pedido ya. Estados: normal, «Actualizando…», «Actualizado ahora» y «Sin
+ * conexión · Reintentar». El pedido entregado o cancelado no la pinta (deja de actualizarse).
+ * Accesible: el estado del pedido se anuncia (aria-live) solo cuando cambia, no el reloj.
+ */
+function LineaActualiza({
+  actualizadoEn,
+  actualizando,
+  recien,
+  sinConexion,
+  estadoPedido,
+  onActualizar,
+}: {
+  actualizadoEn: number | null
+  actualizando: boolean
+  recien: boolean
+  sinConexion: boolean
+  estadoPedido: string
+  onActualizar: () => void
+}) {
+  const [reloj, setReloj] = useState(() => Date.now())
+  useEffect(() => {
+    setReloj(Date.now())
+    const id = setInterval(() => setReloj(Date.now()), RELOJ_LINEA_MS)
+    return () => clearInterval(id)
+  }, [actualizadoEn])
+
+  let contenido: React.ReactNode
+  let clase = 'text-gray-500'
+  let Icono: typeof RefreshCw = RefreshCw
+  if (actualizando) {
+    contenido = 'Actualizando…'
+  } else if (sinConexion) {
+    clase = 'text-orange-700'
+    contenido = (
+      <>
+        Sin conexión · <span className="font-semibold">Reintentar</span>
+      </>
+    )
+  } else if (recien) {
+    clase = 'text-green-700'
+    Icono = CheckCircle2
+    contenido = 'Actualizado ahora'
+  } else {
+    contenido = `Se actualiza solo${actualizadoEn ? ` · ${haceCuanto(reloj - actualizadoEn)}` : ''}`
+  }
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onActualizar}
+        disabled={actualizando}
+        aria-label="Actualizar el pedido"
+        className={`inline-flex items-center gap-1.5 text-[13px] ${clase} disabled:cursor-default`}
+        data-linea-actualiza={actualizando ? 'actualizando' : sinConexion ? 'sin_conexion' : recien ? 'recien' : 'normal'}
+      >
+        <Icono className={`h-3.5 w-3.5 flex-shrink-0 ${actualizando ? 'animate-spin' : ''}`} aria-hidden="true" />
+        <span>{contenido}</span>
+      </button>
+      <span className="sr-only" aria-live="polite">{estadoPedido}</span>
+    </div>
+  )
+}
+
 export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/' }: OrderTrackerProps) {
   // En el servidor, el del enlace; en el navegador, además, el guardado de esta pestaña.
   const [token] = useState<string | null>(() =>
@@ -230,21 +309,29 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   const [calificados, setCalificados] = useState<Record<number, number>>({})
   const [errorCalificar, setErrorCalificar] = useState<string | null>(null)
   const [ahora, setAhora] = useState(() => Date.now())
+  // Línea «Se actualiza solo»: cuándo llegó la última respuesta y su estado al tocarla.
+  const [actualizadoEn, setActualizadoEn] = useState<number | null>(null)
+  const [actualizando, setActualizando] = useState(false)
+  const [recien, setRecien] = useState(false)
+  const [sinConexion, setSinConexion] = useState(false)
   const completo = useRef(false)
 
-  const fetchTracking = useCallback(async () => {
+  /** `true` si llegó el pedido. Con el pedido ya en pantalla, un fallo no lo borra: «Sin conexión». */
+  const fetchTracking = useCallback(async (): Promise<boolean> => {
     try {
       // La primera consulta trae todo; las siguientes (cada 15 s) son ligeras: no vuelven a leer
       // productos, medios de pago ni factura.
       const ligero = completo.current ? `${consulta ? '&' : '?'}ligero=1` : ''
       const res = await fetch(`/api/orders/${encodeURIComponent(orderIdentifier)}/tracking${consulta}${ligero}`, { cache: 'no-store' })
       if (!res.ok) {
-        if (res.status === 404) {
+        if (completo.current) {
+          setSinConexion(true)
+        } else if (res.status === 404) {
           setError('Pedido no encontrado')
         } else {
           setError('Error al obtener el seguimiento')
         }
-        return
+        return false
       }
       const json = (await res.json()) as TrackingData
       setData((previo) => ({
@@ -255,8 +342,13 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
       }))
       completo.current = true
       setError(null)
+      setSinConexion(false)
+      setActualizadoEn(Date.now())
+      return true
     } catch {
-      setError('Error de conexión')
+      if (completo.current) setSinConexion(true)
+      else setError('Error de conexión')
+      return false
     } finally {
       setLoading(false)
     }
@@ -272,6 +364,21 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
     }, POLL_INTERVAL)
     return () => clearInterval(interval)
   }, [fetchTracking, data?.order?.status])
+
+  // Tocar la línea: «Actualizando…» y, si llegó, «Actualizado ahora» unos segundos.
+  const actualizarAhora = useCallback(async () => {
+    setActualizando(true)
+    setRecien(false)
+    const ok = await fetchTracking()
+    setActualizando(false)
+    setAhora(Date.now())
+    if (ok) setRecien(true)
+  }, [fetchTracking])
+  useEffect(() => {
+    if (!recien) return
+    const id = setTimeout(() => setRecien(false), 3000)
+    return () => clearTimeout(id)
+  }, [recien])
 
   const pagar = useCallback(async (gateway: string) => {
     if (!data) return
@@ -560,6 +667,19 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
           ))}
         </ol>
 
+        {/* «Se actualiza solo · hace N s» (Figma 3067:82625): reemplaza el botón «Actualizar» del
+            final. Con el pedido entregado o cancelado no sale: la página deja de actualizarse. */}
+        {!isFinal && (
+          <LineaActualiza
+            actualizadoEn={actualizadoEn}
+            actualizando={actualizando}
+            recien={recien}
+            sinConexion={sinConexion}
+            estadoPedido={encabezado.insignia}
+            onActualizar={() => void actualizarAhora()}
+          />
+        )}
+
         {/* Lo que hay que hacer ahora, según el estado */}
         {vista === 'pagar' && (
           <Tarjeta className="flex flex-col gap-3 border-amber-200 bg-amber-50">
@@ -773,12 +893,6 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
           </Tarjeta>
         )}
 
-        {vista === 'entregado' && data.rutas.recompra && (
-          <a href={data.rutas.recompra} className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ backgroundColor: primaryColor }}>
-            <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Volver a comprar estos productos
-          </a>
-        )}
-
         {/* Productos y resumen (abiertos si falta el pago; si no, plegados en una línea) */}
         <Tarjeta className="flex flex-col gap-3">
           <button type="button" onClick={() => setProductosAbiertos(!abiertos)} aria-expanded={abiertos} className="flex items-center justify-between gap-2 text-left">
@@ -969,16 +1083,21 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
           </Tarjeta>
         )}
 
-        <div className="mt-2 flex flex-col items-center gap-3">
-          <a href={rutaSeguirPidiendo} className="text-sm font-medium text-gray-900">
-            {isRetail ? 'Seguir comprando' : 'Seguir pidiendo'}
+        {/* Final de la página (opción A): entregado, «Volver a comprar» (principal); siempre, lo
+            último, «Seguir comprando/pidiendo» como botón secundario a todo el ancho. Mientras falta
+            pagar, el único botón principal sigue siendo «Pagar $ X» (arriba). */}
+        {vista === 'entregado' && data.rutas.recompra && (
+          <a href={data.rutas.recompra} className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ backgroundColor: primaryColor }}>
+            <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Volver a comprar estos productos
           </a>
-          {!isFinal && (
-            <Button variant="outline" size="sm" onClick={() => fetchTracking()} className="text-gray-500">
-              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Actualizar
-            </Button>
-          )}
-        </div>
+        )}
+        <Enlace
+          href={rutaSeguirPidiendo}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+          data-seguir-comprando=""
+        >
+          <Store className="h-4 w-4" aria-hidden="true" /> {isRetail ? 'Seguir comprando' : 'Seguir pidiendo'}
+        </Enlace>
       </div>
     </div>
   )

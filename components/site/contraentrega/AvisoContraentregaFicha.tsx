@@ -2,6 +2,7 @@
 
 import { Banknote, Info } from 'lucide-react'
 import { useCurrency } from '@/components/site/CurrencyProvider'
+import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
 import { normalizarCondiciones, productoAplica } from '@/lib/contraentrega/reglaContraentrega'
 import { avisoFichaContraentrega } from '@/lib/contraentrega/textosContraentrega'
 import { useCondicionesContraentrega } from './useCondicionesContraentrega'
@@ -18,22 +19,22 @@ function idONulo(v: unknown): number | null {
 }
 
 /**
- * Aviso de contraentrega de la ficha (Figma 3019:76125 › 15 y 15b): «Contraentrega disponible ·
- * pagas al recibir» si el producto aplica, «Este producto se paga en línea» si no. Sin condiciones
- * en la sede (la mayoría de tiendas) no pinta nada: la ficha queda exactamente como hoy.
+ * Aviso de contraentrega de la ficha, en línea discreta (Figma 3073:83567 y 3073:83624, aprobado
+ * el 2026-11-24): «Contraentrega disponible · pagas al recibir» si el producto aplica, «Este
+ * producto se paga en línea» si no. Gris de 12 px con el billete, sin recuadro.
+ *
+ * APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo mencione»). Lo enciende la casilla
+ * `header_carrito.avisoContraentrega.ficha`, que el editor cambia desde Encabezado › Carrito o
+ * desde la ficha del producto; la lee del contexto de la cabecera (sin consultas nuevas; en la
+ * vista previa, con los ajustes vivos del editor). Apagada, ni se piden las condiciones. Sin
+ * condiciones en la sede (la mayoría de tiendas) no pinta nada aunque esté encendida.
  */
-/**
- * Aviso de contraentrega en la ficha: APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo
- * mencione»). Se enciende solo cuando la tienda lo active; el interruptor del editor del ERP está
- * en diseño (Figma «Final del pedido y aviso de contraentrega»). Mientras tanto no se pinta.
- */
-export const AVISO_CONTRAENTREGA_FICHA_ENCENDIDO = false
-
 export function AvisoContraentregaFicha({ product, branchId }: Props) {
   const { formatPrice } = useCurrency()
-  const respuesta = useCondicionesContraentrega(branchId, null, AVISO_CONTRAENTREGA_FICHA_ENCENDIDO)
+  const encendido = useOpcionesTienda().carrito.avisoContraentrega.ficha
+  const respuesta = useCondicionesContraentrega(branchId, null, encendido)
   const productoId = idONulo(product?.id)
-  if (!AVISO_CONTRAENTREGA_FICHA_ENCENDIDO || !respuesta || !respuesta.conCondiciones || productoId === null) return null
+  if (!encendido || !respuesta || !respuesta.conCondiciones || productoId === null) return null
 
   const aplica = productoAplica(normalizarCondiciones(respuesta), {
     productoId,
@@ -41,21 +42,15 @@ export function AvisoContraentregaFicha({ product, branchId }: Props) {
     productoPadreId: idONulo(product.parent_product_id),
   })
   const aviso = avisoFichaContraentrega(respuesta, aplica, formatPrice)
-  const disponible = aviso.tipo === 'disponible'
+  const Icono = aviso.tipo === 'disponible' ? Banknote : Info
   return (
-    <div
-      className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 dark:border-gray-700 dark:bg-gray-800/50"
+    <p
+      className="flex items-start gap-1.5 text-xs leading-4 text-gray-500 dark:text-gray-400"
+      title={aviso.detalle ?? undefined}
       data-aviso-contraentrega={aviso.tipo}
     >
-      {disponible ? (
-        <Banknote className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-700 dark:text-green-400" aria-hidden="true" />
-      ) : (
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-600 dark:text-gray-400" aria-hidden="true" />
-      )}
-      <div className="min-w-0">
-        <p className={`text-sm font-medium ${disponible ? 'text-green-700 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>{aviso.titulo}</p>
-        {aviso.detalle && <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{aviso.detalle}</p>}
-      </div>
-    </div>
+      <Icono className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+      <span>{aviso.titulo}</span>
+    </p>
   )
 }

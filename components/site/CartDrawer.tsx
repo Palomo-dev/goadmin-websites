@@ -250,15 +250,6 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
           </div>
         )}
 
-        {/* Contraentrega con condiciones (Figma 3019:76125 › 14/14b); sin condiciones, nada */}
-        <AvisoContraentregaCarrito
-          items={items}
-          subtotalProductos={Math.max(0, subtotal - promoDiscount)}
-          branchId={branchId}
-          primaryColor={primaryColor}
-          compacto={conEnvioGratis && !envioLogrado}
-        />
-
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
@@ -407,6 +398,15 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 </div>
               )}
             </div>
+
+            {/* Contraentrega: línea discreta debajo del total, antes de pagar (Figma 3073:83426).
+                Apagada por defecto; la enciende Encabezado › Carrito. Sin condiciones en la sede, nada. */}
+            <AvisoContraentregaCarrito
+              items={items}
+              subtotalProductos={Math.max(0, subtotal - promoDiscount)}
+              branchId={branchId}
+              encendido={opciones.avisoContraentrega.carrito}
+            />
             
             {/* Botones (Figma 2753:59474): principal a todo el ancho, «Ver carrito completo» con
                 borde debajo y «Seguir comprando» como enlace. Antes los <Link> eran en línea y

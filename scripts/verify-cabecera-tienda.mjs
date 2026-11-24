@@ -49,6 +49,15 @@ for (const a of [null, {}, { header_iconos: null, header_moneda: null, header_ca
   check(igual(c.boton.textos, TEXTOS_BOTON_CARRITO_HOY) && c.boton.modo === 'al_abrir', 'botón de hoy: dinámico con los 4 textos')
   check(c.titulo === 'Tu Carrito' && c.seguirComprando === 'Continuar Comprando', 'textos del cajón de hoy')
   check(c.enlace.texto === 'Ver carrito completo' && c.enlace.estilo === 'borde' && c.enlace.mostrar, '«Ver carrito completo» con borde, como hoy')
+  check(c.avisoContraentrega.carrito === false && c.avisoContraentrega.ficha === false, 'aviso de contraentrega apagado (carrito y ficha), como hoy')
+}
+// Aviso de contraentrega (Figma 3071:82659): un solo dato, dos casillas; lo que no es booleano no cuenta.
+{
+  const encendido = opcionesCarrito({ header_carrito: { avisoContraentrega: { ficha: true } } })
+  check(encendido.avisoContraentrega.ficha === true && encendido.avisoContraentrega.carrito === false, 'aviso: solo la ficha encendida')
+  check(encendido.configurado === true, 'aviso: cuenta como configurado')
+  const raro = opcionesCarrito({ header_carrito: { avisoContraentrega: { carrito: 'si', ficha: 1 } } })
+  check(raro.avisoContraentrega.carrito === false && raro.avisoContraentrega.ficha === false && raro.configurado === false, 'aviso: valores no booleanos = apagado')
 }
 check(estiloIconosEfectivo({ header_icons_circle: true }) === 'circulo', 'header_icons_circle → Círculo')
 check(estiloIconosEfectivo({ header_icons_box: { shape: 'circle' } }) === 'circulo', 'caja en círculo → Círculo')

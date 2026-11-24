@@ -352,6 +352,14 @@ igual('init: el anticipo solo escribe advance_gateway', /isAnticipo\) \{[^}]*adv
   igual('ficha: monta el aviso (variantes y producto simple)', (ficha.match(/<AvisoContraentregaFicha product=\{product\} branchId=\{branchId\} \/>/g) || []).length, 2)
   const avisos = fuente('components/site/contraentrega/AvisoContraentregaCarrito.tsx') + fuente('components/site/contraentrega/AvisoContraentregaFicha.tsx')
   igual('avisos: sin condiciones no pintan nada', (avisos.match(/!respuesta\.conCondiciones/g) || []).length, 2)
+  // Interruptor del editor (Figma 3071:82659): apagado no pinta ni pide las condiciones.
+  igual('cajón: el aviso lee la casilla «En el carrito»', cajon.includes('encendido={opciones.avisoContraentrega.carrito}'), true)
+  igual('ficha: el aviso lee la casilla «En la ficha» de la cabecera', avisos.includes('useOpcionesTienda().carrito.avisoContraentrega.ficha'), true)
+  igual('avisos: apagados no piden condiciones',
+    avisos.includes('useCondicionesContraentrega(branchId, ids, encendido && items.length > 0)') && avisos.includes('useCondicionesContraentrega(branchId, null, encendido)'), true)
+  igual('avisos: apagados no pintan nada', (avisos.match(/if \(!encendido \|\|/g) || []).length, 2)
+  igual('avisos: línea discreta, sin recuadro ni barra del mínimo', /rounded-xl|role="progressbar"/.test(avisos), false)
+  igual('avisos: ya no hay constantes de apagado fijo', /AVISO_CONTRAENTREGA_\w+_ENCENDIDO/.test(avisos), false)
   const lectura = fuente('app/api/contraentrega/condiciones/route.ts')
   igual('condiciones: organización del host', lectura.includes('await getOrgIdDelHost()'), true)
   igual('condiciones: límite por IP', lectura.includes('checkRateLimit(`contraentrega-condiciones:ip:${getClientIP(request)}`'), true)

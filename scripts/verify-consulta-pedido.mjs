@@ -137,4 +137,13 @@ caso('la pantalla paga con /api/checkout/init y la consulta repetida es ligera',
   assert.doesNotMatch(tracker, /📋|✅|🎉/, 'sin emojis en la barra de pasos')
 })
 
+caso('final de la página (opción A, Figma 3067:82354): sin «Actualizar» suelto, «Seguir comprando» a todo el ancho y la línea «Se actualiza solo»', () => {
+  assert.doesNotMatch(tracker, /<RefreshCw className="h-3\.5 w-3\.5 mr-1" \/> Actualizar/)
+  assert.match(tracker, /<Enlace\s+href=\{rutaSeguirPidiendo\}\s+className="flex w-full/)
+  assert.match(tracker, /\{!isFinal && \(\s*<LineaActualiza/)
+  assert.match(tracker, /Se actualiza solo/)
+  // «Seguir comprando» es lo último de la página: después solo cierran los contenedores.
+  assert.match(tracker, /'Seguir pidiendo'\}\s*<\/Enlace>\s*<\/div>\s*<\/div>\s*\)\s*\}\s*$/)
+})
+
 console.log(`\n${casos} casos OK`)

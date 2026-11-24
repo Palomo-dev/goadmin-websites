@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Banknote, Info } from 'lucide-react'
 import { Price, useCurrency } from '@/components/site/CurrencyProvider'
 import { idProductoCarrito } from '@/lib/orders/impuestoProducto'
@@ -21,31 +22,31 @@ interface Props {
   /** Valor de los productos con descuentos, sin envío (lo que cuenta el mínimo). */
   subtotalProductos: number
   branchId?: number | null
-  primaryColor: string
   /**
-   * Con la barra de envío gratis encima: el aviso del mínimo va debajo en una sola línea, sin su
-   * barra (14b › 3).
+   * Casilla «En el carrito» (`header_carrito.avisoContraentrega.carrito`). Apagada (por defecto)
+   * no se pinta nada y ni se piden las condiciones.
    */
-  compacto?: boolean
+  encendido: boolean
 }
 
-/**
- * Aviso de contraentrega del cajón del carrito (Figma 3019:76125 › 14 y 14b). Sin condiciones en la
- * sede (la mayoría de tiendas) no pinta nada y el cajón queda exactamente como hoy. La zona no se
- * revisa aquí: aún no hay dirección (se revisa en el checkout).
- */
-/**
- * Aviso de contraentrega en el carrito: APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo
- * mencione»). Se enciende solo cuando la tienda lo active; el interruptor del editor del ERP está
- * en diseño (Figma «Final del pedido y aviso de contraentrega»). Mientras tanto no se pinta.
- */
-export const AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO = false
+const CLASE_LINEA = 'flex items-start gap-1.5 text-xs leading-4 text-gray-500 dark:text-gray-400'
 
-export function AvisoContraentregaCarrito({ items, subtotalProductos, branchId, primaryColor, compacto = false }: Props) {
+/**
+ * Aviso de contraentrega del cajón del carrito, en línea discreta debajo del total (Figma
+ * 3073:83426 y 3073:83624, aprobado el 2026-11-24): gris de 12 px con el billete, sin recuadro y sin
+ * la barra del mínimo (el cajón ya tiene la de envío gratis).
+ *
+ * APAGADO por defecto (dueño, 2026-11-24: «no me gusta que lo mencione»): lo enciende la casilla
+ * del editor (Encabezado › Carrito). Sin condiciones en la sede (la mayoría de tiendas) no pinta
+ * nada aunque esté encendido. La zona no se revisa aquí: aún no hay dirección (se revisa en el
+ * checkout).
+ */
+export function AvisoContraentregaCarrito({ items, subtotalProductos, branchId, encendido }: Props) {
   const { formatPrice } = useCurrency()
+  const [verCuales, setVerCuales] = useState(false)
   const ids = items.map((item) => idProductoCarrito(item)).filter((id): id is number => id !== null)
-  const respuesta = useCondicionesContraentrega(branchId, ids, AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO && items.length > 0)
-  if (!AVISO_CONTRAENTREGA_CARRITO_ENCENDIDO || !respuesta || !respuesta.conCondiciones || items.length === 0) return null
+  const respuesta = useCondicionesContraentrega(branchId, ids, encendido && items.length > 0)
+  if (!encendido || !respuesta || !respuesta.conCondiciones || items.length === 0) return null
 
   const condiciones = normalizarCondiciones(respuesta)
   const enCarrito = new Set(ids)
@@ -56,60 +57,26 @@ export function AvisoContraentregaCarrito({ items, subtotalProductos, branchId, 
     formatPrice,
   )
 
-  if (aviso.tipo === 'disponible') {
+  if (aviso.tipo === 'disponible' || aviso.tipo === 'minimo') {
     return (
-      <div className="px-4 pt-3" data-aviso-contraentrega="disponible">
-        <p className="flex items-start gap-2 rounded-xl bg-green-50 px-3 py-2.5 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
-          <Banknote className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          <span>{aviso.titulo}</span>
-        </p>
-      </div>
-    )
-  }
-
-  if (aviso.tipo === 'minimo') {
-    const avance = Math.round(aviso.avance * 100)
-    return (
-      <div className="px-4 pt-3" data-aviso-contraentrega="minimo">
-        <div className="rounded-xl bg-orange-50 px-3 py-2.5 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          <p className="flex items-center gap-2 text-sm">
-            <Banknote className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-            <span>{aviso.titulo}</span>
-          </p>
-          {!compacto && (
-            <>
-              <div
-                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/80 dark:bg-gray-700"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={avance}
-                aria-label="Avance para pagar contra entrega"
-              >
-                <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${avance}%`, backgroundColor: primaryColor }} />
-              </div>
-              <p className="mt-2 text-xs">{aviso.detalle}</p>
-            </>
-          )}
-        </div>
-      </div>
+      <p className={CLASE_LINEA} data-aviso-contraentrega={aviso.tipo}>
+        <Banknote className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+        <span>{aviso.titulo}</span>
+      </p>
     )
   }
 
   if (aviso.tipo === 'maximo') {
     return (
-      <div className="px-4 pt-3" data-aviso-contraentrega="maximo">
-        <div className="flex items-start gap-2 rounded-xl bg-gray-100 px-3 py-2.5 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          <p>
-            {aviso.titulo}. <span className="text-gray-500 dark:text-gray-400">{aviso.detalle}</span>
-          </p>
-        </div>
-      </div>
+      <p className={CLASE_LINEA} data-aviso-contraentrega="maximo">
+        <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+        <span>{aviso.titulo}: {aviso.detalle.charAt(0).toLowerCase()}{aviso.detalle.slice(1)}</span>
+      </p>
     )
   }
 
-  // Un producto (o varios) no aplica: cuáles, con su «Se paga en línea» (14b › 4).
+  // Uno o varios productos no aplican: la línea y «Ver cuáles» abre la lista con su «Se paga en
+  // línea» (la misma de 14b › 4).
   const lineas = aviso.productoIds
     .map((id) => {
       const item = items.find((i) => idProductoCarrito(i) === id)
@@ -118,31 +85,44 @@ export function AvisoContraentregaCarrito({ items, subtotalProductos, branchId, 
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   return (
-    <div className="px-4 pt-3" data-aviso-contraentrega="productos">
-      <div className="rounded-xl bg-gray-100 px-3 py-2.5 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-        <p className="flex items-start gap-2 text-sm">
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          <span>{aviso.titulo}</span>
-        </p>
-        {lineas.length > 0 && (
-          <ul className="mt-2 space-y-1.5">
-            {lineas.map(({ id, item, nombre }) => (
-              <li key={id} className="flex items-center gap-3 rounded-lg bg-white px-2.5 py-2 dark:bg-gray-900">
-                <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
-                  {item?.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-gray-900 dark:text-white">{nombre}</p>
-                  <span className="mt-0.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                    Se paga en línea
-                  </span>
-                </div>
-                {item ? <Price value={item.price * item.quantity} className="text-sm font-semibold text-gray-900 dark:text-white" /> : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+    <div data-aviso-contraentrega="productos">
+      <p className={CLASE_LINEA}>
+        <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+        <span>
+          {aviso.titulo}
+          {lineas.length > 0 && (
+            <>
+              {' '}
+              <button
+                type="button"
+                onClick={() => setVerCuales((v) => !v)}
+                aria-expanded={verCuales}
+                className="font-medium text-gray-700 underline underline-offset-2 dark:text-gray-300"
+              >
+                {verCuales ? 'Ocultar' : 'Ver cuáles'}
+              </button>
+            </>
+          )}
+        </span>
+      </p>
+      {verCuales && lineas.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {lineas.map(({ id, item, nombre }) => (
+            <li key={id} className="flex items-center gap-3 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-800">
+              <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700">
+                {item?.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : null}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-gray-900 dark:text-white">{nombre}</p>
+                <span className="mt-0.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  Se paga en línea
+                </span>
+              </div>
+              {item ? <Price value={item.price * item.quantity} className="text-sm font-semibold text-gray-900 dark:text-white" /> : null}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
