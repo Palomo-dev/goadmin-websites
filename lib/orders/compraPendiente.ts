@@ -98,7 +98,9 @@ function correoUtil(valor: string | null): boolean {
   if (!valor) return false
   const limpio = valor.trim()
   if (limpio.length > 254 || limpio.length < 3) return false
-  return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(limpio)
+  // El dominio termina en letras («.com», «.co»): un teléfono pegado al correo
+  // («…@mail.com3043677302») no es un correo y Resend lo rechaza.
+  return /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(limpio)
 }
 
 function enVentana(cancelledAt: string | null, ahora: Date): boolean {
