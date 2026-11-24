@@ -8,6 +8,7 @@ import { useCurrency } from '@/components/site/CurrencyProvider'
 import { BotonGuardarFicha } from '@/components/site/favoritos/BotonGuardarFicha'
 import { HeaderLogo } from '@/components/site/header/HeaderShared'
 import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
+import { textoAgregarConCantidad, type BotonVolumen } from '@/lib/promociones/escalonesTienda'
 import {
   barraReemplazaVisible,
   textoBotonBarra,
@@ -98,6 +99,7 @@ export function BarraFijaEscritorio({
   conFavorito,
   precioEnBoton,
   organization,
+  botonVolumen = null,
 }: {
   compra: CompraBarraFija
   op: OpcionesBarraEscritorio
@@ -112,6 +114,8 @@ export function BarraFijaEscritorio({
   conFavorito: boolean
   precioEnBoton: boolean
   organization: OrganizationWithDetails | null
+  /** Cantidad en un escalón de precio por volumen: «Agregar 6 al carrito · $ 57.000». */
+  botonVolumen?: BotonVolumen | null
 }) {
   const { formatPrice } = useCurrency()
   const { visible: debeVerse, bajando } = useVisibilidadBarra(op.aparece)
@@ -192,7 +196,9 @@ export function BarraFijaEscritorio({
           ) : (
             <>
               <ShoppingCart className="mr-2 h-4 w-4 shrink-0" />
-              {precioEnBoton ? textoBotonConPrecio(textoAgregar, formatPrice(activePrice)) : textoAgregar}
+              {botonVolumen
+                ? textoBotonConPrecio(textoAgregarConCantidad(textoAgregar, botonVolumen.cantidad), formatPrice(botonVolumen.total))
+                : precioEnBoton ? textoBotonConPrecio(textoAgregar, formatPrice(activePrice)) : textoAgregar}
             </>
           )}
         </Button>

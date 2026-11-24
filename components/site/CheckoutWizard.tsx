@@ -30,10 +30,13 @@ import LocationCheckoutFields from './LocationCheckoutFields'
 import { useCurrency } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
+import { DescuentosPorPromocion, PromoDeLinea } from './checkout/PromocionesResumen'
 import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
 import { abrirBoldDesdeUrl, cargarLibreriaBold } from '@/lib/payments/boldCheckoutCliente'
 import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
+import { DetalleContraentrega, MotivoContraentrega, ResumenPagoContraentrega, textoBotonAnticipo, useContraentrega } from '@/components/site/contraentrega/OpcionContraentrega'
 
 interface CartModifier {
   typeId: number
@@ -286,6 +289,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     promotions: appliedPromotions,
     totalDiscount: promoDiscount,
     itemDiscounts: promoItemDiscounts,
+    volumeHints: promoVolumeHints,
   } = useCartPromotions({ organizationId, branchId: sedePromocion, items: cartItems, paymentMethod })
 
   // Dynamic shipping states
@@ -482,6 +486,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  // Envío gratis medido DESPUÉS de promociones y cupón (lib/shipping/envioGratisDescontado.ts), con
+  // la misma regla que cobra /api/orders. Solo decide el envío gratis; el resto usa `subtotal`.
+  const subtotalEnvioGratis = subtotalParaEnvioGratis(subtotal, couponDiscount + promoDiscount)
   // Impuesto con la misma regla que cobra /api/orders. Cada producto usa su tarifa
   // (product_tax_relations); hasta que llega, o si no tiene, la predeterminada.
   const tarifasCarrito = useTarifasCarrito(cartItems.map((item) => idProductoCarrito(item) ?? 0).filter((id) => id > 0))
@@ -505,7 +512,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   // Shipping solo aplica cuando el tipo seleccionado es delivery
   const needsShipping = orderType === 'delivery' && hasDelivery
   const flatShipping = settings.enableShipping && needsShipping
-    ? (settings.freeShippingThreshold > 0 && subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFlatRate)
+    ? (settings.freeShippingThreshold > 0 && subtotalEnvioGratis >= settings.freeShippingThreshold ? 0 : settings.shippingFlatRate)
     : 0
   // Domicilio propio con zonas: lo que dice la zona (fuera de cobertura no hay domicilio: 0 y el
   // envío queda bloqueado). Sin zonas: envío dinámico si hay tarifas, si no la tarifa plana.
@@ -520,6 +527,41 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         : 'Tu dirección está fuera de nuestras zonas de domicilio. Elige otra dirección, transportadora o recoger.')
     : null
   const total = subtotal + tax + shipping + tipAmount - couponDiscount - promoDiscount
+  // Contraentrega con condiciones (lib/contraentrega): lo que pinta la opción «Efectivo» a domicilio.
+  // Sin condiciones en la sede, `ce.estado` es null y el checkout queda como hoy.
+  const ce = useContraentrega({
+    habilitado: orderType === 'delivery' && availableMethods.some((m) => m.code === 'cash'),
+    branchId: typeof sedeMetodos === 'number' ? sedeMetodos : null,
+    tipoEntrega: orderType === 'delivery' ? (grupoEnvio === 'third_party' ? 'delivery_third_party' : 'delivery_own') : orderType === 'dine_in' ? 'dine_in' : 'pickup',
+    items: cartItems.map((i) => ({ productId: Number(idProductoCarrito(i)), cantidad: i.quantity })),
+    subtotalProductos: Math.max(0, total - shipping - tipAmount),
+    envio: shipping,
+    total,
+    direccion: { ciudad: customerData.city, pais: customerData.countryCode, departamento: customerData.stateCode, barrio: customerData.barrio },
+  })
+  const ceBloqueada = paymentMethod === 'cash' && !!ce.estado && !ce.estado.disponible
+  const textoPagar = (paymentMethod === 'cash' ? textoBotonAnticipo(ce.estado, ce.pasarela, fmtPrice) : null) ?? `Pagar ${fmtPrice(total)}`
+  // Acciones de la opción apagada (pantalla 09 E y F): solo existen con condiciones en la sede.
+  const quitarNoAplican = (productIds: number[]) => {
+    const ids = new Set(productIds)
+    cartItems.filter((item) => ids.has(Number(idProductoCarrito(item)))).forEach((item) => removeItem(item.id))
+  }
+  const cambiarDireccionContraentrega = () => {
+    if (isOnePage) {
+      setOpenSections((prev) => ({ ...prev, customer: true }))
+      setTimeout(() => {
+        const campo = document.querySelector<HTMLInputElement>('input[placeholder="Calle 123 #45-67"]')
+        if (campo) {
+          campo.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          campo.focus()
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      }, 0)
+    } else {
+      setStep(2)
+    }
+  }
 
   // Tarifas de Transporte › Tarifas de envío («Web»), por ciudad. Se piden desde el principio (sin
   // ciudad, las de cualquier destino) para que las tarjetas de domicilio muestren precio y tiempo.
@@ -532,7 +574,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         const res = await fetch('/api/shipping/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId, city, subtotal })
+          // El subtotal de esta ruta solo decide el envío gratis de cada tarifa: va el descontado.
+          body: JSON.stringify({ organizationId, city, subtotal: subtotalEnvioGratis })
         })
         const data = await res.json()
         setDynamicShippingRates(Array.isArray(data.rates) ? data.rates : [])
@@ -541,7 +584,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       }
     }, 500) // Debounce 500ms
     return () => clearTimeout(timeout)
-  }, [customerData.city, organizationId, hasDelivery, subtotal])
+  }, [customerData.city, organizationId, hasDelivery, subtotalEnvioGratis])
 
   // Domicilio por zona: el servidor ubica la dirección (municipio DANE por país, departamento y
   // ciudad; barrio) y responde si la tienda tiene zonas. Informativo: /api/orders vuelve a cotizar.
@@ -562,6 +605,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           body: JSON.stringify({
             ...(sedePromocion != null ? { branchId: sedePromocion } : {}),
             subtotal,
+            // Envío gratis de la zona con promociones y cupón ya descontados (el mínimo, con `subtotal`).
+            subtotalEnvioGratis,
             // Productos del carrito: el servidor suma su peso para las reglas de despacho por peso.
             items: cartItems.map((item) => ({ product_id: idProductoCarrito(item), cantidad: item.quantity })),
             direccion: {
@@ -582,7 +627,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       vigente = false
       clearTimeout(timeout)
     }
-  }, [organizationId, conDomicilioPropio, sedePromocion, subtotal, clavePesoCarrito, customerData.city, customerData.countryCode, customerData.stateCode, customerData.barrio])
+  }, [organizationId, conDomicilioPropio, sedePromocion, subtotal, subtotalEnvioGratis, clavePesoCarrito, customerData.city, customerData.countryCode, customerData.stateCode, customerData.barrio])
 
   // Tarifas del domicilio elegido (con un solo tipo activo, todas). Se elige la más económica,
   // salvo que el cliente ya tenga una de ese grupo; sin tarifas, la plana de los ajustes.
@@ -619,7 +664,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       g,
       tarifasDelGrupo(dynamicShippingRates, g, gruposDomicilio),
       { activo: settings.enableShipping, tarifa: settings.shippingFlatRate, umbralGratis: settings.freeShippingThreshold },
-      subtotal,
+      subtotalEnvioGratis,
       gruposDomicilio,
     )
     return {
@@ -704,7 +749,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         // tarifa dinámica, null = tarifa plana de los ajustes).
         shippingRateId: needsShipping && !envioZona && dynamicShippingCost !== null ? selectedShippingRate : null,
         total,
-        paymentMethod
+        paymentMethod,
+        // Contraentrega con anticipo: la pasarela que eligió el cliente (el servidor la valida).
+        ...(paymentMethod === 'cash' && ce.pasarela ? { anticipoPasarela: ce.pasarela } : {}),
       }
 
       // Tipo de entrega (aplica a todos los tipos de org)
@@ -809,6 +856,37 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             is_default: true
           })
         }).catch(() => {})
+      }
+
+      // 1b. Contraentrega con anticipo: se paga el anticipo en la pasarela (el monto lo fijó el
+      //     servidor). El pedido queda en efectivo; el resto se cobra al recibir.
+      if (orderData.anticipo && typeof orderData.orderId === 'string') {
+        const initAnticipo = await fetch('/api/checkout/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'anticipo_pedido',
+            sourceId: orderData.orderId,
+            gateway: orderData.anticipo.pasarela,
+            returnUrl: `${window.location.origin}/checkout/resultado`,
+          }),
+        })
+        const datosAnticipo = await initAnticipo.json().catch(() => ({}))
+        localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
+        window.dispatchEvent(new CustomEvent('cart-updated'))
+        if (initAnticipo.ok && datosAnticipo.checkoutUrl) {
+          if (BOLD_CODES.has(orderData.anticipo.pasarela) && (await abrirBoldDesdeUrl(datosAnticipo.checkoutUrl))) return
+          window.location.href = datosAnticipo.checkoutUrl
+          return
+        } else {
+          // El pedido ya existe: la página del pedido ofrece «Pagar» el anticipo hasta que venza.
+          window.location.href = conPrefijo(typeof orderData.trackingToken === 'string'
+            ? `/pedido/${encodeURIComponent(createdOrderNumber)}?t=${orderData.trackingToken}`
+            : `/pedido/${encodeURIComponent(createdOrderNumber)}`, prefijoSede)
+          return
+        }
+      } else {
+        // Sin anticipo: como siempre.
       }
 
       // 2. Si es pago online (pasarela), iniciar checkout con la pasarela
@@ -1639,10 +1717,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
               <CardContent>
                 <div className="space-y-3">
                   {paymentOptions.map((method) => (
+                    <div key={method.id}>
                     <button
-                      key={method.id}
                       type="button"
                       onClick={() => setPaymentMethod(method.id)}
+                      aria-disabled={method.id === 'cash' && !!ce.estado && !ce.estado.disponible}
                       className={`w-full p-4 rounded-lg border-2 flex items-center gap-4 transition-colors text-left ${
                         paymentMethod === method.id
                           ? 'border-current'
@@ -1661,6 +1740,15 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                         <Check className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
                       )}
                     </button>
+                    {/* Contraentrega con condiciones: motivo si no aplica, desglose y pasarela del anticipo si sí. */}
+                    {method.id === 'cash' && ce.estado && (
+                      !ce.estado.disponible
+                        ? <MotivoContraentrega estado={ce.estado} fmt={fmtPrice} hrefSeguirComprando={conPrefijo('/productos', prefijoSede)} hrefIngresar={isAuthenticated ? null : conPrefijo('/cuenta', prefijoSede)} ciudad={customerData.city} onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican} />
+                        : paymentMethod === 'cash' && (
+                          <DetalleContraentrega estado={ce.estado} total={total} fmt={fmtPrice} pasarela={ce.pasarela} onPasarela={ce.setPasarela} color={primaryColor} />
+                        )
+                    )}
+                    </div>
                   ))}
                 </div>
 
@@ -1676,7 +1764,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                     className="w-full mt-6"
                     style={{ backgroundColor: primaryColor }}
                     onClick={() => handleSubmit()}
-                    disabled={submitting || !canSubmitOnePage}
+                    disabled={submitting || !canSubmitOnePage || ceBloqueada}
                   >
                     {submitting ? (
                       <>
@@ -1684,7 +1772,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                         Procesando...
                       </>
                     ) : (
-                      `Pagar ${fmtPrice(total)}`
+                      textoPagar
                     )}
                   </Button>
                 ) : (
@@ -1697,7 +1785,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                       className="flex-1"
                       style={{ backgroundColor: primaryColor }}
                       onClick={() => handleSubmit()}
-                      disabled={submitting}
+                      disabled={submitting || ceBloqueada}
                     >
                       {submitting ? (
                         <>
@@ -1705,7 +1793,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                           Procesando...
                         </>
                       ) : (
-                        `Pagar ${fmtPrice(total)}`
+                        textoPagar
                       )}
                     </Button>
                   </div>
@@ -1745,10 +1833,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                     <div className="text-gray-600 flex-1 min-w-0">
                       <span className="truncate block">
                         {item.name} x{item.quantity}
-                        {promotionsForItem(appliedPromotions, item.id).length > 0 && (
-                          <Tag className="inline h-3 w-3 ml-1 text-green-600 align-[-1px]" aria-label="Con promoción" />
-                        )}
                       </span>
+                      <PromoDeLinea promos={promotionsForItem(appliedPromotions, item.id)} pista={promoVolumeHints?.[String(item.id)] ?? null} fmt={fmtPrice} />
                       {item.variantAttributes && Object.keys(item.variantAttributes).length > 0 && (
                         <span className="text-xs text-gray-400 block truncate">
                           {Object.entries(item.variantAttributes).map(([k, v]) => `${k}: ${v}`).join(' · ')}
@@ -1778,7 +1864,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
+                    <span className="text-gray-600">{appliedPromotions.length > 0 ? 'Subtotal (precio normal)' : 'Subtotal'}</span>
                     <span>{fmtPrice(subtotal)}</span>
                   </div>
                   {tax > 0 && (
@@ -1818,15 +1904,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                       <span>-{fmtPrice(couponDiscount)}</span>
                     </div>
                   )}
-                  {appliedPromotions.map((promo) => (
-                    <div key={promo.id} className="flex justify-between text-sm mt-1 text-green-600">
-                      <span className="flex items-center gap-1 truncate flex-1 mr-2" title={promo.description || promo.name}>
-                        <Tag className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className="truncate">{promo.name}</span>
-                      </span>
-                      <span className="flex-shrink-0">-{fmtPrice(promo.discount)}</span>
-                    </div>
-                  ))}
+                  {/* «Descuentos por promoción» con su desglose (Figma S7/S8; components/site/checkout/PromocionesResumen.tsx) */}
+                  <DescuentosPorPromocion promotions={appliedPromotions} totalDiscount={promoDiscount} fmt={fmtPrice} />
                 </div>
 
                 {/* Coupon input */}
@@ -1862,6 +1941,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                     <span>Total</span>
                     <span style={{ color: primaryColor }}>{fmtPrice(total)}</span>
                   </div>
+                  {/* Contraentrega con anticipo (08): lo de hoy y lo de la puerta. Sin anticipo no pinta nada. */}
+                  {paymentMethod === 'cash' && <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} />}
                   {(promoDiscount + couponDiscount) > 0 && (
                     <p className="text-xs text-green-600 text-right mt-1">
                       Estás ahorrando <strong>{fmtPrice(promoDiscount + couponDiscount)}</strong>
@@ -1871,7 +1952,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
                 {needsShipping && !envioZona && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0 && (
                   <p className="text-xs text-green-600 text-center mt-2">
-                    ¡Envío gratis por compras mayores a {fmtPrice(settings.freeShippingThreshold)}!
+                    {(promoDiscount + couponDiscount) > 0
+                      ? `Envío gratis: tus productos suman más de ${fmtPrice(settings.freeShippingThreshold)}, ya con los descuentos.`
+                      : `¡Envío gratis por compras mayores a ${fmtPrice(settings.freeShippingThreshold)}!`}
                   </p>
                 )}
 
@@ -1912,6 +1995,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
               Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
+              {paymentMethod === 'cash' && <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} compacto />}
               {promoDiscount > 0 && (
                 <span className="block text-xs text-green-600">Ahorras {fmtPrice(promoDiscount)} en promociones</span>
               )}
@@ -1921,7 +2005,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
               className="px-8 h-11 font-semibold"
               style={{ backgroundColor: primaryColor }}
               onClick={() => handleSubmit()}
-              disabled={submitting || !canSubmitOnePage}
+              disabled={submitting || !canSubmitOnePage || ceBloqueada}
             >
               {submitting ? (
                 <>
@@ -1929,7 +2013,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
                   Procesando...
                 </>
               ) : (
-                `Pagar ${fmtPrice(total)}`
+                textoPagar
               )}
             </Button>
           </div>

@@ -9,6 +9,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { estadoFavorito, type FavoritoGuardado, type FichaFavorito } from '@/lib/favoritos/logica'
 import { CorazonFavorito } from './CorazonFavorito'
 import { agregarFichaAlCarrito } from './FavoritosDrawer'
+import { InsigniaVolumenTarjeta, LineaVolumenTarjeta } from '@/components/site/volumen/VolumenTarjeta'
 
 const INSIGNIAS = {
   bajo_precio: { texto: 'Bajó de precio', clase: 'bg-green-600 text-white' },
@@ -42,6 +43,9 @@ export function TarjetaFavorito({
   const insignia = e.insignia ? INSIGNIAS[e.insignia] : null
   const subtitulo = [ficha.categoria, ficha.esPadre && ficha.variantes ? `${ficha.variantes} ${ficha.variantes === 1 ? 'modelo' : 'modelos'}` : null].filter(Boolean).join(' · ')
   const deshabilitado = e.accion === 'agotado' || e.accion === 'no_disponible'
+  // Precio por volumen (Figma «16 Sitio web» S3/S4). La ficha guardada no trae marca ni padre:
+  // quedan desconocidos y una promoción que los necesite no se promete aquí.
+  const productoVolumen = { id: ficha.id, category_id: ficha.categoriaId }
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900" data-tarjeta-favorito={ficha.id}>
@@ -54,6 +58,7 @@ export function TarjetaFavorito({
             {insignia.texto}
           </span>
         )}
+        <InsigniaVolumenTarjeta product={productoVolumen} price={ficha.precio} primaryColor={primaryColor} abajo={!!insignia} />
         <CorazonFavorito productId={ficha.id} precio={ficha.precio} className="absolute right-2.5 top-2.5" />
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
@@ -67,6 +72,7 @@ export function TarjetaFavorito({
             <Price value={ficha.precioAnterior} className="text-xs text-gray-400 line-through" />
           )}
         </div>
+        <LineaVolumenTarjeta product={productoVolumen} price={ficha.precio} primaryColor={primaryColor} />
         <div className="mt-auto pt-2">
           <button
             type="button"

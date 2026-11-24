@@ -21,6 +21,8 @@ import { CantidadCompacta, InfoProductoBarra } from '@/components/site/barraFija
 import { useEmpujeChat, useVisibilidadBarra, vibrarSuave, volarAlCarrito } from '@/components/site/barraFija/efectosBarraFija'
 import { BarraFijaEscritorio } from '@/components/site/barraFija/BarraFijaEscritorio'
 import { useAvisoBarraFijaCelular } from '@/components/site/menuInferior/estadoMenuInferior'
+import { useVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
+import { botonConVolumen, textoAgregarConCantidad, type BotonVolumen } from '@/lib/promociones/escalonesTienda'
 import type { OrganizationWithDetails } from '@/types/database'
 
 interface StickyAddToCartProps {
@@ -109,6 +111,10 @@ export function StickyAddToCart({
     ordenAtributos,
   })
   const op = celular ?? CELULAR_POR_DEFECTO
+  // «Compra más, paga menos» (Figma «16 Sitio web» S2): la cantidad elegida en un escalón pone su
+  // total en el botón. Fuera de la ficha (sin proveedor) o fuera de escalón, null: la barra de hoy.
+  const volumen = useVolumenFicha(compra.hasVariants ? compra.selectedVariant?.id ?? null : null)
+  const botonVolumen = botonConVolumen(volumen, compra.activePrice, compra.cantidad)
   return (
     <>
       {op.encendida && (
@@ -121,6 +127,7 @@ export function StickyAddToCart({
           primaryColor={primaryColor}
           conFavorito={conFavorito}
           precioEnBoton={precioEnBoton}
+          botonVolumen={botonVolumen}
         />
       )}
       {escritorio?.encendida && (
@@ -136,6 +143,7 @@ export function StickyAddToCart({
           conFavorito={conFavorito}
           precioEnBoton={precioEnBoton}
           organization={organization}
+          botonVolumen={botonVolumen}
         />
       )}
     </>
@@ -157,6 +165,7 @@ function BarraCelular({
   primaryColor,
   conFavorito,
   precioEnBoton,
+  botonVolumen = null,
 }: {
   compra: CompraBarraFija
   op: OpcionesBarraCelular
@@ -166,6 +175,8 @@ function BarraCelular({
   primaryColor: string
   conFavorito: boolean
   precioEnBoton: boolean
+  /** Cantidad en un escalón de precio por volumen (S2): «6 × $ 9.500 · Agregar · $ 57.000». */
+  botonVolumen?: BotonVolumen | null
 }) {
   const [expanded, setExpanded] = useState(false)
   const { visible } = useVisibilidadBarra(op.aparece)
@@ -204,6 +215,15 @@ function BarraCelular({
   // El botón comparte la fila con la miniatura o con «Comprar ahora»: texto corto.
   const corto = infoEnLinea || op.comprarAhora
   const textoAgregar = op.texto ?? (corto ? TEXTO_CORTO_BARRA_FIJA : textoBotonBarra(null))
+  // S2: en la barra de siempre (sin miniatura, cantidad ni «Comprar ahora», sin variantes) va
+  // «6 × $ 9.500 / Ahorras $ 9.000» a la izquierda y el botón corto «Agregar · $ 57.000». Con más
+  // piezas en la fila, el botón lleva la cantidad: «Agregar 6 al carrito · $ 57.000».
+  const infoVolumen = !!botonVolumen && !hasVariants && !op.miniatura && !op.cantidad && !op.comprarAhora
+  const textoConPrecio = botonVolumen
+    ? infoVolumen
+      ? textoBotonConPrecio(op.texto ?? TEXTO_CORTO_BARRA_FIJA, formatPrice(botonVolumen.total))
+      : textoBotonConPrecio(textoAgregarConCantidad(textoAgregar, botonVolumen.cantidad), formatPrice(botonVolumen.total))
+    : precioEnBoton ? textoBotonConPrecio(textoAgregar, formatPrice(activePrice)) : textoAgregar
   const agregarConBorde = op.comprarAhora
   const bloqueado = outOfStock || sinCupo
   const estiloAgregar: CSSProperties = added || bloqueado
@@ -288,12 +308,23 @@ function BarraCelular({
 
             {infoEnLinea && <InfoProductoBarra compra={compra} nombre={productName} />}
 
+            {infoVolumen && botonVolumen && (
+              <div className="min-w-0 flex-1" data-volumen-barra="">
+                <p className="truncate text-[15px] font-semibold text-gray-900">
+                  {botonVolumen.cantidad} × {formatPrice(botonVolumen.unitario)}
+                </p>
+                {botonVolumen.ahorro > 0 && (
+                  <p className="truncate text-xs font-medium text-green-700">Ahorras {formatPrice(botonVolumen.ahorro)}</p>
+                )}
+              </div>
+            )}
+
             {op.cantidad && <CantidadCompacta compra={compra} />}
 
             <Button
               ref={botonRef}
               onClick={handleAddToCart}
-              className={`h-12 min-w-0 ${infoEnLinea ? 'shrink-0' : 'flex-1'} rounded-[10px] px-4 text-[15px] font-semibold transition-all ${agregarConBorde && !added ? 'border-2 bg-white hover:bg-gray-50' : ''} ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
+              className={`h-12 min-w-0 ${infoEnLinea || infoVolumen ? 'shrink-0' : 'flex-1'} rounded-[10px] px-4 text-[15px] font-semibold transition-all ${agregarConBorde && !added ? 'border-2 bg-white hover:bg-gray-50' : ''} ${added ? 'bg-green-500 hover:bg-green-600' : ''} ${outOfStock || sinCupo ? 'opacity-50' : ''}`}
               style={estiloAgregar}
               disabled={outOfStock || sinCupo}
             >
@@ -305,7 +336,7 @@ function BarraCelular({
                 <>
                   <ShoppingCart className="h-5 w-5 mr-2 shrink-0" />
                   <span className="truncate">
-                    {precioEnBoton ? textoBotonConPrecio(textoAgregar, formatPrice(activePrice)) : textoAgregar}
+                    {textoConPrecio}
                   </span>
                 </>
               )}

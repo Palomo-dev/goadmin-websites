@@ -18,9 +18,24 @@
  *    `/api/orders` (recalcula en servidor: el descuento del cliente no se confía).
  */
 
+import {
+  calcularDescuentoVolumen,
+  compararCompetidoras,
+  grupoDeLinea,
+  modoConteo,
+  normalizarEscalones,
+  precioConEscalon,
+  promocionHabilitadaParaCliente,
+  promocionRequiereCliente,
+  reglaMarcaCoincide,
+  siguienteEscalon,
+  type ClientePromocion,
+  type FilaEscalon,
+} from './promociones/precioVolumen'
+
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-export type PromotionType = 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle' | 'free_shipping'
+export type PromotionType = 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle' | 'free_shipping' | 'volume_tiers'
 export type PromotionAppliesTo = 'all' | 'categories' | 'products' | 'brands'
 export type PromotionRuleType =
   | 'include_product' | 'exclude_product'
@@ -37,6 +52,10 @@ export interface PromotionRule {
   category_id: number | null
   /** Unidades de este producto en un paquete. Nulo = 1. */
   quantity?: number | null
+  /** Regla de marca: `products.brand`. Nulo = regla antigua por `product_id`. */
+  brand?: string | null
+  /** Precio por volumen con `product_group`: grupo de conteo. */
+  tier_group?: number | null
 }
 
 export interface PromotionRow {
@@ -66,7 +85,7 @@ export interface PromotionRow {
   usage_count: number | null
   is_combinable: boolean | null
   priority: number | null
-  /** Desempate cuando el descuento y la prioridad coinciden: gana la más antigua. */
+  /** Desempate cuando el descuento y la prioridad coinciden: gana la MÁS RECIENTE. */
   created_at?: string | null
   branches: number[] | null
   applies_to_web: boolean | null
@@ -84,6 +103,13 @@ export interface PromotionRow {
   schedule_windows?: unknown
   /** Precio del paquete. Si es mayor que cero, manda sobre el porcentaje. */
   bundle_price?: number | string | null
+  /** ERP 20261124200000: precio por volumen (`precioVolumen.ts`, compartido con el POS). */
+  tiers_count_mode?: string | null
+  promotion_tiers?: FilaEscalon[] | null
+  /** Solo clientes de este segmento del CRM (con sesión, verificado en el servidor). */
+  customer_segment_id?: string | null
+  /** Máximo de pedidos por cliente (con sesión). */
+  usage_limit_per_customer?: number | string | null
   promotion_rules?: PromotionRule[] | null
   rules?: PromotionRule[] | null
 }
@@ -109,6 +135,8 @@ export interface ResolvedPromoItem extends PromoCartItem {
   product_id: number
   parent_product_id: number | null
   category_id: number | null
+  /** `products.brand` (reglas de marca). */
+  brand?: string | null
 }
 
 export interface AppliedPromotion {
@@ -123,6 +151,41 @@ export interface AppliedPromotion {
   affectedItems: string[]
   /** Ids de línea de carrito afectados (para pintar el badge en cada item). */
   affectedItemIds: Array<number | string>
+  /**
+   * Lo que esta promoción descontó en cada línea (id de línea → monto). Con él `/api/orders`
+   * registra unidades y ahorro del pedido en `sale_promotions` (ERP 20261125090000).
+   */
+  perItem?: Record<string, number>
+}
+
+/**
+ * Precio por volumen de una línea, para pintar «$ 9.500 c/u» y el empujón «Agrega 6 más y cada una
+ * te queda en $ 8.800». Solo informativo: el descuento que cuenta es `itemDiscounts`.
+ */
+export interface VolumeHint {
+  promotionId: string
+  promotionName: string
+  /** Unidades contadas para el escalón (según el modo de conteo). */
+  units: number
+  /** Precio por unidad con el escalón alcanzado (o el precio normal si no alcanza ninguno). */
+  unitPrice: number
+  /** Siguiente escalón: unidades que faltan y precio por unidad que quedaría. */
+  next: { missing: number; unitPrice: number } | null
+}
+
+/**
+ * «Compra X lleva Y» de una línea a la que le faltan unidades para la siguiente unidad gratis, para
+ * pintar el empujón «Agrega 1 más y llévala gratis (2×1)». Solo informativo: no cambia el cobro.
+ */
+export interface FreeUnitHint {
+  promotionId: string
+  promotionName: string
+  /** Unidades que faltan (sumadas a la línea) para la siguiente unidad gratis. */
+  missing: number
+  /** Unidades gratis que se ganan al sumarlas. */
+  freeUnits: number
+  /** Etiqueta «2×1», «3×2» (llevas tantas, pagas tantas). */
+  label: string
 }
 
 export interface PromotionEvaluation {
@@ -130,6 +193,10 @@ export interface PromotionEvaluation {
   totalDiscount: number
   /** Descuento acumulado por id de línea de carrito (string). */
   itemDiscounts: Record<string, number>
+  /** Precio por volumen por id de línea (opcional: respuestas viejas no lo traen). */
+  volumeHints?: Record<string, VolumeHint>
+  /** Empujón de «compra X lleva Y» por id de línea (opcional: respuestas viejas no lo traen). */
+  freeHints?: Record<string, FreeUnitHint>
 }
 
 const EMPTY: PromotionEvaluation = { promotions: [], totalDiscount: 0, itemDiscounts: {} }
@@ -352,6 +419,12 @@ export interface PromotionFilterContext {
   paymentMethod?: string | null
   date?: Date
   timeZone?: string
+  /**
+   * Cliente de la SESIÓN con sus segmentos y usos, armado en el servidor
+   * (`evaluateCartPromotions`). Nunca del body. Sin él, las promociones con grupo de clientes o
+   * usos por cliente no aplican.
+   */
+  cliente?: ClientePromocion | null
 }
 
 /**
@@ -375,13 +448,18 @@ export function filterActivePromotions(promos: PromotionRow[], ctx: PromotionFil
       if (!p.branches.map(Number).includes(Number(ctx.branchId))) return false
     }
     if (!promocionAplicaConMetodo(p.payment_method_codes, ctx.paymentMethod)) return false
+    if (!promocionHabilitadaParaCliente(p, ctx.cliente)) return false
     return true
   })
 }
 
 // ── Reglas ───────────────────────────────────────────────────────────────────
 
-function itemMatchesRules(item: ResolvedPromoItem, rules: PromotionRule[], appliesTo: string): boolean {
+/**
+ * ¿La línea entra en la promoción por sus reglas? Exportada (sin cambios) para que la tienda pinte
+ * los escalones de la ficha y las tarjetas con la MISMA regla que cobra (`promociones/escalonesTienda.ts`).
+ */
+export function itemMatchesRules(item: ResolvedPromoItem, rules: PromotionRule[], appliesTo: string): boolean {
   if (appliesTo === 'all') return true
   if (!rules || rules.length === 0) return false
 
@@ -397,12 +475,16 @@ function itemMatchesRules(item: ResolvedPromoItem, rules: PromotionRule[], appli
   for (const rule of rules) {
     switch (rule.rule_type) {
       case 'include_product':
-      case 'include_brand': // marca resuelta vía producto, igual que en el ERP
         if (matchesProduct(rule.product_id)) included = true
         break
+      case 'include_brand': // por `brand` si la trae; si no, vía producto (igual que en el ERP)
+        if (reglaMarcaCoincide(rule, item)) included = true
+        break
       case 'exclude_product':
-      case 'exclude_brand':
         if (matchesProduct(rule.product_id)) excluded = true
+        break
+      case 'exclude_brand':
+        if (reglaMarcaCoincide(rule, item)) excluded = true
         break
       case 'include_category':
         if (rule.category_id != null && item.category_id === rule.category_id) included = true
@@ -483,6 +565,23 @@ function splitAmount(amount: number, weights: Array<{ key: string; weight: numbe
 }
 
 // ── Cálculo por promoción ────────────────────────────────────────────────────
+
+/** Precio por volumen de las líneas que entran en la promoción (mismo cálculo que el POS). */
+function calcularVolumen(promo: PromotionRow, items: ResolvedPromoItem[]) {
+  const modo = modoConteo(promo.tiers_count_mode)
+  const reglas = rulesOf(promo)
+  return calcularDescuentoVolumen(
+    normalizarEscalones(promo.promotion_tiers),
+    items.map((i) => ({
+      producto: i.product_id,
+      padre: i.parent_product_id,
+      cantidad: Number(i.quantity),
+      precio: Number(i.price),
+      grupo: modo === 'product_group' ? grupoDeLinea(reglas, i.product_id, i.parent_product_id) : null,
+    })),
+    modo,
+  )
+}
 
 interface PromoDiscountResult {
   discount: number
@@ -623,6 +722,13 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
       }
       break
     }
+    case 'volume_tiers': {
+      // Precio por volumen: el módulo compartido con el POS (`promociones/precioVolumen.ts`)
+      // decide el escalón de cada línea; aquí solo se redondea a pesos con `add`.
+      const r = calcularVolumen(promo, items)
+      items.forEach((item, k) => add(item, r.porLinea[k]))
+      break
+    }
     // 'free_shipping' no descuenta productos; se ignora aquí.
   }
 
@@ -648,7 +754,7 @@ function calculatePromotionDiscount(promo: PromotionRow, items: ResolvedPromoIte
 // (`applies_to = all` o compra mínima sobre toda la cuenta) toca todas las
 // líneas y compite como antes. Dos no combinables sobre productos distintos
 // no se pisan y se aplican las dos. Dentro de un grupo, gana la de mayor
-// prioridad; empate, la que más descuenta; sigue el empate, la más antigua.
+// prioridad; empate, la que más descuenta; sigue el empate, la MÁS RECIENTE.
 
 interface CalculoWeb {
   promo: PromotionRow
@@ -697,20 +803,10 @@ function componentesWeb(calculos: CalculoWeb[]): CalculoWeb[][] {
   return Array.from(grupos.values())
 }
 
-function fechaPromo(v: string | null | undefined): number {
-  const t = v ? new Date(v).getTime() : NaN
-  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY
-}
-
+// Prioridad, luego la que más ahorra y, con el MISMO ahorro, la MÁS RECIENTE: la misma función
+// del POS (`compararCompetidoras` de `promociones/precioVolumen.ts`, idéntico byte a byte).
 function compararCompetidorasWeb(a: CalculoWeb, b: CalculoWeb): number {
-  const pa = Number(a.promo.priority || 0)
-  const pb = Number(b.promo.priority || 0)
-  if (pa !== pb) return pb - pa
-  if (a.discount !== b.discount) return b.discount - a.discount
-  const ca = fechaPromo(a.promo.created_at)
-  const cb = fechaPromo(b.promo.created_at)
-  if (ca !== cb) return ca < cb ? -1 : 1
-  return String(a.promo.id) < String(b.promo.id) ? -1 : String(a.promo.id) > String(b.promo.id) ? 1 : 0
+  return compararCompetidoras(a.promo, a.discount, b.promo, b.discount)
 }
 
 function elegirEnComponenteWeb(grupo: CalculoWeb[]): CalculoWeb[] {
@@ -789,19 +885,118 @@ export function calculatePromotions(
       discount: res.discount,
       affectedItems: res.applicable.map((i) => i.name),
       affectedItemIds: res.applicable.map((i) => i.id),
+      perItem: { ...res.perItem },
     })
   }
 
   // Nunca descontar más que el subtotal del carrito.
   if (totalDiscount > cartSubtotal) totalDiscount = cartSubtotal
 
-  return { promotions: applied, totalDiscount, itemDiscounts }
+  const volumeHints = pistasVolumen(promotions, vivos)
+  // Pistas: solo texto del carrito. Sin pistas, la respuesta de siempre (sin claves nuevas).
+  const freeHints = pistasCompraLleva(promotions, vivos, cartSubtotal)
+  return {
+    promotions: applied,
+    totalDiscount,
+    itemDiscounts,
+    ...(Object.keys(volumeHints).length > 0 ? { volumeHints } : {}),
+    ...(Object.keys(freeHints).length > 0 ? { freeHints } : {}),
+  }
+}
+
+/**
+ * Empujón de «compra X lleva Y» por línea: cuántas unidades le faltan al producto para la
+ * siguiente unidad gratis (misma regla `unidadesGratisCompraLleva` y mismo agrupado por producto
+ * que el cobro). Solo dentro del ciclo en curso: con el ciclo completo (2 en un 2×1) no empuja.
+ *
+ * Para no prometer de más, la unidad gratis se comprueba con el cálculo real de la promoción
+ * (`calculatePromotionDiscount`) sumando esas unidades a la línea: si el tope de descuento ya se
+ * alcanzó, no hay pista; con compra mínima, solo si al sumarlas se alcanza. No mira exclusividad:
+ * el carrito la pinta solo si la promoción es la aplicada a la línea o la línea no tiene otra.
+ */
+function pistasCompraLleva(promotions: PromotionRow[], vivos: ResolvedPromoItem[], cartSubtotal: number): Record<string, FreeUnitHint> {
+  const out: Record<string, FreeUnitHint> = {}
+  for (const p of promotions) {
+    if (p.promotion_type !== 'buy_x_get_y') continue
+    const compra = positiveInt(p.buy_quantity)
+    const lleva = positiveInt(p.get_quantity)
+    if (compra == null || lleva == null) continue
+    const applicable = vivos.filter((i) => itemMatchesRules(i, rulesOf(p), p.applies_to))
+    if (applicable.length === 0) continue
+    const ciclo = lleva < compra ? compra : compra + lleva
+    const label = lleva < compra ? `${compra}×${lleva}` : `${compra + lleva}×${compra}`
+    const minMoney = Number(p.min_purchase_amount || 0)
+    const baseCompra = purchaseScope(p) === 'cart' ? cartSubtotal : applicable.reduce((s, i) => s + i.price * i.quantity, 0)
+    const descuentoHoy = calculatePromotionDiscount(p, applicable).discount
+
+    const porProducto = new Map<number, ResolvedPromoItem[]>()
+    for (const item of applicable) {
+      const arr = porProducto.get(item.product_id) || []
+      arr.push(item)
+      porProducto.set(item.product_id, arr)
+    }
+    for (const grupo of porProducto.values()) {
+      const unidades = grupo.reduce((s, i) => s + Number(i.quantity), 0)
+      const gratisHoy = unidadesGratisCompraLleva(unidades, compra, lleva)
+      const destino = grupo[0]
+      for (let k = 1; k < ciclo; k++) {
+        const ganadas = unidadesGratisCompraLleva(unidades + k, compra, lleva) - gratisHoy
+        if (ganadas <= 0) continue
+        if (minMoney > 0 && baseCompra + Number(destino.price) * k < minMoney) break
+        const conMas = applicable.map((i) => (i === destino ? { ...i, quantity: Number(i.quantity) + k } : i))
+        if (!(calculatePromotionDiscount(p, conMas).discount > descuentoHoy)) break
+        for (const item of grupo) {
+          const key = String(item.id)
+          if (!out[key]) out[key] = { promotionId: p.id, promotionName: p.name, missing: k, freeUnits: ganadas, label }
+        }
+        break
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Pistas de precio por volumen por línea (la primera promoción `volume_tiers` vigente que la
+ * alcanza): precio por unidad con el escalón y el siguiente escalón. No mira compra mínima ni
+ * exclusividad: es el texto del carrito, no el cobro.
+ */
+function pistasVolumen(promotions: PromotionRow[], vivos: ResolvedPromoItem[]): Record<string, VolumeHint> {
+  const out: Record<string, VolumeHint> = {}
+  for (const p of promotions) {
+    if (p.promotion_type !== 'volume_tiers') continue
+    const escalones = normalizarEscalones(p.promotion_tiers)
+    if (escalones.length === 0) continue
+    const applicable = vivos.filter((i) => itemMatchesRules(i, rulesOf(p), p.applies_to))
+    if (applicable.length === 0) continue
+    const r = calcularVolumen(p, applicable)
+    applicable.forEach((item, k) => {
+      const key = String(item.id)
+      if (out[key]) return
+      if (modoConteo(p.tiers_count_mode) === 'product_group' && r.unidadesPorLinea[k] === 0) return
+      const sig = siguienteEscalon(escalones, r.unidadesPorLinea[k])
+      out[key] = {
+        promotionId: p.id,
+        promotionName: p.name,
+        units: r.unidadesPorLinea[k],
+        unitPrice: round(precioConEscalon(Number(item.price), r.escalonPorLinea[k])),
+        next: sig ? { missing: sig.faltan, unitPrice: round(precioConEscalon(Number(item.price), sig.escalon)) } : null,
+      }
+    })
+  }
+  return out
 }
 
 // ── Evaluación con BD ────────────────────────────────────────────────────────
 
 export interface EvaluateCartInput {
   organizationId: number
+  /**
+   * Cliente de la SESIÓN (`getAuthCustomer` del host), nunca del body ni el que se busca por
+   * correo para un invitado. Con él se leen sus segmentos y usos; sin él, las promociones «solo
+   * para el grupo …» y con usos por cliente no aplican.
+   */
+  sessionCustomerId?: string | null
   branchId?: number | null
   /** Método de pago elegido (ver PromotionFilterContext.paymentMethod). */
   paymentMethod?: string | null
@@ -834,7 +1029,7 @@ export async function evaluateCartPromotions(supabase: any, input: EvaluateCartI
   const now = (input.date || new Date()).toISOString()
   const { data: promos, error } = await supabase
     .from('promotions')
-    .select('*, promotion_rules(id, rule_type, product_id, category_id, quantity)')
+    .select('*, promotion_rules(id, rule_type, product_id, category_id, quantity, brand, tier_group), promotion_tiers(min_quantity, unit_price, discount_percent, sort_order)')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
     .eq('applies_to_web', true)
@@ -848,23 +1043,63 @@ export async function evaluateCartPromotions(supabase: any, input: EvaluateCartI
 
   // Resolver categoría y padre de cada producto (el carrito no los guarda).
   const productIds = Array.from(new Set(cleanItems.map(realProductId).filter((n) => Number.isFinite(n))))
-  const productMap = new Map<number, { category_id: number | null; parent_product_id: number | null }>()
+  const productMap = new Map<number, { category_id: number | null; parent_product_id: number | null; brand: string | null }>()
   if (productIds.length > 0) {
     const { data: products } = await supabase
       .from('products')
-      .select('id, category_id, parent_product_id')
+      .select('id, category_id, parent_product_id, brand')
       .eq('organization_id', organizationId)
       .in('id', productIds)
     for (const p of products || []) {
-      productMap.set(Number(p.id), { category_id: p.category_id ?? null, parent_product_id: p.parent_product_id ?? null })
+      productMap.set(Number(p.id), { category_id: p.category_id ?? null, parent_product_id: p.parent_product_id ?? null, brand: p.brand ?? null })
     }
   }
 
   const resolved: ResolvedPromoItem[] = cleanItems.map((i) => {
     const pid = realProductId(i)
     const meta = productMap.get(pid)
-    return { ...i, product_id: pid, category_id: meta?.category_id ?? null, parent_product_id: meta?.parent_product_id ?? null }
+    return { ...i, product_id: pid, category_id: meta?.category_id ?? null, parent_product_id: meta?.parent_product_id ?? null, brand: meta?.brand ?? null }
   })
 
-  return calculatePromotions(promos as PromotionRow[], resolved, { branchId, paymentMethod, date: input.date, timeZone: input.timeZone })
+  const cliente = await cargarClienteSesion(supabase, organizationId, input.sessionCustomerId ?? null, promos as PromotionRow[])
+  return calculatePromotions(promos as PromotionRow[], resolved, { branchId, paymentMethod, date: input.date, timeZone: input.timeZone, cliente })
+}
+
+/**
+ * Segmentos y usos del cliente de la sesión, solo si alguna promoción los mira. Sin sesión:
+ * null (esas promociones no aplican). Si la lectura falla: sin segmentos (el grupo no aplica,
+ * falla cerrado) y usos en 0.
+ */
+export async function cargarClienteSesion(
+  supabase: any,
+  organizationId: number,
+  customerId: string | null,
+  promos: PromotionRow[],
+): Promise<ClientePromocion | null> {
+  if (!customerId) return null
+  const conCliente = promos.filter((p) => promocionRequiereCliente(p))
+  if (conCliente.length === 0) return { id: customerId, segmentos: [], usos: {} }
+  const segmentos = Array.from(new Set(conCliente.map((p) => p.customer_segment_id).filter((s): s is string => !!s)))
+  const conLimite = conCliente.filter((p) => p.usage_limit_per_customer != null).map((p) => p.id)
+  try {
+    const [seg, usos] = await Promise.all([
+      segmentos.length > 0
+        ? supabase.from('segment_members').select('segment_id')
+            .eq('organization_id', organizationId).eq('customer_id', customerId).in('segment_id', segmentos)
+        : Promise.resolve({ data: [], error: null }),
+      conLimite.length > 0
+        ? supabase.from('promotion_customer_uses').select('promotion_id, uses')
+            .eq('organization_id', organizationId).eq('customer_id', customerId).in('promotion_id', conLimite)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+    const filasSeg: Array<{ segment_id: string }> = seg.error ? [] : (seg.data ?? [])
+    const filasUso: Array<{ promotion_id: string; uses: number }> = usos.error ? [] : (usos.data ?? [])
+    return {
+      id: customerId,
+      segmentos: filasSeg.map((f) => String(f.segment_id)),
+      usos: Object.fromEntries(filasUso.map((f) => [String(f.promotion_id), Number(f.uses) || 0])),
+    }
+  } catch {
+    return { id: customerId, segmentos: [], usos: {} }
+  }
 }

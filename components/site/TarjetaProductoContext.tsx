@@ -26,3 +26,8 @@ export function useVendidosTarjeta(seccion?: unknown): boolean {
 export function useEtiquetasPropiasTarjeta(seccion?: unknown) {
   return etiquetasPropiasEnTarjeta(useContext(TarjetaProductoSitio), seccion)
 }
+
+/** El estilo de tarjeta del sitio tal como llegó (sin resolver): la ficha lee de él sus etiquetas propias. */
+export function useEstiloTarjetaSitio(): unknown {
+  return useContext(TarjetaProductoSitio)
+}

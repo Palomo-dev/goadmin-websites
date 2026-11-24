@@ -11,6 +11,7 @@ import { separarTelefonoWompi } from '@/lib/payments/telefonoWompi'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 import { urlNotificacionMercadoPago } from '@/lib/payments/pasarelasTienda'
 import { ESTADOS_SIN_ENTREGA } from '@/lib/orders/estados-pedido'
+import { FUENTE_COBRO_ANTICIPO, anticipoPorCobrar, pasarelaPermitidaParaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 
 export const dynamic = 'force-dynamic'
 
@@ -535,6 +536,10 @@ export async function POST(request: NextRequest) {
     const isDepositoMesa = source === FUENTE_COBRO_DEPOSITO && typeof sourceId === 'string'
     // Abono en línea a la cuenta de una mesa (Carta QR): se lee por id Y por la organización del host.
     const isAbonoMesa = source === FUENTE_COBRO_MESA && typeof sourceId === 'string'
+    // Anticipo de un pedido contraentrega (sourceId = id del pedido): se lee por id Y por la
+    // organización del host; el monto es el que guardó /api/orders, nunca el del navegador.
+    const isAnticipo = source === FUENTE_COBRO_ANTICIPO && typeof sourceId === 'string'
+    let pasarelaAnticipo: string | null = null
 
     if (isDepositoMesa) {
       const reserva = await reservaConDepositoPorCobrar(supabase, sourceId, hostOrgId)
@@ -561,6 +566,24 @@ export async function POST(request: NextRequest) {
         )
       } else {
         order = abono
+      }
+    } else if (isAnticipo) {
+      const anticipo = await anticipoPorCobrar(supabase, sourceId, hostOrgId)
+      if (anticipo && anticipo.payment_status !== 'paid' && anticipo.vencido) {
+        return NextResponse.json(
+          { error: 'El plazo para pagar el anticipo terminó y el pedido se canceló. Retoma tu compra para hacer un pedido nuevo.', code: 'ANTICIPO_NO_PENDIENTE' },
+          { status: 409 }
+        )
+      } else if (anticipo && anticipo.payment_status !== 'paid') {
+        // La pasarela tiene que estar activa en la sede y permitida por las condiciones de la tienda.
+        pasarelaAnticipo = await pasarelaPermitidaParaAnticipo(supabase, anticipo, gateway)
+        if (!pasarelaAnticipo) {
+          return NextResponse.json({ error: 'Este anticipo no se puede pagar con esa pasarela', code: 'PASARELA_DISTINTA' }, { status: 400 })
+        } else {
+          order = anticipo
+        }
+      } else {
+        order = anticipo
       }
     } else if (isInvoice) {
       order = await getInvoice(supabase, sourceId)
@@ -598,7 +621,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      const label = isDepositoMesa ? 'Reserva' : isAbonoMesa ? 'Pago de la mesa' : isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
+      const label = isDepositoMesa ? 'Reserva' : isAbonoMesa ? 'Pago de la mesa' : isAnticipo ? 'Pedido' : isInvoice ? 'Factura' : isParkingPass ? 'Pase' : isTripTicket ? 'Boleto' : isMembership ? 'Membresía' : isReservation ? 'Reservación' : 'Orden'
       return NextResponse.json(
         { error: `${label} no encontrado` },
         { status: 404 }
@@ -630,10 +653,17 @@ export async function POST(request: NextRequest) {
     // Pedido web cerrado (vencido por falta de pago, cancelado, rechazado o reembolsado): no se
     // cobra. La consulta del pedido ofrece «Pagar» y «Retomar mi compra»; un pedido vencido ya
     // liberó su stock y se retoma en un pedido nuevo (`/retomar/<id>`), nunca se cobra este.
-    const esPedidoWeb = !isDepositoMesa && !isAbonoMesa && !isInvoice && !isParkingPass && !isTripTicket && !isMembership && !isReservation
+    const esPedidoWeb = !isDepositoMesa && !isAbonoMesa && !isAnticipo && !isInvoice && !isParkingPass && !isTripTicket && !isMembership && !isReservation
     if (esPedidoWeb && ESTADOS_SIN_ENTREGA.has(String(order.status || ''))) {
       return NextResponse.json(
         { error: 'Este pedido ya no se puede pagar. Retoma tu compra para hacer un pedido nuevo.', code: 'PEDIDO_CERRADO' },
+        { status: 409 }
+      )
+    } else if (esPedidoWeb && order.payment_status === 'partial') {
+      // Contraentrega con el anticipo ya pagado: el resto se paga al recibir. Cobrar aquí el total
+      // en línea lo cobraría dos veces.
+      return NextResponse.json(
+        { error: 'Ya pagaste el anticipo de este pedido: el resto lo pagas al recibirlo.', code: 'ANTICIPO_PAGADO' },
         { status: 409 }
       )
     } else {
@@ -723,6 +753,15 @@ export async function POST(request: NextRequest) {
     } else if (isAbonoMesa) {
       // Abono de la mesa: la referencia, el monto y la pasarela ya quedaron en
       // table_online_payments (`fn_mesa_abono_iniciar`). No se escribe nada aquí.
+    } else if (isAnticipo) {
+      // Anticipo: solo la pasarela elegida. El pedido sigue en efectivo (`payment_method` no se
+      // toca): no pasa a ser de pasarela y el resto se cobra en la puerta.
+      await (supabase as any)
+        .from('web_orders')
+        .update({ advance_gateway: pasarelaAnticipo, updated_at: new Date().toISOString() })
+        .eq('id', order.id)
+        .eq('organization_id', order.organization_id)
+        .eq('advance_status', 'pending')
     } else if (isParkingPass) {
       await (supabase as any)
         .from('parking_passes')
@@ -770,7 +809,7 @@ export async function POST(request: NextRequest) {
         .eq('id', order.id)
     }
 
-    const resolvedSource = isDepositoMesa ? FUENTE_COBRO_DEPOSITO : isAbonoMesa ? FUENTE_COBRO_MESA : isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
+    const resolvedSource = isDepositoMesa ? FUENTE_COBRO_DEPOSITO : isAbonoMesa ? FUENTE_COBRO_MESA : isAnticipo ? FUENTE_COBRO_ANTICIPO : isParkingPass ? 'parking_pass' : isTripTicket ? 'trip_ticket' : isMembership ? 'membership' : isReservation ? 'reservation' : 'web_order'
 
     return NextResponse.json({
       success: true,
@@ -778,7 +817,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       orderNumber: order.order_number,
       source: resolvedSource,
-      sourceId: isDepositoMesa || isAbonoMesa ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
+      sourceId: isDepositoMesa || isAbonoMesa || isAnticipo ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)

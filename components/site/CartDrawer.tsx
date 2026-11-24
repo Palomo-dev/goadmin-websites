@@ -3,18 +3,21 @@
 import { useState, useEffect } from 'react'
 import Link from '@/components/site/Enlace'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Minus, Trash2, ShoppingBag, Tag, Truck } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, Truck } from 'lucide-react'
 import { CountdownBanner, type CountdownConfig } from './CountdownBanner'
 import { ContadoresDe } from './ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
-import { Price, useCurrency } from './CurrencyProvider'
+import { Price } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
-import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { useCartPromotions } from '@/lib/hooks/useCartPromotions'
+import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
+import { AhorroPromociones, DesglosePromociones, PreciosPromoLinea } from './volumen/PromocionesCarrito'
 import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { avanceEnvioGratis, opcionesCarrito, partirMensajeMonto, type OpcionesCarrito } from '@/lib/website/v2/cabeceraTienda'
 import { TextoBotonCarrito, usePausaBoton } from './TextoBotonCarrito'
+import { AvisoContraentregaCarrito } from './contraentrega/AvisoContraentregaCarrito'
 
 interface CartModifier {
   modifierId: number
@@ -74,9 +77,8 @@ const CARRITO_POR_DEFECTO = opcionesCarrito(null)
 export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomain, organizationId, shippingSettings, taxSettings, countdownConfig, opciones = CARRITO_POR_DEFECTO, branchId }: CartDrawerProps) {
   const { ruta } = useRutaSitio()
   const [items, setItems] = useState<CartItem[]>([])
-  const { formatPrice } = useCurrency()
   // Promociones automáticas (mismo motor que checkout y /api/orders)
-  const { promotions, totalDiscount: promoDiscount, itemDiscounts } = useCartPromotions({ organizationId, branchId, items })
+  const { promotions, totalDiscount: promoDiscount, itemDiscounts, volumeHints, freeHints } = useCartPromotions({ organizationId, branchId, items })
   // Botón principal (Figma 2773:62797 – 2775:64409): fijo, al abrir (azar sin repetir / en orden),
   // mientras está abierto (rota cada N s, se pausa con el mouse) o según el carrito. Lo elige
   // TextoBotonCarrito; sin configuración nueva, el de la fila legacy, como hoy.
@@ -158,7 +160,10 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   const etiquetaImpuesto = impuestoVisto.resumen.tasa != null
     ? `${impuestoVisto.resumen.nombre} (${impuestoVisto.resumen.tasa}%)`
     : impuestoVisto.resumen.nombre
-  const shippingCost = shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold
+  // Envío gratis medido DESPUÉS de las promociones (lib/shipping/envioGratisDescontado.ts), como
+  // lo cobra /api/orders. El cajón no tiene cupón.
+  const subtotalEnvio = subtotalParaEnvioGratis(subtotal, promoDiscount)
+  const shippingCost = shippingSettings?.enableShipping && shippingSettings.freeShippingThreshold > 0 && subtotalEnvio < shippingSettings.freeShippingThreshold
     ? shippingSettings.shippingFlatRate
     : 0
   // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
@@ -166,15 +171,15 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
   // Envío gratis arriba, con su barra (Figma 2753:59474 / 59693). Solo con envío y tope configurados.
   const topeEnvio = shippingSettings?.enableShipping ? shippingSettings.freeShippingThreshold : 0
   const conEnvioGratis = topeEnvio > 0 && items.length > 0
-  const envioLogrado = conEnvioGratis && subtotal >= topeEnvio
+  const envioLogrado = conEnvioGratis && subtotalEnvio >= topeEnvio
   const mensajeFalta = partirMensajeMonto(opciones.envioGratis.mensaje)
   // «Según el carrito»: tope de envío gratis, subtotal y si hay algo en oferta (precio anterior o promoción).
   const estadoBoton = {
-    subtotal,
+    subtotal: subtotalEnvio,
     topeEnvioGratis: topeEnvio,
     hayOferta: promoDiscount > 0 || items.some((item) => item.comparePrice != null && Number(item.comparePrice) > item.price),
   }
-  const avance = Math.round(avanceEnvioGratis(subtotal, topeEnvio) * 100)
+  const avance = Math.round(avanceEnvioGratis(subtotalEnvio, topeEnvio) * 100)
 
   if (!isOpen) return null
   
@@ -223,7 +228,7 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               ) : (
                 <span>
                   {mensajeFalta.antes}
-                  <Price value={topeEnvio - subtotal} className="font-bold" style={{ color: primaryColor }} />
+                  <Price value={topeEnvio - subtotalEnvio} className="font-bold" style={{ color: primaryColor }} />
                   {mensajeFalta.despues}
                 </span>
               )}
@@ -244,6 +249,15 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
             )}
           </div>
         )}
+
+        {/* Contraentrega con condiciones (Figma 3019:76125 › 14/14b); sin condiciones, nada */}
+        <AvisoContraentregaCarrito
+          items={items}
+          subtotalProductos={Math.max(0, subtotal - promoDiscount)}
+          branchId={branchId}
+          primaryColor={primaryColor}
+          compacto={conEnvioGratis && !envioLogrado}
+        />
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -292,39 +306,17 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                     {item.notes && (
                       <p className="text-xs text-gray-400 italic truncate">📝 {item.notes}</p>
                     )}
-                    {(() => {
-                      const itemPromos = promotionsForItem(promotions, item.id)
-                      const lineDiscount = itemDiscounts[String(item.id)] || 0
-                      return (
-                        <>
-                          {itemPromos.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {itemPromos.map(p => (
-                                <span
-                                  key={p.id}
-                                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                                  title={p.name}
-                                >
-                                  <Tag className="w-3 h-3" />
-                                  {promotionBadgeLabel(p, formatPrice)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {item.comparePrice && item.comparePrice > item.price && (
-                              <Price value={Number(item.comparePrice)} className="text-xs text-gray-400 line-through" />
-                            )}
-                            <Price value={Number(item.price)} className="text-sm font-bold" style={{ color: primaryColor }} />
-                            {lineDiscount > 0 && (
-                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                -<Price value={lineDiscount} /> en promo
-                              </span>
-                            )}
-                          </div>
-                        </>
-                      )
-                    })()}
+                    {/* Precio por unidad con la promoción, chip y empujones «Agrega 6 más…» y
+                        «Agrega 1 más y llévala gratis (2×1)» (Figma S5/S6) */}
+                    <PreciosPromoLinea
+                      item={item}
+                      promotions={promotions}
+                      itemDiscounts={itemDiscounts}
+                      volumeHints={volumeHints}
+                      freeHints={freeHints}
+                      primaryColor={primaryColor}
+                      onSumar={(unidades) => updateQuantity(item.id, unidades)}
+                    />
                     
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
@@ -374,26 +366,14 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
               <p className="text-xs text-gray-400">{impuestoVisto.resumen.nombre} incluido en el precio</p>
             )}
 
-            {/* Promociones automáticas */}
-            {promotions.length > 0 && (
-              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 space-y-1">
-                {promotions.map((promo) => (
-                  <div key={promo.id} className="flex items-center justify-between text-sm text-green-700 dark:text-green-300">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <Tag className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="truncate">{promo.name}</span>
-                    </span>
-                    <span className="font-semibold flex-shrink-0 ml-2">-<Price value={promo.discount} /></span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Promociones automáticas, con el desglose por promoción (Figma S5/S6) */}
+            <DesglosePromociones promotions={promotions} totalDiscount={promoDiscount} />
 
             {/* Envío */}
             {shippingSettings?.enableShipping && (
               <>
                 {/* El aviso de envío gratis va arriba, con su barra; aquí solo la cifra. */}
-                {shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold ? (
+                {shippingSettings.freeShippingThreshold > 0 && subtotalEnvio < shippingSettings.freeShippingThreshold ? (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Envío</span>
                     <Price value={shippingSettings.shippingFlatRate} className="font-medium text-gray-900 dark:text-white" />
@@ -422,9 +402,9 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
                 <Price value={total} style={{ color: primaryColor }} />
               </div>
               {promoDiscount > 0 && (
-                <p className="text-xs text-green-600 dark:text-green-400 text-right mt-0.5">
-                  Estás ahorrando <Price value={promoDiscount} className="font-semibold" />
-                </p>
+                <div className="mt-2">
+                  <AhorroPromociones monto={promoDiscount} />
+                </div>
               )}
             </div>
             

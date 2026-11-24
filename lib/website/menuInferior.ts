@@ -601,3 +601,40 @@ export function repetidosArriba(m: MenuInferior | null, ruta: string): ReadonlyS
   }
   return s
 }
+
+// ─── «Cuenta» con el avatar (Figma «16 Sitio web» 3054:80142, aprobado 2026-11-24) ────────────
+
+/** Destinos que son «la cuenta de siempre»: con otro destino propio el botón queda como hoy. */
+const DESTINOS_CUENTA: ReadonlySet<string> = new Set(['', '/auth', '/mi-cuenta'])
+
+export interface EstadoCuentaMenu {
+  /** Con sesión: el avatar en lugar del ícono y, al tocarlo, la hoja del menú del avatar. */
+  avatar: boolean
+  /**
+   * Punto verde del pedido en curso. Decisión del dueño (2026-11-24): NO depende del contador del
+   * menú (`style.badges`): se ve también con «Oculto».
+   */
+  punto: boolean
+  /** Con el avatar, activo en /mi-cuenta (aro de 2 px y «Cuenta» pintada como activa). */
+  activo: boolean
+  /** Texto: en «Acciones», «Ingresar» sin sesión y «Mi cuenta» con sesión si el sitio dejó el de siempre. */
+  texto: string
+}
+
+/**
+ * Estado del botón «Cuenta» del menú inferior. La sesión y el pedido en curso salen del mismo
+ * almacén que el avatar de la cabecera (`useAvatarCuenta`): ninguna consulta propia. `sesion`
+ * null (aún no se sabe, o en el servidor) se pinta como sin sesión.
+ */
+export function estadoCuentaMenu(
+  b: Pick<BotonMenu, 'action' | 'label' | 'target'>,
+  variante: VarianteMenu,
+  s: { sesion: boolean | null | undefined; enCurso: boolean; enMiCuenta: boolean },
+): EstadoCuentaMenu {
+  if (b.action !== 'account') return { avatar: false, punto: false, activo: false, texto: b.label }
+  const conSesion = s.sesion === true
+  const avatar = conSesion && DESTINOS_CUENTA.has((b.target ?? '').trim())
+  const deSiempre = !b.label.trim() || b.label.trim() === DEFECTO_ACCION.account.label
+  const texto = variante === 'actions' && deSiempre ? (conSesion ? 'Mi cuenta' : 'Ingresar') : b.label
+  return { avatar, punto: avatar && s.enCurso, activo: avatar && s.enMiCuenta, texto }
+}

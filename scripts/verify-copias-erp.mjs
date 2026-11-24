@@ -70,6 +70,10 @@ export const COPIAS = [
   // Espacio de la sección: el editor muestra el relleno y el margen que la tienda aplica (mismo cálculo).
   ['lib/website/espacioHeader.ts', 'src/lib/website/espacioHeader.ts'],
   ['lib/website/espacioSeccion.ts', 'src/lib/website/espacioSeccion.ts'],
+  // Promociones V2: precio por volumen, marca y cliente. El POS y la tienda cobran con el mismo cálculo.
+  ['lib/promociones/precioVolumen.ts', 'src/lib/promotions/precioVolumen.ts'],
+  // Contraentrega con condiciones: la tienda decide la opción y el anticipo con la misma regla que el ERP muestra.
+  ['lib/contraentrega/reglaContraentrega.ts', 'src/lib/contraentrega/reglaContraentrega.ts'],
 ]
 
 /**

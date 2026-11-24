@@ -28,6 +28,7 @@ import {
   type AccionFicha,
 } from '@/lib/website/v2/accionesFicha'
 import { textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
+import { textoAgregarConCantidad } from '@/lib/promociones/escalonesTienda'
 
 export interface CantidadFicha {
   valor: number
@@ -44,6 +45,11 @@ export interface AgregarFicha {
   reemplazo?: { texto: string; estado?: EstadoBotonAccion } | null
   /** Precio ya formateado si va dentro del botón (`show_price_in_button`). */
   precio?: string | null
+  /**
+   * Precio por volumen (Figma «16 Sitio web» S1): la cantidad va en el texto, «Agregar 6 al
+   * carrito», y `precio` trae el total con el escalón. Ausente = el texto de siempre.
+   */
+  cantidadEnTexto?: number | null
 }
 
 export interface ComprarFicha {
@@ -160,6 +166,8 @@ export function FilasAccionesFicha({ acciones, primaryColor, cantidad, agregar, 
       case 'agregar': {
         const r = agregar.reemplazo
         const precio = agregar.precio ?? null
+        const n = agregar.cantidadEnTexto ?? null
+        const conCantidad = (t: string) => (n ? textoAgregarConCantidad(t, n) : t)
         return (
           <BotonAccionFicha
             key="agregar"
@@ -167,8 +175,8 @@ export function FilasAccionesFicha({ acciones, primaryColor, cantidad, agregar, 
             tamano={accion.tamano}
             estilo={accion.estilo}
             estado={r?.estado ?? (agregar.deshabilitado ? 'deshabilitado' : 'normal')}
-            texto={r ? r.texto : textoBotonConPrecio(textoDeAccion(accion), precio)}
-            textoCelular={r ? null : textoCelular ? textoBotonConPrecio(textoCelular, precio) : null}
+            texto={r ? r.texto : textoBotonConPrecio(conCantidad(textoDeAccion(accion)), precio)}
+            textoCelular={r ? null : textoCelular ? textoBotonConPrecio(conCantidad(textoCelular), precio) : null}
             etiqueta={r ? r.texto : textoDeAccion(accion)}
             primaryColor={primaryColor}
             onClick={agregar.onClick}

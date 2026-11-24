@@ -9,6 +9,8 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 import { estadoMercadoPago, organizacionDeAviso } from '@/lib/payments/pasarelasTienda'
 import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
+import { aplicarAnticipoPasarela } from '@/lib/contraentrega/anticipoWebhook'
 import { METODO_PEDIDO_MP } from '@/lib/payments/consultaPasarelaTienda'
 
 export const dynamic = 'force-dynamic'
@@ -277,6 +279,36 @@ export async function POST(request: NextRequest) {
       })
 
       return NextResponse.json({ received: true, processed: true, no_order: true })
+    }
+
+    // ── Anticipo de un pedido contraentrega (ANT-<id>) de la organización dueña del pago: pago
+    //    parcial, idempotente en la base (lib/contraentrega/anticipoWebhook.ts) ──
+    if (esReferenciaAnticipo(reference)) {
+      const r = await aplicarAnticipoPasarela(supabase, {
+        organizationId,
+        referencia: reference,
+        estado: paymentStatus,
+        transaccionId: String(mpPaymentId),
+        monto: Number.isFinite(Number(amount)) ? Number(amount) : null,
+        moneda: currency || 'COP',
+        pasarela: 'mp_checkout',
+        metodo: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
+        respuesta: paymentData,
+      })
+      await (supabase as any).from('integration_events').insert({
+        connection_id: matchedConnection.id,
+        organization_id: organizationId,
+        source: 'webhook',
+        direction: 'inbound',
+        event_type: action || 'payment.updated',
+        external_event_id: String(mpPaymentId),
+        payload: { provider: 'mercadopago', fuente: 'anticipo_pedido', ...body, payment_status: mpStatus, verified },
+        status: r.status === 200 ? 'processed' : 'error',
+        processed_at: new Date().toISOString(),
+      })
+      return NextResponse.json(r.body, { status: r.status })
+    } else {
+      // Cualquier otra referencia: el flujo de siempre.
     }
 
     // ── Verificar si es pago de reservación ──

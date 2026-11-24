@@ -74,6 +74,64 @@ const PROHIBIDAS = [
  *   clave. Sin `if` nuevos; si la consulta falla, `false` y el correo sale como antes. No toca el
  *   pedido, el cobro, el stock ni la respuesta.
  * Vence el 2026-12-08. Comprobado por scripts/verify-recordatorio-pago.mjs.
+ *
+ * 2026-11-24 — Promociones V2 (Figma «05 POS y ventas» 2998:192939 y «16 Sitio web» 3006:75498,
+ * aprobadas por el dueño): precio por volumen y «solo para un grupo de clientes».
+ * - app/api/orders/route.ts: DOS cambios, sin tocar el cobro, el stock ni la respuesta.
+ *   (1) `evaluateCartPromotions` recibe `sessionCustomerId: authCustomer?.id` (el cliente de la
+ *   SESIÓN, ya resuelto por getAuthCustomer en la misma ruta; el invitado buscado por correo NO
+ *   cuenta). Sin sesión es null y las promociones con grupo de clientes o usos por cliente no
+ *   aplican: el resto se calcula igual que antes. (2) Tras `increment_promotion_usage`, la RPC
+ *   `register_promotion_customer_use` (ERP 20261124200000) con su `else` (sin ficha de cliente:
+ *   como antes). Un fallo solo se registra en consola.
+ *   El cálculo nuevo (escalones) vive fuera de las rutas del dinero: lib/promotions.ts y
+ *   lib/promociones/precioVolumen.ts (copia byte a byte del ERP).
+ * Vence el 2026-12-09. Comprobado por scripts/verify-precio-volumen.mjs y verify-promo-minimo.mjs.
+ *
+ * 2026-11-24 — Tienda «Compra más, paga menos» (Figma «16 Sitio web» 3006:75498, aprobado) y envío
+ * gratis medido DESPUÉS de los descuentos (decisión del dueño). Lo nuevo vive fuera de las rutas
+ * del dinero (lib/shipping/envioGratisDescontado.ts, lib/promociones/escalonesTienda*.ts,
+ * components/site/volumen/*, components/site/checkout/PromocionesResumen.tsx); en ellas, solo:
+ * - app/api/orders/route.ts: `subtotalEnvioGratis = subtotal − (promociones + cupón)` se pasa a
+ *   `resolverEnvio` (ahí el subtotal SOLO decide el envío gratis de la tarifa plana y de las de
+ *   Transporte) y a `cotizarDomicilioWeb` (decide solo el envío gratis de la zona; el pedido mínimo
+ *   y las reglas siguen con el subtotal normal). Sin `if` nuevos. No toca precios, impuesto,
+ *   promociones, cupón, stock ni la respuesta.
+ * - app/api/shipping/quote/route.ts: acepta `subtotalEnvioGratis` (número) y lo pasa igual; sin el
+ *   campo, `null` y la cotización de antes.
+ * - components/site/CheckoutWizard.tsx: (1) extracción: las filas de promociones del resumen pasan
+ *   a `DescuentosPorPromocion` (con `agrupar=false` pinta lo mismo que antes); (2) el diseño: el
+ *   desglose «Descuentos por promoción», la promoción de cada línea y «Subtotal (precio normal)»;
+ *   (3) el envío gratis que se muestra (tarifa plana, /api/shipping/calculate, /api/shipping/quote
+ *   y las tarjetas de domicilio) con el subtotal descontado. El mensaje de envío gratis lleva su
+ *   `else` con el texto de antes. Sin cambios en el payload de /api/orders ni en el cobro.
+ * Vence el 2026-12-09. Comprobado por scripts/verify-escalones-tienda.mjs.
+ *
+ * 2026-11-24 — Contraentrega con condiciones (Figma «05 POS y ventas» 3014:194407 y «16 Sitio web»
+ * 3019:76125, aprobado por el dueño; ERP 20261124230000). La regla vive fuera de las rutas del
+ * dinero (lib/contraentrega/*, copia byte a byte del ERP en reglaContraentrega.ts); en ellas, solo:
+ * - app/api/orders/route.ts: con `paymentMethod === 'cash'` a domicilio y condiciones en la sede,
+ *   el SERVIDOR evalúa la regla con sus montos: no disponible → 422 CONTRAENTREGA_NO_DISPONIBLE;
+ *   con anticipo → `advance_*` en el insert (pendiente, vence en 30 min) y `anticipo` en la
+ *   respuesta; el correo «Recibimos tu pedido» espera al pago del anticipo. Cada `if` con su `else`
+ *   de hoy: sin condiciones (las ~40 tiendas actuales) no cambia nada.
+ * - app/api/checkout/init/route.ts: fuente nueva `anticipo_pedido` (id + organización del host,
+ *   monto de la base, pasarela activa y permitida) que cobra `ANT-<id>` y solo escribe
+ *   `advance_gateway` (el pedido sigue en efectivo); un pedido con el anticipo pagado (`partial`)
+ *   ya no se cobra completo en línea (409 ANTICIPO_PAGADO).
+ * - app/api/webhooks/{wompi_co,bold,mercadopago}/route.ts: un ramal `ANT-` antes de lo demás que
+ *   llama lib/contraentrega/anticipoWebhook.ts (Wompi: firma obligatoria e idempotencia en
+ *   integration_events; Bold/MP: organización ya verificada) → RPC transaccional e idempotente
+ *   `fn_web_order_anticipo_resultado`: pago parcial (`partial`), nunca «pagado» completo.
+ * - app/api/orders/[id]/tracking/route.ts: lee `advance_*` y responde `order.anticipo` (o null);
+ *   con anticipo, además los medios de la puerta (condiciones de la sede, `anticipo.medios`).
+ * - components/site/CheckoutWizard.tsx: la opción «Efectivo» pinta el estado de /api/contraentrega
+ *   (components/site/contraentrega/OpcionContraentrega.tsx), manda `anticipoPasarela` y, si la
+ *   respuesta trae anticipo, abre la pasarela por el anticipo. Opción apagada: «Cambiar dirección»
+ *   (09 F) abre los datos de envío y «Quitar» (09 E) saca del carrito los productos que no aplican
+ *   (con `removeItem`, el mismo del carrito). Con anticipo, el resumen y la barra fija muestran «Pagas
+ *   hoy / Pagas al recibir» (08 / 10); el cobro no cambia. Sin condiciones: como hoy.
+ * Vence el 2026-12-10. Comprobado por scripts/verify-contraentrega.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -84,6 +142,17 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'lib/checkout/metodosPagoSitio.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: extracción de los medios de pago del checkout' },
   { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-08', motivo: 'Consulta del pedido: no se cobra un pedido web cerrado' },
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-08', motivo: 'Correo «Recibimos tu pedido»: texto por tipo de negocio y pago pendiente' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-09', motivo: 'Promociones V2: cliente de la sesión al motor y usos por cliente' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-09', motivo: 'Envío gratis después de promociones y cupón' },
+  { ruta: 'app/api/shipping/quote/route.ts', hasta: '2026-12-09', motivo: 'Envío gratis después de promociones y cupón (cotización informativa)' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Tienda Promociones V2: resumen por promoción y envío gratis después de descuentos' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega con condiciones: el servidor decide la opción y el anticipo' },
+  { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: cobro del anticipo (ANT-<id>) sin pasar el pedido a pasarela' },
+  { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo con firma obligatoria, pago parcial' },
+  { ruta: 'app/api/webhooks/bold/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo de la organización que firmó, pago parcial' },
+  { ruta: 'app/api/webhooks/mercadopago/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo de la organización dueña del pago, pago parcial' },
+  { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo en la consulta del pedido' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-10', motivo: 'Contraentrega: opción con condiciones y pago del anticipo' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

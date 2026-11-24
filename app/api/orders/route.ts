@@ -31,7 +31,11 @@ import { resolverEnvio } from '@/lib/shipping/resolveShipping'
 import { esDomicilio, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { gruposActivos } from '@/lib/shipping/opcionesDomicilio'
 import { cotizarDomicilioWeb } from '@/lib/shipping/cotizarZonas'
+import { evaluarContraentregaServidor, pasarelaElegida, type EvaluacionServidor } from '@/lib/contraentrega/contraentregaServidor'
+import type { TipoEntregaPedido } from '@/lib/contraentrega/reglaContraentrega'
+import { fraseMedios, textoMotivo } from '@/lib/contraentrega/textosContraentrega'
 import { envioDeZona, usaZonas } from '@/lib/shipping/domicilioZonas'
+import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
 import { rutaSeguimiento, tokenSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { insertarConNumero } from '@/lib/orders/numeroPedido'
@@ -106,7 +110,7 @@ export async function POST(request: NextRequest) {
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount, grupoEnvio,
-      promoDiscount, promotionIds, dinerLabel, roundKey
+      promoDiscount, promotionIds, dinerLabel, roundKey, anticipoPasarela
     } = body
     // Mismo trim que /api/promotions/check: el código se valida, se evalúa en promociones y se guarda limpio.
     const paymentMethod = typeof paymentMethodCliente === 'string' ? paymentMethodCliente.trim() : paymentMethodCliente
@@ -541,6 +545,10 @@ export async function POST(request: NextRequest) {
       branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
       // Una promoción con payment_method_codes solo aplica con el método del pedido (NULL = cualquiera).
       paymentMethod: typeof paymentMethod === 'string' ? paymentMethod : null,
+      // Promociones «solo para el grupo …» y con usos por cliente (ERP 20261124200000): SOLO el
+      // cliente de la sesión. El invitado que se busca o crea por correo (`customerId`) no cuenta:
+      // escribir el correo de otro no puede darle su precio.
+      sessionCustomerId: authCustomer?.id ?? null,
       items: lineas.map((l) => ({
         id: l.productId, productId: l.productId, name: l.nombre, price: l.precioUnitario, quantity: l.cantidad,
       })),
@@ -576,6 +584,10 @@ export async function POST(request: NextRequest) {
         })
     const taxTotal = impuesto.total
     const taxForTotal = impuesto.sumaAlTotal
+    // Envío gratis medido DESPUÉS de promociones y cupón (decisión del dueño 2026-11-24,
+    // lib/shipping/envioGratisDescontado.ts). Solo decide el envío gratis: el pedido mínimo y las
+    // reglas de la zona siguen con `calculatedSubtotal`.
+    const subtotalEnvioGratis = subtotalParaEnvioGratis(calculatedSubtotal, totalDiscountAmount)
     // ── Envío: decidido SIEMPRE en el servidor ──
     // El `shipping` del navegador solo sirve para registrar el desfase (y para inferir el tipo de
     // entrega de un checkout viejo sin `deliveryType`): nunca se cobra.
@@ -602,6 +614,7 @@ export async function POST(request: NextRequest) {
           organizationId: contextOrgId,
           branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
           subtotal: calculatedSubtotal,
+          subtotalEnvioGratis,
           metodoPago: typeof paymentMethod === 'string' ? paymentMethod : null,
           // Las líneas ya validadas por el servidor: la base suma su peso (reglas por peso).
           items: lineas.map((l) => ({ product_id: l.productId, cantidad: l.cantidad })),
@@ -632,7 +645,8 @@ export async function POST(request: NextRequest) {
         grupo: tipoGuardado === 'delivery_third_party' ? 'third_party' : tipoGuardado === 'delivery_own' ? 'own' : null,
         activos: gruposActivos(tiposEntrega),
         ciudad: String(deliveryAddress?.city ?? customer.city ?? ''),
-        subtotal: calculatedSubtotal,
+        // En resolverEnvio el subtotal SOLO decide el envío gratis (tarifa plana y de Transporte).
+        subtotal: subtotalEnvioGratis,
         ajustes: contexto.ajustes,
         hoy: hoyEnZona(contexto.zona),
       })
@@ -672,6 +686,43 @@ export async function POST(request: NextRequest) {
         cliente: { subtotal, total },
         servidor: { subtotal: calculatedSubtotal, total: calculatedTotal },
       })
+    }
+
+    // ── Contraentrega con condiciones (ERP 20261124230000, lib/contraentrega) ──
+    // Solo «Efectivo» (`cash`) a domicilio y solo si la sede tiene condiciones: el SERVIDOR decide si
+    // se ofrece y el anticipo, con sus montos (nunca los del navegador). Sin condiciones: como hoy.
+    let contraentrega: EvaluacionServidor | null = null
+    let anticipoPedido: { monto: number; pasarela: string; venceEn: string; plazoMinutos: number } | null = null
+    if (paymentMethod === 'cash' && !mesaPedido && esDomicilio(tipoGuardado)) {
+      contraentrega = await evaluarContraentregaServidor(supabase as any, {
+        organizationId: contextOrgId,
+        branchId: Number.isFinite(Number(resolvedBranchId)) ? Number(resolvedBranchId) : null,
+        tipoEntrega: tipoGuardado as TipoEntregaPedido,
+        subtotalProductos: redondear2(calculatedSubtotal + taxForTotal - totalDiscountAmount),
+        envio: resolvedShipping,
+        total: calculatedTotal,
+        zonaId: zonaEnvio?.id ?? null,
+        items: lineas.map((l) => ({ productId: l.productId, nombre: l.nombre })),
+        customerId: authCustomer?.id ?? null,
+      })
+      const r = contraentrega.resultado
+      if (!r.disponible) {
+        const motivo = textoMotivo(r.motivos[0], (n) => `$ ${n.toLocaleString('es-CO')}`)
+        console.warn('[Orders] Contraentrega no disponible', { organizationId: contextOrgId, motivos: r.motivos.map((m) => m.codigo) })
+        return NextResponse.json({ error: motivo.texto, code: 'CONTRAENTREGA_NO_DISPONIBLE', motivos: r.motivos }, { status: 422 })
+      } else if (r.anticipo) {
+        const pasarela = pasarelaElegida(r.anticipo.pasarelas, anticipoPasarela) as string
+        anticipoPedido = {
+          monto: r.anticipo.monto,
+          pasarela,
+          plazoMinutos: r.anticipo.plazoMinutos,
+          venceEn: new Date(Date.now() + r.anticipo.plazoMinutos * 60_000).toISOString(),
+        }
+      } else {
+        // Contraentrega sin anticipo: se crea como hoy (todo se cobra al recibir).
+      }
+    } else {
+      // Otro método, recoger o comer aquí: sin condiciones, como hoy.
     }
 
     // Crear web_order
@@ -719,6 +770,14 @@ export async function POST(request: NextRequest) {
         ...(claveRonda && { round_key: claveRonda }),
         ...(resolvedCoupon && { coupon_code: resolvedCoupon.code }),
         ...(totalDiscountAmount > 0 && { discount_total: totalDiscountAmount }),
+        // Contraentrega con anticipo: vence en el plazo (30 min) igual que un pago en línea; el método
+        // sigue siendo efectivo. Sin anticipo no se escribe nada de esto (como hoy).
+        ...(anticipoPedido && {
+          advance_amount: anticipoPedido.monto,
+          advance_status: 'pending',
+          advance_due_at: anticipoPedido.venceEn,
+          advance_gateway: anticipoPedido.pasarela,
+        }),
     }
     // `order_number` (la referencia de la pasarela) con el formato de la organización (ERP ›
     // Configuración › POS › Número de pedido); si choca con uno existente, se pide otro.
@@ -923,6 +982,17 @@ export async function POST(request: NextRequest) {
           p_promotion_ids: promoEval.promotions.map(p => p.id),
         })
         if (promoUsageError) console.error('[Orders] Promotion usage error:', promoUsageError)
+        // Usos por cliente (ERP 20261124200000, `promotion_customer_uses`). Un fallo solo se registra.
+        if (customerId) {
+          const { error: usoClienteError } = await (supabase as any).rpc('register_promotion_customer_use', {
+            p_organization_id: contextOrgId,
+            p_promotion_ids: promoEval.promotions.map(p => p.id),
+            p_customer_id: customerId,
+          })
+          if (usoClienteError) console.error('[Orders] Promotion customer usage error:', usoClienteError)
+        } else {
+          // Sin ficha de cliente (ronda de la Carta QR sin correo): como antes, solo usage_count.
+        }
       }
 
       // Correo al cliente (fire-and-forget). Pago fuera de línea (efectivo, contraentrega,
@@ -931,6 +1001,9 @@ export async function POST(request: NextRequest) {
       // Las demás pasarelas aún no envían correo desde su webhook: siguen recibiéndolo aquí.
       if (mesaPedido && !tieneCorreo(customer.email)) {
         // Ronda de la Carta QR sin correo: no hay a quién escribir. Sigue en la pantalla de la mesa.
+      } else if (anticipoPedido) {
+        // Contraentrega con anticipo pendiente: «Recibimos tu pedido» sale cuando el anticipo se paga
+        // (webhook, lib/contraentrega/correoAnticipo.ts), como un pago en línea.
       } else if (!PASARELAS_CON_CORREO_AL_PAGAR.has(String(paymentMethod))) {
         const origin = request.headers.get('origin') || request.headers.get('referer')?.replace(/\/[^/]*$/, '') || ''
         // Marca y clave de envío: From pedidos@<dominio verificado> con Reply-To de la tienda, como el
@@ -964,6 +1037,10 @@ export async function POST(request: NextRequest) {
           faltaPagoEnLinea,
           tipoEntrega: `${etiquetaTipoEntrega(tipoGuardado, contexto.esRestaurante)}${mesaPedido ? ` · ${etiquetaMesa(mesaPedido.name)}` : ''}`,
           programadoPara: isScheduled && programadoParaGuardado ? momentoPedido(programadoParaGuardado, contexto.zona) : null,
+          // Contraentrega con condiciones y sin anticipo: «Pagas al recibir $ X». Sin condiciones, null (como hoy).
+          contraentrega: contraentrega?.resultado.conCondiciones
+            ? { anticipoPagado: 0, pasarela: null, alRecibir: contraentrega.resultado.alRecibir, medios: `${fraseMedios(contraentrega.resultado.medios)}.` }
+            : null,
         }, { apiKey }).catch(err => console.error('[Orders] Email error:', err))
       } else {
         // Wompi: el correo sale del webhook al confirmarse el pago.
@@ -990,6 +1067,9 @@ export async function POST(request: NextRequest) {
       // Enlace de seguimiento con su token (lib/orders/tokenSeguimiento.ts): con él, /pedido/<n>
       // muestra también dirección, conductor y entrega. Sin secreto configurado, null.
       trackingToken: tokenSeguimiento(contextOrgId, webOrder.id),
+      // Contraentrega con anticipo: el checkout abre la pasarela por el anticipo (/api/checkout/init,
+      // source 'anticipo_pedido'). Sin anticipo no sale (respuesta de siempre).
+      ...(anticipoPedido ? { anticipo: anticipoPedido } : {}),
       message: 'Pedido creado exitosamente'
     })
   } catch (error) {

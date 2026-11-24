@@ -48,6 +48,7 @@ import { caminoCategoria, navegacionFicha } from '@/lib/navegacion/volver'
 import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
 import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
+import { ProveedorFichaVolumen } from '@/components/site/volumen/EscalonesTiendaContext'
 
 export const dynamic = 'force-dynamic'
 
@@ -537,8 +538,14 @@ export default async function ProductoDetailPage({
     )
   }
 
+  // «Compra más, paga menos» (Figma «16 Sitio web» S1/S2): qué producto es, para que el precio, la
+  // galería y la cantidad pinten su escalón. Las promociones ya vienen del layout: sin consultas.
+  const productoVolumen = { id: Number(product.id), parent_product_id: product.parent_product_id ?? null, category_id: product.category_id ?? null, brand: product.brand ?? null }
+  const variantesVolumen = variants.map((v: { id: number }) => Number(v.id))
+
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
+      <ProveedorFichaVolumen producto={productoVolumen} variantes={variantesVolumen}>
       {/* JSON-LD Product */}
       <script
         type="application/ld+json"
@@ -703,6 +710,7 @@ export default async function ProductoDetailPage({
           organization={barraEscritorio && opcionesBarra.escritorio.posicion === 'replace' ? organization : null}
         />
       )}
+      </ProveedorFichaVolumen>
     </OrganizationLayout>
   )
 }

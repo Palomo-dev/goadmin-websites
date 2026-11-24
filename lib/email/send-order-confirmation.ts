@@ -65,6 +65,18 @@ interface OrderEmailData {
   programadoPara?: string | null
   /** Marca de la tienda. Sin ella el correo sale como antes: remitente de la plataforma y azul fijo. */
   marca?: MarcaCorreoPedido | null
+  /**
+   * Contraentrega con condiciones (Figma 3019:76125 › 13): bloque «Pagaste hoy / Pagas al recibir» y
+   * asunto «… · pagas $ X al recibir». Sin él (o sin condiciones en la tienda), el correo de siempre.
+   */
+  contraentrega?: {
+    anticipoPagado: number
+    pasarela: string | null
+    alRecibir: number
+    medios: string
+    /** El anticipo fue el envío: «Pagaste hoy (el envío)», «Envío (pagado)». */
+    delEnvio?: boolean
+  } | null
 }
 
 // Los nombres de promoción/cupón los escribe el comercio en el ERP; se escapan
@@ -160,13 +172,15 @@ export async function sendOrderConfirmationEmail(
     discount: data.discount,
     total: data.total,
   })
+  // Contraentrega con el anticipo del envío ya pagado (13): «Envío (pagado)». Si no, «Envío» como siempre.
+  const envioPagadoContraentrega = !especial && !pagado && !!data.contraentrega?.delEnvio && (data.contraentrega?.anticipoPagado ?? 0) > 0
   const filaTotal = (etiqueta: string, valor: number) =>
     `<div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:4px;"><span>${etiqueta}</span><span>$${valor.toLocaleString('es-CO')}</span></div>`
   const totalesHtml = [
     filaTotal(incluido ? 'Subtotal (IVA incluido)' : 'Subtotal', data.subtotal),
     incluido && data.tax > 0 ? filaTotal('de los cuales IVA:', data.tax) : '',
     !incluido && data.tax > 0 ? filaTotal('Impuestos', data.tax) : '',
-    data.shipping > 0 ? filaTotal('Envío', data.shipping) : '',
+    data.shipping > 0 ? filaTotal(envioPagadoContraentrega ? 'Envío (pagado)' : 'Envío', data.shipping) : '',
     (data.tip || 0) > 0 ? filaTotal('Propina', data.tip || 0) : '',
   ].join('')
 
@@ -190,6 +204,15 @@ export async function sendOrderConfirmationEmail(
     </tr>
   `).join('')
 
+  const ce = !especial && !pagado ? data.contraentrega ?? null : null
+  const bloqueContraentrega = ce
+    ? `${ce.anticipoPagado > 0 ? `<p style="color:#666;font-size:14px;margin:0;">Ya pagaste ${ce.delEnvio ? 'el envío' : 'el anticipo'}; el resto lo pagas cuando te llegue.</p>` : ''}
+      <div style="margin:16px 0;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+        ${ce.anticipoPagado > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:#15803d;margin-bottom:6px;"><span>Pagaste hoy${ce.delEnvio ? ' (el envío)' : ''}${ce.pasarela ? ` · ${escapeHtml(ce.pasarela)}` : ''}</span><span>$${ce.anticipoPagado.toLocaleString('es-CO')}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:bold;color:#1a1a1a;"><span>Pagas al recibir</span><span>$${ce.alRecibir.toLocaleString('es-CO')}</span></div>
+        <p style="margin:6px 0 0;font-size:13px;color:#666;">${escapeHtml(ce.medios)}</p>
+      </div>`
+    : ''
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
       ${encabezado}
@@ -202,6 +225,7 @@ export async function sendOrderConfirmationEmail(
         <p style="color:#666;font-size:14px;">
           ${mensaje}
         </p>
+        ${bloqueContraentrega}
         ${!data.compraPendiente && (data.tipoEntrega || data.programadoPara) ? `
         <p style="color:#333;font-size:14px;margin:12px 0;padding:10px 12px;background:#f8f9fa;border-radius:6px;">
           ${data.tipoEntrega ? escapeHtml(data.tipoEntrega) : ''}${data.tipoEntrega && data.programadoPara ? ' · ' : ''}${data.programadoPara ? `Para: ${escapeHtml(data.programadoPara)}` : ''}
@@ -267,7 +291,9 @@ export async function sendOrderConfirmationEmail(
         ...(sobre?.replyTo ? { reply_to: sobre.replyTo } : {}),
         subject: especial
           ? especial.asunto
-          : `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
+          : ce
+            ? `Recibimos tu pedido ${data.orderNumber} · pagas $${ce.alRecibir.toLocaleString('es-CO')} al recibir`
+            : `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
         html,
       }),
     })

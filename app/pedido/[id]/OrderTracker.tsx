@@ -37,6 +37,7 @@ import {
   type VistaPedido,
 } from '@/lib/orders/consultaPedido'
 import { abrirBoldDesdeUrl } from '@/lib/payments/boldCheckoutCliente'
+import { codigoConector } from '@/lib/contraentrega/textosContraentrega'
 
 interface ItemPedido {
   productId: number | null
@@ -78,6 +79,8 @@ interface TrackingData {
     deliveryFee: number
     discountTotal: number
     total: number
+    /** Contraentrega con anticipo (pantallas 11 y 12). null = sin anticipo, la página de siempre. */
+    anticipo?: { monto: number; estado: string | null; venceEn: string | null; pasarela: string | null; nombrePasarela: string | null; alRecibir: number; medios?: string | null } | null
     estimatedReadyAt: string | null
     estimatedDeliveryAt: string | null
     customerName: string
@@ -278,11 +281,10 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
       const res = await fetch('/api/checkout/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderNumber: data.order.orderNumber,
-          gateway,
-          returnUrl: `${window.location.origin}/checkout/resultado`,
-        }),
+        // Contraentrega con el anticipo pendiente: se paga SOLO el anticipo (monto del servidor).
+        body: JSON.stringify(data.order.anticipo?.estado === 'pending'
+          ? { source: 'anticipo_pedido', sourceId: data.order.id, gateway, returnUrl: `${window.location.origin}/checkout/resultado` }
+          : { orderNumber: data.order.orderNumber, gateway, returnUrl: `${window.location.origin}/checkout/resultado` }),
       })
       const j = await res.json().catch(() => ({}))
       if (res.ok && j.checkoutUrl) {
@@ -358,13 +360,20 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   const ayuda = data.ayuda ?? { whatsapp: null, telefono: null, correo: null }
   const whatsapp = enlaceWhatsApp(ayuda.whatsapp, order.orderNumber)
   const hayAyuda = !!(whatsapp || ayuda.telefono || ayuda.correo)
-  const encabezado = encabezadoPedido(vista, {
+  const anticipo = order.anticipo ?? null
+  const anticipoPendiente = !!anticipo && anticipo.estado === 'pending' && order.status === 'pending'
+  const anticipoPagado = !!anticipo && anticipo.estado === 'paid' && !isFinal
+  const encabezadoBase = encabezadoPedido(vista, {
     nombre: order.customerName,
     pagado: order.paymentStatus === 'paid',
     deliveryType: order.deliveryType,
     esRestaurante,
     status: order.status,
   })
+  // Anticipo pendiente: un solo estado arriba, como «Falta tu pago» pero por el anticipo (pantalla 11).
+  const encabezado = anticipoPendiente
+    ? { insignia: 'Esperando tu anticipo', tono: 'advertencia' as const, titulo: `Paga ${anticipo && order.deliveryFee && Math.abs(Number(order.deliveryFee) - anticipo.monto) < 0.5 ? 'el envío' : 'el anticipo'} para confirmar tu pedido` }
+    : encabezadoBase
   const pasos = pasosPedido(vista, order.deliveryType, esRestaurante)
   const items = data.items ?? []
   const porPagar = vista === 'pagar' || vista === 'pago_fallido'
@@ -372,7 +381,9 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   const apartado = data.pago?.apartadoHasta ?? null
   const restante = textoRestante(minutosRestantes(apartado, ahora))
   const metodoPedido = order.paymentMethod || ''
-  const otros = (data.pago?.metodos ?? []).filter((m) => m.code !== metodoPedido)
+  const otros = (data.pago?.metodos ?? []).filter((m) => anticipoPendiente
+    ? codigoConector(m.code) !== null && codigoConector(m.code) !== codigoConector(anticipo?.pasarela)
+    : m.code !== metodoPedido)
   const entregadoEn = order.status === 'delivered'
     ? data.timeline.find((e) => e.key === 'delivered')?.timestamp ?? shipment?.deliveredAt ?? null
     : null
@@ -592,7 +603,38 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
           </Tarjeta>
         )}
 
-        {vista === 'recibido' && (
+        {anticipoPendiente && anticipo && (
+          <Tarjeta className="flex flex-col gap-3 border-amber-200 bg-amber-50">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-900">Anticipo{Math.abs(Number(order.deliveryFee) - anticipo.monto) < 0.5 ? ' (el envío)' : ''}</span>
+              <span className="text-lg font-bold text-gray-900">{pesos(anticipo.monto)}</span>
+            </div>
+            {anticipo.venceEn && (
+              <FilaInfo icono={Clock} titulo={`Apartamos tus productos hasta las ${horaPedido(anticipo.venceEn, zona)}`} detalle={`${textoRestante(minutosRestantes(anticipo.venceEn, ahora)) ?? ''} Si no pagas el anticipo, el pedido se cancela sin cobro y los productos se liberan.`.trim()} color="#0F172A" />
+            )}
+            {anticipo.pasarela && botonPrincipal(`Pagar ${pesos(anticipo.monto)}`, () => pagar(anticipo.pasarela as string), Lock, pagando === anticipo.pasarela)}
+            {otros.length > 0 && (
+              <button type="button" onClick={() => setOtrosMedios((v) => !v)} className="text-sm font-medium text-gray-900">
+                {otrosMedios ? 'Ocultar otros medios' : 'Pagar con otro medio'}
+              </button>
+            )}
+            {listaOtrosMedios}
+            {errorPago && <p role="alert" className="text-sm text-red-700">{errorPago}</p>}
+            <FilaInfo icono={Banknote} titulo={`Al recibir pagas ${pesos(anticipo.alRecibir)}`} detalle={`${anticipo.medios ? `${anticipo.medios}. ` : ''}${order.deliveryType === 'delivery_own' ? 'El domiciliario te lo cobra al entregarte.' : 'Te lo cobran al entregarte el pedido.'}`} color="#0F172A" />
+            <p className="text-xs text-gray-600">Si ya pagaste, puede tardar unos minutos en verse aquí. Esta página se actualiza sola.</p>
+          </Tarjeta>
+        )}
+
+        {anticipoPagado && anticipo && !logistica?.contraentrega?.pendiente && (
+          <Tarjeta className="flex flex-col gap-2 border-orange-200 bg-orange-50">
+            <p className="flex items-center gap-2 text-sm font-medium" style={{ color: primaryColor }}><Banknote className="h-4 w-4" aria-hidden="true" /> Pagas al recibir</p>
+            <p className="text-3xl font-bold text-gray-900">{pesos(anticipo.alRecibir)}</p>
+            <p className="text-sm text-gray-600">{anticipo.medios ? `${anticipo.medios}. ` : ''}Ten el valor listo para que la entrega sea rápida.</p>
+            <p className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-sm text-green-700"><Check className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" /> Anticipo pagado: {pesos(anticipo.monto)}{Math.abs(Number(order.deliveryFee) - anticipo.monto) < 0.5 ? ' (el envío)' : ''}{anticipo.nombrePasarela ? ` con ${anticipo.nombrePasarela}` : ''}</p>
+          </Tarjeta>
+        )}
+
+        {vista === 'recibido' && !anticipoPendiente && (
           <Tarjeta className="flex flex-col gap-2" style={{ backgroundColor: `${primaryColor}0D`, borderColor: `${primaryColor}33` }}>
             <FilaInfo icono={Info} titulo="La tienda confirma tu pedido en breve" detalle="Te avisamos por WhatsApp y correo. Esta página se actualiza sola." color={primaryColor} />
           </Tarjeta>
@@ -768,6 +810,12 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
                 {Number(order.tipAmount) > 0 && <div className="flex justify-between"><span className="text-gray-600">Propina</span><span>{pesos(order.tipAmount)}</span></div>}
                 {Number(order.discountTotal) > 0 && <div className="flex justify-between text-green-700"><span>Descuento</span><span>-{pesos(order.discountTotal)}</span></div>}
                 <div className="flex justify-between text-base font-bold"><span>Total</span><span>{pesos(order.total)}</span></div>
+                {anticipo && anticipo.estado !== 'expired' && (
+                  <>
+                    <div className={`flex justify-between ${anticipo.estado === 'paid' ? 'text-green-700' : 'text-amber-700'}`}><span>{anticipo.estado === 'paid' ? 'Anticipo pagado' : 'Anticipo hoy (pendiente)'}</span><span>{anticipo.estado === 'paid' ? '− ' : ''}{pesos(anticipo.monto)}</span></div>
+                    <div className="flex justify-between font-bold"><span>{anticipo.estado === 'paid' ? 'Por pagar al recibir' : 'Al recibir'}</span><span>{pesos(anticipo.alRecibir)}</span></div>
+                  </>
+                )}
               </div>
             </>
           )}

@@ -20,6 +20,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { getImageUrl } from '@/components/site/RelatedProducts'
 import { sumaPrecios } from '@/lib/website/v2/seccionesFicha'
 import { textoSobreAcento } from '@/lib/website/v2/textoSobreAcento'
+import { LineaVolumenTarjeta } from '@/components/site/volumen/VolumenTarjeta'
 
 function precioDe(p: any): number | null {
   const v = Number(p?.product_prices?.[0]?.price)
@@ -103,6 +104,8 @@ export function ListaCompactaRelacionados({ productos, ...c }: Comunes & { produ
                   {precio !== null && <Price value={precio} className="font-semibold text-gray-900 dark:text-white" />}
                   {anterior !== null && precio !== null && anterior > precio && <Price value={anterior} className="text-xs text-gray-400 line-through" />}
                 </p>
+                {/* Miniatura de 56 px: el precio por volumen va en línea («6 o más: $ 9.500 c/u»), no sobre la foto */}
+                <LineaVolumenTarjeta product={p} price={precio} primaryColor={c.primaryColor} />
               </div>
               {sePuedeAgregar(p) ? (
                 <button

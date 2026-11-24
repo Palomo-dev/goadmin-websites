@@ -20,6 +20,9 @@ import { fotosDeProductos } from '@/lib/orders/fotosLinea'
 import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 import { decisionRetoma } from '@/lib/orders/compraPendiente'
 import { apartadoHasta, nombrePublicoSede, vistaPedido } from '@/lib/orders/consultaPedido'
+import { cobroEnPuerta, CONDICIONES_POR_DEFECTO } from '@/lib/contraentrega/reglaContraentrega'
+import { fraseMedios, nombrePasarela } from '@/lib/contraentrega/textosContraentrega'
+import { leerCondicionesContraentrega } from '@/lib/contraentrega/contraentregaServidor'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +94,7 @@ export async function GET(
         confirmed_at, ready_at, delivered_at, cancelled_at, cancellation_reason,
         customer_name, customer_notes, internal_notes, payment_status,
         payment_method, payment_method_detail, sale_id,
+        advance_amount, advance_status, advance_due_at, advance_gateway,
         created_at, updated_at
       `)
       .eq('organization_id', orgId)
@@ -197,6 +201,13 @@ export async function GET(
             .order('created_at', { ascending: true })
         : Promise.resolve({ data: null, error: null }),
     ])
+    // Contraentrega con anticipo (pantallas 11 y 12): con qué se paga en la puerta («En efectivo, con
+    // datáfono o Nequi»), de las condiciones de la sede. Sin anticipo no se consulta nada.
+    const mediosAlRecibir = Number(order.advance_amount) > 0
+      ? await leerCondicionesContraentrega(supabase, orgId, order.branch_id ?? null)
+          .then((c) => fraseMedios((c ?? CONDICIONES_POR_DEFECTO).medios))
+          .catch(() => null)
+      : null
     if (nativoRes.error) console.error('[Tracking] fn_web_order_metodo_nativo falló', { orgId, error: nativoRes.error.message })
     if (plazoRes.error) console.error('[Tracking] fn_web_order_plazo_minutos falló', { orgId, error: plazoRes.error.message })
     if (itemsRes.error) console.error('[Tracking] No se pudieron leer los productos', { orgId, error: itemsRes.error.message })
@@ -273,6 +284,19 @@ export async function GET(
         createdAt: order.created_at,
         organizationId: order.organization_id,
         branchId: order.branch_id,
+        // Contraentrega con anticipo (Figma 3019:76125 › 11 y 12): lo que se paga hoy y lo que se paga
+        // al recibir. Sin anticipo, null (la página queda como hoy).
+        anticipo: Number(order.advance_amount) > 0
+          ? {
+              monto: Number(order.advance_amount),
+              estado: order.advance_status ?? null,
+              venceEn: order.advance_status === 'pending' ? order.advance_due_at ?? null : null,
+              pasarela: order.advance_gateway ?? null,
+              nombrePasarela: order.advance_gateway ? nombrePasarela(order.advance_gateway) : null,
+              alRecibir: cobroEnPuerta(order.total, { monto: order.advance_amount, estado: order.advance_status }),
+              medios: mediosAlRecibir,
+            }
+          : null,
       },
       shipment: shipment && verificado ? {
         id: shipment.id,

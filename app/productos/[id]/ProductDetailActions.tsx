@@ -7,12 +7,16 @@ import { VariantSelector } from '@/components/site/VariantSelector'
 import { ProductModifierSelector, type ProductModifierSelectorRef, type SelectedModifier, type ModifierGroup } from '@/components/site/ProductModifierSelector'
 import { getAvailableStock, siguienteCantidad, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
 import { emitirCantidad } from '@/lib/products/varianteSeleccionada'
+import { escucharPedidoCantidad } from '@/lib/products/pedirCantidad'
 import { agregarPlatoAlCarrito, MAX_NOTA_COCINA, useCartProductQty } from '@/lib/cart'
 import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
-import { FilasAccionesFicha } from '@/components/site/ficha/FilasAccionesFicha'
+import { FilasAccionesFicha, type AgregarFicha } from '@/components/site/ficha/FilasAccionesFicha'
 import { leerAccionesFicha, type AccionFicha } from '@/lib/website/v2/accionesFicha'
+import { AvisoContraentregaFicha } from '@/components/site/contraentrega/AvisoContraentregaFicha'
+import { useResolverVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
+import { botonConVolumen, type BotonVolumen } from '@/lib/promociones/escalonesTienda'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -108,6 +112,13 @@ export function ProductDetailActions({
   const modifiersExtraTotal = selectedModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = price + modifiersExtraTotal
 
+  // «Compra más, paga menos» (Figma «16 Sitio web» S1): si la cantidad elegida cae en un escalón,
+  // el botón dice «Agregar 6 al carrito · $ 57.000» con el total del escalón (el mismo «Total» de
+  // la ficha). Fuera de escalón, o con el botón reemplazado («Sin stock»…), el de siempre.
+  const volumenDe = useResolverVolumenFicha()
+  const agregarConVolumen = (agregar: AgregarFicha, boton: BotonVolumen | null): AgregarFicha =>
+    boton && !agregar.reemplazo ? { ...agregar, precio: formatPrice(boton.total), cantidadEnTexto: boton.cantidad } : agregar
+
   const stockDisponible = getAvailableStock({ track_stock: trackStock, stock_levels: stockLevels })
   const outOfStock = stockDisponible !== null && stockDisponible <= 0
   const [subdominio, setSubdominio] = useState(organizationSubdomain || '')
@@ -124,6 +135,8 @@ export function ProductDetailActions({
   useEffect(() => {
     if (!(isParent && variants.length > 0)) emitirCantidad(Number(product.id), quantity, ORIGEN)
   }, [product.id, quantity, isParent, variants.length, ORIGEN])
+  // «Compra más, paga menos»: tocar un escalón pone esa cantidad (el efecto de abajo la baja al cupo).
+  useEffect(() => escucharPedidoCantidad(isParent && variants.length > 0 ? null : Number(product.id), setQuantity), [product.id, isParent, variants.length])
 
   // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
   useEffect(() => {
@@ -208,6 +221,7 @@ export function ProductDetailActions({
     if (!puedePedir) return null
     return (
       <div className="space-y-3 pt-4">
+        <AvisoContraentregaFicha product={product} branchId={branchId} />
         <VariantSelector
           parentName={product.name}
           variants={variants}
@@ -227,7 +241,7 @@ export function ProductDetailActions({
               acciones={botones}
               primaryColor={primaryColor}
               cantidad={a.cantidad}
-              agregar={a.agregar}
+              agregar={agregarConVolumen(a.agregar, botonConVolumen(volumenDe(a.varianteId ?? null), a.precioUnidad, a.cantidad.valor))}
               comprar={a.comprar}
               favorito={favorito}
               whatsapp={{ numero: whatsapp, producto: product.name, variante: a.variante }}
@@ -302,6 +316,9 @@ export function ProductDetailActions({
         <p role="status" className="text-sm text-amber-700">{AVISO_TOPE_CARRITO}</p>
       )}
 
+      {/* Contraentrega con condiciones (Figma 3019:76125 › 15/15b); sin condiciones, nada */}
+      {puedePedir && <AvisoContraentregaFicha product={product} branchId={branchId} />}
+
       {/* Botones de acción: la distribución del bloque (Figma 2779:65038; sin configurar, «Clásica»). */}
       {puedePedir && (
         <FilasAccionesFicha
@@ -314,12 +331,12 @@ export function ProductDetailActions({
             masDeshabilitado: cupo !== null && quantity >= cupo,
             deshabilitado: outOfStock,
           }}
-          agregar={{
+          agregar={agregarConVolumen({
             onClick: handleAddWithQuantity,
             deshabilitado: outOfStock || sinCupo,
             reemplazo: outOfStock ? { texto: restaurante ? 'Agotado' : 'Sin stock', estado: 'deshabilitado' } : null,
             precio: precioEnBoton ? formatPrice(effectivePrice) : null,
-          }}
+          }, botonConVolumen(volumenDe(null), effectivePrice, quantity))}
           comprar={{
             onClick: handleBuyNowSimple,
             deshabilitado: outOfStock || comprando,

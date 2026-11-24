@@ -39,7 +39,7 @@ import {
   BadgeCheck, ShieldCheck, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Price } from '@/components/site/CurrencyProvider'
+import { Price, useCurrency } from '@/components/site/CurrencyProvider'
 import { getAvailableStock, isOutOfStock } from '@/lib/stock'
 import { getReviewStats, getSessionSeed } from '@/lib/review-utils'
 import { useFavorites } from '@/lib/hooks/useFavorites'
@@ -79,6 +79,10 @@ import {
 } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta, useVendidosTarjeta, useEtiquetasPropiasTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useMarcaBotonTema } from '@/components/site/BotonesTemaContext'
+import { InsigniaVolumenTarjeta, LineaVolumenTarjeta } from '@/components/site/volumen/VolumenTarjeta'
+import { colorBaseEtiqueta, textoEtiqueta, valorEtiqueta } from '@/lib/website/etiquetasProducto'
+import { productoDeListado, usePromoProducto } from '@/components/site/etiquetas/PromosEtiquetaContext'
+import { textoEtiquetaPromo } from '@/lib/promociones/etiquetasPromocion'
 import {
   CLASE_PRIMERA_IMAGEN_DESLIZA,
   CLASE_SEGUNDA_IMAGEN_DESLIZA,
@@ -439,108 +443,42 @@ function BadgeRenderer({
   primaryColor,
   discount,
   cardStyle,
+  promoTexto = null,
 }: {
   badge: BadgeConfig
   product: any
   primaryColor: string
   discount: number | null
   cardStyle?: Record<string, unknown>
+  /** Texto de la promoción real del producto («2 X 1»), para la etiqueta `promotion`. */
+  promoTexto?: string | null
 }) {
-  const variantCount = product.variant_count || 0
-  const salesCount = product.sales_count || 0
-  const outOfStock = isOutOfStock(product)
-  const isParent = isParentProduct(product)
-
-  // Resolver el valor dinámico según el tipo
-  let value: number | string | null = null
-  let shouldShow = true
-
-  switch (badge.type) {
-    case 'discount':
-      value = discount
-      shouldShow = discount !== null && discount > 0
-      break
-    case 'out_of_stock':
-      // Padre sin variantes que comprar: también «Agotado» (no hay talla que elegir).
-      shouldShow = padreSinVariantes(product) || (outOfStock && !isParent && (discount === null || discount <= 0))
-      break
-    case 'variants':
-      value = variantCount
-      shouldShow = variantCount > 0
-      break
-    case 'sales_count':
-      value = salesCount
-      shouldShow = salesCount > 0
-      break
-    case 'new': {
-      // condition_value = días máximos desde created_at (default 30)
-      const maxDays = badge.condition_value ?? 30
-      const created = product.created_at ? new Date(product.created_at) : null
-      if (!created) { shouldShow = true; break }
-      const daysSince = (Date.now() - created.getTime()) / 86400000
-      shouldShow = daysSince <= maxDays
-      break
-    }
-    case 'bestseller':
-      value = salesCount
-      shouldShow = salesCount > 0
-      break
-    case 'low_stock': {
-      // Muestra si el stock total es > 0 pero <= condition_value (default 5)
-      const threshold = badge.condition_value ?? 5
-      const totalStock = product.stock ?? product.total_stock ?? 0
-      shouldShow = !outOfStock && totalStock > 0 && totalStock <= threshold
-      break
-    }
-    case 'free_shipping':
-      shouldShow = true
-      break
-    case 'rating': {
-      const ratingAvg = Number(product.rating_avg) || 0
-      const ratingCount = product.reviews_count || 0
-      value = ratingAvg.toFixed(1)
-      shouldShow = ratingAvg > 0 && ratingCount > 0
-      break
-    }
-    case 'custom':
-      shouldShow = true
-      break
-    case 'category': {
-      // Muestra el nombre de la categoría del producto
-      const catName = product.categories?.name || product.category_name || ''
-      value = catName
-      shouldShow = catName.length > 0
-      break
-    }
-    default:
-      shouldShow = false
-  }
+  // Cuándo sale, con qué valor y de qué color: la regla común de tarjeta y ficha
+  // (lib/website/etiquetasProducto.ts). La promoción real la resuelve quien pinta la tarjeta.
+  const { mostrar: shouldShow, valor: value } = badge.type === 'promotion'
+    ? { mostrar: !!promoTexto, valor: promoTexto }
+    : valorEtiqueta(badge.type, {
+        discount,
+        outOfStock: isOutOfStock(product),
+        isParent: isParentProduct(product),
+        padreSinVariantes: padreSinVariantes(product),
+        variantCount: product.variant_count || 0,
+        salesCount: product.sales_count || 0,
+        createdAt: product.created_at ?? null,
+        stock: product.stock ?? product.total_stock ?? 0,
+        ratingAvg: Number(product.rating_avg) || 0,
+        ratingCount: product.reviews_count || 0,
+        categoryName: product.categories?.name || product.category_name || '',
+      }, badge.condition_value)
 
   if (!shouldShow) return null
 
-  // Un texto vacío no es «sin etiqueta»: `??` dejaba el descuento en blanco.
-  // Sin texto, el descuento usa «-{value}%» (el mismo default del editor).
-  const plantilla = badge.type === 'discount'
-    ? (badge.label?.trim() || '-{value}%')
-    : (badge.label ?? '')
-  const label = plantilla.replace('{value}', value !== null ? String(value) : '')
+  const label = textoEtiqueta(badge.type, badge.label, value)
 
   const classes = resolveBadgeClasses(badge)
   // Fallbacks de color por tipo: garantizan que el badge SIEMPRE tenga
   // fondo + texto contrastante, incluso si el editor no configuró bg_color.
-  const fallbackBg =
-    badge.type === 'variants' ? primaryColor :
-    badge.type === 'discount' ? '#EF4444' :
-    badge.type === 'out_of_stock' ? '#1F2937' :
-    badge.type === 'sales_count' ? 'rgba(0,0,0,0.6)' :
-    badge.type === 'new' ? '#10B981' :        // verde
-    badge.type === 'bestseller' ? '#F59E0B' :  // ámbar
-    badge.type === 'low_stock' ? '#F97316' :   // naranja
-    badge.type === 'free_shipping' ? '#3B82F6' : // azul
-    badge.type === 'rating' ? '#F59E0B' :      // ámbar
-    badge.type === 'category' ? primaryColor : // color de marca
-    badge.type === 'custom' ? primaryColor :   // color de marca
-    primaryColor                                // fallback genérico
+  const fallbackBg = colorBaseEtiqueta(badge.type, primaryColor)
   const colores = coloresEtiqueta(badge.type, badge, cardStyle, fallbackBg, '#FFFFFF')
   const style = {
     ...resolveBadgeStyle(
@@ -984,6 +922,11 @@ export function ProductCard({
   const estiloTarjeta = useEstiloTarjeta(cardStyle?.product_card_style)
   const vendidos = useVendidosTarjeta(cardStyle?.product_card_style)
   const etiquetasPropias = useEtiquetasPropiasTarjeta(cardStyle?.product_card_style)
+  // Promoción REAL del producto («2 X 1», «−20 %»), resuelta en memoria con las promociones que
+  // cargó el layout (ninguna consulta por producto). Sin promoción: null y la tarjeta de hoy.
+  const promoProducto = usePromoProducto(productoDeListado(product))
+  const { formatPrice } = useCurrency()
+  const promoTexto = promoProducto ? textoEtiquetaPromo(promoProducto, formatPrice) : null
   const router = useRouter()
   const { ruta } = useRutaSitio()
   const [internalAdded, setInternalAdded] = useState(false)
@@ -1193,6 +1136,12 @@ export function ProductCard({
   }
   // Etiquetas propias («Originales»…): para todos los productos, al final de su esquina (se apilan).
   if (etiquetasPropias.length > 0) effectiveBadges = [...effectiveBadges, ...etiquetasPropias]
+  // Promoción real («2 X 1»): opcional, solo con «Estilo de tarjeta › Etiquetas › Promociones»
+  // encendida (`label_promotion.show: true`). Sin esa opción guardada, la tarjeta de hoy.
+  if (promoTexto && estiloTarjeta?.label_promotion?.show === true && !effectiveBadges.some((b) => b.type === 'promotion')) {
+    const esquina = effectiveBadges.find((b) => b.type === 'discount')?.position ?? 'top-left'
+    effectiveBadges = [...effectiveBadges, { type: 'promotion', label: '{value}', position: esquina, shape: 'pill', size: 'sm' } as BadgeConfig]
+  }
 
   const precio = estiloPrecio(mergedCardStyle, primaryColor)
   const colorAnterior = colorPrecioAnterior(mergedCardStyle)
@@ -1228,6 +1177,7 @@ export function ProductCard({
         )}
         <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
           <div>
+            <InsigniaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} enLinea />
             <h3 className="font-semibold text-sm truncate">{product.name}</h3>
             {showDesc && textoPlano(product.description) && (
               <p className="text-xs text-gray-500 line-clamp-1">{textoPlano(product.description)}</p>
@@ -1237,6 +1187,7 @@ export function ProductCard({
                 <Price value={price} />
               </p>
             )}
+            <LineaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} />
           </div>
           <div className="flex items-center gap-2 mt-2">
             <button
@@ -1275,11 +1226,12 @@ export function ProductCard({
               return (
                 <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-0.5`}>
                   {cornerBadges.map((b, i) => (
-                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} promoTexto={promoTexto} />
                   ))}
                 </div>
               )
             })}
+            <InsigniaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} abajo={effectiveBadges.some((b) => (b.position ?? 'top-left') === 'top-left')} />
             {imgUrl ? (
               <Image src={imgUrl} alt={product.name} fill className={imageFitClass} sizes="112px" />
             ) : (
@@ -1309,6 +1261,7 @@ export function ProductCard({
                 <TrendingUp className="h-3 w-3" /> {product.sales_count} vendidos
               </p>
             )}
+            <LineaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} />
           </div>
           <div className="flex items-center justify-between mt-3">
             {price != null && (
@@ -1475,7 +1428,7 @@ export function ProductCard({
             return (
               <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-1`}>
                 {cornerBadges.map((b, i) => (
-                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} promoTexto={promoTexto} />
                 ))}
                 {hasCornerButtons && (
                   renderButtons(`rounded-lg p-1${revela(overlayPos)}`, overlayPos)
@@ -1483,6 +1436,7 @@ export function ProductCard({
               </div>
             )
           })}
+          <InsigniaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} abajo={effectiveBadges.some((b) => (b.position ?? 'top-left') === 'top-left')} />
           {imgUrl ? (
             <Image
               src={imgUrl}
@@ -1543,7 +1497,7 @@ export function ProductCard({
           {etiquetasTitulo.length > 0 && (
             <div className="mb-1 flex flex-wrap gap-1">
               {etiquetasTitulo.map((b, i) => (
-                <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+                <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} promoTexto={promoTexto} />
               ))}
             </div>
           )}
@@ -1601,6 +1555,7 @@ export function ProductCard({
               {price !== null && conPrefijo(<Price value={price} className={clasePrecio} style={precio} />)}
             </div>
             )}
+            <LineaVolumenTarjeta product={product} price={price} primaryColor={primaryColor} />
             {padreSinVariantes(product) ? (
               <span className="text-xs text-red-500 font-medium">{TEXTO_PADRE_SIN_VARIANTES}</span>
             ) : outOfStock && !isParentProduct(product) ? (

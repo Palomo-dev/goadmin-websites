@@ -188,5 +188,27 @@ check(JSON.stringify(M.leerMenuInferior({ mobile_header: { bottom_nav: guardadoG
 check(!('iconStyle' in leer('tabs', { labels: 'always', iconStyle: { weight: 'neon', size: 99, shadow: 'none', bg: { shape: 'none' } } }).style), 'iconStyle sin nada válido = sin la clave (lo de hoy)')
 check(!('iconStyle' in M.aGuardar(leer('tabs', { labels: 'always' })).style), 'sin tocar nada no se escribe iconStyle')
 
+// «Cuenta» con el avatar (Figma «16 Sitio web» 3054:80142, aprobado 2026-11-24).
+{
+  const cuenta = { action: 'account', label: 'Cuenta', target: undefined }
+  const sin = M.estadoCuentaMenu(cuenta, 'tabs', { sesion: false, enCurso: true, enMiCuenta: true })
+  check(!sin.avatar && !sin.punto && !sin.activo && sin.texto === 'Cuenta', 'Cuenta sin sesión: el ícono y la acción de hoy')
+  check(!M.estadoCuentaMenu(cuenta, 'tabs', { sesion: null, enCurso: true, enMiCuenta: false }).avatar, 'Cuenta sin saber la sesión (servidor): como sin sesión')
+  const con = M.estadoCuentaMenu(cuenta, 'tabs', { sesion: true, enCurso: false, enMiCuenta: false })
+  check(con.avatar && !con.punto && !con.activo && con.texto === 'Cuenta', 'Cuenta con sesión: el avatar, con su texto')
+  check(M.estadoCuentaMenu(cuenta, 'tabs', { sesion: true, enCurso: false, enMiCuenta: true }).activo, 'Cuenta con sesión en /mi-cuenta: activa')
+  // Decisión del dueño: el punto del pedido en curso no depende del contador (ni con «Oculto»).
+  for (const badges of [undefined, { cart: 'hidden', favorites: 'hidden' }, { cart: 'dot' }, { cart: 'number' }]) {
+    const m = leer('tabs', { labels: 'always', ...(badges ? { badges } : {}) })
+    check(M.estadoCuentaMenu(cuenta, m.variant, { sesion: true, enCurso: true, enMiCuenta: false }).punto, `punto del pedido en curso con contador ${JSON.stringify(badges ?? 'de siempre')}`)
+  }
+  check(M.estadoCuentaMenu({ ...cuenta, target: '/mi-cuenta' }, 'tabs', { sesion: true, enCurso: false, enMiCuenta: false }).avatar, 'destino /mi-cuenta: también el avatar')
+  check(!M.estadoCuentaMenu({ ...cuenta, target: '/club' }, 'tabs', { sesion: true, enCurso: true, enMiCuenta: false }).avatar, 'destino propio: el botón de hoy')
+  check(M.estadoCuentaMenu(cuenta, 'actions', { sesion: false, enCurso: false, enMiCuenta: false }).texto === 'Ingresar', 'Acciones sin sesión: «Ingresar»')
+  check(M.estadoCuentaMenu({ ...cuenta, label: '' }, 'actions', { sesion: true, enCurso: false, enMiCuenta: false }).texto === 'Mi cuenta', 'Acciones con sesión: «Mi cuenta»')
+  check(M.estadoCuentaMenu({ ...cuenta, label: 'Socios' }, 'actions', { sesion: true, enCurso: false, enMiCuenta: false }).texto === 'Socios', 'Acciones: un texto propio se respeta')
+  check(M.estadoCuentaMenu({ action: 'cart', label: 'Carrito' }, 'tabs', { sesion: true, enCurso: true, enMiCuenta: true }).avatar === false, 'otros botones: sin avatar')
+}
+
 if (problemas.length) { console.error(`verify-menu-inferior: ${problemas.length} de ${casos} fallan`); for (const p of problemas) console.error(' -', p); process.exit(1) }
 console.log(`verify-menu-inferior: ${casos} casos OK`)

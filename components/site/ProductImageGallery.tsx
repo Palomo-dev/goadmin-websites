@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { celdasMosaico } from '@/components/sections/product-detail/fichaTienda'
+import { useVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
+import { InsigniaVolumenFoto } from '@/components/site/volumen/PrecioVolumenFicha'
+import { EtiquetasSobreFoto, useFichaConEtiquetas } from '@/components/site/etiquetas/EtiquetasFicha'
 
 export interface GallerySettings {
   /**
@@ -33,7 +36,27 @@ interface ProductImageGalleryProps {
   settings?: GallerySettings
 }
 
-export function ProductImageGallery({ images, productName, primaryColor, settings = {} }: ProductImageGalleryProps) {
+/**
+ * Galería de la ficha. Con precio por volumen (solo dentro de la ficha, `useVolumenFicha`), la
+ * insignia «Compra más, paga menos» va sobre la foto (Figma «16 Sitio web» S1/S2); sin él, la
+ * galería de siempre, sin envoltorio.
+ */
+export function ProductImageGallery(props: ProductImageGalleryProps) {
+  const volumen = useVolumenFicha()
+  // Etiquetas de la ficha encendidas (Información del producto › Etiquetas, Figma 3036:78040): ellas
+  // pintan las esquinas de la foto (A), también «Desde 3: −10 %», en lugar de la insignia de volumen.
+  if (useFichaConEtiquetas()) return <GaleriaFotos {...props} superposicion={<EtiquetasSobreFoto />} />
+  if (!volumen || volumen.escalones.length === 0) return <GaleriaFotos {...props} />
+  return (
+    <div className="relative">
+      <GaleriaFotos {...props} />
+      <InsigniaVolumenFoto primaryColor={props.primaryColor} />
+    </div>
+  )
+}
+
+/** `superposicion`: lo que va sobre la foto principal (etiquetas A). Ausente = la galería de siempre. */
+function GaleriaFotos({ images, productName, primaryColor, settings = {}, superposicion = null }: ProductImageGalleryProps & { superposicion?: ReactNode }) {
   const [selected, setSelected] = useState(0)
   // Modo scroll: fotos de escritorio (para saltar desde las miniaturas y saber cuál se ve) y el
   // carrusel del celular (para los puntos).
@@ -93,9 +116,10 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
         {images.map((url, i) => (
           <div
             key={i}
-            className="aspect-square rounded-lg overflow-hidden cursor-pointer"
+            className={`aspect-square rounded-lg overflow-hidden cursor-pointer${i === 0 && superposicion ? ' relative' : ''}`}
             onClick={() => setSelected(i)}
           >
+            {i === 0 && superposicion}
             <img
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
@@ -115,9 +139,10 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
         {images.map((url, i) => (
           <div
             key={i}
-            className={`overflow-hidden rounded-[var(--radio-sitio,0.75rem)] ${celdas[i] === 'grande' ? 'col-span-2 aspect-[5/6]' : 'aspect-[3/4]'}`}
+            className={`overflow-hidden rounded-[var(--radio-sitio,0.75rem)] ${celdas[i] === 'grande' ? 'col-span-2 aspect-[5/6]' : 'aspect-[3/4]'}${i === 0 && superposicion ? ' relative' : ''}`}
             style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
           >
+            {i === 0 && superposicion}
             <img
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
@@ -137,9 +162,10 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
         {images.map((url, i) => (
           <div
             key={i}
-            className="aspect-square rounded-xl overflow-hidden"
+            className={`aspect-square rounded-xl overflow-hidden${i === 0 && superposicion ? ' relative' : ''}`}
             style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
           >
+            {i === 0 && superposicion}
             <img
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
@@ -174,6 +200,8 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
       <div data-galeria-scroll="">
         {/* Celular: carrusel deslizable, foto a todo el ancho, sin scroll vertical interno */}
         <div className="md:hidden">
+          <div className={superposicion ? 'relative' : undefined}>
+          {superposicion}
           <div
             ref={carruselRef}
             onScroll={alDeslizar}
@@ -190,6 +218,7 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
                 />
               </div>
             ))}
+          </div>
           </div>
           {images.length > 1 && (
             <div className="mt-3 flex justify-center gap-1.5">
@@ -235,8 +264,9 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
                   fotosRef.current[i] = el
                 }}
                 data-indice={i}
-                className="m-0 scroll-mt-[calc(var(--header-h,72px)+1rem)] overflow-hidden rounded-lg bg-neutral-50"
+                className={`m-0 scroll-mt-[calc(var(--header-h,72px)+1rem)] overflow-hidden rounded-lg bg-neutral-50${i === 0 && superposicion ? ' relative' : ''}`}
               >
+                {i === 0 && superposicion}
                 <img
                   src={url}
                   alt={`${productName} - imagen ${i + 1}`}
@@ -263,6 +293,7 @@ export function ProductImageGallery({ images, productName, primaryColor, setting
         alt={`${productName} - imagen ${selected + 1}`}
         className="w-full h-full object-cover"
       />
+      {superposicion}
       {/* Flechas de navegación */}
       {images.length > 1 && showArrows && (
         <>

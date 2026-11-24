@@ -161,7 +161,8 @@ const antiguaDespues = evaluar(
   ],
   [item('a', 1, 2000)],
 )
-check(ids(antiguaPrimero).join(',') === 'vieja' && ids(antiguaDespues).join(',') === 'vieja', 'mismo monto: gana la más antigua')
+// Promociones V2 (2026-11-24): con el mismo ahorro gana la MÁS RECIENTE, igual que el POS.
+check(ids(antiguaPrimero).join(',') === 'nueva' && ids(antiguaDespues).join(',') === 'nueva', 'mismo monto: gana la más reciente')
 
 const combinables = evaluar(
   [

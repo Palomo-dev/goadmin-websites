@@ -2,6 +2,7 @@
 
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
+import { FilaEtiquetasFicha } from '@/components/site/etiquetas/EtiquetasFicha'
 
 export const CONTENT_KEYS = ['blocks', 'show_countdown'] as const
 
@@ -42,6 +43,8 @@ export function ProductInfo({ content, primaryColor = '#3B82F6', data }: Product
   return (
     <div>
       {visible('sku') && <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">SKU: {product.sku || 'N/A'}</p>}
+      {/* Etiquetas junto al título (B, Figma 3038:78227). Sin `labels_show`, no pinta nada. */}
+      <FilaEtiquetasFicha />
       {visible('title') && <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{product.name}</h1>}
       {visible('rating') && (
         <ReviewSummaryBadge

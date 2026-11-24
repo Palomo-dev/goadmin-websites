@@ -14,6 +14,7 @@ import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { INICIO, type Miga } from '@/lib/navegacion/volver'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
+import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
 import { isParentProduct, padreSinVariantes, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
 import { idProductoCarrito, impuestoParaLineas } from '@/lib/orders/impuestoProducto'
 import { useTarifasCarrito } from '@/lib/orders/useTarifasCarrito'
@@ -196,14 +197,17 @@ export function CartPageClient({
   const etiquetaImpuesto = impuestoVisto.resumen.tasa != null
     ? `${impuestoVisto.resumen.nombre} (${impuestoVisto.resumen.tasa}%)`
     : impuestoVisto.resumen.nombre
+  // Envío gratis medido DESPUÉS de las promociones (lib/shipping/envioGratisDescontado.ts), como
+  // lo cobra /api/orders.
+  const subtotalEnvio = subtotalParaEnvioGratis(subtotal, promoDiscount)
   const shipping = cartSettings.enableShipping
-    ? (cartSettings.freeShippingThreshold > 0 && subtotal >= cartSettings.freeShippingThreshold ? 0 : cartSettings.shippingFlatRate)
+    ? (cartSettings.freeShippingThreshold > 0 && subtotalEnvio >= cartSettings.freeShippingThreshold ? 0 : cartSettings.shippingFlatRate)
     : 0
   // Mismo cálculo que el checkout y el servidor: impuesto sobre la base con descuento.
   const total = Math.max(0, subtotal + tax + shipping - promoDiscount)
   // «Según el carrito» con los mismos datos que el cajón: tope de envío gratis y ofertas.
   const estadoBoton = {
-    subtotal,
+    subtotal: subtotalEnvio,
     topeEnvioGratis: cartSettings.enableShipping ? cartSettings.freeShippingThreshold : 0,
     hayOferta: promoDiscount > 0 || items.some((item) => item.comparePrice != null && Number(item.comparePrice) > item.price),
   }
@@ -215,9 +219,9 @@ export function CartPageClient({
 
   // Progreso para envío gratis
   const freeShippingProgress = cartSettings.freeShippingThreshold > 0
-    ? Math.min(100, (subtotal / cartSettings.freeShippingThreshold) * 100)
+    ? Math.min(100, (subtotalEnvio / cartSettings.freeShippingThreshold) * 100)
     : 100
-  const remainingForFreeShipping = Math.max(0, cartSettings.freeShippingThreshold - subtotal)
+  const remainingForFreeShipping = Math.max(0, cartSettings.freeShippingThreshold - subtotalEnvio)
 
   // Carrito vacío
   if (items.length === 0) {

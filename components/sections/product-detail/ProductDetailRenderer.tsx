@@ -57,6 +57,10 @@ import {
   type PaginadorFichaDatos,
 } from './fichaTienda'
 import type { RelacionadosFichaDatos } from './RelatedProductsSection'
+import { ProveedorEtiquetasFicha } from '@/components/site/etiquetas/EtiquetasFicha'
+import { leerOpcionesEtiquetasFicha } from '@/lib/website/v2/seccionesFicha'
+import { isOutOfStock } from '@/lib/stock'
+import { isParentProduct, padreSinVariantes } from '@/lib/products/datosTarjeta'
 
 function stockReal(product: { track_stock?: boolean | null; stock_levels?: { qty_on_hand?: number | null }[] | null }): number | null {
   if (!product?.track_stock || !Array.isArray(product.stock_levels)) return null
@@ -322,7 +326,7 @@ export function ProductDetailRenderer({
     )
   })()
 
-  return (
+  const ficha = (
     <div className="container mx-auto px-4 py-12">
       {breadcrumbBlock}
       {layoutGrid}
@@ -330,6 +334,36 @@ export function ProductDetailRenderer({
       {/* Productos relacionados y reseñas, a todo el ancho */}
       {anchoCompleto.map(renderSection)}
     </div>
+  )
+
+  // Etiquetas de la ficha (Información del producto › Etiquetas, Figma 3036:78040). Sin
+  // `labels_show: true`, ningún proveedor: la ficha de hoy.
+  const bloqueInfo = visibles.find((s) => s.section_type === 'product_info')
+  const opcionesEtiquetas = leerOpcionesEtiquetasFicha(bloqueInfo?.content as Record<string, unknown> | null)
+  if (!opcionesEtiquetas.mostrar) return ficha
+  const bloqueGaleria = visibles.find((s) => s.section_type === 'product_gallery')
+  const precioBase = price ? Number(price.price) : 0
+  return (
+    <ProveedorEtiquetasFicha
+      opciones={opcionesEtiquetas}
+      producto={{ id: Number(product.id), parent_product_id: product.parent_product_id ?? null, category_id: product.category_id ?? null, brand: product.brand ?? null }}
+      datos={{
+        discount: comparePrice != null && comparePrice > precioBase && precioBase > 0 ? Math.round((1 - precioBase / comparePrice) * 100) : null,
+        outOfStock: isOutOfStock(product),
+        isParent: isParentProduct(product),
+        padreSinVariantes: padreSinVariantes(product),
+        variantCount: Array.isArray(variants) ? variants.length : 0,
+        // La ficha no trae ventas (las calcula el listado): «vendidos» queda para la segunda ronda.
+        salesCount: Number(product.sales_count) || 0,
+        createdAt: product.created_at ?? null,
+      }}
+      precio={precioBase}
+      variantes={(variants ?? []).map((v: { id: number }) => Number(v.id))}
+      sinFoto={(bloqueGaleria?.content as Record<string, unknown> | null)?.show_badges === false}
+      primaryColor={primaryColor}
+    >
+      {ficha}
+    </ProveedorEtiquetasFicha>
   )
 }
 

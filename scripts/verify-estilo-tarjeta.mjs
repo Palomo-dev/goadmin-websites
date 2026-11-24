@@ -158,7 +158,10 @@ const banners = await readFile(join(ROOT, 'components/sections/retail/PromoBanne
 check(banners.includes("fotoNatural ? 'block w-full h-auto'"), 'automática muestra la foto entera')
 const tarjeta = await readFile(join(ROOT, 'components/sections/products/ProductCard.tsx'), 'utf8')
 check(tarjeta.includes('iconoVacio(button.icon)'), 'sin icono no cae al ícono por defecto')
-check(tarjeta.includes("badge.label?.trim() || '-{value}%'"), 'la etiqueta de descuento vacía usa -{value}%')
+// La regla de cada etiqueta (texto, cuándo sale, color) vive desde 2026-11-24 en etiquetasProducto.ts,
+// común a la tarjeta y la ficha; la tarjeta la llama con la plantilla de la etiqueta.
+const reglaEtiquetas = await readFile(join(ROOT, 'lib/website/etiquetasProducto.ts'), 'utf8')
+check(reglaEtiquetas.includes("plantilla?.trim() || '-{value}%'") && tarjeta.includes('textoEtiqueta(badge.type, badge.label, value)'), 'la etiqueta de descuento vacía usa -{value}%')
 
 if (problemas.length) {
   console.error(`verify:estilo-tarjeta ${problemas.length} fallos de ${casos}`)

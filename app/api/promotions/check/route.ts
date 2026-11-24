@@ -3,6 +3,7 @@ import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { getOrgIdDelHost } from '@/lib/get-org-context'
 import { sedeDePedidoWeb } from '@/lib/orders/pedidoWeb'
 import { evaluateCartPromotions, type PromotionEvaluation } from '@/lib/promotions'
+import { getAuthCustomer } from '@/lib/get-auth-customer'
 
 function getSupabase() {
   return createAdminClient() || createPublicClient()
@@ -66,13 +67,16 @@ export async function POST(request: NextRequest) {
     if (!Number.isInteger(orgId) || orgId <= 0) return NextResponse.json(EMPTY)
 
     const supabase = getSupabase()
-    const sede = await sedeDelCarrito(supabase, orgId, branchId)
+    // Cliente de la sesión (cookie + organización del host), nunca del body: las promociones
+    // «solo para el grupo …» se verifican aquí. Sin sesión, esas no aplican.
+    const [sede, cliente] = await Promise.all([sedeDelCarrito(supabase, orgId, branchId), getAuthCustomer(orgId)])
 
     const result = await evaluateCartPromotions(supabase, {
       organizationId: orgId,
       branchId: sede,
       // Promociones por método de pago (ERP 20261028180000): solo el checkout lo manda.
       paymentMethod: typeof paymentMethod === 'string' && paymentMethod.trim() ? paymentMethod.trim() : null,
+      sessionCustomerId: cliente?.id ?? null,
       items,
     })
 

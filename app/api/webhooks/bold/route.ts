@@ -9,6 +9,8 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { estadoEventoBold } from '@/lib/payments/pasarelasTienda'
 import { firmanteBold } from '@/lib/payments/firmanteBold'
 import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
+import { aplicarAnticipoPasarela } from '@/lib/contraentrega/anticipoWebhook'
 import { METODO_PEDIDO_BOLD } from '@/lib/payments/consultaPasarelaTienda'
 import { debeReenviarAlErp, reenviarBoldAlErp } from '@/lib/payments/wompi-reenvio-erp'
 
@@ -81,6 +83,26 @@ export async function POST(request: NextRequest) {
       method: metodoPago,
       processorResponse: body,
       gateway: 'bold_link',
+    }
+
+    // 2a. Anticipo de un pedido contraentrega (ANT-<id>) de la organización que firmó: pago
+    //     parcial, idempotente en la base (lib/contraentrega/anticipoWebhook.ts).
+    if (esReferenciaAnticipo(reference)) {
+      const r = await aplicarAnticipoPasarela(supabase, {
+        organizationId,
+        referencia: reference,
+        estado: paymentStatus,
+        transaccionId: transactionId,
+        monto,
+        moneda: currency,
+        pasarela: 'bold_link',
+        metodo: metodoPago,
+        respuesta: body,
+      })
+      await registrarEvento(supabase, firmante, type, transactionId, body)
+      return NextResponse.json(r.body, { status: r.status })
+    } else {
+      // Cualquier otra referencia: el flujo de siempre.
     }
 
     // 2. Otras fuentes de cobro de la tienda

@@ -13,6 +13,9 @@ import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
 import { etiquetaPago } from '@/lib/orders/estados-pedido'
 import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { redirect } from 'next/navigation'
+import { idDeReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
+import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
 import {
   consultarBold,
   consultarMercadoPago,
@@ -222,6 +225,22 @@ export default async function CheckoutResultadoPage({
   const params = await searchParams
   const orderRef = params.ref
   const transactionId = params.id
+
+  // Anticipo de un pedido contraentrega (ANT-<id>): la página del pedido muestra el anticipo
+  // (pendiente se actualiza sola; pagado, «Pagas al recibir»). Solo pedidos de este host.
+  const idAnticipo = idDeReferenciaAnticipo(orderRef)
+  if (idAnticipo) {
+    const sb = (createAdminClient() || createPublicClient()) as any
+    const { data: pedidoAnticipo } = await sb
+      .from('web_orders')
+      .select('id, order_number')
+      .eq('id', idAnticipo)
+      .eq('organization_id', organization.id)
+      .maybeSingle()
+    if (pedidoAnticipo) redirect(rutaSitio(rutaSeguimiento(organization.id, pedidoAnticipo), ctx.outlet, ctx.sedePorPrefijo))
+  } else {
+    // Cualquier otra referencia: como siempre.
+  }
 
   if (!orderRef) {
     return (

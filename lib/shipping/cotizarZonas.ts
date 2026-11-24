@@ -10,6 +10,7 @@
  * y el código postal van tal cual; la base los normaliza.
  */
 import { direccionParaCotizar, itemsParaCotizar, leerCotizacion, type CotizacionEnvio, type ItemCotizacion } from './cotizacionLogistica'
+import { cotizacionConEnvioGratisDescontado } from './envioGratisDescontado'
 
 type ClienteSupabase = { from: (tabla: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any }
 
@@ -82,6 +83,12 @@ export async function cotizarDomicilioWeb(
     metodoPago?: string | null
     /** Productos del pedido: la base suma su peso para las reglas de despacho por peso. */
     items?: ReadonlyArray<{ product_id?: unknown; cantidad?: unknown }>
+    /**
+     * Subtotal ya con promociones y cupón: decide SOLO el envío gratis
+     * (envioGratisDescontado.ts). El pedido mínimo y las reglas siguen con `subtotal`. Ausente:
+     * como antes.
+     */
+    subtotalEnvioGratis?: number | null
   },
 ): Promise<CotizacionEnvio | null> {
   try {
@@ -98,7 +105,7 @@ export async function cotizarDomicilioWeb(
       console.error('[Envío] La cotización por zona falló', { organizationId: e.organizationId, message: error.message })
       return null
     }
-    return leerCotizacion(data)
+    return cotizacionConEnvioGratisDescontado(leerCotizacion(data), e.subtotalEnvioGratis)
   } catch (err) {
     console.error('[Envío] La cotización por zona lanzó', { organizationId: e.organizationId, err: err instanceof Error ? err.message : err })
     return null

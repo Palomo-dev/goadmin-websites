@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { getAvailableStock, siguienteCantidad, primeraVarianteDisponible, cupoDisponible, AVISO_TOPE_CARRITO, avisoCupo } from '@/lib/stock'
 import { useCartProductQty } from '@/lib/cart'
 import { emitirVariante, escucharVariante, emitirCantidad } from '@/lib/products/varianteSeleccionada'
+import { escucharPedidoCantidad } from '@/lib/products/pedirCantidad'
 import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
@@ -49,6 +50,10 @@ export interface AccionesVarianteFicha {
   comprar: ComprarFicha | null
   /** «Color: Negro · Talla: M» de la variante elegida; `null` sin elegir. */
   variante: string | null
+  /** Id de la variante elegida (precio por volumen de la ficha); `null` sin elegir. */
+  varianteId?: number | null
+  /** Precio por unidad que se agrega (variante + extras); `null` sin elegir. */
+  precioUnidad?: number | null
 }
 
 interface VariantSelectorProps {
@@ -228,6 +233,8 @@ export function VariantSelector({
   useEffect(() => {
     if (selectedVariant) emitirCantidad(Number(selectedVariant.id), quantity, ORIGEN)
   }, [selectedVariant?.id, quantity, ORIGEN])
+  // «Compra más, paga menos»: tocar un escalón pone esa cantidad (el efecto de abajo la baja al cupo).
+  useEffect(() => escucharPedidoCantidad(selectedVariant ? Number(selectedVariant.id) : null, setQuantity), [selectedVariant?.id])
 
   // Si el stock o el carrito cambian y la cantidad queda por encima del cupo, bajarla al tope.
   useEffect(() => {
@@ -282,6 +289,8 @@ export function VariantSelector({
       variante: selectedVariant?.variant_data && Object.keys(selectedVariant.variant_data).length > 0
         ? Object.entries(selectedVariant.variant_data).map(([k, v]) => `${k}: ${v}`).join(' · ')
         : selectedVariant?.name ?? null,
+      varianteId: selectedVariant ? Number(selectedVariant.id) : null,
+      precioUnidad: selectedVariant && price ? Number(price) : null,
     }
   }
 

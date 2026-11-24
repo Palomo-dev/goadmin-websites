@@ -25,6 +25,8 @@ import { esReferenciaDeposito } from '@/lib/restaurant/deposito-modelo'
 import { procesarDepositoWompi } from '@/lib/restaurant/deposito-webhook'
 import { esReferenciaAbonoMesa } from '@/lib/restaurant/mesa-servidor'
 import { procesarAbonoMesaWompi } from '@/lib/restaurant/abono-mesa-webhook'
+import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
+import { procesarAnticipoWompi } from '@/lib/contraentrega/anticipoWebhook'
 import { debeReenviarAlErp, reenviarWompiAlErp } from '@/lib/payments/wompi-reenvio-erp'
 
 export const dynamic = 'force-dynamic'
@@ -113,6 +115,15 @@ export async function POST(request: NextRequest) {
     // ── Abono en línea a la cuenta de una mesa desde la Carta QR (CQR-…): firma obligatoria ──
     if (esReferenciaAbonoMesa(reference)) {
       const r = await procesarAbonoMesaWompi(supabase, body)
+      return NextResponse.json(r.body, { status: r.status })
+    } else {
+      // Cualquier otra referencia: el flujo de siempre.
+    }
+
+    // ── Anticipo de un pedido contraentrega (ANT-<id>): firma obligatoria, idempotente; deja el
+    //    pedido en pago parcial (nunca «pagado» completo) — lib/contraentrega/anticipoWebhook.ts ──
+    if (esReferenciaAnticipo(reference)) {
+      const r = await procesarAnticipoWompi(supabase, body)
       return NextResponse.json(r.body, { status: r.status })
     } else {
       // Cualquier otra referencia: el flujo de siempre.

@@ -89,6 +89,10 @@ export function useCartPromotions({ organizationId, branchId, sedeElegidaId = nu
           promotions: Array.isArray(data?.promotions) ? data.promotions : [],
           totalDiscount: Number(data?.totalDiscount) || 0,
           itemDiscounts: data?.itemDiscounts && typeof data.itemDiscounts === 'object' ? data.itemDiscounts : {},
+          // Precio por volumen por línea («$ 9.500 c/u», «Agrega 6 más…»). Respuestas viejas no lo traen.
+          ...(data?.volumeHints && typeof data.volumeHints === 'object' ? { volumeHints: data.volumeHints } : {}),
+          // Empujón de «compra X lleva Y» por línea («Agrega 1 más y llévala gratis (2×1)»).
+          ...(data?.freeHints && typeof data.freeHints === 'object' ? { freeHints: data.freeHints } : {}),
         })
       } catch {
         if (seq === requestSeq.current) setResult(EMPTY)
