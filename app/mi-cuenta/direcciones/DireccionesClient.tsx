@@ -12,6 +12,8 @@ import { LocationCheckoutFields } from '@/components/site/LocationCheckoutFields
 import { llegadaZona, type CotizacionPublica } from '@/lib/shipping/domicilioZonas'
 import { fechaCorta } from '@/lib/restaurant/horario'
 import { textoCobertura, type Cobertura } from '@/lib/cuenta/reglasCuenta'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
+import { EstadoVacioCuenta } from '@/components/site/cuenta/EstadoVacioCuenta'
 
 export interface DireccionCuenta {
   id: string
@@ -61,7 +63,8 @@ function IconoDireccion({ nombre }: { nombre: string }) {
 export function DireccionesClient({ direcciones: iniciales }: { direcciones: DireccionCuenta[] }) {
   const [lista, setLista] = useState(iniciales)
   const [coberturas, setCoberturas] = useState<Record<string, Cobertura>>({})
-  const [formulario, setFormulario] = useState(iniciales.length === 0)
+  // Sin direcciones se ve el estado vacío del Figma (pantalla 10); su botón abre el formulario.
+  const [formulario, setFormulario] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nueva, setNueva] = useState({ nombre: '', linea: '', barrio: '', indicaciones: '', principal: false, countryCode: '', stateCode: '', stateName: '', city: '' })
@@ -175,14 +178,18 @@ export function DireccionesClient({ direcciones: iniciales }: { direcciones: Dir
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Direcciones</h1>
-        {!formulario && (
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Direcciones</h1>
+          <p className="text-sm text-slate-600 md:text-[15px]">Elige la principal para pagar más rápido.</p>
+        </div>
+        {!formulario && lista.length > 0 && (
           <button type="button" onClick={() => setFormulario(true)} className="inline-flex h-10 items-center gap-1.5 rounded-[10px] px-4 text-sm font-semibold text-white" style={{ backgroundColor: 'var(--primary-color)' }}>
             <Plus aria-hidden="true" className="h-4 w-4" /> Agregar
           </button>
         )}
       </div>
+      <PestanasCuenta />
 
       {error && (
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
@@ -217,10 +224,12 @@ export function DireccionesClient({ direcciones: iniciales }: { direcciones: Dir
       })}
 
       {lista.length === 0 && !formulario && (
-        <div className="flex flex-col items-center gap-2 rounded-[14px] border border-slate-200 bg-white p-8 text-center">
-          <MapPin aria-hidden="true" className="h-8 w-8 text-slate-400" />
-          <p className="font-semibold text-slate-900">No tienes direcciones guardadas</p>
-        </div>
+        <EstadoVacioCuenta
+          icono={MapPin}
+          titulo="Aún no tienes direcciones"
+          texto="Guarda una y paga más rápido la próxima vez. Te decimos si te llega el domicilio."
+          alPulsar={{ texto: 'Agregar dirección', onClick: () => setFormulario(true) }}
+        />
       )}
 
       {formulario && (

@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerParkingPasses } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
 
@@ -26,6 +27,7 @@ export default async function PasesPage() {
         <h1 className="text-2xl font-bold">Mis Pases</h1>
         <p className="text-gray-500">Abonos y pases de estacionamiento</p>
       </div>
+      <PestanasCuenta />
 
       {passes.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center">

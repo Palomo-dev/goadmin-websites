@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerAppointments } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
 import { CancelAppointmentButton } from './CancelAppointmentButton'
@@ -56,6 +57,7 @@ export default async function CitasPage() {
           + Nueva cita
         </Link>
       </div>
+      <PestanasCuenta />
 
       {appointments.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-8 text-center">

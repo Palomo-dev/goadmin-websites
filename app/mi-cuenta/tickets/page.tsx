@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerTickets } from '@/lib/supabase/queries'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
 import { CheckCircle, Clock, XCircle, ExternalLink } from 'lucide-react'
@@ -57,6 +58,7 @@ export default async function TicketsPage() {
           Comprar pasaje
         </Link>
       </div>
+      <PestanasCuenta />
 
       {tickets.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center">

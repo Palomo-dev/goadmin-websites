@@ -1,9 +1,11 @@
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
-import { MenuLateralCuenta, VolverMiCuenta } from '@/components/site/cuenta/MenuMiCuenta'
-import { getCuentaCliente } from '@/lib/cuenta/cuentaCliente'
-import { iniciales, menuCuenta } from '@/lib/cuenta/reglasCuenta'
+import { MenuLateralCuenta, SembrarAvatar, VolverMiCuenta } from '@/components/site/cuenta/MenuMiCuenta'
+import { ProveedorMenuCuenta } from '@/components/site/cuenta/PestanasCuenta'
+import { cifrasCuenta, getCuentaCliente } from '@/lib/cuenta/cuentaCliente'
+import { facturaCompleta, filasMenuCuenta, identidadCuenta, menuCuenta, vendeConPedidos } from '@/lib/cuenta/reglasCuenta'
+import { ayudaCuenta } from '@/lib/cuenta/ayudaCuenta'
 import { redirect } from 'next/navigation'
 import { Metadata } from 'next'
 import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
@@ -31,9 +33,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Mi cuenta (Figma «16 Sitio web» D 2976:72025 y H 2977:72694, aprobados 2026-11-24): menú lateral
- * con iniciales, nombre y correo (sin emojis), según el tipo de negocio (`menuCuenta`). En el
- * celular el menú es la lista de Inicio y las demás páginas llevan «← Volver a Mi cuenta».
+ * Mi cuenta V2 (Figma «16 Sitio web» 3044:78726, aprobado 2026-11-24): menú lateral con avatar,
+ * nombre de la ficha y correo, los accesos agrupados (Compras · Mi información · Ayuda) con sus
+ * cifras, según el tipo de negocio (`menuCuenta`/`filasMenuCuenta`). En el celular el menú es la
+ * lista de Inicio y las demás páginas llevan el ← a Mi cuenta y las pestañas deslizables
+ * (`PestanasCuenta`, que leen el menú de `ProveedorMenuCuenta`). Las cifras (`cifrasCuenta`) van en
+ * react.cache: Inicio las reusa sin volver a consultar.
  */
 export default async function MiCuentaLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getOrgContext()
@@ -43,10 +48,14 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
   const cuenta = await getCuentaCliente(ctx.organization.id)
   if (!cuenta) redirect('/auth?siguiente=/mi-cuenta')
 
-  const { organization, primaryColor, template, headerNav, footerNav, frozenReason } = ctx
-  const navItems = menuCuenta(organization.type_id ?? 0)
+  const { organization, primaryColor, template, headerNav, footerNav, frozenReason, effectiveSettings } = ctx
+  const tipo = organization.type_id ?? 0
+  const navItems = menuCuenta(tipo)
   const c = cuenta.cliente
-  const nombre = [c?.first_name, c?.last_name].map((x) => (x || '').trim()).filter(Boolean).join(' ') || null
+  const identidad = identidadCuenta(c, cuenta.correo)
+  const cifras = await cifrasCuenta(organization.id, cuenta, vendeConPedidos(tipo))
+  const grupos = filasMenuCuenta(tipo, cifras, { nombre: identidad.nombre, telefono: c?.phone ?? null, facturaCompleta: facturaCompleta(c) })
+  const ayuda = ayudaCuenta(effectiveSettings, footerNav)
 
   return (
     <OrganizationLayout
@@ -61,12 +70,13 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
         <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-4 pb-16 pt-5 md:flex-row md:px-6 md:pt-10">
           <aside className="hidden w-[260px] flex-shrink-0 md:block">
             <div className="sticky top-24">
-              <MenuLateralCuenta items={navItems} nombre={nombre} correo={cuenta.correo} iniciales={iniciales(nombre, cuenta.correo)} />
+              <MenuLateralCuenta identidad={identidad} grupos={grupos} ayuda={ayuda} primaryColor={primaryColor} />
             </div>
           </aside>
           <main className="min-w-0 flex-1">
+            <SembrarAvatar usuario={cuenta.userId} identidad={identidad} />
             <VolverMiCuenta items={navItems} primaryColor={primaryColor} colorCabecera={colorCabeceraDe(organization.website_settings)} />
-            {children}
+            <ProveedorMenuCuenta items={navItems}>{children}</ProveedorMenuCuenta>
           </main>
         </div>
       </div>

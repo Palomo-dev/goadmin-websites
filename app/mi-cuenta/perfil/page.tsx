@@ -3,7 +3,9 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCuentaCliente } from '@/lib/cuenta/cuentaCliente'
-import { facturaCompleta, fechaAutorizacionDatos, leerAvisos, leerCumpleanos } from '@/lib/cuenta/reglasCuenta'
+import { facturaCompleta, fechaAutorizacionDatos, identidadCuenta, leerAvisos, leerCumpleanos } from '@/lib/cuenta/reglasCuenta'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
+import { AvatarCuenta } from '@/components/site/cuenta/avatar/AvatarCuenta'
 import { enlaceWhatsapp } from '@/lib/website/ajustesSitio'
 import { DatosCliente, type TipoDocumentoOpcion } from './DatosCliente'
 
@@ -27,18 +29,22 @@ const TIPOS_RESPALDO: TipoDocumentoOpcion[] = [
  * Mis datos (Figma «16 Sitio web» F 2977:72278): datos personales (el correo no se edita aquí),
  * datos para la factura electrónica (persona natural o empresa), avisos y privacidad, y seguridad
  * (contraseña opcional, cerrar las demás sesiones, solicitar la eliminación de la cuenta).
+ * Arriba, la tarjeta con el avatar y el nombre de la ficha (Figma 3044:78726, pantalla 8); sin
+ * nombre se muestra el correo y «Agrega tu nombre» lleva al campo. Sin «Agregar foto»: no hay
+ * dónde guardarla.
  * La ruta sigue siendo /mi-cuenta/perfil para no romper enlaces.
  */
 export default async function MisDatosPage() {
   const ctx = await getOrgContext()
   if (!ctx) return <NotFoundPage />
-  const { organization, effectiveSettings } = ctx
+  const { organization, effectiveSettings, primaryColor } = ctx
   const cuenta = await getCuentaCliente(organization.id)
   const cliente = cuenta?.cliente ?? null
   if (!cuenta || !cliente) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Mis datos</h1>
+        <PestanasCuenta />
         <p className="rounded-[14px] border border-slate-200 bg-white p-6 text-sm text-slate-600">No encontramos tus datos en esta tienda. Sal y vuelve a entrar con el código que te enviamos al correo.</p>
       </div>
     )
@@ -64,10 +70,27 @@ export default async function MisDatosPage() {
   const correoTienda = (typeof ajustes.contact_email === 'string' && ajustes.contact_email) || (organization as { email?: string | null }).email || null
   const prefs = cliente.preferences as Record<string, unknown> | null
   const cumple = leerCumpleanos(prefs?.cumpleanos)
+  const identidad = identidadCuenta(cliente, cuenta.correo)
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Mis datos</h1>
+      <div className="flex flex-col gap-3">
+        <h1 className="text-2xl font-semibold text-slate-900 md:text-[28px]">Mis datos</h1>
+        <PestanasCuenta />
+      </div>
+      <section aria-label="Tu cuenta" className="flex items-center gap-4 rounded-[14px] border border-slate-200 bg-white p-4 md:p-5">
+        <AvatarCuenta iniciales={identidad.iniciales} primaryColor={primaryColor} tam={56} />
+        <div className="min-w-0">
+          <p className="truncate text-lg font-semibold text-slate-900">{identidad.titulo}</p>
+          {identidad.nombre ? (
+            identidad.correo && <p className="truncate text-sm text-slate-600">{identidad.correo}</p>
+          ) : (
+            <a href="#dato-nombre" className="text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
+              Agrega tu nombre
+            </a>
+          )}
+        </div>
+      </section>
       <DatosCliente
         correo={cuenta.correo}
         personales={{

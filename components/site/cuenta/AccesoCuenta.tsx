@@ -38,6 +38,7 @@ import {
 import { EVENTO_ABRIR_ACCESO, abrirAccesoCuenta, fijarAccesoAbierto, registrarAnfitrionAcceso, useAccesoAbierto, type DetalleAbrirAcceso } from './eventos'
 import { FormularioAcceso, tituloVista, type VistaFormulario } from './FormularioAcceso'
 import { cerrarSesionTienda, type TipoEntrada } from './useAcceso'
+import { BotonAvatarCuenta } from './avatar/BotonAvatarCuenta'
 
 /** Formato en pantalla: el del editor o, en el celular, la hoja inferior. */
 export type FormatoAcceso = Exclude<ModoCuenta, 'pagina'> | 'hoja'
@@ -86,6 +87,8 @@ function estiloDelSitio(primaryColor: string): CSSProperties {
 /**
  * El ícono de cuenta. Con «Página» (o sin valor) es el enlace de siempre; con los demás modos, un
  * botón que abre el acceso (o el menú de cuenta, con sesión) e indica si está abierto.
+ * Con `sesion`, en cualquier modo (también «Página»): el botón del avatar con su menú (Figma
+ * «16 Sitio web» 3044:78726, aprobado 2026-11-24); `children` es el avatar ya presentado.
  */
 export function EnlaceCuenta({
   modo,
@@ -93,6 +96,9 @@ export function EnlaceCuenta({
   className,
   title,
   ariaLabel,
+  sesion = false,
+  primaryColor,
+  whatsapp,
   children,
 }: {
   modo: ModoCuenta
@@ -100,9 +106,21 @@ export function EnlaceCuenta({
   className?: string
   title?: string
   ariaLabel?: string
+  /** Hay sesión: el avatar abre su menú en vez del acceso o la página. */
+  sesion?: boolean
+  primaryColor?: string | null
+  /** Número de WhatsApp del sitio para «Ayuda por WhatsApp» del menú del avatar. */
+  whatsapp?: string | null
   children: ReactNode
 }) {
   const abierto = useAccesoAbierto()
+  if (sesion) {
+    return (
+      <BotonAvatarCuenta primaryColor={primaryColor} whatsapp={whatsapp} className={className} title={title}>
+        {children}
+      </BotonAvatarCuenta>
+    )
+  }
   if (modo === 'pagina') {
     return (
       <Link href={href} className={className} title={title} aria-label={ariaLabel}>

@@ -18,12 +18,16 @@ import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 import { igualdadSinMayusculas } from '@/lib/auth/clienteSesion'
 import {
   accionesPedido,
+  avancePedido,
   correoVerificado,
   grupoPedido,
   normalizarCorreo,
   type AccionPedido,
+  type CifrasCuenta,
   type GrupoPedido,
 } from '@/lib/cuenta/reglasCuenta'
+import { ESTADOS_FINALES } from '@/lib/orders/estados-pedido'
+import type { TonoInsignia } from '@/lib/orders/consultaPedido'
 
 type Db = { from: (t: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any }
 
@@ -98,6 +102,9 @@ export const getCuentaCliente = cache(async (organizationId: number): Promise<Cu
  * Métodos que no se pagan en línea. Misma lista que la consulta del pedido
  * (app/api/orders/[id]/tracking/route.ts, `MANUALES`), que no puede exportarla: es una ruta.
  */
+/** ¿El método se paga fuera de una pasarela? Una llamada por método, nunca por pedido. */
+const RPC_METODO_NATIVO = 'fn_web_order_metodo_nativo'
+
 const METODOS_MANUALES = new Set(['transfer', 'cash', 'bancolombia_transfer', 'bancolombia_collect', 'pse', 'mesa'])
 
 export interface ProductoPedidoCuenta {
@@ -200,7 +207,7 @@ export async function pedidosDeCuenta(
     saleIds.length > 0
       ? sb.from('invoice_sales').select('id, sale_id, status, document_type').eq('organization_id', organizationId).in('sale_id', saleIds).order('created_at', { ascending: true })
       : Promise.resolve({ data: [] }),
-    ...metodosPendientes.map((m) => sb.rpc('fn_web_order_metodo_nativo', { p_organization_id: organizationId, p_metodo: m })),
+    ...metodosPendientes.map((m) => sb.rpc(RPC_METODO_NATIVO, { p_organization_id: organizationId, p_metodo: m })),
   ])
   if (itemsRes.error) console.error('[cuenta] No se pudieron leer los productos de los pedidos', { organizationId, error: itemsRes.error.message })
   const pasarela = new Map<string, boolean>()
@@ -304,5 +311,138 @@ export async function resumenCuenta(organizationId: number, clienteId: string): 
     favoritos: favs.count ?? 0,
     cupones: vigentes.length,
     cuponVenceEnDias: vence,
+  }
+}
+
+// ─── Mi cuenta V2 y menú del avatar (Figma «16 Sitio web» 3044:78726) ────────────────────────
+
+/** Filtros de «pedidos de esta cuenta»: sus fichas y, sin ficha, su correo verificado. */
+function consultasPedidosCuenta(sb: Db, organizationId: number, cuenta: CuentaCliente, columnas: string, ajustar: (q: any) => any, limite: number) {
+  const consultas: Promise<{ data: any[] | null; error?: { message: string } | null }>[] = []
+  if (cuenta.idsCliente.length > 0) {
+    consultas.push(ajustar(sb.from('web_orders').select(columnas).eq('organization_id', organizationId).in('customer_id', cuenta.idsCliente)).order('created_at', { ascending: false }).limit(limite))
+  }
+  if (cuenta.correo) {
+    consultas.push(
+      ajustar(sb.from('web_orders').select(columnas).eq('organization_id', organizationId).is('customer_id', null).ilike('customer_email', igualdadSinMayusculas(cuenta.correo)))
+        .order('created_at', { ascending: false })
+        .limit(limite),
+    )
+  }
+  return consultas
+}
+
+/** Lista de estados finales para el filtro `not in` de PostgREST. */
+const FINALES_POSTGREST = `(${Array.from(ESTADOS_FINALES).join(',')})`
+
+/**
+ * Cifras de Mi cuenta (Inicio, menú lateral y menú del avatar), todas calculadas:
+ * - pedidos, en curso y fecha del último: una consulta liviana de `web_orders` (id, estado,
+ *   venta, fecha) por ficha y una por correo sin ficha;
+ * - facturas: las válidas de las ventas de esos pedidos (`invoice_sales` por `sale_id`), sin
+ *   columna nueva;
+ * - direcciones, favoritos y cupones: `resumenCuenta`.
+ * Todo filtra por la organización. Una vez por petición (react.cache): layout y página comparten.
+ */
+export const cifrasCuenta = cache(async (organizationId: number, cuenta: CuentaCliente | null, conPedidos: boolean): Promise<CifrasCuenta> => {
+  const vacio: CifrasCuenta = { pedidos: 0, enCurso: 0, ultimoPedidoEn: null, favoritos: 0, cupones: 0, cuponVenceEnDias: null, direcciones: 0, principal: null, facturas: 0 }
+  const sb = db()
+  if (!sb || !cuenta) return vacio
+  const clienteId = cuenta.cliente?.id ?? null
+  const [resumen, ...resultados] = await Promise.all([
+    clienteId ? resumenCuenta(organizationId, clienteId) : Promise.resolve(null),
+    ...(conPedidos && cuenta.verificado ? consultasPedidosCuenta(sb, organizationId, cuenta, 'id, status, sale_id, created_at', (q) => q, 500) : []),
+  ])
+  const vistos = new Set<string>()
+  const filas: { id: string; status: string; sale_id: string | null; created_at: string }[] = []
+  for (const r of resultados as { data: any[] | null; error?: { message: string } | null }[]) {
+    if (r.error) console.error('[cuenta] No se pudieron contar los pedidos', { organizationId, error: r.error.message })
+    for (const f of r.data ?? []) {
+      if (vistos.has(f.id)) continue
+      vistos.add(f.id)
+      filas.push(f)
+    }
+  }
+  let ultimo: string | null = null
+  for (const f of filas) if (!ultimo || Date.parse(f.created_at) > Date.parse(ultimo)) ultimo = f.created_at
+  const ventas = Array.from(new Set(filas.filter((f) => f.status === 'delivered' && f.sale_id).map((f) => f.sale_id as string)))
+  let facturas = 0
+  if (ventas.length > 0) {
+    const { data, error } = await sb.from('invoice_sales').select('sale_id, status, document_type').eq('organization_id', organizationId).in('sale_id', ventas.slice(0, 300))
+    if (error) console.error('[cuenta] No se pudieron contar las facturas', { organizationId, error: error.message })
+    const conFactura = new Set<string>()
+    for (const f of (data ?? []) as { sale_id: string; status: string | null; document_type: string | null }[]) {
+      if ((f.document_type || 'invoice') !== 'invoice') continue
+      if (['void', 'voided', 'cancelled', 'draft', 'rejected'].includes(String(f.status || ''))) continue
+      conFactura.add(f.sale_id)
+    }
+    facturas = conFactura.size
+  }
+  return {
+    pedidos: filas.length,
+    enCurso: filas.filter((f) => grupoPedido(f.status) === 'en_curso').length,
+    ultimoPedidoEn: ultimo,
+    favoritos: resumen?.favoritos ?? 0,
+    cupones: resumen?.cupones ?? 0,
+    cuponVenceEnDias: resumen?.cuponVenceEnDias ?? null,
+    direcciones: resumen?.direcciones ?? 0,
+    principal: resumen?.principal ?? null,
+    facturas,
+  }
+})
+
+/** Pedido en curso para el avatar y su menú: número, insignia («En camino») y la línea de avance. */
+export interface PedidoEnCursoAvatar {
+  id: string
+  numero: string
+  insignia: string
+  tono: TonoInsignia
+  titulo: string
+  ruta: string
+  /** «Pagar» si falta el pago por pasarela; si no, «Seguir». */
+  accion: 'pagar' | 'seguir'
+}
+
+/**
+ * El pedido en curso más reciente, liviano: una consulta por ficha y una por correo (límite 1,
+ * solo estados que no terminaron) y, solo si espera pago, una RPC para saber si es pasarela. Lo
+ * pide el avatar de la cabecera una vez por sesión (se guarda en el navegador unos minutos); los
+ * visitantes sin sesión nunca lo piden.
+ */
+export async function pedidoEnCursoAvatar(organizationId: number, cuenta: CuentaCliente, esRestaurante: boolean): Promise<PedidoEnCursoAvatar | null> {
+  const sb = db()
+  if (!sb || !cuenta.verificado) return null
+  const resultados = await Promise.all(
+    consultasPedidosCuenta(sb, organizationId, cuenta, 'id, order_number, status, payment_status, payment_method, delivery_type, internal_notes, customer_name, created_at', (q) => q.not('status', 'in', FINALES_POSTGREST), 1),
+  )
+  let p: any = null
+  for (const r of resultados) {
+    if (r.error) console.error('[cuenta] No se pudo leer el pedido en curso', { organizationId, error: r.error.message })
+    const f = (r.data ?? [])[0]
+    if (f && (!p || Date.parse(f.created_at) > Date.parse(p.created_at))) p = f
+  }
+  if (!p) return null
+  let esPasarela = false
+  if (p.status === 'pending' && p.payment_status !== 'paid' && p.payment_method && !METODOS_MANUALES.has(String(p.payment_method))) {
+    const { data } = await sb.rpc(RPC_METODO_NATIVO, { p_organization_id: organizationId, p_metodo: String(p.payment_method) })
+    esPasarela = data === false
+  }
+  const av = avancePedido({
+    status: p.status,
+    paymentStatus: p.payment_status ?? null,
+    esPasarela,
+    deliveryType: p.delivery_type ?? null,
+    esRestaurante,
+    nombre: p.customer_name ?? null,
+    notasInternas: p.internal_notes ?? null,
+  })
+  return {
+    id: p.id,
+    numero: p.order_number,
+    insignia: av.insignia,
+    tono: av.tono,
+    titulo: av.titulo,
+    ruta: `/mi-cuenta/pedidos/${p.id}`,
+    accion: av.vista === 'pagar' || av.vista === 'pago_fallido' ? 'pagar' : 'seguir',
   }
 }

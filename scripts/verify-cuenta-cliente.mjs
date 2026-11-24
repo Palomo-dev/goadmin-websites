@@ -257,6 +257,64 @@ igual(r.itemActivo(m3, '/mi-cuenta/perfil'), 'datos', 'Mis datos activo en /mi-c
 igual(r.iniciales('Ana Gómez'), 'AG', 'iniciales de nombre y apellido')
 igual(r.iniciales(null, 'ana@correo.com'), 'A', 'sin nombre: la del correo')
 
+// ─── Mi cuenta V2 y menú del avatar (Figma 3044:78726, aprobado 2026-11-24) ──────────────────
+igual(r.identidadCuenta({ first_name: 'Laura', last_name: 'Pérez' }, 'laura@correo.com'), { nombre: 'Laura Pérez', titulo: 'Laura Pérez', iniciales: 'LP', correo: 'laura@correo.com' }, 'avatar: nombre de la ficha e iniciales')
+igual(r.identidadCuenta({ first_name: '', last_name: '' }, 'laura@correo.com'), { nombre: null, titulo: 'laura@correo.com', iniciales: 'L', correo: 'laura@correo.com' }, 'sin nombre (entró con el código): el correo y su inicial')
+igual(r.identidadCuenta(null, null).titulo, 'Mi cuenta', 'sin ficha ni correo: «Mi cuenta»')
+igual(r.textoClienteDesde('2026-03-10T15:00:00Z', 'America/Bogota'), 'Cliente desde marzo de 2026', '«Cliente desde marzo de 2026»')
+igual(r.textoClienteDesde('2026-04-01T02:00:00Z', 'America/Bogota'), 'Cliente desde marzo de 2026', 'cliente desde: en la zona de la tienda, no en UTC')
+igual(r.textoClienteDesde(null), null, 'sin fecha no se inventa')
+igual(r.fechaCortaCuenta('2026-11-12T15:00:00Z', 'America/Bogota'), '12 nov', 'fecha corta «12 nov» sin punto')
+
+const fichaCompleta = { first_name: 'Laura', phone: '300 555 1234', customer_type: 'person', identification_type: 'cc', identification_number: '1020304050' }
+const pasosNueva = r.pasosCuenta({ verificado: true, ficha: { first_name: '', phone: null } })
+igual(pasosNueva.map((p) => p.hecho), [true, false, false], 'cuenta nueva: 1 de 3 (correo confirmado)')
+igual(r.avisoCompletarCuenta(pasosNueva), 'lista', 'cuenta nueva: «Completa tu cuenta»')
+igual(r.avisoCompletarCuenta(r.pasosCuenta({ verificado: true, ficha: { ...fichaCompleta, identification_number: '' } })), 'factura', 'solo falta la factura: la tarjeta «Faltan tus datos de factura»')
+igual(r.avisoCompletarCuenta(r.pasosCuenta({ verificado: true, ficha: fichaCompleta })), null, 'cuenta completa: sin aviso')
+igual(r.avisoCompletarCuenta(r.pasosCuenta({ verificado: true, ficha: { ...fichaCompleta, phone: '' } })), 'lista', 'sin celular: «Completa tu cuenta»')
+igual(r.pasosCuenta({ verificado: false, ficha: fichaCompleta })[0].hecho, false, 'correo sin confirmar: el paso queda pendiente')
+
+const grupos3 = r.gruposMenuCuenta(3)
+igual(grupos3.map((g) => g.titulo), ['Compras', 'Mi información'], 'tienda: grupos Compras y Mi información')
+igual(grupos3[0].items.map((i) => i.clave), ['pedidos', 'favoritos', 'cupones', 'facturas'], 'Compras: el orden del Figma')
+igual(grupos3[1].items.map((i) => i.clave), ['datos', 'direcciones', 'factura'], 'Mi información: Mis datos, Direcciones y Datos de factura')
+igual(grupos3[1].items[2].href, '/mi-cuenta/perfil#factura', 'Datos de factura: acceso propio a su sección')
+igual(r.gruposMenuCuenta(5).map((g) => g.titulo), ['Gimnasio', 'Mi información'], 'gimnasio: sus secciones y Mi información')
+igual(r.gruposMenuCuenta(0).map((g) => g.clave), ['informacion'], 'tipo desconocido: solo Mi información')
+for (const t of [0, 1, 2, 3, 4, 5, 6, 7]) {
+  const enGrupos = new Set(['inicio', ...r.gruposMenuCuenta(t).flatMap((g) => g.items.map((i) => i.clave))])
+  check(r.menuCuenta(t).every((i) => enGrupos.has(i.clave)), `tipo ${t}: los grupos no pierden ninguna sección del menú`)
+  check(r.itemsMenuAvatar(t).every((i) => r.menuCuenta(t).some((m) => m.clave === i.clave)), `tipo ${t}: el menú del avatar solo lleva secciones del negocio`)
+}
+igual(r.itemsMenuAvatar(3).map((i) => i.clave), ['pedidos', 'favoritos', 'datos', 'direcciones', 'cupones', 'facturas'], 'menú del avatar: el orden del Figma')
+check(r.vendeConPedidos(1) && r.vendeConPedidos(3) && !r.vendeConPedidos(2), '«Seguir un pedido» solo en tiendas y restaurantes')
+
+const cifrasV2 = { pedidos: 12, enCurso: 1, ultimoPedidoEn: '2026-11-12T15:00:00Z', favoritos: 6, cupones: 2, cuponVenceEnDias: 3, direcciones: 2, principal: 'Casa', facturas: 3 }
+const datosFila = { nombre: 'Laura Pérez', telefono: '300 555 1234', facturaCompleta: false, zona: 'America/Bogota' }
+igual(r.detalleAcceso('pedidos', cifrasV2, datosFila), { detalle: '1 en curso · el último, 12 nov', cifra: '12', aviso: null }, 'Mis pedidos: «1 en curso · el último, 12 nov»')
+igual(r.detalleAcceso('cupones', cifrasV2, datosFila).detalle, '1 vence en 3 días', 'Cupones: «1 vence en 3 días»')
+igual(r.detalleAcceso('direcciones', cifrasV2, datosFila).detalle, 'Casa es la principal', 'Direcciones: la principal')
+igual(r.detalleAcceso('datos', cifrasV2, datosFila).detalle, 'Laura Pérez · 300 555 1234', 'Mis datos: nombre y celular')
+igual(r.detalleAcceso('factura', cifrasV2, datosFila).aviso, 'Faltan datos', 'Datos de factura: «Faltan datos»')
+igual(r.detalleAcceso('factura', cifrasV2, { ...datosFila, facturaCompleta: true }).aviso, null, 'Datos de factura completos: sin aviso')
+const ceros = { pedidos: 0, enCurso: 0, ultimoPedidoEn: null, favoritos: 0, cupones: 0, cuponVenceEnDias: null, direcciones: 0, principal: null, facturas: 0 }
+for (const clave of ['pedidos', 'favoritos', 'cupones', 'facturas', 'direcciones']) {
+  const d = r.detalleAcceso(clave, ceros, { ...datosFila, nombre: null })
+  check(d.cifra === null && !!d.detalle && !/\b0\b/.test(d.detalle), `${clave} en cero: una invitación, no «0»`)
+}
+igual(r.detalleAcceso('datos', ceros, { ...datosFila, nombre: null }).detalle, 'Agrega tu nombre y celular', 'Mis datos sin nombre: «Agrega tu nombre y celular»')
+igual(r.detalleAcceso('reservas', { ...ceros, otras: { reservas: 4 } }, datosFila).cifra, '4', 'verticales: conservan su cifra')
+igual(r.detalleMosaico('pedidos', cifrasV2, datosFila).texto, '12 · 1 en curso', 'hoja del celular: «12 · 1 en curso»')
+igual(r.detalleMosaico('favoritos', cifrasV2, datosFila).texto, '6 productos', 'hoja del celular: «6 productos»')
+igual(r.detalleMosaico('datos', cifrasV2, datosFila), { texto: 'Faltan datos', aviso: true }, 'hoja del celular: Mis datos «Faltan datos»')
+igual(r.filasMenuCuenta(3, cifrasV2, datosFila)[0].filas[0].cifra, '12', 'filas listas para pintar: cifra de Mis pedidos')
+
+igual(r.enlacePoliticas([{ slug: 'contacto' }, { slug: 'terminos', page_type: 'legal' }, { slug: 'envios' }]), '/envios', 'políticas: envíos primero')
+igual(r.enlacePoliticas([{ slug: 'nosotros', children: [{ slug: 'politica-de-privacidad' }] }]), '/politica-de-privacidad', 'políticas: también en submenús')
+igual(r.enlacePoliticas([{ slug: 'contacto' }]), null, 'sin páginas legales: sin fila')
+igual(r.enlacePoliticas([{ slug: 'https://otro.com/terminos', is_external: true }]), null, 'enlaces externos no cuentan')
+
 // ─── Fuente de las rutas ──────────────────────────────────────────────────────────────────────
 const leer = (ruta) => readFileSync(join(ROOT, ruta), 'utf8')
 const sinComentarios = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -267,6 +325,7 @@ const rutasHost = [
   'app/api/auth/login/route.ts',
   'app/api/auth/register/route.ts',
   'app/api/cuenta/buscar-pedido/route.ts',
+  'app/api/cuenta/menu/route.ts',
   'app/api/customer/address/route.ts',
   'app/api/customer/profile/route.ts',
   'app/api/customer/password/route.ts',
@@ -395,6 +454,22 @@ check(!/buildSimpleTimeline/.test(detalle), 'detalle en la cuenta: sin la línea
 const layout = leer('app/mi-cuenta/layout.tsx')
 check(!/\p{Extended_Pictographic}/u.test(layout), 'layout de Mi cuenta sin emojis')
 check(/menuCuenta\(/.test(layout), 'layout de Mi cuenta: menú por tipo de negocio')
+
+// Mi cuenta V2: avatar, menú y pestañas
+const rutaMenu = sinComentarios(leer('app/api/cuenta/menu/route.ts'))
+check(/getCuentaCliente\(orgId\)/.test(rutaMenu) && /no-store/.test(rutaMenu), 'avatar: datos de la sesión y de la organización del host, sin caché compartida')
+const almacen = sinComentarios(leer('components/site/cuenta/avatar/datosAvatar.ts'))
+check(/if \(!user\) \{[\s\S]*?return[\s\S]*?\}[\s\S]*?cargarAvatar\(user\.id\)/.test(almacen), 'avatar: sin sesión no consulta nada (visitantes anónimos)')
+check(/sessionStorage/.test(almacen) && /VIGENCIA_AVATAR_MS/.test(almacen), 'avatar: lo leído se guarda por sesión unos minutos')
+check(/cifrasCuenta\(/.test(layout) && /ProveedorMenuCuenta/.test(layout), 'layout: cifras del menú lateral y pestañas del celular')
+check(/export const cifrasCuenta = cache\(/.test(cuenta), 'cifras: una vez por petición (layout e Inicio comparten)')
+check(/from\('invoice_sales'\)[\s\S]{0,80}\.eq\('organization_id', organizationId\)\.in\('sale_id', ventas/.test(cuenta), 'facturas: contadas desde las ventas de sus pedidos, por organización')
+for (const archivo of ['app/mi-cuenta/pedidos/page.tsx', 'app/mi-cuenta/perfil/page.tsx', 'app/mi-cuenta/direcciones/DireccionesClient.tsx']) {
+  check(/<PestanasCuenta/.test(leer(archivo)), `${archivo}: pestañas deslizables en el celular`)
+}
+const inicioV2 = leer('app/mi-cuenta/page.tsx')
+check(!/\p{Extended_Pictographic}/u.test(inicioV2) && !/\p{Extended_Pictographic}/u.test(leer('components/site/cuenta/MenuMiCuenta.tsx')), 'Mi cuenta V2 sin emojis')
+check(!/Agregar foto/.test(sinComentarios(inicioV2 + leer('app/mi-cuenta/perfil/page.tsx'))),'sin foto del cliente (no hay dónde guardarla)')
 
 for (const archivo of ['components/site/cuenta/FormularioAcceso.tsx', 'app/auth/AuthForm.tsx']) {
   const s = leer(archivo)

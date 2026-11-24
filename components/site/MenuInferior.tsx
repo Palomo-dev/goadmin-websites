@@ -27,6 +27,11 @@
  * especiales (para todas las tiendas: sin menú en checkout, carrito y pedido; en la ficha se oculta
  * o se apila mientras se ve la barra fija de compra), la burbuja del chat 12 px sobre el menú,
  * colores (`theme`) y efectos del activo y al tocar. Sin las claves nuevas se pinta lo de hoy.
+ *
+ * 2026-11-24 (Figma «16 Sitio web» 3054:80142, aprobado): con sesión, «Cuenta» lleva el avatar de
+ * 24 px (punto verde con pedido en curso, aro de 2 px del color activo en /mi-cuenta) y abre la hoja
+ * del menú del avatar; en «Acciones» dice «Ingresar» o «Mi cuenta». Misma fuente que la cabecera
+ * (`useAvatarCuenta`). Sin sesión, lo de hoy.
  */
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import Link from '@/components/site/Enlace'
@@ -36,7 +41,7 @@ import {
   Phone, Search, ShoppingBag, ShoppingBasket, ShoppingCart, Sparkles, Star, Store, Tag, Truck, User,
 } from 'lucide-react'
 import type { BotonMenu, ContadorMenu, DestinoBoton, DestinosTienda, EfectoActivo, IconoMenu, MenuInferior as Menu2, PaginaMenu } from '@/lib/website/menuInferior'
-import { botonesVisibles, contadorMenu, efectoActivoMenu, fichaMenu, idBotonAparte, MS_VELOCIDAD, temaMenu } from '@/lib/website/menuInferior'
+import { botonesVisibles, contadorMenu, efectoActivoMenu, estadoCuentaMenu, fichaMenu, idBotonAparte, MS_VELOCIDAD, temaMenu } from '@/lib/website/menuInferior'
 import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { empujeChatBarra } from '@/lib/website/v2/barraFija'
 import { CLASE_FONDO_ENCABEZADO, estiloBarraEncabezado, marcaFondoEncabezado, variablesEncabezado, useTemaMenuMovil, type HeaderVariantProps } from './header/HeaderShared'
@@ -52,6 +57,8 @@ import { abrirPanelFavoritos, useFavoritos } from '@/lib/favoritos/almacen'
 import { registrarEmpujeChat } from './barraFija/efectosBarraFija'
 import { useBarraFijaCelularVisible } from './menuInferior/estadoMenuInferior'
 import { alTocarMenu, useAltoMenu, useEsconderAlBajar, useMarcaDeslizante } from './menuInferior/efectosMenu'
+import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar'
+import { AvatarMenuInferior, useEtiquetaCuenta, useHojaCuentaMenu } from '@/components/site/cuenta/avatar/CuentaMenuInferior'
 
 const ICONO: Record<IconoMenu, typeof Home> = {
   home: Home, grid: LayoutGrid, search: Search, bag: ShoppingBag, cart: ShoppingCart, user: User, menu: Menu,
@@ -64,6 +71,17 @@ const ICONO: Record<IconoMenu, typeof Home> = {
 function sinFondo(e: EstiloGlifos): EstiloGlifos | null {
   const { bg: _bg, ...resto } = e
   return Object.keys(resto).length > 0 ? resto : null
+}
+
+/**
+ * Lado del avatar de «Cuenta» según el tamaño del ícono que reemplaza: 24 px el de siempre (h-5),
+ * más chico en los botones de «Acciones» (h-4) y más grande en los círculos destacados.
+ */
+function tamAvatar(clase: string | undefined): number {
+  if (clase?.includes('h-4')) return 18
+  if (clase?.includes('h-7')) return 32
+  if (clase?.includes('h-6')) return 28
+  return 24
 }
 
 /** Insignia (carrito y favoritos) de cada variante: la misma que pintaba el carrito. */
@@ -147,6 +165,11 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
   const unidades = useUnidadesCarrito(organization.subdomain || '', branchId)
   const temaMenuMovil = useTemaMenuMovil(primaryColor)
   const { favoritos } = useOpcionesTienda()
+  // «Cuenta» con sesión: la misma fuente que el avatar de la cabecera (sin consulta propia).
+  const avatarCuenta = useAvatarCuenta()
+  const etiquetaCuenta = useEtiquetaCuenta()
+  const whatsappSitio = (settings as { whatsapp_number?: unknown } | null | undefined)?.whatsapp_number
+  const hojaCuenta = useHojaCuentaMenu(primaryColor, typeof whatsappSitio === 'string' ? whatsappSitio : null)
   const corte = ((settings as { mobile_breakpoint?: number | null } | null | undefined)?.mobile_breakpoint ?? 768) - 0.02
   // La píldora flotante es navegación, como las pestañas: en todas las rutas. Nunca en checkout,
   // carrito ni pedido (F3, todas las tiendas).
@@ -203,7 +226,13 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
     else document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')?.click()
   }
   const href = (d: DestinoBoton) => (d.tipo === 'ruta' ? ruta(d.href) : d.tipo === 'externo' ? d.href : '')
-  const activo = (d: DestinoBoton) => d.tipo === 'ruta' && (d.href === '/' ? pathname === ruta('/') || pathname === '/' : pathname.startsWith(ruta(d.href)))
+  const cuentaDe = (b: BotonMenu) =>
+    estadoCuentaMenu(b, menu.variant, { sesion: avatarCuenta.sesion, enCurso: !!avatarCuenta.datos?.enCurso, enMiCuenta: pathname.startsWith(ruta('/mi-cuenta')) })
+  const activo = (d: DestinoBoton, b?: BotonMenu) => {
+    const cuenta = b ? cuentaDe(b) : null
+    if (cuenta?.avatar) return cuenta.activo
+    return d.tipo === 'ruta' && (d.href === '/' ? pathname === ruta('/') || pathname === '/' : pathname.startsWith(ruta(d.href)))
+  }
   // Apilado bajo la barra de compra, el menú va compacto: sin textos (F2).
   const conTexto = menu.style.labels !== 'never' && !apilado
   const efecto = efectoActivoMenu(menu)
@@ -221,6 +250,13 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
    * activo con su nombre): el ícono no suma otro fondo ni toma los colores activo/inactivo.
    */
   const iconoDe = (b: BotonMenu, o: { activo?: boolean; sobreFondo?: boolean } = {}) => {
+    if (cuentaDe(b).avatar) {
+      // El avatar en lugar del ícono; activo, con su aro (blanco sobre la píldora del activo).
+      const aro = o.activo ? (o.sobreFondo ? 'currentColor' : 'var(--mi-activo, currentColor)') : null
+      return function IconoAvatarCuenta({ className }: { className?: string }) {
+        return <AvatarMenuInferior primaryColor={primaryColor} tam={tamAvatar(className)} aro={aro} />
+      }
+    }
     const esBuscar = b.icon === 'search'
     const base = esBuscar ? dibujoLupa.base : ICONO[b.icon]
     const estilo: EstiloGlifos | null = estiloIconos && o.sobreFondo ? sinFondo(estiloIconos) : estiloIconos
@@ -268,12 +304,21 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
     <>
       {categorias && <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setCategorias(false)} />}
       {buscar && <ProductSearch primaryColor={primaryColor} icon={IconoBuscar} abierto sinDisparador pantallaCompleta alCerrar={() => setBuscar(false)} />}
+      {hojaCuenta.hoja}
     </>
   )
 
   const enlace = (b: BotonMenu, d: DestinoBoton, clase: string, estilo: CSSProperties | undefined, contenido: ReactNode, aria?: string, actual?: boolean) => {
-    const etiqueta = aria ?? (conTexto ? undefined : b.label || undefined)
+    const etiqueta = aria ?? (conTexto ? undefined : cuentaDe(b).texto || undefined)
     const marcas = { 'data-mi-boton': '', ...(actual ? { 'aria-current': 'page' as const } : {}) }
+    // «Cuenta» con sesión: abre la hoja del menú del avatar en vez de ir a /auth.
+    if (cuentaDe(b).avatar) {
+      return (
+        <button type="button" onClick={(e) => hojaCuenta.abrir(e.currentTarget)} className={clase} style={estilo} aria-label={etiquetaCuenta} aria-haspopup="dialog" aria-expanded={hojaCuenta.abierta} {...marcas}>
+          {contenido}
+        </button>
+      )
+    }
     if (d.tipo === 'evento') return <button type="button" onClick={() => alPulsar(d)} className={clase} style={estilo} aria-label={etiqueta ?? b.label} data-mi-boton="">{contenido}</button>
     if (d.tipo === 'externo') {
       const nueva = /^https?:\/\//i.test(d.href)
@@ -351,7 +396,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
                     ) : (
                       <Icono className="h-4 w-4 flex-shrink-0" aria-hidden="true" data-mi-icono="" />
                     )}
-                    {conTexto && <span className="truncate">{b.label}</span>}
+                    {conTexto && <span className="truncate">{cuentaDe(b).texto}</span>}
                   </>, aria)}
                 </li>
               )
@@ -382,7 +427,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
       : { backgroundColor: vidrio ? 'color-mix(in srgb, var(--background-color, #ffffff) 72%, transparent)' : 'var(--background-color, #ffffff)' }
     const botonPildora = (b: BotonMenu, d: DestinoBoton, insignia: ReactNode, aria: string | undefined) => {
       const centro = b.id === menu.style.centerId
-      const esActivo = !centro && activo(d)
+      const esActivo = !centro && activo(d, b)
       const soloActivo = efecto === 'label'
       const Icono = iconoDe(b, { activo: esActivo, sobreFondo: centro || (soloActivo && esActivo) })
       const verTexto = soloActivo ? esActivo : conTexto
@@ -492,7 +537,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
           {deslizante(colorActivo ?? primaryColor)}
           {botones.map(({ boton: b, destino: d }) => conInsignia(b, INSIGNIA_PESTANAS, (insignia, aria) => {
             const centro = b.id === menu.style.centerId
-            const esActivo = activo(d)
+            const esActivo = activo(d, b)
             const Icono = iconoDe(b, { activo: esActivo, sobreFondo: centro || (efecto === 'label' && esActivo) })
             const color = esActivo && colorActivo ? colorActivo : colorInactivo
             const soloActivo = efecto === 'label'

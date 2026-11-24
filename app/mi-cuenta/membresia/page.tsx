@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerMembership } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { MembershipQR } from '@/components/site/sections/gym/MembershipQR'
 import { FreezeRequestForm } from '@/components/site/sections/gym/FreezeRequestForm'
 import { Metadata } from 'next'
@@ -55,6 +56,7 @@ export default async function MembresiaPage() {
         <h1 className="text-2xl font-bold">Mi Membresía</h1>
         <p className="text-gray-500">Estado de tu plan activo</p>
       </div>
+      <PestanasCuenta />
 
       {!membership ? (
         <div className="bg-white rounded-xl border p-8 text-center">

@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerReservations } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
 
@@ -47,6 +48,7 @@ export default async function ReservasPage() {
           Nueva reserva
         </Link>
       </div>
+      <PestanasCuenta />
 
       {reservations.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center">

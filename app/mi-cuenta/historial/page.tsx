@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerParkingSessions } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,7 @@ export default async function HistorialPage() {
         <h1 className="text-2xl font-bold">Historial de Sesiones</h1>
         <p className="text-gray-500">Registro de entradas y salidas del parqueadero</p>
       </div>
+      <PestanasCuenta />
 
       {sessions.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center">

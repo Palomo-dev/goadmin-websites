@@ -402,7 +402,7 @@ export function textoCobertura(usaZonas: boolean, c: CoberturaCotizada | null, l
 export type ClaveMenuCuenta =
   | 'inicio' | 'pedidos' | 'direcciones' | 'favoritos' | 'cupones' | 'facturas' | 'datos'
   | 'reservas' | 'citas' | 'cotizaciones' | 'membresia' | 'clases' | 'checkins' | 'tickets'
-  | 'pases' | 'vehiculos' | 'historial'
+  | 'pases' | 'vehiculos' | 'historial' | 'factura'
 
 export interface ItemMenuCuenta {
   clave: ClaveMenuCuenta
@@ -428,6 +428,9 @@ const M: Record<ClaveMenuCuenta, ItemMenuCuenta> = {
   pases: { clave: 'pases', texto: 'Mis pases', href: '/mi-cuenta/pases' },
   vehiculos: { clave: 'vehiculos', texto: 'Vehículos', href: '/mi-cuenta/vehiculos' },
   historial: { clave: 'historial', texto: 'Historial', href: '/mi-cuenta/historial' },
+  // Acceso propio (decisión del dueño, 2026-11-24): la sección de factura de Mis datos. No va en
+  // `menuCuenta` (no es una página aparte), solo en los grupos de Mi cuenta V2.
+  factura: { clave: 'factura', texto: 'Datos de factura', href: '/mi-cuenta/perfil#factura' },
 }
 
 /**
@@ -488,4 +491,330 @@ export function destinoInterno(v: unknown, porDefecto = '/mi-cuenta'): string {
   const r = v.trim()
   if (!r.startsWith('/') || r.startsWith('//') || r.startsWith('/\\') || r.includes('://')) return porDefecto
   return r.slice(0, 300)
+}
+
+// ─── Mi cuenta V2 y menú del avatar (Figma «16 Sitio web» 3044:78726, aprobado 2026-11-24) ─────
+
+/** Nombre completo de la ficha `customers` de la organización; `null` si no tiene. */
+export function nombreDeFicha(ficha: { first_name?: string | null; last_name?: string | null } | null | undefined): string | null {
+  const n = [ficha?.first_name, ficha?.last_name].map((x) => (x || '').trim()).filter(Boolean).join(' ')
+  return n || null
+}
+
+export interface IdentidadCuenta {
+  /** Nombre de la ficha de la organización (no de la sesión); null si no tiene. */
+  nombre: string | null
+  /** Lo que se pinta como título: el nombre o, sin nombre, el correo. */
+  titulo: string
+  /** Iniciales del avatar; sin nombre, la inicial del correo. */
+  iniciales: string
+  correo: string | null
+}
+
+/**
+ * Quién es (cabecera de Mi cuenta y menú del avatar). Quien entra solo con el código deja la ficha
+ * sin nombre: entonces el título es el correo, el avatar lleva su inicial y aparece «Agrega tu nombre».
+ */
+export function identidadCuenta(ficha: { first_name?: string | null; last_name?: string | null } | null | undefined, correo: string | null | undefined): IdentidadCuenta {
+  const nombre = nombreDeFicha(ficha)
+  const c = (correo || '').trim() || null
+  return { nombre, titulo: nombre ?? c ?? 'Mi cuenta', iniciales: iniciales(nombre, c), correo: c }
+}
+
+/** «Cliente desde marzo de 2026» (fecha de la ficha, en la zona de la tienda). */
+export function textoClienteDesde(creadoEn: string | null | undefined, zona?: string | null): string | null {
+  const t = creadoEn ? Date.parse(creadoEn) : NaN
+  if (!Number.isFinite(t)) return null
+  try {
+    const f = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: zona || 'America/Bogota' }).format(new Date(t))
+    return `Cliente desde ${f}`
+  } catch {
+    return null
+  }
+}
+
+/** «12 nov» (día y mes corto, sin punto), en la zona de la tienda. */
+export function fechaCortaCuenta(v: string | null | undefined, zona?: string | null): string | null {
+  const t = v ? Date.parse(v) : NaN
+  if (!Number.isFinite(t)) return null
+  try {
+    const partes = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', timeZone: zona || 'America/Bogota' }).formatToParts(new Date(t))
+    const dia = partes.find((p) => p.type === 'day')?.value
+    const mes = partes.find((p) => p.type === 'month')?.value.replace(/\./g, '').trim()
+    return dia && mes ? `${dia} ${mes}` : null
+  } catch {
+    return null
+  }
+}
+
+// «Completa tu cuenta 1 de 3»: calculado, sin columnas.
+
+export type ClavePasoCuenta = 'correo' | 'nombre' | 'factura'
+
+export interface PasoCuenta {
+  clave: ClavePasoCuenta
+  texto: string
+  hecho: boolean
+  /** A dónde lleva la fila (el correo confirmado no lleva a ningún lado). */
+  href: string | null
+}
+
+/** Los tres pasos de una cuenta completa: correo confirmado, nombre y celular, datos de factura. */
+export function pasosCuenta(e: {
+  verificado: boolean
+  ficha: {
+    first_name?: string | null
+    phone?: string | null
+    customer_type?: string | null
+    identification_type?: string | null
+    identification_number?: string | null
+    company_name?: string | null
+  } | null | undefined
+}): PasoCuenta[] {
+  const tieneNombre = !!(e.ficha?.first_name || '').trim()
+  const tieneCelular = digitosTelefono(e.ficha?.phone).length >= 7
+  return [
+    { clave: 'correo', texto: 'Correo confirmado', hecho: e.verificado, href: null },
+    { clave: 'nombre', texto: 'Tu nombre y celular', hecho: tieneNombre && tieneCelular, href: '/mi-cuenta/perfil' },
+    { clave: 'factura', texto: 'Datos para la factura', hecho: facturaCompleta(e.ficha), href: '/mi-cuenta/perfil#factura' },
+  ]
+}
+
+/**
+ * Qué aviso lleva Inicio: la lista «Completa tu cuenta» (pantalla 2) si falta el correo o el
+ * nombre; solo la tarjeta «Faltan tus datos de factura» (pantalla 1) si es lo único que falta;
+ * nada con la cuenta completa.
+ */
+export function avisoCompletarCuenta(pasos: readonly PasoCuenta[]): 'lista' | 'factura' | null {
+  const faltan = pasos.filter((p) => !p.hecho).map((p) => p.clave)
+  if (faltan.length === 0) return null
+  if (faltan.length === 1 && faltan[0] === 'factura') return 'factura'
+  return 'lista'
+}
+
+// Grupos del menú (Compras · Mi información · Ayuda).
+
+export interface GrupoMenuCuenta {
+  clave: 'actividad' | 'informacion'
+  titulo: string
+  items: ItemMenuCuenta[]
+}
+
+const TITULO_ACTIVIDAD: Record<number, string> = { 1: 'Compras', 2: 'Reservas', 3: 'Compras', 4: 'Servicios', 5: 'Gimnasio', 6: 'Viajes', 7: 'Parqueadero' }
+const CLAVES_INFORMACION: readonly ClaveMenuCuenta[] = ['datos', 'direcciones', 'factura']
+
+/**
+ * Los accesos de Mi cuenta en grupos: lo del negocio (Compras: Mis pedidos, Favoritos, Cupones,
+ * Facturas; o reservas, citas, membresía, pases… según el tipo) y Mi información (Mis datos,
+ * Direcciones si el negocio las usa, y Datos de factura como acceso propio). Ayuda (WhatsApp y
+ * políticas) la arma la página con lo que la tienda tenga. Nada se pierde respecto a `menuCuenta`.
+ */
+export function gruposMenuCuenta(tipoNegocio: number | null | undefined): GrupoMenuCuenta[] {
+  const items = menuCuenta(tipoNegocio).filter((i) => i.clave !== 'inicio')
+  // Tiendas: el orden del Figma (Mis pedidos, Favoritos, Cupones, Facturas).
+  const orden: ClaveMenuCuenta[] = ['pedidos', 'reservas', 'favoritos', 'cupones', 'facturas']
+  const posicion = (c: ClaveMenuCuenta) => {
+    const i = orden.indexOf(c)
+    return i < 0 ? 99 : i
+  }
+  const actividad = items.filter((i) => !CLAVES_INFORMACION.includes(i.clave))
+  if (vendeConPedidos(tipoNegocio)) actividad.sort((a, b) => posicion(a.clave) - posicion(b.clave))
+  const informacion = CLAVES_INFORMACION.filter((c) => c === 'factura' || items.some((i) => i.clave === c)).map((c) => M[c])
+  const grupos: GrupoMenuCuenta[] = []
+  if (actividad.length > 0) grupos.push({ clave: 'actividad', titulo: TITULO_ACTIVIDAD[tipoNegocio ?? 0] ?? 'Tu actividad', items: actividad })
+  grupos.push({ clave: 'informacion', titulo: 'Mi información', items: informacion })
+  return grupos
+}
+
+/** ¿El negocio vende con pedidos web? (tiendas y restaurantes: «Seguir un pedido», pedido en curso). */
+export function vendeConPedidos(tipoNegocio: number | null | undefined): boolean {
+  return tipoNegocio === 1 || tipoNegocio === 3
+}
+
+/**
+ * Accesos del menú del avatar (pantallas 5 y 6): en tiendas, Mis pedidos, Favoritos, Mis datos,
+ * Direcciones, Cupones y Facturas; en las demás verticales, sus secciones y Mis datos.
+ */
+export function itemsMenuAvatar(tipoNegocio: number | null | undefined): ItemMenuCuenta[] {
+  const items = menuCuenta(tipoNegocio).filter((i) => i.clave !== 'inicio')
+  if (vendeConPedidos(tipoNegocio)) {
+    const orden: ClaveMenuCuenta[] = ['pedidos', 'favoritos', 'datos', 'direcciones', 'cupones', 'facturas']
+    return orden.map((c) => items.find((i) => i.clave === c)).filter((i): i is ItemMenuCuenta => !!i)
+  }
+  return items
+}
+
+/** Cifras de la cuenta (todas calculadas, sin columnas nuevas). */
+export interface CifrasCuenta {
+  pedidos: number
+  enCurso: number
+  ultimoPedidoEn: string | null
+  favoritos: number
+  cupones: number
+  cuponVenceEnDias: number | null
+  direcciones: number
+  /** Nombre de la dirección principal («Casa»). */
+  principal: string | null
+  /** Facturas válidas de las ventas de sus pedidos. */
+  facturas: number
+  /** Cifras de las demás verticales (reservas, citas, pases…), si las hay. */
+  otras?: Partial<Record<ClaveMenuCuenta, number>>
+}
+
+export interface DatosFilaCuenta {
+  nombre: string | null
+  telefono: string | null
+  facturaCompleta: boolean
+  zona?: string | null
+}
+
+export interface DetalleAcceso {
+  /** Línea pequeña debajo del nombre: una cifra que dice algo o, en cero, una invitación. */
+  detalle: string
+  /** Número a la derecha (null en cero: en vez de «0», la invitación). */
+  cifra: string | null
+  /** Insignia «Faltan datos». */
+  aviso: string | null
+}
+
+const DETALLE_VERTICAL: Partial<Record<ClaveMenuCuenta, string>> = {
+  reservas: 'Tus reservas y su estado',
+  citas: 'Tus citas próximas y pasadas',
+  cotizaciones: 'Las que te enviamos',
+  membresia: 'Tu plan y su vigencia',
+  clases: 'Reserva y revisa tus clases',
+  checkins: 'Tus visitas registradas',
+  tickets: 'Tus tiquetes',
+  pases: 'Tus pases',
+  vehiculos: 'Los que registraste',
+  historial: 'Tus sesiones anteriores',
+}
+
+function plural(n: number, uno: string, varios: string): string {
+  return `${n} ${n === 1 ? uno : varios}`
+}
+
+function positivo(v: number | null | undefined): number {
+  return typeof v === 'number' && v > 0 ? v : 0
+}
+
+/** Fila de Mi cuenta (celular y menú lateral): «1 en curso · el último, 12 nov», «Faltan datos»… */
+export function detalleAcceso(clave: ClaveMenuCuenta, c: Partial<CifrasCuenta> | null | undefined, d: DatosFilaCuenta): DetalleAcceso {
+  const cifra = (v: number) => (v > 0 ? String(v) : null)
+  if (clave === 'pedidos') {
+    const total = positivo(c?.pedidos)
+    if (!total) return { detalle: 'Aquí verás tus compras', cifra: null, aviso: null }
+    const partes: string[] = []
+    const enCurso = positivo(c?.enCurso)
+    if (enCurso) partes.push(`${enCurso} en curso`)
+    const ultimo = fechaCortaCuenta(c?.ultimoPedidoEn, d.zona)
+    if (ultimo) partes.push(`el último, ${ultimo}`)
+    return { detalle: partes.join(' · ') || plural(total, 'pedido', 'pedidos'), cifra: cifra(total), aviso: null }
+  }
+  if (clave === 'favoritos') {
+    const total = positivo(c?.favoritos)
+    return total
+      ? { detalle: 'Lo que guardaste para después', cifra: cifra(total), aviso: null }
+      : { detalle: 'Toca el corazón para guardar productos', cifra: null, aviso: null }
+  }
+  if (clave === 'cupones') {
+    const total = positivo(c?.cupones)
+    if (!total) return { detalle: 'Sin cupones por ahora', cifra: null, aviso: null }
+    const vence = typeof c?.cuponVenceEnDias === 'number' ? c.cuponVenceEnDias : null
+    const texto = vence === null ? plural(total, 'disponible', 'disponibles') : vence === 0 ? '1 vence hoy' : `1 vence en ${plural(vence, 'día', 'días')}`
+    return { detalle: texto, cifra: cifra(total), aviso: null }
+  }
+  if (clave === 'facturas') {
+    const total = positivo(c?.facturas)
+    return total
+      ? { detalle: 'De tus compras entregadas', cifra: cifra(total), aviso: null }
+      : { detalle: 'Aparecen cuando compras', cifra: null, aviso: null }
+  }
+  if (clave === 'datos') {
+    if (!d.nombre) return { detalle: 'Agrega tu nombre y celular', cifra: null, aviso: null }
+    const partes = [d.nombre, d.telefono].map((x) => (x || '').trim()).filter(Boolean)
+    return { detalle: partes.join(' · '), cifra: null, aviso: null }
+  }
+  if (clave === 'direcciones') {
+    const total = positivo(c?.direcciones)
+    if (!total) return { detalle: 'Agrega una para pagar más rápido', cifra: null, aviso: null }
+    return { detalle: c?.principal ? `${c.principal} es la principal` : plural(total, 'guardada', 'guardadas'), cifra: cifra(total), aviso: null }
+  }
+  if (clave === 'factura') return { detalle: 'Para tu factura electrónica', cifra: null, aviso: d.facturaCompleta ? null : 'Faltan datos' }
+  return { detalle: DETALLE_VERTICAL[clave] ?? '', cifra: cifra(positivo(c?.otras?.[clave])), aviso: null }
+}
+
+/** Línea corta de los mosaicos de la hoja del celular (pantalla 6): «12 · 1 en curso», «6 productos»… */
+export function detalleMosaico(clave: ClaveMenuCuenta, c: Partial<CifrasCuenta> | null | undefined, d: Pick<DatosFilaCuenta, 'facturaCompleta'>): { texto: string; aviso: boolean } {
+  if (clave === 'pedidos') {
+    const total = positivo(c?.pedidos)
+    const enCurso = positivo(c?.enCurso)
+    return { texto: !total ? 'Aún no hay' : enCurso ? `${total} · ${enCurso} en curso` : String(total), aviso: false }
+  }
+  if (clave === 'favoritos') return { texto: positivo(c?.favoritos) ? textoProductos(positivo(c?.favoritos)) : 'Guarda lo que te gusta', aviso: false }
+  if (clave === 'datos') return d.facturaCompleta ? { texto: 'Nombre y celular', aviso: false } : { texto: 'Faltan datos', aviso: true }
+  if (clave === 'direcciones') return { texto: positivo(c?.direcciones) ? plural(positivo(c?.direcciones), 'guardada', 'guardadas') : 'Agrega una', aviso: false }
+  if (clave === 'cupones') return { texto: positivo(c?.cupones) ? plural(positivo(c?.cupones), 'disponible', 'disponibles') : 'Sin cupones', aviso: false }
+  if (clave === 'facturas') return { texto: positivo(c?.facturas) ? String(positivo(c?.facturas)) : 'Aún no hay', aviso: false }
+  const v = positivo(c?.otras?.[clave])
+  return { texto: v ? String(v) : DETALLE_VERTICAL[clave] ?? '', aviso: false }
+}
+
+/** Páginas legales en orden de preferencia para «Políticas de la tienda» (envíos y devoluciones primero). */
+const PREFERENCIA_POLITICAS = ['envios', 'politica-de-envios', 'politica-envios', 'cambios-y-devoluciones', 'devoluciones', 'terminos', 'terminos-y-condiciones']
+const ES_LEGAL = /^(terminos|privacidad|tratamiento-de-datos|envios|cambios-y-devoluciones|devoluciones|cookies|politica-)/
+
+export interface PaginaNavCuenta {
+  slug?: string | null
+  page_type?: string | null
+  is_external?: boolean | null
+  children?: PaginaNavCuenta[] | null
+}
+
+/**
+ * Enlace a las políticas de la tienda (Ayuda): la primera página legal del pie. Sin páginas
+ * legales, null y la fila no se pinta.
+ */
+export function enlacePoliticas(paginas: readonly PaginaNavCuenta[] | null | undefined): string | null {
+  const todas: PaginaNavCuenta[] = []
+  const recorrer = (lista: readonly PaginaNavCuenta[] | null | undefined) => {
+    for (const p of lista ?? []) {
+      todas.push(p)
+      recorrer(p.children)
+    }
+  }
+  recorrer(paginas)
+  const slugDe = (p: PaginaNavCuenta) => (p.slug || '').replace(/^\/+/, '').trim()
+  const legales = todas.filter((p) => {
+    const slug = slugDe(p)
+    return !p.is_external && !!slug && !slug.includes('://') && (p.page_type === 'legal' || p.page_type === 'policy' || ES_LEGAL.test(slug))
+  })
+  if (legales.length === 0) return null
+  const posicion = (p: PaginaNavCuenta) => {
+    const i = PREFERENCIA_POLITICAS.indexOf(slugDe(p))
+    return i < 0 ? 99 : i
+  }
+  legales.sort((a, b) => posicion(a) - posicion(b))
+  return `/${slugDe(legales[0])}`
+}
+
+export interface FilaMenuCuenta extends DetalleAcceso {
+  clave: ClaveMenuCuenta
+  texto: string
+  href: string
+}
+
+export interface GrupoFilasCuenta {
+  clave: GrupoMenuCuenta['clave']
+  titulo: string
+  filas: FilaMenuCuenta[]
+}
+
+/** Grupos con su detalle, cifra y aviso, listos para pintar (Inicio, celular y menú lateral). */
+export function filasMenuCuenta(tipoNegocio: number | null | undefined, c: Partial<CifrasCuenta> | null | undefined, d: DatosFilaCuenta): GrupoFilasCuenta[] {
+  return gruposMenuCuenta(tipoNegocio).map((g) => ({
+    clave: g.clave,
+    titulo: g.titulo,
+    filas: g.items.map((it) => ({ clave: it.clave, texto: it.texto, href: it.href, ...detalleAcceso(it.clave, c, d) })),
+  }))
 }

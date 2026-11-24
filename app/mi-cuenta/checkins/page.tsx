@@ -2,6 +2,7 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerCheckins } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,7 @@ export default async function CheckinsPage() {
         <h1 className="text-2xl font-bold">Mis Check-ins</h1>
         <p className="text-gray-500">Historial de accesos al gimnasio</p>
       </div>
+      <PestanasCuenta />
 
       {checkins.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center">

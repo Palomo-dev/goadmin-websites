@@ -48,7 +48,7 @@ import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/websit
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, textoCuentaConSesion, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
 import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, formaSimpleIcono, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
-import { EnlaceAccesoMenu, EnlaceCuenta } from '@/components/site/cuenta';
+import { AvatarCabecera, EnlaceAccesoMenu, EnlaceCuenta } from '@/components/site/cuenta';
 import { ListaMonedas } from '../CurrencySelector';
 
 // ============================================================
@@ -707,7 +707,6 @@ export function HeaderActions({
   };
   const CartIconComp = iconoDe('cart', ShoppingBag);
   const AuthIconComp = iconoDe('account', User);
-  const AuthLoggedInIconComp = iconoCabecera(getLucideIcon(resolverIconoEncabezado('account', settings).nombre, UserCircle), 'cuenta', resolverIconoEncabezado('account', settings).nombre, settings);
   const CurrencyIconComp = iconoDe('currency', Globe);
   const SearchIconComp = iconoDe('search', Search);
   const HeartComp = iconoCabecera(Heart, 'favoritos', 'heart', settings);
@@ -727,6 +726,8 @@ export function HeaderActions({
     opIconos.configurado ? presentacionIcono(opIconos, textoDe(clave, codigo), isMobile, estiloIconosHeredado(ajustesCabecera), clave) : null;
   // Iniciar sesión (Figma 2834:68670): con «Página» (sin valor) el ícono sigue siendo el enlace.
   const modoCuenta = opCuenta.modo;
+  // «Ayuda por WhatsApp» del menú del avatar: el número del sitio (sin número no sale la fila).
+  const whatsappSitio = typeof settings?.whatsapp_number === 'string' ? settings.whatsapp_number : null;
   const presCuenta = presentar('cuenta');
   const presFavoritos = presentar('favoritos');
   /** Clase del enlace en los estilos nuevos (sin el `p-2`) con el color de la barra. */
@@ -864,12 +865,16 @@ export function HeaderActions({
     ) : null,
     auth: (!isMobile || mostrarCuentaMovil) && showHeaderAuth && !hideAuth ? (
       presCuenta && estiloPropio(presCuenta.estilo) ? (
-        <EnlaceCuenta key="auth" modo={modoCuenta} href={isLoggedIn ? '/mi-cuenta' : '/auth'} className={claseEnlaceNuevo(presCuenta.estilo)} title={isLoggedIn ? 'Mi Cuenta' : undefined} ariaLabel={presCuenta.texto ? undefined : 'Mi cuenta'}>
-          {iconoNuevo(isLoggedIn ? AuthLoggedInIconComp : AuthIconComp, presCuenta)}
+        <EnlaceCuenta key="auth" modo={modoCuenta} sesion={isLoggedIn} primaryColor={primaryColor} whatsapp={whatsappSitio} href={isLoggedIn ? '/mi-cuenta' : '/auth'} className={claseEnlaceNuevo(presCuenta.estilo)} title={isLoggedIn ? 'Mi Cuenta' : undefined} ariaLabel={presCuenta.texto ? undefined : 'Mi cuenta'}>
+          {isLoggedIn ? (
+            // Con sesión el avatar reemplaza solo el glifo; el texto «Hola, …» se conserva.
+            <AccionCabecera estilo={presCuenta.estilo} texto={presCuenta.texto} primaryColor={primaryColor} icono={<AvatarCabecera primaryColor={primaryColor} tam={presCuenta.estilo === 'texto' ? 24 : 28} />} />
+          ) : iconoNuevo(AuthIconComp, presCuenta)}
         </EnlaceCuenta>
       ) : isLoggedIn ? (
-        <EnlaceCuenta key="auth" modo={modoCuenta} href="/mi-cuenta" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
-          {iconoCuenta(AuthLoggedInIconComp, true)}
+        // Con sesión, solo el avatar de 32 px (ya es un círculo: sin círculo ni caja alrededor).
+        <EnlaceCuenta key="auth" modo={modoCuenta} sesion primaryColor={primaryColor} whatsapp={whatsappSitio} href="/mi-cuenta" className="p-1 rounded-full hover:bg-[var(--header-hover)] transition-colors" title="Mi Cuenta">
+          <AvatarCabecera primaryColor={primaryColor} />
         </EnlaceCuenta>
       ) : (
         <EnlaceCuenta key="auth" modo={modoCuenta} href="/auth" className="p-2 rounded-full hover:bg-[var(--header-hover)] transition-colors">

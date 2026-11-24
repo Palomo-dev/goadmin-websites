@@ -38,6 +38,8 @@ import {
   HeaderCTAMovil,
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
+import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar';
+import { AvatarMenuInferior, useEtiquetaCuenta, useHojaCuentaMenu } from '@/components/site/cuenta/avatar/CuentaMenuInferior';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { leerMenuInferior } from '@/lib/website/menuInferior';
 import { FueraDelEncabezado } from '../CapaFijaEncabezado';
@@ -177,6 +179,12 @@ export function BarraPestanas({
   const organizationId = organization.id;
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const unidadesCarrito = useUnidadesCarrito(organization.subdomain || '', branchId);
+  // «Cuenta» con sesión (Figma «16 Sitio web» 3054:80142): el avatar y la hoja del menú del avatar,
+  // con la misma fuente que la cabecera (sin consulta propia). Sin sesión, el enlace a /auth de hoy.
+  const { sesion } = useAvatarCuenta();
+  const etiquetaCuenta = useEtiquetaCuenta();
+  const whatsappSitio = (settings as { whatsapp_number?: unknown } | null | undefined)?.whatsapp_number;
+  const hojaCuenta = useHojaCuentaMenu(primaryColor, typeof whatsappSitio === 'string' ? whatsappSitio : null);
 
   // Fase 12B: Iconos personalizables para la barra inferior. Bolsa/carrito y relleno
   // siguen el mismo ajuste del encabezado (header_cart_glyph, header_icons_weight).
@@ -250,9 +258,19 @@ export function BarraPestanas({
             label="Carrito"
             ariaLabel={unidadesCarrito > 0 ? `Carrito, ${unidadesCarrito}` : 'Carrito'}
           />
-          <TabButton href={ruta('/auth')} icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
+          {sesion ? (
+            <button type="button" onClick={(e) => hojaCuenta.abrir(e.currentTarget)} className="flex items-center justify-center" aria-label={etiquetaCuenta} aria-haspopup="dialog" aria-expanded={hojaCuenta.abierta}>
+              <span className="flex flex-col items-center justify-center gap-0.5 h-full text-[var(--hdr-mobile-icon)] hover:opacity-80 transition-opacity">
+                <AvatarMenuInferior primaryColor={primaryColor} />
+                <span className="text-[10px] font-medium">Cuenta</span>
+              </span>
+            </button>
+          ) : (
+            <TabButton href={ruta('/auth')} icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
+          )}
         </div>
       </nav>
+      {hojaCuenta.hoja}
 
       {/* Modal de categorías */}
       {showCategories && (

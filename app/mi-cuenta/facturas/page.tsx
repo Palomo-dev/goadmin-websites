@@ -2,6 +2,9 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerInvoices } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
+import { EstadoVacioCuenta } from '@/components/site/cuenta/EstadoVacioCuenta'
+import { FileText } from 'lucide-react'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
 
@@ -48,12 +51,14 @@ export default async function FacturasPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mis Facturas</h1>
         <p className="text-gray-500 dark:text-gray-400">Consulta y paga tus facturas pendientes</p>
       </div>
+      <PestanasCuenta />
 
       {invoices.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-8 text-center">
-          <p className="text-4xl mb-3">📄</p>
-          <p className="text-gray-500 dark:text-gray-400">No tienes facturas registradas</p>
-        </div>
+        <EstadoVacioCuenta
+          icono={FileText}
+          titulo="Aún no tienes facturas"
+          texto="Aparecen cuando la tienda factura una de tus compras."
+        />
       ) : (
         <>
           {/* Pendientes */}

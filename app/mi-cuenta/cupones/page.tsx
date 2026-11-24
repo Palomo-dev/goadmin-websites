@@ -2,6 +2,9 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { getAuthCustomer } from '@/lib/get-auth-customer'
 import { getCustomerCoupons } from '@/lib/queries/customer-portal'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
+import { PestanasCuenta } from '@/components/site/cuenta/PestanasCuenta'
+import { EstadoVacioCuenta } from '@/components/site/cuenta/EstadoVacioCuenta'
+import { Ticket } from 'lucide-react'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -26,13 +29,14 @@ export default async function CuponesPage() {
         <h1 className="text-2xl font-bold">Mis Cupones</h1>
         <p className="text-gray-500">Cupones disponibles y utilizados</p>
       </div>
+      <PestanasCuenta />
 
       {coupons.length === 0 ? (
-        <div className="bg-white rounded-xl border p-8 text-center">
-          <p className="text-4xl mb-3">🎟️</p>
-          <h3 className="font-semibold text-lg mb-1">No tienes cupones</h3>
-          <p className="text-gray-500">Tus cupones disponibles aparecerán aquí</p>
-        </div>
+        <EstadoVacioCuenta
+          icono={Ticket}
+          titulo="No tienes cupones por ahora"
+          texto="Cuando la tienda te regale uno, aparecerá aquí con su fecha de vencimiento."
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {coupons.map((c: any) => {
