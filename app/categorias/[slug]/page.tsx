@@ -10,6 +10,9 @@ import { Metadata } from 'next'
 import { TAMANO_PAGINA_CATEGORIA } from '@/lib/products/paginacionCategoria'
 import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
 import { porPaginaDeCampo } from '@/lib/website/v2/paginacionCarrusel'
+import { navegacionCategoria } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,6 +112,14 @@ export default async function CategoriaSlugPage({
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} metaPixelId={metaPixelId} googleAdsConfig={googleAdsConfig} frozenReason={frozenReason} branchId={branchId} menuCategories={ctx.menuCategories}>
       {/* F9.5 — JSON-LD ItemList */}
       <JsonLd data={itemListJsonLd} />
+      {/* «← Volver a …» del celular (Figma 5C2): la categoría padre o el inicio. */}
+      <BarraVolverMovil
+        padre={navegacionCategoria({ categoria: category.name, padre: parentCategory }).padre}
+        etiquetaActual={category.name}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+        acciones={{ buscar: true, carrito: { subdominio: organization.subdomain || '', branchId } }}
+      />
       <CategoryDetailRenderer
         organization={organization}
         primaryColor={primaryColor}

@@ -117,6 +117,8 @@ igual(motivo(pedido({ stockReleasedAt: iso(1 * min) })), 'liberado', 'stock libe
 igual(motivo(pedido({ source: 'pos' })), 'no_es_sitio', 'otro origen: no')
 igual(motivo(pedido({ email: '' })), 'sin_correo', 'sin correo: no')
 igual(motivo(pedido({ email: 'no-es-correo' })), 'sin_correo', 'correo ilegible: no')
+igual(motivo(pedido({ email: 'cliente.nuevo@mail.com3043677302' })), 'sin_correo', 'teléfono pegado al correo: no')
+igual(motivo(pedido({ email: 'ana@tienda.co' })) === 'sin_correo', false, 'correo .co: sí')
 igual(motivo(pedido({ paymentMethod: 'cash' })), 'nativo', 'efectivo: no')
 igual(motivo(pedido({ paymentMethod: 'transfer' })), 'nativo', 'transferencia: no')
 igual(motivo(pedido({ paymentMethod: 'pse' })), 'nativo', 'PSE manual: no')

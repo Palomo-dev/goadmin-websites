@@ -47,6 +47,8 @@ export const COPIAS = [
   ['lib/website/v2/accionesFicha.ts', 'src/lib/website/v2/accionesFicha.ts'],
   // Barra fija de compra de la ficha (Figma 2836:69391, propuesta 9): opciones del celular y del computador.
   ['lib/website/v2/barraFija.ts', 'src/lib/website/v2/barraFija.ts'],
+  // Secciones de la ficha (Figma 2983:72501): Beneficios, Reseñas, Relacionados y Descripción.
+  ['lib/website/v2/seccionesFicha.ts', 'src/lib/website/v2/seccionesFicha.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
   // Tarjeta de producto: el editor (ERP) y la tienda leen el mismo preset y la misma fusión.

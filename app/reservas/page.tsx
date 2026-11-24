@@ -2,10 +2,11 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { createPublicClient } from '@/lib/supabase/server'
 import { getOrganizationSpaceTypes } from '@/lib/supabase/queries'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from '@/components/site/Enlace'
-import { ArrowLeft } from 'lucide-react'
 import { ReservationWizard } from './ReservationWizard'
 import { redirect } from 'next/navigation'
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
@@ -60,13 +61,15 @@ export default async function ReservasPage() {
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <BarraVolverMovil
+        padre={{ href: '/espacios', etiqueta: 'Espacios' }}
+        etiquetaActual={'Reservar'}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div className="mb-6">
-          <Link href="/espacios" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a espacios
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): ← al inicio de las migas en escritorio; en el celular, la barra. */}
+        <EncabezadoPagina tipo="ficha" className="mb-8" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Espacios', href: '/espacios' }, { etiqueta: 'Reservar' }]} padre={{ href: '/espacios', etiqueta: 'Espacios' }} primaryColor={primaryColor} />
 
         <ReservationWizard
           organizationId={organization.id}

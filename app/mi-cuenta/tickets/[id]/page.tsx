@@ -2,8 +2,6 @@ import { getOrgContext } from '@/lib/get-org-context'
 import { isValidUUID } from '@/lib/utils'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from '@/components/site/Enlace'
-import { ArrowLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,10 +22,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/mi-cuenta/tickets" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a tickets
-        </Link>
+        {/* «Volver a Mis tickets»: el ← y las migas los pinta el layout de Mi cuenta (VolverMiCuenta). */}
         <h1 className="text-2xl font-bold">Ticket #{id}</h1>
       </div>
 

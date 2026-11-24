@@ -18,6 +18,9 @@ import { PixelesSitio } from '@/components/site/PixelesSitio'
 import { CartEventTracker } from '@/components/site/CartEventTracker'
 import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 export const dynamic = 'force-dynamic'
 
@@ -153,6 +156,14 @@ export default async function CheckoutPage() {
 
       {/* Contenido */}
       <main className="flex-grow">
+        {/* «Volver» (Figma 2993:75127): el pago vuelve al carrito (o a donde venía el cliente). El
+            encabezado va fuera del CheckoutWizard; sus «Atrás» entre pasos siguen dentro. */}
+        <BarraVolverMovil
+          padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}
+          etiquetaActual="Finalizar compra"
+          primaryColor={primaryColor}
+          colorCabecera={colorCabeceraDe(ajustesEncabezado)}
+        />
         {pedidoApagado ? (
           <div className="max-w-lg mx-auto text-center py-16 px-4" role="status">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">No recibimos pedidos en línea</h1>
@@ -168,6 +179,14 @@ export default async function CheckoutPage() {
         ) : (
           <>
             <MetaPixelInitiateCheckout />
+            <div className="container mx-auto hidden px-4 pt-6 md:block">
+              <EncabezadoPagina
+                migas={[{ etiqueta: 'Inicio', href: ruta('/') }, { etiqueta: 'Carrito', href: ruta('/carrito') }, { etiqueta: 'Finalizar compra' }]}
+                padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}
+                primaryColor={primaryColor}
+                titulo="Finalizar compra"
+              />
+            </div>
             <CheckoutWizard
               organizationId={organization.id}
               primaryColor={primaryColor}

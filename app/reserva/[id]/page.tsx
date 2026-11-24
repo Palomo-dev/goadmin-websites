@@ -1,11 +1,15 @@
 import { getOrgContext } from '@/lib/get-org-context'
 import { createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
+import { INICIO } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { isValidUUID } from '@/lib/utils'
 import { Metadata } from 'next'
 import Link from '@/components/site/Enlace'
-import { Bed, CalendarDays, CheckCircle2, Clock, XCircle, ArrowLeft, Users, CreditCard } from 'lucide-react'
+import { Bed, CalendarDays, CheckCircle2, Clock, XCircle, Users, CreditCard } from 'lucide-react'
 import { CancelReservationButton } from './CancelReservationButton'
 
 export const dynamic = 'force-dynamic'
@@ -138,13 +142,15 @@ export default async function ReservationTrackingPage({ params }: { params: Prom
 
   return (
     <OrganizationLayout organization={organization} template={template} primaryColor={primaryColor} headerNav={headerNav} footerNav={footerNav} frozenReason={frozenReason}>
+      <BarraVolverMovil
+        padre={INICIO}
+        etiquetaActual="Tu reserva"
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+      />
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Volver al inicio
-          </Link>
-        </div>
+        {/* «Volver» (Figma 2992:74856): a donde venía el cliente o al inicio. */}
+        <EncabezadoPagina tipo="ficha" className="mb-6" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Tu reserva' }]} padre={INICIO} primaryColor={primaryColor} />
 
         <div className="max-w-2xl mx-auto">
           {/* Header */}

@@ -148,7 +148,8 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   check(renderer.includes('if (extrasFicha) {') && renderer.includes('// Sin extras: los datos de siempre.'), 'los datos nuevos solo entran con extrasFicha')
 
   const pagina = await fuente('app/productos/[id]/page.tsx')
-  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
+  // Relacionados elegidos a mano / comprados juntos (verify-secciones-ficha): solo si la sección los pide.
+  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
   check(pagina.includes("conPaginador ? getPaginadorFicha(") && pagina.includes('look\n        ? getCompletaElLook('), 'cada consulta detrás de su bloque')
   check(pagina.includes('const seccionesFicha = hasTemplateSections ? productDetailTemplate.website_page_sections : []'), 'la ficha legacy monolítica no consulta nada nuevo')
 

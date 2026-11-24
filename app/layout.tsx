@@ -7,6 +7,8 @@ import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
 import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
 import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
+import { Suspense } from 'react'
+import { RastroNavegacion } from '@/components/site/volver/RastroNavegacion'
 import './globals.css'
 
 // Nota: custom_scripts se inyectan client-side vía CustomScripts en
@@ -71,6 +73,10 @@ export default async function RootLayout({
     <html lang="es" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans antialiased">
         {children}
+        {/* Rastro de la pestaña para el botón «Volver» (components/site/volver). No pinta nada. */}
+        <Suspense fallback={null}>
+          <RastroNavegacion />
+        </Suspense>
         <Analytics />
       </body>
     </html>

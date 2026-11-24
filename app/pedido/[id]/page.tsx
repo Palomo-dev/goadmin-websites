@@ -4,6 +4,10 @@ import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { getOrgContext } from '@/lib/get-org-context'
 import { OrderTracker } from './OrderTracker'
+import { INICIO } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +54,18 @@ export default async function TrackingPage({
       frozenReason={frozenReason}
       branchId={branchId}
     >
+      {/* «Volver» (Figma 2993:75202): a donde venía el cliente (p. ej. Mis pedidos); si entró por el
+          enlace del correo o de WhatsApp, al inicio. Sin consultar la sesión: página pública. */}
+      <BarraVolverMovil
+        padre={INICIO}
+        etiquetaActual={`Pedido ${id}`}
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+        acciones={{ buscar: true, carrito: { subdominio: organization.subdomain || '', branchId } }}
+      />
+      <div className="container mx-auto hidden max-w-xl px-4 pt-6 md:block">
+        <EncabezadoPagina tipo="ficha" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: `Pedido ${id}` }]} padre={INICIO} primaryColor={primaryColor} />
+      </div>
       <OrderTracker
         orderIdentifier={id}
         primaryColor={primaryColor}

@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 import { Metadata } from 'next'
 import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
 import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
 
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getOrgContext()
@@ -32,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * Mi cuenta (Figma «16 Sitio web» D 2976:72025 y H 2977:72694, aprobados 2026-11-24): menú lateral
  * con iniciales, nombre y correo (sin emojis), según el tipo de negocio (`menuCuenta`). En el
- * celular el menú es la lista de Inicio y las demás páginas llevan «‹ Mi cuenta».
+ * celular el menú es la lista de Inicio y las demás páginas llevan «← Volver a Mi cuenta».
  */
 export default async function MiCuentaLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getOrgContext()
@@ -64,7 +65,7 @@ export default async function MiCuentaLayout({ children }: { children: React.Rea
             </div>
           </aside>
           <main className="min-w-0 flex-1">
-            <VolverMiCuenta />
+            <VolverMiCuenta items={navItems} primaryColor={primaryColor} colorCabecera={colorCabeceraDe(organization.website_settings)} />
             {children}
           </main>
         </div>

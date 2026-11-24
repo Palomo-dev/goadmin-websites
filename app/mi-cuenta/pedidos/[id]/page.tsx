@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
-import Link from '@/components/site/Enlace'
-import { ChevronLeft, Package } from 'lucide-react'
+import { Package } from 'lucide-react'
 import { getOrgContext } from '@/lib/get-org-context'
 import { isValidUUID } from '@/lib/utils'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -32,17 +31,11 @@ export default async function PedidoCuentaPage({ params }: { params: Promise<{ i
   const cuenta = await getCuentaCliente(organization.id)
   const pedido = cuenta ? await pedidoDeCuenta(organization.id, cuenta, id) : null
 
-  const volver = (
-    <Link href="/mi-cuenta/pedidos" className="hidden items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 md:inline-flex">
-      <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-      Mis pedidos
-    </Link>
-  )
+  // «Volver a Mis pedidos»: el ← y las migas los pinta el layout de Mi cuenta (VolverMiCuenta).
 
   if (!pedido) {
     return (
       <div className="flex flex-col gap-4">
-        {volver}
         <div className="flex flex-col items-center gap-2 rounded-[14px] border border-slate-200 bg-white p-8 text-center">
           <Package aria-hidden="true" className="h-8 w-8 text-slate-400" />
           <p className="font-semibold text-slate-900">Pedido no encontrado</p>
@@ -54,7 +47,6 @@ export default async function PedidoCuentaPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex flex-col gap-2 [&_.container]:px-0 [&_.container]:pt-0">
-      {volver}
       <OrderTracker
         orderIdentifier={pedido.order_number}
         primaryColor={primaryColor}

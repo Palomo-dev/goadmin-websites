@@ -10,6 +10,8 @@ import {
   ShoppingBag, Trash2, Plus, Minus, ArrowLeft, ArrowRight,
   Package, ShieldCheck, Truck, CreditCard, Tag
 } from 'lucide-react'
+import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
+import { INICIO, type Miga } from '@/lib/navegacion/volver'
 import { getCartKey } from '@/lib/utils'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { isParentProduct, padreSinVariantes, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
@@ -19,6 +21,9 @@ import { usePadresEnCarrito } from '@/lib/orders/usePadresEnCarrito'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { useOpcionesTienda } from '@/components/site/OpcionesTiendaContext'
 import { TextoBotonCarrito, usePausaBoton } from '@/components/site/TextoBotonCarrito'
+
+/** Migas del carrito (Figma 2993:75054). */
+const MIGAS_CARRITO: Miga[] = [{ etiqueta: 'Inicio', href: '/' }, { etiqueta: 'Carrito' }]
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -218,6 +223,7 @@ export function CartPageClient({
   if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16">
+        <EncabezadoPagina tipo="ficha" className="-mt-8 mb-8" migas={MIGAS_CARRITO} padre={INICIO} preferirUltimaCategoria primaryColor={primaryColor} />
         <div className="max-w-md mx-auto text-center">
           <ShoppingBag className="h-20 w-20 mx-auto text-gray-300 dark:text-gray-600 mb-6" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Tu carrito está vacío</h1>
@@ -248,18 +254,25 @@ export function CartPageClient({
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Carrito de Compras</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
-        </div>
-        <button
-          onClick={clearCart}
-          className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium"
-        >
-          Vaciar carrito
-        </button>
-      </div>
+      {/* Migas y ← junto al título (Figma 2993:75054). El ← vuelve a donde venía o, si entró
+          directo, a la última categoría vista o al inicio. */}
+      <EncabezadoPagina
+        className="mb-8"
+        migas={MIGAS_CARRITO}
+        padre={INICIO}
+        preferirUltimaCategoria
+        primaryColor={primaryColor}
+        titulo="Tu carrito"
+        detalle={`${totalItems} ${totalItems === 1 ? 'producto' : 'productos'}`}
+        acciones={
+          <button
+            onClick={clearCart}
+            className="shrink-0 text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium"
+          >
+            Vaciar carrito
+          </button>
+        }
+      />
 
       {/* Barra de envío gratis */}
       {cartSettings.enableShipping && cartSettings.freeShippingThreshold > 0 && (

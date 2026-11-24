@@ -24,6 +24,8 @@ import { getMixedReviews, getAutoReviews } from './providers/mixedReviews'
 import { ReviewList } from './ReviewList'
 import { ReviewForm } from './ReviewForm'
 import { RatingDistribution } from './RatingDistribution'
+import { ResenasConOpciones } from './ResenasConOpciones'
+import type { OpcionesResenas } from '@/lib/website/v2/seccionesFicha'
 
 interface ProductReviewsProps {
   productId: number
@@ -35,6 +37,11 @@ interface ProductReviewsProps {
   estadoVacio?: { titulo?: unknown; mensaje?: unknown; boton?: unknown } | null
   /** Agregados del producto (rating_avg, reviews_count) para modo real/auto. */
   productStats?: { rating_avg?: number | null; reviews_count?: number | null } | null
+  /**
+   * Opciones de la sección (Figma 2986:73149). Sin claves nuevas (`conOpciones === false`) se
+   * pinta lo de siempre; con ellas, `ResenasConOpciones` con los mismos datos.
+   */
+  opciones?: OpcionesResenas | null
 }
 
 export function ProductReviews({
@@ -44,6 +51,7 @@ export function ProductReviews({
   reviewsConfig,
   estadoVacio,
   productStats,
+  opciones = null,
 }: ProductReviewsProps) {
   const vacio = textosEstadoVacio(estadoVacio)
   const config = useMemo(() => resolveReviewsConfig(reviewsConfig), [reviewsConfig])
@@ -138,6 +146,28 @@ export function ProductReviews({
       ))}
     </div>
   )
+
+  // --- Con opciones de la sección: mismos datos, pintado nuevo ---
+  if (opciones?.conOpciones) {
+    return (
+      <ResenasConOpciones
+        opciones={opciones}
+        reviews={allReviews}
+        totalReviews={totalReviews}
+        avgRating={activeResult.avgRating}
+        primaryColor={primaryColor}
+        vacio={config.reviews_source === 'real' && !!realResult && realResult.totalReviews === 0}
+        textosVacio={vacio}
+        aviso={config.show_generated_disclaimer && !activeResult.isReal ? (
+          <p className="mt-6 text-xs text-gray-400 text-center">
+            Las opiniones mostradas son ejemplos generados y no corresponden a clientes reales.
+          </p>
+        ) : null}
+      />
+    )
+  } else {
+    // Sin opciones: lo de siempre.
+  }
 
   // --- Estado vacío en modo real sin reseñas ---
   if (config.reviews_source === 'real' && realResult && realResult.totalReviews === 0) {

@@ -20,12 +20,12 @@
  * lateral puede aparecer en vivo). Fuera del lienzo, todo igual.
  */
 
-import Link from '@/components/site/Enlace'
-import { ChevronRight, Home } from 'lucide-react'
 import { CategoryPageClient } from '@/app/categorias/[slug]/CategoryPageClient'
 import type { OrganizationWithDetails } from '@/types/database'
 import type { WebsitePageWithSections } from '@/types/database'
-import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { navegacionCategoria } from '@/lib/navegacion/volver'
+import { BotonVolver } from '@/components/site/volver/BotonVolver'
+import { MigasTienda } from '@/components/site/volver/EncabezadoPagina'
 import { getMenuCategories } from '@/lib/supabase/queries'
 import { categoriasHermanas } from './columnasCategoria'
 import { SeccionesCategoria, usaColumnaLateral } from './SeccionesCategoria'
@@ -109,26 +109,12 @@ export async function CategoryDetailRenderer({
   // ---- Fallback: layout hardcodeado actual (cero regresión) ----
   const respaldo = (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-6 overflow-x-auto">
-        <Link href="/" className="flex items-center hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-          <Home className="h-4 w-4" />
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        <EnlaceSitio href="/productos" className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-          Productos
-        </EnlaceSitio>
-        {parentCategory && (
-          <>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-            <Link href={`/categorias/${parentCategory.slug}`} className="hover:text-gray-700 dark:hover:text-gray-200 shrink-0">
-              {parentCategory.name}
-            </Link>
-          </>
-        )}
-        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        <span className="font-medium text-gray-900 dark:text-white truncate">{category.name}</span>
-      </nav>
+      {/* Migas y ← (escritorio; Figma 2992:74856): Inicio › categoría padre › categoría, con el ← al
+          inicio. En el celular, la barra «← Volver a …» de la página. */}
+      <div className="mb-6 hidden items-center gap-3 md:flex" style={{ ['--volver-miga' as string]: primaryColor }} data-volver-migas="">
+        <BotonVolver padre={navegacionCategoria({ categoria: category.name, padre: parentCategory ?? null }).padre} primaryColor={primaryColor} />
+        <MigasTienda migas={navegacionCategoria({ categoria: category.name, padre: parentCategory ?? null }).migas} />
+      </div>
 
       {/* Header de categoría */}
       <div className="mb-8">

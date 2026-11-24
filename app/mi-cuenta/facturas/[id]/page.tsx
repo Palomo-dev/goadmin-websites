@@ -82,11 +82,7 @@ export default async function FacturaDetallePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Breadcrumb */}
-      <Link href="/mi-cuenta/facturas" className="text-sm text-gray-500 dark:text-gray-400 hover:underline">
-        ← Volver a facturas
-      </Link>
-
+      {/* «Volver a Facturas»: el ← y las migas los pinta el layout de Mi cuenta (VolverMiCuenta). */}
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">

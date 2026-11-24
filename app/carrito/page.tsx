@@ -3,6 +3,9 @@ import { getMetaPixelId, getGoogleAdsConfig, getOrganizationProducts, getDefault
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { CartPageClient } from './CartPageClient'
+import { INICIO } from '@/lib/navegacion/volver'
+import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
+import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
 import { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -56,6 +59,15 @@ export default async function CarritoPage() {
       frozenReason={frozenReason}
       branchId={branchId}
     >
+      {/* «← Volver a …» del celular: a donde venía, la última categoría vista o el inicio. */}
+      <BarraVolverMovil
+        padre={INICIO}
+        preferirUltimaCategoria
+        etiquetaActual="Tu carrito"
+        primaryColor={primaryColor}
+        colorCabecera={colorCabeceraDe(organization.website_settings)}
+        acciones={{ buscar: true }}
+      />
       <CartPageClient
         primaryColor={primaryColor}
         organizationSubdomain={organization.subdomain || ''}

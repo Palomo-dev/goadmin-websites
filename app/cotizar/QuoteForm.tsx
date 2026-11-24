@@ -82,7 +82,7 @@ export function QuoteForm({ organizationId, services, primaryColor, preselectedS
           Hemos recibido tu solicitud de cotización. Nuestro equipo la revisará y te enviaremos una propuesta a tu correo.
         </p>
         <a href="/servicios" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium" style={{ backgroundColor: primaryColor }}>
-          ← Volver a servicios
+          Volver a Servicios
         </a>
       </div>
     )

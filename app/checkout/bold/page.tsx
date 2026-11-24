@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { BotonVolver } from '@/components/site/volver/BotonVolver'
 import { cargarLibreriaBold, configBoldDesdeParametros, crearCheckoutBold, type InstanciaBold } from '@/lib/payments/boldCheckoutCliente'
 
 function BoldButtonContent() {
@@ -103,9 +104,8 @@ function BoldButtonContent() {
           </div>
         )}
 
-        <a href={ruta('/checkout')} className="inline-block mt-6 text-sm text-gray-400 hover:text-gray-600">
-          ← Volver al checkout
-        </a>
+        {/* «Volver» (Figma 2992:74856): el botón ← de la tienda con el destino real. */}
+        <BotonVolver conTexto className="mt-6" padre={{ href: ruta('/checkout'), etiqueta: 'Finalizar compra' }} />
       </div>
     </div>
   )
