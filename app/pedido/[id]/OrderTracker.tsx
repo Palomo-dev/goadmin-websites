@@ -43,6 +43,7 @@ import {
 } from '@/lib/orders/consultaPedido'
 import { abrirBoldDesdeUrl } from '@/lib/payments/boldCheckoutCliente'
 import { codigoConector } from '@/lib/contraentrega/textosContraentrega'
+import { SiluetaPedido } from '@/components/site/rastreo/SiluetaPedido'
 
 interface ItemPedido {
   productId: number | null
@@ -137,6 +138,12 @@ interface OrderTrackerProps {
   token?: string | null
   /** Ruta de la carta / catálogo para «Seguir pidiendo». */
   rutaSeguirPidiendo?: string
+  /**
+   * Dentro de /consultar-pedido (Figma «16 Sitio web» › Consultar pedido v2): sin el contenedor
+   * propio de la página, silueta mientras carga y «Rastrear en la transportadora» como botón.
+   * Sin esta prop, /pedido/<n> se ve exactamente como antes.
+   */
+  incrustado?: boolean
 }
 
 const POLL_INTERVAL = 15000 // 15 segundos
@@ -277,7 +284,7 @@ function LineaActualiza({
   )
 }
 
-export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/' }: OrderTrackerProps) {
+export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/', incrustado = false }: OrderTrackerProps) {
   // En el servidor, el del enlace; en el navegador, además, el guardado de esta pestaña.
   const [token] = useState<string | null>(() =>
     tokenDelEnlace ?? (typeof window !== 'undefined' ? leerTokenGuardado(orderIdentifier) : null),
@@ -437,7 +444,9 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
     }
   }, [data])
 
-  if (loading) {
+  if (loading && incrustado) {
+    return <SiluetaPedido texto="Cargando tu pedido…" />
+  } else if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
@@ -564,7 +573,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   ) : null
 
   return (
-    <div className="container mx-auto max-w-xl px-4 pt-6 pb-28">
+    <div className={incrustado ? 'w-full pb-16' : 'container mx-auto max-w-xl px-4 pt-6 pb-28'} data-order-tracker={incrustado ? 'incrustado' : ''}>
       <div className="flex flex-col gap-3">
         {/* Estado y Ayuda (dentro de la página: ya no se monta sobre la cabecera de la tienda) */}
         <div className="flex items-center justify-between gap-3">
@@ -981,7 +990,17 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
                 </div>
               </div>
             )}
-            {shipment.trackingNumber && (
+            {shipment.trackingNumber && incrustado ? (
+              <>
+                <p className="text-sm text-gray-500">Guía: <span className="font-medium text-gray-900 break-all">{shipment.trackingNumber}</span></p>
+                {shipment.externalTrackingUrl && (
+                  <a href={shipment.externalTrackingUrl} target="_blank" rel="noopener noreferrer" className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                    <Truck className="h-4 w-4" aria-hidden="true" /> Rastrear en la transportadora <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="sr-only">(se abre en otra pestaña)</span>
+                  </a>
+                )}
+              </>
+            ) : shipment.trackingNumber && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Guía: {shipment.trackingNumber}</span>
                 {shipment.externalTrackingUrl && (

@@ -1,7 +1,7 @@
 /**
  * verify-cuenta-cliente.mjs — cuenta del cliente en la tienda (Figma «16 Sitio web» 2975:71910,
  * aprobado el 2026-11-24): código al correo, Mi cuenta, Mis pedidos, Mis datos, Direcciones y
- * seguir un pedido sin cuenta (/rastrear).
+ * seguir un pedido sin cuenta (/consultar-pedido, antes /rastrear).
  *
  *   npm run verify:cuenta-cliente
  *
@@ -14,7 +14,7 @@
  *   calificar, ver), pedido en curso, buscador;
  * - Mis datos, direcciones (aviso de cobertura) y el menú por tipo de negocio (sin emojis).
  * Y lee el fuente de las rutas: organización del HOST (nunca del body), límite por IP, filtros por
- * organización y /tracking que redirige a /rastrear.
+ * organización y /tracking y /rastrear que redirigen a /consultar-pedido.
  *
  * Regla del dueño (2026-11-24): el comprador NUNCA recibe correos de Supabase Auth ni de la
  * plataforma. El código es de la tienda (lib/cuenta/codigoTienda.ts, tabla
@@ -441,10 +441,12 @@ check(!/doc_type:|doc_number:|full_name:/.test(perfil.replace(/body\.doc_(type|n
 check(!/\bemail:/.test(perfil), 'Mis datos: el correo no se cambia aquí')
 check(/\.eq\('organization_id', orgId\)/.test(perfil), 'Mis datos: actualiza filtrando por organización')
 
+// /rastrear dejó de ser página (2026-11-24): «Consultar pedido» lo incluye y /tracking va directo.
 const tracking = leer('app/tracking/page.tsx')
-check(/redirect\(/.test(tracking) && /\/rastrear\?guia=/.test(tracking), '/tracking redirige a /rastrear con la guía (enlaces viejos)')
+check(/redirect\(/.test(tracking) && /\/consultar-pedido\?guia=/.test(tracking), '/tracking redirige a /consultar-pedido con la guía (enlaces viejos)')
 const rastrear = leer('app/rastrear/page.tsx')
-check(/getShipmentByTracking\(guia, organization\.id\)/.test(rastrear), '/rastrear: guía con la organización del host')
+check(/redirect\(/.test(rastrear) && /\/consultar-pedido/.test(rastrear), '/rastrear redirige a /consultar-pedido (enlaces viejos)')
+check(/getShipmentByTracking\(guia, organization\.id\)/.test(leer('app/consultar-pedido/page.tsx')), '/consultar-pedido: guía con la organización del host')
 check(!/recipient_name|recipient_relationship/.test(leer('components/site/rastreo/ResultadoGuia.tsx')), 'rastreo por guía: no pinta quién recibió')
 
 const detalle = leer('app/mi-cuenta/pedidos/[id]/page.tsx')

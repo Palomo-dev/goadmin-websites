@@ -179,7 +179,7 @@ export function MenuAvatar({ origen, primaryColor, whatsapp, formato = 'auto', o
       <>
         <hr className="my-1 border-slate-200" />
         {conSeguir && (
-          <Link href="/rastrear" onClick={navegar} className={`${claseFila} ${alto}`}>
+          <Link href="/consultar-pedido" onClick={navegar} className={`${claseFila} ${alto}`}>
             <Route aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-slate-600" strokeWidth={1.75} />
             <span className="flex-1">Seguir un pedido</span>
             {conFlecha && <ChevronRight aria-hidden="true" className="h-4 w-4 text-slate-400" />}

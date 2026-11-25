@@ -52,6 +52,7 @@
     "verify:carrito-pendiente": "node --disable-warning=ExperimentalWarning scripts/verify-carrito-pendiente.mjs",
     "verify:recordatorio-pago": "node --disable-warning=ExperimentalWarning scripts/verify-recordatorio-pago.mjs",
     "verify:consulta-pedido": "node --disable-warning=ExperimentalWarning scripts/verify-consulta-pedido.mjs",
+    "verify:consultar-pedido": "node scripts/verify-consultar-pedido.mjs",
     "verify:promo-minimo": "node --experimental-strip-types --import ./scripts/resolver-ts.mjs --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-promo-minimo.mjs",
     "verify:destacados-categoria": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-destacados-categoria.mjs",
     "verify:marco-imagen": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-marco-imagen.mjs",

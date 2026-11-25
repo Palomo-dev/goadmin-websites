@@ -175,6 +175,13 @@ const PROHIBIDAS = [
  *   regla que Bold y Mercado Pago), y solo si el pedido sigue «Pendiente», con su `else` de antes
  *   para pagado/pendiente/reembolsado.
  * Vence el 2026-12-11. Comprobado por scripts/verify-intentos-pago.mjs y verify-pasarelas-bold-mp.mjs.
+ *
+ * 2026-11-24 — «Consultar pedido v2» (Figma «16 Sitio web» 3102:84056, aprobado por el dueño):
+ * - app/api/orders/lookup/route.ts: RETIRADO. Buscaba por correo solo y listaba hasta 10 pedidos con
+ *   nombre, totales y productos. Ahora responde 410 sin consultar la base; nadie lo llama
+ *   (/consultar-pedido usa /api/cuenta/buscar-pedido: número + correo o teléfono). No toca la
+ *   creación de pedidos, el cobro ni el stock.
+ * Vence el 2026-12-11. Comprobado por scripts/verify-consultar-pedido.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -201,6 +208,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/webhooks/bold/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Bold al historial (pieza común)' },
   { ruta: 'app/api/webhooks/mercadopago/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Mercado Pago al historial (pieza común)' },
   { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Wompi al historial; el rechazo ya no cancela (decisión del dueño)' },
+  { ruta: 'app/api/orders/lookup/route.ts', hasta: '2026-12-11', motivo: 'Consultar pedido v2: búsqueda por correo retirada (410)' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

@@ -1,103 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { headers } from 'next/headers'
-import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
-import { getOrganizationByHost } from '@/lib/supabase/queries'
-import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
+import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/orders/lookup?q=...&type=order_number|email
- * Busca pedidos por número de pedido o email del cliente
- * Filtrado por organización del host actual.
+ * GET /api/orders/lookup — RETIRADO (2026-11-24, «Consultar pedido v2»).
  *
- * Coincidencia EXACTA del número de pedido (antes `ilike '%q%'` listaba los pedidos de otros
- * clientes con 3 caracteres) o del correo (sin comodines), y límite por IP.
+ * Buscaba pedidos por número O por correo y devolvía hasta 10 con nombre, totales y productos:
+ * con solo el correo de alguien se veían sus compras. /consultar-pedido ya no lo usa: exige número
+ * + correo o teléfono de la compra en /api/cuenta/buscar-pedido (mismo mensaje si no existe o no
+ * coincide, límite por IP y por número) y muestra el pedido con su token de seguimiento.
+ *
+ * Responde 410 a cualquiera que lo siga llamando; no consulta la base.
  */
-export async function GET(request: NextRequest) {
-  try {
-    const limite = checkRateLimit(`lookup:ip:${getClientIP(request)}`, 20, 10 * 60 * 1000)
-    if (!limite.allowed) {
-      return NextResponse.json({ error: 'Demasiadas búsquedas. Espera unos minutos.' }, { status: 429 })
-    }
-
-    const headersList = await headers()
-    const identifier = headersList.get('x-custom-domain') || headersList.get('x-subdomain')
-    if (!identifier) {
-      return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
-    }
-
-    const org = await getOrganizationByHost(identifier)
-    if (!org) {
-      return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const q = searchParams.get('q')?.trim()
-    const type = searchParams.get('type') || 'order_number'
-
-    if (!q || q.length < 3) {
-      return NextResponse.json({ error: 'Ingresa al menos 3 caracteres' }, { status: 400 })
-    }
-
-    const supabase = (createAdminClient() || createPublicClient()) as any
-
-    let query = supabase
-      .from('web_orders')
-      .select(`
-        id, order_number, status, delivery_type,
-        subtotal, tax_total, delivery_fee, discount_total, total,
-        customer_name, customer_email,
-        payment_status, payment_method,
-        created_at,
-        web_order_items (
-          id, product_name, quantity, unit_price, total
-        )
-      `)
-      .eq('organization_id', org.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (type === 'email') {
-      // ilike sin comodines = igualdad sin distinguir mayúsculas; se escapan % y _ del texto.
-      query = query.ilike('customer_email', q.replace(/[\\%_]/g, (c) => `\\${c}`))
-    } else {
-      query = query.eq('order_number', q.toUpperCase())
-    }
-
-    const { data: orders, error } = await query
-
-    if (error) {
-      console.error('Lookup error:', error)
-      return NextResponse.json({ error: 'Error al buscar pedidos' }, { status: 500 })
-    }
-
-    // Sanitizar datos sensibles - solo mostrar info relevante
-    const sanitized = (orders || []).map((o: any) => ({
-      id: o.id,
-      order_number: o.order_number,
-      status: o.status,
-      delivery_type: o.delivery_type,
-      subtotal: o.subtotal,
-      tax_total: o.tax_total,
-      delivery_fee: o.delivery_fee,
-      discount_total: o.discount_total,
-      total: o.total,
-      customer_name: o.customer_name,
-      payment_status: o.payment_status,
-      payment_method: o.payment_method,
-      created_at: o.created_at,
-      items: (o.web_order_items || []).map((item: any) => ({
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.total,
-      })),
-    }))
-
-    return NextResponse.json({ orders: sanitized })
-  } catch (err: any) {
-    console.error('Lookup catch:', err)
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
-  }
+function retirado() {
+  return NextResponse.json(
+    { error: 'Esta búsqueda ya no existe. Consulta tu pedido con el número y el correo o teléfono de la compra.' },
+    { status: 410, headers: { 'Cache-Control': 'no-store' } },
+  )
 }
+
+export const GET = retirado
+export const POST = retirado

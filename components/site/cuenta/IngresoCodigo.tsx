@@ -128,7 +128,7 @@ export function PasoCorreo({ correo, onCorreo, enviando, error, onEnviar, google
           <p className="text-[13px] leading-snug text-slate-600">
             Busca tu pedido con el número y tu correo o teléfono. Si después entras con ese correo, tus pedidos aparecen en tu cuenta.
           </p>
-          <a href="/rastrear" className="self-center text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
+          <a href="/consultar-pedido" className="self-center text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
             Buscar mi pedido →
           </a>
         </div>
