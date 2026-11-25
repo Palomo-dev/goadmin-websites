@@ -115,7 +115,9 @@
     "verify:barra-pago": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-barra-pago.mjs",
     "verify:contraentrega": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-contraentrega.mjs",
     "verify:cuenta-cliente": "node --disable-warning=ExperimentalWarning scripts/verify-cuenta-cliente.mjs",
+    "verify:resenas": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-resenas.mjs",
     "verify:volver": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-volver.mjs",
+    "verify:checkout-v2": "node --experimental-strip-types --import ./scripts/resolver-ts.mjs --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-checkout-v2.mjs",
     "pruebas:matriz-buscador": "node scripts/pruebas/matriz-buscador.mjs",
     "pruebas:franja-movimiento": "node scripts/pruebas/franja-movimiento.mjs",
     "pruebas:busquedas-populares": "node scripts/pruebas/busquedas-populares.mjs"

@@ -41,6 +41,11 @@ export type CasoBarraPago =
   | { tipo: 'anticipo'; total: string; hoy: string; alRecibir: string; pasarela: string | null }
   /** Contraentrega sin anticipo: no se cobra nada en línea. `medios`: «efectivo, datáfono o Nequi». */
   | { tipo: 'sin_anticipo'; total: string; alRecibir: string; medios: string }
+  /**
+   * Checkout v2 (2026-11-24): transferencia u otro método que NO cobra en línea. El botón dice
+   * «Confirmar pedido» (nunca «Pagar» si no se cobra nada aquí). `medio`: «transferencia».
+   */
+  | { tipo: 'confirmar'; total: string; productos: number; envio: 'incluido' | 'gratis' | null; medio: string }
 
 export type IconoBoton = 'candado' | 'check'
 
@@ -127,6 +132,19 @@ export function contenidoBarraPago(estilo: EstiloBarraPago, caso: CasoBarraPago)
     chipAlRecibir: null,
     enlace: null,
     boton: boton('candado', ''),
+  }
+
+  if (caso.tipo === 'confirmar') {
+    // Sin cobro en línea: el mismo botón «Confirmar pedido» con check en los tres estilos.
+    const productos = plural(caso.productos, 'producto', 'productos')
+    if (estilo === 'dos_filas') {
+      return { ...base, columnas: [{ etiqueta: `Total · ${productos}`, valor: caso.total, destacado: true }], enlace: 'Ver resumen', boton: boton('check', 'Confirmar pedido') }
+    }
+    if (estilo === 'dos_lineas') {
+      return { ...base, total: caso.total, enlace: 'Ver resumen', boton: boton('check', 'Confirmar pedido', { linea2: `Pagas con ${caso.medio}` }) }
+    }
+    const partes = [productos, caso.envio === 'incluido' ? 'envío incluido' : caso.envio === 'gratis' ? 'envío gratis' : null, `pagas con ${caso.medio}`].filter(Boolean)
+    return { ...base, contexto: partes.join(' · '), enlace: 'Detalle', boton: boton('check', 'Confirmar pedido', { monto: caso.total }) }
   }
 
   if (estilo === 'dos_filas') {

@@ -191,6 +191,29 @@ const PROHIBIDAS = [
  *   vencido o anticipo sin pagar → su frase; nota interna o texto desconocido → null (la pantalla
  *   pone su frase de siempre). No toca el pedido, el cobro, el token ni el resto de la respuesta.
  * Vence el 2026-12-08. Comprobado por scripts/verify-consultar-pedido.mjs.
+ *
+ * 2026-11-24 — Checkout v2, fase 1 (Figma «16 Sitio web» › «Checkout v2 — 3 pasos y 1 paso»
+ * 3117-87133, lámina D 3127-92158; aprobado por el dueño con la condición «que no se dañe nada de lo
+ * que funciona hoy»). Lo nuevo vive FUERA de las rutas del dinero, extraído y con pruebas
+ * (components/site/checkout/reglasCheckout.ts, camposCheckout.ts, facturaEmpresa.ts,
+ * pedidoPendiente.ts, municipios.ts y las piezas PasosCheckout, CampoCheckout, OpcionesEntrega,
+ * ResumenPedido, RevisarPedido, FacturaEmpresaCampos, MunicipioBuscador, DireccionesGuardadas;
+ * app/api/locations/municipios). En la ruta protegida, solo:
+ * - components/site/CheckoutWizard.tsx: (1) pinta con las piezas: 3 pasos con nombre («Datos y
+ *   entrega», «Pago», «Revisar y confirmar»; el carrito deja de ser paso) o 1 paso con tarjetas
+ *   numeradas; un solo resumen; el paso en la URL (?paso=). (2) `textoBotonPago` (la regla de hoy +
+ *   transferencia → «Confirmar pedido»). (3) `validarDatosCheckout` única; `handleSubmit` no crea el
+ *   pedido con datos incompletos (`if` nuevo con su `else`: lo de siempre). (4) Payload de
+ *   /api/orders: `customer` = customerData con la dirección + «Apto» y la línea de la factura en las
+ *   notas (sin complemento ni factura, el mismo objeto de hoy; web_orders no tiene metadata, MCP
+ *   2026-11-24). (5) Pago rechazado: copia del pedido y del carrito en el navegador ANTES de vaciarlo
+ *   (el carrito se sigue vaciando como hoy); al volver (?pedido=), el servidor dice si el pedido
+ *   sigue pendiente y «Intentar de nuevo» / «Pagar con otro método» cobran el MISMO pedido por
+ *   /api/checkout/init (sin cambios: ahí el servidor valida y cambia el método). (6) 1 paso en
+ *   computador: un solo botón (debajo del resumen); la barra fija A/B/C del celular sigue igual.
+ *   Sin cambios en /api/orders, /api/checkout/init, webhooks, lib/cart ni lib/checkout.
+ * Vence el 2026-12-12. Comprobado por scripts/verify-checkout-v2.mjs (y verify-barra-pago,
+ * verify-contraentrega, verify-zonas-envio, verify-escalones-tienda, verify-domicilio-transportadora).
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -219,6 +242,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Wompi al historial; el rechazo ya no cancela (decisión del dueño)' },
   { ruta: 'app/api/orders/lookup/route.ts', hasta: '2026-12-11', motivo: 'Consultar pedido v2: búsqueda por correo retirada (410)' },
   { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-08', motivo: 'Consultar pedido: motivo de cancelación sin códigos de pasarela ni notas internas' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Checkout v2 fase 1: piezas extraídas, validación única, botón que dice la verdad y pago rechazado sobre el mismo pedido' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

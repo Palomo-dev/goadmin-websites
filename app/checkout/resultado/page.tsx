@@ -382,8 +382,10 @@ export default async function CheckoutResultadoPage({
           {/* Acciones */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             {paymentStatus === 'failed' && (
+              // Checkout v2 (C2): vuelve a «Revisar» con el MISMO pedido pendiente y su carrito; el
+              // checkout le pregunta al servidor si el pedido aún se puede pagar (si no, el de siempre).
               <Link
-                href={rutaSitio('/checkout', ctx.outlet, ctx.sedePorPrefijo)}
+                href={`${rutaSitio('/checkout', ctx.outlet, ctx.sedePorPrefijo)}?pedido=${encodeURIComponent(order.order_number)}&paso=revisar`}
                 className="inline-block px-6 py-3 rounded-lg text-white font-medium"
                 style={{ backgroundColor: primaryColor }}
               >
