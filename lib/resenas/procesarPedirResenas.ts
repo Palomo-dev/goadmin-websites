@@ -2,8 +2,9 @@
  * Corrida diaria del correo «¿Qué te pareció tu compra?» (cron `/api/cron/pedir-resena`, pg_cron
  * `pedir-resena-sitio` → `fn_websites_cron_post`, 10:00 de Colombia).
  *
- * 1. Tiendas con `website_settings.reviews_request_enabled = true` (nadie lo tiene encendido al
- *    crear esto: ninguna tienda recibe correos nuevos hasta que el dueño lo encienda).
+ * 1. Tiendas con `website_settings.reviews_request_enabled = true`. Las tiendas anteriores al
+ *    2026-11-25 lo tienen en NULL (apagado) hasta que su dueño lo encienda; las nuevas nacen con
+ *    true (DEFAULT de la columna, migración 20261125060000 del ERP).
  * 2. Por tienda: pedidos del sitio entregados en la ventana (`pedirResena.ts`), sin solicitud y sin
  *    baja del correo. Reclamo = INSERT en `product_review_requests` (UNIQUE por pedido): si otra
  *    corrida ya lo reclamó, 23505 y se salta. Luego se envía y se anota `sent_at`.

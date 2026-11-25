@@ -8,7 +8,8 @@
  * | reviews_auto_approve         | moderar antes de publicar                          |
  * | reviews_who_can_write        | cualquier cliente                                  |
  * | reviews_allow_photos         | fotos permitidas                                   |
- * | reviews_request_enabled      | sin correo «¿Qué te pareció tu compra?»            |
+ * | reviews_request_enabled      | sin correo «¿Qué te pareció tu compra?»; las       |
+ * |                              | tiendas nuevas nacen con true (DEFAULT de la BD)   |
  * | reviews_request_days         | 7 días después de entregado                        |
  * | reviews_request_reminder     | un recordatorio                                    |
  *
