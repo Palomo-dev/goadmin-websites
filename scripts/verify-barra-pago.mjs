@@ -179,10 +179,8 @@ igual('pasarela activa: preseleccionada', metodoPreseleccionado('wompi_co', ACTI
 const wiz = fuente('components/site/CheckoutWizard.tsx')
 const barra = fuente('components/site/checkout/BarraPagoMovil.tsx')
 igual('el checkout pinta la barra del celular', wiz.includes('<BarraPagoMovil'), true)
-// Checkout v2 (Figma «16 Sitio web» › Checkout v2, lámina D «Un botón que dice la verdad», aprobada
-// por el dueño el 2026-11-24): en 1 paso de computador había DOS botones iguales (tarjeta 3 y barra
-// fija). Ahora el único es el de debajo del resumen; el celular sigue con esta barra A/B/C.
-igual('en computador, un solo botón (debajo del resumen, sin barra fija duplicada)', !wiz.includes('z-40 px-4 py-3 hidden md:block') && /accion=\{isOnePage \? \(/.test(wiz) && wiz.includes('<div className="hidden md:block">'), true)
+// 2026-11-25: el dueño quiere de vuelta la barra fija en computador («sticky cart»): la de siempre.
+igual('en computador, la barra de siempre (su else)', wiz.includes('z-40 px-4 py-3 hidden md:block'), true)
 igual('la barra nueva es solo de celular', barra.includes('md:hidden'), true)
 igual('área segura del iPhone', barra.includes('env(safe-area-inset-bottom)'), true)
 igual('el espaciador usa el alto real', wiz.includes('style={{ height: altoBarraMovil }}'), true)

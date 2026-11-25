@@ -659,7 +659,6 @@ export function HeaderActions({
   const [nombreCliente, setNombreCliente] = useState<string | null>(null);
   // header_show_currency (panel «Encabezado»): `false` quita la moneda; default, como siempre.
   const { opciones: opcionesShell } = useEncabezadoPie();
-  const { currency: monedaActual } = useCurrency();
   // «No repetir arriba» del menú inferior (Figma 2843:70716, opcional y apagado por defecto).
   const { prefijo: prefijoRuta } = useRutaSitio();
   const rutaActual = usePathname() ?? '/';
@@ -707,7 +706,6 @@ export function HeaderActions({
   };
   const CartIconComp = iconoDe('cart', ShoppingBag);
   const AuthIconComp = iconoDe('account', User);
-  const CurrencyIconComp = iconoDe('currency', Globe);
   const SearchIconComp = iconoDe('search', Search);
   const HeartComp = iconoCabecera(Heart, 'favoritos', 'heart', settings);
 
@@ -771,8 +769,6 @@ export function HeaderActions({
   const cajaBuscar = presBuscar ? formaSimpleIcono(presBuscar, contenedor, estiloIconos.circulo) : null
   const presCarrito = presentar('carrito')
   const cajaCarrito = formaDe(presCarrito)
-  const presMoneda = !isMobile ? presentar('moneda', monedaActual) : null
-  const cajaMoneda = formaDe(presMoneda)
   const cajaCuenta = formaDe(presCuenta)
   const cajaFavoritos = formaDe(presFavoritos)
   const coloresCaja = {
@@ -818,22 +814,9 @@ export function HeaderActions({
         <ProductSearch key="search" primaryColor={primaryColor} icon={SearchIconComp} heredarColor={heredarColor} contenedor={contenedor} colores={coloresCaja} circulo={circuloSimple} claseIcono={circuloSimple ? 'h-5 w-5 text-current' : isMobile ? 'h-5 w-5 text-[var(--hdr-mobile-icon)]' : undefined} />
       )
     ) : null,
-    currency: !isMobile && !hideCurrency && opcionesShell.moneda ? (
-      <CurrencySelector
-        key="currency"
-        primaryColor={primaryColor}
-        icon={CurrencyIconComp}
-        heredarColor={heredarColor}
-        relleno={estiloIconos.relleno}
-        circulo={cajaMoneda.circulo}
-        contenedor={cajaMoneda.contenedor}
-        colores={coloresCaja}
-        opciones={opMoneda}
-        presentacion={presMoneda}
-      />
-    ) : isMobile && !hideCurrency && opcionesShell.moneda && opMoneda.movil === 'barra' ? (
-      // «En la barra» (Figma 2750:59257): bandera o código junto al carrito; abre la hoja.
-      <MonedaBarraMovil key="currency" opciones={opMoneda} claseColor={claseColorIcono(claseIcono, heredarColor)} />
+    // Moneda: una sola pieza con la cabecera del checkout (MonedaEncabezado, extraída tal cual).
+    currency: !hideCurrency && opcionesShell.moneda && (!isMobile || opMoneda.movil === 'barra') ? (
+      <MonedaEncabezado key="currency" settings={settings} primaryColor={primaryColor} isMobile={isMobile} />
     ) : null,
     favorites: !isMobile && showCart && opIconos.favoritos ? (
       <AccesoFavoritosCabecera
@@ -2083,6 +2066,74 @@ export function HojaMonedas({
       )}
     </DialogoMoneda.Root>
   );
+}
+
+/**
+ * Moneda de la cabecera: EXTRACCIÓN tal cual de HeaderActions (2026-11-25) para que la cabecera
+ * del checkout use la MISMA pieza y la MISMA configuración del editor (Encabezado › Íconos y
+ * moneda: estilo, flecha, monedas habilitadas, ícono, caja y forma; «Mostrar moneda» con
+ * `header_show_currency`). Computador: el selector de la cabecera (CurrencySelector con sus
+ * opciones). Celular: «En la barra» (MonedaBarraMovil); con las demás opciones del celular la
+ * moneda vive en el menú, como hoy, y aquí no se pinta nada, salvo con `movilEnBarra` (la cabecera
+ * del checkout no tiene menú: la misma píldora de «En la barra», que abre la hoja de monedas).
+ */
+export function MonedaEncabezado({
+  settings,
+  primaryColor,
+  isMobile = false,
+  movilEnBarra = false,
+}: {
+  settings: HeaderVariantProps['settings'];
+  primaryColor: string;
+  isMobile?: boolean;
+  /** Celular sin menú (checkout): la moneda en la barra aunque el editor la ponga en el menú. */
+  movilEnBarra?: boolean;
+}) {
+  const { opciones: opcionesShell } = useEncabezadoPie();
+  const { currency: monedaActual } = useCurrency();
+  const heredarColor = Boolean(headerTextColor(settings));
+  const claseIcono = isMobile
+    ? 'text-[var(--hdr-mobile-icon)]'
+    : heredarColor ? 'text-current' : 'text-gray-700 dark:text-gray-300';
+  const estiloIconos = estiloIconosEncabezado({
+    header_icons_weight: settings?.header_icons_weight,
+    header_cart_glyph: settings?.header_cart_glyph,
+    header_icons_circle: settings?.header_icons_circle,
+  });
+  const nombreIcono = resolverIconoEncabezado('currency', settings).nombre;
+  const CurrencyIconComp = iconoCabecera(getLucideIcon(nombreIcono, Globe), 'moneda', nombreIcono, settings);
+  const ajustesCabecera = settings as unknown as Record<string, unknown> | null;
+  const opIconos = opcionesIconos(ajustesCabecera);
+  const opMoneda = opcionesMoneda(ajustesCabecera);
+  const presMoneda = !isMobile && opIconos.configurado
+    ? presentacionIcono(opIconos, textoIcono(opIconos, 'moneda', monedaActual), isMobile, estiloIconosHeredado(ajustesCabecera), 'moneda')
+    : null;
+  const cajaMoneda = formaSimpleIcono(presMoneda, cajaIconosEncabezado(settings), estiloIconos.circulo);
+  const coloresCaja = {
+    primary: primaryColor,
+    accent: settings?.accent_color || primaryColor,
+    secondary: settings?.secondary_color || '#1E40AF',
+  };
+  if (!opcionesShell.moneda) return null;
+  if (!isMobile) {
+    return (
+      <CurrencySelector
+        primaryColor={primaryColor}
+        icon={CurrencyIconComp}
+        heredarColor={heredarColor}
+        relleno={estiloIconos.relleno}
+        circulo={cajaMoneda.circulo}
+        contenedor={cajaMoneda.contenedor}
+        colores={coloresCaja}
+        opciones={opMoneda}
+        presentacion={presMoneda}
+      />
+    );
+  } else if (opMoneda.movil === 'barra' || movilEnBarra) {
+    // «En la barra» (Figma 2750:59257): bandera o código junto al carrito; abre la hoja.
+    return <MonedaBarraMovil opciones={opMoneda} claseColor={claseColorIcono(claseIcono, heredarColor)} />;
+  }
+  return null;
 }
 
 /** «En la barra» (Figma 2750:59257): píldora con bandera (estilo Bandera) o el código, junto al carrito. */

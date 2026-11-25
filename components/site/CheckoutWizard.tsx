@@ -2316,11 +2316,39 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           onAlto={ponerAltoBarra}
         />
       )}
-      {/* Computador, 1 paso: sin barra fija (checkout v2): el único botón es el de debajo del resumen. */}
-
-      {/* Espaciador de la barra: en celular, su alto real (con el área segura del iPhone). */}
+      {/* Computador (md en adelante), 1 paso: la barra fija de siempre, de vuelta (el dueño, 2026-11-25:
+          «sticky cart»). Misma barra de antes del checkout v2: total, contraentrega/anticipo,
+          ahorro y el botón con la regla única (textoBotonPago: pagar, anticipo, confirmar pedido).
+          El botón de debajo del resumen se conserva. */}
       {isOnePage && cartItems.length > 0 && (
-        <div className="md:hidden" style={{ height: altoBarraMovil }} aria-hidden="true" />
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3 hidden md:block" data-barra-pago-computador="">
+          <div className="container mx-auto flex items-center justify-between gap-4">
+            <div className="text-sm text-gray-600">
+              Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
+              {paymentMethod === 'cash' && <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} compacto />}
+              {promoDiscount > 0 && (
+                <span className="block text-xs text-green-600">Ahorras {fmtPrice(promoDiscount)} en promociones</span>
+              )}
+            </div>
+            <Button
+              type="button"
+              className="px-8 h-11 font-semibold"
+              style={{ backgroundColor: primaryColor }}
+              onClick={() => handleSubmit()}
+              disabled={submitting || ceBloqueada}
+            >
+              {contenidoBotonPagar}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Espaciador de la barra: en celular, su alto real (con el área segura del iPhone); en computador, el de siempre. */}
+      {isOnePage && cartItems.length > 0 && (
+        <>
+          <div className="md:hidden" style={{ height: altoBarraMovil }} aria-hidden="true" />
+          <div className="hidden h-20 md:block" aria-hidden="true" />
+        </>
       )}
     </div>
   )

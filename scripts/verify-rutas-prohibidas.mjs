@@ -251,6 +251,13 @@ const PROHIBIDAS = [
  *   token del pedido a /api/checkout/init y `boldCustomerData` al botón de Bold; prellena la factura
  *   con la cuenta sin pisar lo escrito. No toca el cobro ni `handleSubmit`.
  * Vence el 2026-12-12. Comprobado por scripts/verify-documento-pagador.mjs.
+ *
+ * 2026-11-25 (tercera ronda) — barra fija de pago en computador de vuelta («sticky cart», el dueño):
+ * - components/site/CheckoutWizard.tsx: en 1 paso y computador vuelve la barra fija de antes del
+ *   checkout v2 (total, contraentrega/anticipo, ahorro y el botón con `textoBotonPago`, que llama el
+ *   mismo `handleSubmit`) y su espaciador `h-20`. El celular (BarraPagoMovil A/B/C) y el botón de
+ *   debajo del resumen no cambian. No toca el payload de /api/orders ni el cobro.
+ * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs y verify-barra-pago.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -284,6 +291,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-12', motivo: 'Factura del checkout: documento a la ficha del cliente y billing_data (RPC del ERP) después de crear el pedido' },
   { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-12', motivo: 'Documento del comprador a las pasarelas por sus campos oficiales, con token o sesión' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Factura estructurada a /api/orders, token a /api/checkout/init y prellenado desde la cuenta' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra fija de pago en computador de vuelta (1 paso), como antes del checkout v2' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

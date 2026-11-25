@@ -34,6 +34,11 @@
  * se cambia en «Editar carrito». «¿Ya compraste aquí?» abre EXACTAMENTE la variante del ícono de
  * cuenta del editor (Página / Panel / Ventana / Diálogo; hoja en el celular). La «Ventana» se
  * cuelga del enlace con components/site/cuenta/posicionVentana.ts (la cabecera, igual que antes).
+ *
+ * 2026-11-25 (tercera ronda) — la moneda de la cabecera del checkout es la MISMA pieza de la
+ * cabecera de la tienda (MonedaEncabezado, con la configuración del editor); una sola forma de
+ * volver (celular: «Seguir comprando»; computador: migas + ←); y vuelve la barra fija de pago en
+ * computador (1 paso, la de siempre).
  */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -336,7 +341,7 @@ igual('Enlace en vez de next/link', /from ['"]next\/link['"]/.test(wiz), false)
 igual('sin emojis en el checkout', /\p{Extended_Pictographic}/u.test(wizCodigo), false)
 igual('pasos con nombre', wiz.includes('<PasosCheckout'), true)
 igual('un solo resumen', (wiz.match(/<ResumenPedido\b/g) || []).length, 1)
-igual('1 paso: sin barra fija en computador', wiz.includes('z-40 px-4 py-3 hidden md:block'), false)
+igual('1 paso: la barra fija de computador de vuelta (el dueño, 2026-11-25)', wiz.includes('z-40 px-4 py-3 hidden md:block'), true)
 igual('celular: la barra A/B/C sigue', wiz.includes('<BarraPagoMovil') && wiz.includes('normalizarEstiloBarraPago(settings.barraPagoMovil)'), true)
 igual('se conserva: ?metodo= del chat', wiz.includes('metodoDeTraspaso(metodoParam, metodoEnCliente)'), true)
 igual('se conserva: contraentrega (motivo, desglose, anticipo)', wiz.includes('<MotivoContraentrega') && wiz.includes('<DetalleContraentrega') && wiz.includes("source: 'anticipo_pedido'"), true)
@@ -499,9 +504,29 @@ igual('el checkout le pasa «Nombre y apellido»', /<FacturaEmpresaCampos[^>]*no
 // ── 2026-11-25 · Resumen fijo al bajar en computador ────────────────────────────────────────────
 igual('computador: la columna del resumen es sticky (con recorrido en la grilla)', /id="resumen-pedido-contenedor"[^>]*lg:sticky lg:top-4 lg:self-start/.test(wizTiempo), true)
 
+// ── 2026-11-25 (3) · Moneda: la misma pieza de la cabecera de la tienda ───────────────────────
+const cabeceraCheckout = fuente('components/site/CheckoutEncabezado.tsx')
+const headerShared = fuente('components/site/header/HeaderShared.tsx')
+igual('el checkout usa MonedaEncabezado (no un CurrencySelector suelto)', cabeceraCheckout.includes('<MonedaEncabezado settings={settings} primaryColor={primaryColor} />') && !cabeceraCheckout.includes('CurrencySelector'), true)
+igual('celular del checkout: la píldora «En la barra» con su hoja de monedas', cabeceraCheckout.includes('<MonedaEncabezado settings={settings} primaryColor={primaryColor} isMobile movilEnBarra />'), true)
+igual('«Mostrar moneda» del editor también en el checkout (mismas opciones del encabezado)', cabeceraCheckout.includes('opciones: opcionesEncabezadoPie(settings as Record<string, unknown> | null)') && headerShared.includes('if (!opcionesShell.moneda) return null;'), true)
+igual('la cabecera de la tienda usa la misma pieza (una sola fuente)', headerShared.includes('<MonedaEncabezado key="currency" settings={settings} primaryColor={primaryColor} isMobile={isMobile} />') && (headerShared.match(/<CurrencySelector\b/g) ?? []).length === 1, true)
+igual('la pieza lleva la configuración del editor (estilo, monedas visibles, ícono, caja)', /export function MonedaEncabezado[\s\S]*?opcionesMoneda\(ajustesCabecera\)[\s\S]*?opciones=\{opMoneda\}[\s\S]*?presentacion=\{presMoneda\}/.test(headerShared), true)
+
+// ── 2026-11-25 (3) · Una sola forma de volver ──────────────────────────────────────────────────
+igual('computador: «Seguir comprando» invisible (sin foco) y migas + ← de EncabezadoPagina', /href=\{hrefInicio\}[^>]*md:invisible/.test(cabeceraCheckout) && paginaCheckout.includes('<EncabezadoPagina') && /className="container mx-auto hidden px-4 pt-6 md:block"/.test(paginaCheckout), true)
+igual('celular: solo «Seguir comprando» (sin migas ni «‹ Volver»)', !/<EncabezadoPagina[^>]*\benCelular\b/.test(paginaCheckout) && !paginaCheckout.includes('<BarraVolverMovil'), true)
+
+// ── 2026-11-25 (3) · Barra fija de pago en computador ──────────────────────────────────────────
+const wizBarra = fuente('components/site/CheckoutWizard.tsx')
+igual('computador 1 paso: barra fija con total, contraentrega/anticipo, ahorro y el botón de la regla única', /\{isOnePage && cartItems\.length > 0 && \(\s*<div className="fixed bottom-0[^"]*z-40 px-4 py-3 hidden md:block"[\s\S]*?<ResumenPagoContraentrega estado=\{ce\.estado\} fmt=\{fmtPrice\} compacto \/>[\s\S]*?Ahorras[\s\S]*?\{contenidoBotonPagar\}/.test(wizBarra), true)
+igual('la barra de computador no se puede pulsar dos veces ni con contraentrega bloqueada', /data-barra-pago-computador=""[\s\S]*?disabled=\{submitting \|\| ceBloqueada\}/.test(wizBarra), true)
+igual('espaciador de computador de siempre (h-20)', wizBarra.includes('<div className="hidden h-20 md:block" aria-hidden="true" />'), true)
+igual('el celular sigue con su barra A/B/C y el botón del resumen se conserva', wizBarra.includes('<BarraPagoMovil') && /accion=\{isOnePage \? \(/.test(wizBarra), true)
+
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, resumen sin controles, variante del acceso)`)
+console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, resumen sin controles, variante del acceso, moneda de la tienda, un solo volver, barra fija en computador)`)

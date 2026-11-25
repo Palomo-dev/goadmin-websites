@@ -179,7 +179,9 @@ export default async function CheckoutPage() {
 
       {/* Contenido */}
       <main className="flex-grow">
-        {/* En el celular el pago no lleva «‹ Volver»: su cabecera ya tiene «Seguir comprando»
+        {/* Una sola forma de volver: en el celular, «Seguir comprando» de la cabecera; en computador,
+            estas migas + ← (la cabecera esconde «Seguir comprando» con md:invisible).
+            En el celular el pago no lleva «‹ Volver»: su cabecera ya tiene «Seguir comprando»
             (el dueño la vio repetida, 2026-11-24). En computador, migas + ← (abajo). */}
         {pedidoApagado ? (
           <div className="max-w-lg mx-auto text-center py-16 px-4" role="status">
