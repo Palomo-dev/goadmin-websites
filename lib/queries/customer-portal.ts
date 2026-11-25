@@ -3,10 +3,20 @@
  * Todas reciben el customerId (uuid) y organizationId.
  */
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient, createServerSupabaseClient } from '@/lib/supabase/server'
 
 function getSb() {
   return createServerSupabaseClient()
+}
+
+/**
+ * `web_orders` ya no se lee con la sesión del comprador (2026-11-25, migración ERP
+ * 20261125193932_seguridad_web_orders_cerrar_anon: solo miembros de la organización y service_role).
+ * El `customerId` llega de la cuenta de la sesión (getCuentaCliente) y cada consulta filtra por él
+ * y por la organización del host, como hace lib/cuenta/cuentaCliente.ts.
+ */
+async function sbPedidos() {
+  return (createAdminClient() ?? (await createServerSupabaseClient())) as any
 }
 
 // ─── Conteos para Dashboard ───────────────────────────────────
@@ -15,8 +25,10 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
   const supabase = await getSb()
   const sb = supabase as any
 
+  const pedidosDb = await sbPedidos()
+
   const [orders, reservations, addresses, coupons, memberships, checkins, tickets, passes, vehicles] = await Promise.all([
-    sb.from('web_orders').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
+    pedidosDb.from('web_orders').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('reservations').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('customer_addresses').select('id', { count: 'exact', head: true }).eq('customer_id', customerId).eq('organization_id', organizationId),
     sb.from('coupons').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).or(`customer_id.eq.${customerId},customer_id.is.null`).eq('is_active', true),
@@ -60,8 +72,7 @@ export async function getCustomerDashboardCounts(customerId: string, organizatio
 // ─── Pedidos (web_orders) ─────────────────────────────────────
 
 export async function getCustomerOrders(customerId: string, organizationId: number, limit = 20) {
-  const supabase = await getSb()
-  const { data } = await (supabase as any)
+  const { data } = await (await sbPedidos())
     .from('web_orders')
     .select('id, order_number, status, payment_status, total, delivery_type, created_at')
     .eq('customer_id', customerId)
@@ -321,8 +332,9 @@ export async function getCustomerRecentActivity(customerId: string, organization
   const sb = supabase as any
 
   // Obtener últimos 5 pedidos y últimas 5 reservas y combinar
+  const pedidosDb = await sbPedidos()
   const [ordersRes, reservationsRes] = await Promise.all([
-    sb.from('web_orders')
+    pedidosDb.from('web_orders')
       .select('id, order_number, status, total, created_at')
       .eq('customer_id', customerId)
       .eq('organization_id', organizationId)
