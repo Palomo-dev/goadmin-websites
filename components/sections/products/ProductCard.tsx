@@ -80,7 +80,7 @@ import {
 import { useEstiloTarjeta, useVendidosTarjeta, useEtiquetasPropiasTarjeta } from '@/components/site/TarjetaProductoContext'
 import { useMarcaBotonTema } from '@/components/site/BotonesTemaContext'
 import { InsigniaVolumenTarjeta, LineaVolumenTarjeta } from '@/components/site/volumen/VolumenTarjeta'
-import { colorBaseEtiqueta, textoEtiqueta, valorEtiqueta } from '@/lib/website/etiquetasProducto'
+import { colorBaseEtiqueta, textoComparableEtiqueta, textoEtiqueta, valorEtiqueta } from '@/lib/website/etiquetasProducto'
 import { productoDeListado, usePromoProducto } from '@/components/site/etiquetas/PromosEtiquetaContext'
 import { textoEtiquetaPromo } from '@/lib/promociones/etiquetasPromocion'
 import {
@@ -1137,8 +1137,10 @@ export function ProductCard({
   // Etiquetas propias («Originales»…): para todos los productos, al final de su esquina (se apilan).
   if (etiquetasPropias.length > 0) effectiveBadges = [...effectiveBadges, ...etiquetasPropias]
   // Promoción real («2 X 1»): opcional, solo con «Estilo de tarjeta › Etiquetas › Promociones»
-  // encendida (`label_promotion.show: true`). Sin esa opción guardada, la tarjeta de hoy.
-  if (promoTexto && estiloTarjeta?.label_promotion?.show === true && !effectiveBadges.some((b) => b.type === 'promotion')) {
+  // encendida (`label_promotion.show: true`). Sin esa opción guardada, la tarjeta de hoy. Una
+  // etiqueta propia con el mismo texto («2 X 1») ya la dice: no se repite (misma regla que la ficha).
+  const promoEnPropia = promoTexto != null && effectiveBadges.some((b) => b.type === 'custom' && textoComparableEtiqueta(b.label) === textoComparableEtiqueta(promoTexto))
+  if (promoTexto && !promoEnPropia && estiloTarjeta?.label_promotion?.show === true && !effectiveBadges.some((b) => b.type === 'promotion')) {
     const esquina = effectiveBadges.find((b) => b.type === 'discount')?.position ?? 'top-left'
     effectiveBadges = [...effectiveBadges, { type: 'promotion', label: '{value}', position: esquina, shape: 'pill', size: 'sm' } as BadgeConfig]
   }

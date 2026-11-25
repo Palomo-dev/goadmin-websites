@@ -127,6 +127,11 @@ interface ProductDetailRendererProps {
   whatsapp?: string | null
   /** Migas y ← de la ficha (lib/navegacion/volver, `navegacionFicha`). Sin ellas, Inicio › Productos/Carta. */
   navegacion?: { padre: DestinoPadre; migas: Miga[] } | null
+  /**
+   * Lienzo del editor (`FichaEnVivo`): las etiquetas que el producto no cumple salen de muestra
+   * para ver su estilo. La ficha pública nunca lo pasa.
+   */
+  muestrasEtiquetas?: boolean
 }
 
 export function ProductDetailRenderer({
@@ -150,6 +155,7 @@ export function ProductDetailRenderer({
   extrasFicha = null,
   whatsapp = null,
   navegacion = null,
+  muestrasEtiquetas = false,
 }: ProductDetailRendererProps) {
   // Padre del ← sin `navegacion`: la carta o Productos, como el «Volver a …» de antes. Las rutas van
   // sin prefijo: EncabezadoPagina antepone el de la sede.
@@ -419,7 +425,7 @@ export function ProductDetailRenderer({
         isParent: isParentProduct(product),
         padreSinVariantes: padreSinVariantes(product),
         variantCount: Array.isArray(variants) ? variants.length : 0,
-        // La ficha no trae ventas (las calcula el listado): «vendidos» queda para la segunda ronda.
+        // Ventas web del producto y sus variantes: las pone la página (las mismas de la tarjeta).
         salesCount: Number(product.sales_count) || 0,
         createdAt: product.created_at ?? null,
       }}
@@ -427,6 +433,7 @@ export function ProductDetailRenderer({
       variantes={(variants ?? []).map((v: { id: number }) => Number(v.id))}
       sinFoto={(bloqueGaleria?.content as Record<string, unknown> | null)?.show_badges === false}
       primaryColor={primaryColor}
+      muestras={muestrasEtiquetas}
     >
       {ficha}
     </ProveedorEtiquetasFicha>

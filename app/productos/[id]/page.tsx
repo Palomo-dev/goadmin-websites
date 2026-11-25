@@ -18,7 +18,7 @@ import { ProductReviews } from '@/components/site/reviews/ProductReviews'
 import { RelatedProducts } from '@/components/site/RelatedProducts'
 import { ExpandableDescription } from '@/components/site/ExpandableDescription'
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
-import { getProductVariants, getProductModifierGroups, getProductModifierGroupsDe, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches, getOrdenAtributos } from '@/lib/supabase/queries'
+import { getProductVariants, getProductModifierGroups, getProductModifierGroupsDe, getWebStockBranchIds, normalizeProductPrices, getWebsitePageByType, countVariantsByParent, getCartaSedeParaListado, getOrganizationBranches, getOrdenAtributos, getWebSalesByProduct } from '@/lib/supabase/queries'
 import { aplicarCartaSede, resolverSedeCarta } from '@/lib/products/carta-sede'
 import { exigeEleccion } from '@/lib/products/modificadores'
 import { soldOutReturnLabel } from '@/lib/menu/menuFull'
@@ -43,7 +43,7 @@ import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
 import { getZonasEnvioFicha } from '@/lib/queries/tienda/envioFicha'
 import { getRelacionadosFicha } from '@/lib/queries/tienda/relacionados'
-import { leerOpcionesDescripcion, leerOpcionesRelacionados, relacionadosPideDatos } from '@/lib/website/v2/seccionesFicha'
+import { leerOpcionesDescripcion, leerOpcionesEtiquetasFicha, leerOpcionesRelacionados, relacionadosPideDatos } from '@/lib/website/v2/seccionesFicha'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { textoPlanoONulo } from '@/lib/texto/textoPlano'
 import { caminoCategoria, navegacionFicha } from '@/lib/navegacion/volver'
@@ -517,12 +517,25 @@ export default async function ProductoDetailPage({
       acciones={{ buscar: true, carrito: { subdominio: organization.subdomain || '', branchId } }}
     />
   )
+  // Etiquetas de la ficha › «Unidades vendidas»: las mismas ventas web que la tarjeta (las propias y
+  // las de sus variantes), de la lectura por organización que ya cachea el catálogo. Solo con las
+  // etiquetas encendidas o en el lienzo (allí se encienden en vivo). Antes la ficha no las tenía y
+  // «776 vendidos» salía en la tarjeta pero nunca en la ficha.
+  const conEtiquetasFicha = enLienzo || seccionesFicha.some((s) => s.section_type === 'product_info' && s.is_visible !== false
+    && leerOpcionesEtiquetasFicha(s.content as Record<string, unknown> | null).mostrar)
+  let productoFicha = product
+  if (conEtiquetasFicha) {
+    const ventas = await getWebSalesByProduct(organization.id)
+    const vendidos = (ventas[Number(product.id)] || 0)
+      + variants.reduce((suma: number, v: { id: number }) => suma + (ventas[Number(v.id)] || 0), 0)
+    productoFicha = { ...product, sales_count: vendidos }
+  }
   const propsFicha = {
     navegacion,
     organization,
     primaryColor,
     templatePage: productDetailTemplate,
-    product,
+    product: productoFicha,
     variants,
     modifierGroups,
     relatedProducts,

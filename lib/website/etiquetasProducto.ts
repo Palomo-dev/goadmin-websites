@@ -15,7 +15,7 @@ import {
   type EstiloTarjetaProducto,
   type EtiquetaPropiaTarjeta,
 } from './tarjetaProducto'
-import type { EsquinaEtiquetaFicha, OpcionesEtiquetasFicha, TipoEtiquetaFicha } from './v2/seccionesFicha'
+import { cabeEnCirculo, type EsquinaEtiquetaFicha, type FormaEtiquetaPintada, type OpcionesEtiquetasFicha, type TipoEtiquetaFicha } from './v2/seccionesFicha'
 
 // ── Regla común (tarjeta y ficha) ────────────────────────────────────────────────────────────────
 
@@ -142,12 +142,15 @@ export interface EtiquetaFichaPintada {
   icono?: IconoEtiqueta
   /** Esquina en A. */
   esquina: EsquinaEtiquetaFicha
-  forma: 'pill' | 'rounded' | 'semi' | 'square'
+  /** Ya resuelta: un círculo con un texto que no cabe llega como `pill`. */
+  forma: FormaEtiquetaPintada
   bg_color?: string
   text_color?: string
   extra_style?: Record<string, string>
   /** B: se toca para explicarse («2 X 1») o para bajar a la tabla («Precio por volumen»). */
   accion?: 'promocion' | 'volumen'
+  /** Solo en la vista previa del editor: el producto no tiene el dato y se pinta una muestra. */
+  muestra?: true
 }
 
 export interface DatosEtiquetasFicha extends DatosEtiquetaProducto {
@@ -155,6 +158,27 @@ export interface DatosEtiquetasFicha extends DatosEtiquetaProducto {
   promoTexto?: string | null
   /** Resumen del precio por volumen («Desde 3: −10 %»), o null. */
   volumenTexto?: string | null
+}
+
+/**
+ * Muestras de la vista previa del editor (`muestras: true`, solo en el lienzo): cada tipo que el
+ * producto no cumple sale con este texto para poder ver el estilo. La tienda nunca las pinta.
+ */
+export const MUESTRAS_ETIQUETAS_FICHA = {
+  discount: 20,
+  promotion: '2 X 1',
+  volume: 'Desde 3: −10 %',
+  sales_count: 128,
+  custom: 'Originales',
+} as const
+
+/**
+ * Texto comparable de una etiqueta: «2 X 1», «2x1» y «2 × 1» son la misma. Si una etiqueta propia
+ * dice lo mismo que la promoción real del producto, sale UNA (la propia, con sus colores; en B se
+ * toca y explica la promoción): antes salían dos «2 X 1», una encima de la otra.
+ */
+export function textoComparableEtiqueta(texto: string | null | undefined): string {
+  return (texto ?? '').toLowerCase().replace(/[×✕]/g, 'x').replace(/[−–]/g, '-').replace(/\s+/g, '')
 }
 
 /** Colores por defecto de cada etiqueta de la ficha (Figma 3036:78121). */
@@ -172,10 +196,40 @@ export function propiasDeFicha(opciones: Pick<OpcionesEtiquetasFicha, 'propias'>
 }
 
 /**
+ * Forma de una etiqueta. «De la tarjeta» = la de «Estilo de tarjeta › Etiquetas» (allí el círculo
+ * es solo para el descuento). El círculo con un texto que no cabe sale como píldora.
+ */
+export function formaEtiquetaFicha(
+  forma: OpcionesEtiquetasFicha['forma'],
+  formaTarjeta: string | null | undefined,
+  tipo: TipoEtiquetaFicha,
+  texto: string,
+): FormaEtiquetaPintada {
+  let f: FormaEtiquetaPintada
+  if (forma !== 'tarjeta') f = forma
+  else if (formaTarjeta === 'rounded' || formaTarjeta === 'semi' || formaTarjeta === 'square') f = formaTarjeta
+  else if (formaTarjeta === 'circle' && tipo === 'discount') f = 'circle'
+  else f = 'pill'
+  return f === 'circle' && !cabeEnCirculo(texto) ? 'pill' : f
+}
+
+/**
+ * ¿La tarjeta deja ver esta etiqueta en la ficha? Solo la apaga un «no» explícito de «Estilo de
+ * tarjeta › Etiquetas». Excepción: «Envío gratis» no es un dato del producto sino una promesa de
+ * la tienda, y sigue pidiendo que la tarjeta la tenga encendida. Antes «Nuevo» no salía nunca en
+ * la ficha porque la tarjeta lo trae apagado de fábrica, aunque el producto fuera nuevo.
+ */
+function permitidaEnFicha(estiloTarjeta: EstiloTarjetaProducto | null, clave: ClaveTarjeta): boolean {
+  if (clave === 'label_shipping') return etiquetaPermitidaEnTarjeta(estiloTarjeta, clave)
+  return estiloTarjeta?.[clave]?.show !== false
+}
+
+/**
  * Etiquetas que pinta la ficha, en el orden elegido. `donde`: `foto` (A, «Desde 3: −10 %») o
  * `titulo` (B, «Precio por volumen» y sin el descuento, que va en rojo junto al precio).
  * `estiloTarjeta` = el estilo de tarjeta del sitio ya resuelto (o null = la tarjeta de hoy);
- * `estiloSitio` = el crudo (para sus etiquetas propias).
+ * `estiloSitio` = el crudo (para sus etiquetas propias). `muestras`: vista previa del editor (lo
+ * que el producto no cumple sale de muestra); en la tienda, siempre `false`.
  */
 export function etiquetasFicha(
   opciones: OpcionesEtiquetasFicha,
@@ -184,20 +238,27 @@ export function etiquetasFicha(
   d: DatosEtiquetasFicha,
   primaryColor: string,
   donde: 'foto' | 'titulo',
+  muestras = false,
 ): EtiquetaFichaPintada[] {
   if (!opciones.mostrar) return []
   const modo = opciones.relleno === 'tarjeta' ? estiloTarjeta?.label_style : opciones.relleno
   const formaTarjeta = estiloTarjeta?.label_shape
-  const forma: EtiquetaFichaPintada['forma'] = opciones.forma !== 'tarjeta'
-    ? opciones.forma
-    : formaTarjeta === 'rounded' || formaTarjeta === 'semi' || formaTarjeta === 'square' ? formaTarjeta : 'pill'
   const salida: EtiquetaFichaPintada[] = []
+
+  // Etiquetas propias que se van a pintar (con su fila encendida). Una con el mismo texto que la
+  // promoción real la reemplaza: una sola etiqueta, la propia.
+  const filaPropias = opciones.items.find((i) => i.id === 'custom')
+  let propias = filaPropias?.visible ? propiasDeFicha(opciones, estiloSitio).filter((e) => e.show !== false && e.label.trim() !== '') : []
+  const propiasMuestra = muestras && propias.length === 0 && filaPropias?.visible === true
+  if (propiasMuestra) propias = [{ id: 'muestra', label: MUESTRAS_ETIQUETAS_FICHA.custom }]
+  const promoReal = d.promoTexto?.trim() || null
+  const igualAPromo = (texto: string) => promoReal != null && textoComparableEtiqueta(texto) === textoComparableEtiqueta(promoReal)
+  const promoEnPropia = propias.some((e) => igualAPromo(e.label))
 
   for (const item of opciones.items) {
     if (!item.visible) continue
     if (item.id === 'custom') {
-      for (const e of propiasDeFicha(opciones, estiloSitio)) {
-        if (e.show === false) continue
+      for (const e of propias) {
         const bg = e.bg || '#111827'
         salida.push({
           clave: `custom-${e.id}`,
@@ -205,20 +266,26 @@ export function etiquetasFicha(
           texto: e.label,
           ...(e.icon ? { icono: e.icon } : {}),
           esquina: e.position ?? 'top_right',
-          forma,
+          forma: formaEtiquetaFicha(opciones.forma, formaTarjeta, 'custom', e.label),
           ...pintarEtiquetaTarjeta(null, null, { bg, text: e.text || textoContraste(bg) }, modo),
+          // La propia que dice lo mismo que la promoción la explica al tocarla (B).
+          ...(igualAPromo(e.label) && donde === 'titulo' ? { accion: 'promocion' as const } : {}),
+          ...(propiasMuestra ? { muestra: true as const } : {}),
         })
       }
       continue
     }
     if (donde === 'titulo' && item.id === 'discount') continue // B: en rojo junto al precio (PrecioFicha)
+    // La promoción ya sale con la etiqueta propia del mismo texto: una sola.
+    if (item.id === 'promotion' && promoEnPropia) continue
     const deTarjeta = DE_TARJETA[item.id]
     // La promoción en la tarjeta es opcional (apagada por defecto); en la ficha manda su interruptor.
-    if (deTarjeta && item.id !== 'promotion' && !etiquetaPermitidaEnTarjeta(estiloTarjeta, deTarjeta.clave)) continue
+    if (deTarjeta && item.id !== 'promotion' && !permitidaEnFicha(estiloTarjeta, deTarjeta.clave)) continue
 
     let texto: string | null = null
     let icono: IconoEtiqueta | undefined
     let accion: EtiquetaFichaPintada['accion']
+    let muestra = false
     switch (item.id) {
       case 'free_shipping':
         texto = 'Envío gratis'
@@ -226,29 +293,43 @@ export function etiquetasFicha(
         break
       case 'discount': {
         const v = valorEtiqueta('discount', d)
-        texto = v.mostrar ? `-${v.valor} %` : null
+        if (v.mostrar) texto = `-${v.valor} %`
+        else if (muestras) { texto = `-${MUESTRAS_ETIQUETAS_FICHA.discount} %`; muestra = true }
         break
       }
       case 'promotion':
-        texto = d.promoTexto || null
-        accion = 'promocion'
+        if (promoReal) {
+          texto = promoReal
+          accion = 'promocion'
+        } else if (muestras && !propias.some((e) => textoComparableEtiqueta(e.label) === textoComparableEtiqueta(MUESTRAS_ETIQUETAS_FICHA.promotion))) {
+          texto = MUESTRAS_ETIQUETAS_FICHA.promotion
+          muestra = true
+        }
         break
-      case 'volume':
-        texto = d.volumenTexto ? (donde === 'foto' ? d.volumenTexto : 'Precio por volumen') : null
+      case 'volume': {
+        const resumen = d.volumenTexto || (muestras ? MUESTRAS_ETIQUETAS_FICHA.volume : null)
+        if (resumen) {
+          texto = donde === 'foto' ? resumen : 'Precio por volumen'
+          muestra = !d.volumenTexto
+          if (!muestra) accion = 'volumen'
+        }
         icono = 'layers'
-        accion = 'volumen'
         break
+      }
       case 'sales_count': {
         const v = valorEtiqueta('sales_count', d)
-        texto = v.mostrar ? `${v.valor} vendidos` : null
+        if (v.mostrar) texto = `${v.valor} vendidos`
+        else if (muestras) { texto = `${MUESTRAS_ETIQUETAS_FICHA.sales_count} vendidos`; muestra = true }
         icono = 'trending'
         break
       }
       case 'new':
-        texto = valorEtiqueta('new', d).mostrar ? 'Nuevo' : null
+        if (valorEtiqueta('new', d).mostrar) texto = 'Nuevo'
+        else if (muestras) { texto = 'Nuevo'; muestra = true }
         break
       case 'sold_out':
-        texto = valorEtiqueta('out_of_stock', d).mostrar ? 'Agotado' : null
+        if (valorEtiqueta('out_of_stock', d).mostrar) texto = 'Agotado'
+        else if (muestras) { texto = 'Agotado'; muestra = true }
         break
     }
     if (!texto) continue
@@ -263,12 +344,20 @@ export function etiquetasFicha(
       texto,
       ...(icono ? { icono } : {}),
       esquina: item.esquina,
-      forma,
+      forma: formaEtiquetaFicha(opciones.forma, formaTarjeta, item.id, texto),
       ...pintado,
       ...(accion && donde === 'titulo' ? { accion } : {}),
+      ...(muestra ? { muestra: true as const } : {}),
     })
   }
-  return salida
+  // Dos etiquetas con el mismo texto (p. ej. una propia «Nuevo» y la automática): sale la primera.
+  const vistos = new Set<string>()
+  return salida.filter((e) => {
+    const k = textoComparableEtiqueta(e.texto)
+    if (vistos.has(k)) return false
+    vistos.add(k)
+    return true
+  })
 }
 
 /** Colores del descuento junto al precio en B (rojo, o los de la etiqueta). null = el verde de hoy. */
@@ -278,7 +367,7 @@ export function colorDescuentoFicha(
 ): { bg: string; text: string } | null {
   if (!opciones.mostrar || (opciones.ubicacion !== 'titulo' && opciones.ubicacion !== 'ambas')) return null
   const item = opciones.items.find((i) => i.id === 'discount')
-  if (!item?.visible || !etiquetaPermitidaEnTarjeta(estiloTarjeta, 'label_discount')) return null
+  if (!item?.visible || !permitidaEnFicha(estiloTarjeta, 'label_discount')) return null
   const bg = item.bg || estiloTarjeta?.label_discount?.bg || '#EF4444'
   return { bg, text: item.text || estiloTarjeta?.label_discount?.text || textoContraste(bg) }
 }

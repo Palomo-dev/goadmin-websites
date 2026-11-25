@@ -33,7 +33,7 @@ import {
   type EtiquetaFichaPintada,
   type IconoEtiqueta,
 } from '@/lib/website/etiquetasProducto'
-import { etiquetasEn, type OpcionesEtiquetasFicha } from '@/lib/website/v2/seccionesFicha'
+import { RADIO_FORMA_ETIQUETA, etiquetasEn, type OpcionesEtiquetasFicha } from '@/lib/website/v2/seccionesFicha'
 import { textoContraste } from '@/lib/website/tarjetaProducto'
 
 interface EtiquetasFichaValor {
@@ -47,16 +47,21 @@ interface EtiquetasFichaValor {
   /** La Galería tiene apagado «Etiquetas sobre la foto» (`show_badges: false`). */
   sinFoto: boolean
   primaryColor: string
+  /**
+   * Vista previa del editor (lienzo): lo que el producto no cumple (no es nuevo, no está agotado,
+   * sin ventas…) sale de muestra para ver el estilo. La tienda nunca lo enciende.
+   */
+  muestras?: boolean
 }
 
 const EtiquetasFichaContext = createContext<EtiquetasFichaValor | null>(null)
 
 /** Lo monta ProductDetailRenderer solo con `labels_show: true`. */
 export function ProveedorEtiquetasFicha({ children, ...valor }: EtiquetasFichaValor & { children: ReactNode }) {
-  const { opciones, producto, datos, precio, variantes, sinFoto, primaryColor } = valor
+  const { opciones, producto, datos, precio, variantes, sinFoto, primaryColor, muestras = false } = valor
   const memo = useMemo(
-    () => ({ opciones, producto, datos, precio, variantes, sinFoto, primaryColor }),
-    [opciones, producto, datos, precio, variantes, sinFoto, primaryColor],
+    () => ({ opciones, producto, datos, precio, variantes, sinFoto, primaryColor, muestras }),
+    [opciones, producto, datos, precio, variantes, sinFoto, primaryColor, muestras],
   )
   return <EtiquetasFichaContext.Provider value={memo}>{children}</EtiquetasFichaContext.Provider>
 }
@@ -87,7 +92,7 @@ function useEtiquetas(donde: 'foto' | 'titulo'): { lista: EtiquetaFichaPintada[]
       ...ctx.datos,
       promoTexto: promo ? textoEtiquetaPromo(promo, formatPrice) : null,
       volumenTexto: r ? `Desde ${r.desde}: −${r.ahorroPct} %` : null,
-    }, ctx.primaryColor, donde)
+    }, ctx.primaryColor, donde, ctx.muestras === true)
   }, [ctx, estilo, estiloSitio, promo, volumen, formatPrice, donde])
   return { lista, promo, ctx }
 }
@@ -96,20 +101,32 @@ const ICONOS: Record<IconoEtiqueta, typeof Truck> = {
   truck: Truck, layers: Layers, trending: TrendingUp, check: BadgeCheck, shield: ShieldCheck, star: Star, zap: Zap,
 }
 
-const RADIO: Record<EtiquetaFichaPintada['forma'], string> = {
-  pill: 'rounded-full', rounded: 'rounded-md', semi: 'rounded-[10px]', square: 'rounded-none',
-}
-
+/**
+ * Clases del chip. La forma va en `estiloChip` (radio en `em`, `RADIO_FORMA_ETIQUETA`, el mismo de la
+ * muestra del editor). El círculo tiene diámetro fijo (40 px chico, 48 px mediano) y el texto
+ * centrado; un texto que no cabe ya llega como píldora (`formaEtiquetaFicha`).
+ */
 function claseChip(e: EtiquetaFichaPintada, tamano: 'sm' | 'md'): string {
+  if (e.forma === 'circle') {
+    const t = tamano === 'sm' ? 'h-10 w-10 text-[11px]' : 'h-12 w-12 text-xs'
+    return `inline-flex shrink-0 items-center justify-center whitespace-nowrap text-center font-bold leading-none shadow-sm ${t}`
+  }
   const t = tamano === 'sm' ? 'gap-1 px-2 py-0.5 text-[11px]' : 'gap-1 px-2.5 py-1 text-xs'
-  return `inline-flex items-center whitespace-nowrap font-semibold leading-4 shadow-sm ${RADIO[e.forma]} ${t}`
+  return `inline-flex items-center whitespace-nowrap font-semibold leading-4 shadow-sm ${t}`
 }
 
 function estiloChip(e: EtiquetaFichaPintada): CSSProperties {
-  return { backgroundColor: e.bg_color, color: e.text_color, ...(e.extra_style ?? {}) }
+  return { backgroundColor: e.bg_color, color: e.text_color, borderRadius: RADIO_FORMA_ETIQUETA[e.forma], ...(e.extra_style ?? {}) }
+}
+
+/** Muestra del lienzo: un aviso al pasar el mouse (la tienda real no la pinta). */
+function atributosMuestra(e: EtiquetaFichaPintada): { 'data-muestra'?: string; title?: string } {
+  return e.muestra ? { 'data-muestra': '', title: 'Muestra de la vista previa: en la tienda sale solo cuando el producto la cumple' } : {}
 }
 
 function Contenido({ e, conFlecha = false }: { e: EtiquetaFichaPintada; conFlecha?: boolean }) {
+  // En el círculo no caben el ícono ni la flecha: solo el texto.
+  if (e.forma === 'circle') return <>{e.texto}</>
   const Icono = e.icono ? ICONOS[e.icono] : null
   return (
     <>
@@ -141,7 +158,7 @@ export function EtiquetasSobreFoto() {
         return (
           <div key={esquina} className={`pointer-events-none absolute z-20 flex max-w-[45%] flex-col gap-1.5 ${clase}`} data-etiquetas-foto={esquina}>
             {propias.map((e) => (
-              <span key={e.clave} className={claseChip(e, ctx.opciones.tamano)} style={estiloChip(e)} data-etiqueta={e.tipo}>
+              <span key={e.clave} className={claseChip(e, ctx.opciones.tamano)} style={estiloChip(e)} data-etiqueta={e.tipo} data-forma={e.forma} {...atributosMuestra(e)}>
                 <Contenido e={e} />
               </span>
             ))}
@@ -179,6 +196,7 @@ export function FilaEtiquetasFicha() {
                 aria-haspopup="dialog"
                 onClick={() => setAbierta((a) => !a)}
                 data-etiqueta={e.tipo}
+                data-forma={e.forma}
               >
                 <Contenido e={e} conFlecha />
               </button>
@@ -188,13 +206,13 @@ export function FilaEtiquetasFicha() {
         }
         if (e.accion === 'volumen') {
           return (
-            <button key={e.clave} type="button" className={`${claseChip(e, ctx.opciones.tamano)} cursor-pointer`} style={estiloChip(e)} onClick={bajarAVolumen} data-etiqueta={e.tipo}>
+            <button key={e.clave} type="button" className={`${claseChip(e, ctx.opciones.tamano)} cursor-pointer`} style={estiloChip(e)} onClick={bajarAVolumen} data-etiqueta={e.tipo} data-forma={e.forma}>
               <Contenido e={e} conFlecha />
             </button>
           )
         }
         return (
-          <span key={e.clave} className={claseChip(e, ctx.opciones.tamano)} style={estiloChip(e)} data-etiqueta={e.tipo}>
+          <span key={e.clave} className={claseChip(e, ctx.opciones.tamano)} style={estiloChip(e)} data-etiqueta={e.tipo} data-forma={e.forma} {...atributosMuestra(e)}>
             <Contenido e={e} />
           </span>
         )

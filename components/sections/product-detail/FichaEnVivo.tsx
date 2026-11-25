@@ -52,7 +52,8 @@ export function FichaEnVivo({ ficha, barra }: FichaEnVivoProps) {
         const conBarra = barra && (opciones.barraFija || opciones.barraEscritorio)
         return (
           <>
-            <ProductDetailRenderer {...ficha} templatePage={plantillaConSecciones(ficha.templatePage, vivas)} />
+            {/* Etiquetas de la ficha: en el lienzo, las que el producto no cumple salen de muestra. */}
+            <ProductDetailRenderer {...ficha} templatePage={plantillaConSecciones(ficha.templatePage, vivas)} muestrasEtiquetas />
             {conBarra && (
               <StickyAddToCart
                 {...barra}
