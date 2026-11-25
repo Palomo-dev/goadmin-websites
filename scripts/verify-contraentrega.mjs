@@ -348,8 +348,13 @@ igual('init: el anticipo solo escribe advance_gateway', /isAnticipo\) \{[^}]*adv
   const cajon = fuente('components/site/CartDrawer.tsx')
   igual('cajón: importa el aviso', cajon.includes("import { AvisoContraentregaCarrito } from './contraentrega/AvisoContraentregaCarrito'"), true)
   igual('cajón: monta el aviso con la sede', /<AvisoContraentregaCarrito[\s\S]*?branchId=\{branchId\}/.test(cajon), true)
-  const ficha = fuente('app/productos/[id]/ProductDetailActions.tsx')
-  igual('ficha: monta el aviso (variantes y producto simple)', (ficha.match(/<AvisoContraentregaFicha product=\{product\} branchId=\{branchId\} \/>/g) || []).length, 2)
+  // Debajo del precio (Figma 3099:83909): en el bloque Información del producto y en la ficha sin
+  // secciones; ya no junto al botón de compra.
+  const info = fuente('components/sections/product-detail/ProductInfo.tsx')
+  igual('ficha: Información del producto monta el aviso tras el precio', /<PrecioFicha[\s\S]*?<AvisoContraentregaFicha product=\{product\} branchId=\{data\?\.branchId \?\? null\} \/>/.test(info), true)
+  const fichaSinSecciones = fuente('app/productos/[id]/page.tsx')
+  igual('ficha sin secciones: el aviso tras el precio', /<PrecioFicha[\s\S]*?<AvisoContraentregaFicha product=\{product\} branchId=\{branchId\} \/>/.test(fichaSinSecciones), true)
+  igual('acciones: ya no montan el aviso', fuente('app/productos/[id]/ProductDetailActions.tsx').includes('AvisoContraentregaFicha'), false)
   const avisos = fuente('components/site/contraentrega/AvisoContraentregaCarrito.tsx') + fuente('components/site/contraentrega/AvisoContraentregaFicha.tsx')
   igual('avisos: sin condiciones no pintan nada', (avisos.match(/!respuesta\.conCondiciones/g) || []).length, 2)
   // Interruptor del editor (Figma 3071:82659): apagado no pinta ni pide las condiciones.

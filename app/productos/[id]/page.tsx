@@ -32,6 +32,7 @@ import { soloContador } from '@/lib/website/contadorColumnas'
 import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
+import { AvisoContraentregaFicha } from '@/components/site/contraentrega/AvisoContraentregaFicha'
 import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
 import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
 import { normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
@@ -595,6 +596,12 @@ export default async function ProductoDetailPage({
               
               {price && (
                 <PrecioFicha price={Number(price.price)} comparePrice={comparePrice} variants={isParent ? variants : []} primaryColor={primaryColor} />
+              )}
+              {/* Aviso de contraentrega debajo del precio (Figma 3099:83909); apagado por defecto. */}
+              {puedePedir && (
+                <div className="mt-2">
+                  <AvisoContraentregaFicha product={product} branchId={branchId} />
+                </div>
               )}
             </div>
             

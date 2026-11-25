@@ -14,7 +14,6 @@ import { TEXTO_PADRE_SIN_VARIANTES } from '@/lib/products/datosTarjeta'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { FilasAccionesFicha, type AgregarFicha } from '@/components/site/ficha/FilasAccionesFicha'
 import { leerAccionesFicha, type AccionFicha } from '@/lib/website/v2/accionesFicha'
-import { AvisoContraentregaFicha } from '@/components/site/contraentrega/AvisoContraentregaFicha'
 import { useResolverVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
 import { botonConVolumen, type BotonVolumen } from '@/lib/promociones/escalonesTienda'
 
@@ -221,8 +220,6 @@ export function ProductDetailActions({
     if (!puedePedir) return null
     return (
       <div className="space-y-3 pt-4">
-        {/* Contraentrega: línea discreta debajo del precio (Figma 3073:83567); apagada por defecto. */}
-        <AvisoContraentregaFicha product={product} branchId={branchId} />
         <VariantSelector
           parentName={product.name}
           variants={variants}
@@ -273,10 +270,6 @@ export function ProductDetailActions({
 
   return (
     <div className="space-y-3 pt-4">
-      {/* Contraentrega: línea discreta, lo primero debajo del precio (Figma 3073:83567). Apagada por
-          defecto (casilla del editor); sin condiciones en la sede, nada. */}
-      {puedePedir && <AvisoContraentregaFicha product={product} branchId={branchId} />}
-
       {/* Selector de modificadores (nuevo sistema ERP) */}
       {modifierGroups.length > 0 && (
         <ProductModifierSelector
