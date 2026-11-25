@@ -93,3 +93,14 @@ export function leerPerfilFactura(valor: unknown): PerfilFactura | null {
   if (!s(v.numero)) return null
   return { tipo, numero: s(v.numero), dv: s(v.dv), razonSocial: s(v.razonSocial), correo: s(v.correo) }
 }
+
+/**
+ * Lo que se guarda en ESTE navegador para la próxima compra (pedido del dueño 2026-11-25: «yo ya
+ * había llenado la cédula»): el mismo trato que nombre, correo y dirección (`checkout_customer_*`).
+ * Solo con número escrito; la casilla (`activa`) no se guarda: nunca se marca sola.
+ */
+export function facturaParaGuardar(f: DatosFactura): PerfilFactura | null {
+  const numero = (f.numero || '').trim()
+  if (!numero) return null
+  return { tipo: f.tipo, numero, dv: f.tipo === 'NIT' ? (f.dv || '').trim() : '', razonSocial: (f.razonSocial || '').trim(), correo: (f.correo || '').trim() }
+}

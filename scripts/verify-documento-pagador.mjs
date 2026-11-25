@@ -34,7 +34,7 @@ import {
   normalizarNumero,
 } from '../lib/payments/documentoPagador.ts'
 import { FACTURA_VACIA, facturaParaPedido, leerFacturaDelPedido, notasConFactura } from '../components/site/checkout/facturaEmpresa.ts'
-import { facturaDePerfil, leerPerfilFactura, mezclarFacturaPerfil } from '../components/site/checkout/facturaPerfil.ts'
+import { facturaDePerfil, facturaParaGuardar, leerPerfilFactura, mezclarFacturaPerfil } from '../components/site/checkout/facturaPerfil.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const leer = (r) => readFileSync(join(ROOT, r), 'utf8').replace(/\r\n/g, '\n')
@@ -219,6 +219,28 @@ prueba('checkout y consulta del pedido: factura estructurada, token y Bold', () 
 
 // ── 8. ERP: la rama «distinto» no escribe la ficha (si el repo está al lado) ─
 const erp = process.env.ERP_DIR || join(ROOT, '..', 'CascadeProjects', 'go-admin-erp')
+prueba('Navegador: el documento queda guardado para la próxima compra (sin sesión)', () => {
+  assert.equal(facturaParaGuardar(FACTURA_VACIA), null, 'sin número no se guarda')
+  assert.equal(facturaParaGuardar({ ...FACTURA_VACIA, tipo: 'CC', numero: '   ' }), null)
+  const cc = { activa: true, tipo: 'CC', numero: ' 1020304050 ', dv: '7', razonSocial: 'Ana Gómez', correo: 'ana@ejemplo.test' }
+  const g = facturaParaGuardar(cc)
+  assert.deepEqual(g, { tipo: 'CC', numero: '1020304050', dv: '', razonSocial: 'Ana Gómez', correo: 'ana@ejemplo.test' })
+  assert.ok(!('activa' in g), 'la casilla no se guarda')
+  // Ida y vuelta: lo guardado se lee igual y solo llena lo vacío; la casilla no se marca sola.
+  const leido = leerPerfilFactura(JSON.parse(JSON.stringify(g)))
+  assert.deepEqual(leido, g)
+  const lleno = mezclarFacturaPerfil(FACTURA_VACIA, leido)
+  assert.equal(lleno.activa, false)
+  assert.equal(lleno.numero, '1020304050')
+  assert.equal(lleno.tipo, 'CC')
+  const nit = facturaParaGuardar({ activa: false, tipo: 'NIT', numero: '900123456', dv: '8', razonSocial: 'Empresa S.A.S.', correo: '' })
+  assert.equal(nit.dv, '8')
+  const w = readFileSync(join(ROOT, 'components/site/CheckoutWizard.tsx'), 'utf8')
+  assert.match(w, /checkout_factura_\$\{organizationSubdomain\}/)
+  assert.match(w, /setFactura\(\(f\) => mezclarFacturaPerfil\(f, guardada\)\)/)
+  assert.match(w, /const aGuardar = facturaParaGuardar\(factura\)/)
+})
+
 const carpeta = join(erp, 'supabase', 'migrations')
 const archivo = existsSync(carpeta) ? readdirSync(carpeta).find((f) => /_factura_pedido_web_documento_cliente\.sql$/.test(f)) : null
 if (archivo) {

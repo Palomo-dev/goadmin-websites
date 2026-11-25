@@ -61,7 +61,7 @@ import { MunicipioBuscador } from './checkout/MunicipioBuscador'
 import { DireccionesGuardadas } from './checkout/DireccionesGuardadas'
 import { camposDelCheckout, campo as campoDe } from './checkout/camposCheckout'
 import { documentoFactura, erroresFactura, FACTURA_VACIA, facturaParaPedido, notasConFactura, type DatosFactura } from './checkout/facturaEmpresa'
-import { leerPerfilFactura, mezclarFacturaPerfil } from './checkout/facturaPerfil'
+import { facturaParaGuardar, leerPerfilFactura, mezclarFacturaPerfil } from './checkout/facturaPerfil'
 import {
   CAMPOS_CONTACTO,
   CAMPOS_ENTREGA,
@@ -388,6 +388,31 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       } catch {}
     }
   }, [customerData, customerStorageKey])
+
+  // Documento de la factura en este navegador, como nombre, correo y dirección: la próxima compra
+  // no lo pide otra vez. Solo llena lo vacío (mezclarFacturaPerfil) y la casilla no se marca sola.
+  const facturaStorageKey = `checkout_factura_${organizationSubdomain}`
+  useEffect(() => {
+    try {
+      const guardada = leerPerfilFactura(JSON.parse(localStorage.getItem(facturaStorageKey) || 'null'))
+      if (guardada) {
+        setFactura((f) => mezclarFacturaPerfil(f, guardada))
+      } else {
+        // Sin documento guardado: la factura queda como esté (lo de siempre).
+      }
+    } catch {}
+  }, [facturaStorageKey])
+
+  useEffect(() => {
+    const aGuardar = facturaParaGuardar(factura)
+    if (aGuardar) {
+      try {
+        localStorage.setItem(facturaStorageKey, JSON.stringify(aGuardar))
+      } catch {}
+    } else {
+      // Sin número escrito no se guarda nada (no se borra lo guardado antes).
+    }
+  }, [factura, facturaStorageKey])
 
   // Datos de usuario autenticado
   const [savedAddresses, setSavedAddresses] = useState<Array<{ id: number; label: string; address_line1: string; city: string; department?: string; country_code?: string; is_default?: boolean }>>([])
