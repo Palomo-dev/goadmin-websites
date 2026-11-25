@@ -403,7 +403,7 @@ igual('contraentrega «Ingresar»: misma ventana', wizTiempo.includes('onIngresa
 const contraentregaFuente = fuente('components/site/contraentrega/OpcionContraentrega.tsx')
 igual('contraentrega: el onClick solo en «Ingresar»', contraentregaFuente.includes("onClick={accion === 'Ingresar' && onIngresar ? onIngresar : undefined}"), true)
 const eventosFuente = fuente('components/site/cuenta/eventos.ts')
-igual('sin ventana montada no se intercepta el clic (navega a la página)', /if \(anfitriones === 0\) return\n\s+e\.preventDefault\(\)/.test(eventosFuente), true)
+igual('sin ventana montada no se intercepta el clic (navega a la página)', /if \(anfitriones === 0\) return\r?\n\s+e\.preventDefault\(\)/.test(eventosFuente), true)
 igual('el checkout pide quedarse y su página de respaldo', eventosFuente.includes("alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })"), true)
 const accesoFuente = fuente('components/site/cuenta/AccesoCuenta.tsx')
 igual('al entrar desde el checkout se queda aunque el editor diga «Ir a Mi cuenta»', accesoFuente.includes("if (opciones.despues === 'cuenta' && !quedarse.current) {"), true)
@@ -443,7 +443,7 @@ const cuponFuente = fuente('components/site/checkout/RevisarPedido.tsx')
 igual('cupón: enlace «¿Tienes un cupón de descuento?» que abre el campo', cuponFuente.includes('¿Tienes un cupón de descuento?') && cuponFuente.includes('if (plegado && !abierto && !codigo.trim() && !error) {'), true)
 igual('cupón aplicado: se ve aplicado con «Quitar» sin abrir', cuponFuente.includes('data-cupon-aplicado=""') && cuponFuente.includes('onClick={cuponAplicado.onQuitar}'), true)
 igual('cupón sin `plegado`: el campo abierto de antes', cuponFuente.includes('plegado = false,'), true)
-igual('el checkout lo usa plegado y con el cupón aplicado (3 pasos y 1 paso comparten seccionPago)', /<CuponCheckout[\s\S]*?\n\s+plegado\n\s+cuponAplicado=\{appliedCoupon \?/.test(wizTiempo) && wizTiempo.includes('{seccionPago}</TarjetaCheckout>'), true)
+igual('el checkout lo usa plegado y con el cupón aplicado (3 pasos y 1 paso comparten seccionPago)', /<CuponCheckout[\s\S]*?\r?\n\s+plegado\r?\n\s+cuponAplicado=\{appliedCoupon \?/.test(wizTiempo) && wizTiempo.includes('{seccionPago}</TarjetaCheckout>'), true)
 
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
