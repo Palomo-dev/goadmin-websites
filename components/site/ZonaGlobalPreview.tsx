@@ -21,6 +21,10 @@ const ETIQUETA: Record<ZonaGlobal, string> = {
   footer: 'Pie de página · global · clic en un enlace para editar su menú',
 }
 
+// Fila de íconos del encabezado (Figma 3265:99803): al pasar el mouse, contorno y etiqueta; el
+// clic abre «Orden en la cabecera» en el editor (PreviewBridge envía `iconos: true`).
+const ETIQUETA_ICONOS = 'Íconos de la cabecera · clic para ordenar'
+
 // Contorno y etiqueta de la zona seleccionada. El encabezado ya es `sticky`
 // (posicionado): la etiqueta se ancla a él. El pie se vuelve `relative` solo
 // mientras está seleccionado y solo en el preview.
@@ -45,6 +49,27 @@ const ESTILOS = `
   pointer-events: none;
 }
 [data-goadmin-zona="header"][data-goadmin-activa] > header::before { content: "${ETIQUETA.header}"; }
+[data-goadmin-zona="header"] [data-acciones-encabezado] { position: relative; }
+[data-goadmin-zona="header"] [data-acciones-encabezado]:hover {
+  outline: 2px solid #4361ee;
+  outline-offset: 3px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+[data-goadmin-zona="header"] [data-acciones-encabezado]:hover::after {
+  content: "${ETIQUETA_ICONOS}";
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 61;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #4361ee;
+  color: #fff;
+  font: 500 11px/16px system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
 [data-goadmin-zona="footer"][data-goadmin-activa] > footer::before { content: "${ETIQUETA.footer}"; }
 `
 

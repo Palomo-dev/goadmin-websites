@@ -39,7 +39,9 @@ export const EVENTO_PASO_LIENZO = 'goadmin:paso-mesa';
  * `{ type: 'goadmin:accion', sectionId, accion: 'quitar' }`; «Ir a …» es un enlace normal.
  *
  * Enlaces de las zonas globales: el clic envía además `href` y `texto` del enlace, para que
- * el editor abra el menú con ese ítem. Un plato de la carta (`data-goadmin-producto`) envía
+ * el editor abra el menú con ese ítem. Un clic en la fila de íconos del encabezado
+ * (`data-acciones-encabezado`) envía además `iconos: true`: el editor abre Encabezado › Íconos
+ * con «Orden en la cabecera» (Figma 3265:99803). Un plato de la carta (`data-goadmin-producto`) envía
  * además `productoId`: el editor abre el constructor de la carta con ese plato.
  *
  * Seguridad: valida `origin` contra una lista de orígenes permitidos (ERP +
@@ -339,6 +341,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
           // evita navegar si cayó en un enlace.
           const ancla = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
           const enlace = !!ancla;
+          const iconos = sectionId === 'header' && !!(e.target as HTMLElement).closest('[data-acciones-encabezado]');
           if (enlace) e.preventDefault();
           setActiveSectionId(sectionId);
           marcarZonaActiva(sectionId);
@@ -348,6 +351,7 @@ export function PreviewBridge({ initialSections, children }: PreviewBridgeProps)
                 type: 'goadmin:select',
                 sectionId,
                 enlace,
+                ...(iconos ? { iconos: true } : {}),
                 ...(ancla
                   ? {
                       href: (ancla.getAttribute('href') || '').slice(0, 512),

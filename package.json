@@ -30,6 +30,7 @@
     "verify:reservas": "node --disable-warning=ExperimentalWarning scripts/verify-reservas.mjs",
     "verify:reservas-deposito": "node --disable-warning=ExperimentalWarning scripts/verify-reservas-deposito.mjs",
     "verify:copias": "node scripts/verify-copias-erp.mjs",
+    "verify:orden-iconos": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/resolver-ts.mjs scripts/verify-orden-iconos.mjs",
     "verify:cafe": "node --disable-warning=ExperimentalWarning scripts/verify-cafe.mjs",
     "verify:pildora": "node --disable-warning=ExperimentalWarning scripts/verify-pildora.mjs",
     "verify:botones": "node --disable-warning=ExperimentalWarning scripts/verify-botones.mjs",

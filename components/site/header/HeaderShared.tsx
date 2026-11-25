@@ -46,7 +46,7 @@ import { ContenedorIcono, trazoContenedor } from './ContenedorIcono';
 import { useTopbarExtras } from './TopbarExtras';
 import { encabezadoUsaLogoClaro, hrefDeSlug, logoSegunFondo } from '@/lib/website/presentacionTienda';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, textoCuentaConSesion, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
+import { datosMoneda, estiloIconosHeredado, monedasVisibles, opcionesCuenta, opcionesIconos, opcionesMoneda, ordenAccionesPantalla, textoCuentaConSesion, textoIcono, type IconoConTexto, type ModoCuenta, type OpcionesMoneda } from '@/lib/website/v2/cabeceraTienda';
 import { AccionCabecera, BanderaMoneda, claseColorIcono, claseEnvoltorio, estiloGlifo, estiloPropio, formaSimpleIcono, presentacionIcono, type PresentacionIcono } from './AccionCabecera';
 import { AvatarCabecera, EnlaceAccesoMenu, EnlaceCuenta } from '@/components/site/cuenta';
 import { ListaMonedas } from '../CurrencySelector';
@@ -740,15 +740,10 @@ export function HeaderActions({
     />
   );
 
-  // Fase 12B: Orden de acciones configurable
-  const actionsOrder: string[] = (() => {
-    const raw = settings?.actions_order;
-    if (typeof raw === 'string') {
-      try { return JSON.parse(raw); } catch { /* fallthrough */ }
-    }
-    if (Array.isArray(raw)) return raw as string[];
-    return ['search', 'currency', 'cart', 'auth'];
-  })();
+  // Orden de los íconos (Figma 3261:99475): computador = `actions_order` (lo de siempre); celular =
+  // `header_iconos.ordenCelular` o, sin él, el del computador. Sin repetidos ni valores raros, y los
+  // que falten en su lugar de siempre (Favoritos justo antes del carrito, como antes).
+  const ordenFinal = ordenAccionesPantalla(ajustesCabecera, isMobile);
 
   // Construir elementos de acción según el orden.
   // Sin contenedor, el círculo de acento y las clases de hoy.
@@ -876,14 +871,6 @@ export function HeaderActions({
     if (repetidos.has('account')) actionElements.auth = null;
     if (repetidos.has('favorites')) actionElements.favorites = null;
   }
-
-  // Favoritos no estaba en el orden guardado: va justo antes del carrito (Figma C1/C3).
-  const ordenFinal = actionElements.favorites && !actionsOrder.includes('favorites')
-    ? (() => {
-        const i = actionsOrder.indexOf('cart');
-        return i < 0 ? [...actionsOrder, 'favorites'] : [...actionsOrder.slice(0, i), 'favorites', ...actionsOrder.slice(i)];
-      })()
-    : actionsOrder;
 
   // Celular con cuenta visible: un ícono más en la fila; menos separación para que logo, buscar,
   // carrito y menú no se aplasten. Sin cuenta en el celular, la separación de siempre.
