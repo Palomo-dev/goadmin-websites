@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { facturaDePerfil, type FichaFactura } from '@/components/site/checkout/facturaPerfil'
 
 export const dynamic = 'force-dynamic'
+
+/** Columnas de `customers` que lee esta ruta (todas existen: MCP 2026-11-25). */
+const COLUMNAS_CLIENTE =
+  'id, first_name, last_name, email, phone, address, city, identification_type, identification_number, dv, company_name, full_name, billing_email, parent_customer_id'
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,13 +34,16 @@ export async function GET(request: NextRequest) {
       customerId: null,
       address: '',
       city: '',
+      // Datos de la factura electrónica de la cuenta (prellenan «Necesito factura a nombre de
+      // empresa» sin pisar lo escrito). null si la ficha no tiene documento.
+      factura: null,
     }
 
     // Buscar customer por user_id (mismo método que getAuthCustomer en perfil)
     let customer = null
     const { data: customerByUserId } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, email, phone, address, city')
+      .select(COLUMNAS_CLIENTE)
       .eq('organization_id', Number(organizationId))
       .eq('user_id', user.id)
       .single()
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
       // Fallback: buscar por email
       const { data: customerByEmail } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, email, phone, address, city')
+        .select(COLUMNAS_CLIENTE)
         .eq('organization_id', Number(organizationId))
         .eq('email', user.email)
         .limit(1)
@@ -61,6 +69,22 @@ export async function GET(request: NextRequest) {
       result.phone = customer.phone || result.phone
       result.address = customer.address || ''
       result.city = customer.city || ''
+
+      // Empresa del cliente (la que guardó una compra con factura a nombre de empresa), misma
+      // organización. Sin empresa, el documento del propio cliente.
+      let empresa: FichaFactura | null = null
+      if (customer.parent_customer_id) {
+        const { data: fichaEmpresa } = await supabase
+          .from('customers')
+          .select('identification_type, identification_number, dv, company_name, full_name, first_name, last_name, email, billing_email')
+          .eq('organization_id', Number(organizationId))
+          .eq('id', customer.parent_customer_id)
+          .maybeSingle()
+        empresa = fichaEmpresa ?? null
+      } else {
+        // Sin empresa enlazada: solo la ficha del cliente.
+      }
+      result.factura = facturaDePerfil(customer, empresa)
 
       // Cargar direcciones guardadas
       const { data: addresses } = await supabase

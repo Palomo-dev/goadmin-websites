@@ -58,7 +58,8 @@ import { FacturaEmpresaCampos } from './checkout/FacturaEmpresaCampos'
 import { MunicipioBuscador } from './checkout/MunicipioBuscador'
 import { DireccionesGuardadas } from './checkout/DireccionesGuardadas'
 import { camposDelCheckout, campo as campoDe } from './checkout/camposCheckout'
-import { documentoFactura, erroresFactura, FACTURA_VACIA, notasConFactura, type DatosFactura } from './checkout/facturaEmpresa'
+import { documentoFactura, erroresFactura, FACTURA_VACIA, facturaParaPedido, notasConFactura, type DatosFactura } from './checkout/facturaEmpresa'
+import { leerPerfilFactura, mezclarFacturaPerfil } from './checkout/facturaPerfil'
 import {
   CAMPOS_CONTACTO,
   CAMPOS_ENTREGA,
@@ -499,6 +500,13 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
       const direcciones = Array.isArray(data.addresses) && data.addresses.length > 0 ? data.addresses : null
       setCustomerData((prev: any) => mezclarDatosCuenta(prev, data, direcciones, trasIngreso))
+      // Documento y datos de factura de la cuenta: solo llenan lo vacío; la casilla no se marca sola.
+      const perfilFactura = leerPerfilFactura(data.factura)
+      if (perfilFactura) {
+        setFactura((f) => mezclarFacturaPerfil(f, perfilFactura))
+      } else {
+        // La cuenta no tiene documento: la factura queda como esté.
+      }
       if (direcciones) setSavedAddresses(direcciones)
     } catch (err) {
       console.error('Error loading auth data:', err)
@@ -991,6 +999,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         // `customerData` con la dirección + complemento y la línea de la factura en las notas; sin
         // complemento ni factura es el mismo objeto de siempre.
         customer: clientePedido,
+        // Factura electrónica estructurada (además de la línea de las notas): el servidor la valida y
+        // la guarda en la ficha del cliente y en el pedido. Sin factura, no viaja (lo de siempre).
+        ...(facturaParaPedido(factura) ? { factura: facturaParaPedido(factura) } : {}),
         ...(customerId ? { customerId } : {}),
         items: cartItems.map(item => ({
           id: item.productId || item.id,
@@ -1130,13 +1141,15 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             sourceId: orderData.orderId,
             gateway: orderData.anticipo.pasarela,
             returnUrl: `${window.location.origin}/checkout/resultado`,
+            // Token del pedido: con él la pasarela recibe el documento del comprador (no lo pide otra vez).
+            ...(typeof orderData.trackingToken === 'string' ? { t: orderData.trackingToken } : {}),
           }),
         })
         const datosAnticipo = await initAnticipo.json().catch(() => ({}))
         localStorage.removeItem(getCartKey(organizationSubdomain || '', branchId))
         window.dispatchEvent(new CustomEvent('cart-updated'))
         if (initAnticipo.ok && datosAnticipo.checkoutUrl) {
-          if (BOLD_CODES.has(orderData.anticipo.pasarela) && (await abrirBoldDesdeUrl(datosAnticipo.checkoutUrl))) return
+          if (BOLD_CODES.has(orderData.anticipo.pasarela) && (await abrirBoldDesdeUrl(datosAnticipo.checkoutUrl, datosAnticipo.boldCustomerData))) return
           window.location.href = datosAnticipo.checkoutUrl
           return
         } else {
@@ -1161,7 +1174,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           body: JSON.stringify({
             orderNumber: createdOrderNumber,
             gateway: paymentMethod,
-            returnUrl: `${window.location.origin}/checkout/resultado`
+            returnUrl: `${window.location.origin}/checkout/resultado`,
+            // Token del pedido: con él la pasarela recibe el documento del comprador (no lo pide otra vez).
+            ...(typeof orderData.trackingToken === 'string' ? { t: orderData.trackingToken } : {}),
           })
         })
 
@@ -1188,7 +1203,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
           // Bold: abrir su pago directo, sin la página intermedia /checkout/bold (2026-11-21).
           // Si no se puede (librería sin cargar, red), esa página queda de respaldo.
-          if (BOLD_CODES.has(paymentMethod) && (await abrirBoldDesdeUrl(initData.checkoutUrl))) return
+          if (BOLD_CODES.has(paymentMethod) && (await abrirBoldDesdeUrl(initData.checkoutUrl, initData.boldCustomerData))) return
 
           // Redirigir a la pasarela de pago
           window.location.href = initData.checkoutUrl
@@ -1250,7 +1265,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       const res = await fetch('/api/checkout/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber: reintento.orderNumber, gateway, returnUrl: `${window.location.origin}/checkout/resultado` }),
+        // `t`: el token del pedido; con él la pasarela recibe el documento del comprador.
+        body: JSON.stringify({ orderNumber: reintento.orderNumber, gateway, returnUrl: `${window.location.origin}/checkout/resultado`, ...(reintento.trackingToken ? { t: reintento.trackingToken } : {}) }),
       })
       const datos = await res.json().catch(() => ({}))
       if (res.ok && datos.checkoutUrl) {
@@ -1269,7 +1285,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         // Igual que al pagar la primera vez: el carrito se vacía al ir a la pasarela.
         localStorage.removeItem(cartKey)
         window.dispatchEvent(new CustomEvent('cart-updated'))
-        if (BOLD_CODES.has(gateway) && (await abrirBoldDesdeUrl(datos.checkoutUrl))) return
+        if (BOLD_CODES.has(gateway) && (await abrirBoldDesdeUrl(datos.checkoutUrl, datos.boldCustomerData))) return
         window.location.href = datos.checkoutUrl
         return
       } else {

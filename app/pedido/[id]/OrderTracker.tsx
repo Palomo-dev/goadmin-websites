@@ -428,14 +428,15 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Contraentrega con el anticipo pendiente: se paga SOLO el anticipo (monto del servidor).
+        // `t`: el token del enlace; con él la pasarela recibe el documento del comprador.
         body: JSON.stringify(data.order.anticipo?.estado === 'pending'
-          ? { source: 'anticipo_pedido', sourceId: data.order.id, gateway, returnUrl: `${window.location.origin}/checkout/resultado` }
-          : { orderNumber: data.order.orderNumber, gateway, returnUrl: `${window.location.origin}/checkout/resultado` }),
+          ? { source: 'anticipo_pedido', sourceId: data.order.id, gateway, returnUrl: `${window.location.origin}/checkout/resultado`, ...(token ? { t: token } : {}) }
+          : { orderNumber: data.order.orderNumber, gateway, returnUrl: `${window.location.origin}/checkout/resultado`, ...(token ? { t: token } : {}) }),
       })
       const j = await res.json().catch(() => ({}))
       if (res.ok && j.checkoutUrl) {
         // Bold: su pago directo, como el checkout; si no abre, la URL de respaldo.
-        if (CODIGOS_BOLD.has(gateway) && (await abrirBoldDesdeUrl(j.checkoutUrl))) {
+        if (CODIGOS_BOLD.has(gateway) && (await abrirBoldDesdeUrl(j.checkoutUrl, j.boldCustomerData))) {
           setPagando(null)
           return
         }
@@ -447,7 +448,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
       setErrorPago('No pudimos abrir el pago. Revisa tu conexión e intenta de nuevo.')
     }
     setPagando(null)
-  }, [data])
+  }, [data, token])
 
   const calificar = useCallback(async (item: ItemPedido, rating: number) => {
     if (!data || item.productId === null) return

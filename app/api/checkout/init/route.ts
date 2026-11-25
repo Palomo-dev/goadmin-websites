@@ -14,6 +14,8 @@ import { ESTADOS_SIN_ENTREGA } from '@/lib/orders/estados-pedido'
 import { FUENTE_COBRO_ANTICIPO, anticipoPorCobrar, pasarelaPermitidaParaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 import { registrarIntentoPago } from '@/lib/payments/intentosPago'
 import { intentoEnlaceCreado } from '@/lib/payments/intentosPagoReglas'
+import { customerDataBoldConDocumento, documentoParaPasarela, type DocumentoPagador } from '@/lib/payments/documentoPagador'
+import { documentoPagadorDelPedido } from '@/lib/payments/documentoPagadorServidor'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,7 +82,8 @@ async function buildWompiCheckoutUrl(
   creds: Record<string, string>,
   order: any,
   returnUrl: string,
-  environment: string
+  environment: string,
+  pagador: DocumentoPagador | null = null
 ): Promise<string> {
   const publicKey = creds.public_key || ''
   const integritySecret = creds.integrity_secret || ''
@@ -126,11 +129,21 @@ async function buildWompiCheckoutUrl(
   }
   if (city) customerParams.push(`customer-data:city=${encodeURIComponent(city)}`)
   if (street) customerParams.push(`customer-data:street=${encodeURIComponent(street)}`)
+  // Documento del pagador (cédula, CE, NIT o pasaporte del checkout o de la cuenta): campos
+  // oficiales `legal-id` + `legal-id-type`, siempre juntos (lib/payments/documentoPagador.ts).
+  const documento = documentoParaPasarela('wompi_co', pagador)
+  if (documento) {
+    customerParams.push(`customer-data:legal-id=${encodeURIComponent(documento.numero)}`)
+    customerParams.push(`customer-data:legal-id-type=${encodeURIComponent(documento.tipo)}`)
+  } else {
+    // Sin documento (o tipo que Wompi no admite): Wompi lo pide, como hoy.
+  }
 
   // Agregar signature:integrity y customer-data con ':' literal (Wompi no acepta %3A)
   const customerQuery = customerParams.length > 0 ? '&' + customerParams.join('&') : ''
   const finalUrl = `${baseUrl}?${params.toString()}${customerQuery}&signature:integrity=${signature}`
-  console.log('[Wompi Checkout URL] phone raw:', rawPhone, '| prefix:', phonePrefix, '| number:', phoneNumber, '| full URL:', finalUrl)
+  // Sin la URL completa: lleva el documento del pagador y no puede quedar en los logs.
+  console.log('[Wompi Checkout URL] phone raw:', rawPhone, '| prefix:', phonePrefix, '| number:', phoneNumber, '| documento:', documento ? 'sí' : 'no')
   return finalUrl
 }
 
@@ -141,7 +154,8 @@ async function buildMercadoPagoCheckout(
   creds: Record<string, string>,
   order: any,
   returnUrl: string,
-  notificationUrl: string | null
+  notificationUrl: string | null,
+  pagador: DocumentoPagador | null = null
 ): Promise<string | null> {
   const accessToken = creds.access_token || ''
 
@@ -163,6 +177,14 @@ async function buildMercadoPagoCheckout(
   if (phoneNumber) {
     payer.phone = { number: phoneNumber }
     if (phonePrefix) payer.phone.area_code = phonePrefix.replace(/\D/g, '')
+  }
+  // Documento del pagador: `payer.identification { type, number }` (CC, CE o NIT; Mercado Pago no
+  // tiene tipo para pasaporte y entonces no se envía). Va servidor → servidor.
+  const documento = documentoParaPasarela('mp_checkout', pagador)
+  if (documento) {
+    payer.identification = { type: documento.tipo, number: documento.numero }
+  } else {
+    // Sin documento: Mercado Pago lo pide, como hoy.
   }
 
   const preference: any = {
@@ -268,7 +290,8 @@ function buildPayUCheckoutUrl(
   creds: Record<string, string>,
   order: any,
   returnUrl: string,
-  environment: string
+  environment: string,
+  pagador: DocumentoPagador | null = null
 ): string {
   const merchantId = creds.merchant_id || ''
   const accountId = creds.account_id || ''
@@ -308,6 +331,17 @@ function buildPayUCheckoutUrl(
   if (order.customer_address) params.append('shippingAddress', order.customer_address)
   if (order.customer_city) params.append('shippingCity', order.customer_city)
   if (order.customer_city) params.append('buyerCity', order.customer_city)
+  // Documento del pagador (WebCheckout: payerDocument/payerDocumentType y buyerDocument/
+  // buyerDocumentType). CC, CE o NIT; el pasaporte no (la documentación no da su código).
+  const documento = documentoParaPasarela('payu_co', pagador)
+  if (documento) {
+    params.append('payerDocument', documento.numero)
+    params.append('payerDocumentType', documento.tipo)
+    params.append('buyerDocument', documento.numero)
+    params.append('buyerDocumentType', documento.tipo)
+  } else {
+    // Sin documento: PayU lo pide, como hoy.
+  }
 
   return `${baseUrl}?${params.toString()}`
 }
@@ -517,7 +551,9 @@ export async function POST(request: NextRequest) {
       return demasiadosIntentos()
     }
 
-    const { orderNumber, gateway, returnUrl, source, sourceId } = await request.json()
+    // `t`: token de seguimiento del pedido (lo mandan el checkout y la consulta del pedido). Solo
+    // sirve para pasarle a la pasarela el documento del comprador; sin él, el cobro de siempre.
+    const { orderNumber, gateway, returnUrl, source, sourceId, t: tokenPedido } = await request.json()
     const hostOrgId = await getOrgIdDelHost()
 
     if (!gateway || !returnUrl) {
@@ -704,9 +740,19 @@ export async function POST(request: NextRequest) {
     // Resolver el gateway code real para el switch
     const resolvedGateway = GATEWAY_CODE_MAP[gateway] || gateway
 
+    // Documento del pagador (cédula, CE, NIT o pasaporte) para que la pasarela no lo pida otra vez:
+    // el de la factura del pedido o, con sesión del cliente del pedido, el de su ficha. Solo si
+    // quien paga demostró ser el comprador (token o sesión). Nunca va a los logs.
+    let pagador: DocumentoPagador | null = null
+    if (esPedidoWeb || isAnticipo) {
+      pagador = await documentoPagadorDelPedido(supabase, order, tokenPedido)
+    } else {
+      // Reservas, mesas, facturas, pases y boletos: sin documento, como hoy.
+    }
+
     switch (resolvedGateway) {
       case 'wompi_co':
-        checkoutUrl = await buildWompiCheckoutUrl(creds, order, returnUrl, environment)
+        checkoutUrl = await buildWompiCheckoutUrl(creds, order, returnUrl, environment, pagador)
         break
 
       case 'mp_checkout':
@@ -717,7 +763,8 @@ export async function POST(request: NextRequest) {
           urlNotificacionMercadoPago(
             request.headers.get('x-forwarded-host') || request.headers.get('host'),
             Number(order.organization_id)
-          )
+          ),
+          pagador
         )
         break
 
@@ -726,7 +773,7 @@ export async function POST(request: NextRequest) {
         break
 
       case 'payu_co':
-        checkoutUrl = buildPayUCheckoutUrl(creds, order, returnUrl, environment)
+        checkoutUrl = buildPayUCheckoutUrl(creds, order, returnUrl, environment, pagador)
         break
 
       case 'paypal_checkout':
@@ -746,6 +793,15 @@ export async function POST(request: NextRequest) {
         { error: 'No se pudo generar la URL de pago. Verifica las credenciales de la pasarela.' },
         { status: 500 }
       )
+    }
+
+    // Bold: el documento NO va en la URL de /checkout/bold (es una URL de la tienda). Viaja aparte,
+    // en la respuesta, y el navegador lo pone en la configuración del botón de Bold.
+    let boldCustomerData: string | null = null
+    if (resolvedGateway === 'bold_link' && pagador) {
+      boldCustomerData = customerDataBoldConDocumento(new URL(checkoutUrl, 'https://tienda.invalid').searchParams.get('customerData'), pagador)
+    } else {
+      // Otra pasarela, o sin documento: la respuesta de siempre.
     }
 
     // 4b. «Enlace de pago creado» en el historial de intentos del pedido (ninguna pasarela lo
@@ -833,6 +889,7 @@ export async function POST(request: NextRequest) {
       orderNumber: order.order_number,
       source: resolvedSource,
       sourceId: isDepositoMesa || isAbonoMesa || isAnticipo ? sourceId : isParkingPass ? sourceId : isTripTicket ? sourceId : isMembership ? sourceId : isReservation ? sourceId : order.id,
+      ...(boldCustomerData ? { boldCustomerData } : {}),
     })
   } catch (error: any) {
     console.error('[Checkout Init] Error:', error)

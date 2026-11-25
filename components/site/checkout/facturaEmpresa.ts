@@ -11,6 +11,13 @@
  * legible: «[Factura electrónica] NIT 900.123.456-7 · Distribuidora S.A.S. · factura@empresa.com».
  * La fase 2 (configuración del formulario desde el ERP) decide si pasa a una columna.
  *
+ * 2026-11-25 (pedido del dueño: «no llenar dos veces el mismo dato»): la línea de las notas se
+ * CONSERVA y además los datos viajan estructurados (`facturaParaPedido` → `body.factura`). El
+ * servidor los valida otra vez (`leerFacturaDelPedido`) y los guarda con la RPC del ERP
+ * `fn_web_order_documento_cliente` (migración 20261125061424): `web_orders.billing_data` y la
+ * ficha del cliente (sin sobrescribir un documento distinto). Factus factura ese pedido con ellos y
+ * las pasarelas reciben el documento (lib/payments/documentoPagador.ts).
+ *
  * Puro (sin React ni imports): lo usan el checkout y `scripts/verify-checkout-v2.mjs`.
  */
 
@@ -154,4 +161,62 @@ export function notasConFactura(notas: string, f: DatosFactura): string {
   const linea = lineaFacturaNotas(f)
   if (!linea) return notas
   return propias ? `${propias}\n${linea}` : linea
+}
+
+/**
+ * Datos de la factura que viajan a /api/orders (`body.factura`), además de la línea de las notas
+ * (que se conserva). undefined con la casilla sin marcar o con errores: el payload de siempre.
+ * El servidor vuelve a validar con `leerFacturaDelPedido` (nunca confía en el navegador).
+ */
+export interface FacturaPedidoPayload {
+  tipo: TipoDocumentoFactura
+  numero: string
+  dv: string
+  razonSocial: string
+  correo: string
+}
+
+export function facturaParaPedido(f: DatosFactura): FacturaPedidoPayload | undefined {
+  if (!f.activa || Object.keys(erroresFactura(f)).length > 0) return undefined
+  return {
+    tipo: f.tipo,
+    numero: f.tipo === 'NIT' || f.tipo === 'CC' ? soloDigitos(f.numero) : (f.numero || '').trim().toUpperCase(),
+    dv: f.tipo === 'NIT' ? soloDigitos(f.dv) : '',
+    razonSocial: (f.razonSocial || '').trim(),
+    correo: (f.correo || '').trim(),
+  }
+}
+
+/** Lo que recibe `fn_web_order_documento_cliente` (ERP 20261125061424). */
+export interface FacturaPedidoServidor {
+  tipo: TipoDocumentoFactura
+  numero: string
+  dv: string | null
+  razon_social: string
+  correo: string
+}
+
+const TIPOS_VALIDOS: readonly TipoDocumentoFactura[] = ['NIT', 'CC', 'CE', 'PA']
+
+/**
+ * `body.factura` de /api/orders, validado con la MISMA regla del checkout. null si no viene o no
+ * pasa (el pedido se crea igual, con la línea de las notas como hoy).
+ */
+export function leerFacturaDelPedido(valor: unknown): FacturaPedidoServidor | null {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return null
+  const v = valor as Record<string, unknown>
+  const tipo = typeof v.tipo === 'string' ? (v.tipo.toUpperCase() as TipoDocumentoFactura) : null
+  if (!tipo || !TIPOS_VALIDOS.includes(tipo)) return null
+  const texto = (x: unknown) => (typeof x === 'string' ? x : typeof x === 'number' ? String(x) : '')
+  const f: DatosFactura = {
+    activa: true,
+    tipo,
+    numero: texto(v.numero),
+    dv: texto(v.dv),
+    razonSocial: texto(v.razonSocial),
+    correo: texto(v.correo),
+  }
+  if (Object.keys(erroresFactura(f)).length > 0) return null
+  const p = facturaParaPedido(f) as FacturaPedidoPayload
+  return { tipo: p.tipo, numero: p.numero, dv: p.tipo === 'NIT' ? p.dv : null, razon_social: p.razonSocial, correo: p.correo }
 }

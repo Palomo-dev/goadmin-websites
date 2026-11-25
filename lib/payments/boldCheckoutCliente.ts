@@ -78,12 +78,19 @@ export function crearCheckoutBold(config: Record<string, string>): InstanciaBold
  * Abre el pago de Bold desde la URL `/checkout/bold?...` que devolvió el servidor, sin pasar
  * por esa página. Devuelve false si no pudo (la pantalla entonces navega a la URL de respaldo).
  */
-export async function abrirBoldDesdeUrl(url: string): Promise<boolean> {
+export async function abrirBoldDesdeUrl(url: string, customerDataConDocumento?: unknown): Promise<boolean> {
   try {
     const u = new URL(url, window.location.origin)
     if (!u.pathname.endsWith('/checkout/bold')) return false
     const config = configBoldDesdeParametros(u.searchParams)
     if (!config) return false
+    // `boldCustomerData` de /api/checkout/init: los datos del cliente CON su documento (cédula, CE,
+    // NIT o pasaporte), que nunca van en la URL de /checkout/bold. Sin él, los de la URL (como hoy).
+    if (typeof customerDataConDocumento === 'string' && customerDataConDocumento.startsWith('{')) {
+      config.customerData = customerDataConDocumento
+    } else {
+      // Sin documento: el customerData de la URL.
+    }
     await cargarLibreriaBold()
     crearCheckoutBold(config).open()
     return true

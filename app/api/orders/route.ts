@@ -42,6 +42,8 @@ import { momentoPedido } from '@/lib/restaurant/ventanaPedido'
 import { insertarConNumero } from '@/lib/orders/numeroPedido'
 import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/orders/mesaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
+import { leerFacturaDelPedido } from '@/components/site/checkout/facturaEmpresa'
+import { guardarDocumentoPedido } from '@/lib/orders/documentoCliente'
 import { avisarErpRondaMesa, buscarRondaPorClave, claveRondaValida, comensalDeRonda, esRondaDuplicada, filasConComensal, filasSinComensal, rechazaClaveRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
@@ -111,7 +113,8 @@ export async function POST(request: NextRequest) {
       deliveryType, deliveryAddress,
       tipAmount, isScheduled, scheduledAt, tableName, tableRef, shippingRateId,
       couponCode, couponId, couponDiscount, grupoEnvio,
-      promoDiscount, promotionIds, dinerLabel, roundKey, anticipoPasarela
+      promoDiscount, promotionIds, dinerLabel, roundKey, anticipoPasarela,
+      factura: facturaBody
     } = body
     // Mismo trim que /api/promotions/check: el código se valida, se evalúa en promociones y se guarda limpio.
     const paymentMethod = typeof paymentMethodCliente === 'string' ? paymentMethodCliente.trim() : paymentMethodCliente
@@ -959,6 +962,17 @@ export async function POST(request: NextRequest) {
     // Post-procesamiento: propina, cupones, promociones, email
     // Envolvemos en try/catch para que si algo falla aquí, la orden ya creada no se pierda
     try {
+      // Factura electrónica del checkout (2026-11-25, pedido del dueño): el documento va a la ficha
+      // del cliente sin sobrescribir uno distinto, y los datos estructurados al pedido
+      // (`billing_data`, con los que Factus factura y las pasarelas prellenan). Una RPC del ERP
+      // (lib/orders/documentoCliente.ts); nunca lanza y la línea de las notas se conserva.
+      const facturaPedido = leerFacturaDelPedido(facturaBody)
+      if (facturaPedido) {
+        await guardarDocumentoPedido(supabase as any, contextOrgId, webOrder.id, facturaPedido)
+      } else {
+        // Sin factura pedida (o incompleta): como hoy, solo la línea de las notas.
+      }
+
       // La propina NO se inserta aquí en `tips`: viaja en `web_orders.tip_amount` y el ERP crea la
       // fila al confirmar el pedido (webOrderConfirmationService). El insert de antes violaba la FK
       // de `server_id` y, con `.catch` sobre un builder sin ese método, lanzaba un TypeError que

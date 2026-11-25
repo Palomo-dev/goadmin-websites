@@ -232,6 +232,25 @@ const PROHIBIDAS = [
  *   No toca el payload de /api/orders, el cobro, `handleSubmit` ni el servidor: /api/orders sigue
  *   recalculando precios, promociones, envío y stock.
  * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs.
+ *
+ * 2026-11-25 — Documento de la factura en el perfil del cliente y en las pasarelas (pedido del
+ * dueño: «no llenar dos veces el mismo dato»; ERP 20261125061424). Lo nuevo vive FUERA de las rutas
+ * del dinero (lib/payments/documentoPagador.ts puro, documentoPagadorServidor.ts,
+ * lib/orders/documentoCliente.ts, components/site/checkout/facturaPerfil.ts y facturaEmpresa.ts,
+ * app/api/customer/me). En ellas, solo:
+ * - app/api/orders/route.ts: acepta `factura` (opcional) y, DESPUÉS de crear el pedido, sus líneas
+ *   y la reserva, llama la RPC `fn_web_order_documento_cliente` (ficha del cliente sin sobrescribir
+ *   un documento distinto + `web_orders.billing_data`). `if` con su `else`: sin factura, como hoy.
+ *   Nunca lanza; no toca el cobro, el stock, las notas ni la respuesta.
+ * - app/api/checkout/init/route.ts: `t` (token del pedido) opcional; con token o sesión del cliente
+ *   del pedido, el documento va por el campo oficial de cada pasarela (Wompi legal-id, Mercado Pago
+ *   payer.identification, PayU payer/buyerDocument; Bold aparte en `boldCustomerData`, nunca en la
+ *   URL de /checkout/bold). Cada `if` con su `else`: sin documento, la URL y la preferencia de
+ *   siempre. El log de Wompi deja de imprimir la URL completa. No toca montos, firmas ni el pedido.
+ * - components/site/CheckoutWizard.tsx: manda `factura` estructurada (sin factura, no viaja), el
+ *   token del pedido a /api/checkout/init y `boldCustomerData` al botón de Bold; prellena la factura
+ *   con la cuenta sin pisar lo escrito. No toca el cobro ni `handleSubmit`.
+ * Vence el 2026-12-12. Comprobado por scripts/verify-documento-pagador.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -262,6 +281,9 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-08', motivo: 'Consultar pedido: motivo de cancelación sin códigos de pasarela ni notas internas' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Checkout v2 fase 1: piezas extraídas, validación única, botón que dice la verdad y pago rechazado sobre el mismo pedido' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Arreglos del dueño 2026-11-25: tiempo de entrega único, ingresar sin salir del pago, − / + en el resumen y cupón plegado' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-12', motivo: 'Factura del checkout: documento a la ficha del cliente y billing_data (RPC del ERP) después de crear el pedido' },
+  { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-12', motivo: 'Documento del comprador a las pasarelas por sus campos oficiales, con token o sesión' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Factura estructurada a /api/orders, token a /api/checkout/init y prellenado desde la cuenta' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */
