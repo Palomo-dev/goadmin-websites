@@ -1522,7 +1522,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             color={primaryColor}
           />
           {factura.activa && (
-            <FacturaEmpresaCampos factura={factura} onCambio={setFactura} errores={erroresFactura(factura)} mostrarErrores={mostrarErrores} color={primaryColor} />
+            <FacturaEmpresaCampos factura={factura} onCambio={setFactura} errores={erroresFactura(factura)} mostrarErrores={mostrarErrores} color={primaryColor} nombreCliente={nombreCompleto} />
           )}
         </div>
       )}

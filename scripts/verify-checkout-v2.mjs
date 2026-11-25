@@ -63,6 +63,7 @@ import {
   erroresFactura,
   lineaFacturaNotas,
   notasConFactura,
+  nombreFacturaSugerido,
 } from '../components/site/checkout/facturaEmpresa.ts'
 import {
   VIGENCIA_PEDIDO_PENDIENTE_MS,
@@ -484,6 +485,15 @@ const arriba = posicionVentanaCuenta(enlaceAbajo, pantalla)
 igual('enlace abajo sin espacio: se abre hacia arriba con el alto que cabe', [arriba.bottom, arriba.top, arriba.maxHeight, arriba.right], [148, undefined, 744, 540])
 const estrecho = posicionVentanaCuenta({ top: 300, bottom: 320, left: 4, right: 200 }, { ancho: 360, alto: 800 })
 igual('pantalla estrecha: nunca se sale por los lados', estrecho.left >= 8 && estrecho.left + ANCHO_VENTANA_CUENTA <= 360 - 8, true)
+
+// ── 2026-11-25 · «Nombre para la factura» con cédula: toma «Nombre y apellido» ──────────────────
+igual('cédula sin nombre: sugiere el del contacto', nombreFacturaSugerido({ tipo: 'CC', razonSocial: '' }, 'Laura Pérez', null), 'Laura Pérez')
+igual('pasaporte y CE también', [nombreFacturaSugerido({ tipo: 'PP', razonSocial: '' }, 'Ana', null), nombreFacturaSugerido({ tipo: 'CE', razonSocial: '' }, 'Ana', null)].join('|'), 'Ana|Ana')
+igual('NIT: no sugiere (es la razón social de la empresa)', nombreFacturaSugerido({ tipo: 'NIT', razonSocial: '' }, 'Laura Pérez', null), null)
+igual('lo escrito a mano no se pisa', nombreFacturaSugerido({ tipo: 'CC', razonSocial: 'Otra Persona' }, 'Laura Pérez', 'Laura'), null)
+igual('si sigue siendo el sugerido, sigue al nombre nuevo', nombreFacturaSugerido({ tipo: 'CC', razonSocial: 'Laura' }, 'Laura Pérez', 'Laura'), 'Laura Pérez')
+igual('sin nombre del contacto: nada', nombreFacturaSugerido({ tipo: 'CC', razonSocial: '' }, '  ', null), null)
+igual('el checkout le pasa «Nombre y apellido»', /<FacturaEmpresaCampos[^>]*nombreCliente=\{nombreCompleto\}/.test(wizTiempo), true)
 
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)

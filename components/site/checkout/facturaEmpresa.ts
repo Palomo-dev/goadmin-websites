@@ -41,6 +41,20 @@ export interface DatosFactura {
 
 export const FACTURA_VACIA: DatosFactura = { activa: false, tipo: 'NIT', numero: '', dv: '', razonSocial: '', correo: '' }
 
+/**
+ * «Nombre para la factura» con cédula, CE o pasaporte: si está vacío, o sigue siendo el nombre que
+ * se sugirió antes (`sugeridoAntes`), toma el «Nombre y apellido» del contacto. Lo que el cliente
+ * escriba a mano no se pisa. Con NIT no se sugiere nada: la razón social es de la empresa.
+ */
+export function nombreFacturaSugerido(f: Pick<DatosFactura, 'tipo' | 'razonSocial'>, nombreCliente: string, sugeridoAntes: string | null): string | null {
+  if (f.tipo === 'NIT') return null
+  const nombre = nombreCliente.trim()
+  if (!nombre) return null
+  const actual = f.razonSocial.trim()
+  if (actual && actual !== (sugeridoAntes ?? '').trim()) return null
+  return actual === nombre ? null : nombre
+}
+
 /** Pesos de la DIAN para el dígito de verificación, del dígito de la derecha hacia la izquierda. */
 const PESOS_DV = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71]
 

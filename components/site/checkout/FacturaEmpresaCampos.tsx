@@ -5,8 +5,9 @@
  * 3138-92776 y pieza 3138-92577). Reglas y dónde se guarda: ./facturaEmpresa.ts.
  */
 
+import { useEffect, useRef } from 'react'
 import { Info } from 'lucide-react'
-import { avisoDV, dvAlCambiarNumero, TIPOS_DOCUMENTO_FACTURA, type CampoFactura, type DatosFactura } from './facturaEmpresa'
+import { avisoDV, dvAlCambiarNumero, nombreFacturaSugerido, TIPOS_DOCUMENTO_FACTURA, type CampoFactura, type DatosFactura } from './facturaEmpresa'
 
 const ENTRADA = 'h-11 w-full rounded-lg border bg-white px-3 text-[15px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-offset-1'
 
@@ -16,13 +17,26 @@ export function FacturaEmpresaCampos({
   errores,
   mostrarErrores,
   color,
+  nombreCliente = '',
 }: {
   factura: DatosFactura
   onCambio: (f: DatosFactura) => void
   errores: Partial<Record<CampoFactura, string>>
   mostrarErrores: boolean
   color: string
+  /** «Nombre y apellido» del contacto: con cédula, CE o pasaporte llena «Nombre para la factura». */
+  nombreCliente?: string
 }) {
+  // Último nombre sugerido: si el cliente no lo cambió, sigue al «Nombre y apellido».
+  const sugerido = useRef<string | null>(null)
+  useEffect(() => {
+    const nombre = nombreFacturaSugerido(factura, nombreCliente, sugerido.current)
+    if (nombre !== null) {
+      sugerido.current = nombre
+      onCambio({ ...factura, razonSocial: nombre })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [factura.tipo, factura.razonSocial, nombreCliente])
   const tipo = TIPOS_DOCUMENTO_FACTURA.find((t) => t.codigo === factura.tipo) ?? TIPOS_DOCUMENTO_FACTURA[0]
   const err = (c: CampoFactura) => (mostrarErrores ? errores[c] ?? null : null)
   const estilo = (c: CampoFactura) => ({ borderColor: err(c) ? '#EF4444' : '#D1D5DB', ['--tw-ring-color' as string]: color })
