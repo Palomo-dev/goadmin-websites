@@ -13,6 +13,7 @@
  *  - lib/website/tarjetaProducto.ts: la promoción en la tarjeta es opcional (sin opciones, la de hoy).
  */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { leerOpcionesEtiquetasFicha, itemsEtiquetasParaGuardar, TIPOS_ETIQUETA_FICHA } from '../lib/website/v2/seccionesFicha.ts'
 import { explicarPromo, llevaPaga, prepararEtiquetasPromo, promoParaProducto, separarPublicas, textoEtiquetaPromo } from '../lib/promociones/etiquetasPromocion.ts'
 import { etiquetasFicha, colorDescuentoFicha, valorEtiqueta } from '../lib/website/etiquetasProducto.ts'
@@ -104,6 +105,22 @@ caso('la promoción en la tarjeta es opcional', () => {
   assert.ok(!sin.includes('promotion'))
   const con = etiquetasDeEstilo({ label_promotion: { show: true } }).map((e) => e.type)
   assert.ok(con.includes('promotion'))
+})
+
+caso('sin huecos: migas cerca de la cabecera y etiquetas vacías sin alto', () => {
+  // Hueco del dueño (org 358, 2026-11-25): entre la barra del contador y las migas quedaban los
+  // 48 px del relleno de la ficha en el computador. Las migas suben como en el celular.
+  for (const ruta of ['components/sections/product-detail/ProductDetailRenderer.tsx', 'app/productos/[id]/page.tsx']) {
+    const fuente = readFileSync(ruta, 'utf8')
+    assert.ok(!fuente.includes('md:mt-0 md:mb-8'), `${ruta}: las migas vuelven a dejar el hueco de 48 px`)
+    assert.ok(fuente.includes('-mt-7 mb-5 md:-mt-6 md:mb-8'), `${ruta}: migas sin subir en el computador`)
+  }
+  const etiquetas = readFileSync('components/site/etiquetas/EtiquetasFicha.tsx', 'utf8')
+  // Fila junto al título: sin etiquetas (o con la ubicación «Sobre la foto») no pinta nada.
+  assert.match(etiquetas, /if \(!ctx \|\| lista\.length === 0\) return null/)
+  // Sobre la foto: capas absolutas (no empujan nada) y solo las esquinas con etiquetas.
+  assert.match(etiquetas, /pointer-events-none absolute z-20/)
+  assert.match(etiquetas, /if \(propias\.length === 0\) return null/)
 })
 
 console.log(`verify:etiquetas-ficha OK (${ok} casos)`)
