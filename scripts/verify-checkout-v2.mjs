@@ -496,6 +496,9 @@ igual('si sigue siendo el sugerido, sigue al nombre nuevo', nombreFacturaSugerid
 igual('sin nombre del contacto: nada', nombreFacturaSugerido({ tipo: 'CC', razonSocial: '' }, '  ', null), null)
 igual('el checkout le pasa «Nombre y apellido»', /<FacturaEmpresaCampos[^>]*nombreCliente=\{nombreCompleto\}/.test(wizTiempo), true)
 
+// ── 2026-11-25 · Resumen fijo al bajar en computador ────────────────────────────────────────────
+igual('computador: la columna del resumen es sticky (con recorrido en la grilla)', /id="resumen-pedido-contenedor"[^>]*lg:sticky lg:top-4 lg:self-start/.test(wizTiempo), true)
+
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
   for (const f of fallos) console.error(`  - ${f}`)

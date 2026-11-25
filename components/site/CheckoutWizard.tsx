@@ -2297,8 +2297,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           )}
         </div>
 
-        {/* Resumen: a la derecha en computador; en celular, plegado arriba («Ver resumen»). */}
-        <div id="resumen-pedido-contenedor" className={`${resumenAbierto ? '' : 'hidden'} order-first md:order-none md:block`}>
+        {/* Resumen: a la derecha en computador, fijo al bajar (sticky en la columna: el resumen solo no
+            tiene recorrido porque su columna mide lo mismo que él); en celular, plegado arriba. */}
+        <div id="resumen-pedido-contenedor" className={`${resumenAbierto ? '' : 'hidden'} order-first md:order-none md:block lg:sticky lg:top-4 lg:self-start`}>
           {resumen}
         </div>
       </div>
