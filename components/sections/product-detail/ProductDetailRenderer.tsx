@@ -35,6 +35,7 @@
  */
 
 import type React from 'react'
+import { configResenasSitio } from '@/lib/resenas/ajustesResenas'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import type { DestinoPadre, Miga } from '@/lib/navegacion/volver'
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
@@ -151,7 +152,8 @@ export function ProductDetailRenderer({
     ?? [{ etiqueta: 'Inicio', href: '/' }, { etiqueta: restaurante ? 'Carta' : 'Productos', href: padreVolver.href }, { etiqueta: String(product?.name ?? '') }]
   const hasSections = Boolean(templatePage && templatePage.website_page_sections.length > 0)
 
-  const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? null
+  // Origen y ajustes de reseñas de la tienda (lib/resenas): sin ellos, el `null` de siempre.
+  const reviewsConfig = configResenasSitio(organization.website_settings)
   const productStats = { rating_avg: product.rating_avg, reviews_count: product.reviews_count }
 
   // F9.3 — Ajustes de layout de la página

@@ -24,6 +24,8 @@ export interface ReviewItem {
   images?: string[]
   replyText?: string | null
   replyAt?: string | null
+  /** Destacada por la tienda (solo reales): sale primero en Carrusel y Compacta. */
+  featured?: boolean
 }
 
 /** Resultado que devuelve cualquier provider. */
@@ -45,6 +47,16 @@ export interface ReviewsConfig {
   generated_count?: number
   generated_rating_range?: { min: number; max: number }
   generated_names_pool?: 'colombia' | 'mexico' | 'espana' | 'neutro'
+  /**
+   * Switch «Mostrar “Compra verificada” en las de ejemplo» (Figma 3144-96345). Sin valor = como
+   * hoy (las de ejemplo pueden llevarla); `false` = las de ejemplo sin la insignia (y no cuentan en
+   * el filtro ni en la línea de verificadas). Las reales no cambian.
+   */
+  ejemplos_verificada?: boolean
+  /** Solo informan al formulario; `/api/reviews` las vuelve a leer y decide (lib/resenas). */
+  quien_escribe?: 'any' | 'buyers'
+  fotos_permitidas?: boolean
+  moderar?: boolean
 }
 
 /** Configuración por defecto — replica exactamente el comportamiento actual. */
@@ -91,4 +103,14 @@ export function textosEstadoVacio(v?: { titulo?: unknown; mensaje?: unknown; bot
     mensaje: t(v?.mensaje, 'Sé el primero en compartir tu experiencia con este producto.'),
     boton: t(v?.boton, 'Escribir una opinión'),
   }
+}
+
+/**
+ * Aplica el switch de las de ejemplo: con `conInsignia === false` las reseñas generadas pierden
+ * «Compra verificada»; las reales quedan como vienen. Sin cambio, devuelve el MISMO objeto.
+ */
+export function aplicarInsigniaEjemplos(resultado: ReviewsResult, conInsignia: boolean | undefined): ReviewsResult {
+  if (conInsignia !== false) return resultado
+  if (!resultado.reviews.some((r) => r.source === 'generated' && r.verified)) return resultado
+  return { ...resultado, reviews: resultado.reviews.map((r) => (r.source === 'generated' && r.verified ? { ...r, verified: false } : r)) }
 }

@@ -57,6 +57,10 @@ export function ReviewSummaryBadge({
     totalReviews = productStats.reviews_count || 0
   }
 
+  // Con reseñas reales y ninguna publicada no se pinta «0.0 (0)»: el estado vacío está abajo.
+  // (Solo llega aquí con el origen de la tienda en real/mixed/auto; las de ejemplo, como siempre.)
+  if (config.reviews_source !== 'generated' && productStats && config.rating_source !== 'generated_only' && totalReviews === 0) return null
+
   const handleClick = () => {
     const el = document.getElementById('product-reviews')
     if (el) {

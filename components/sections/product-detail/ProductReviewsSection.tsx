@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { ProductReviews } from '@/components/site/reviews/ProductReviews'
-import { leerOpcionesResenas } from '@/lib/website/v2/seccionesFicha'
+import { CLAVE_EJEMPLOS_VERIFICADA, leerOpcionesResenas } from '@/lib/website/v2/seccionesFicha'
 
 export const CONTENT_KEYS = ['reviews_source', 'empty_state_title', 'empty_state_message', 'empty_state_cta'] as const
 
@@ -31,6 +31,9 @@ interface ProductReviewsSectionProps {
  * «De dónde salen las opiniones» (`reviews_source`, `auto_switch_threshold`, `min_visible`) del
  * contenido de la sección, si está, manda sobre el de los ajustes del sitio: es lo que el panel
  * del editor escribe (antes se guardaba y la tienda no lo leía).
+ *
+ * «Mostrar “Compra verificada” en las de ejemplo» (`examples_verified_badge`, Figma 3144-96345):
+ * solo `false` cambia algo (las de ejemplo sin la insignia); sin la clave, como siempre.
  */
 export function ProductReviewsSection({ content, primaryColor = '#3B82F6', data }: ProductReviewsSectionProps) {
   const product = data?.product
@@ -40,16 +43,18 @@ export function ProductReviewsSection({ content, primaryColor = '#3B82F6', data 
     : null
   const umbral = typeof content?.auto_switch_threshold === 'number' ? content.auto_switch_threshold : null
   const minimo = typeof content?.min_visible === 'number' ? content.min_visible : null
+  const sinInsigniaEjemplos = content?.[CLAVE_EJEMPLOS_VERIFICADA] === false
   const base = data?.reviewsConfig
   const reviewsConfig = useMemo(() => {
-    if (!fuente && umbral === null && minimo === null) return base
+    if (!fuente && umbral === null && minimo === null && !sinInsigniaEjemplos) return base
     return {
       ...(base ?? {}),
       ...(fuente ? { reviews_source: fuente } : {}),
       ...(umbral !== null ? { auto_switch_threshold: umbral } : {}),
       ...(minimo !== null ? { min_visible: minimo } : {}),
+      ...(sinInsigniaEjemplos ? { ejemplos_verificada: false } : {}),
     }
-  }, [base, fuente, umbral, minimo])
+  }, [base, fuente, umbral, minimo, sinInsigniaEjemplos])
   if (!product) return null
 
   return (

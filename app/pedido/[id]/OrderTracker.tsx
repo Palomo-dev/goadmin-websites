@@ -456,12 +456,16 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
       const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // La tienda toma la organización del host; el token de seguimiento demuestra la compra
+        // («Compra verificada» si el pedido está entregado, lib/resenas/verificarCompra.ts).
         body: JSON.stringify({
           organizationId: data.order.organizationId,
           productId: item.productId,
           authorName: data.order.customerName || 'Cliente',
           rating,
           orderId: data.order.id,
+          trackingToken: token ?? undefined,
+          origen: 'pedido',
           website: '',
         }),
       })
@@ -474,7 +478,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
     } catch {
       setErrorCalificar('No pudimos guardar tu calificación. Revisa tu conexión.')
     }
-  }, [data])
+  }, [data, token])
 
   if (loading && incrustado) {
     return <SiluetaPedido texto="Cargando tu pedido…" />

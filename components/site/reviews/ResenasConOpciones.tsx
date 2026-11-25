@@ -11,11 +11,14 @@
  * primero. Estado vacío con «Escribir una opinión» (mismo en los cuatro).
  *
  * Los datos son los mismos que hoy (providers de `ProductReviews`): las reseñas de ejemplo y su
- * «Compra verificada» se quedan como están (decisión del dueño, 2026-11-24).
+ * «Compra verificada» se quedan como están (decisión del dueño, 2026-11-24), salvo que la sección
+ * apague el switch «Mostrar “Compra verificada” en las de ejemplo» (lo aplica `ProductReviews`).
+ *
+ * «Escribir una opinión» abre el formulario que guarda (`ReviewForm`, Figma 2B/2C). Con «Solo
+ * compradores» el mismo formulario pide verificar la compra antes de escribir.
  */
 
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from '@/components/site/Enlace'
 import { Check, ChevronLeft, ChevronRight, ChevronDown, ImageIcon, Pencil, Star, ThumbsUp } from 'lucide-react'
 import type { ReviewItem } from './types'
 import { ReviewForm } from './ReviewForm'
@@ -34,6 +37,10 @@ interface Props {
   vacio: boolean
   textosVacio: { titulo: string; mensaje: string; boton: string }
   aviso: ReactNode
+  productId?: number
+  productName?: string
+  formulario?: { soloCompradores: boolean; fotosPermitidas: boolean; moderar: boolean }
+  onPublicada?: () => void
 }
 
 type Filtro = 'todas' | 'fotos' | 'verificada' | 5 | 4 | 'bajas'
@@ -59,12 +66,17 @@ function Estrellas({ valor, color, tamano = 16 }: { valor: number; color: string
   )
 }
 
+/** Las destacadas por la tienda primero, sin cambiar el orden del resto (orden estable). */
+function destacadasPrimero(lista: ReviewItem[]): ReviewItem[] {
+  return lista.some((r) => r.featured) ? [...lista.filter((r) => r.featured), ...lista.filter((r) => !r.featured)] : lista
+}
+
 function fecha(valor: string): string {
   const d = new Date(valor)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export function ResenasConOpciones({ opciones: o, reviews, totalReviews, avgRating, primaryColor, vacio, textosVacio, aviso }: Props) {
+export function ResenasConOpciones({ opciones: o, reviews, totalReviews, avgRating, primaryColor, vacio, textosVacio, aviso, productId, productName, formulario: ajustesFormulario, onPublicada }: Props) {
   const colorEstrella = o.colorEstrellas === 'tienda' ? primaryColor : AMARILLO
   const colorBarra = o.colorBarras === 'gris' ? GRIS_BARRA : primaryColor
   const [formulario, setFormulario] = useState(false)
@@ -107,17 +119,16 @@ export function ResenasConOpciones({ opciones: o, reviews, totalReviews, avgRati
   }
 
   const panelFormulario = formulario ? (
-    o.quienOpina === 'compradores' ? (
-      <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
-        Solo quienes compraron este producto pueden opinar.{' '}
-        <Link href="/mi-cuenta" className="font-semibold underline underline-offset-2" style={{ color: primaryColor }}>
-          Entra a tu cuenta
-        </Link>{' '}
-        para opinar sobre tus compras.
-      </div>
-    ) : (
-      <ReviewForm primaryColor={primaryColor} />
-    )
+    <ReviewForm
+      primaryColor={primaryColor}
+      productId={productId}
+      productName={productName}
+      soloCompradores={ajustesFormulario?.soloCompradores ?? o.quienOpina === 'compradores'}
+      fotosPermitidas={ajustesFormulario?.fotosPermitidas ?? true}
+      moderar={ajustesFormulario?.moderar ?? true}
+      onCerrar={() => setFormulario(false)}
+      onPublicada={onPublicada}
+    />
   ) : null
 
   const claseTarjeta =
@@ -283,7 +294,7 @@ export function ResenasConOpciones({ opciones: o, reviews, totalReviews, avgRati
 
   // ── C · Compacta ──
   if (o.estilo === 'compacta') {
-    const destacadas = ordenarResenas(reviews, 'helpful').slice(0, 2)
+    const destacadas = destacadasPrimero(ordenarResenas(reviews, 'helpful')).slice(0, 2)
     return (
       <section className={`mt-8 rounded-xl ${claseTarjeta} p-5`} data-resenas="compacta">
         <div className="flex flex-wrap items-center gap-2">
@@ -415,7 +426,7 @@ interface PropsCarrusel {
 function CarruselResenas({ o, reviews, total, promedio, colorEstrella, primaryColor, tituloEstilo, tarjeta, botonEscribir, panelFormulario, verTodas, setVerTodas, lista, aviso }: PropsCarrusel) {
   const pista = useRef<HTMLDivElement>(null)
   const [pagina, setPagina] = useState(0)
-  const destacadas = useMemo(() => ordenarResenas(reviews, 'helpful').slice(0, 6), [reviews])
+  const destacadas = useMemo(() => destacadasPrimero(ordenarResenas(reviews, 'helpful')).slice(0, 6), [reviews])
   const paginas = Math.max(1, Math.ceil(destacadas.length / 3))
   const mover = (dir: number) => pista.current?.scrollBy({ left: dir * (pista.current.clientWidth * 0.9), behavior: 'smooth' })
   const flecha = (dir: number, Icono: typeof ChevronLeft, etiqueta: string) => (

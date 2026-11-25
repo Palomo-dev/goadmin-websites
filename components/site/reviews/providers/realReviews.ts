@@ -29,9 +29,11 @@ export async function getRealReviews(
     const supabase = await getSupabaseClient()
     const { data, error } = await (supabase as any)
       .from('product_reviews')
-      .select('id, author_name, author_city, rating, title, content, images, is_verified_purchase, helpful_count, reply_text, reply_at, created_at')
+      .select('id, author_name, author_city, rating, title, content, images, is_verified_purchase, is_featured, helpful_count, reply_text, reply_at, created_at')
       .eq('product_id', productId)
       .eq('status', 'approved')
+      // Las destacadas por la tienda primero (product_reviews.is_featured, 2026-11-25).
+      .order('is_featured', { ascending: false })
       .order('helpful_count', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -53,6 +55,7 @@ export async function getRealReviews(
       images: r.images || [],
       replyText: r.reply_text,
       replyAt: r.reply_at,
+      featured: r.is_featured === true,
       avatar: (r.author_name as string).charAt(0).toUpperCase(),
       source: 'real',
     }))

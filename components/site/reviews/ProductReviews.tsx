@@ -17,7 +17,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Filter, Send, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ReviewItem, ReviewsResult, ReviewsConfig } from './types'
-import { resolveReviewsConfig, textosEstadoVacio } from './types'
+import { aplicarInsigniaEjemplos, resolveReviewsConfig, textosEstadoVacio } from './types'
 import { getGeneratedReviews, getSessionSeed } from './providers/generatedReviews'
 import { getRealReviews } from './providers/realReviews'
 import { getMixedReviews, getAutoReviews } from './providers/mixedReviews'
@@ -44,6 +44,15 @@ interface ProductReviewsProps {
   opciones?: OpcionesResenas | null
 }
 
+/** Lo que el formulario necesita saber de la tienda y de la sección (el servidor decide igual). */
+function propsFormulario(config: ReviewsConfig, opciones: OpcionesResenas | null) {
+  return {
+    soloCompradores: config.quien_escribe === 'buyers' || opciones?.quienOpina === 'compradores',
+    fotosPermitidas: config.fotos_permitidas !== false,
+    moderar: config.moderar !== false,
+  }
+}
+
 export function ProductReviews({
   productId,
   productName,
@@ -61,6 +70,8 @@ export function ProductReviews({
   const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
   const [realResult, setRealResult] = useState<ReviewsResult | null>(null)
+  // Sube al publicarse una opinión sin moderación: vuelve a leer las reales.
+  const [recarga, setRecarga] = useState(0)
   const ITEMS_PER_PAGE = 10
 
   // --- Provider generated (síncrono, como el original) ---
@@ -98,15 +109,27 @@ export function ProductReviews({
     }
     load()
     return () => { cancelled = true }
-  }, [productId, config.reviews_source, config.min_visible, config.auto_switch_threshold, productStats])
+  }, [productId, config.reviews_source, config.min_visible, config.auto_switch_threshold, productStats, recarga])
 
   // --- Decidir qué resultado usar ---
   const activeResult: ReviewsResult = useMemo(() => {
-    if (config.reviews_source === 'generated') return generatedResult
-    if (realResult) return realResult
+    // Switch «Compra verificada» en las de ejemplo: sin valor, el mismo objeto de siempre.
+    if (config.reviews_source === 'generated') return aplicarInsigniaEjemplos(generatedResult, config.ejemplos_verificada)
+    if (realResult) return aplicarInsigniaEjemplos(realResult, config.ejemplos_verificada)
     // Mientras cargan las reales, mostrar generadas como placeholder
-    return generatedResult
-  }, [config.reviews_source, generatedResult, realResult])
+    return aplicarInsigniaEjemplos(generatedResult, config.ejemplos_verificada)
+  }, [config.reviews_source, config.ejemplos_verificada, generatedResult, realResult])
+  const formulario = propsFormulario(config, opciones)
+  const formularioAbierto = showForm ? (
+    <ReviewForm
+      primaryColor={primaryColor}
+      productId={productId}
+      productName={productName}
+      {...formulario}
+      onCerrar={() => setShowForm(false)}
+      onPublicada={() => setRecarga((n) => n + 1)}
+    />
+  ) : null
 
   const allReviews = activeResult.reviews
   const totalReviews = activeResult.totalReviews
@@ -159,6 +182,10 @@ export function ProductReviews({
         totalReviews={totalReviews}
         avgRating={activeResult.avgRating}
         primaryColor={primaryColor}
+        productId={productId}
+        productName={productName}
+        formulario={formulario}
+        onPublicada={() => setRecarga((n) => n + 1)}
         vacio={config.reviews_source === 'real' && !!realResult && realResult.totalReviews === 0}
         textosVacio={vacio}
         aviso={config.show_generated_disclaimer && !activeResult.isReal ? (
@@ -190,7 +217,7 @@ export function ProductReviews({
             {vacio.boton}
           </Button>
         </div>
-        {showForm && <ReviewForm primaryColor={primaryColor} />}
+        {formularioAbierto}
         {!showForm && (
           <div className="p-8 text-center bg-gray-50 rounded-xl">
             <p className="text-gray-500">{vacio.mensaje}</p>
@@ -240,7 +267,7 @@ export function ProductReviews({
       </div>
 
       {/* Form */}
-      {showForm && <ReviewForm primaryColor={primaryColor} />}
+      {formularioAbierto}
 
       {/* Filters & Sort */}
       <div className="flex flex-wrap items-center gap-3 mb-6">

@@ -1,4 +1,5 @@
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
+import { configResenasSitio } from '@/lib/resenas/ajustesResenas'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
@@ -369,7 +370,7 @@ export default async function ProductoDetailPage({
   const imageUrl = allImageUrls[0] || null
 
   // --- JSON-LD: Product + Offer (+ AggregateRating solo si hay datos reales, F10.6) ---
-  const reviewsConfig = (organization.website_settings as any)?.product_reviews ?? {}
+  const reviewsConfig = configResenasSitio(organization.website_settings) ?? {}
   const reviewsSource = reviewsConfig.reviews_source || 'generated'
   const ratingSource = reviewsConfig.rating_source || 'same_as_reviews'
   const realCount = product.reviews_count || 0
@@ -589,7 +590,7 @@ export default async function ProductoDetailPage({
               <ReviewSummaryBadge
                 primaryColor={primaryColor}
                 productId={product.id}
-                reviewsConfig={(organization.website_settings as any)?.product_reviews ?? null}
+                reviewsConfig={configResenasSitio(organization.website_settings)}
                 productStats={{ rating_avg: product.rating_avg, reviews_count: product.reviews_count }}
               />
               
@@ -696,7 +697,7 @@ export default async function ProductoDetailPage({
             productId={product.id}
             productName={product.name}
             primaryColor={primaryColor}
-            reviewsConfig={(organization.website_settings as any)?.product_reviews ?? null}
+            reviewsConfig={configResenasSitio(organization.website_settings)}
             productStats={{ rating_avg: product.rating_avg, reviews_count: product.reviews_count }}
           />
         </div>
