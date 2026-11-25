@@ -32,6 +32,7 @@ export default function HeaderClassic({
   navTree,
   settings,
   menuCategories,
+  megaMenuItems,
   showCart,
   onCartClick,
   branchId,
@@ -53,7 +54,7 @@ export default function HeaderClassic({
   // Botón «Todas las categorías» (lib/website/botonCategorias.ts): con categorías en el encabezado
   // (`show_categories_in_header`) va a la izquierda del menú, que entonces arranca a su lado.
   const { ruta } = useRutaSitio();
-  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta);
   const renderBoton = boton ? (
     <BotonTodasCategorias texto={boton.texto} entradas={boton.entradas} primaryColor={primaryColor} hrefTodas={ruta('/categorias')} />
   ) : null;

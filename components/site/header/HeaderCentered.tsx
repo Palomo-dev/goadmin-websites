@@ -32,6 +32,7 @@ export default function HeaderCentered({
   navTree,
   settings,
   menuCategories,
+  megaMenuItems,
   showCart,
   onCartClick,
   branchId,
@@ -43,7 +44,7 @@ export default function HeaderCentered({
   const SearchIconComp = iconoBuscar(settings);
   // Botón «Todas las categorías» (lib/website/botonCategorias.ts): primero en la barra del menú.
   const { ruta } = useRutaSitio();
-  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta);
 
   // La barra va junto a los íconos (w-64, lo de hoy); si ahí quedaría por debajo de 240px o la fila
   // desborda, baja a una fila propia debajo del logo (useBarraAbajo, la regla de los encabezados).

@@ -130,7 +130,7 @@ function ContadorBoton({ cantidad, contador, color }: { cantidad: number; contad
   )
 }
 
-type Props = Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'menuCategories' | 'branchId'> & {
+type Props = Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'menuCategories' | 'megaMenuItems' | 'branchId'> & {
   menu: Menu2
   destinos: DestinosTienda
   onCartClick?: () => void
@@ -159,7 +159,7 @@ function partesActivo(efecto: EfectoActivo | null, esActivo: boolean, color: str
   }
 }
 
-export function MenuInferior({ menu, destinos, organization, primaryColor, navTree, settings, menuCategories, branchId, onCartClick, rutaAdmiteAcciones, pagina = 'normal' }: Props) {
+export function MenuInferior({ menu, destinos, organization, primaryColor, navTree, settings, menuCategories, megaMenuItems, branchId, onCartClick, rutaAdmiteAcciones, pagina = 'normal' }: Props) {
   const { ruta } = useRutaSitio()
   const pathname = usePathname() ?? '/'
   const [categorias, setCategorias] = useState(false)
@@ -306,7 +306,7 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
 
   const extras = (
     <>
-      {categorias && <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setCategorias(false)} />}
+      {categorias && <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems} onClose={() => setCategorias(false)} />}
       {buscar && <ProductSearch primaryColor={primaryColor} icon={IconoBuscar} abierto sinDisparador pantallaCompleta alCerrar={() => setBuscar(false)} />}
       {hojaCuenta.hoja}
     </>

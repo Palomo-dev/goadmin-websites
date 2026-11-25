@@ -34,6 +34,7 @@ export default function HeaderSplit({
   navTree,
   settings,
   menuCategories,
+  megaMenuItems,
   showCart,
   onCartClick,
   branchId,
@@ -46,7 +47,7 @@ export default function HeaderSplit({
 
   // Botón «Todas las categorías» (lib/website/botonCategorias.ts): junto al logo, antes del menú.
   const { ruta } = useRutaSitio();
-  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, null, ruta);
+  const boton = botonCategoriasBarra(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta);
 
   const midpoint = Math.ceil(navItems.length / 2);
   const leftNav = navItems.slice(0, midpoint);

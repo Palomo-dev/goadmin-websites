@@ -594,6 +594,7 @@ export function OrganizationLayoutCliente({
           navTree={arbolEncabezado ?? []}
           settings={settings}
           menuCategories={menuCategories}
+          megaMenuItems={megaMenu}
           branchId={branchId}
           onCartClick={() => setCartOpen(true)}
           rutaAdmiteAcciones={rutaConBarraMovil(quitarPrefijo(pathname, prefijo))}
@@ -609,6 +610,7 @@ export function OrganizationLayoutCliente({
           navTree={arbolEncabezado ?? []}
           settings={settings}
           menuCategories={menuCategories}
+          megaMenuItems={megaMenu}
           branchId={branchId}
           onCartClick={() => setCartOpen(true)}
           rutaAdmiteAcciones

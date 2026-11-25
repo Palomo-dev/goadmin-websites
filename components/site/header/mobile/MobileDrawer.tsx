@@ -37,7 +37,7 @@ import {
   CLASE_BOTON_MENU_PILDORA,
 } from '../HeaderShared';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { menuConCategorias } from '@/lib/website/botonCategorias';
+import { itemCategoriasMenu, menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './SubmenuCategoria';
 import { FilaFavoritosMenu } from '@/components/site/favoritos/FilaFavoritosMenu';
 import { EnlaceAccesoMenu } from '@/components/site/cuenta';
@@ -62,6 +62,7 @@ export default function MobileDrawer({
   showCart,
   onCartClick,
   menuCategories,
+  megaMenuItems,
   posicionLogo,
   pildoraMovil,
 }: HeaderVariantProps) {
@@ -88,27 +89,10 @@ export default function MobileDrawer({
   // Iniciar sesión (Figma 2834:68670): con un modo distinto de «Página», las filas abren la hoja.
   const modoCuenta = opcionesCuenta(settings as Record<string, unknown> | null).modo;
 
-  // Construir item "Categorías" si está habilitado
-  const showCategories =
-    !!menuCategories &&
-    menuCategories.length > 0 &&
-    settings?.show_categories_in_header === true;
-
-  const categoriesItem: NavItem | null = showCategories
-    ? {
-        name: 'Categorías',
-        href: '/categorias',
-        children: menuCategories!.map((cat) => ({
-          name: cat.name,
-          href: `/categorias/${cat.slug}`,
-          icon: cat.icon,
-          // Subcategorías (parent_id): la padre se despliega dentro del menú (SubmenuCategoria).
-          ...(cat.children && cat.children.length > 0
-            ? { children: cat.children.map((h) => ({ name: h.name, href: `/categorias/${h.slug}`, icon: h.icon })) }
-            : {}),
-        })),
-      }
-    : null;
+  // Ítem de categorías: la misma fuente que el botón «Todas las categorías» de computador
+  // (mega menú con la composición mega; si no, el árbol de la tienda con show_categories_in_header),
+  // cada categoría con su ícono y sus subcategorías (lib/website/botonCategorias.ts).
+  const categoriesItem: NavItem | null = itemCategoriasMenu(settings as Record<string, unknown>, menuCategories, megaMenuItems);
 
   // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
   const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);

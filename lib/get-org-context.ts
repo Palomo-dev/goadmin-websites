@@ -34,6 +34,7 @@ import { finesPromocion, idsPromocion } from '@/lib/website/finesPromocion'
 import type { ConversionSitio } from '@/lib/website/conversion'
 import { dominiosPublicos } from '@/lib/site/dominiosPublicos'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
+import { completarMenuMega } from '@/lib/website/botonCategorias'
 
 /**
  * Cabecera que pone el middleware al reescribir `/<slug-de-sede>/resto` → `/resto`
@@ -52,6 +53,11 @@ export interface MegaMenuItem {
   children?: MegaMenuItem[]
   icon?: string
   badge?: string
+  /** Ítems de categoría: su id (para completarlos con la categoría real, `completarMenuMega`). */
+  categoriaId?: number
+  /** Color e imagen de la categoría (los pone `completarMenuMega`). */
+  color?: string
+  imagen?: string
 }
 
 export type FrozenReason = 'trial_expired' | 'suspended' | 'deleted' | 'payment_failed' | 'canceled' | null
@@ -245,10 +251,14 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
   // deja el panel vacío de catálogo (paquete 5-nov C1).
   const soloPaginas = (items: WebsiteMenuItemWithChildren[]): boolean =>
     items.every(i => (i.item_type === 'page' || i.item_type === 'policy') && soloPaginas(i.children ?? []))
-  const megaMenuItems = namedMegaMenu && namedMegaMenu.items.length > 0
+  // Los ítems de categoría se completan con la categoría real (ícono, color, imagen y, sin hijos a
+  // mano, sus subcategorías) desde `categoriasTienda`, que ya está cargado: ninguna consulta nueva.
+  // Las inactivas o de otra sede no salen (lib/website/botonCategorias.ts › completarMenuMega).
+  const itemsMega = namedMegaMenu && namedMegaMenu.items.length > 0
     && !(menuCategories.length > 0 && soloPaginas(namedMegaMenu.items))
-    ? namedMegaMenu.items.map(item => menuItemToNavItem(item))
-    : null
+    ? completarMenuMega(namedMegaMenu.items.map(item => menuItemToNavItem(item)), categoriasTienda)
+    : []
+  const megaMenuItems = itemsMega.length > 0 ? itemsMega : null
 
   // Verificar estado de congelación de la organización
   const frozenReason = await checkFrozenStatus(organization.id, organization.status)
@@ -397,11 +407,14 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
     href = item.custom_url ? hrefDeSlug(item.custom_url) : '#'
   }
 
+  const categoriaId = item.item_type === 'category' ? item.category_id ?? item.category?.id ?? undefined : undefined
+
   return {
     name,
     href,
     children: item.children.length > 0 ? item.children.map(menuItemToNavItem) : undefined,
     icon: item.icon ?? undefined,
     badge: item.badge ?? undefined,
+    ...(categoriaId !== undefined && categoriaId !== null ? { categoriaId: Number(categoriaId) } : {}),
   }
 }

@@ -46,6 +46,7 @@ import { FilaLogoMovil } from './FilaLogoMovil';
 import { leerMenuInferior } from '@/lib/website/menuInferior';
 import { FueraDelEncabezado } from '../CapaFijaEncabezado';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
+import { entradasCategoriasCabecera } from '@/lib/website/botonCategorias';
 
 /**
  * MobileTabs
@@ -63,6 +64,7 @@ export default function MobileTabs({
   onCartClick,
   posicionLogo,
   menuCategories,
+  megaMenuItems,
   branchId,
   pildoraMovil,
 }: HeaderVariantProps) {
@@ -151,12 +153,12 @@ export default function MobileTabs({
       {/* Con menú inferior v2 guardado lo pinta MenuInferior (OrganizationLayoutCliente). */}
       {/* Lo que la barra heredaba de este <header> (color de íconos, fondo transparente sobre
           la portada) va explícito: con «Al bajar» la barra se pinta fuera de él. */}
-      {leerMenuInferior(settings) === null && <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} estiloHeredado={{ ...mp.estilo, ...transparente }} />}
+      {leerMenuInferior(settings) === null && <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} megaMenuItems={megaMenuItems} branchId={branchId} estiloHeredado={{ ...mp.estilo, ...transparente }} />}
       {/* Fuera del <header> (CapaEncabezado): con «Al bajar» su envoltorio lleva transform y la
           hoja `fixed` quedaba recortada al alto del encabezado. */}
       <CapaEncabezado abierta={!!pildoraMovil && categoriasPildora} alCerrar={() => setCategoriasPildora(false)} variables={estiloHeader} retorno={botonMenuRef}>
       {pildoraMovil && categoriasPildora && (
-        <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setCategoriasPildora(false)} />
+        <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems} onClose={() => setCategoriasPildora(false)} />
       )}
       </CapaEncabezado>
       <FilaSedeMovil primaryColor={primaryColor} />
@@ -175,9 +177,10 @@ export function BarraPestanas({
   settings,
   onCartClick,
   menuCategories,
+  megaMenuItems,
   branchId,
   estiloHeredado,
-}: Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'onCartClick' | 'menuCategories' | 'branchId'> & {
+}: Pick<HeaderVariantProps, 'organization' | 'primaryColor' | 'navTree' | 'settings' | 'onCartClick' | 'menuCategories' | 'megaMenuItems' | 'branchId'> & {
   /** Variables que la barra hereda del encabezado que la pinta (MobileTabs). */
   estiloHeredado?: React.CSSProperties
 }) {
@@ -286,7 +289,7 @@ export function BarraPestanas({
 
       {/* Modal de categorías */}
       {showCategories && (
-        <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setShowCategories(false)} />
+        <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} megaMenuItems={megaMenuItems} onClose={() => setShowCategories(false)} />
       )}
 
       {/* El mismo buscador del encabezado: resultados en vivo, no el formulario a /search. */}
@@ -307,17 +310,22 @@ export function BarraPestanas({
 
 /**
  * Hoja de categorías de la barra de pestañas (también la abre «Categorías» del menú inferior v2).
+ * Las filas salen de la misma fuente que el botón «Todas las categorías» (entradasCategoriasCabecera):
+ * mega menú con la composición mega; si no, las categorías de la tienda (sin exigir
+ * show_categories_in_header, como siempre: la hoja se abre a propósito). Sin nada, las páginas.
  */
 export function ModalCategorias({
   settings,
   primaryColor,
   navTree,
   menuCategories,
+  megaMenuItems,
   onClose,
-}: Pick<HeaderVariantProps, 'settings' | 'primaryColor' | 'navTree' | 'menuCategories'> & { onClose: () => void }) {
+}: Pick<HeaderVariantProps, 'settings' | 'primaryColor' | 'navTree' | 'menuCategories' | 'megaMenuItems'> & { onClose: () => void }) {
   const temaMenu = useTemaMenuMovil(primaryColor);
   const navItems = buildNavItems(navTree);
   const { ruta } = useRutaSitio();
+  const entradas = entradasCategoriasCabecera(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta, { sinAjuste: true });
   // Montada solo mientras está abierta: la página de atrás no se desplaza.
   useBloqueoScrollFondo(true);
   return (
@@ -339,36 +347,36 @@ export function ModalCategorias({
           </button>
         </div>
         <div className="p-4 space-y-1">
-          {menuCategories && menuCategories.length > 0
-            ? menuCategories.map((cat) => cat.children && cat.children.length > 0 ? (
+          {entradas.length > 0
+            ? entradas.map((cat) => cat.hijos.length > 0 ? (
                 // Categoría padre (parent_id): se despliega aquí mismo con «Ver todo» y sus hijas.
-                <details key={cat.id} className="group" data-submenu-categoria="">
+                <details key={cat.clave} className="group" data-submenu-categoria="">
                   <summary className="flex cursor-pointer list-none items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]">
-                    {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-5 w-5 flex-shrink-0" />}
-                    <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">{cat.name}</span>
+                    {cat.icono && <IconoGuardado icono={cat.icono} nombre={cat.nombre} className="h-5 w-5 flex-shrink-0" />}
+                    <span className="flex-1 text-sm font-medium text-[var(--mm-fg)]">{cat.nombre}</span>
                     <ChevronDown aria-hidden="true" className="h-4 w-4 text-[var(--mm-fg-muted)] transition-transform group-open:rotate-180" />
                   </summary>
                   <div className="pl-10 pb-1">
-                    <Link href={ruta(`/categorias/${cat.slug}`)} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
+                    <Link href={cat.href} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
                       Ver todo
                     </Link>
-                    {cat.children.map((h) => (
-                      <Link key={h.id} href={ruta(`/categorias/${h.slug}`)} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
-                        {h.name}
+                    {cat.hijos.map((h) => (
+                      <Link key={h.clave} href={h.href} className="block py-2 px-2 text-sm text-[var(--mm-fg-muted)] rounded-lg hover:bg-[var(--header-hover)]" onClick={onClose}>
+                        {h.nombre}
                       </Link>
                     ))}
                   </div>
                 </details>
               ) : (
                 <Link
-                  key={cat.id}
-                  href={ruta(`/categorias/${cat.slug}`)}
+                  key={cat.clave}
+                  href={cat.href}
                   className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-[var(--header-hover)]"
                   onClick={onClose}
                 >
-                  {cat.icon && <IconoGuardado icono={cat.icon} nombre={cat.name} className="h-5 w-5 flex-shrink-0" />}
+                  {cat.icono && <IconoGuardado icono={cat.icono} nombre={cat.nombre} className="h-5 w-5 flex-shrink-0" />}
                   <span className="text-sm font-medium text-[var(--mm-fg)]">
-                    {cat.name}
+                    {cat.nombre}
                   </span>
                 </Link>
               ))

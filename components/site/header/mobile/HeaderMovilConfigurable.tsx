@@ -30,6 +30,7 @@ import { MobileBottomNav, useUnidadesBarra } from './MobileBottomNav'
 import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
 import { BarraPestanas } from './MobileTabs'
 import { leerMenuInferior } from '@/lib/website/menuInferior'
+import { itemCategoriasMenu } from '@/lib/website/botonCategorias'
 import { ProductSearch } from '../../ProductSearch'
 import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado'
 
@@ -45,6 +46,7 @@ export function HeaderMovilConfigurable({
   showCart,
   onCartClick,
   menuCategories,
+  megaMenuItems,
   branchId,
   presentacion,
 }: HeaderVariantProps & { presentacion: PresentacionMovil }) {
@@ -174,6 +176,7 @@ export function HeaderMovilConfigurable({
         <ContenidoMenu
           navItems={navItems}
           menuCategories={menuCategories}
+          megaMenuItems={megaMenuItems}
           settings={settings}
           organization={organization}
           primaryColor={primaryColor}
@@ -198,7 +201,7 @@ export function HeaderMovilConfigurable({
         <ProductSearch primaryColor={primaryColor} icon={SearchIconComp} abierto sinDisparador pantallaCompleta alCerrar={() => setPanelBuscar(false)} />
       )}
       {pestanasPlantilla && (
-        <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} />
+        <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} megaMenuItems={megaMenuItems} branchId={branchId} />
       )}
       {barra && !menuV2 && (
         <MobileBottomNav
@@ -255,10 +258,11 @@ function claseIcono(iconos: IconosMovil | null) {
 
 
 function ContenidoMenu({
-  navItems, menuCategories, settings, organization, primaryColor, panel, onCerrar,
+  navItems, menuCategories, megaMenuItems, settings, organization, primaryColor, panel, onCerrar,
 }: {
   navItems: NavItem[]
   menuCategories?: HeaderVariantProps['menuCategories']
+  megaMenuItems?: HeaderVariantProps['megaMenuItems']
   settings: HeaderVariantProps['settings']
   organization: HeaderVariantProps['organization']
   primaryColor: string
@@ -267,10 +271,13 @@ function ContenidoMenu({
 }) {
   const categorias = panel?.categories === 'list'
   const items: NavItem[] = [...navItems]
-  if (menuCategories && menuCategories.length > 0 && settings?.show_categories_in_header) {
-    const hijos = menuCategories.map((c) => ({ name: c.name, href: `/categorias/${c.slug}` }))
-    if (categorias) items.push(...hijos)
-    else items.push({ name: 'Categorías', href: '/categorias', children: hijos })
+  // Misma fuente y mismas subcategorías que el botón «Todas las categorías» (botonCategorias.ts).
+  const itemCategorias = itemCategoriasMenu(settings as Record<string, unknown>, menuCategories, megaMenuItems)
+  // Categorías sueltas en el menú (panel «lista»): la que tiene subcategorías lleva «Ver todo».
+  const sueltas = new Set<NavItem>(categorias ? itemCategorias?.children ?? [] : [])
+  if (itemCategorias) {
+    if (categorias) items.push(...sueltas)
+    else items.push(itemCategorias)
   }
   const tel = organization.phone
   const mail = organization.email
@@ -291,7 +298,7 @@ function ContenidoMenu({
       )}
       <nav className="flex-1 space-y-1 p-4">
         {items.map((item) => (
-          <ItemNav key={item.name} item={item} onCerrar={onCerrar} />
+          <ItemNav key={item.name} item={item} onCerrar={onCerrar} verTodo={sueltas.has(item)} />
         ))}
       </nav>
       {panel?.showContact && (tel || mail) && (
@@ -311,19 +318,22 @@ function ContenidoMenu({
   )
 }
 
-function ItemNav({ item, onCerrar }: { item: NavItem; onCerrar: () => void }) {
+function ItemNav({ item, onCerrar, anidado = false, verTodo = anidado }: { item: NavItem; onCerrar: () => void; anidado?: boolean; verTodo?: boolean }) {
   if (item.children && item.children.length > 0) {
+    // Una categoría con subcategorías dentro de «Categorías» se despliega igual, con «Ver todo».
     return (
       <details className="group">
-        <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2.5 font-medium">{item.name}</summary>
+        <summary className={`flex cursor-pointer list-none items-center justify-between rounded-lg ${anidado ? 'px-3 py-2 text-sm' : 'px-3 py-2.5 font-medium'}`}>{item.name}</summary>
         <div className="space-y-1 pl-4">
+          {verTodo && <Link href={item.href} onClick={onCerrar} className="block rounded-lg px-3 py-2 text-sm">Ver todo</Link>}
           {item.children.map((h) => (
-            <Link key={h.href} href={h.href} onClick={onCerrar} className="block rounded-lg px-3 py-2 text-sm">{h.name}</Link>
+            <ItemNav key={h.href} item={h} onCerrar={onCerrar} anidado />
           ))}
         </div>
       </details>
     )
   }
+  if (anidado) return <Link href={item.href} onClick={onCerrar} className="block rounded-lg px-3 py-2 text-sm">{item.name}</Link>
   return <Link href={item.href} onClick={onCerrar} className="block rounded-lg px-3 py-2.5 font-medium">{item.name}</Link>
 }
 

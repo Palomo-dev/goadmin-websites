@@ -40,7 +40,7 @@ import {
   DrawerClose,
 } from '@/components/ui/drawer';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { menuConCategorias } from '@/lib/website/botonCategorias';
+import { itemCategoriasMenu, menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './mobile/SubmenuCategoria';
 
 /**
@@ -64,6 +64,7 @@ export default function HeaderMinimal({
   showCart,
   onCartClick,
   menuCategories,
+  megaMenuItems,
   branchId,
 }: HeaderVariantProps) {
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
@@ -81,27 +82,10 @@ export default function HeaderMinimal({
   const isLoggedIn = useAuthState();
   const showHeaderAuth = settings?.show_header_auth !== false;
 
-  // Construir item "Categorías" si está habilitado
-  const showCategories =
-    !!menuCategories &&
-    menuCategories.length > 0 &&
-    settings?.show_categories_in_header === true;
-
-  const categoriesItem: NavItem | null = showCategories
-    ? {
-        name: 'Categorías',
-        href: '/categorias',
-        children: menuCategories!.map((cat) => ({
-          name: cat.name,
-          href: `/categorias/${cat.slug}`,
-          icon: cat.icon,
-          // Subcategorías (parent_id): la padre se despliega dentro del menú (SubmenuCategoria).
-          ...(cat.children && cat.children.length > 0
-            ? { children: cat.children.map((h) => ({ name: h.name, href: `/categorias/${h.slug}`, icon: h.icon })) }
-            : {}),
-        })),
-      }
-    : null;
+  // Ítem de categorías: la misma fuente que el botón «Todas las categorías» de computador
+  // (mega menú con la composición mega; si no, el árbol de la tienda con show_categories_in_header),
+  // cada categoría con su ícono y sus subcategorías (lib/website/botonCategorias.ts).
+  const categoriesItem: NavItem | null = itemCategoriasMenu(settings as Record<string, unknown>, menuCategories, megaMenuItems);
 
   // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
   const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);
