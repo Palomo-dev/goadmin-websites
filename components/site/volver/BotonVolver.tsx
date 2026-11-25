@@ -19,20 +19,26 @@ export interface BotonVolverProps extends OpcionesVolver {
   conTexto?: boolean
   /** 32 px en el celular y 36 px desde md (encabezado de la ficha en el celular). */
   compacto?: boolean
+  /** Sobre una cabecera oscura (la del checkout): usa siempre la variante oscura del botón. */
+  sobreFondoOscuro?: boolean
   className?: string
 }
 
 /** Variables y clases del botón con el color de la tienda; sin color válido, el «Neutro». */
-export function estiloBotonVolver(primaryColor: string | null | undefined): { clase: string; estilo?: CSSProperties } {
+export function estiloBotonVolver(primaryColor: string | null | undefined, sobreFondoOscuro = false): { clase: string; estilo?: CSSProperties } {
   const c = coloresBotonVolver(primaryColor)
+  if (!c && sobreFondoOscuro) {
+    return { clase: 'border border-white/25 bg-white/10 text-white hover:border-white/50' }
+  }
   if (!c) {
     return {
       clase: 'border border-slate-200 bg-white text-slate-900 hover:border-slate-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white',
     }
   }
   return {
-    clase:
-      'border border-transparent bg-[var(--volver-fondo)] text-[var(--volver-flecha)] hover:border-[var(--volver-borde)] dark:bg-[var(--volver-fondo-oscuro)] dark:text-[var(--volver-flecha-oscura)]',
+    clase: sobreFondoOscuro
+      ? 'border border-transparent bg-[var(--volver-fondo-oscuro)] text-[var(--volver-flecha-oscura)] hover:border-[var(--volver-borde)]'
+      : 'border border-transparent bg-[var(--volver-fondo)] text-[var(--volver-flecha)] hover:border-[var(--volver-borde)] dark:bg-[var(--volver-fondo-oscuro)] dark:text-[var(--volver-flecha-oscura)]',
     estilo: {
       ['--volver-fondo' as string]: c.fondo,
       ['--volver-flecha' as string]: c.flecha,
@@ -43,9 +49,9 @@ export function estiloBotonVolver(primaryColor: string | null | undefined): { cl
   }
 }
 
-export function BotonVolver({ padre, preferirUltimaCategoria, primaryColor, conTexto = false, compacto = false, className = '' }: BotonVolverProps) {
+export function BotonVolver({ padre, preferirUltimaCategoria, primaryColor, conTexto = false, compacto = false, sobreFondoOscuro = false, className = '' }: BotonVolverProps) {
   const { href, etiqueta, alPulsar } = useDestinoVolver({ padre, preferirUltimaCategoria })
-  const { clase, estilo } = estiloBotonVolver(primaryColor)
+  const { clase, estilo } = estiloBotonVolver(primaryColor, sobreFondoOscuro)
   const texto = textoVolver(etiqueta)
   const boton = (
     <span

@@ -22,6 +22,7 @@ export function VolverCabecera({
   padre,
   migaCelular,
   primaryColor,
+  sobreFondoOscuro = false,
   className = '',
 }: {
   migas: readonly Miga[]
@@ -29,12 +30,14 @@ export function VolverCabecera({
   /** La miga que se ve en el celular junto al ← (con enlace). Sin ella, solo el ←. */
   migaCelular?: Miga | null
   primaryColor?: string | null
+  /** La cabecera es oscura: el ← usa su variante oscura (como en el modo oscuro). */
+  sobreFondoOscuro?: boolean
   className?: string
 }) {
   const { ruta } = useRutaSitio()
   return (
     <div className={`flex min-w-0 items-center gap-2 md:gap-2.5 ${className}`} data-volver-cabecera="">
-      <BotonVolver compacto padre={padre} primaryColor={primaryColor} />
+      <BotonVolver compacto padre={padre} primaryColor={primaryColor} sobreFondoOscuro={sobreFondoOscuro} />
       <MigasTienda migas={migas} heredarColor className="hidden md:block" />
       {migaCelular?.href ? (
         <Link href={ruta(migaCelular.href)} className="min-w-0 truncate text-xs font-medium text-current opacity-80 hover:opacity-100 md:hidden" data-miga-celular="">

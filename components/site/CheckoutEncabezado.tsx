@@ -55,7 +55,7 @@ export function CheckoutEncabezado({
         {/* UNA sola forma de volver (el dueño, 2026-11-25): en la cabecera, el ← cuadrado de la tienda
             (BotonVolver) y las migas; la página ya no pinta el bloque «Finalizar compra». Celular:
             ← + «Carrito». */}
-        <VolverCabecera migas={migas} padre={padre} migaCelular={migaCelular} primaryColor={primaryColor} className="justify-self-start" />
+        <VolverCabecera migas={migas} padre={padre} migaCelular={migaCelular} primaryColor={primaryColor} sobreFondoOscuro={fondoOscuro} className="justify-self-start" />
         <div className="flex items-center gap-2">
           {logo && <img src={logo} alt={nombre} className="h-8 md:h-12 w-auto" />}
           {!logo && <span className="font-semibold text-current text-sm md:text-lg">{nombre}</span>}

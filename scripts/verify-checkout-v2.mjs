@@ -518,7 +518,7 @@ igual('la pieza lleva la configuración del editor (estilo, monedas visibles, í
 igual('una sola forma de volver: en la cabecera (← + migas), sin el bloque «Finalizar compra» de la página', cabeceraCheckout.includes('<VolverCabecera migas={migas} padre={padre} migaCelular={migaCelular} primaryColor={primaryColor}') && !paginaCheckout.includes('<EncabezadoPagina') && !paginaCheckout.includes('titulo="Finalizar compra"') && !paginaCheckout.includes('<BarraVolverMovil') && !cabeceraCheckout.includes('Seguir comprando'), true)
 igual('migas Inicio › Carrito › Finalizar compra con el prefijo de la sede y el ← al carrito', paginaCheckout.includes("migas={[{ etiqueta: 'Inicio', href: ruta('/') }, { etiqueta: 'Carrito', href: ruta('/carrito') }, { etiqueta: 'Finalizar compra' }]}") && paginaCheckout.includes("padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}"), true)
 const volverCabecera = fuente('components/site/volver/VolverCabecera.tsx')
-igual('el ← de la cabecera es el BotonVolver de la tienda (no una copia), migas con el color de la cabecera', volverCabecera.includes('<BotonVolver compacto padre={padre} primaryColor={primaryColor} />') && volverCabecera.includes('<MigasTienda migas={migas} heredarColor className="hidden md:block" />') && !/ChevronLeft/.test(volverCabecera), true)
+igual('el ← de la cabecera es el BotonVolver de la tienda (no una copia), migas con el color de la cabecera', volverCabecera.includes('<BotonVolver compacto padre={padre} primaryColor={primaryColor} sobreFondoOscuro={sobreFondoOscuro} />') && volverCabecera.includes('<MigasTienda migas={migas} heredarColor className="hidden md:block" />') && !/ChevronLeft/.test(volverCabecera), true)
 igual('celular: ← + «Carrito» sin desbordar; logo centrado (lados iguales)', volverCabecera.includes('min-w-0 truncate text-xs font-medium text-current opacity-80 hover:opacity-100 md:hidden') && cabeceraCheckout.includes('grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]') && cabeceraCheckout.includes('<span className="sr-only sm:not-sr-only">Pago seguro</span>'), true)
 const migasFuente = fuente('components/site/volver/EncabezadoPagina.tsx')
 igual('migas sin heredarColor: los grises de siempre (el resto de la tienda no cambia)', migasFuente.includes("heredarColor = false,") && migasFuente.includes("'whitespace-nowrap text-slate-500 underline-offset-4 hover:text-[var(--volver-miga,currentColor)] hover:underline dark:text-gray-400'"), true)
@@ -544,6 +544,9 @@ const wizMoneda = fuente('components/site/CheckoutWizard.tsx')
 igual('los montos del checkout se pintan con la moneda elegida (formatPrice del proveedor)', wizMoneda.includes('const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()'), true)
 igual('«Se cobra en …» junto al total del resumen y de la barra de computador', wizMoneda.includes('cobroEnBase={textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}') && /data-barra-pago-computador=""[\s\S]*?textoCobroEnBase\(total, baseCurrency, displayCurrency, loading\)/.test(wizMoneda) && fuente('components/site/checkout/ResumenPedido.tsx').includes('data-cobro-base=""'), true)
 igual('el cobro sigue en la moneda base: el pedido no lleva la moneda de visualización', !/displayCurrency[^\n]*orderPayload|orderPayload\.[a-zA-Z]+ = [^\n]*displayCurrency/.test(wizMoneda), true)
+
+// ── 2026-11-25 · ← sobre la cabecera oscura: variante oscura del botón (no el naranja claro) ──
+igual('cabecera oscura: el ← usa la variante oscura', cabeceraCheckout.includes('sobreFondoOscuro={fondoOscuro}'), true)
 
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
