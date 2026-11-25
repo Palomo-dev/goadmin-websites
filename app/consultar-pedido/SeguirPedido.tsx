@@ -263,7 +263,7 @@ export function SeguirPedido({
 
   if (resultado) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-3 text-slate-900" data-seguir-pedido="" data-consulta="resultado">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-3 text-slate-900 lg:max-w-5xl" data-seguir-pedido="" data-consulta="resultado">
         {region}
         <div className="flex justify-end">
           <button type="button" onClick={buscarOtro} className="inline-flex items-center gap-1.5 text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
@@ -275,6 +275,7 @@ export function SeguirPedido({
           <OrderTracker
             incrustado
             direccionCompleta
+            dosColumnas
             orderIdentifier={resultado.numero}
             token={resultado.token}
             primaryColor={primaryColor}

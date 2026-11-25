@@ -63,7 +63,7 @@ export default async function TrackingPage({
         colorCabecera={colorCabeceraDe(organization.website_settings)}
         acciones={{ buscar: true, carrito: { subdominio: organization.subdomain || '', branchId } }}
       />
-      <div className="container mx-auto hidden max-w-xl px-4 pt-6 md:block">
+      <div className="container mx-auto hidden max-w-xl px-4 pt-6 md:block lg:max-w-6xl">
         <EncabezadoPagina tipo="ficha" migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: `Pedido ${id}` }]} padre={INICIO} primaryColor={primaryColor} />
       </div>
       <OrderTracker
@@ -71,6 +71,7 @@ export default async function TrackingPage({
         primaryColor={primaryColor}
         token={token}
         rutaSeguirPidiendo={organization.type_id === 1 ? '/menu' : '/productos'}
+        dosColumnas
       />
     </OrganizationLayout>
   )

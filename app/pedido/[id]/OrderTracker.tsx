@@ -44,6 +44,7 @@ import {
 import { abrirBoldDesdeUrl } from '@/lib/payments/boldCheckoutCliente'
 import { codigoConector } from '@/lib/contraentrega/textosContraentrega'
 import { SiluetaPedido } from '@/components/site/rastreo/SiluetaPedido'
+import { ColumnaInfoFija } from '@/components/sections/product-detail/ColumnaInfoFija'
 
 interface ItemPedido {
   productId: number | null
@@ -151,9 +152,39 @@ interface OrderTrackerProps {
    * Figma 2804:13320; sin token, ninguna.
    */
   direccionCompleta?: boolean
+  /**
+   * En el computador (≥ lg), dos columnas (Figma «16 Sitio web» › Consultar pedido v2, D4 3106:84541
+   * y D5 3106:84869): a la izquierda el estado, los pasos y los productos; a la derecha el pago, la
+   * entrega, la ayuda y los botones del final. Las mismas piezas y el mismo estilo de la columna
+   * única, solo repartidas. En el celular no cambia nada. Sin esta prop (Mi cuenta), una columna.
+   */
+  dosColumnas?: boolean
 }
 
 const POLL_INTERVAL = 15000 // 15 segundos
+
+/** El `lg` de Tailwind: desde aquí, las dos columnas. */
+const CONSULTA_COMPUTADOR = '(min-width: 1024px)'
+
+/**
+ * `true` en el computador (≥ lg). Las dos columnas cambian el ORDEN de las piezas en el documento,
+ * así que se elige la maqueta en el navegador: en el celular el documento queda idéntico al de
+ * siempre (mismo orden de lectura y de tabulación) y ninguna pieza se monta dos veces (el mapa, el
+ * conductor y el tiempo estimado consultan por su cuenta). Mientras carga se pinta la silueta, así
+ * que el servidor y la primera pintura del navegador coinciden.
+ */
+function useEsComputador(activo: boolean): boolean {
+  const [es, setEs] = useState(false)
+  useEffect(() => {
+    if (!activo) return
+    const mq = window.matchMedia(CONSULTA_COMPUTADOR)
+    const alCambiar = () => setEs(mq.matches)
+    alCambiar()
+    mq.addEventListener('change', alCambiar)
+    return () => mq.removeEventListener('change', alCambiar)
+  }, [activo])
+  return activo && es
+}
 
 /** Mismos códigos de Bold que el checkout (`CheckoutWizard`): se abre su pago directo. */
 const CODIGOS_BOLD = new Set(['bold', 'bold_link'])
@@ -316,7 +347,8 @@ function LineaActualiza({
   )
 }
 
-export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/', incrustado = false, direccionCompleta: conDireccionCompleta = false }: OrderTrackerProps) {
+export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/', incrustado = false, direccionCompleta: conDireccionCompleta = false, dosColumnas = false }: OrderTrackerProps) {
+  const esComputador = useEsComputador(dosColumnas)
   // En el servidor, el del enlace; en el navegador, además, el guardado de esta pestaña.
   const [token] = useState<string | null>(() =>
     tokenDelEnlace ?? (typeof window !== 'undefined' ? leerTokenGuardado(orderIdentifier) : null),
@@ -615,9 +647,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
     </ul>
   ) : null
 
-  return (
-    <div className={incrustado ? 'w-full pb-16' : 'container mx-auto max-w-xl px-4 pt-6 pb-28'} data-order-tracker={incrustado ? 'incrustado' : ''}>
-      <div className="flex flex-col gap-3">
+  // Piezas de la página, en el orden de siempre (el del celular). En el computador, con
+  // `dosColumnas`, se reparten: izquierda estado, pasos, productos y seguimiento; derecha pago,
+  // entrega, ayuda y el final. Ninguna pieza cambia por dentro.
+  const piezaCabecera = (
+    <>
         {/* Estado y Ayuda (dentro de la página: ya no se monta sobre la cabecera de la tienda) */}
         <div className="flex items-center justify-between gap-3">
           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${TONO_INSIGNIA[encabezado.tono]}`}>
@@ -731,7 +765,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             onActualizar={() => void actualizarAhora()}
           />
         )}
+    </>
+  )
 
+  const piezaPago = (
+    <>
         {/* Lo que hay que hacer ahora, según el estado */}
         {vista === 'pagar' && (
           <Tarjeta className="flex flex-col gap-3 border-amber-200 bg-amber-50">
@@ -812,7 +850,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             <p className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-sm text-green-700"><Check className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" /> Anticipo pagado: {pesos(anticipo.monto)}{Math.abs(Number(order.deliveryFee) - anticipo.monto) < 0.5 ? ' (el envío)' : ''}{anticipo.nombrePasarela ? ` con ${anticipo.nombrePasarela}` : ''}</p>
           </Tarjeta>
         )}
+    </>
+  )
 
+  const piezaEstado = (
+    <>
         {vista === 'recibido' && !anticipoPendiente && (
           <Tarjeta className="flex flex-col gap-2" style={{ backgroundColor: `${primaryColor}0D`, borderColor: `${primaryColor}33` }}>
             <FilaInfo icono={Info} titulo="La tienda confirma tu pedido en breve" detalle="Te avisamos por WhatsApp y correo. Esta página se actualiza sola." color={primaryColor} />
@@ -846,7 +888,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             <FilaInfo icono={XCircle} titulo={encabezado.titulo} detalle={order.cancellationReason || (order.paymentStatus === 'paid' ? 'Si pagaste, la tienda te devuelve el dinero.' : 'No se hizo ningún cobro.')} color="#475569" />
           </Tarjeta>
         )}
+    </>
+  )
 
+  const piezaLogistica = (
+    <>
         {/* Logística (Figma 2804:13320): quién lo lleva, código de entrega, pagas al recibir y novedad */}
         {logistica && !isFinal && logistica.domiciliario && (
           <Tarjeta>
@@ -887,7 +933,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             <p className="mt-1 text-xs text-gray-600">Efectivo, datáfono o transferencia. Si pagas en efectivo, ten el valor exacto si puedes.</p>
           </div>
         )}
+    </>
+  )
 
+  const piezaAvisos = (
+    <>
         {logistica?.novedad && !isFinal && (
           <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="font-semibold text-gray-900">No pudimos entregar tu pedido</p>
@@ -904,7 +954,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             primaryColor={primaryColor}
           />
         )}
+    </>
+  )
 
+  const piezaFactura = (
+    <>
         {/* Entregado: factura, calificación y volver a comprar */}
         {vista === 'entregado' && data.factura && (
           <Tarjeta className="flex flex-col gap-2.5">
@@ -915,7 +969,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             </a>
           </Tarjeta>
         )}
+    </>
+  )
 
+  const piezaProductos = (
+    <>
         {vista === 'entregado' && data.verificado && items.some((i) => i.productId !== null) && (
           <Tarjeta className="flex flex-col gap-3">
             <p className="font-semibold text-gray-900">¿Cómo te fue con tu compra?</p>
@@ -991,7 +1049,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             </>
           )}
         </Tarjeta>
+    </>
+  )
 
+  const piezaEntrega = (
+    <>
         {/* Entrega */}
         <Tarjeta className="flex flex-col gap-3">
           <p className="font-semibold text-gray-900">Entrega</p>
@@ -1058,7 +1120,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
         {domicilio && data.verificado && !isFinal && !logistica && (
           <DeliveryInfo orderIdentifier={orderIdentifier} primaryColor={primaryColor} token={token} />
         )}
+    </>
+  )
 
+  const piezaSeguimiento = (
+    <>
         {/* Mapa en vivo (solo cuando está en camino) */}
         {domicilio && data.verificado && order.status === 'in_delivery' && (
           <DeliveryMap
@@ -1115,7 +1181,11 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             </div>
           </Tarjeta>
         )}
+    </>
+  )
 
+  const piezaFinal = (
+    <>
         {/* ¿Dudas? */}
         {hayAyuda && (
           <Tarjeta className="flex flex-col gap-2.5">
@@ -1158,6 +1228,49 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
         >
           <Store className="h-4 w-4" aria-hidden="true" /> {isRetail ? 'Seguir comprando' : 'Seguir pidiendo'}
         </Enlace>
+    </>
+  )
+
+  const contenedor = incrustado ? 'w-full pb-16' : 'container mx-auto max-w-xl px-4 pt-6 pb-28'
+
+  // Computador (Figma D4/D5): dos columnas; la derecha queda fija mientras cabe en la pantalla
+  // (ColumnaInfoFija, la de la ficha del producto: si es más alta, sube hasta mostrar su final).
+  if (esComputador) {
+    return (
+      <div className={`${contenedor} lg:max-w-6xl`} data-order-tracker={incrustado ? 'incrustado' : ''} data-columnas-pedido="2">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+          <div className="flex min-w-0 flex-col gap-3" data-columna-pedido="estado">
+            {piezaCabecera}
+            {piezaEstado}
+            {piezaAvisos}
+            {piezaProductos}
+            {piezaSeguimiento}
+          </div>
+          <ColumnaInfoFija className="flex min-w-0 flex-col gap-3">
+            {piezaPago}
+            {piezaLogistica}
+            {piezaFactura}
+            {piezaEntrega}
+            {piezaFinal}
+          </ColumnaInfoFija>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={contenedor} data-order-tracker={incrustado ? 'incrustado' : ''}>
+      <div className="flex flex-col gap-3">
+        {piezaCabecera}
+        {piezaPago}
+        {piezaEstado}
+        {piezaLogistica}
+        {piezaAvisos}
+        {piezaFactura}
+        {piezaProductos}
+        {piezaEntrega}
+        {piezaSeguimiento}
+        {piezaFinal}
       </div>
     </div>
   )

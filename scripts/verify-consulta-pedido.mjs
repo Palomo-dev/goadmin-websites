@@ -189,8 +189,12 @@ caso('final de la página (opción A, Figma 3067:82354): sin «Actualizar» suel
   assert.match(tracker, /<Enlace\s+href=\{rutaSeguirPidiendo\}\s+className="flex w-full/)
   assert.match(tracker, /\{!isFinal && \(\s*<LineaActualiza/)
   assert.match(tracker, /Se actualiza solo/)
-  // «Seguir comprando» es lo último de la página: después solo cierran los contenedores.
-  assert.match(tracker, /'Seguir pidiendo'\}\s*<\/Enlace>\s*<\/div>\s*<\/div>\s*\)\s*\}\s*$/)
+  // «Seguir comprando» es lo último de la página: cierra la pieza final (2026-11-25: las piezas se
+  // reparten en dos columnas en el computador), y esa pieza va de última en el celular y en la
+  // columna derecha del computador.
+  assert.match(tracker, /'Seguir pidiendo'\}\s*<\/Enlace>\s*<\/>\s*\)/)
+  assert.match(tracker, /\{piezaFinal\}\s*<\/ColumnaInfoFija>/)
+  assert.match(tracker, /\{piezaFinal\}\s*<\/div>\s*<\/div>\s*\)\s*\}\s*$/)
 })
 
 console.log(`\n${casos} casos OK`)
