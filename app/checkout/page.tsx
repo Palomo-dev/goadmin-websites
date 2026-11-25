@@ -18,11 +18,10 @@ import { PixelesSitio } from '@/components/site/PixelesSitio'
 import { CartEventTracker } from '@/components/site/CartEventTracker'
 import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
-import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { normalizarEstiloBarraPago } from '@/components/site/checkout/barraPago'
 import { CLAVE_TIEMPOS_PEDIDOS, leerTiemposEntregaTienda } from '@/lib/shipping/tiempoEntrega'
 import { AccesoCuenta } from '@/components/site/cuenta/AccesoCuenta'
-import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda'
+import { opcionesCuenta, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
 import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 
 export const dynamic = 'force-dynamic'
@@ -159,13 +158,17 @@ export default async function CheckoutPage() {
   // «Ingresar» de contraentrega abren la ventana de acceso sin salir del pago; con «Página» (o la
   // cuenta congelada) no se monta y esos enlaces van a /auth?siguiente=/checkout, como hoy.
   const opCuenta = opcionesCuenta((organization.website_settings ?? null) as Record<string, unknown> | null)
+  const opMonedaCheckout = opcionesMoneda((organization.website_settings ?? null) as Record<string, unknown> | null)
   const conAccesoCuenta = !ctx.frozenReason && opCuenta.modo !== 'pagina'
 
   const showCurrencyCode = (organization.website_settings as any)?.show_currency_code ?? false
   const currencyPosition = (organization.website_settings as any)?.currency_position ?? 'left'
 
   return (
-    <CurrencyProvider showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition}>
+    // La misma moneda que en la tienda (OrganizationLayoutCliente): monedas visibles y moneda al
+    // entrar del editor, el mismo estado guardado (`site_currency`) y la misma conversión al pintar.
+    // Solo es de visualización: /api/orders y las pasarelas cobran en la moneda base, como siempre.
+    <CurrencyProvider showCurrencyCode={showCurrencyCode} currencyPosition={currencyPosition} monedasVisibles={opMonedaCheckout.visibles} alEntrar={opMonedaCheckout.alEntrar}>
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <CheckoutEncabezado
         settings={ajustesEncabezado}
@@ -174,15 +177,15 @@ export default async function CheckoutPage() {
         logoFondoClaroUrl={organization.logo_fondo_claro_url ?? null}
         nombre={orgName}
         primaryColor={primaryColor}
-        hrefInicio={ruta('/')}
+        // UNA sola forma de volver, en la cabecera (el dueño, 2026-11-25): ← + migas.
+        migas={[{ etiqueta: 'Inicio', href: ruta('/') }, { etiqueta: 'Carrito', href: ruta('/carrito') }, { etiqueta: 'Finalizar compra' }]}
+        padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}
       />
 
       {/* Contenido */}
       <main className="flex-grow">
-        {/* Una sola forma de volver: en el celular, «Seguir comprando» de la cabecera; en computador,
-            estas migas + ← (la cabecera esconde «Seguir comprando» con md:invisible).
-            En el celular el pago no lleva «‹ Volver»: su cabecera ya tiene «Seguir comprando»
-            (el dueño la vio repetida, 2026-11-24). En computador, migas + ← (abajo). */}
+        {/* Una sola forma de volver: el ← y las migas de la cabecera (CheckoutEncabezado). La página ya
+            no pinta el bloque «Finalizar compra» ni «‹ Volver» en el celular (salían dos). */}
         {pedidoApagado ? (
           <div className="max-w-lg mx-auto text-center py-16 px-4" role="status">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">No recibimos pedidos en línea</h1>
@@ -198,14 +201,6 @@ export default async function CheckoutPage() {
         ) : (
           <>
             <MetaPixelInitiateCheckout />
-            <div className="container mx-auto hidden px-4 pt-6 md:block">
-              <EncabezadoPagina
-                migas={[{ etiqueta: 'Inicio', href: ruta('/') }, { etiqueta: 'Carrito', href: ruta('/carrito') }, { etiqueta: 'Finalizar compra' }]}
-                padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}
-                primaryColor={primaryColor}
-                titulo="Finalizar compra"
-              />
-            </div>
             <CheckoutWizard
               organizationId={organization.id}
               primaryColor={primaryColor}

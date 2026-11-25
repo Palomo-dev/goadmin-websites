@@ -50,6 +50,7 @@ export function ResumenPedido({
   descuentosPromocion,
   total,
   bajoTotal,
+  cobroEnBase = null,
   ahorro,
   mensajeEnvioGratis,
   pie,
@@ -73,6 +74,8 @@ export function ResumenPedido({
   total: number
   /** Debajo del total: «Pagas hoy / al recibir» de la contraentrega. */
   bajoTotal?: ReactNode
+  /** «Se cobra en COP: $ 47.300» cuando los precios se ven en otra moneda (textoCobroEnBase). */
+  cobroEnBase?: string | null
   ahorro: number
   mensajeEnvioGratis?: string | null
   /** Sellos de confianza y medios de pago. */
@@ -183,6 +186,7 @@ export function ResumenPedido({
             <span className="text-lg font-bold text-gray-900">Total</span>
             <span className="text-2xl font-bold" style={{ color }}>{fmt(total)}</span>
           </div>
+          {cobroEnBase ? <p className="mt-1 text-right text-xs text-gray-500" data-cobro-base="">{cobroEnBase}</p> : null}
           {bajoTotal}
           {ahorro > 0 && (
             <p className="mt-1 text-right text-xs text-green-600">

@@ -251,12 +251,15 @@ const CON_BOTON = [
   'components/sections/category-detail/CategoryHeader.tsx',
   'components/sections/category-detail/CategoryDetailRenderer.tsx',
   'app/carrito/CartPageClient.tsx',
-  'app/checkout/page.tsx',
+  // El pago: el ← vive en su cabecera (2026-11-25, el dueño: una sola forma de volver).
+  'components/site/volver/VolverCabecera.tsx',
   'components/site/cuenta/MenuMiCuenta.tsx',
   'app/checkout/bold/page.tsx',
 ]
 for (const rel of CON_BOTON) check(/<(EncabezadoPagina|BotonVolver)\b/.test(leer(rel)), `${rel}: falta el ← de escritorio`)
 
+// El pago: ← cuadrado de la tienda + migas en la cabecera; la página ya no pinta «Finalizar compra».
+check(leer('components/site/CheckoutEncabezado.tsx').includes('<VolverCabecera') && !leer('app/checkout/page.tsx').includes('<EncabezadoPagina'), 'el pago: una sola forma de volver, en la cabecera')
 // El pago: el encabezado va fuera del CheckoutWizard (archivo prohibido para este trabajo).
 check(!leer('components/site/CheckoutWizard.tsx').includes('EncabezadoPagina'), 'el CheckoutWizard no se toca')
 // El rastro va una sola vez, en el layout raíz.

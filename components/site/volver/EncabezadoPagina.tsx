@@ -18,8 +18,23 @@ import type { DestinoPadre, Miga } from '@/lib/navegacion/volver'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BotonVolver } from './BotonVolver'
 
-export function MigasTienda({ migas, className = '' }: { migas: readonly Miga[]; className?: string }) {
+export function MigasTienda({
+  migas,
+  className = '',
+  heredarColor = false,
+}: {
+  migas: readonly Miga[]
+  className?: string
+  /** Dentro de una cabecera (checkout): el color del texto de la cabecera. Sin esto, los grises de siempre. */
+  heredarColor?: boolean
+}) {
   const { ruta } = useRutaSitio()
+  const claseActual = heredarColor ? 'font-medium text-current' : 'font-medium text-slate-900 dark:text-white'
+  const claseTexto = heredarColor ? 'text-current opacity-70' : 'text-slate-500 dark:text-gray-400'
+  const claseEnlace = heredarColor
+    ? 'whitespace-nowrap text-current opacity-75 underline-offset-4 hover:opacity-100 hover:underline'
+    : 'whitespace-nowrap text-slate-500 underline-offset-4 hover:text-[var(--volver-miga,currentColor)] hover:underline dark:text-gray-400'
+  const claseFlecha = heredarColor ? 'h-3.5 w-3.5 shrink-0 text-current opacity-50' : 'h-3.5 w-3.5 shrink-0 text-slate-400'
   return (
     <nav aria-label="Migas de pan" className={`min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
       <ol className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs leading-none md:gap-2 md:text-[13px]">
@@ -28,15 +43,15 @@ export function MigasTienda({ migas, className = '' }: { migas: readonly Miga[];
           return (
             <li key={`${i}-${m.etiqueta}`} className={`flex items-center gap-2 ${ultima ? 'min-w-0' : 'shrink-0'}`}>
               {ultima || !m.href ? (
-                <span aria-current={ultima ? 'page' : undefined} className={`truncate ${ultima ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-500 dark:text-gray-400'}`}>
+                <span aria-current={ultima ? 'page' : undefined} className={`truncate ${ultima ? claseActual : claseTexto}`}>
                   {m.etiqueta}
                 </span>
               ) : (
-                <Link href={ruta(m.href)} className="whitespace-nowrap text-slate-500 underline-offset-4 hover:text-[var(--volver-miga,currentColor)] hover:underline dark:text-gray-400">
+                <Link href={ruta(m.href)} className={claseEnlace}>
                   {m.etiqueta}
                 </Link>
               )}
-              {!ultima && <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={1.75} />}
+              {!ultima && <ChevronRight aria-hidden="true" className={claseFlecha} strokeWidth={1.75} />}
             </li>
           )
         })}

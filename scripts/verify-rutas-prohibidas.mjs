@@ -258,6 +258,11 @@ const PROHIBIDAS = [
  *   mismo `handleSubmit`) y su espaciador `h-20`. El celular (BarraPagoMovil A/B/C) y el botón de
  *   debajo del resumen no cambian. No toca el payload de /api/orders ni el cobro.
  * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs y verify-barra-pago.mjs.
+ *
+ * 2026-11-25 (cuarta ronda) — moneda en el checkout: components/site/CheckoutWizard.tsx solo pinta
+ * «Se cobra en COP: $ X» (textoCobroEnBase) junto al total del resumen y de la barra de computador
+ * cuando los precios se ven en otra moneda. No toca el payload de /api/orders ni el cobro.
+ * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -292,6 +297,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-12', motivo: 'Documento del comprador a las pasarelas por sus campos oficiales, con token o sesión' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Factura estructurada a /api/orders, token a /api/checkout/init y prellenado desde la cuenta' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra fija de pago en computador de vuelta (1 paso), como antes del checkout v2' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Moneda del checkout: «Se cobra en COP» junto al total (solo pinta; el cobro sigue en la moneda base)' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

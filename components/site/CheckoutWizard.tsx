@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { alTocarIngresarCheckout } from '@/components/site/cuenta/eventos'
 import { mezclarDatosCuenta } from './checkout/sesionCheckout'
 import { quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
+import { textoCobroEnBase } from './checkout/cobroEnBase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowRight, ShoppingBag, Loader2, MapPin, ChevronDown, AlertTriangle, Lock, Plus, User, UtensilsCrossed } from 'lucide-react'
@@ -2024,6 +2025,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       descuentosPromocion={<DescuentosPorPromocion promotions={appliedPromotions} totalDiscount={promoDiscount} fmt={fmtPrice} />}
       total={total}
       bajoTotal={paymentMethod === 'cash' ? <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} /> : null}
+      // Precios en otra moneda: «Se cobra en COP: $ X» junto al total (el cobro no cambia).
+      cobroEnBase={textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}
       ahorro={promoDiscount + couponDiscount}
       mensajeEnvioGratis={needsShipping && !envioZona && settings.enableShipping && shipping === 0 && settings.freeShippingThreshold > 0
         ? ((promoDiscount + couponDiscount) > 0
@@ -2325,6 +2328,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="text-sm text-gray-600">
               Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
+              {textoCobroEnBase(total, baseCurrency, displayCurrency, loading) ? (
+                <span className="block text-xs text-gray-500" data-cobro-base="">{textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}</span>
+              ) : null}
               {paymentMethod === 'cash' && <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} compacto />}
               {promoDiscount > 0 && (
                 <span className="block text-xs text-green-600">Ahorras {fmtPrice(promoDiscount)} en promociones</span>

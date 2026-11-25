@@ -92,6 +92,7 @@ import {
 import { mezclarDatosCuenta } from '../components/site/checkout/sesionCheckout.ts'
 import { cambiarCantidadLinea, cupoLinea, puedeSumarLinea, quitarLineaCarrito } from '../lib/carrito/cantidadLinea.ts'
 import { ANCHO_VENTANA_CUENTA, posicionVentanaCuenta } from '../components/site/cuenta/posicionVentana.ts'
+import { textoCobroEnBase } from '../components/site/checkout/cobroEnBase.ts'
 import { destinoVistaAcceso, opcionesCuenta } from '../lib/website/v2/cabeceraTienda.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -514,8 +515,15 @@ igual('la cabecera de la tienda usa la misma pieza (una sola fuente)', headerSha
 igual('la pieza lleva la configuración del editor (estilo, monedas visibles, ícono, caja)', /export function MonedaEncabezado[\s\S]*?opcionesMoneda\(ajustesCabecera\)[\s\S]*?opciones=\{opMoneda\}[\s\S]*?presentacion=\{presMoneda\}/.test(headerShared), true)
 
 // ── 2026-11-25 (3) · Una sola forma de volver ──────────────────────────────────────────────────
-igual('computador: «Seguir comprando» invisible (sin foco) y migas + ← de EncabezadoPagina', /href=\{hrefInicio\}[^>]*md:invisible/.test(cabeceraCheckout) && paginaCheckout.includes('<EncabezadoPagina') && /className="container mx-auto hidden px-4 pt-6 md:block"/.test(paginaCheckout), true)
-igual('celular: solo «Seguir comprando» (sin migas ni «‹ Volver»)', !/<EncabezadoPagina[^>]*\benCelular\b/.test(paginaCheckout) && !paginaCheckout.includes('<BarraVolverMovil'), true)
+igual('una sola forma de volver: en la cabecera (← + migas), sin el bloque «Finalizar compra» de la página', cabeceraCheckout.includes('<VolverCabecera migas={migas} padre={padre} migaCelular={migaCelular} primaryColor={primaryColor}') && !paginaCheckout.includes('<EncabezadoPagina') && !paginaCheckout.includes('titulo="Finalizar compra"') && !paginaCheckout.includes('<BarraVolverMovil') && !cabeceraCheckout.includes('Seguir comprando'), true)
+igual('migas Inicio › Carrito › Finalizar compra con el prefijo de la sede y el ← al carrito', paginaCheckout.includes("migas={[{ etiqueta: 'Inicio', href: ruta('/') }, { etiqueta: 'Carrito', href: ruta('/carrito') }, { etiqueta: 'Finalizar compra' }]}") && paginaCheckout.includes("padre={{ href: ruta('/carrito'), etiqueta: 'Tu carrito' }}"), true)
+const volverCabecera = fuente('components/site/volver/VolverCabecera.tsx')
+igual('el ← de la cabecera es el BotonVolver de la tienda (no una copia), migas con el color de la cabecera', volverCabecera.includes('<BotonVolver compacto padre={padre} primaryColor={primaryColor} />') && volverCabecera.includes('<MigasTienda migas={migas} heredarColor className="hidden md:block" />') && !/ChevronLeft/.test(volverCabecera), true)
+igual('celular: ← + «Carrito» sin desbordar; logo centrado (lados iguales)', volverCabecera.includes('min-w-0 truncate text-xs font-medium text-current opacity-80 hover:opacity-100 md:hidden') && cabeceraCheckout.includes('grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]') && cabeceraCheckout.includes('<span className="sr-only sm:not-sr-only">Pago seguro</span>'), true)
+const migasFuente = fuente('components/site/volver/EncabezadoPagina.tsx')
+igual('migas sin heredarColor: los grises de siempre (el resto de la tienda no cambia)', migasFuente.includes("heredarColor = false,") && migasFuente.includes("'whitespace-nowrap text-slate-500 underline-offset-4 hover:text-[var(--volver-miga,currentColor)] hover:underline dark:text-gray-400'"), true)
+const botonVolverFuente = fuente('components/site/volver/BotonVolver.tsx')
+igual('el cuadrado conserva su fondo claro sobre una cabecera oscura (fondo propio, no el de la cabecera)', botonVolverFuente.includes('bg-[var(--volver-fondo)] text-[var(--volver-flecha)]'), true)
 
 // ── 2026-11-25 (3) · Barra fija de pago en computador ──────────────────────────────────────────
 const wizBarra = fuente('components/site/CheckoutWizard.tsx')
@@ -524,9 +532,22 @@ igual('la barra de computador no se puede pulsar dos veces ni con contraentrega 
 igual('espaciador de computador de siempre (h-20)', wizBarra.includes('<div className="hidden h-20 md:block" aria-hidden="true" />'), true)
 igual('el celular sigue con su barra A/B/C y el botón del resumen se conserva', wizBarra.includes('<BarraPagoMovil') && /accion=\{isOnePage \? \(/.test(wizBarra), true)
 
+// ── 2026-11-25 (4) · Moneda en el checkout: el mismo estado que la tienda ──────────────────────
+const nbsp = (t) => (t ?? '').replace(/ /g, ' ')
+igual('precios en otra moneda: «Se cobra en COP» con el total en COP', nbsp(textoCobroEnBase(47300, 'COP', 'USD')), 'Se cobra en COP: $ 47.300')
+igual('con la moneda base a la vista o cargando: nada (lo de hoy)', [textoCobroEnBase(47300, 'COP', 'COP'), textoCobroEnBase(47300, 'COP', 'USD', true), textoCobroEnBase(47300, 'COP', '')], [null, null, null])
+igual('otra moneda base: con sus decimales', nbsp(textoCobroEnBase(12.5, 'USD', 'COP')).startsWith('Se cobra en USD: '), true)
+igual('el checkout usa el MISMO proveedor de moneda con la configuración de la tienda (visibles y al entrar)', paginaCheckout.includes('monedasVisibles={opMonedaCheckout.visibles} alEntrar={opMonedaCheckout.alEntrar}') && paginaCheckout.includes('const opMonedaCheckout = opcionesMoneda('), true)
+const proveedorMoneda = fuente('components/site/CurrencyProvider.tsx')
+igual('la elección se guarda igual que en la tienda (site_currency) y vuelve a pedir la tasa', proveedorMoneda.includes("const STORAGE_KEY = 'site_currency'") && /setCurrency = useCallback\(\(code: string\) => \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, code\)[\s\S]*?fetchCurrency\(code\)/.test(proveedorMoneda), true)
+const wizMoneda = fuente('components/site/CheckoutWizard.tsx')
+igual('los montos del checkout se pintan con la moneda elegida (formatPrice del proveedor)', wizMoneda.includes('const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()'), true)
+igual('«Se cobra en …» junto al total del resumen y de la barra de computador', wizMoneda.includes('cobroEnBase={textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}') && /data-barra-pago-computador=""[\s\S]*?textoCobroEnBase\(total, baseCurrency, displayCurrency, loading\)/.test(wizMoneda) && fuente('components/site/checkout/ResumenPedido.tsx').includes('data-cobro-base=""'), true)
+igual('el cobro sigue en la moneda base: el pedido no lleva la moneda de visualización', !/displayCurrency[^\n]*orderPayload|orderPayload\.[a-zA-Z]+ = [^\n]*displayCurrency/.test(wizMoneda), true)
+
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, resumen sin controles, variante del acceso, moneda de la tienda, un solo volver, barra fija en computador)`)
+console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, resumen sin controles, variante del acceso, moneda de la tienda, volver en la cabecera, barra fija en computador, moneda del checkout)`)
