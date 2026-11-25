@@ -55,6 +55,9 @@ export const COPIAS = [
   // Apariencia del buscador (Figma 3241:99000): claves, valores de hoy, plantillas y contraste.
   ['lib/website/v2/aparienciaBuscador.ts', 'src/lib/website/v2/aparienciaBuscador.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
+  // Categorías de la cabecera (Figma 3290:101848): estilo del celular, contenido del botón,
+  // color por defecto = sin color y círculo (imagen → ícono → inicial).
+  ['lib/website/v2/categoriasCabecera.ts', 'src/lib/website/v2/categoriasCabecera.ts'],
   // Tarjeta de producto: el editor (ERP) y la tienda leen el mismo preset y la misma fusión.
   ['lib/website/tarjetaProducto.ts', 'src/lib/website/tarjetaProducto.ts'],
   // Distribución de banners: el editor y la tienda usan el mismo plano y el mismo aviso.
@@ -78,6 +81,8 @@ export const COPIAS = [
   ['lib/promociones/precioVolumen.ts', 'src/lib/promotions/precioVolumen.ts'],
   // Contraentrega con condiciones: la tienda decide la opción y el anticipo con la misma regla que el ERP muestra.
   ['lib/contraentrega/reglaContraentrega.ts', 'src/lib/contraentrega/reglaContraentrega.ts'],
+  // Página «Membresías» (Figma «16 Sitio web» 3279-100508): planes activos, estado de venta, orden, «Popular» y plantilla.
+  ['lib/website/v2/contrato/paginaMembresias.ts', 'src/lib/website/contrato/paginaMembresias.ts'],
   // Formulario del checkout (Parte F): el ERP lo configura y la tienda lo pinta y lo valida con la misma regla.
   ['lib/website/formularioCheckout.ts', 'src/lib/website/formularioCheckout.ts'],
 ]

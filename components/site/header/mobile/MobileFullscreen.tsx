@@ -39,6 +39,7 @@ import {
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { itemCategoriasMenu, menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './SubmenuCategoria';
+import { CuadriculaCategorias, FilaCategoriaMovil } from './CategoriasMovil';
 
 /**
  * MobileFullscreen
@@ -228,7 +229,14 @@ function FullscreenNavItem({
           >
             Ver todo
           </Link>
-          {item.children.map((child, j) => child.children && child.children.length > 0 ? (
+          {item.estiloCategorias === 'tarjetas' ? (
+            // «Tarjetas con imagen»: cuadrícula de 2 columnas; la de hijas abre el segundo nivel aquí.
+            <div className="pt-2">
+              <CuadriculaCategorias items={item.children} primaryColor={primaryColor} onNavigate={onNavigate} />
+            </div>
+          ) : item.children.map((child, j) => child.avatar ? (
+            <FilaCategoriaMovil key={j} item={child} onNavigate={onNavigate} />
+          ) : child.children && child.children.length > 0 ? (
             <SubmenuCategoria key={j} item={child} claseEnlace="block py-2 text-base text-[var(--mm-fg-muted)] hover:text-[var(--mm-hover-fg)]" onNavigate={onNavigate} />
           ) : (
             <Link

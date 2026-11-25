@@ -43,6 +43,7 @@
     "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs",
     "verify:columnas-pie": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-columnas-pie.mjs",
     "verify:interruptores": "node scripts/verify-interruptores.mjs",
+    "verify:membresias": "node --disable-warning=ExperimentalWarning scripts/verify-membresias.mjs",
     "verify:servicios": "node scripts/verify-servicios-seccion.mjs",
     "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs",
     "verify:estilo-tarjeta": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-tarjeta.mjs",

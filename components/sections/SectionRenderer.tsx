@@ -128,7 +128,7 @@ import { BrandsLogos } from './retail/BrandsLogos'
 import { OffersGrid } from './retail/OffersGrid'
 
 // Secciones gym
-import { MembershipPlansPricing } from './gym/MembershipPlansPricing'
+import { MembershipPlansPricing, SoloEnVistaPrevia, hayPlanesMembresia } from './gym/MembershipPlansPricing'
 import { ClassScheduleGrid } from './gym/ClassScheduleGrid'
 import { TrainersGrid } from './gym/TrainersGrid'
 import { GymFeaturesIcons } from './gym/GymFeaturesIcons'
@@ -643,6 +643,18 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
   // aviso del editor y, en la tienda, nada; sin SectionWrapper no deja su relleno como hueco en blanco.
   if (seccionContactoVacia(section.section_type, content, organization)) {
     return <Component content={content} organization={organization} primaryColor={primaryColor} data={data} sectionVariant={section.section_variant} sectionId={section.id} />
+  }
+
+  // Planes de membresía sin planes activos: en la tienda no pinta nada (ni el margen de la
+  // sección); en el lienzo del editor, la muestra marcada «Ejemplo» (paginaMembresias.ts).
+  if (section.section_type === 'membership_plans' && !hayPlanesMembresia(data)) {
+    return (
+      <SoloEnVistaPrevia>
+        <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null} pagina={typeof data?.pageSlug === 'string' ? data.pageSlug : null}>
+          <Component content={content} organization={organization} primaryColor={primaryColor} data={data} sectionVariant={section.section_variant} sectionId={section.id} />
+        </SectionWrapper>
+      </SoloEnVistaPrevia>
+    )
   }
 
   // La ventana de bienvenida es una capa fija: no lleva SectionWrapper (ni margen ni fondo).

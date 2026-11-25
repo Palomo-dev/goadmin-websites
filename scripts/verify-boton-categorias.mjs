@@ -17,6 +17,14 @@
  *    pone ícono, color e imagen reales; sin hijos a mano, las subcategorías por parent_id en el
  *    orden de la tienda; con hijos a mano, esos; inactivas o de otra sede, fuera; sin mega menú, el
  *    árbol de hoy. Todo desde el árbol que getOrgContext ya carga (ninguna consulta nueva).
+ * 11. «Categorías en el menú» del celular (Figma 3290:101848, aprobado 2026-11-25): por defecto
+ *    (`icono`) el ítem es idéntico al de hoy (sin `avatar` ni `estiloCategorias`); `redonda` y
+ *    `tarjetas` suman el círculo; imagen → ícono → inicial (y si la imagen falla, el siguiente);
+ *    el morado por defecto de la base (#6366F1) = sin color, también en el botón de computador;
+ *    glifo blanco o casi negro; cada menú del celular usa la misma pieza (CategoriasMovil.tsx).
+ * 12. «Contenido del botón» (Figma 3298:97349, opción B): `auto` (por defecto) = la regla de hoy en
+ *    todas las composiciones; `menu` = el menú armado en todas; `inventory` = el árbol; aviso del
+ *    editor cuando hay un menú guardado que no se ve.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -28,6 +36,8 @@ register(pathToFileURL(join(ROOT, 'scripts/verify-pasarelas-bold-mp.cargador.mjs
   data: { root: ROOT, stub: pathToFileURL(join(ROOT, 'scripts/verify-pasarelas-bold-mp.efectos.mjs')).href },
 })
 const b = await import('../lib/website/botonCategorias.ts')
+const cc = await import('../lib/website/v2/categoriasCabecera.ts')
+const { estiloDeHeaderLayout } = await import('../lib/website/v2/mapeoAjustes.ts')
 
 const problemas = []
 let casos = 0
@@ -192,6 +202,126 @@ check(/data-barra-unificada=""/.test(cromo), 'BuscadorCromo: barra unificada')
 check(/backgroundColor: presentacion\.background \|\| '#FFFFFF'/.test(cromo) && /borderColor: presentacion\.borderColor/.test(cromo) && /RADIO\[presentacion\.radius\]/.test(cromo) && /maxWidth: presentacion\.width/.test(cromo), 'la barra respeta fondo, borde, esquinas y ancho del editor')
 check(/const campo = compacta \? campoSuelto : unificada/.test(cromo), 'la «barra compacta» sigue como antes')
 check(/enBarra: true/.test(cromo) && /cromo\?\.enBarra/.test(fuente('components/site/SearchBarInput.tsx')), 'el campo va sin borde propio dentro de la barra')
+
+// 11. «Categorías en el menú» del celular
+{
+  const ARBOL = [
+    { id: 1, name: 'Jeans', slug: 'jeans', icon: 'shirt', color: '#1E3A8A', image_url: 'https://x/jeans.png', children: [
+      { id: 11, name: 'Slim', slug: 'slim', icon: null, color: '#6366f1', image_url: null, children: [] },
+    ] },
+    { id: 2, name: 'Tenis', slug: 'tenis', icon: 'footprints', color: '#FACC15', image_url: null, children: [] },
+    { id: 3, name: 'Chaquetas', slug: 'chaquetas', icon: null, color: '#7C3AED', image_url: null, children: [] },
+    { id: 4, name: 'Novedades', slug: 'novedades', icon: 'sparkles', color: '#6366f1', image_url: null, children: [] },
+    { id: 5, name: 'básicos', slug: 'basicos', icon: '  ', color: '#6366F1', image_url: '', children: [] },
+  ]
+  const base = { show_categories_in_header: true }
+  igual(cc.estiloCategoriasMovil({}), 'icono', 'sin clave: «Lista con ícono» (hoy)')
+  igual(cc.estiloCategoriasMovil(null), 'icono', 'sin ajustes: «Lista con ícono»')
+  igual(cc.estiloCategoriasMovil({ mobile_categories_look: 'redonda' }), 'redonda', 'redonda')
+  igual(cc.estiloCategoriasMovil({ mobile_categories_look: 'tarjetas' }), 'tarjetas', 'tarjetas')
+  igual(cc.estiloCategoriasMovil({ mobile_categories_look: 'circulos' }), 'icono', 'basura = «Lista con ícono»')
+
+  // Por defecto, el ítem es EXACTAMENTE el de hoy (mismo JSON que armaba itemCategoriasMenu antes).
+  const deHoy = (cats) => ({ name: 'Categorías', href: '/categorias', children: cats.map((c) => ({ name: c.name, href: `/categorias/${c.slug}`, icon: c.icon ?? null, ...((c.children ?? []).length > 0 ? { children: c.children.map((h) => ({ name: h.name, href: `/categorias/${h.slug}`, icon: h.icon ?? null })) } : {}) })) })
+  igual(b.itemCategoriasMenu(base, ARBOL, null), deHoy(ARBOL), 'por defecto: el ítem de hoy, idéntico')
+  igual(b.itemCategoriasMenu({ ...base, mobile_categories_look: 'icono' }, ARBOL, null), deHoy(ARBOL), '«Lista con ícono» elegida: idéntico a hoy')
+  check(!JSON.stringify(b.itemCategoriasMenu(base, ARBOL, null)).includes('avatar'), 'por defecto: ninguna fila trae círculo')
+
+  const red = b.itemCategoriasMenu({ ...base, mobile_categories_look: 'redonda' }, ARBOL, null)
+  igual(red?.estiloCategorias, 'redonda', 'redonda: el ítem lo dice')
+  check(red?.children?.every((c) => c.avatar), 'redonda: cada categoría con su círculo')
+  check(red?.children?.[0].children?.every((h) => !h.avatar), 'las hijas no llevan círculo (llevan el punto del padre)')
+  igual(b.itemCategoriasMenu({ ...base, mobile_categories_look: 'tarjetas' }, ARBOL, null)?.estiloCategorias, 'tarjetas', 'tarjetas: el ítem lo dice')
+  const sinAvatar = (it) => { const { avatar, estiloCategorias, ...resto } = it; return { ...resto, ...(resto.children ? { children: resto.children.map(sinAvatar) } : {}) } }
+  igual(sinAvatar(red), deHoy(ARBOL), 'redonda: mismas filas, enlaces, íconos y subcategorías que hoy (solo se suma el círculo)')
+
+  // Círculo: imagen → ícono sobre su color → inicial
+  const [jeans, tenis, chaquetas, novedades, basicos] = red.children.map((c) => c.avatar)
+  igual([jeans.imagen, jeans.icono, jeans.fondo, jeans.glifo], ['https://x/jeans.png', 'shirt', '#1E3A8A', '#FFFFFF'], 'con imagen: la imagen (ícono y color quedan de respaldo)')
+  igual([tenis.imagen, tenis.icono, tenis.fondo, tenis.glifo], [null, 'footprints', '#FACC15', '#111827'], 'amarillo sin imagen: ícono casi negro')
+  igual([chaquetas.icono, chaquetas.fondo, chaquetas.glifo, chaquetas.inicial], [null, '#7C3AED', '#FFFFFF', 'C'], 'sin imagen ni ícono: la inicial en blanco sobre su color')
+  igual([novedades.fondo, novedades.glifo, novedades.icono], [null, null, 'sparkles'], 'morado por defecto: círculo neutro con el ícono en el color del menú')
+  igual([basicos.imagen, basicos.icono, basicos.fondo, basicos.inicial], [null, null, null, 'B'], 'ícono e imagen vacíos + color por defecto: inicial sobre neutro')
+  igual(cc.avatarCategoria({ nombre: '' }).inicial, '·', 'sin nombre: un punto')
+  igual(cc.avatarCategoria({ nombre: 'élite' }).inicial, 'É', 'inicial con tilde en mayúscula')
+  const cm = fuente('components/site/header/mobile/CategoriasMovil.tsx')
+  check(/avatar\.imagen && avatar\.imagen !== rota \? 'imagen' : avatar\.icono \? 'icono' : 'inicial'/.test(cm), 'si la imagen no carga: el ícono y luego la inicial')
+  check(/onError=\{marcarRota\}/.test(cm) && /alt=""/.test(cm) && /aria-hidden="true"/.test(cm), 'imagen decorativa (alt vacío) que cae al siguiente si falla')
+
+  // Color por defecto de la base = sin color (UNA función: colorCategoriaPropio)
+  igual(cc.COLOR_CATEGORIA_POR_DEFECTO, '#6366F1', 'el default de categories.color (verificado con SELECT)')
+  for (const v of ['#6366F1', '#6366f1', ' #6366F1 ', null, undefined, '', 'rgb(99,102,241)', 'morado', 42]) {
+    igual(cc.colorCategoriaPropio(v), null, `sin color propio: ${JSON.stringify(v)}`)
+  }
+  igual(cc.colorCategoriaPropio('#DC2626'), '#DC2626', 'un color elegido se respeta')
+  igual(cc.colorCategoriaPropio('#66f'), '#66f', '#66f (#6666FF) no es el morado por defecto')
+  check(b.colorCategoriaPropio === cc.colorCategoriaPropio && b.colorTextoSobre === cc.colorTextoSobre, 'la tienda reexporta las funciones compartidas (sin copias)')
+  check(/const color = colorCategoriaPropio\(e\.color\) \|\| primaryColor;/.test(fuente('components/site/header/BotonTodasCategorias.tsx')), 'botón de computador: el morado por defecto va con el color de la tienda, como las categorías sin color')
+
+  // Contraste
+  igual(cc.colorTextoSobre('#0F172A'), '#FFFFFF', 'fondo oscuro: glifo blanco')
+  igual(cc.colorTextoSobre('#FFFFFF'), '#111827', 'fondo blanco: glifo casi negro')
+  check(cm.includes('const ARO = `0 0 0 1px color-mix(in srgb, ${TEXTO} 16%, transparent)`;') && /boxShadow: ARO/.test(cm), 'aro del color del texto del menú: el círculo no se pierde en el fondo')
+  check(/color: avatar\.glifo \?\? TEXTO/.test(cm) && /backgroundColor: avatar\.fondo \?\? NEUTRO/.test(cm), 'sin color: círculo neutro y glifo del color del menú')
+
+  // Accesibilidad de la pieza
+  check(/aria-expanded=\{abierta\}/.test(cm) && /aria-controls=\{id\}/.test(cm) && /hidden=\{!abierta\}/.test(cm), 'desplegable: botón con aria-expanded y aria-controls')
+  check((cm.match(/min-h-11/g) ?? []).length >= 5, 'objetivos táctiles de 44 px')
+  check(/focus-visible:ring-2/.test(cm), 'foco visible')
+  check(/Ver todo/.test(cm) && /<Punto color=\{avatar\.fondo\} \/>/.test(cm), 'subcategorías con «Ver todo» y el punto del color del padre')
+  check(/Volver a las categorías/.test(cm) && /data-tarjeta-categoria/.test(cm) && /\.focus\(\)/.test(cm), 'tarjetas: segundo nivel con volver y el foco de regreso a la tarjeta')
+
+  // Cada menú del celular usa la misma pieza solo con el estilo elegido
+  for (const m of ['components/site/header/mobile/MobileDrawer.tsx', 'components/site/header/mobile/MobileFullscreen.tsx', 'components/site/header/HeaderMinimal.tsx']) {
+    const s2 = fuente(m)
+    check(/child\.avatar \? \(\s*(\/\/[^\n]*\s*)?<FilaCategoriaMovil key=\{j\} item=\{child\} onNavigate=\{onNavigate\} \/>/.test(s2), `${m}: círculo solo si la fila lo trae; si no, la fila de siempre`)
+  }
+  const fs2 = fuente('components/site/header/mobile/MobileFullscreen.tsx')
+  check(/item\.estiloCategorias === 'tarjetas' \?/.test(fs2) && /<CuadriculaCategorias items=\{item\.children\}/.test(fs2), 'pantalla completa: cuadrícula con «Tarjetas»')
+  check(/if \(item\.avatar\) return <FilaCategoriaMovil item=\{item\} onNavigate=\{onCerrar\} \/>/.test(fuente('components/site/header/mobile/HeaderMovilConfigurable.tsx')), 'panel configurable: lista redonda (también con «Tarjetas»)')
+  const tabs2 = fuente('components/site/header/mobile/MobileTabs.tsx')
+  check(/const estilo = estiloCategoriasMovil\(settings as Record<string, unknown>\)/.test(tabs2) && /estilo !== 'icono' && entradas\.length > 0 \? itemsCategoriaMovil\(entradas, true\) : null/.test(tabs2), 'hoja de categorías: con «Lista con ícono», la hoja de siempre')
+  check(/<CuadriculaCategorias items=\{conAvatar\}[^>]*abierta=\{nivel\} onAbrir=\{setNivel\} conVolver=\{false\} \/>/.test(tabs2), 'hoja con «Tarjetas»: segundo nivel dentro de la hoja («‹ Nombre» arriba)')
+  check(/<ListaCategoriasMovil items=\{conAvatar\}/.test(tabs2), 'hoja con «Lista con imagen redonda»')
+}
+
+// 12. «Contenido del botón»
+{
+  const CATS2 = [{ id: 1, name: 'Jeans', slug: 'jeans', icon: null, color: null, image_url: null, children: [] }]
+  const MENU = [{ name: 'Hombre', href: '/hombre', children: [{ name: 'Jeans', href: '/categorias/jeans' }] }, { name: 'Guía de tallas', href: '/guia' }]
+  const reglaDeHoy = (a) => (estiloDeHeaderLayout(a?.header_layout) || a?.header_style || 'default') === 'mega'
+  igual(cc.fuenteBotonCategorias({}), 'auto', 'sin clave: Automático')
+  igual(cc.fuenteBotonCategorias({ header_categories_source: 'todo' }), 'auto', 'basura: Automático')
+  const composiciones = [{}, ...['default', 'centered', 'split', 'minimal', 'mega', 'pill', 'commerce', 'transparent'].map((c) => ({ header_style: c })), { header_layout: 'clasico' }, { header_layout: 'logo_centro', header_style: 'mega' }, { header_layout: 'mega' }]
+  for (const comp of composiciones) {
+    const a = { ...comp, show_categories_in_header: true }
+    const n = JSON.stringify(comp)
+    igual(b.usaMenuMega(a), reglaDeHoy(a), `Automático = regla de hoy (${n})`)
+    igual(b.usaMenuMega({ ...a, header_categories_source: 'auto' }), reglaDeHoy(a), `«auto» explícito = regla de hoy (${n})`)
+    const hoy = reglaDeHoy(a) ? ['Hombre', 'Guía de tallas'] : ['Jeans']
+    igual(b.botonCategoriasBarra(a, CATS2, MENU)?.entradas.map((e) => e.nombre), hoy, `botón por defecto idéntico a hoy (${n})`)
+    igual(b.itemCategoriasMenu(a, CATS2, MENU)?.children?.map((c) => c.name), hoy, `celular por defecto idéntico a hoy (${n})`)
+    igual(b.entradasCategoriasCabecera(a, CATS2, MENU, undefined, { sinAjuste: true }).map((e) => e.nombre), hoy, `hoja por defecto idéntica a hoy (${n})`)
+    igual(b.botonCategoriasBarra({ ...a, header_categories_source: 'menu' }, CATS2, MENU)?.entradas.map((e) => e.nombre), ['Hombre', 'Guía de tallas'], `«Menú armado»: el menú en todas (${n})`)
+    igual(b.itemCategoriasMenu({ ...a, header_categories_source: 'menu' }, CATS2, MENU)?.children?.map((c) => c.name), ['Hombre', 'Guía de tallas'], `«Menú armado»: también el celular (${n})`)
+    igual(b.botonCategoriasBarra({ ...a, header_categories_source: 'inventory' }, CATS2, MENU)?.entradas.map((e) => e.nombre), ['Jeans'], `«Categorías del inventario»: el árbol (${n})`)
+    igual(b.botonCategoriasBarra({ ...a, header_categories_source: 'menu' }, CATS2, null)?.entradas.map((e) => e.nombre), ['Jeans'], `«Menú armado» sin menú: el árbol, como hoy (${n})`)
+  }
+  // Aviso del editor: menú guardado que no se ve
+  check(cc.menuArmadoSinUsar({ header_style: 'default' }, true), 'Classic + Automático + menú guardado: aviso')
+  check(!cc.menuArmadoSinUsar({ header_style: 'mega' }, true), 'Mega: sin aviso (se ve)')
+  check(!cc.menuArmadoSinUsar({ header_style: 'default', header_categories_source: 'menu' }, true), '«Menú armado» elegido: sin aviso')
+  check(!cc.menuArmadoSinUsar({ header_style: 'default', header_categories_source: 'inventory' }, true), '«Inventario» elegido a propósito: sin aviso')
+  check(!cc.menuArmadoSinUsar({ header_style: 'default' }, false), 'sin menú guardado: sin aviso')
+
+  // Contrato: claves nuevas con el valor de hoy por defecto; la copia del ERP idéntica
+  const contrato = readFileSync(join(ROOT, 'lib/website/v2/mapeoAjustes.ts'), 'utf8').replace(/\r\n/g, '\n')
+  check(contrato.includes("header_categories_source: { zona: 'header', porDefecto: 'auto', regla: { tipo: 'opcion', valores: FUENTES_BOTON_CATEGORIAS }, nueva: true },"), 'contrato: header_categories_source (auto)')
+  check(contrato.includes("mobile_categories_look: { zona: 'header', porDefecto: 'icono', regla: { tipo: 'opcion', valores: ESTILOS_CATEGORIAS_MOVIL }, nueva: true },"), 'contrato: mobile_categories_look (icono)')
+  const erpCc = join(ROOT, '..', 'CascadeProjects', 'go-admin-erp', 'src', 'lib', 'website', 'v2', 'categoriasCabecera.ts')
+  if (existsSync(erpCc)) check(readFileSync(erpCc, 'utf8').replace(/\r\n/g, '\n') === readFileSync(join(ROOT, 'lib/website/v2/categoriasCabecera.ts'), 'utf8').replace(/\r\n/g, '\n'), 'categoriasCabecera.ts: la copia del ERP es idéntica')
+  check(/'lib\/website\/v2\/categoriasCabecera\.ts', 'src\/lib\/website\/v2\/categoriasCabecera\.ts'/.test(fuente('scripts/verify-copias-erp.mjs')), 'categoriasCabecera.ts en verify-copias')
+}
 
 if (problemas.length) {
   console.error(`✗ ${problemas.length} de ${casos} comprobaciones fallaron:`)

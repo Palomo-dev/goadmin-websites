@@ -73,7 +73,8 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // +3 (2026-11-22): header_iconos, header_moneda y header_carrito (cabecera de la tienda, Figma 2747:57859).
 // +1 (2026-11-22): header_favoritos (corazón, panel y página /favoritos, Figma 2762:61067).
 // +1 (2026-11-22): header_cuenta (iniciar sesión: página, panel, ventana o diálogo, Figma 2834:68670).
-check(nuevas.length === 107, `se esperaban 107 opciones nuevas y hay ${nuevas.length}`)
+// +2 (2026-11-25): header_categories_source y mobile_categories_look (Figma 3290:101848).
+check(nuevas.length === 109, `se esperaban 109 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -190,6 +191,8 @@ const CONSUMIDORES = {
   header_show_branch_selector: ['components/site/OrganizationLayoutCliente.tsx', 'opcionesShell.selectorSedeEnEncabezado'],
   header_categories_button: ['lib/website/botonCategorias.ts', "'header_categories_button'"],
   header_categories_button_text: ['lib/website/botonCategorias.ts', "'header_categories_button_text'"],
+  header_categories_source: ['lib/website/v2/categoriasCabecera.ts', "'header_categories_source'"],
+  mobile_categories_look: ['lib/website/v2/categoriasCabecera.ts', "'mobile_categories_look'"],
   header_show_language: ['components/site/header/TopbarExtras.tsx', 'opciones.idiomas'],
   site_locales: ['components/site/header/TopbarExtras.tsx', 'opciones.idiomas'],
   header_booking_bar: ['components/site/header/BarraReservaHotel.tsx', 'opciones.barraReserva'],
@@ -483,7 +486,7 @@ check((await fuente('app/globals.css')).includes('data-header-sobre-hero') && (a
 
 // Encabezado «Mínimo» (4-nov): 'fullscreen' pinta su capa y el botón de la fila móvil abre el panel
 {
-  const minimo = await fuente('components/site/header/HeaderMinimal.tsx')
+  const minimo = (await fuente('components/site/header/HeaderMinimal.tsx')).replace(/\r\n/g, '\n')
   check(!minimo.includes('onClick={() => {}}'), 'HeaderMinimal: ningún botón sin acción')
   check(minimo.includes('<MobileMenuButton onClick={() => setDrawerOpen(true)} />'), 'HeaderMinimal: el botón de la fila móvil abre el panel')
   check(minimo.includes("if (minimalMenuStyle === 'fullscreen') {\n      setFullscreenOpen(true);"), "HeaderMinimal: 'fullscreen' abre la pantalla completa")

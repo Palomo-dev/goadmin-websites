@@ -8,6 +8,7 @@ import Link from '@/components/site/Enlace'
 import Image from 'next/image';
 import { Search, Search as SearchLarge, ScanSearch, ShoppingBag, ShoppingCart, Package, Gift, User, UserCircle, UserRound, CircleUser, Phone, Mail, ChevronDown, ChevronLeft, ChevronRight, Menu as MenuIcon, LogOut, Globe, Coins, Wallet, Banknote, DollarSign, X, ShoppingBasket, Store, CircleUserRound, LogIn, CircleDollarSign, Languages } from 'lucide-react';
 import type { OrganizationWithDetails, WebsitePageWithChildren } from '@/types/database';
+import type { AvatarCategoria } from '@/lib/website/v2/categoriasCabecera';
 import { ProductSearch } from '../ProductSearch';
 import { BuscadorCromo } from './BuscadorCromo';
 import { botonesExtraEncabezado, cajaIconosEncabezado, estiloBotonesExtra, leerConstructor } from '@/lib/website/constructorEncabezado';
@@ -93,6 +94,10 @@ export interface NavItem {
   badge?: string | null;
   /** Menú adicional de Encabezado (header_menu2..4): su nombre se ve en la barra y abre el desplegable. */
   conEnlace?: boolean;
+  /** Categoría con «Lista con imagen redonda» o «Tarjetas con imagen»: su círculo (botonCategorias.ts). */
+  avatar?: AvatarCategoria;
+  /** Ítem «Categorías» con un estilo distinto de «Lista con ícono» (sin la clave: lo de hoy). */
+  estiloCategorias?: 'redonda' | 'tarjetas';
 }
 
 // ============================================================

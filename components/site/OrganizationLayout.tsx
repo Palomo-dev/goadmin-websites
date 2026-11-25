@@ -33,6 +33,9 @@ import { getEtiquetasPromoTienda } from '@/lib/promociones/etiquetasPromocion.se
 import { ProveedorPromosEtiqueta } from './etiquetas/PromosEtiquetaContext'
 import { getOrgContext } from '@/lib/get-org-context'
 import { completarDatosCabecera, faltanDatosCabecera } from '@/lib/website/datosCabecera'
+import { getPlanesDeSeccion } from '@/lib/website/datosSecciones'
+import { tieneMembresias } from '@/lib/website/v2/contrato/paginaMembresias'
+import { mencionaMembresias, menusSinMembresias, sinNodosMembresias } from '@/lib/memberships/enlacesMembresias'
 
 export type { OrganizationLayoutProps }
 
@@ -97,6 +100,15 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
       },
     ),
   ])
+  // Pie leído aquí (la página no pasó `menus`): sin planes de membresía activos, sin el enlace a
+  // /membresias, como en getOrgContext. Solo se miran los planes si el pie lo trae.
+  if (mencionaMembresias(pie.menus, pie.footerNavTree) && !tieneMembresias(await getPlanesDeSeccion(props.organization.id))) {
+    pie.menus = pie.menus ? menusSinMembresias(pie.menus) : pie.menus
+    pie.footerNavTree = pie.footerNavTree ? sinNodosMembresias(pie.footerNavTree, (n) => n.slug) : pie.footerNavTree
+    pie.footerNav = pie.footerNav ? sinNodosMembresias(pie.footerNav, (n) => n.slug) : pie.footerNav
+  } else {
+    // Sin enlaces a /membresias o con planes: el pie tal cual.
+  }
   return (
     <OrganizationLayoutCliente
       {...props}

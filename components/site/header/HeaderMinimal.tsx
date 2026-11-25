@@ -42,6 +42,7 @@ import {
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { itemCategoriasMenu, menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './mobile/SubmenuCategoria';
+import { FilaCategoriaMovil } from './mobile/CategoriasMovil';
 
 /**
  * HeaderMinimal
@@ -429,7 +430,10 @@ function DrawerNavItem({
           >
             Ver todo
           </Link>
-          {item.children.map((child, j) => child.children && child.children.length > 0 ? (
+          {item.children.map((child, j) => child.avatar ? (
+            // «Lista con imagen redonda» / «Tarjetas» (aquí, como lista redonda): su círculo.
+            <FilaCategoriaMovil key={j} item={child} onNavigate={onNavigate} />
+          ) : child.children && child.children.length > 0 ? (
             <SubmenuCategoria key={j} item={child} claseEnlace="block px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onNavigate={onNavigate} />
           ) : (
             <Link

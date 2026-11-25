@@ -39,6 +39,7 @@ import {
 import { IconoGuardado } from '@/components/site/IconoGuardado';
 import { itemCategoriasMenu, menuConCategorias } from '@/lib/website/botonCategorias';
 import { SubmenuCategoria } from './SubmenuCategoria';
+import { FilaCategoriaMovil } from './CategoriasMovil';
 import { FilaFavoritosMenu } from '@/components/site/favoritos/FilaFavoritosMenu';
 import { EnlaceAccesoMenu } from '@/components/site/cuenta';
 import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
@@ -315,7 +316,10 @@ function DrawerNavItem({
           >
             Ver todo
           </Link>
-          {item.children.map((child, j) => child.children && child.children.length > 0 ? (
+          {item.children.map((child, j) => child.avatar ? (
+            // «Lista con imagen redonda» / «Tarjetas» (en el cajón, como lista redonda): su círculo.
+            <FilaCategoriaMovil key={j} item={child} onNavigate={onNavigate} />
+          ) : child.children && child.children.length > 0 ? (
             <SubmenuCategoria key={j} item={child} claseEnlace="block px-3 py-2 rounded-lg text-sm text-[var(--mm-fg-muted)] hover:bg-[var(--mm-hover-bg)] hover:text-[var(--mm-hover-fg)] transition-colors" onNavigate={onNavigate} />
           ) : (
             <Link
