@@ -266,7 +266,7 @@ check(consulta.includes("cacheCatalog('getRelacionadosFicha'") && consulta.inclu
   const descFuente = leer('components/sections/product-detail/ProductDescription.tsx')
   check(descFuente.includes('<ExpandableDescription text={texto} maxLength={o.letras} vineta={o.vinetas} />'), 'descripción: viñetas también con «Por letras»')
   check(/fontSize: PX_TEXTO\[o\.tamanoTexto\] }}>\s*<ExpandableDescription/.test(descFuente), 'descripción: tamaño del texto también con «Por letras»')
-  check(descFuente.includes('<PestanasOAcordeon key={o.abierta}'), 'descripción: «Abierta al cargar» se ve en vivo')
+  check(/<PestanasFicha\s+key=\{o\.abierta\}/.test(descFuente) && descFuente.includes('abierta={o.abierta}'), 'descripción: «Abierta al cargar» se ve en vivo (pieza única de pestañas)')
   check(expandible.includes('return renderRichText(text, vineta)'), 'ExpandableDescription: pinta la viñeta pedida (sin ella, el punto)')
   check(pagina.includes('Math.max(8, opcionesRelacionados.cantidad)'), 'relacionados: «Cantidad máxima» 12 trae 12 (8 como mínimo, lo de siempre)')
 }

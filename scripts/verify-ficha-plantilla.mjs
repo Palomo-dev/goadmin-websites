@@ -123,13 +123,18 @@ igual(ficha.vecinosEnOrden([5, 7, 9], 9), { anteriorId: 7, siguienteId: null }, 
 igual(ficha.vecinosEnOrden([5, 7, 9], 4), { anteriorId: null, siguienteId: null }, 'fuera del orden (variante u oculto)')
 igual(ficha.vecinosEnOrden([], 4), { anteriorId: null, siguienteId: null }, 'categoría vacía')
 
-const presentes = ficha.destinosPresentes([{ section_type: 'product_gallery' }, { section_type: 'product_reviews' }, { section_type: 'product_info' }, { section_type: 'product_urgency' }])
-igual(presentes, ['product_info', 'product_reviews'], 'destinos presentes en el orden del contrato')
-const porDefecto = contrato.normalizarPestanasAncla(null).items
-igual(ficha.pestanasConDestino(porDefecto, presentes).map((p) => p.target), ['product_info', 'product_reviews'], 'se quitan las pestañas sin bloque')
-igual(ficha.pestanasConDestino(porDefecto, []), [], 'sin destinos, sin pestañas')
-check(ficha.idAncla('product_specs') === 'product_specs' && ficha.idAncla('product_gallery') === null && ficha.idAncla('product_actions') === null, 'idAncla solo para DESTINOS_ANCLA')
-for (const d of contrato.DESTINOS_ANCLA) check(ficha.idAncla(d) === d, `idAncla(${d})`)
+// Pestañas de la ficha (pestañas reales, 2026-11-25): qué bloques pasan a los paneles.
+{
+  const conNav = (lista, contenido = {}) => [{ id: 'n', section_type: 'product_anchor_nav', content: contenido }, ...lista]
+  const plan = ficha.planPestanasFicha(conNav([{ id: 'g', section_type: 'product_gallery' }, { id: 'r', section_type: 'product_reviews' }, { id: 'i', section_type: 'product_info' }]))
+  igual(plan.items.map((p) => p.target), ['product_reviews'], 'se quitan las pestañas sin bloque')
+  check(plan.nav.id === 'n', 'el plan lleva el bloque de pestañas')
+  igual(ficha.planPestanasFicha([{ id: 'r', section_type: 'product_reviews' }]), null, 'sin bloque de pestañas: la ficha de siempre')
+  igual(ficha.planPestanasFicha(conNav([])).items, [], 'sin destinos, sin pestañas')
+  // Una pestaña guardada hacia la información («Resumen» de antes) no se pinta: su bloque se queda arriba.
+  const viejas = { items: [{ label: 'Resumen', target: 'product_info' }, { label: 'Envío', target: 'product_shipping' }] }
+  igual(ficha.planPestanasFicha(conNav([{ id: 'i', section_type: 'product_info' }, { id: 'e', section_type: 'product_shipping' }], viejas)).items.map((p) => p.label), ['Envío'], '«Resumen» deja de ser pestaña; el nombre guardado se respeta')
+}
 check(ficha.etiquetaCombinable(null) && ficha.etiquetaCombinable('general') && ficha.etiquetaCombinable(undefined) && ficha.etiquetaCombinable(''), 'etiquetas general o sin kind combinan')
 check(!ficha.etiquetaCombinable('dieta') && !ficha.etiquetaCombinable('alergeno') && !ficha.etiquetaCombinable('picante'), 'dieta, alérgeno y picante no combinan')
 check(ficha.tieneBloque([{ section_type: 'product_pager' }], 'product_pager') && !ficha.tieneBloque([{ section_type: 'product_pager', is_visible: false }], 'product_pager') && !ficha.tieneBloque(null, 'product_pager'), 'tieneBloque respeta is_visible')
@@ -150,11 +155,8 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   const limpia = ficha.sinEnvioRepetidoDeFabrica(moderna)
   igual(tipos(limpia), ['product_gallery', 'product_info', 'product_benefits', 'product_anchor_nav', 'product_reviews'], 'los dos de fábrica: se queda Beneficios')
   check(moderna.length === 6, 'no cambia la lista que recibe')
-  igual(
-    ficha.pestanasConDestino(contrato.normalizarPestanasAncla(null).items, ficha.destinosPresentes(limpia)).map((p) => p.target),
-    ['product_info', 'product_reviews'],
-    'la pestaña «Envío» no queda apuntando a un bloque que no está',
-  )
+  // Con «Envío y devoluciones» como pestaña el renderer no aplica la regla (el detalle va en su
+  // pestaña y arriba solo queda la línea corta con datos reales): verify-pestanas-ficha.
   // Beneficios con estilo pero sin textos propios sigue pintando los de fábrica: también repite.
   igual(tipos(ficha.sinEnvioRepetidoDeFabrica([envio, { section_type: 'product_benefits', content: { benefits_style: 'tarjetas', items: [] } }])), ['product_benefits'], 'beneficios con estilo y sin items: de fábrica')
   // Lo que el comercio tocó se respeta: se pintan los dos.
@@ -187,12 +189,13 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   const renderer = await fuente('components/sections/product-detail/ProductDetailRenderer.tsx')
   check(renderer.includes('resolverDisenoFicha(templatePage?.page_settings ?? null, secciones)'), 'el renderer resuelve el diseño con page_settings primero')
   check(renderer.includes('buildDefaultProductDetailSections(pageSettings)') && renderer.includes("const pageSettings = (templatePage?.page_settings || {}) as Record<string, any>"), 'los bloques por defecto se arman con los page_settings de siempre')
-  check(renderer.includes('const ancla = conAnclas ? idAncla(section.section_type) : null'), 'los envoltorios de ancla solo existen con pestañas ancla')
+  check(renderer.includes('const planPestanas = planPestanasFicha(crudas)') && renderer.includes('const bloquePestanas = planPestanas && datosPestanas ?'), 'los paneles de pestañas solo existen con el bloque de pestañas')
   check(renderer.includes('if (extrasFicha) {') && renderer.includes('// Sin extras: los datos de siempre.'), 'los datos nuevos solo entran con extrasFicha')
 
   const pagina = await fuente('app/productos/[id]/page.tsx')
   // Relacionados elegidos a mano / comprados juntos (verify-secciones-ficha): solo si la sección los pide.
-  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
+  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conEnvioEnPestana) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
+  check(pagina.includes('conEnvioEnPestana || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null)'), 'las zonas de envío solo con la pestaña «Envío y devoluciones» (o en el lienzo)')
   check(pagina.includes("conPaginador ? getPaginadorFicha(") && pagina.includes('look\n        ? getCompletaElLook('), 'cada consulta detrás de su bloque')
   check(pagina.includes('const seccionesFicha = hasTemplateSections ? productDetailTemplate.website_page_sections : []'), 'la ficha legacy monolítica no consulta nada nuevo')
 
@@ -232,7 +235,7 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   }
 }
 
-// ─── 4b. Pestañas ancla y ficha técnica (arreglo 2026-11-25) ─────────────────────────────────
+// ─── 4b. Salto hasta la barra y ficha técnica (arreglo 2026-11-25) ──────────────────────────────
 // El dueño: «clic en Envío: la pestaña se marca pero el contenido no cambia». En Panorama
 // «Resumen» y «Envío» van encima de las pestañas; el salto del navegador subía poco o nada.
 {
@@ -245,30 +248,8 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   igual(anclas.destinoSaltoAncla({ ...base, topDestino: Number.NaN, pestanasEncima: false }), 0, 'medida rota: arriba del todo, no NaN')
   igual(anclas.destinoSaltoAncla({ ...base, topDestino: 300.4, pestanasEncima: false }), Math.round(1000 + 300.4 - 146 - 16), 'salto en píxeles enteros')
 
-  const cuatro = contrato.normalizarPestanasAncla(null).items
-  igual(anclas.pestanasConContenido(cuatro, null).map((p) => p.target), cuatro.map((p) => p.target), 'sin medir (servidor): todas las pestañas')
-  igual(
-    anclas.pestanasConContenido(cuatro, { product_info: true, product_specs: false, product_shipping: true, product_reviews: true }).map((p) => p.label),
-    ['Resumen', 'Envío', 'Reseñas'],
-    'un bloque que no pinta nada (características sin datos) no deja pestaña',
-  )
-  igual(anclas.pestanasConContenido(cuatro, { product_info: true }).map((p) => p.target), ['product_info'], 'destino sin medir = sin contenido')
-  igual(anclas.pestanasConContenido(cuatro, {}), [], 'nada pinta: sin pestañas')
-  const visibles = [{ target: 'product_info' }, { target: 'product_shipping' }]
-  igual(anclas.pestanaActivaValida('product_shipping', visibles), 'product_shipping', 'la pestaña tocada queda marcada')
-  igual(anclas.pestanaActivaValida('product_specs', visibles), 'product_info', 'si la marcada se oculta, la primera visible')
-  igual(anclas.pestanaActivaValida('product_specs', []), '', 'sin pestañas, ninguna marcada')
-
-  const nav = await fuente('components/sections/product-detail/NavAnclasCliente.tsx')
-  check(nav.includes('evento.preventDefault()') && nav.includes('destinoSaltoAncla({') && nav.includes("window.scrollTo({ top, behavior: suave ? 'smooth' : 'auto' })"), 'pestañas: el salto lo calcula el componente, no el navegador')
-  check(nav.includes('href={`#${p.target}`}'), 'pestañas: sin JavaScript siguen siendo enlaces #destino')
-  check(/evento\.metaKey \|\| evento\.ctrlKey/.test(nav), 'pestañas: clic con modificadores = lo del navegador')
-  check(nav.includes('window.history.replaceState(window.history.state,'), 'pestañas: el hash se actualiza sin pisar el estado del router de Next')
-  check(nav.includes('destino.focus({ preventScroll: true })'), 'pestañas: el bloque destino recibe el foco')
-  check(nav.includes('if (Date.now() < saltoHasta.current) return'), 'pestañas: el observador no pisa la pestaña tocada durante el salto')
-  check(nav.includes('pestanasConContenido(pestanas, conContenido)') && nav.includes('if (visibles.length === 0) return null'), 'pestañas: sin contenido, sin pestaña; sin ninguna, sin barra')
-  check(nav.includes("aria-current={esActiva ? 'location' : undefined}") && !nav.includes('role="tablist"'), 'pestañas: navegación con aria-current (son enlaces, no tablist)')
-  check(nav.includes("matchMedia('(prefers-reduced-motion: reduce)')"), 'pestañas: sin animación si el usuario la reduce')
+  // Desde el 2026-11-25 las pestañas son de verdad (Figma 3255-99475): qué pestañas aparecen,
+  // la primera abierta, #… → pestaña, teclado y sin JavaScript apiladas, en verify-pestanas-ficha.
 
   // Ficha técnica icon_grid: sin celdas vacías ni textos montados (mismo estilo).
   const specsSrc = await fuente('components/sections/product-detail/ProductSpecsVariantes.tsx')

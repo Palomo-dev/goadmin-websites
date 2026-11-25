@@ -59,6 +59,38 @@ export interface ReviewsConfig {
   moderar?: boolean
 }
 
+/** Fuentes que la sección puede elegir (`reviews_source`). */
+const FUENTES_SECCION = ['generated', 'real', 'mixed', 'auto'] as const
+
+/**
+ * Config de reseñas de una sección `product_reviews`: lo de la sección («De dónde salen las
+ * opiniones», `auto_switch_threshold`, `min_visible`, «Compra verificada» en las de ejemplo)
+ * manda sobre la base de la tienda. Sin nada en la sección, la MISMA base (mismo objeto).
+ * La usan el bloque de reseñas y la pestaña «Reseñas (N)», así cuentan lo mismo.
+ */
+export function configResenasDeSeccion(
+  content: Record<string, unknown> | null | undefined,
+  base: Partial<ReviewsConfig> | Record<string, unknown> | null | undefined,
+): Partial<ReviewsConfig> | null {
+  const c = content ?? {}
+  const fuente = typeof c.reviews_source === 'string' && (FUENTES_SECCION as readonly string[]).includes(c.reviews_source)
+    ? (c.reviews_source as ReviewsConfig['reviews_source'])
+    : null
+  const umbral = typeof c.auto_switch_threshold === 'number' ? c.auto_switch_threshold : null
+  const minimo = typeof c.min_visible === 'number' ? c.min_visible : null
+  // `examples_verified_badge` (CLAVE_EJEMPLOS_VERIFICADA de seccionesFicha): solo `false` cambia algo.
+  const sinInsigniaEjemplos = c.examples_verified_badge === false
+  const b = (base ?? null) as Partial<ReviewsConfig> | null
+  if (!fuente && umbral === null && minimo === null && !sinInsigniaEjemplos) return b
+  return {
+    ...(b ?? {}),
+    ...(fuente ? { reviews_source: fuente } : {}),
+    ...(umbral !== null ? { auto_switch_threshold: umbral } : {}),
+    ...(minimo !== null ? { min_visible: minimo } : {}),
+    ...(sinInsigniaEjemplos ? { ejemplos_verificada: false } : {}),
+  }
+}
+
 /** Configuración por defecto — replica exactamente el comportamiento actual. */
 export const DEFAULT_REVIEWS_CONFIG: ReviewsConfig = {
   reviews_source: 'generated',

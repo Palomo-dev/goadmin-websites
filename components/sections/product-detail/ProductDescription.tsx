@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { PestanasFicha } from './PestanasFicha'
 import { ChevronDown, Clock, RefreshCw, Truck } from 'lucide-react'
 import { ExpandableDescription, renderRichText } from '@/components/site/ExpandableDescription'
 import { textoPlano } from '@/lib/texto/textoPlano'
@@ -29,6 +30,8 @@ interface ProductDescriptionProps {
     product?: any
     categoriaFicha?: { name?: string | null } | null
     faqFicha?: Array<{ question?: string; answer?: string }> | null
+    /** Dentro de la pestaña «Descripción» de la ficha (PestanasFicha). */
+    enPestanaFicha?: boolean
   }
 }
 
@@ -37,10 +40,22 @@ interface ProductDescriptionProps {
  * las opciones de la sección (Figma 2990:74500, `lib/website/v2/seccionesFicha.ts`): Texto con
  * «Ver más» (por líneas y con degradado), Pestañas, Acordeón o Ficha técnica en tabla, con las
  * partes Descripción, Especificaciones, Envío y devoluciones y Preguntas frecuentes.
+ *
+ * Los estilos Pestañas y Acordeón pintan la pieza única de pestañas de la tienda (PestanasFicha).
+ * Dentro de la pestaña «Descripción» de la ficha (`data.enPestanaFicha`, Figma 3255-99475): el
+ * texto con «Ver más» a las 5 líneas (o las elegidas), la fila Marca · Referencia · Categoría y
+ * las demás partes elegidas, apiladas con su título (sin pestañas dentro de pestañas).
  */
 export function ProductDescription({ content, primaryColor = '#3B82F6', data }: ProductDescriptionProps) {
   const product = data?.product
   const opciones = useMemo(() => leerOpcionesDescripcion(content as Record<string, unknown>), [content])
+  if (data?.enPestanaFicha === true) {
+    return product
+      ? <DescripcionEnPestana o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} />
+      : null
+  } else {
+    // Fuera de las pestañas de la ficha: lo de siempre.
+  }
   if (opciones.conOpciones && product) {
     return <DescripcionConOpciones o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} />
   } else {
@@ -84,6 +99,9 @@ export function filasFicha(product: any, categoria: string | null, o: Pick<Opcio
   return o.filasPropias ? [...filas, ...leerFilasPropias(product?.specifications)] : filas
 }
 
+/** Fila corta bajo la descripción en su pestaña (Figma 3256-99475): solo datos reales. */
+const FILAS_EN_PESTANA = { filas: ['marca', 'referencia', 'categoria'] as FilaFicha[], ocultarVacias: true, filasPropias: false }
+
 const ENVIO = [
   { icono: Clock, titulo: 'Tiempo de entrega', texto: '24-48 horas hábiles' },
   { icono: Truck, titulo: 'Costo de envío', texto: 'Calculado al finalizar la compra' },
@@ -98,7 +116,51 @@ interface PropsConOpciones {
   primaryColor: string
 }
 
-function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: PropsConOpciones) {
+/**
+ * Descripción dentro de la pestaña «Descripción» de la ficha: texto con «Ver más» (5 líneas si no
+ * se eligió otro corte), la fila Marca · Referencia · Categoría y, si se eligieron, las demás
+ * partes apiladas con su título. Sin nada que mostrar, nada (y la pestaña no aparece).
+ */
+function DescripcionEnPestana({ o, product, categoria, faq }: PropsConOpciones) {
+  const opciones = useMemo<OpcionesDescripcion>(() => ({ ...o, estilo: 'ver_mas', lineas: o.lineas ?? 5 }), [o])
+  const partes = usePartes(opciones, product, categoria, faq)
+  const fila = useMemo(() => filasFicha(product, categoria, FILAS_EN_PESTANA), [product, categoria])
+  const conFila = fila.length > 0 && !partes.lista.includes('especificaciones')
+  if (partes.lista.length === 0 && !conFila) return null
+  const resto = partes.lista.filter((p) => p !== 'descripcion')
+  return (
+    <div className={`space-y-8 ${partes.ancho}`} data-descripcion="pestana">
+      {(partes.lista.includes('descripcion') || conFila) && (
+        <div>
+          {partes.lista.includes('descripcion') && partes.cuerpo('descripcion', true)}
+          {conFila && (
+            <dl
+              className={`inline-flex flex-wrap gap-x-8 gap-y-3 border-t pt-4 text-sm ${partes.lista.includes('descripcion') ? 'mt-6' : ''}`}
+              style={{ borderColor: 'color-mix(in srgb, var(--text-color, #111827) 12%, transparent)' }}
+              data-fila-descripcion=""
+            >
+              {fila.map((f) => (
+                <div key={f.nombre} className="flex min-w-0 flex-col-reverse">
+                  <dt className="text-xs text-gray-500 dark:text-gray-400">{f.nombre}</dt>
+                  <dd className="font-medium text-gray-900 [overflow-wrap:anywhere] dark:text-white">{f.valor}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+      {resto.map((p) => (
+        <section key={p}>
+          <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{o.titulos[p]}</h3>
+          {partes.cuerpo(p, true)}
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/** Partes con contenido y el cuerpo de cada una (lo comparten todos los estilos). */
+function usePartes(o: OpcionesDescripcion, product: any, categoria: string | null, faq: PropsConOpciones['faq']) {
   const descripcion = useMemo(() => textoPlano(product?.description ?? ''), [product?.description])
   const filas = useMemo(() => filasFicha(product, categoria, o), [product, categoria, o])
   const preguntas = (faq ?? []).filter((f) => f?.question && f?.answer)
@@ -106,13 +168,12 @@ function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: Pr
   const ancho = o.ancho === 'comodo' ? 'max-w-[760px]' : ''
 
   // Partes con contenido (sin contenido no se pintan ni su pestaña).
-  const partes = o.partes.filter((p) => {
+  const lista = o.partes.filter((p) => {
     if (p === 'descripcion') return Boolean(descripcion.trim())
     if (p === 'especificaciones') return filas.length > 0
     if (p === 'preguntas') return preguntas.length > 0
     return true
   })
-  if (partes.length === 0) return null
 
   const tabla = (
     <dl className={`overflow-hidden text-sm ${o.tabla === 'sin' ? '' : 'rounded-xl border border-gray-200 dark:border-gray-700'}`} data-ficha-tabla={o.tabla}>
@@ -158,6 +219,13 @@ function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: Pr
     )
   }
 
+  return { lista, tabla, cuerpo, ancho }
+}
+
+function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: PropsConOpciones) {
+  const { lista: partes, tabla, cuerpo, ancho } = usePartes(o, product, categoria, faq)
+  if (partes.length === 0) return null
+
   // A · Texto con «Ver más»: cada parte con su título, apiladas.
   if (o.estilo === 'ver_mas') {
     return (
@@ -195,10 +263,23 @@ function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: Pr
     )
   }
 
-  // B · Pestañas (en celular, acordeón si así se eligió) y C · Acordeón.
+  // B · Pestañas (en celular, acordeón si así se eligió) y C · Acordeón: la pieza única de
+  // pestañas de la tienda (PestanasFicha), con teclado y sin JavaScript apiladas.
   return (
     // `key`: «Abierta al cargar» se ve en vivo en el lienzo (el estado nace con ella).
-    <PestanasOAcordeon key={o.abierta} o={o} partes={partes} cuerpo={(p) => cuerpo(p, false)} primaryColor={primaryColor} ancho={ancho} />
+    <PestanasFicha
+      key={o.abierta}
+      items={partes.map((p) => ({ id: p, titulo: o.titulos[p], contenido: cuerpo(p, false) }))}
+      colorActivo={o.colorPestana === 'tienda' ? primaryColor : 'currentColor'}
+      celular={o.celular === 'acordeon' ? 'acordeon' : 'pestanas'}
+      estilo={o.estilo === 'acordeon' ? 'acordeon' : 'pestanas'}
+      variasAbiertas={o.variasAbiertas}
+      abierta={o.abierta}
+      etiqueta="Descripción del producto"
+      titulos="parte"
+      ancho={ancho}
+      marca={o.estilo === 'acordeon' ? 'data-descripcion-acordeon' : 'data-descripcion-pestanas'}
+    />
   )
 }
 
@@ -234,74 +315,5 @@ function TextoVerMas({ texto, o }: { texto: string; o: OpcionesDescripcion }) {
         </button>
       )}
     </div>
-  )
-}
-
-function PestanasOAcordeon({
-  o, partes, cuerpo, primaryColor, ancho,
-}: { o: OpcionesDescripcion; partes: ParteDescripcion[]; cuerpo: (p: ParteDescripcion) => ReactNode; primaryColor: string; ancho: string }) {
-  const inicial = partes.includes(o.abierta) ? o.abierta : partes[0]
-  const [activa, setActiva] = useState<ParteDescripcion>(inicial)
-  const [abiertas, setAbiertas] = useState<Set<ParteDescripcion>>(new Set([inicial]))
-  const colorActivo = o.colorPestana === 'tienda' ? primaryColor : 'currentColor'
-
-  const alternar = (p: ParteDescripcion) =>
-    setAbiertas((s) => {
-      const n = new Set(o.variasAbiertas ? s : [])
-      if (s.has(p)) n.delete(p)
-      else n.add(p)
-      return n
-    })
-
-  const acordeon = (clase: string) => (
-    <div className={`divide-y divide-gray-200 border-y border-gray-200 dark:divide-gray-700 dark:border-gray-700 ${ancho} ${clase}`} data-descripcion="acordeon">
-      {partes.map((p) => {
-        const abierta = abiertas.has(p)
-        return (
-          <section key={p}>
-            <h3>
-              <button type="button" onClick={() => alternar(p)} aria-expanded={abierta} className="flex w-full items-center justify-between py-4 text-left font-semibold text-gray-900 dark:text-white">
-                {o.titulos[p]}
-                <ChevronDown className={`h-4 w-4 transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden="true" />
-              </button>
-            </h3>
-            {abierta && <div className="pb-5">{cuerpo(p)}</div>}
-          </section>
-        )
-      })}
-    </div>
-  )
-
-  if (o.estilo === 'acordeon') return acordeon('')
-
-  // Pestañas: en celular, acordeón si se eligió «Acordeón».
-  const pestanas = (
-    <div className={o.celular === 'acordeon' ? 'hidden md:block' : ''} data-descripcion="pestanas">
-      <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-gray-200 dark:border-gray-700">
-        {partes.map((p) => {
-          const sel = p === activa
-          return (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={sel}
-              onClick={() => setActiva(p)}
-              className={`-mb-px shrink-0 border-b-2 pb-2 text-sm ${sel ? 'font-semibold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-              style={sel ? { borderColor: colorActivo } : undefined}
-            >
-              {o.titulos[p]}
-            </button>
-          )
-        })}
-      </div>
-      <div role="tabpanel" className={`pt-5 ${ancho}`}>{cuerpo(activa)}</div>
-    </div>
-  )
-  return (
-    <>
-      {pestanas}
-      {o.celular === 'acordeon' && acordeon('md:hidden')}
-    </>
   )
 }

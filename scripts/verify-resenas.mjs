@@ -69,7 +69,7 @@ const { validarResena, organizacionDelCuerpoDistinta, prefijoFotosResena } = awa
 const { firmarEnlaceResena, enlaceResenaValido, firmarBajaResenas, bajaResenasValida, VIGENCIA_ENLACE_RESENA_MS } = await import('../lib/resenas/firmaResena.ts')
 const { planPrimerCorreo, productosDelCorreo, rangoPrimerCorreo } = await import('../lib/resenas/pedirResena.ts')
 const { armarCorreoPedirResena } = await import('../lib/resenas/correoPedirResena.ts')
-const { aplicarInsigniaEjemplos } = await import('../components/site/reviews/types.ts')
+const { aplicarInsigniaEjemplos, configResenasDeSeccion } = await import('../components/site/reviews/types.ts')
 const ficha = await import('../lib/website/v2/seccionesFicha.ts')
 
 // ── 1. Organización del host ──
@@ -130,7 +130,16 @@ check(ficha.ejemplosConVerificada({ [ficha.CLAVE_EJEMPLOS_VERIFICADA]: false }) 
 check(!ficha.CLAVES_NUEVAS_RESENAS.includes(ficha.CLAVE_EJEMPLOS_VERIFICADA), 'switch: no activa el pintado nuevo de la sección')
 check(ficha.leerOpcionesResenas({ [ficha.CLAVE_EJEMPLOS_VERIFICADA]: false }).conOpciones === false, 'switch: la sección se sigue pintando como hoy')
 const seccion = leer('components/sections/product-detail/ProductReviewsSection.tsx')
-check(seccion.includes('content?.[CLAVE_EJEMPLOS_VERIFICADA] === false') && seccion.includes('ejemplos_verificada: false'), 'sección: solo `false` llega al orquestador')
+// La regla vive en configResenasDeSeccion (reviews/types.ts), la misma de la pestaña «Reseñas (N)».
+check(seccion.includes('[CLAVE_EJEMPLOS_VERIFICADA]: insignia') && seccion.includes('configResenasDeSeccion('), 'sección: el switch pasa por configResenasDeSeccion')
+{
+  const base = { reviews_source: 'generated' }
+  check(configResenasDeSeccion({ [ficha.CLAVE_EJEMPLOS_VERIFICADA]: false }, base)?.ejemplos_verificada === false, 'sección: `false` llega al orquestador')
+  check(configResenasDeSeccion({ [ficha.CLAVE_EJEMPLOS_VERIFICADA]: true }, base) === base, 'sección: `true` no cambia nada (misma base)')
+  check(configResenasDeSeccion({}, null) === null, 'sección sin claves: la base de siempre (null)')
+  check(configResenasDeSeccion({ reviews_source: 'real', min_visible: 4 }, base)?.reviews_source === 'real', 'sección: su origen manda sobre el de la tienda')
+  check(configResenasDeSeccion({ reviews_source: 'otro' }, base) === base, 'sección: origen desconocido se ignora')
+}
 const orquestador = leer('components/site/reviews/ProductReviews.tsx')
 check((orquestador.match(/aplicarInsigniaEjemplos\(/g) || []).length === 3, 'orquestador: el switch se aplica en los tres caminos')
 

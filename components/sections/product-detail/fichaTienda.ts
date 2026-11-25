@@ -5,11 +5,16 @@
  * Regla de oro: sin las claves nuevas, todo da exactamente lo de hoy.
  * - `resolverDisenoFicha`: con `page_settings` (legacy) manda lo de siempre; sin él (V2), el
  *   `page_layout` del bloque `product_gallery`, y sin `page_layout`, los defaults de hoy.
- * - Las anclas de las pestañas solo existen si la página tiene un `product_anchor_nav` visible.
+ * - Las pestañas solo existen si la página tiene un `product_anchor_nav` visible (planPestanasFicha).
  * - El mosaico solo cambia la galería con `gallery_layout: 'mosaic'`.
  */
 
-import { DESTINOS_ANCLA, normalizarDisenoFicha, type DestinoAncla } from '@/lib/website/v2/contrato/seccionesTienda'
+import {
+  esDestinoPestanaFicha,
+  normalizarDisenoFicha,
+  normalizarPestanasAncla,
+  type DestinoPestanaFicha,
+} from '@/lib/website/v2/contrato/seccionesTienda'
 
 // ─── Columnas de la ficha (page_settings legacy o page_layout V2) ───────────────────────────
 
@@ -98,8 +103,11 @@ function contenidoDe(seccion: { content?: unknown }): Record<string, unknown> {
  * - no hay «Beneficios» visibles, o es un restaurante (ahí los de fábrica no se pintan).
  *
  * El catálogo de plantillas del ERP ya no arma los dos bloques; esto cubre las tiendas que
- * aplicaron la plantilla antes. Las pestañas ancla se calculan con lo que devuelve esta función,
- * así que «Envío» no queda apuntando a un bloque que no está.
+ * aplicaron la plantilla antes.
+ *
+ * Con «Envío y devoluciones» como pestaña (Figma 3255-99475) no se aplica: el detalle va en su
+ * pestaña y arriba solo queda una línea corta con los datos reales de la tienda (no los de
+ * fábrica), así que no repite los beneficios. Lo decide ProductDetailRenderer.
  */
 export function sinEnvioRepetidoDeFabrica<T extends { section_type: string; content?: unknown }>(
   visibles: readonly T[],
@@ -115,20 +123,58 @@ export function sinEnvioRepetidoDeFabrica<T extends { section_type: string; cont
   return visibles.filter((s) => s.section_type !== 'product_shipping' || Object.keys(contenidoDe(s)).length > 0)
 }
 
-/** Destinos de ancla que existen en la página (bloques visibles), en el orden de DESTINOS_ANCLA. */
-export function destinosPresentes(secciones: ReadonlyArray<{ section_type: string }>): DestinoAncla[] {
-  const tipos = new Set(secciones.map((s) => s.section_type))
-  return DESTINOS_ANCLA.filter((d) => tipos.has(d))
+// ─── Pestañas de la ficha (`product_anchor_nav`) ────────────────────────────────────────────
+
+/** Una pestaña con su bloque (el primer bloque visible de ese tipo). */
+export interface PestanaPlan<T> {
+  label: string
+  target: DestinoPestanaFicha
+  seccion: T
 }
 
-/** Las pestañas sin bloque visible al que saltar no se pintan. */
-export function pestanasConDestino<T extends { target: string }>(items: readonly T[], presentes: readonly string[]): T[] {
-  return items.filter((i) => presentes.includes(i.target))
+export interface PlanPestanasFicha<T> {
+  /** El bloque «Pestañas de la ficha» (el primero visible). */
+  nav: T
+  items: PestanaPlan<T>[]
 }
 
-/** Id del ancla de un bloque de la ficha (el tipo del bloque, como dice DESTINOS_ANCLA). */
-export function idAncla(tipo: string): string | null {
-  return (DESTINOS_ANCLA as readonly string[]).includes(tipo) ? tipo : null
+/** Título que el comercio le puso al bloque (`title`; en la descripción, `title_description`). */
+export function tituloPropioBloque(tipo: string, contenido: Record<string, unknown>): string | null {
+  const valor = tipo === 'product_description' ? contenido.title_description : contenido.title
+  return typeof valor === 'string' && valor.trim() ? valor.trim().slice(0, 40) : null
+}
+
+/**
+ * Qué bloques pasan a ser pestañas (Figma «Ficha — pestañas reales» 3255-99475): las pestañas del
+ * bloque, en su orden, cuyo destino puede ser pestaña (DESTINOS_PESTANA_FICHA) y está en la página.
+ * Una pestaña hacia otro bloque (p. ej. la «Resumen» de antes, hacia la información) no se pinta y
+ * su bloque se queda donde está. Sin bloque de pestañas, `null`: la ficha de siempre.
+ *
+ * Nombre de cada pestaña: el que se le puso en «Pestañas» (editor del ERP). Si las pestañas no se
+ * tocaron, el título propio del bloque (p. ej. «Características» del bloque de ficha técnica) y,
+ * sin él, el de fábrica.
+ *
+ * Los bloques de la lista salen de su sitio y se pintan en los paneles, debajo de las dos
+ * columnas; «Envío y devoluciones» deja además una línea corta junto al botón.
+ */
+export function planPestanasFicha<T extends { section_type: string; content?: unknown }>(
+  visibles: readonly T[],
+): PlanPestanasFicha<T> | null {
+  const nav = visibles.find((s) => s.section_type === TIPO_PESTANAS_ANCLA)
+  if (!nav) return null
+  const contenido = contenidoDe(nav)
+  const { items } = normalizarPestanasAncla(contenido)
+  // Pestañas sin tocar: el título propio del bloque, si lo tiene, pone el nombre de su pestaña.
+  const tocadas = Array.isArray(contenido.items) && contenido.items.length > 0
+  const plan: PestanaPlan<T>[] = []
+  for (const item of items) {
+    if (!esDestinoPestanaFicha(item.target)) continue
+    const seccion = visibles.find((s) => s.section_type === item.target)
+    if (!seccion) continue
+    const label = (tocadas ? null : tituloPropioBloque(item.target, contenidoDe(seccion))) ?? item.label
+    plan.push({ label, target: item.target, seccion })
+  }
+  return { nav, items: plan }
 }
 
 // ─── Galería mosaico ────────────────────────────────────────────────────────────────────────

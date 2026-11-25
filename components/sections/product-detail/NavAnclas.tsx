@@ -1,30 +1,48 @@
 /**
- * `product_anchor_nav · tabs` (plantilla de tienda Panorama): pestañas que saltan a los bloques
- * de la ficha (Resumen, Características, Envío, Reseñas…).
+ * `product_anchor_nav · tabs` («Pestañas de la ficha», plantillas de tienda): pestañas de verdad
+ * debajo de las dos columnas (Figma «Ficha — pestañas reales» 3255-99475, aprobado 2026-11-25).
  *
- * - Las pestañas salen de `normalizarPestanasAncla` (sin ítems válidos, las cuatro de siempre).
- * - Se quitan las que apuntan a un bloque que la página no pinta (oculto o ausente): el renderer
- *   pasa en `data.destinosAncla` los tipos presentes. Sin ninguna con destino, no se pinta.
- * - El id de cada destino es su tipo (`#product_reviews`), y ProductDetailRenderer solo pone esos
- *   ids cuando la página trae este bloque: sin él, la ficha queda igual que hoy.
+ * ProductDetailRenderer arma los paneles (`data.pestanasFicha`): saca de su sitio los bloques
+ * Descripción, Características, Envío y devoluciones, Reseñas y Preguntas que tienen pestaña y
+ * los pinta aquí, cada uno en su panel, con PestanasFicha (la misma pieza del estilo «Pestañas»
+ * de la descripción). Sin paneles (ficha sin bloques con pestaña), no pinta nada.
  */
 
 import { CLAVES_SECCION_TIENDA, normalizarPestanasAncla } from '@/lib/website/v2/contrato/seccionesTienda'
-import { pestanasConDestino } from './fichaTienda'
-import { NavAnclasCliente } from './NavAnclasCliente'
+import { PestanasFicha, type PestanaFicha, type ResenasPestana } from './PestanasFicha'
 
 export const CONTENT_KEYS = CLAVES_SECCION_TIENDA['product_anchor_nav.tabs']
+
+/** Lo que arma ProductDetailRenderer para este bloque. */
+export interface DatosPestanasFicha {
+  items: PestanaFicha[]
+  resenas: ResenasPestana | null
+}
 
 interface NavAnclasProps {
   content: Record<string, any>
   primaryColor?: string
-  data?: { destinosAncla?: string[] }
+  data?: { pestanasFicha?: DatosPestanasFicha | null }
 }
 
 export function NavAnclas({ content, primaryColor = '#111827', data }: NavAnclasProps) {
-  const { items, sticky } = normalizarPestanasAncla(content)
-  const pestanas = pestanasConDestino(items, data?.destinosAncla ?? [])
-  if (pestanas.length === 0) return null
-  return <NavAnclasCliente pestanas={pestanas} sticky={sticky} primaryColor={primaryColor} />
+  const datos = data?.pestanasFicha
+  if (!datos || datos.items.length === 0) return null
+  const { sticky, celular } = normalizarPestanasAncla(content)
+  return (
+    <PestanasFicha
+      items={datos.items}
+      colorActivo={primaryColor}
+      celular={celular}
+      variasAbiertas
+      medir
+      sticky={sticky}
+      escuchar
+      etiqueta="Información del producto"
+      titulos="bloque"
+      resenas={datos.resenas}
+      marca="data-pestanas-ancla"
+    />
+  )
 }
 NavAnclas.CONTENT_KEYS = CONTENT_KEYS

@@ -10,10 +10,9 @@
  */
 
 import { Star } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { getSessionSeed, getReviewStats } from './providers/generatedReviews'
+import { pedirPestanaFicha } from '@/components/sections/product-detail/eventosPestanas'
 import type { ReviewsConfig } from './types'
-import { resolveReviewsConfig } from './types'
+import { useResumenResenas } from './useResumenResenas'
 
 interface ReviewSummaryBadgeProps {
   primaryColor: string
@@ -30,38 +29,17 @@ export function ReviewSummaryBadge({
   reviewsConfig,
   productStats,
 }: ReviewSummaryBadgeProps) {
-  const config = resolveReviewsConfig(reviewsConfig)
-
-  // El seed generado usa Date.now() que difiere entre server y client,
-  // por lo que se calcula solo después del mount para evitar hydration mismatch.
-  const [generated, setGenerated] = useState<{ avg: string; count: number } | null>(null)
-  useEffect(() => {
-    if (config.reviews_source === 'generated' || !productStats || config.rating_source === 'generated_only') {
-      const sessionSeed = getSessionSeed(productId)
-      const stats = getReviewStats(productId, sessionSeed)
-      setGenerated({ avg: stats.avgRating.toFixed(1), count: stats.totalReviews })
-    }
-  }, [productId, config.reviews_source, config.rating_source, productStats])
-
-  let avgRating: string
-  let totalReviews: number
-
-  if (config.reviews_source === 'generated' || !productStats) {
-    avgRating = generated?.avg ?? '0.0'
-    totalReviews = generated?.count ?? 0
-  } else if (config.rating_source === 'generated_only') {
-    avgRating = generated?.avg ?? '0.0'
-    totalReviews = generated?.count ?? 0
-  } else {
-    avgRating = productStats.rating_avg ? Number(productStats.rating_avg).toFixed(1) : '0.0'
-    totalReviews = productStats.reviews_count || 0
-  }
+  // La misma cuenta que la pestaña «Reseñas (N)» (useResumenResenas).
+  const { promedio: avgRating, cantidad: totalReviews, oculto } = useResumenResenas(productId, reviewsConfig, productStats)
 
   // Con reseñas reales y ninguna publicada no se pinta «0.0 (0)»: el estado vacío está abajo.
   // (Solo llega aquí con el origen de la tienda en real/mixed/auto; las de ejemplo, como siempre.)
-  if (config.reviews_source !== 'generated' && productStats && config.rating_source !== 'generated_only' && totalReviews === 0) return null
+  if (oculto) return null
 
   const handleClick = () => {
+    // Ficha con pestañas: abre «Reseñas» y baja suave hasta la barra (PestanasFicha).
+    if (pedirPestanaFicha('product_reviews')) return
+    // Sin pestañas: lo de siempre.
     const el = document.getElementById('product-reviews')
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' })

@@ -20,11 +20,14 @@
  *  - Sin `page_settings` (V2), `product_gallery.contenido.page_layout` decide columnas, columna
  *    fija, ancho de la galería y migas (`resolverDisenoFicha`). Con `page_settings` (legacy), lo
  *    de siempre. Sin `page_layout`, los defaults de hoy.
- *  - Bloques nuevos: `product_anchor_nav` (pestañas ancla), `product_pager` (anterior y siguiente)
- *    y `complete_the_look`. Sus datos (vecinos, productos del look) los consulta la página solo
- *    si el bloque está, y llegan en `extrasFicha`.
- *  - Con pestañas ancla, cada bloque destino lleva un envoltorio con `id` = su tipo. Sin ellas,
- *    ningún envoltorio: el marcado es el de hoy.
+ *  - Bloques nuevos: `product_anchor_nav` (pestañas de la ficha), `product_pager` (anterior y
+ *    siguiente) y `complete_the_look`. Sus datos (vecinos, productos del look, zonas de envío) los
+ *    consulta la página solo si el bloque está, y llegan en `extrasFicha`.
+ *  - Pestañas de la ficha (Figma «Ficha — pestañas reales» 3255-99475, 2026-11-25): los bloques
+ *    con pestaña (Descripción, Características, Envío y devoluciones, Reseñas, Preguntas) salen de
+ *    su columna y se pintan en los paneles, debajo de las dos columnas y a todo el ancho
+ *    (`planPestanasFicha`). «Envío y devoluciones» deja junto al botón una línea corta con los
+ *    datos reales de la tienda. Sin el bloque de pestañas, el marcado es el de hoy.
  *
  * Los bloques de ficha sin `settings` (estilo por sección) se pintan directo, sin
  * SectionWrapper: el wrapper agrega `<section>` con relleno de sección y un bloque vacío
@@ -52,14 +55,15 @@ import type { OrdenAtributos } from '@/lib/products/ordenAtributos'
 import {
   TIPOS_ANCHO_COMPLETO_TIENDA,
   TIPOS_BLOQUE_FICHA_TIENDA,
-  TIPO_PESTANAS_ANCLA,
-  destinosPresentes,
-  idAncla,
+  planPestanasFicha,
   resolverDisenoFicha,
   sinEnvioRepetidoDeFabrica,
   type PaginadorFichaDatos,
 } from './fichaTienda'
 import type { RelacionadosFichaDatos } from './RelatedProductsSection'
+import { resumenEnvioFicha, type PromesaZona } from './anclasFicha'
+import type { DatosPestanasFicha } from './NavAnclas'
+import { configResenasDeSeccion } from '@/components/site/reviews/types'
 import { ProveedorEtiquetasFicha } from '@/components/site/etiquetas/EtiquetasFicha'
 import { leerOpcionesEtiquetasFicha } from '@/lib/website/v2/seccionesFicha'
 import { isOutOfStock } from '@/lib/stock'
@@ -92,6 +96,8 @@ export interface ExtrasFicha {
   categoria?: { name: string; slug?: string | null } | null
   /** `related_products`: elegidos a mano y comprados juntos (solo si la sección los pide). */
   relacionados?: RelacionadosFichaDatos | null
+  /** Zonas de envío activas (promesa y envío gratis): resumen de envío junto al botón. */
+  zonasEnvio?: PromesaZona[] | null
 }
 
 interface ProductDetailRendererProps {
@@ -206,9 +212,14 @@ export function ProductDetailRenderer({
   const secciones = hasSections && templatePage
     ? templatePage.website_page_sections
     : buildDefaultProductDetailSections(pageSettings)
+  const crudas = secciones.filter((s) => s.is_visible !== false)
+  // Pestañas de la ficha: qué bloques pasan a los paneles (null = sin bloque de pestañas).
+  const planPestanas = planPestanasFicha(crudas)
+  const envioEnPestana = planPestanas?.items.find((i) => i.target === 'product_shipping')?.seccion ?? null
   // «Envío y devoluciones» sin tocar + «Beneficios» de fábrica repiten los mismos datos: se pinta
-  // uno (ver `sinEnvioRepetidoDeFabrica`). Con cualquiera de los dos configurado, los dos.
-  const visibles = sinEnvioRepetidoDeFabrica(secciones.filter((s) => s.is_visible !== false), { restaurante: Boolean(restaurante) })
+  // uno (ver `sinEnvioRepetidoDeFabrica`). Con cualquiera de los dos configurado, los dos. Con
+  // «Envío y devoluciones» en su pestaña, los dos: arriba solo queda la línea corta.
+  const visibles = envioEnPestana ? crudas : sinEnvioRepetidoDeFabrica(crudas, { restaurante: Boolean(restaurante) })
   const conMarcador = visibles.some((s) => s.section_type === TIPO_URGENCIA_FICHA)
 
   // Columnas, columna fija, ancho de galería y migas: `page_settings` (legacy) como siempre; sin
@@ -216,11 +227,16 @@ export function ProductDetailRenderer({
   const { columns, stickyColumn, galleryWidth, showBreadcrumb } = resolverDisenoFicha(templatePage?.page_settings ?? null, secciones)
 
   // Plantillas de tienda: datos de los bloques nuevos, solo si la página los trae.
-  const conAnclas = visibles.some((s) => s.section_type === TIPO_PESTANAS_ANCLA)
-  // Un «Completa el look» sin productos no se pinta: su pestaña tampoco.
-  if (conAnclas) {
-    sectionData.destinosAncla = destinosPresentes(visibles)
-      .filter((d) => d !== 'complete_the_look' || (extrasFicha?.look?.length ?? 0) > 0)
+  if (envioEnPestana) {
+    // Línea corta de envío junto al botón: datos reales de la tienda (sin datos, no sale).
+    const ajustesEnvio = organization.website_settings as { enable_shipping?: boolean | null; free_shipping_threshold?: unknown } | null
+    sectionData.resumenEnvio = resumenEnvioFicha({
+      envioActivo: ajustesEnvio?.enable_shipping !== false,
+      umbralSitio: ajustesEnvio?.free_shipping_threshold,
+      zonas: extrasFicha?.zonasEnvio ?? null,
+    })
+  } else {
+    // Sin pestaña de envío: el bloque de siempre.
   }
   if (extrasFicha) {
     sectionData.paginadorFicha = extrasFicha.paginador ?? null
@@ -236,16 +252,22 @@ export function ProductDetailRenderer({
   sectionData.faqFicha = Array.isArray((bloqueFaq?.content as Record<string, unknown> | null)?.items)
     ? ((bloqueFaq?.content as Record<string, unknown>).items as unknown[])
     : null
-  /** Tipos que ya llevan su ancla (solo el primer bloque de cada tipo la lleva). */
-  const anclasPuestas = new Set<string>()
+  // Con pestañas: los bloques que van en un panel salen de su sitio (el de envío se queda, con la
+  // línea corta) y el bloque de pestañas se pinta debajo de las dos columnas.
+  const enPanel = new Set<string>(
+    (planPestanas?.items ?? []).filter((i) => i.target !== 'product_shipping').map((i) => i.seccion.id),
+  )
+  const fueraDeColumnas = (s: WebsitePageSection) => enPanel.has(s.id) || (planPestanas !== null && s.id === planPestanas.nav.id)
 
-  const principales = visibles.filter((s) => !TIPOS_ANCHO_COMPLETO.has(s.section_type))
-  const anchoCompleto = visibles.filter((s) => TIPOS_ANCHO_COMPLETO.has(s.section_type))
+  const principales = visibles.filter((s) => !TIPOS_ANCHO_COMPLETO.has(s.section_type) && !fueraDeColumnas(s))
+  const anchoCompleto = visibles.filter((s) => TIPOS_ANCHO_COMPLETO.has(s.section_type) && !fueraDeColumnas(s))
   const idPrimera = [...principales, ...anchoCompleto].find((s) => s.section_type !== TIPO_URGENCIA_FICHA)?.id
 
-  const renderSection = (section: WebsitePageSection): React.ReactNode => {
+  /** `extra`: datos solo de este bloque (en su panel, la línea corta de envío, los paneles). */
+  const renderSection = (section: WebsitePageSection, extra?: Record<string, unknown>): React.ReactNode => {
     if (section.section_type === TIPO_URGENCIA_FICHA) return urgencia(section.id)
     const settings = (section.settings || {}) as Record<string, unknown>
+    const datosBloque = extra ? { ...sectionData, ...extra } : sectionData
     const Bloque = SECTION_MAP[section.section_type]?.[section.section_variant]
     const directo = Bloque && TIPOS_BLOQUE_FICHA.has(section.section_type) && Object.keys(settings).length === 0
     // Directo (sin SectionWrapper), «Avanzado › Radio de borde, Sombra» (y fondo, borde y color de
@@ -258,7 +280,7 @@ export function ProductDetailRenderer({
         content={(section.content || {}) as Record<string, any>}
         organization={organization}
         primaryColor={primaryColor}
-        data={sectionData}
+        data={datosBloque}
         sectionVariant={section.section_variant}
         sectionId={section.id}
       />
@@ -280,28 +302,46 @@ export function ProductDetailRenderer({
         section={section}
         organization={organization}
         primaryColor={primaryColor}
-        data={sectionData}
+        data={datosBloque}
         isFirst={section.id === idPrimera}
       />
     )
-    // Con pestañas ancla, el destino lleva su id (= su tipo). Sin ellas, el nodo tal cual.
-    const ancla = conAnclas ? idAncla(section.section_type) : null
-    let bloque: React.ReactNode = nodo
-    if (ancla && !anclasPuestas.has(ancla)) {
-      anclasPuestas.add(ancla)
-      bloque = (
-        <div key={`${section.id}__ancla`} id={ancla} className="scroll-mt-[calc(var(--header-h,72px)+3rem)]">
-          {nodo}
-        </div>
-      )
-    } else {
-      // Sin ancla: lo de hoy.
-    }
+    const bloque: React.ReactNode = nodo
     // Plantilla sin marcador: la urgencia va justo después de la información.
     const urgenciaTrasInfo = !conMarcador && section.section_type === 'product_info'
       && (section.content as Record<string, unknown> | null)?.show_countdown !== false
     return urgenciaTrasInfo ? [bloque, urgencia(`${section.id}__urgencia`)] : bloque
   }
+
+  /** En las columnas: el bloque de envío con pestaña deja solo su línea corta. */
+  const renderEnColumna = (section: WebsitePageSection): React.ReactNode => (
+    envioEnPestana && section.id === envioEnPestana.id ? renderSection(section, { envioFicha: 'resumen' }) : renderSection(section)
+  )
+
+  // Pestañas de la ficha: cada bloque con pestaña, en su panel (NavAnclas → PestanasFicha).
+  const bloqueResenas = planPestanas?.items.find((i) => i.target === 'product_reviews')?.seccion ?? null
+  const datosPestanas: DatosPestanasFicha | null = planPestanas && planPestanas.items.length > 0
+    ? {
+        items: planPestanas.items.map((i) => ({
+          id: i.target,
+          titulo: i.label,
+          contenido: renderSection(i.seccion, { enPestanaFicha: true }),
+          conConteoResenas: i.target === 'product_reviews',
+        })),
+        resenas: bloqueResenas
+          ? {
+              productId: Number(product.id),
+              reviewsConfig: configResenasDeSeccion(bloqueResenas.content as Record<string, unknown> | null, reviewsConfig),
+              productStats,
+            }
+          : null,
+      }
+    : null
+  const bloquePestanas = planPestanas && datosPestanas ? (
+    <div className="mt-12 md:mt-16" data-bloque-pestanas-ficha="">
+      {renderSection(planPestanas.nav, { pestanasFicha: datosPestanas })}
+    </div>
+  ) : null
 
   // Migas con el ← al inicio (Figma 2992:74983, tipo «Ficha»), en escritorio y en el celular (ruta
   // completa en una línea; en el celular, más pegada a la foto: pedido del dueño, 2026-11-24).
@@ -314,7 +354,7 @@ export function ProductDetailRenderer({
     if (columns === '1') {
       return (
         <div className="space-y-12">
-          {principales.map(renderSection)}
+          {principales.map(renderEnColumna)}
         </div>
       )
     }
@@ -334,14 +374,14 @@ export function ProductDetailRenderer({
     return (
       <div className="flex flex-col lg:flex-row gap-12">
         <div style={galleryStyle} className="space-y-3">
-          {columnaGaleria.map(renderSection)}
+          {columnaGaleria.map(renderEnColumna)}
         </div>
         <div style={infoStyle} className="min-w-0">
           {stickyColumn && galeriaScroll ? (
-            <ColumnaInfoFija className="space-y-6">{columnaInfo.map(renderSection)}</ColumnaInfoFija>
+            <ColumnaInfoFija className="space-y-6">{columnaInfo.map(renderEnColumna)}</ColumnaInfoFija>
           ) : (
             <div className={`space-y-6 ${stickyColumn ? 'lg:sticky lg:top-4 lg:self-start' : ''}`}>
-              {columnaInfo.map(renderSection)}
+              {columnaInfo.map(renderEnColumna)}
             </div>
           )}
         </div>
@@ -354,8 +394,11 @@ export function ProductDetailRenderer({
       {breadcrumbBlock}
       {layoutGrid}
 
+      {/* Pestañas de la ficha: debajo de las dos columnas, a todo el ancho */}
+      {bloquePestanas}
+
       {/* Productos relacionados y reseñas, a todo el ancho */}
-      {anchoCompleto.map(renderSection)}
+      {anchoCompleto.map((s) => renderSection(s))}
     </div>
   )
 

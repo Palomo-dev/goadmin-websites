@@ -34,13 +34,14 @@ import { ContadoresDe } from '@/components/site/ContadorPublico'
 import { conversionManda, type ConversionSitio } from '@/lib/website/conversion'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { ProductDetailRenderer, type ExtrasFicha } from '@/components/sections/product-detail/ProductDetailRenderer'
-import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
+import { TIPO_COMPLETA_EL_LOOK, TIPO_PAGINADOR_FICHA, TIPO_PESTANAS_ANCLA, planPestanasFicha, tieneBloque } from '@/components/sections/product-detail/fichaTienda'
 import { normalizarCompletaElLook } from '@/lib/website/v2/contrato/seccionesTienda'
 import { barraDeFicha } from '@/components/sections/product-detail/barraFicha'
 import { FichaEnVivo } from '@/components/sections/product-detail/FichaEnVivo'
 import { getAjustesSitio } from '@/lib/website/ajustesSitio.server'
 import { getPaginadorFicha } from '@/lib/queries/tienda/pager'
 import { getCompletaElLook } from '@/lib/queries/tienda/look'
+import { getZonasEnvioFicha } from '@/lib/queries/tienda/envioFicha'
 import { getRelacionadosFicha } from '@/lib/queries/tienda/relacionados'
 import { leerOpcionesDescripcion, leerOpcionesRelacionados, relacionadosPideDatos } from '@/lib/website/v2/seccionesFicha'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
@@ -431,7 +432,13 @@ export default async function ProductoDetailPage({
   // depende de su contenido (fuente, productos, límite): ese recarga el lienzo al guardarse (ERP).
   const conPaginador = enLienzo || tieneBloque(seccionesFicha, TIPO_PAGINADOR_FICHA)
   const bloqueLook = seccionesFicha.find((s) => s.section_type === TIPO_COMPLETA_EL_LOOK && s.is_visible !== false)
-  const conFichaTecnica = enLienzo || seccionesFicha.some((s) => (s.section_type === 'product_specs'
+  // Pestañas de la ficha (Figma 3255-99475): la fila Marca · Referencia · Categoría de la pestaña
+  // «Descripción» lleva la categoría (en memoria) y la línea corta de envío, las zonas de envío
+  // (una lectura cacheada, solo si hay pestaña «Envío y devoluciones»).
+  const conPestanasFicha = tieneBloque(seccionesFicha, TIPO_PESTANAS_ANCLA)
+  const conEnvioEnPestana = conPestanasFicha
+    && (planPestanasFicha(seccionesFicha.filter((s) => s.is_visible !== false))?.items.some((i) => i.target === 'product_shipping') ?? false)
+  const conFichaTecnica = enLienzo || conPestanasFicha || seccionesFicha.some((s) => (s.section_type === 'product_specs'
     && (s.section_variant === 'icon_grid' || s.section_variant === 'panel') && s.is_visible !== false)
     // Descripción con opciones (Figma 2990:74500): su ficha técnica también lleva «Categoría».
     || (s.section_type === 'product_description' && s.is_visible !== false && leerOpcionesDescripcion(s.content as Record<string, unknown> | null).conOpciones))
@@ -439,9 +446,9 @@ export default async function ProductoDetailPage({
   // pide; en el lienzo, siempre (así cambiar la fuente o el estilo se ve en vivo).
   const pideRelacionados = bloqueRelacionados ? relacionadosPideDatos(bloqueRelacionados.content as Record<string, unknown> | null) : { manual: false, juntos: false }
   const conRelacionados = enLienzo || pideRelacionados.manual || pideRelacionados.juntos
-  if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) {
+  if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conEnvioEnPestana) {
     const look = bloqueLook ? normalizarCompletaElLook(bloqueLook.content as Record<string, unknown> | null) : null
-    const [paginador, productosLook, relacionados] = await Promise.all([
+    const [paginador, productosLook, relacionados, zonasEnvio] = await Promise.all([
       conPaginador ? getPaginadorFicha(organization.id, product.category_id ?? null, Number(product.id), branchId) : Promise.resolve(null),
       look
         ? getCompletaElLook(organization.id, Number(product.id), product.tag_id ?? null, look.source, look.productIds, look.limit, branchId)
@@ -449,6 +456,7 @@ export default async function ProductoDetailPage({
       conRelacionados
         ? getRelacionadosFicha(organization.id, Number(product.id), enLienzo || pideRelacionados.juntos, branchId)
         : Promise.resolve(null),
+      conEnvioEnPestana || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null),
     ])
     // «Categoría» de la ficha técnica y «Ver todos» de los relacionados (en memoria, sin consulta).
     const categoria = (conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) && product.category_id
@@ -459,6 +467,7 @@ export default async function ProductoDetailPage({
       look: productosLook,
       categoria: categoria ? { name: categoria.name, slug: categoria.slug } : null,
       relacionados,
+      zonasEnvio,
     }
   } else {
     // Sin bloques nuevos: ninguna consulta extra, la ficha de siempre.
