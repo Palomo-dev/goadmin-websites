@@ -25,7 +25,7 @@ import {
   AlertCircle, Barcode, Clock, CreditCard, HelpCircle, Info, Loader2, Lock, Mail, MapPin, MessageSquare, Package,
   ScanBarcode, Search, ShoppingBag, Truck, User, WifiOff,
 } from 'lucide-react'
-import { abrirAccesoCuenta } from '@/components/site/cuenta/eventos'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
 import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar'
 import Link from '@/components/site/Enlace'
 import { SiluetaPedido } from '@/components/site/rastreo/SiluetaPedido'
@@ -598,14 +598,11 @@ export function SeguirPedido({
         <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5">
           <p className="text-sm font-semibold">¿Tienes cuenta?</p>
           <p className="text-[13px] text-slate-600">Inicia sesión para ver todos tus pedidos, sin buscar el número.</p>
-          <button
-            type="button"
-            onClick={(e) => abrirAccesoCuenta({ origen: e.currentTarget, respaldo: '/auth?siguiente=/mi-cuenta/pedidos' })}
-            className="self-center text-sm font-semibold hover:underline"
-            style={{ color: 'var(--primary-color)' }}
-          >
+          {/* La regla de la cabecera (reglaAcceso.ts): al entrar se queda aquí y aparece «Ver mis
+              pedidos»; en «Página», /auth?siguiente=/consultar-pedido. */}
+          <EnlaceIniciarSesion className="self-center text-sm font-semibold hover:underline" style={{ color: 'var(--primary-color)' }}>
             Iniciar sesión →
-          </button>
+          </EnlaceIniciarSesion>
         </div>
       ) : null}
 

@@ -19,8 +19,9 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from 'react'
-import Link from '@/components/site/Enlace'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
+import { EVENTO_ACCESO_ENTRO } from '@/components/site/cuenta/eventos'
 import { AlertCircle, Camera, CheckCircle2, Clock, Info, Loader2, Package, Plus, ShieldCheck, Star, User, WifiOff, X } from 'lucide-react'
 
 export const ETIQUETAS_ESTRELLAS = ['', 'Malo', 'Regular', 'Bueno', 'Muy bueno', 'Excelente'] as const
@@ -142,6 +143,8 @@ export function ReviewForm({
   const [verificando, setVerificando] = useState(false)
   const [errorVerificar, setErrorVerificar] = useState<string | null>(null)
   const [conSesion, setConSesion] = useState(false)
+  // Sube al entrar desde el acceso abierto encima («Entrar a Mi cuenta»): se vuelve a verificar.
+  const [entradas, setEntradas] = useState(0)
 
   const cerrar = useCallback(() => onCerrar?.(), [onCerrar])
 
@@ -150,7 +153,8 @@ export function ReviewForm({
     if (incrustado) return
     const anterior = document.activeElement as HTMLElement | null
     panel.current?.focus()
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrar() }
+    // Con el acceso a la cuenta abierto encima, Escape cierra solo el acceso.
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.documentElement.hasAttribute('data-cuenta-abierta')) cerrar() }
     document.addEventListener('keydown', tecla)
     return () => {
       document.removeEventListener('keydown', tecla)
@@ -175,8 +179,14 @@ export function ReviewForm({
       })
       .catch(() => undefined)
     return () => { vivo = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir el paso
-  }, [paso, productId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir el paso (y al entrar)
+  }, [paso, productId, entradas])
+
+  useEffect(() => {
+    const alEntrar = () => setEntradas((n) => n + 1)
+    window.addEventListener(EVENTO_ACCESO_ENTRO, alEntrar)
+    return () => window.removeEventListener(EVENTO_ACCESO_ENTRO, alEntrar)
+  }, [])
 
   const verificarConPedido = async (e: FormEvent) => {
     e.preventDefault()
@@ -366,9 +376,11 @@ export function ReviewForm({
           <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <p className="text-sm font-semibold text-gray-900 dark:text-white">¿Compraste con tu cuenta?</p>
             <p className="mt-1 text-xs text-gray-500">Entra y verás tus compras entregadas para opinar.</p>
-            <Link href="/mi-cuenta" className={`${botonSecundario} mt-3 h-10`}>
+            {/* La regla de la cabecera (reglaAcceso.ts): el acceso se abre encima de esta ventana y,
+                al entrar, se vuelve a verificar la compra aquí; en «Página», vuelve a esta ficha. */}
+            <EnlaceIniciarSesion className={`${botonSecundario} mt-3 h-10`}>
               <User className="h-4 w-4" aria-hidden="true" /> Entrar a Mi cuenta
-            </Link>
+            </EnlaceIniciarSesion>
           </div>
         )}
         {conSesion && (

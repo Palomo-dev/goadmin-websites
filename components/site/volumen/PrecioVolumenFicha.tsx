@@ -16,12 +16,11 @@
  * Lo que se cobra lo decide el servidor (/api/orders); esto es la misma cuenta para mostrarla.
  */
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
-import Link from '@/components/site/Enlace'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
 import { Check, Clock, Layers, Lock, TrendingUp } from 'lucide-react'
 import { useCurrency } from '@/components/site/CurrencyProvider'
 import { escucharCantidad } from '@/lib/products/varianteSeleccionada'
 import { pedirCantidad } from '@/lib/products/pedirCantidad'
-import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { createClient } from '@/lib/supabase/client'
 import { cotizarCantidad, etiquetaFila, filasEscalones, textoModoConteo, type VolumenProducto } from '@/lib/promociones/escalonesTienda'
 import { useFichaVolumen, useZonaEscalones } from './EscalonesTiendaContext'
@@ -225,14 +224,19 @@ export function PrecioVolumenFicha({ volumen, precio, comparacion, varianteId, p
  * sesión se lee del navegador (sin consulta a la base).
  */
 function InvitacionIngresar({ primaryColor }: { primaryColor: string }) {
-  const { ruta } = useRutaSitio()
   const [conSesion, setConSesion] = useState<boolean | null>(null)
   useEffect(() => {
     let vigente = true
-    createClient().auth.getSession()
+    const supabase = createClient()
+    supabase.auth.getSession()
       .then(({ data }) => { if (vigente) setConSesion(!!data.session?.user) })
       .catch(() => { if (vigente) setConSesion(false) })
-    return () => { vigente = false }
+    // «Ingresar» abre el acceso encima (reglaAcceso.ts) y la ficha se queda: el aviso cambia solo.
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => { if (vigente) setConSesion(!!s?.user) })
+    return () => {
+      vigente = false
+      data.subscription.unsubscribe()
+    }
   }, [])
 
   return (
@@ -247,9 +251,9 @@ function InvitacionIngresar({ primaryColor }: { primaryColor: string }) {
         </p>
       </div>
       {conSesion === false && (
-        <Link href={ruta('/auth')} className="flex-shrink-0 text-sm font-semibold" style={{ color: primaryColor }}>
+        <EnlaceIniciarSesion className="flex-shrink-0 text-sm font-semibold" style={{ color: primaryColor }}>
           Ingresar
-        </Link>
+        </EnlaceIniciarSesion>
       )}
     </div>
   )

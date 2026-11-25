@@ -14,6 +14,7 @@ import { ProductSearch } from './ProductSearch'
 import { CurrencySelector } from './CurrencySelector'
 import { useCurrency } from './CurrencyProvider'
 import { createClient } from '@/lib/supabase/client'
+import { alTocarEnlaceCuenta } from './cuenta/eventos'
 
 // Nuevas variantes de header (Fase 6)
 import { useMobileHeader } from './header/useMobileHeader'
@@ -216,10 +217,11 @@ function LegacyMobileMenu({
             </>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+              {/* Con un modo de acceso distinto de «Página», la misma regla que el ícono (reglaAcceso.ts). */}
+              <Link href="/auth" onClick={(e) => { setMobileMenuOpen(false); alTocarEnlaceCuenta(e, '/auth') }}>
                 <Button variant="outline" className="w-full">Iniciar sesión</Button>
               </Link>
-              <Link href="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/auth?mode=signup" onClick={(e) => { setMobileMenuOpen(false); alTocarEnlaceCuenta(e, '/auth?tab=register', 'registro') }}>
                 <Button className="w-full">Registrarse</Button>
               </Link>
             </div>
@@ -332,6 +334,7 @@ function LegacyDesktopHeader({
               {showHeaderAuth && (
                 <Link
                   href="/auth"
+                  onClick={(e) => alTocarEnlaceCuenta(e, '/auth')}
                   className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
                   aria-label="Iniciar sesión"
                 >

@@ -14,6 +14,7 @@ import {
   ordenarFichas,
   type OrdenFavoritos,
 } from '@/lib/favoritos/logica'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
 import { agregarFichaAlCarrito } from './FavoritosDrawer'
 import { TarjetaFavorito } from './TarjetaFavorito'
 import { useFichasFavoritos } from './useFichasFavoritos'
@@ -127,14 +128,14 @@ export function FavoritosPagina({ primaryColor, organizationSubdomain, branchId 
             <LockKeyhole className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
             {opciones.textos.avisoSesion}
           </p>
-          <Link
-            href={ruta('/auth')}
+          {/* La regla de la cabecera (reglaAcceso.ts); al entrar, de vuelta en /favoritos. */}
+          <EnlaceIniciarSesion
             className="inline-flex flex-shrink-0 items-center gap-1.5 self-start rounded-md border bg-white px-3 py-1.5 text-sm font-semibold dark:bg-gray-900 sm:self-auto"
             style={{ borderColor: primaryColor, color: primaryColor }}
           >
             <LogIn className="h-4 w-4" aria-hidden="true" />
             Iniciar sesión
-          </Link>
+          </EnlaceIniciarSesion>
         </div>
       )}
 

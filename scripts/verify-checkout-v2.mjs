@@ -419,7 +419,7 @@ const contraentregaFuente = fuente('components/site/contraentrega/OpcionContraen
 igual('contraentrega: el onClick solo en «Ingresar»', contraentregaFuente.includes("onClick={accion === 'Ingresar' && onIngresar ? onIngresar : undefined}"), true)
 const eventosFuente = fuente('components/site/cuenta/eventos.ts')
 igual('sin ventana montada no se intercepta el clic (navega a la página)', /if \(anfitriones === 0\) return\r?\n\s+e\.preventDefault\(\)/.test(eventosFuente), true)
-igual('el checkout pide quedarse y su página de respaldo', eventosFuente.includes("alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })"), true)
+igual('el checkout pide quedarse y su página de respaldo (la regla única de «Iniciar sesión»)', eventosFuente.includes("alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })") && /export function alTocarIngresarCheckout\([\s\S]*?\)\s*\{\s*alTocarIniciarSesion\(e, href\)\s*\}/.test(eventosFuente), true)
 const accesoFuente = fuente('components/site/cuenta/AccesoCuenta.tsx')
 igual('al entrar desde el checkout se queda aunque el editor diga «Ir a Mi cuenta»', accesoFuente.includes("if (opciones.despues === 'cuenta' && !quedarse.current) {"), true)
 igual('modo que manda a la página: la del checkout con ?siguiente=', accesoFuente.includes('router.push(detalle.paginaRespaldo)') && accesoFuente.includes("router.push(conSesion ? '/mi-cuenta' : rutaAcceso(pedida))"), true)
@@ -474,7 +474,8 @@ for (const modo of ['panel', 'ventana', 'dialogo']) {
 }
 igual('sin opción en el editor: «Página» (no se monta la ventana y el enlace navega)', opcionesCuenta({}).modo, 'pagina')
 const acceso2 = fuente('components/site/cuenta/AccesoCuenta.tsx')
-igual('el formato sale de la opción del editor (y hoja en el celular), igual que el ícono', acceso2.includes('const modo = conSesion || celular ? opciones.modo : destinoVistaAcceso(opciones, pedida)') && acceso2.includes("return celular ? 'hoja' : modo") && acceso2.includes("if (modo === 'pagina') return null"), true)
+const reglaAccesoFuente = fuente('components/site/cuenta/reglaAcceso.ts')
+igual('el formato sale de la opción del editor (en el celular, el mismo modo; solo la ventana es hoja), igual que el ícono', acceso2.includes('const modo = conSesion || celular ? opciones.modo : destinoVistaAcceso(opciones, pedida)') && acceso2.includes('const fmt = formatoAcceso(modo, celular)') && reglaAccesoFuente.includes("if (modo === 'ventana' && celular) return 'hoja'") && reglaAccesoFuente.includes("if (modo === 'pagina') return null"), true)
 igual('la ventana se cuelga de quien la abrió con la regla única', acceso2.includes('setPosicion(posicionVentanaCuenta(r, { ancho: window.innerWidth, alto: window.innerHeight }))') && acceso2.includes("...(formato === 'ventana' && posicion ? posicion : {}),"), true)
 const eventos2 = fuente('components/site/cuenta/eventos.ts')
 const cuerpoIngresar = eventos2.slice(eventos2.indexOf('export function alTocarIngresarCheckout'))

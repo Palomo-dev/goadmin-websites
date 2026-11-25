@@ -56,7 +56,8 @@ export function abrirAccesoCuenta(detalle: DetalleAbrirAcceso & { respaldo?: str
  * inferior del celular (pestañas y menú V2) y la cuenta de la cabecera por zonas. UNA sola fuente
  * para «Al tocar el ícono de cuenta» del editor: el AccesoCuenta que monta el layout solo existe
  * cuando `header_cuenta.modo` NO es «Página» (OrganizationLayoutCliente). Montado: se abre ahí
- * (panel, ventana o diálogo; en el celular, la hoja inferior; con sesión, el menú de cuenta).
+ * con el formato de reglaAcceso.ts (el mismo modo en el celular; solo la ventana pasa a hoja
+ * inferior; con sesión, el menú de cuenta).
  * Sin él (modo «Página», cuenta congelada, Carta QR): el enlace sigue a la página, como siempre.
  * Ctrl/⌘/Mayús/clic central abren la página en otra pestaña, como cualquier enlace.
  */
@@ -72,6 +73,26 @@ export function alTocarEnlaceCuenta(
   abrirAccesoCuenta({ origen: e.currentTarget instanceof HTMLElement ? e.currentTarget : null, respaldo, vista, ...(extra ?? {}) })
 }
 
+/** ¿Hay un acceso montado que se abra encima? Sin él, los enlaces de cuenta navegan a la página. */
+export function hayAccesoMontado(): boolean {
+  return anfitriones > 0
+}
+
+/**
+ * «Iniciar sesión» de cualquier punto de la tienda que no es el ícono ni el menú: el checkout,
+ * favoritos (página y panel), consultar pedido, reseñas «solo compradores», precios por volumen y
+ * Mi cuenta. Abre el acceso con el MISMO modo de la cabecera (reglaAcceso.ts) en «Ingresar» y, al
+ * entrar, se queda donde estaba aunque el editor diga «Ir a Mi cuenta». Sin acceso montado (modo
+ * «Página», cuenta congelada) el enlace sigue a `href`, que es /auth?siguiente=<de donde vino>
+ * (`rutaIniciarSesion`): al entrar, la página de acceso vuelve ahí.
+ */
+export function alTocarIniciarSesion(
+  e: Parameters<typeof alTocarEnlaceCuenta>[0],
+  href: string,
+) {
+  alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })
+}
+
 /**
  * «¿Ya compraste aquí? Ingresa con un código» y el «Ingresar» de contraentrega en el checkout:
  * con la ventana de acceso montada (cualquier modo del editor menos «Página»), la abre en
@@ -82,7 +103,18 @@ export function alTocarIngresarCheckout(
   e: Parameters<typeof alTocarEnlaceCuenta>[0],
   href: string,
 ) {
-  alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })
+  alTocarIniciarSesion(e, href)
+}
+
+/**
+ * Se entró desde el acceso sin salir de la página («Quedarse» o un «Iniciar sesión» que vuelve
+ * donde estaba): quien pidió la sesión (las reseñas «solo compradores») vuelve a mirar.
+ */
+export const EVENTO_ACCESO_ENTRO = 'acceso-cuenta-entro'
+
+export function avisarAccesoEntro() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(EVENTO_ACCESO_ENTRO))
 }
 
 let abierto = false

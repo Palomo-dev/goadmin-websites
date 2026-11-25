@@ -5,15 +5,21 @@
  * 2026-11-22). Modo del editor (`header_cuenta.modo`, lib/website/v2/cabeceraTienda.ts):
  * - `pagina` (sin valor, lo de hoy): el ícono es un enlace a /auth o a /mi-cuenta. Aquí no se pinta nada.
  * - `panel` (M2), `ventana` colgada del ícono, sin beneficios (M3, V1), `dialogo` con pestañas (M4).
- * - En el celular, cualquiera de esos tres es una hoja inferior (C1–C4); la fila «Iniciar sesión»
- *   del menú abre la misma hoja.
+ * - En el celular se respeta el modo (pedido del dueño 2026-11-25, reglaAcceso.ts): el panel es el
+ *   cajón lateral y el diálogo un diálogo centrado de ancho casi completo; SOLO la ventana (un menú
+ *   flotante que no cabe colgado del ícono) pasa a la hoja inferior (C1–C4). La fila «Iniciar
+ *   sesión» del menú, el menú inferior, el checkout, favoritos y los demás «Iniciar sesión» abren
+ *   lo mismo. Con el teclado abierto, el diálogo, el cajón y la hoja se encajan en lo visible
+ *   (`visualViewport`) y el campo enfocado se mantiene a la vista.
  * Con sesión, el mismo formato muestra el menú de cuenta (A1, A2, C4): Hola {nombre}, Mis pedidos,
  * Favoritos, Direcciones y Cerrar sesión.
  *
  * Un solo AccesoCuenta montado en el layout escucha `abrir-acceso-cuenta` (eventos.ts). Va en un
  * portal al `document.body` (Radix Dialog, como HojaMonedas) para no quedar atrapado en la
- * cabecera: foco atrapado, Escape cierra y el foco vuelve al ícono. Mientras está abierto se
- * esconde el chat flotante (`data-cuenta-abierta`, app/globals.css).
+ * cabecera (ni en el `transform` que le pone «Al bajar»): foco atrapado, Escape cierra, el foco
+ * vuelve a quien lo abrió, `aria-modal` y el título como `aria-labelledby`. Sin animación con
+ * «reducir movimiento». Mientras está abierto se esconde el chat flotante (`data-cuenta-abierta`,
+ * app/globals.css).
  *
  * Reglas (2840:70345): el carrito y lo escrito en el pago no se pierden (sin recargar: se refresca
  * la página en su lugar), los favoritos sin sesión se juntan con los de la cuenta
@@ -35,22 +41,53 @@ import {
   type OpcionesCuenta,
   type VistaAcceso,
 } from '@/lib/website/v2/cabeceraTienda'
-import { EVENTO_ABRIR_ACCESO, abrirAccesoCuenta, fijarAccesoAbierto, registrarAnfitrionAcceso, useAccesoAbierto, type DetalleAbrirAcceso } from './eventos'
+import { EVENTO_ABRIR_ACCESO, abrirAccesoCuenta, avisarAccesoEntro, fijarAccesoAbierto, registrarAnfitrionAcceso, useAccesoAbierto, type DetalleAbrirAcceso } from './eventos'
 import { FormularioAcceso, tituloVista, type VistaFormulario } from './FormularioAcceso'
 import { cerrarSesionTienda, type TipoEntrada } from './useAcceso'
 import { posicionVentanaCuenta, type PosicionVentana } from './posicionVentana'
+import { CONSULTA_CELULAR, encuadreVisible, formatoAcceso, type FormatoAcceso, type VistaVisible } from './reglaAcceso'
 import { BotonAvatarCuenta } from './avatar/BotonAvatarCuenta'
 
-/** Formato en pantalla: el del editor o, en el celular, la hoja inferior. */
-export type FormatoAcceso = Exclude<ModoCuenta, 'pagina'> | 'hoja'
+/** La regla vive en reglaAcceso.ts (pura, la comprueban los verify); aquí se re-exporta. */
+export { formatoAcceso, type FormatoAcceso }
 
-/** Ancho del celular del sitio (Tailwind `md`): por debajo, hoja inferior. */
-const CONSULTA_CELULAR = '(max-width: 767px)'
+/** Ventana sin ancla a la vista (la abrió algo que ya se cerró): arriba a la derecha, como el ícono. */
+const POSICION_SIN_ANCLA: PosicionVentana = { top: 72, right: 16 }
 
-/** Formato en que se abre el acceso: hoja en el celular; si no, el modo (la página no se abre aquí). */
-export function formatoAcceso(modo: ModoCuenta, celular: boolean): FormatoAcceso | null {
-  if (modo === 'pagina') return null
-  return celular ? 'hoja' : modo
+/** El elemento, si sigue en la página y se ve (un menú cerrado o el panel que se fue, no). */
+function anclaVisible(el: Element | null | undefined): HTMLElement | null {
+  if (!(el instanceof HTMLElement) || !el.isConnected) return null
+  const r = el.getBoundingClientRect()
+  return r.width > 0 && r.height > 0 ? el : null
+}
+
+/**
+ * Lo que se ve de la pantalla mientras el acceso está abierto (con el teclado del celular, menos
+ * que la pantalla). `null` sin `visualViewport` (navegadores viejos: mandan las clases).
+ */
+function useVistaVisible(activo: boolean): { vista: VistaVisible; altoPantalla: number } | null {
+  const [medida, setMedida] = useState<{ vista: VistaVisible; altoPantalla: number } | null>(null)
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!activo || !vv) {
+      setMedida(null)
+      return
+    }
+    let cuadro = 0
+    const medir = () => {
+      window.cancelAnimationFrame(cuadro)
+      cuadro = window.requestAnimationFrame(() => setMedida({ vista: { alto: vv.height, arriba: vv.offsetTop }, altoPantalla: window.innerHeight }))
+    }
+    medir()
+    vv.addEventListener('resize', medir)
+    vv.addEventListener('scroll', medir)
+    return () => {
+      window.cancelAnimationFrame(cuadro)
+      vv.removeEventListener('resize', medir)
+      vv.removeEventListener('scroll', medir)
+    }
+  }, [activo])
+  return medida
 }
 
 interface Sesion {
@@ -263,6 +300,7 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
   const [posicion, setPosicion] = useState<PosicionVentana | null>(null)
   const [arrastre, setArrastre] = useState(0)
   const origen = useRef<HTMLElement | null>(null)
+  const contenido = useRef<HTMLDivElement | null>(null)
   const inicioToque = useRef<number | null>(null)
   const conHistorial = useRef(false)
   // Quien abrió pidió quedarse en la página al entrar (el checkout).
@@ -288,7 +326,8 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
       const conSesion = sesionRef.current.activa
       const celular = window.matchMedia(CONSULTA_CELULAR).matches
       // En el computador, desde la ventana, crear cuenta y recuperar van al panel o a la página.
-      // En el celular todo es la hoja. «Página» (o la ventana que manda a la página): la ruta de siempre.
+      // En el celular, el modo del editor (la ventana, como hoja, ya trae todas las vistas).
+      // «Página» (o la ventana que manda a la página): la ruta de siempre.
       const modo = conSesion || celular ? opciones.modo : destinoVistaAcceso(opciones, pedida)
       const fmt = formatoAcceso(modo, celular)
       if (!fmt) {
@@ -302,19 +341,29 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
       }
       quedarse.current = detalle.quedarse === true
       origen.current = detalle.origen ?? (document.activeElement as HTMLElement | null)
-      if (fmt === 'ventana' && origen.current) {
+      if (fmt === 'ventana') {
         // Colgada de quien la abrió (el ícono de la cabecera o el enlace del checkout): debajo y al
         // borde derecho como siempre; si no cabe, al borde izquierdo o hacia arriba (posicionVentana.ts).
-        const r = origen.current.getBoundingClientRect()
-        setPosicion(posicionVentanaCuenta(r, { ancho: window.innerWidth, alto: window.innerHeight }))
+        // Si quien la abrió ya no se ve (el panel de favoritos que se cerró), del ícono de cuenta.
+        const ancla =
+          anclaVisible(origen.current) ??
+          Array.from(document.querySelectorAll<HTMLElement>('[data-cuenta-modo]')).map(anclaVisible).find((el) => el !== null) ??
+          null
+        if (ancla) {
+          const r = ancla.getBoundingClientRect()
+          setPosicion(posicionVentanaCuenta(r, { ancho: window.innerWidth, alto: window.innerHeight }))
+        } else {
+          setPosicion(POSICION_SIN_ANCLA)
+        }
       } else {
         setPosicion(null)
       }
       setFormato(fmt)
       setVista(conSesion ? 'menu' : pedida)
       setAbierto(true)
-      // Celular: el botón atrás cierra la hoja (una entrada más con el mismo estado de Next).
-      if (fmt === 'hoja' && !conHistorial.current) {
+      // Celular: el botón atrás cierra la hoja, el diálogo o el cajón (una entrada más con el mismo
+      // estado de Next).
+      if (celular && !conHistorial.current) {
         window.history.pushState({ ...((window.history.state as object | null) ?? {}), accesoCuenta: true }, '')
         conHistorial.current = true
       }
@@ -363,6 +412,7 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
       // Quedarse: se cierra y la página se refresca en su lugar (carrito y pago intactos).
       cerrar()
       void iniciarFavoritos(true)
+      avisarAccesoEntro()
       router.refresh()
     },
     [opciones.despues, cerrar, router],
@@ -390,6 +440,30 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
     else router.refresh()
   }, [cerrar, router])
 
+  const medida = useVistaVisible(abierto && formato !== 'ventana')
+
+  // El campo enfocado siempre a la vista: al enfocarlo y cuando el teclado cambia lo visible.
+  useEffect(() => {
+    if (!abierto) return
+    const vv = window.visualViewport
+    let espera = 0
+    const mostrar = () => {
+      window.clearTimeout(espera)
+      espera = window.setTimeout(() => {
+        const el = document.activeElement
+        if (!(el instanceof HTMLElement) || !contenido.current?.contains(el) || !el.matches('input, textarea, select')) return
+        el.scrollIntoView({ block: 'nearest' })
+      }, 60)
+    }
+    document.addEventListener('focusin', mostrar)
+    vv?.addEventListener('resize', mostrar)
+    return () => {
+      window.clearTimeout(espera)
+      document.removeEventListener('focusin', mostrar)
+      vv?.removeEventListener('resize', mostrar)
+    }
+  }, [abierto])
+
   if (!abierto) return null
 
   const enMenu = vista === 'menu'
@@ -400,14 +474,16 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
   const IconoTitulo = vista === 'registro' ? UserPlus : User
   const conBeneficios = opciones.beneficios && formato !== 'ventana'
 
+  // Celular: el cajón deja ver la página a la izquierda (3rem) y el diálogo, 1rem a cada lado.
   const clases: Record<FormatoAcceso, string> = {
-    panel: 'fixed inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200',
-    dialogo: 'fixed left-1/2 top-1/2 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150',
-    ventana: 'fixed flex max-h-[calc(100dvh-5rem)] w-[340px] flex-col rounded-xl border border-gray-200 bg-white shadow-xl animate-in fade-in slide-in-from-top-1 duration-150',
-    hoja: 'fixed inset-x-0 bottom-0 flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom duration-200',
+    panel: 'fixed inset-y-0 right-0 flex w-[calc(100%-3rem)] max-w-[420px] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200 motion-reduce:animate-none md:w-full',
+    dialogo: 'fixed left-1/2 top-1/2 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none',
+    ventana: 'fixed flex max-h-[calc(100dvh-5rem)] w-[340px] flex-col rounded-xl border border-gray-200 bg-white shadow-xl animate-in fade-in slide-in-from-top-1 duration-150 motion-reduce:animate-none',
+    hoja: 'fixed inset-x-0 bottom-0 flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom duration-200 motion-reduce:animate-none',
   }
   const estiloContenido: CSSProperties = {
     zIndex: 2147483647,
+    ...(medida ? encuadreVisible(formato, medida.vista, medida.altoPantalla) : {}),
     ...(formato === 'ventana' && posicion ? posicion : {}),
     ...(formato === 'hoja' && arrastre > 0 ? { transform: `translateY(${arrastre}px)` } : {}),
   }
@@ -485,6 +561,8 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
         <div data-acceso-cuenta={formato} data-vista={vista} style={estilo}>
           <Dialogo.Overlay className={formato === 'ventana' ? 'fixed inset-0' : 'fixed inset-0 bg-black/50 backdrop-blur-[1px]'} style={{ zIndex: 2147483646 }} />
           <Dialogo.Content
+            ref={contenido}
+            aria-modal="true"
             aria-describedby={undefined}
             className={`${clases[formato]} text-[#111827] outline-none`}
             style={estiloContenido}

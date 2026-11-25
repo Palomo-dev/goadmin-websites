@@ -5,7 +5,7 @@ import { getCustomerInvoiceDetail } from '@/lib/queries/customer-portal'
 import { createPublicClient } from '@/lib/supabase/server'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { Metadata } from 'next'
-import Link from '@/components/site/Enlace'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
 import { InvoicePayButton } from './InvoicePayButton'
 
 export const dynamic = 'force-dynamic'
@@ -53,9 +53,11 @@ export default async function FacturaDetallePage({ params }: { params: Promise<{
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Inicia sesión para ver tus facturas</p>
-        <Link href="/auth/login" className="text-sm font-medium mt-2 inline-block" style={{ color: primaryColor }}>
+        {/* Antes, /auth/login (no existe). La regla de la cabecera: el acceso con el modo del editor y,
+            al entrar, de vuelta a esta factura. */}
+        <EnlaceIniciarSesion volverA={`/mi-cuenta/facturas/${id}`} className="text-sm font-medium mt-2 inline-block" style={{ color: primaryColor }}>
           Iniciar sesión →
-        </Link>
+        </EnlaceIniciarSesion>
       </div>
     )
   }

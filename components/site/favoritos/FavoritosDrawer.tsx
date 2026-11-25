@@ -11,6 +11,7 @@ import { addProductToCart } from '@/lib/cart'
 import { useFavoritos } from '@/lib/favoritos/almacen'
 import { estadoFavorito, fichasAgregables, resumenFavoritos, type FavoritoGuardado, type FichaFavorito } from '@/lib/favoritos/logica'
 import type { OpcionesFavoritos } from '@/lib/website/v2/cabeceraTienda'
+import { EnlaceIniciarSesion } from '@/components/site/cuenta/EnlaceIniciarSesion'
 import { CorazonFavorito } from './CorazonFavorito'
 import { useFichasFavoritos } from './useFichasFavoritos'
 
@@ -108,7 +109,8 @@ export function FavoritosDrawer({ isOpen, onClose, primaryColor, organizationSub
     const raiz = document.documentElement
     raiz.setAttribute('data-favoritos-abierto', '')
     const alTecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // Con el acceso a la cuenta abierto encima («Iniciar sesión»), Escape cierra solo el acceso.
+      if (e.key === 'Escape' && !e.defaultPrevented && !raiz.hasAttribute('data-cuenta-abierta')) onClose()
     }
     window.addEventListener('keydown', alTecla)
     return () => {
@@ -161,15 +163,16 @@ export function FavoritosDrawer({ isOpen, onClose, primaryColor, organizationSub
               <LockKeyhole className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
               <span>{opciones.textos.avisoSesion}</span>
             </p>
-            <Link
-              href={ruta('/auth')}
-              onClick={onClose}
+            {/* La regla de la cabecera (reglaAcceso.ts): el acceso se abre encima del panel y, al
+                entrar, el panel sigue abierto con los favoritos juntos; en «Página», /auth?siguiente=. */}
+            <EnlaceIniciarSesion
+              alNavegar={onClose}
               className="mt-2 inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-sm font-semibold dark:bg-gray-900"
               style={{ borderColor: primaryColor, color: primaryColor }}
             >
               <LogIn className="h-4 w-4" aria-hidden="true" />
               Iniciar sesión
-            </Link>
+            </EnlaceIniciarSesion>
           </div>
         )}
 
