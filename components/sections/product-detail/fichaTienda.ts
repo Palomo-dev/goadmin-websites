@@ -73,6 +73,48 @@ export function tieneBloque(secciones: ReadonlyArray<{ section_type: string; is_
   return !!secciones?.some((s) => s.section_type === tipo && s.is_visible !== false)
 }
 
+// ─── «Envío y devoluciones» y «Beneficios» de fábrica dicen lo mismo ────────────────────────
+
+function contenidoDe(seccion: { content?: unknown }): Record<string, unknown> {
+  const c = seccion.content
+  return c && typeof c === 'object' && !Array.isArray(c) ? (c as Record<string, unknown>) : {}
+}
+
+/**
+ * Quita de la ficha el bloque «Envío y devoluciones» (`product_shipping`) que nadie ha tocado
+ * cuando la ficha también pinta los «Beneficios» de fábrica (`product_benefits` sin `items`).
+ *
+ * Tres plantillas de tienda (Moderna, Clásica y Vibrante) traían los dos bloques. Sin configurar,
+ * cada uno pinta sus textos de fábrica y son los mismos datos dos veces: «Tiempo de entrega ·
+ * 24-48 horas hábiles» y «Envío rápido · 24-48 horas»; «Devoluciones · 30 días» y «Garantía ·
+ * 30 días». El comercio veía la ficha «con todo doble» (2026-11-25).
+ *
+ * Se queda «Beneficios» porque sus textos sí se editan desde el panel; los de «Envío y
+ * devoluciones» son fijos (solo se encienden o apagan).
+ *
+ * Solo aplica al caso de fábrica. Cualquiera de estas cosas deja los dos bloques como están:
+ * - el comercio tocó «Envío y devoluciones» (título, mensaje, un interruptor, estilo…);
+ * - el comercio escribió sus propios beneficios (`items`): ya no repiten nada de fábrica;
+ * - no hay «Beneficios» visibles, o es un restaurante (ahí los de fábrica no se pintan).
+ *
+ * El catálogo de plantillas del ERP ya no arma los dos bloques; esto cubre las tiendas que
+ * aplicaron la plantilla antes. Las pestañas ancla se calculan con lo que devuelve esta función,
+ * así que «Envío» no queda apuntando a un bloque que no está.
+ */
+export function sinEnvioRepetidoDeFabrica<T extends { section_type: string; content?: unknown }>(
+  visibles: readonly T[],
+  opciones: { restaurante?: boolean } = {},
+): T[] {
+  if (opciones.restaurante) return [...visibles]
+  const beneficiosDeFabrica = visibles.some((s) => {
+    if (s.section_type !== 'product_benefits') return false
+    const items = contenidoDe(s).items
+    return !Array.isArray(items) || items.length === 0
+  })
+  if (!beneficiosDeFabrica) return [...visibles]
+  return visibles.filter((s) => s.section_type !== 'product_shipping' || Object.keys(contenidoDe(s)).length > 0)
+}
+
 /** Destinos de ancla que existen en la página (bloques visibles), en el orden de DESTINOS_ANCLA. */
 export function destinosPresentes(secciones: ReadonlyArray<{ section_type: string }>): DestinoAncla[] {
   const tipos = new Set(secciones.map((s) => s.section_type))

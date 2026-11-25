@@ -56,6 +56,7 @@ import {
   destinosPresentes,
   idAncla,
   resolverDisenoFicha,
+  sinEnvioRepetidoDeFabrica,
   type PaginadorFichaDatos,
 } from './fichaTienda'
 import type { RelacionadosFichaDatos } from './RelatedProductsSection'
@@ -205,7 +206,9 @@ export function ProductDetailRenderer({
   const secciones = hasSections && templatePage
     ? templatePage.website_page_sections
     : buildDefaultProductDetailSections(pageSettings)
-  const visibles = secciones.filter((s) => s.is_visible !== false)
+  // «Envío y devoluciones» sin tocar + «Beneficios» de fábrica repiten los mismos datos: se pinta
+  // uno (ver `sinEnvioRepetidoDeFabrica`). Con cualquiera de los dos configurado, los dos.
+  const visibles = sinEnvioRepetidoDeFabrica(secciones.filter((s) => s.is_visible !== false), { restaurante: Boolean(restaurante) })
   const conMarcador = visibles.some((s) => s.section_type === TIPO_URGENCIA_FICHA)
 
   // Columnas, columna fija, ancho de galería y migas: `page_settings` (legacy) como siempre; sin

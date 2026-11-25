@@ -68,8 +68,9 @@ interface ProductDetailActionsProps {
    */
   precioEnBoton?: boolean
   /**
-   * Plantillas de tienda (`product_actions.button_hint: 'auto'`): con variantes, nada viene
-   * elegido y el botón dice «Elige tu talla» hasta que el cliente elija. Ausente o `false` = hoy.
+   * Plantillas de tienda (`product_actions.button_hint: 'auto'`): sin variante elegida el botón
+   * dice «Elige tu talla». Desde el 2026-11-25 la primera variante disponible viene elegida
+   * siempre (ver `VariantSelector`), con o sin esta opción.
    */
   ayudaVariante?: boolean
 }

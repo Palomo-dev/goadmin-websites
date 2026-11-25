@@ -137,6 +137,47 @@ igual([...ficha.TIPOS_BLOQUE_FICHA_TIENDA].sort(), ['complete_the_look', 'produc
 for (const t of ficha.TIPOS_BLOQUE_FICHA_TIENDA) check(contrato.esTipoNuevoTienda(t), `${t} es tipo nuevo del contrato`)
 check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes('mosaic'), 'mosaic es valor nuevo del contrato')
 
+// «Envío y devoluciones» + «Beneficios», los dos de fábrica, repetían los mismos datos (2026-11-25).
+{
+  const tipos = (lista) => lista.map((s) => s.section_type)
+  const galeria = { section_type: 'product_gallery', content: { page_layout: { columns: '2' } } }
+  const envio = { section_type: 'product_shipping', content: {} }
+  const beneficios = { section_type: 'product_benefits', content: {} }
+  const nav = { section_type: 'product_anchor_nav', content: {} }
+  const resenas = { section_type: 'product_reviews', content: {} }
+  // La ficha de Moderna tal como la armaba la plantilla.
+  const moderna = [galeria, { section_type: 'product_info' }, envio, beneficios, nav, resenas]
+  const limpia = ficha.sinEnvioRepetidoDeFabrica(moderna)
+  igual(tipos(limpia), ['product_gallery', 'product_info', 'product_benefits', 'product_anchor_nav', 'product_reviews'], 'los dos de fábrica: se queda Beneficios')
+  check(moderna.length === 6, 'no cambia la lista que recibe')
+  igual(
+    ficha.pestanasConDestino(contrato.normalizarPestanasAncla(null).items, ficha.destinosPresentes(limpia)).map((p) => p.target),
+    ['product_info', 'product_reviews'],
+    'la pestaña «Envío» no queda apuntando a un bloque que no está',
+  )
+  // Beneficios con estilo pero sin textos propios sigue pintando los de fábrica: también repite.
+  igual(tipos(ficha.sinEnvioRepetidoDeFabrica([envio, { section_type: 'product_benefits', content: { benefits_style: 'tarjetas', items: [] } }])), ['product_benefits'], 'beneficios con estilo y sin items: de fábrica')
+  // Lo que el comercio tocó se respeta: se pintan los dos.
+  for (const [nombre, tocado] of [
+    ['título', { title: 'Despachos' }],
+    ['mensaje', { custom_message: 'Despachamos el mismo día' }],
+    ['un interruptor', { show_return_policy: false }],
+    ['estilo de tarjeta', { card_radius: 12 }],
+  ]) {
+    igual(tipos(ficha.sinEnvioRepetidoDeFabrica([{ section_type: 'product_shipping', content: tocado }, beneficios])), ['product_shipping', 'product_benefits'], `envío con ${nombre}: se pinta`)
+  }
+  const propios = { section_type: 'product_benefits', content: { items: [{ title: 'Hecho a mano' }] } }
+  igual(tipos(ficha.sinEnvioRepetidoDeFabrica([envio, propios])), ['product_shipping', 'product_benefits'], 'beneficios propios: no repiten, se pintan los dos')
+  // Sin Beneficios (o restaurante, donde los de fábrica no se pintan) el envío es lo único que hay.
+  igual(tipos(ficha.sinEnvioRepetidoDeFabrica([galeria, envio, resenas])), ['product_gallery', 'product_shipping', 'product_reviews'], 'solo envío: se queda')
+  igual(tipos(ficha.sinEnvioRepetidoDeFabrica([envio, beneficios], { restaurante: true })), ['product_shipping', 'product_benefits'], 'restaurante: no toca nada')
+  // Fichas sin «Envío y devoluciones» (las otras plantillas y los bloques por defecto): idénticas.
+  const porDefectoFicha = defHoy.buildDefaultProductDetailSections(null).filter((s) => s.is_visible !== false)
+  igual(ficha.sinEnvioRepetidoDeFabrica(porDefectoFicha), porDefectoFicha, 'bloques por defecto: sin cambios')
+  igual(ficha.sinEnvioRepetidoDeFabrica([]), [], 'lista vacía')
+  igual(tipos(ficha.sinEnvioRepetidoDeFabrica([{ section_type: 'product_shipping', content: null }, { section_type: 'product_benefits' }])), ['product_benefits'], 'contenido nulo = sin tocar')
+}
+
 // ─── 4. Inerte por defecto (fuente) ──────────────────────────────────────────────────────────
 {
   const galeria = await fuente('components/site/ProductImageGallery.tsx')
@@ -164,7 +205,12 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
   check(boton.includes("{etiqueta ?? 'Agregar al carrito'}"), 'botón: sin etiqueta, «Agregar al carrito»')
   const selector = await fuente('components/site/VariantSelector.tsx')
   check(selector.includes('ayudaVariante = false,') && selector.includes('precioEnBoton = false,'), 'selector: opciones nuevas en false por defecto')
-  check(selector.includes("} else if (variants.length > 0 && !selectedVariant) {"), 'selector: sin ayuda, se preselecciona como siempre')
+  // 2026-11-25: la primera variante disponible se preselecciona SIEMPRE (también con `button_hint: 'auto'`).
+  {
+    const efecto = selector.slice(selector.indexOf('// Preseleccionar la primera variante disponible'), selector.indexOf('// Sincroniza con el otro selector de la ficha'))
+    check(efecto.includes('if (variants.length > 0 && !selectedVariant) {') && efecto.includes('primeraVarianteDisponible(variants)'), 'selector: se preselecciona la primera variante disponible')
+    check(!efecto.includes('ayudaVariante'), 'selector: la preselección no depende de la pista del botón')
+  }
   const accionesBloque = await fuente('components/sections/product-detail/ProductActions.tsx')
   check(accionesBloque.includes('normalizarAjustesAccionesFicha(content'), 'el bloque de acciones lee sus claves con el normalizador del contrato')
   igual(contrato.normalizarAjustesAccionesFicha({}), { showPriceInButton: false, buttonHint: 'none' }, 'acciones sin claves = hoy')

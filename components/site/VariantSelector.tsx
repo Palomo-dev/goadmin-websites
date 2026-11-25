@@ -83,9 +83,10 @@ interface VariantSelectorProps {
   /** Plantillas de tienda: «Agregar al carrito · $ X» con la variante elegida. Ausente = hoy. */
   precioEnBoton?: boolean
   /**
-   * Plantillas de tienda (`button_hint: 'auto'`): no se preselecciona la primera variante; el
-   * botón queda deshabilitado con «Elige tu talla» (nombre del atributo sin elegir) hasta que
-   * elija. Ausente = hoy (se preselecciona la primera disponible).
+   * Plantillas de tienda (`button_hint: 'auto'`): mientras no haya variante elegida, el botón dice
+   * qué falta («Elige tu talla», con el nombre del atributo). Desde el 2026-11-25 la primera
+   * variante disponible se preselecciona siempre, también con esta opción, así que el texto solo
+   * llega a verse el instante previo a la preselección.
    */
   ayudaVariante?: boolean
   /**
@@ -169,11 +170,12 @@ export function VariantSelector({
     return result
   }, [variants, ordenAtributos])
 
-  // Pre-seleccionar primera variante (con la ayuda del botón, el cliente elige: no se preselecciona).
+  // Preseleccionar la primera variante disponible, SIEMPRE y en todas las plantillas (decisión del
+  // dueño, 2026-11-25). Las plantillas de tienda con `button_hint: 'auto'` no preseleccionaban: la
+  // ficha abría con el precio de la primera talla ya pintado y la barra fija ya en esa talla, pero
+  // el selector vacío y «Agregar» y «Comprar ahora» apagados con «Elige tu talla».
   useEffect(() => {
-    if (ayudaVariante) {
-      // Plantillas de tienda: sin preselección.
-    } else if (variants.length > 0 && !selectedVariant) {
+    if (variants.length > 0 && !selectedVariant) {
       const inicial = primeraVarianteDisponible(variants)!
       setSelectedVariant(inicial)
       setSelectedAttributes(inicial.variant_data || {})
