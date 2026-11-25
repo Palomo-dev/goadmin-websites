@@ -3,7 +3,6 @@
 import { ReviewSummaryBadge } from '@/components/site/reviews/ReviewSummaryBadge'
 import { PrecioFicha } from '@/components/site/PrecioFicha'
 import { FilaEtiquetasFicha } from '@/components/site/etiquetas/EtiquetasFicha'
-import { AvisoContraentregaFicha } from '@/components/site/contraentrega/AvisoContraentregaFicha'
 
 export const CONTENT_KEYS = ['blocks', 'show_countdown'] as const
 
@@ -27,8 +26,6 @@ interface ProductInfoProps {
     comparePrice?: number | null
     reviewsConfig?: any
     productStats?: { rating_avg?: number | null; reviews_count?: number | null } | null
-    branchId?: number | null
-    puedePedir?: boolean
   }
 }
 
@@ -60,13 +57,6 @@ export function ProductInfo({ content, primaryColor = '#3B82F6', data }: Product
 
       {visible('price') && data?.tienePrecio && (
         <PrecioFicha price={data?.price ?? 0} comparePrice={data?.comparePrice ?? null} variants={data?.isParent ? (data?.variants || []) : []} primaryColor={primaryColor} />
-      )}
-      {/* Aviso de contraentrega debajo del precio (Figma 3099:83909): interruptor «Mostrar aviso de
-          contraentrega» de Información del producto. Apagado o sin condiciones en la sede, nada. */}
-      {data?.puedePedir !== false && (
-        <div className="mt-2">
-          <AvisoContraentregaFicha product={product} branchId={data?.branchId ?? null} />
-        </div>
       )}
     </div>
   )
