@@ -80,8 +80,8 @@ export function variablesDeTokens(tokens: TokensCrudos | null | undefined): Reco
   const par = valor(tokens.tipografia?.par);
   if (par && par in PARES_TIPOGRAFICOS) {
     vars['--gw-font-display'] = `'${PARES_TIPOGRAFICOS[par].titulos}'`;
-    vars['--font-heading'] = `'${PARES_TIPOGRAFICOS[par].titulos}'`;
-    vars['--font-body'] = `'${PARES_TIPOGRAFICOS[par].cuerpo}'`;
+    vars['--font-heading'] = `'${PARES_TIPOGRAFICOS[par].titulos}', ui-sans-serif, system-ui, sans-serif`;
+    vars['--font-body'] = `'${PARES_TIPOGRAFICOS[par].cuerpo}', ui-sans-serif, system-ui, sans-serif`;
   }
   const escala = valor(tokens.tipografia?.escala);
   if (escala === 'grande') vars['--gw-h1'] = '64px';

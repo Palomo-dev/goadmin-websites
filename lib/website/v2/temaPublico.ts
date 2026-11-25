@@ -161,8 +161,8 @@ export function atributosTema(t: TemaPublico | null, opciones?: OpcionesAtributo
   if (!t) return { variables, datos }
   if (t.fondo) variables['--background-color'] = t.fondo
   if (t.texto) variables['--text-color'] = t.texto
-  if (t.fuenteTitulos) variables['--font-heading'] = `'${t.fuenteTitulos}'`
-  if (t.fuenteCuerpo) variables['--font-body'] = `'${t.fuenteCuerpo}'`
+  if (t.fuenteTitulos) variables['--font-heading'] = `'${t.fuenteTitulos}', ui-sans-serif, system-ui, sans-serif`
+  if (t.fuenteCuerpo) variables['--font-body'] = `'${t.fuenteCuerpo}', ui-sans-serif, system-ui, sans-serif`
   if (t.fondo || t.texto) datos['data-tema-colores'] = 'propio'
   // Fondo oscuro o claro (misma regla que el texto sobre el acento): el pie de las plantillas
   // oscuras va un 40 % más oscuro que el fondo; el de las claras, un 5 % hacia el texto.
