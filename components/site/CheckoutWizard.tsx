@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { alTocarIngresarCheckout } from '@/components/site/cuenta/eventos'
 import { mezclarDatosCuenta } from './checkout/sesionCheckout'
-import { cambiarCantidadLinea, puedeSumarLinea, quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
+import { quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowRight, ShoppingBag, Loader2, MapPin, ChevronDown, AlertTriangle, Lock, Plus, User, UtensilsCrossed } from 'lucide-react'
@@ -592,18 +592,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       // F5: carrito separado por outlet cuando hay branchId.
       const cartKey = getCartKey(subdomain, branchId)
       localStorage.setItem(cartKey, JSON.stringify(updated))
-      window.dispatchEvent(new CustomEvent('cart-updated'))
-      return updated
-    })
-  }
-
-  // − / + del resumen (como antes del checkout v2): la misma regla del carrito lateral y /carrito
-  // (lib/carrito/cantidadLinea.ts: mínimo 1, tope del stock). Se guarda igual que removeItem;
-  // promociones, impuesto, envío, contraentrega y total se recalculan solos con cartItems.
-  const cambiarCantidad = (id: number | string, delta: number) => {
-    setCartItems(items => {
-      const updated = cambiarCantidadLinea(items, id, delta)
-      localStorage.setItem(getCartKey(organizationSubdomain || '', branchId), JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
     })
@@ -2001,7 +1989,6 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     descuento: promoItemDiscounts[String(item.id)] || 0,
     promo: <PromoDeLinea promos={promotionsForItem(appliedPromotions, item.id)} pista={promoVolumeHints?.[String(item.id)] ?? null} fmt={fmtPrice} />,
     avisoStock: settings.showStockWarning ? avisoStock(item.stock, umbralStock, plantillaStock) : null,
-    puedeSumar: puedeSumarLinea(cartItems, item.id),
   }))
 
   const resumen = (
@@ -2010,9 +1997,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       fmt={fmtPrice}
       color={primaryColor}
       hrefCarrito={hrefCarrito}
-      // Cantidades editables en el resumen (celular y computador). Mientras se cobra o se reintenta
-      // el MISMO pedido, el resumen es de solo lectura (lo de hoy).
-      editarCantidad={submitting || reintento ? null : { onCambiar: cambiarCantidad, onQuitar: removeItem }}
+      // Minimalista (el dueño, 2026-11-25): sin − / + ni papelera; la cantidad se cambia en «Editar carrito».
       chipEntrega={(hasDelivery || hasPickup) ? (
         <ChipEntregaResumen
           tipo={(orderType === 'delivery' ? (etiquetaDomicilio === 'Transportadora' ? 'transportadora' : 'domicilio') : orderType === 'pickup' ? 'recoger' : 'comer_aqui') satisfies TipoEntregaResumen}

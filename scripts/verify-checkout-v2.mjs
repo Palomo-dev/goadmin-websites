@@ -26,11 +26,12 @@
  *   el DEFAULT «Entrega en 3-5 días hábiles» de la columna ya no se muestra como si fuera suyo.
  * - «¿Ya compraste aquí?» y el «Ingresar» de contraentrega abren la ventana de acceso de la tienda
  *   (si está montada) y el cliente se queda en el pago con sus datos; si no, /auth?siguiente=.
- * - − / + y «Quitar» en el resumen con la regla del carrito (lib/carrito/cantidadLinea.ts).
+ * - Regla única de cantidades del carrito (lib/carrito/cantidadLinea.ts) en el carrito lateral y /carrito.
  * - Cupón plegado tras «¿Tienes un cupón de descuento?»; aplicado, se ve aplicado con «Quitar».
  *
- * 2026-11-25 (segunda ronda) — el − / + del resumen es una píldora compacta (28 px, íconos de
- * 14 px, área táctil de 36 px) y «¿Ya compraste aquí?» abre EXACTAMENTE la variante del ícono de
+ * 2026-11-25 (segunda ronda) — el resumen vuelve a ser minimalista (el dueño, al verlo en el
+ * celular): foto con la insignia de cantidad, nombre y precio, SIN − / + ni papelera; la cantidad
+ * se cambia en «Editar carrito». «¿Ya compraste aquí?» abre EXACTAMENTE la variante del ícono de
  * cuenta del editor (Página / Panel / Ventana / Diálogo; hoja en el celular). La «Ventana» se
  * cuelga del enlace con components/site/cuenta/posicionVentana.ts (la cabecera, igual que antes).
  */
@@ -426,7 +427,7 @@ igual('tras entrar sin dirección escrita: la guardada por defecto', mezclarDato
 igual('al abrir con sesión: lo de siempre (la cuenta manda y la dirección por defecto encima)', mezclarDatosCuenta(escrito, cuenta, dirs, false), { ...escrito, firstName: 'Laurita', lastName: 'Pérez', email: 'otra@correo.co', phone: '3001234567', address: 'Calle 10 # 5-20', city: 'Envigado' })
 igual('al abrir con sesión sin direcciones: los datos de la cuenta', mezclarDatosCuenta(escrito, cuenta, null, false).address, 'Calle 1')
 
-// ── 2026-11-25 · − / + en el resumen (regla del carrito) ───────────────────────────────────────
+// ── 2026-11-25 · Regla única de cantidades (carrito lateral y /carrito) ─────────────────────────
 const lineasCarrito = [
   { id: 5, quantity: 2, stock: 3 },
   { id: '5_9', productId: 5, quantity: 1, stock: 3 },
@@ -440,10 +441,7 @@ igual('empujón «+6» hasta el cupo', cambiarCantidadLinea([{ id: 3, quantity: 
 igual('línea por encima del stock: «+» no le quita unidades', cambiarCantidadLinea([{ id: 3, quantity: 6, stock: 4 }], 3, 1)[0].quantity, 6)
 igual('quitar saca solo esa línea', quitarLineaCarrito(lineasCarrito, '5_9').map((l) => l.id), [5, 8])
 igual('no muta las líneas', (() => { const a = [{ id: 1, quantity: 2 }]; cambiarCantidadLinea(a, 1, 1); return a[0].quantity })(), 2)
-igual('el resumen trae − / + y «Quitar» (solo lectura al cobrar o reintentar)', wizTiempo.includes('editarCantidad={submitting || reintento ? null : { onCambiar: cambiarCantidad, onQuitar: removeItem }}') && wizTiempo.includes('puedeSumar: puedeSumarLinea(cartItems, item.id)'), true)
-igual('el checkout guarda el carrito igual que removeItem', wizTiempo.includes('const updated = cambiarCantidadLinea(items, id, delta)') && wizTiempo.includes('const updated = quitarLineaCarrito(items, id)'), true)
-const resumenFuente = fuente('components/site/checkout/ResumenPedido.tsx')
-igual('ResumenPedido pinta los controles con editarCantidad', resumenFuente.includes('{editarCantidad ? <ControlCantidad linea={l} editar={editarCantidad} /> : null}') && resumenFuente.includes('disabled={linea.cantidad <= 1}') && resumenFuente.includes('disabled={!sumar}'), true)
+igual('quitar un producto en el checkout usa la regla compartida', wizTiempo.includes('const updated = quitarLineaCarrito(items, id)'), true)
 igual('carrito lateral y /carrito usan la misma regla (sin copias)', fuente('components/site/CartDrawer.tsx').includes('cambiarCantidadLinea(items, id, delta)') && fuente('app/carrito/CartPageClient.tsx').includes('saveCart(cambiarCantidadLinea(items, id, delta))'), true)
 
 // ── 2026-11-25 · Cupón plegado ──────────────────────────────────────────────────────────────────
@@ -453,13 +451,16 @@ igual('cupón aplicado: se ve aplicado con «Quitar» sin abrir', cuponFuente.in
 igual('cupón sin `plegado`: el campo abierto de antes', cuponFuente.includes('plegado = false,'), true)
 igual('el checkout lo usa plegado y con el cupón aplicado (3 pasos y 1 paso comparten seccionPago)', /<CuponCheckout[\s\S]*?\r?\n\s+plegado\r?\n\s+cuponAplicado=\{appliedCoupon \?/.test(wizTiempo) && wizTiempo.includes('{seccionPago}</TarjetaCheckout>'), true)
 
-// ── 2026-11-25 (2) · Stepper compacto del resumen ──────────────────────────────────────────────
+// ── 2026-11-25 (2) · Resumen minimalista: SIN controles de cantidad ───────────────────────────
 const resumen2 = fuente('components/site/checkout/ResumenPedido.tsx')
-igual('stepper en píldora de 28 px con íconos de 14 px', resumen2.includes('data-stepper-resumen=""') && resumen2.includes('inline-flex h-7 items-center rounded-full') && (resumen2.match(/<(Minus|Plus) className="h-3\.5 w-3\.5"/g) ?? []).length === 2, true)
-igual('área táctil de 36 px (≥ 32) sin agrandar el dibujo', resumen2.includes(`const AREA_TACTIL = "relative after:absolute after:-inset-1 after:content-['']"`) && (resumen2.match(/\$\{AREA_TACTIL\}/g) ?? []).length === 2, true)
-igual('papelera pequeña gris que se vuelve roja', resumen2.includes('text-gray-400 transition-colors hover:text-red-600') && resumen2.includes('<Trash2 className="h-3.5 w-3.5"'), true)
-igual('ya no quedan los botones de 36 px a la vista', /h-9 w-9/.test(resumen2), false)
-igual('el stepper es solo del resumen: el carrito lateral y /carrito no lo usan', !fuente('components/site/CartDrawer.tsx').includes('ControlCantidad') && !fuente('app/carrito/CartPageClient.tsx').includes('ControlCantidad'), true)
+igual('el resumen NO tiene − / + ni papelera (ni botones, ni íconos, ni prop para activarlos)',
+  [/\b(Minus|Plus|Trash2)\b/.test(resumen2), /editarCantidad|ControlCantidad|onCambiar|editar.onQuitar|data-stepper-resumen|data-quitar-resumen|data-cantidad-resumen/.test(resumen2)],
+  [false, false])
+igual('el resumen sigue con la foto, la insignia de cantidad, el nombre y el precio',
+  resumen2.includes('{l.imagen ? (') && /rounded-full bg-gray-700[^"]*"[^>]*>\s*\{l\.cantidad\}/.test(resumen2) && resumen2.includes('{l.nombre}') && resumen2.includes('{fmt(l.bruto)}'), true)
+igual('el checkout no le pasa controles de cantidad al resumen', /editarCantidad|cambiarCantidad\b|puedeSumarLinea/.test(wizTiempo), false)
+igual('«Editar carrito» sigue en el resumen', resumen2.includes('Editar carrito'), true)
+igual('la cantidad se cambia en el carrito lateral y /carrito (con sus controles)', fuente('components/site/CartDrawer.tsx').includes('onClick={() => updateQuantity(item.id, 1)}') && fuente('app/carrito/CartPageClient.tsx').includes('onClick={() => updateQuantity(item.id, 1)}'), true)
 
 // ── 2026-11-25 (2) · La misma variante del ícono de cuenta ─────────────────────────────────────
 for (const modo of ['panel', 'ventana', 'dialogo']) {
@@ -500,4 +501,4 @@ if (fallos.length > 0) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, stepper compacto, variante del acceso)`)
+console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, resumen sin controles, variante del acceso)`)

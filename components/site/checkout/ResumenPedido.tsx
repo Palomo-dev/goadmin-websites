@@ -9,13 +9,13 @@
  *
  * Solo pinta lo que el checkout ya calculó (mismos montos que antes; el cobro es de /api/orders).
  *
- * Con `editarCantidad` (2026-11-25, el dueño: «antes del checkout v2 sí se podía»), cada producto
- * lleva − / + y «Quitar», como el resumen anterior; la regla es la del carrito
- * (lib/carrito/cantidadLinea.ts). Sin él, solo la cantidad (lo de la fase 1).
+ * Minimalista (el dueño, 2026-11-25, al verlo en el celular): foto con la insignia de cantidad,
+ * nombre y precio, SIN − / + ni papelera. La cantidad se cambia en «Editar carrito» (/carrito) y en
+ * el carrito lateral, con la regla compartida lib/carrito/cantidadLinea.ts.
  */
 
 import type { ReactNode } from 'react'
-import { Minus, Package, Plus, Tag, Trash2, X } from 'lucide-react'
+import { Package, Tag, X } from 'lucide-react'
 import Enlace from '@/components/site/Enlace'
 
 export interface LineaResumen {
@@ -33,58 +33,6 @@ export interface LineaResumen {
   promo?: ReactNode
   /** «Quedan 2» (aviso de pocas unidades) o null. */
   avisoStock?: string | null
-  /** «+» activo (false: ya están todas las unidades del stock). Sin valor, activo. */
-  puedeSumar?: boolean
-}
-
-/** − / + y «Quitar» de cada línea del resumen. */
-export interface EditarCantidadResumen {
-  onCambiar: (id: LineaResumen['id'], delta: number) => void
-  onQuitar: (id: LineaResumen['id']) => void
-}
-
-/**
- * − cantidad + y la papelera, compactos para que no estorben (el dueño, 2026-11-25): una píldora de
- * 28 px de alto con íconos de 14 px bajo el nombre, y la papelera como ícono gris pequeño que se
- * vuelve rojo al pasar. El área táctil de cada botón crece a 36 px con un pseudo-elemento
- * invisible (`after:-inset-1`), así en el celular se ve igual de compacto y se toca bien.
- * Solo es del resumen del checkout: el carrito lateral y /carrito tienen sus propios botones.
- */
-const AREA_TACTIL = "relative after:absolute after:-inset-1 after:content-['']"
-
-function ControlCantidad({ linea, editar }: { linea: LineaResumen; editar: EditarCantidadResumen }) {
-  const clase = `${AREA_TACTIL} flex h-7 w-7 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent`
-  const sumar = linea.puedeSumar !== false
-  return (
-    <span className="mt-1.5 flex items-center gap-2" data-cantidad-resumen="">
-      <span className="inline-flex h-7 items-center rounded-full border border-gray-200 bg-white" data-stepper-resumen="">
-        <button type="button" className={clase} onClick={() => editar.onCambiar(linea.id, -1)} disabled={linea.cantidad <= 1} aria-label={`Quitar una unidad de ${linea.nombre}`}>
-          <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-        <span className="min-w-6 px-0.5 text-center text-xs font-semibold tabular-nums text-gray-900" aria-live="polite">{linea.cantidad}</span>
-        <button
-          type="button"
-          className={clase}
-          onClick={() => editar.onCambiar(linea.id, 1)}
-          disabled={!sumar}
-          aria-label={`Agregar una unidad de ${linea.nombre}`}
-          title={sumar ? undefined : 'Ya tienes todas las unidades disponibles'}
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      </span>
-      <button
-        type="button"
-        className={`${AREA_TACTIL} flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-red-600 focus-visible:text-red-600`}
-        onClick={() => editar.onQuitar(linea.id)}
-        aria-label={`Quitar ${linea.nombre} del pedido`}
-        title="Quitar del pedido"
-        data-quitar-resumen=""
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-    </span>
-  )
 }
 
 export function ResumenPedido({
@@ -92,7 +40,6 @@ export function ResumenPedido({
   fmt,
   color,
   hrefCarrito,
-  editarCantidad = null,
   chipEntrega,
   subtotal,
   etiquetaSubtotal,
@@ -112,8 +59,6 @@ export function ResumenPedido({
   fmt: (n: number) => string
   color: string
   hrefCarrito: string
-  /** − / + y «Quitar» en cada producto; null = solo la cantidad. */
-  editarCantidad?: EditarCantidadResumen | null
   /** Chip del tipo de entrega (ChipEntregaResumen). */
   chipEntrega?: ReactNode
   subtotal: number
@@ -175,7 +120,6 @@ export function ResumenPedido({
                 ))}
                 {l.promo}
                 {l.avisoStock ? <span className="block text-xs font-medium text-orange-600">{l.avisoStock}</span> : null}
-                {editarCantidad ? <ControlCantidad linea={l} editar={editarCantidad} /> : null}
               </span>
               {l.descuento > 0 ? (
                 <span className="flex-shrink-0 text-right text-sm">
