@@ -26,19 +26,20 @@ export interface BotonVolverProps extends OpcionesVolver {
 
 /** Variables y clases del botón con el color de la tienda; sin color válido, el «Neutro». */
 export function estiloBotonVolver(primaryColor: string | null | undefined, sobreFondoOscuro = false): { clase: string; estilo?: CSSProperties } {
-  const c = coloresBotonVolver(primaryColor)
-  if (!c && sobreFondoOscuro) {
-    return { clase: 'border border-white/25 bg-white/10 text-white hover:border-white/50' }
+  // Sobre una cabecera oscura (la del checkout, el dueño 2026-11-25): sutil, con el mismo fondo de
+  // la cabecera, un borde gris muy delgado y la flecha del color del texto de la cabecera.
+  if (sobreFondoOscuro) {
+    return { clase: 'border border-white/20 bg-transparent text-current hover:border-white/45' }
   }
+  const c = coloresBotonVolver(primaryColor)
   if (!c) {
     return {
       clase: 'border border-slate-200 bg-white text-slate-900 hover:border-slate-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white',
     }
   }
   return {
-    clase: sobreFondoOscuro
-      ? 'border border-transparent bg-[var(--volver-fondo-oscuro)] text-[var(--volver-flecha-oscura)] hover:border-[var(--volver-borde)]'
-      : 'border border-transparent bg-[var(--volver-fondo)] text-[var(--volver-flecha)] hover:border-[var(--volver-borde)] dark:bg-[var(--volver-fondo-oscuro)] dark:text-[var(--volver-flecha-oscura)]',
+    clase:
+      'border border-transparent bg-[var(--volver-fondo)] text-[var(--volver-flecha)] hover:border-[var(--volver-borde)] dark:bg-[var(--volver-fondo-oscuro)] dark:text-[var(--volver-flecha-oscura)]',
     estilo: {
       ['--volver-fondo' as string]: c.fondo,
       ['--volver-flecha' as string]: c.flecha,
