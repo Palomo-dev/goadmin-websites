@@ -4,12 +4,15 @@ import { getPaginasPublicas } from '@/lib/seo/paginasPublicas'
 import { getSedesWeb } from '@/lib/restaurant/sedes'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
+import { getPlanesDeSeccion } from '@/lib/website/datosSecciones'
+import { RUTA_MEMBRESIAS, SLUG_PAGINA_MEMBRESIAS, tieneMembresias } from '@/lib/website/v2/contrato/paginaMembresias'
 
 /**
  * /sitemap.xml por host: las páginas publicadas del sitio que se sirve (V2 o legacy) y, en el
  * sitio principal, la portada (y la carta en restaurantes) de cada sede publicada por ruta
  * (`/<slug>`). Las sedes con dominio propio publican su sitemap en su host.
- * Sitio no publicado → vacío. Consultas cacheadas (getPaginasPublicas, getSedesWeb).
+ * /membresias solo con planes de membresía activos (paginaMembresias.ts).
+ * Sitio no publicado → vacío. Consultas cacheadas (getPaginasPublicas, getSedesWeb, getPlanesDeSeccion).
  */
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +37,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     rutas.add(p.slug === 'home' ? '/' : `/${p.slug}`)
   }
   if (esRestaurante) rutas.add('/menu')
+  // /membresias existe para todas las tiendas, pero solo con al menos un plan activo (si no, 404):
+  // con planes se anuncia aunque la tienda no haya armado la página; sin planes, nunca.
+  if (tieneMembresias(await getPlanesDeSeccion(ctx.organization.id))) rutas.add(RUTA_MEMBRESIAS)
+  else rutas.delete(`/${SLUG_PAGINA_MEMBRESIAS}`)
 
   const entradas: MetadataRoute.Sitemap = [...rutas].map((ruta) => ({
     url: `${raiz}${ruta === '/' && !prefijo ? '' : conPrefijo(ruta, prefijo)}`,

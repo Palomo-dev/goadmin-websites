@@ -26,6 +26,8 @@ import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar
 import { getPaginasPublicas, rutaDePaginaCon } from '@/lib/seo/paginasPublicas'
 import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { getPlanesDeSeccion } from '@/lib/website/datosSecciones'
+import { tieneMembresias } from '@/lib/website/v2/contrato/paginaMembresias'
 import { enlaceWhatsapp, type AjustesSitio } from './ajustesSitio'
 import {
   EXTRAS_VACIOS,
@@ -185,7 +187,11 @@ export const getExtrasEncabezadoPie = cache(async (
       const destinos: Record<AccionBarraMovil, string | null> = {
         ...destinosMenu,
         agendar: conPrefijo('/agendar', prefijo),
-        prueba: conPrefijo('/membresias', prefijo),
+        // «Prueba gratis» lleva a /membresias: sin planes activos esa página es 404, así que el
+        // botón no sale (Figma «16 Sitio web» D). Solo se consulta si la barra lo trae.
+        prueba: op.barraMovil.includes('prueba') && tieneMembresias(await getPlanesDeSeccion(organization.id))
+          ? conPrefijo('/membresias', prefijo)
+          : null,
         llamar: enlaces.llamar,
         whatsapp: enlaces.whatsapp,
         como_llegar: enlaces.comoLlegar,

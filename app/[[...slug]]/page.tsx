@@ -68,6 +68,8 @@ import { pasosDisponibles, resolverPaso } from '@/lib/restaurant/pasosMesa'
 import { jsonLdSedes, metadataSede, urlPublicaSede } from '@/lib/seo/sede'
 import { precargarPortadaTienda } from '@/lib/queries/tienda/portada'
 import { cargarDatosSeccionesTienda } from '@/lib/queries/tienda/productosPorId'
+import { SLUG_PAGINA_MEMBRESIAS, seccionesMembresiasPorDefecto, tieneMembresias } from '@/lib/website/v2/contrato/paginaMembresias'
+import type { WebsitePageSection } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -94,7 +96,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
   const page = await getPaginaPublica(organization.id, currentSlug, branchId,
     () => getWebsitePageBySlug(organization.id, currentSlug, branchId))
 
-  const pageTitle = page?.meta_title || page?.title
+  // /membresias sin página del editor: la plantilla se llama «Membresías».
+  const pageTitle = page?.meta_title || page?.title || (currentSlug === SLUG_PAGINA_MEMBRESIAS ? 'Membresías' : undefined)
   const title = pageTitle
     ? `${pageTitle} | ${organization.name}`
     : settings?.meta_title || organization.name
@@ -185,6 +188,16 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     getGoogleAdsConfig(organization.id),
     getDefaultTax(organization.id)
   ])
+
+  // /membresias (Figma «16 Sitio web» D): la tienda «tiene membresías» con al menos un plan activo.
+  // Sin ninguno, 404 con la marca de la tienda (app/membresias/not-found.tsx). En el lienzo del
+  // editor (borrador firmado o ?preview=1) sí se pinta, con planes de muestra marcados «Ejemplo».
+  if (currentSlug === SLUG_PAGINA_MEMBRESIAS) {
+    const enEditor = sitioVistaPreviaDe(organization.id) !== null || (await searchParams)?.preview === '1'
+    if (!enEditor && !tieneMembresias(await getPlanesDeSeccion(organization.id))) notFound()
+  } else {
+    // Cualquier otra página: como siempre.
+  }
 
   // 1. Intentar cargar página del Page Builder (con branchId F1). Sitio V2: de la revisión
   //    publicada; legacy: exactamente la misma consulta de antes.
@@ -687,6 +700,36 @@ async function renderSlugFallback(
             timeZone={organization.timezone ?? null}
             // Misma regla que el 403 de /api/orders, sobre los ajustes efectivos de la sede.
             canOrder={!pedidoEnLineaApagado(organization.type_id === 1, (organization.website_settings as any)?.enable_online_ordering)}
+          />
+        </Layout>
+      )
+    }
+
+    case SLUG_PAGINA_MEMBRESIAS: {
+      // La tienda no armó la página «Membresías» en el editor: su plantilla (encabezado, planes y
+      // preguntas), con cabecera, pie y estilo de la tienda. Antes era una ruta fija sin el diseño
+      // de la tienda y con planes y preguntas de gimnasio escritos en el código.
+      const planes = await getPlanesDeSeccion(organization.id)
+      const secciones: WebsitePageSection[] = seccionesMembresiasPorDefecto().map((s, i) => ({
+        id: `plantilla-membresias-${i}`,
+        page_id: 'plantilla-membresias',
+        organization_id: organization.id,
+        section_type: s.section_type,
+        section_variant: s.section_variant,
+        content: s.content as WebsitePageSection['content'],
+        settings: {},
+        sort_order: i,
+        is_visible: true,
+        created_at: '',
+        updated_at: '',
+      }))
+      return (
+        <Layout>
+          <PreviewableSections
+            sections={secciones}
+            organization={organization}
+            primaryColor={primaryColor}
+            data={{ branchId, membershipPlans: planes, pageSlug: SLUG_PAGINA_MEMBRESIAS, pageTitle: 'Membresías' }}
           />
         </Layout>
       )

@@ -35,6 +35,9 @@ import type { ConversionSitio } from '@/lib/website/conversion'
 import { dominiosPublicos } from '@/lib/site/dominiosPublicos'
 import { hrefDeSlug } from '@/lib/website/presentacionTienda'
 import { completarMenuMega } from '@/lib/website/botonCategorias'
+import { getPlanesDeSeccion } from '@/lib/website/datosSecciones'
+import { tieneMembresias } from '@/lib/website/v2/contrato/paginaMembresias'
+import { ajustesSinMembresias, mencionaMembresias, menusSinMembresias, sinNodosMembresias } from '@/lib/memberships/enlacesMembresias'
 
 /**
  * Cabecera que pone el middleware al reescribir `/<slug-de-sede>/resto` → `/resto`
@@ -260,6 +263,29 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     : []
   const megaMenuItems = itemsMega.length > 0 ? itemsMega : null
 
+  // Membresías sin planes activos (Figma «16 Sitio web» D): /membresias responde 404 y se quita
+  // sola del menú, del pie, del mega menú y del menú inferior. Solo se miran los planes (consulta
+  // cacheada 30 s) si algo de lo cargado apunta a /membresias; los demás sitios no cambian.
+  let navHeader = headerNav
+  let navHeaderTree = effectiveHeaderNavTree
+  let navFooterTree = footerNavTree
+  let menusPie = footerMenus
+  let itemsMegaMenu = megaMenuItems
+  let ajustesPublicos = settings
+  const menuInferiorCrudo = (settings as { mobile_header?: { bottom_nav?: unknown } } | null)?.mobile_header?.bottom_nav
+  if (mencionaMembresias(headerNav, effectiveHeaderNavTree, footerNavTree, footerMenus, megaMenuItems, menuInferiorCrudo)
+    && !tieneMembresias(await getPlanesDeSeccion(organization.id))) {
+    navHeader = sinNodosMembresias(headerNav, (n) => n.slug)
+    navHeaderTree = sinNodosMembresias(effectiveHeaderNavTree, (n) => n.slug)
+    navFooterTree = sinNodosMembresias(footerNavTree, (n) => n.slug)
+    menusPie = footerMenus ? menusSinMembresias(footerMenus) : footerMenus
+    const mega = megaMenuItems ? sinNodosMembresias(megaMenuItems, (n) => n.href) : null
+    itemsMegaMenu = mega && mega.length > 0 ? mega : null
+    ajustesPublicos = ajustesSinMembresias(settings)
+  } else {
+    // Con planes, o sin enlaces a /membresias: todo como estaba.
+  }
+
   // Verificar estado de congelación de la organización
   const frozenReason = await checkFrozenStatus(organization.id, organization.status)
 
@@ -278,8 +304,8 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     ...(logoOscuroV2 ? { logo_oscuro_url: logoOscuroV2 } : {}),
     ...(logoFondoClaroV2 ? { logo_fondo_claro_url: logoFondoClaroV2 } : {}),
   }
-  const organizationWithSettings = effectiveSettings
-    ? { ...organizacionBase, website_settings: effectiveSettings }
+  const organizationWithSettings = ajustesPublicos
+    ? { ...organizacionBase, website_settings: ajustesPublicos }
     : organizacionBase
 
   // SEO local y enlaces de la sede (contratos de lib/outlet/rutaSitio.ts y lib/seo/sede.ts).
@@ -310,18 +336,18 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
     urlBasePrincipal,
     /** Dominios activos con los que se armó esa base. */
     dominios,
-    effectiveSettings: settings,
+    effectiveSettings: ajustesPublicos,
     primaryColor,
     template,
-    headerNav,
-    headerNavTree: effectiveHeaderNavTree,
-    footerNav,
-    footerNavTree,
+    headerNav: navHeader,
+    headerNavTree: navHeaderTree,
+    footerNav: navFooterTree,
+    footerNavTree: navFooterTree,
     menuCategories,
     /** Todas las categorías de la tienda, sin los ajustes de mostrarlas (búsquedas populares). */
     categoriasTienda,
-    megaMenuItems,
-    websiteMenus: footerMenus,
+    megaMenuItems: itemsMegaMenu,
+    websiteMenus: menusPie,
     frozenReason,
     showCurrencyCode,
     currencyPosition,

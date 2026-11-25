@@ -1,3 +1,4 @@
+import { estadoVentaPlan, ordenPorDefecto, type EstadoVentaPlan } from '@/lib/website/v2/contrato/paginaMembresias'
 import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { cache } from 'react'
 import { createAdminClient, createPublicClient } from './server'
@@ -2521,9 +2522,15 @@ export interface MembershipPlanPublic {
   access_rules: Record<string, any> | null
   /** Producto que se vende (el plan es su configuración). Null = el plan no se vende en línea. */
   product_id: number | null
-  /** Precio vigente del producto en `product_prices`. Null = sin precio vigente: no se vende en línea. */
+  /**
+   * Precio vigente del producto en `product_prices`. Null = sin precio vigente. Con el producto
+   * pausado (`estado: 'pausado'`) se conserva para pintarlo en gris, pero `product_id` es null:
+   * no se vende.
+   */
   price: number | null
   compare_price: number | null
+  /** `en_linea` (se compra), `consulta` (precio a consultar) o `pausado` (producto inactivo). */
+  estado: EstadoVentaPlan
 }
 
 /**
@@ -2553,8 +2560,11 @@ export async function getMembershipPlans(organizationId: number): Promise<Member
 
   const plans: MembershipPlanPublic[] = ((data || []) as any[]).map((row) => {
     const product = row.products
-    const vendible = product && product.status === 'active'
-    const precio = vendible ? precioVigente(product.product_prices) : null
+    // Regla compartida con el editor (paginaMembresias.ts): activo con precio → se vende;
+    // producto inactivo → pausado («No disponible por ahora»); lo demás → precio a consultar.
+    const vigente = product && product.status !== 'deleted' ? precioVigente(product.product_prices) : null
+    const estado = estadoVentaPlan(product?.status ?? null, vigente !== null)
+    const precio = estado === 'consulta' ? null : vigente
     return {
       id: row.id,
       name: row.name,
@@ -2564,20 +2574,17 @@ export async function getMembershipPlans(organizationId: number): Promise<Member
       duration_value: row.duration_value ?? null,
       frequency: row.frequency ?? null,
       access_rules: row.access_rules ?? null,
-      product_id: precio ? row.product_id : null,
+      product_id: estado === 'en_linea' ? row.product_id : null,
       price: precio ? precio.price : null,
       compare_price: precio ? precio.compare_price : null,
+      estado,
     }
   })
 
   // Antes se ordenaba por membership_plans.price en la base; ahora por el precio vigente.
-  // Los que no se venden en línea (sin precio) van al final.
-  return plans.sort((a, b) => {
-    if (a.price === null && b.price === null) return a.id - b.id
-    if (a.price === null) return 1
-    if (b.price === null) return -1
-    return a.price - b.price || a.id - b.id
-  })
+  // Los que no tienen precio van al final. Misma regla que la lista del editor (paginaMembresias.ts);
+  // la sección puede guardar su propio orden encima.
+  return ordenPorDefecto(plans)
 }
 
 /**
