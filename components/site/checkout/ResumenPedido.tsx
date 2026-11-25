@@ -43,28 +43,45 @@ export interface EditarCantidadResumen {
   onQuitar: (id: LineaResumen['id']) => void
 }
 
-/** − cantidad + y la papelera, del tamaño cómodo para el dedo (36 px). */
+/**
+ * − cantidad + y la papelera, compactos para que no estorben (el dueño, 2026-11-25): una píldora de
+ * 28 px de alto con íconos de 14 px bajo el nombre, y la papelera como ícono gris pequeño que se
+ * vuelve rojo al pasar. El área táctil de cada botón crece a 36 px con un pseudo-elemento
+ * invisible (`after:-inset-1`), así en el celular se ve igual de compacto y se toca bien.
+ * Solo es del resumen del checkout: el carrito lateral y /carrito tienen sus propios botones.
+ */
+const AREA_TACTIL = "relative after:absolute after:-inset-1 after:content-['']"
+
 function ControlCantidad({ linea, editar }: { linea: LineaResumen; editar: EditarCantidadResumen }) {
-  const clase = 'flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40'
+  const clase = `${AREA_TACTIL} flex h-7 w-7 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent`
   const sumar = linea.puedeSumar !== false
   return (
-    <span className="mt-1.5 flex items-center gap-1.5" data-cantidad-resumen="">
-      <button type="button" className={clase} onClick={() => editar.onCambiar(linea.id, -1)} disabled={linea.cantidad <= 1} aria-label={`Quitar una unidad de ${linea.nombre}`}>
-        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <span className="w-7 text-center text-sm font-semibold text-gray-900" aria-live="polite">{linea.cantidad}</span>
+    <span className="mt-1.5 flex items-center gap-2" data-cantidad-resumen="">
+      <span className="inline-flex h-7 items-center rounded-full border border-gray-200 bg-white" data-stepper-resumen="">
+        <button type="button" className={clase} onClick={() => editar.onCambiar(linea.id, -1)} disabled={linea.cantidad <= 1} aria-label={`Quitar una unidad de ${linea.nombre}`}>
+          <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <span className="min-w-6 px-0.5 text-center text-xs font-semibold tabular-nums text-gray-900" aria-live="polite">{linea.cantidad}</span>
+        <button
+          type="button"
+          className={clase}
+          onClick={() => editar.onCambiar(linea.id, 1)}
+          disabled={!sumar}
+          aria-label={`Agregar una unidad de ${linea.nombre}`}
+          title={sumar ? undefined : 'Ya tienes todas las unidades disponibles'}
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </span>
       <button
         type="button"
-        className={clase}
-        onClick={() => editar.onCambiar(linea.id, 1)}
-        disabled={!sumar}
-        aria-label={`Agregar una unidad de ${linea.nombre}`}
-        title={sumar ? undefined : 'Ya tienes todas las unidades disponibles'}
+        className={`${AREA_TACTIL} flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-red-600 focus-visible:text-red-600`}
+        onClick={() => editar.onQuitar(linea.id)}
+        aria-label={`Quitar ${linea.nombre} del pedido`}
+        title="Quitar del pedido"
+        data-quitar-resumen=""
       >
-        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <button type="button" className="ml-1 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600" onClick={() => editar.onQuitar(linea.id)} aria-label={`Quitar ${linea.nombre} del pedido`}>
-        <Trash2 className="h-4 w-4" aria-hidden="true" />
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </span>
   )

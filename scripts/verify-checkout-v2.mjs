@@ -28,6 +28,11 @@
  *   (si está montada) y el cliente se queda en el pago con sus datos; si no, /auth?siguiente=.
  * - − / + y «Quitar» en el resumen con la regla del carrito (lib/carrito/cantidadLinea.ts).
  * - Cupón plegado tras «¿Tienes un cupón de descuento?»; aplicado, se ve aplicado con «Quitar».
+ *
+ * 2026-11-25 (segunda ronda) — el − / + del resumen es una píldora compacta (28 px, íconos de
+ * 14 px, área táctil de 36 px) y «¿Ya compraste aquí?» abre EXACTAMENTE la variante del ícono de
+ * cuenta del editor (Página / Panel / Ventana / Diálogo; hoja en el celular). La «Ventana» se
+ * cuelga del enlace con components/site/cuenta/posicionVentana.ts (la cabecera, igual que antes).
  */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -79,6 +84,8 @@ import {
 } from '../lib/shipping/tiempoEntrega.ts'
 import { mezclarDatosCuenta } from '../components/site/checkout/sesionCheckout.ts'
 import { cambiarCantidadLinea, cupoLinea, puedeSumarLinea, quitarLineaCarrito } from '../lib/carrito/cantidadLinea.ts'
+import { ANCHO_VENTANA_CUENTA, posicionVentanaCuenta } from '../components/site/cuenta/posicionVentana.ts'
+import { destinoVistaAcceso, opcionesCuenta } from '../lib/website/v2/cabeceraTienda.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const fuente = (r) => readFileSync(join(ROOT, r), 'utf8')
@@ -445,9 +452,42 @@ igual('cupón aplicado: se ve aplicado con «Quitar» sin abrir', cuponFuente.in
 igual('cupón sin `plegado`: el campo abierto de antes', cuponFuente.includes('plegado = false,'), true)
 igual('el checkout lo usa plegado y con el cupón aplicado (3 pasos y 1 paso comparten seccionPago)', /<CuponCheckout[\s\S]*?\r?\n\s+plegado\r?\n\s+cuponAplicado=\{appliedCoupon \?/.test(wizTiempo) && wizTiempo.includes('{seccionPago}</TarjetaCheckout>'), true)
 
+// ── 2026-11-25 (2) · Stepper compacto del resumen ──────────────────────────────────────────────
+const resumen2 = fuente('components/site/checkout/ResumenPedido.tsx')
+igual('stepper en píldora de 28 px con íconos de 14 px', resumen2.includes('data-stepper-resumen=""') && resumen2.includes('inline-flex h-7 items-center rounded-full') && (resumen2.match(/<(Minus|Plus) className="h-3\.5 w-3\.5"/g) ?? []).length === 2, true)
+igual('área táctil de 36 px (≥ 32) sin agrandar el dibujo', resumen2.includes(`const AREA_TACTIL = "relative after:absolute after:-inset-1 after:content-['']"`) && (resumen2.match(/\$\{AREA_TACTIL\}/g) ?? []).length === 2, true)
+igual('papelera pequeña gris que se vuelve roja', resumen2.includes('text-gray-400 transition-colors hover:text-red-600') && resumen2.includes('<Trash2 className="h-3.5 w-3.5"'), true)
+igual('ya no quedan los botones de 36 px a la vista', /h-9 w-9/.test(resumen2), false)
+igual('el stepper es solo del resumen: el carrito lateral y /carrito no lo usan', !fuente('components/site/CartDrawer.tsx').includes('ControlCantidad') && !fuente('app/carrito/CartPageClient.tsx').includes('ControlCantidad'), true)
+
+// ── 2026-11-25 (2) · La misma variante del ícono de cuenta ─────────────────────────────────────
+for (const modo of ['panel', 'ventana', 'dialogo']) {
+  igual(`modo ${modo}: «Ingresar» abre ${modo} (sin forzar otra variante)`, destinoVistaAcceso(opcionesCuenta({ header_cuenta: { modo } }), 'ingresar'), modo)
+}
+igual('sin opción en el editor: «Página» (no se monta la ventana y el enlace navega)', opcionesCuenta({}).modo, 'pagina')
+const acceso2 = fuente('components/site/cuenta/AccesoCuenta.tsx')
+igual('el formato sale de la opción del editor (y hoja en el celular), igual que el ícono', acceso2.includes('const modo = conSesion || celular ? opciones.modo : destinoVistaAcceso(opciones, pedida)') && acceso2.includes("return celular ? 'hoja' : modo") && acceso2.includes("if (modo === 'pagina') return null"), true)
+igual('la ventana se cuelga de quien la abrió con la regla única', acceso2.includes('setPosicion(posicionVentanaCuenta(r, { ancho: window.innerWidth, alto: window.innerHeight }))') && acceso2.includes("...(formato === 'ventana' && posicion ? posicion : {}),"), true)
+const eventos2 = fuente('components/site/cuenta/eventos.ts')
+const cuerpoIngresar = eventos2.slice(eventos2.indexOf('export function alTocarIngresarCheckout'))
+igual('el checkout no fuerza formato: solo vista «ingresar», quedarse y la página de respaldo', !/formato|modo/.test(cuerpoIngresar.slice(0, cuerpoIngresar.indexOf('\n}') + 2)), true)
+const pagina2 = fuente('app/checkout/page.tsx')
+igual('un solo montaje con la opción del editor (opcionesCuenta sobre los ajustes de la tienda)', pagina2.includes('const opCuenta = opcionesCuenta((organization.website_settings ?? null)') && (pagina2.match(/<AccesoCuenta /g) ?? []).length === 1, true)
+// Posición de la «Ventana desde el ícono».
+const pantalla = { ancho: 1440, alto: 900 }
+const icono = { top: 20, bottom: 52, left: 1380, right: 1412 }
+igual('ícono de la cabecera: la posición de siempre (debajo y al borde derecho)', posicionVentanaCuenta(icono, pantalla), { right: Math.max(8, Math.round(1440 - 1412)), top: Math.round(52 + 8) })
+const enlace = { top: 300, bottom: 320, left: 120, right: 330 }
+igual('enlace del checkout a la izquierda: alineada a su borde izquierdo, dentro de la pantalla', posicionVentanaCuenta(enlace, pantalla), { left: 120, top: 328 })
+const enlaceAbajo = { top: 760, bottom: 780, left: 600, right: 900 }
+const arriba = posicionVentanaCuenta(enlaceAbajo, pantalla)
+igual('enlace abajo sin espacio: se abre hacia arriba con el alto que cabe', [arriba.bottom, arriba.top, arriba.maxHeight, arriba.right], [148, undefined, 744, 540])
+const estrecho = posicionVentanaCuenta({ top: 300, bottom: 320, left: 4, right: 200 }, { ancho: 360, alto: 800 })
+igual('pantalla estrecha: nunca se sale por los lados', estrecho.left >= 8 && estrecho.left + ANCHO_VENTANA_CUENTA <= 360 - 8, true)
+
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón)`)
+console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón, stepper compacto, variante del acceso)`)

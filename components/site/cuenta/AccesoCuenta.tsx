@@ -38,6 +38,7 @@ import {
 import { EVENTO_ABRIR_ACCESO, abrirAccesoCuenta, fijarAccesoAbierto, registrarAnfitrionAcceso, useAccesoAbierto, type DetalleAbrirAcceso } from './eventos'
 import { FormularioAcceso, tituloVista, type VistaFormulario } from './FormularioAcceso'
 import { cerrarSesionTienda, type TipoEntrada } from './useAcceso'
+import { posicionVentanaCuenta, type PosicionVentana } from './posicionVentana'
 import { BotonAvatarCuenta } from './avatar/BotonAvatarCuenta'
 
 /** Formato en pantalla: el del editor o, en el celular, la hoja inferior. */
@@ -259,7 +260,7 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
   const [abierto, setAbierto] = useState(false)
   const [formato, setFormato] = useState<FormatoAcceso>('panel')
   const [vista, setVista] = useState<VistaHost>('ingresar')
-  const [posicion, setPosicion] = useState<{ top: number; right: number } | null>(null)
+  const [posicion, setPosicion] = useState<PosicionVentana | null>(null)
   const [arrastre, setArrastre] = useState(0)
   const origen = useRef<HTMLElement | null>(null)
   const inicioToque = useRef<number | null>(null)
@@ -302,8 +303,10 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
       quedarse.current = detalle.quedarse === true
       origen.current = detalle.origen ?? (document.activeElement as HTMLElement | null)
       if (fmt === 'ventana' && origen.current) {
+        // Colgada de quien la abrió (el ícono de la cabecera o el enlace del checkout): debajo y al
+        // borde derecho como siempre; si no cabe, al borde izquierdo o hacia arriba (posicionVentana.ts).
         const r = origen.current.getBoundingClientRect()
-        setPosicion({ top: Math.round(r.bottom + 8), right: Math.max(8, Math.round(window.innerWidth - r.right)) })
+        setPosicion(posicionVentanaCuenta(r, { ancho: window.innerWidth, alto: window.innerHeight }))
       } else {
         setPosicion(null)
       }
@@ -405,7 +408,7 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
   }
   const estiloContenido: CSSProperties = {
     zIndex: 2147483647,
-    ...(formato === 'ventana' && posicion ? { top: posicion.top, right: posicion.right } : {}),
+    ...(formato === 'ventana' && posicion ? posicion : {}),
     ...(formato === 'hoja' && arrastre > 0 ? { transform: `translateY(${arrastre}px)` } : {}),
   }
 
