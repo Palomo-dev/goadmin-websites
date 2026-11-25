@@ -21,6 +21,10 @@
  *   pedido»: venta, stock y envío por el resto, sin factura ni pago nuevos. El aviso de WhatsApp
  *   «confirmado» lo manda el ERP una sola vez; el correo no se repite. Si falla, el pedido queda
  *   «Pendiente» con el anticipo pagado y el ERP anota el motivo para el equipo.
+ *
+ * Anticipo pagado con el pedido VENCIDO (2026-11-25, ERP 20261125121000): la base responde
+ * `pagado_tarde_reactivable` (reactivado con stock, hasta 24 h) o `pagado_vencido_*` (decide una
+ * persona). Va en el `else` de «pagado», que no cambia: `avisarAnticipoTardio` (avisoAnticipoTardio.ts).
  */
 
 import { procesarCobroFirmadoWompi, type ResultadoCobroFirmado } from '@/lib/payments/wompi-cobro-firmado'
@@ -28,6 +32,7 @@ import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import { estadoDepositoWompi } from '@/lib/restaurant/deposito-modelo'
 import { FUENTE_COBRO_ANTICIPO, idDeReferenciaAnticipo } from './contraentregaServidor'
 import { enviarCorreoAnticipoPagado } from './correoAnticipo'
+import { avisarAnticipoTardio } from './avisoAnticipoTardio'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { registrarIntentoPago } from '@/lib/payments/intentosPago'
 import { intentoDeWompi, type DatosIntento } from '@/lib/payments/intentosPagoReglas'
@@ -75,7 +80,10 @@ export async function procesarAnticipoWompi(supabase: any, body: Record<string, 
         await enviarCorreoAnticipoPagado(pedido.id)
         await notifyErpAutoConfirm(pedido.id)
       } else {
-        // Ya pagado, rechazado, pendiente o pedido cerrado: sin correo ni confirmación.
+        // Ya pagado, rechazado, pendiente o pedido cerrado: sin correo ni confirmación. Pedido
+        // VENCIDO con el anticipo recién pagado (ERP 20261125121000): aviso al ERP y correo
+        // «sigue en pie» / «lo estamos revisando»; con cualquier otro estado no hace nada.
+        await avisarAnticipoTardio(pedido.id, resultado?.status)
       }
     },
     respuesta: (pedido, resultado, transaction) => ({
@@ -134,7 +142,9 @@ export async function aplicarAnticipoPasarela(supabase: any, a: AvisoAnticipo): 
     // notifyErpAutoConfirm nunca lanza (red y respuestas del ERP quedan en el log).
     await notifyErpAutoConfirm(pedido.id)
   } else {
-    // Sin transición a pagado: sin correo ni confirmación.
+    // Sin transición a pagado: sin correo ni confirmación. Pedido VENCIDO con el anticipo recién
+    // pagado (ERP 20261125121000): aviso al ERP y correo «sigue en pie» / «lo estamos revisando».
+    await avisarAnticipoTardio(pedido.id, data?.status)
   }
   return {
     status: 200,

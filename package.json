@@ -21,6 +21,7 @@
     "verify:pasarelas-bold-mp": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-pasarelas-bold-mp.mjs",
     "verify:intentos-pago": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-intentos-pago.mjs",
     "verify:anticipo-confirmacion": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-anticipo-confirmacion.mjs",
+    "verify:anticipo-tardio": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-anticipo-tardio.mjs",
     "verify:reenvio-wompi": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-reenvio-wompi.mjs",
     "verify:secretos": "node --disable-warning=ExperimentalWarning scripts/verify-secretos-conexion.mjs",
     "verify:carta": "node --env-file=.env.local scripts/verify-carta.mjs",
