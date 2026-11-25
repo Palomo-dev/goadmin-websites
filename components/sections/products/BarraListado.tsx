@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import type { PresentacionListado } from '@/lib/products/fuenteListado'
 import type { EstadoFiltros, OrdenFiltro } from '@/lib/products/filtrosProductos'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 const ORDEN: { valor: OrdenFiltro; etiqueta: string }[] = [
   { valor: 'default', etiqueta: 'Ordenar' },
@@ -53,15 +54,22 @@ export function BarraListado({
       {categorias.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
     </select>
   ) : null
+  // La misma pieza de las demás secciones de productos (CarrilChips): flechas, arrastre, rueda y
+  // desvanecido con máscara. Con `chipMobile: 'select'` en celular se ve el desplegable y no el carril.
   const filaChips = mostrarCategorias && pedido('category') ? (
-    <div className={`flex gap-2 pb-2 ${presentacion.chipMobile === 'select' ? 'hidden md:flex' : 'overflow-x-auto'}`}>
-      {presentacion.showAllChip !== false && (
-        <button type="button" onClick={() => cambiar({ categoria: null })} className={claseChip(presentacion.chipStyle, !estado.categoria)} style={!estado.categoria ? { background: primaryColor, borderColor: primaryColor } : undefined}>Todos</button>
-      )}
+    <CarrilChips
+      etiqueta="Categorías"
+      color={primaryColor}
+      claveActivo={estado.categoria ?? ''}
+      className={presentacion.chipMobile === 'select' ? 'hidden md:flex' : ''}
+      chipFijo={presentacion.showAllChip !== false ? (
+        <button type="button" aria-pressed={!estado.categoria} onClick={() => cambiar({ categoria: null })} className={claseChip(presentacion.chipStyle, !estado.categoria)} style={!estado.categoria ? { background: primaryColor, borderColor: primaryColor } : undefined}>Todos</button>
+      ) : undefined}
+    >
       {categorias.map((c) => (
-        <button key={c.id} type="button" onClick={() => cambiar({ categoria: estado.categoria === c.id ? null : c.id })} className={claseChip(presentacion.chipStyle, estado.categoria === c.id)} style={estado.categoria === c.id ? { background: primaryColor, borderColor: primaryColor } : undefined}>{c.name}</button>
+        <button key={c.id} type="button" aria-pressed={estado.categoria === c.id} onClick={() => cambiar({ categoria: estado.categoria === c.id ? null : c.id })} className={claseChip(presentacion.chipStyle, estado.categoria === c.id)} style={estado.categoria === c.id ? { background: primaryColor, borderColor: primaryColor } : undefined}>{c.name}</button>
       ))}
-    </div>
+    </CarrilChips>
   ) : null
   const pieza: Record<string, ReactNode> = {
     offers: (

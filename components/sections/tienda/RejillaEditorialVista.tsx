@@ -22,6 +22,7 @@ import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
 import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import type { RejillaEditorial, TarjetaEditorial } from '@/lib/website/v2/contrato/seccionesTienda'
 import { EditorHint } from '../restaurant/EditorHint'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 /** De a cuántos crece «Ver más» sin tope del editor (la página de `ProductsGrid`). */
 const POR_TANDA = 12
@@ -151,8 +152,10 @@ export function RejillaEditorialVista({
 
       {mostrarFiltros && (
         <div className="mb-8 flex flex-col gap-3 border-y py-3 md:flex-row md:items-center md:justify-between" style={{ borderColor: linea }}>
-          <div className="-mx-1 flex gap-1 overflow-x-auto px-1 scrollbar-hide" role="group" aria-label="Filtrar por categoría">
-            {[{ id: null as number | null, name: 'Todo' }, ...cats.map((c: any) => ({ id: Number(c.id) as number | null, name: String(c.name ?? '') }))].map((c) => {
+          {/* La misma pieza de las demás secciones de productos (CarrilChips): flechas, arrastre con
+              el mouse, rueda y desvanecido con máscara. «Todo» queda fijo a la izquierda. */}
+          {(() => {
+            const chipCategoria = (c: { id: number | null; name: string }) => {
               const activa = filtros.estado.categoria === c.id
               return (
                 <button
@@ -167,8 +170,20 @@ export function RejillaEditorialVista({
                   {c.name}
                 </button>
               )
-            })}
-          </div>
+            }
+            return (
+              <CarrilChips
+                className="min-w-0 md:flex-1"
+                claseFila="gap-1"
+                etiqueta="Categorías"
+                color={primaryColor}
+                claveActivo={filtros.estado.categoria ?? ''}
+                chipFijo={chipCategoria({ id: null, name: 'Todo' })}
+              >
+                {cats.map((c: any) => chipCategoria({ id: Number(c.id), name: String(c.name ?? '') }))}
+              </CarrilChips>
+            )
+          })()}
           <label className="flex shrink-0 items-center gap-2 text-sm">
             <span className="opacity-60">Ordenar</span>
             <select

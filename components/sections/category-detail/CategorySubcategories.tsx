@@ -7,6 +7,7 @@
 
 import Link from '@/components/site/Enlace'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 export const CONTENT_KEYS = ['title', 'layout'] as const
 
@@ -32,7 +33,8 @@ export function CategorySubcategories({ content, primaryColor = '#3B82F6', data 
     return (
       <div className="mb-6">
         <h2 className="titulo-legado text-lg font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        {/* La misma pieza de las secciones de productos (CarrilChips): flechas, arrastre y máscara. */}
+        <CarrilChips etiqueta="Subcategorías" color={primaryColor} claseFila="gap-3">
           {subcategories.map((sub: any) => (
             <Link
               key={sub.id}
@@ -43,7 +45,7 @@ export function CategorySubcategories({ content, primaryColor = '#3B82F6', data 
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{sub.name}</span>
             </Link>
           ))}
-        </div>
+        </CarrilChips>
       </div>
     )
   }

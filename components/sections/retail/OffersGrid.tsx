@@ -9,6 +9,7 @@ import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
 import { coincideBusqueda, filtrarProductosPorCategorias, incluirSubcategorias } from '@/lib/products/filtrosProductos'
 import { contadorCantidadActivo, separacionTarjetas } from '@/lib/website/tarjetaProducto'
@@ -205,24 +206,36 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
               </div>
             )}
             {showFilters && categories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-                <button
-                  onClick={() => { setSelectedCategory(null); resetPage() }}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${estiloChipFiltro(!selectedCategory, primaryColor, content).className}`}
-                  style={estiloChipFiltro(!selectedCategory, primaryColor, content).style}
-                >Todos</button>
+              // La misma pieza de las demás secciones de productos (CarrilChips): flechas, arrastre
+              // con el mouse, rueda y desvanecido con máscara (sirve sobre fondo oscuro).
+              <CarrilChips
+                etiqueta="Categorías"
+                color={primaryColor}
+                claveActivo={selectedCategory ?? ''}
+                chipFijo={
+                  <button
+                    type="button"
+                    aria-pressed={!selectedCategory}
+                    onClick={() => { setSelectedCategory(null); resetPage() }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${estiloChipFiltro(!selectedCategory, primaryColor, content).className}`}
+                    style={estiloChipFiltro(!selectedCategory, primaryColor, content).style}
+                  >Todos</button>
+                }
+              >
                 {categories.map((cat) => {
                   const activo = estiloChipFiltro(selectedCategory === cat.id, primaryColor, content)
                   return (
                   <button
                     key={cat.id}
+                    type="button"
+                    aria-pressed={selectedCategory === cat.id}
                     onClick={() => { setSelectedCategory(selectedCategory === cat.id ? null : cat.id); resetPage() }}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
                     style={activo.style}
                   >{cat.name}</button>
                   )
                 })}
-              </div>
+              </CarrilChips>
             )}
             {showFilters && (
             <div className="flex items-center gap-2 flex-wrap">

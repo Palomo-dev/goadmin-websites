@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { normalizarAjustesFiltrosCategoria, TEXTO_BUSCADOR_CATEGORIA } from '@/lib/website/v2/contrato/seccionesTienda'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 export const CONTENT_KEYS = ['filter_position', 'show_sort', 'show_view_toggle', 'subcategory_style', 'search'] as const
 
@@ -140,10 +141,18 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
     </form>
   ) : null
 
+  // La misma pieza de las secciones de productos y de la página de categoría (CarrilChips): flechas,
+  // arrastre con el mouse, rueda, «Todas» fijo y desvanecido con máscara.
   const filaSubcategoriasHoy = subcategories.length > 0 && ajustes.subcategoryStyle === 'chips' ? (
-    <div className={buscador ? 'min-w-0 flex-1 overflow-x-auto' : 'mb-6 overflow-x-auto'}>
-      <div className="flex gap-2 pb-2">
+    <CarrilChips
+      className={buscador ? 'min-w-0 flex-1' : 'mb-6'}
+      etiqueta="Subcategorías"
+      color={primaryColor}
+      claveActivo={currentSubcategory}
+      chipFijo={
         <button
+          type="button"
+          aria-pressed={!currentSubcategory}
           onClick={() => handleSubcategoryChange('')}
           className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
             !currentSubcategory
@@ -154,9 +163,13 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
         >
           Todas
         </button>
+      }
+    >
         {subcategories.map((sub: any) => (
           <button
             key={sub.id}
+            type="button"
+            aria-pressed={currentSubcategory === sub.slug}
             onClick={() => handleSubcategoryChange(sub.slug)}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               currentSubcategory === sub.slug
@@ -169,8 +182,7 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
             {sub.name}
           </button>
         ))}
-      </div>
-    </div>
+    </CarrilChips>
   ) : null
 
   return (

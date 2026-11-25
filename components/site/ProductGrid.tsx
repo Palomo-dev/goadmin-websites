@@ -14,6 +14,7 @@ import { getAvailableStock } from '@/lib/stock'
 import { getCartKey } from '@/lib/utils'
 import { isParentProduct, padreSinVariantes, requiereElegir, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
 
 interface ProductImage {
   id: number
@@ -173,8 +174,15 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
       <div className="mb-6 space-y-3">
         {/* Categorías */}
         {categories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+          // La misma pieza de las secciones de productos (CarrilChips): flechas, arrastre y máscara.
+          <CarrilChips
+            etiqueta="Categorías"
+            color={primaryColor}
+            claveActivo={selectedCategory ?? ''}
+            chipFijo={
             <button
+              type="button"
+              aria-pressed={!selectedCategory}
               onClick={() => { setSelectedCategory(null); resetPage() }}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
                 !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
@@ -183,9 +191,13 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
             >
               Todos
             </button>
+            }
+          >
             {categories.map((category) => (
               <button
                 key={category.id}
+                type="button"
+                aria-pressed={selectedCategory === category.id}
                 onClick={() => { setSelectedCategory(selectedCategory === category.id ? null : category.id); resetPage() }}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
                   selectedCategory === category.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
@@ -195,7 +207,7 @@ export function ProductGrid({ products: productosIniciales, categories, primaryC
                 {category.name}
               </button>
             ))}
-          </div>
+          </CarrilChips>
         )}
         {/* Ordenar + Ofertas */}
         <div className="flex items-center gap-2 flex-wrap">
