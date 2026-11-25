@@ -167,7 +167,13 @@ export function atributosTema(t: TemaPublico | null, opciones?: OpcionesAtributo
   // Fondo oscuro o claro (misma regla que el texto sobre el acento): el pie de las plantillas
   // oscuras va un 40 % más oscuro que el fondo; el de las claras, un 5 % hacia el texto.
   if (t.fondo) datos['data-tema-fondo'] = fondoOscuro(t.fondo) ? 'oscuro' : 'claro'
-  if (t.fuenteCuerpo) datos['data-tema-fuente'] = 'propia'
+  // Letra del tema en TODAS las secciones (texto y títulos), activada aquí y en app/globals.css:
+  // - `data-tema-fuente`: el tema define la letra de cuerpo (propia o por el par de las perillas).
+  // - `data-tema-titulos`: solo la de títulos; el cuerpo sigue como hoy.
+  // Sin letra propia no se marca nada: la tienda se ve igual que antes.
+  const fuentesDelPar = parDeTokens(t.tokens).length > 0
+  if (t.fuenteCuerpo || fuentesDelPar) datos['data-tema-fuente'] = 'propia'
+  else if (t.fuenteTitulos) datos['data-tema-titulos'] = 'propia'
   if (t.radio !== null) variables['--radio-sitio'] = `${t.radio}px`
   const radioBoton = radioBotonPx(t)
   if (radioBoton !== null) {
@@ -266,10 +272,15 @@ export function ejesDeFamilia(familia: string, variantes?: VariantesFuente): str
  * fuentes de títulos y cuerpo. Antes la hoja solo pedía estas dos, y los sitios que eligieron la
  * fuente con el par (plantillas de tienda) apuntaban a una familia que nunca se descargaba.
  */
+/** Familias del par tipográfico de las perillas (`tokens.tipografia.par`); vacío sin par válido. */
+function parDeTokens(tokens: TokensCrudos | null | undefined): string[] {
+  const par = tokens?.tipografia?.par
+  return par && par.mode === 'value' ? familiasDePar(par.value) : []
+}
+
 export function familiasTema(t: TemaPublico | null): string[] {
   if (!t) return []
-  const par = t.tokens?.tipografia?.par
-  const delPar = par && par.mode === 'value' ? familiasDePar(par.value) : []
+  const delPar = parDeTokens(t.tokens)
   if (delPar.length > 0) return delPar
   return [t.fuenteTitulos, t.fuenteCuerpo].filter((f): f is string => !!f)
 }

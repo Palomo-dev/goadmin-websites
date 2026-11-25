@@ -74,7 +74,7 @@ const igual = (a, b, msg) => check(JSON.stringify(a) === JSON.stringify(b), `${m
 
 const { presentacionSeccion } = m.estiloSeccionPublico
 const { visibilidadDesdeDocumento, visibilidadAlDocumento } = m.estiloSeccion
-const { temaPublicoDesdeDocumento, temaPublicoDesdeMensaje, atributosTema, urlGoogleFonts, familiaSegura } = m.temaPublico
+const { temaPublicoDesdeDocumento, temaPublicoDesdeMensaje, atributosTema, urlGoogleFonts, familiaSegura, familiasTema } = m.temaPublico
 const { validarDocumentoSitio } = m.documentoSitio
 
 // ─── 1. Visibilidad ──────────────────────────────────────────────────────────────────────────
@@ -192,6 +192,20 @@ const { validarDocumentoSitio } = m.documentoSitio
   igual(atributosTema({ ...t, fondo: '#0E0E0E', texto: '#F2EDE4' }).datos['data-tema-fondo'], 'oscuro', 'fondo #0E0E0E → oscuro')
   check(!('data-tema-fondo' in atributosTema({ ...t, fondo: null }).datos), 'sin fondo propio no se marca el modo')
 
+  // Letra del tema en TODAS las secciones, activada en un solo lugar (atributosTema + globals.css).
+  const sinLetra = { ...t, fuenteTitulos: null, fuenteCuerpo: null, tokens: null }
+  const parTokens = { tipografia: { par: { mode: 'value', value: 'space_grotesk_inter' } } }
+  igual(atributosTema(t).datos['data-tema-fuente'], 'propia', 'títulos y cuerpo propios: letra del tema en todo el sitio')
+  igual(atributosTema({ ...sinLetra, tokens: parTokens }).datos['data-tema-fuente'], 'propia', 'par tipográfico de las perillas: letra del tema en todo el sitio')
+  igual(atributosTema({ ...sinLetra, tokens: parTokens }).variables['--font-heading'], "'Space Grotesk', ui-sans-serif, system-ui, sans-serif", 'el par define --font-heading')
+  igual(familiasTema({ ...sinLetra, tokens: parTokens }).join(), 'Space Grotesk,Inter', 'la hoja de fuentes pide las del par')
+  const soloTitulos = atributosTema({ ...sinLetra, fuenteTitulos: 'Bebas Neue' }).datos
+  check(soloTitulos['data-tema-titulos'] === 'propia' && !('data-tema-fuente' in soloTitulos), 'solo títulos propios: títulos con la del tema y el texto como hoy')
+  const sinNada = atributosTema(sinLetra).datos
+  check(!('data-tema-fuente' in sinNada) && !('data-tema-titulos' in sinNada), 'tienda sin letra propia: no se marca nada (igual que hoy)')
+  check(!('data-tema-fuente' in atributosTema({ ...sinLetra, tokens: { tipografia: { par: { mode: 'value', value: 'no_existe' } } } }).datos), 'un par desconocido no activa nada')
+  check(!('data-tema-fuente' in atributosTema({ ...sinLetra, tokens: { radio: { mode: 'value', value: 'suave' } } }).datos), 'perillas sin par no tocan la letra')
+
   // Texto del botón sobre el acento (copia literal de textoSobreAcento del ERP).
   const { textoSobreAcento, textoSobreAcentoSiHex } = m.textoSobreAcento
   for (const claro of ['#C8A97E', '#D4AF37', '#B8975A', '#F2EDE4']) igual(textoSobreAcento(claro), '#111111', `acento claro ${claro} → texto negro`)
@@ -210,13 +224,22 @@ const { validarDocumentoSitio } = m.documentoSitio
     'data-seccion-fuente-titulo', 'data-seccion-fuente-texto', 'data-seccion-tamano-titulo', 'data-seccion-tamano-texto',
     'data-seccion-grosor-titulo', 'data-seccion-grosor-texto', 'data-seccion-interlineado-titulo', 'data-seccion-interlineado-texto',
     'data-seccion-mayusculas-titulo', 'data-seccion-mayusculas-texto', 'data-seccion-color-texto', 'data-seccion-color-borde',
-    'data-tema-colores', 'data-tema-fondo', 'data-tema-fuente', 'data-radio-boton', 'data-estilo-boton', 'data-movimiento',
+    'data-tema-colores', 'data-tema-fondo', 'data-tema-fuente', 'data-tema-titulos', 'data-radio-boton', 'data-estilo-boton', 'data-movimiento',
   ]
   for (const a of atributos) {
     // data-movimiento lo lee prefersReducedMotion (JS), no una regla CSS.
     if (a === 'data-movimiento') continue
     check(css.includes(`[${a}`), `app/globals.css no tiene regla para [${a}]`)
   }
+  // La letra de títulos fijada en una sección gana a la del tema: la regla que la protege va
+  // DESPUÉS de las del tema y con más especificidad (las dos de antes empataban y ganaba el tema).
+  const plano = css.replace(/\r\n/g, '\n')
+  const posTema = plano.indexOf('[data-tema-fuente] :is(h1')
+  const posTitulos = plano.indexOf('[data-tema-titulos] :is(h1')
+  const posSeccion = plano.indexOf('[data-tema-fuente] [data-seccion-fuente-titulo] :is(h1')
+  check(posTema > 0 && posTitulos > posTema && posSeccion > posTitulos, 'la letra de título de la sección se declara después de la del tema')
+  check(/\[data-tema-titulos\] \[data-seccion-fuente-titulo\] :is\(h1, h2, h3, h4, h5, h6\) \{ font-family: var\(--seccion-fuente-titulo\); \}/.test(plano), 'también con solo títulos propios')
+  check(!/\[data-tema-(fuente|titulos)\][^{]*\{[^}]*font-family:\s*['"A-Z]/.test(plano), 'las reglas del tema no fijan una familia: solo variables')
   const motion = await readFile(join(ROOT, 'components/sections/restaurant/useSectionMotion.ts'), 'utf8')
   check(motion.includes('[data-movimiento="ninguno"]'), 'prefersReducedMotion respeta «Movimiento: Ninguno»')
 }

@@ -621,6 +621,13 @@ header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) :i
 }
 [data-tema-fuente] { font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; }
 [data-tema-fuente] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; }
+/* Solo letra de títulos propia (sin cuerpo): los títulos con la del tema; el texto, como hoy. */
+[data-tema-titulos] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif; }
+/* La letra de títulos que el editor fija en una sección (Estilo › Tipografía) gana a la del tema:
+   con la misma especificidad y declarada antes, la regla del tema la tapaba. La letra de texto de la
+   sección ya gana sola (se declara en la propia sección y el tema solo llega por herencia). */
+[data-tema-fuente] [data-seccion-fuente-titulo] :is(h1, h2, h3, h4, h5, h6),
+[data-tema-titulos] [data-seccion-fuente-titulo] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--seccion-fuente-titulo); }
 /* Redondeo y estilo de botón: solo dentro de las secciones (el checkout y los diálogos no cambian).
    1) Botones marcados con data-boton (lib/website/botonSitio.ts): la regla exacta.
    2) Sin marca, solo lo que es un botón de verdad: relleno horizontal (px-), nunca un círculo
