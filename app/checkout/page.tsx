@@ -20,6 +20,10 @@ import { CheckoutEncabezado } from '@/components/site/CheckoutEncabezado'
 import type { WebsiteSettings } from '@/types/database'
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { normalizarEstiloBarraPago } from '@/components/site/checkout/barraPago'
+import { CLAVE_TIEMPOS_PEDIDOS, leerTiemposEntregaTienda } from '@/lib/shipping/tiempoEntrega'
+import { AccesoCuenta } from '@/components/site/cuenta/AccesoCuenta'
+import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda'
+import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +102,16 @@ export default async function CheckoutPage() {
     .is('branch_id', null)
     .maybeSingle()
 
+  // Tiempos de «Pedidos online» del ERP (organization_settings, una fila por organización y clave;
+  // columnas verificadas por MCP 2026-11-25). Solo pinta el tiempo de entrega del checkout
+  // (lib/shipping/tiempoEntrega.ts); un fallo cuenta como «sin tiempos» y el checkout sigue igual.
+  const { data: filaTiempos } = await (supabaseWs as any)
+    .from('organization_settings')
+    .select('settings')
+    .eq('organization_id', organization.id)
+    .eq('key', CLAVE_TIEMPOS_PEDIDOS)
+    .maybeSingle()
+
   const checkoutSettings = {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
     taxRate: defaultTax ? Number(defaultTax.rate) : 0,
@@ -112,6 +126,7 @@ export default async function CheckoutPage() {
     availableDeliveryTypes: wsRow?.available_delivery_types || ['pickup', 'delivery_own', 'delivery_third_party'],
     shippingTitle: wsRow?.shipping_flat_rate_title || 'Envío',
     shippingDescription: wsRow?.shipping_flat_rate_description || '',
+    tiemposEntrega: leerTiemposEntregaTienda(filaTiempos?.settings ?? null),
     showTrustBadges: wsRow?.checkout_show_trust_badges ?? true,
     trustBadges: wsRow?.checkout_trust_badges || [{ icon: '🔒', text: 'Compra segura' }, { icon: '✅', text: 'Devolución garantizada' }, { icon: '🚚', text: 'Envío rastreado' }],
     showStockWarning: wsRow?.checkout_show_stock_warning ?? false,
@@ -139,6 +154,12 @@ export default async function CheckoutPage() {
 
   const orgName = organization.name
   const ajustesEncabezado = (organization.website_settings as WebsiteSettings | null) ?? null
+  // «Al tocar el ícono de cuenta» del editor: el checkout no usa OrganizationLayout, así que monta
+  // aquí el mismo AccesoCuenta (misma condición que el layout). Con él, «¿Ya compraste aquí?» y el
+  // «Ingresar» de contraentrega abren la ventana de acceso sin salir del pago; con «Página» (o la
+  // cuenta congelada) no se monta y esos enlaces van a /auth?siguiente=/checkout, como hoy.
+  const opCuenta = opcionesCuenta((organization.website_settings ?? null) as Record<string, unknown> | null)
+  const conAccesoCuenta = !ctx.frozenReason && opCuenta.modo !== 'pagina'
 
   const showCurrencyCode = (organization.website_settings as any)?.show_currency_code ?? false
   const currencyPosition = (organization.website_settings as any)?.currency_position ?? 'left'
@@ -223,6 +244,9 @@ export default async function CheckoutPage() {
         prefijoSede={ctx.prefijoSede ?? ''}
       />
       <CartEventTracker organizationSubdomain={organization.subdomain || ''} branchId={branchId} />
+      {conAccesoCuenta ? (
+        <AccesoCuenta opciones={opCuenta} google={googleEnAcceso(organization.website_settings)} organizationId={organization.id} organizationName={organization.name} primaryColor={primaryColor} />
+      ) : null}
     </div>
     </CurrencyProvider>
   )

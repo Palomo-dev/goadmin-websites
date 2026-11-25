@@ -7,11 +7,13 @@
  * - `PagoRechazado`: el aviso «<Pasarela> no aprobó el pago. No se te cobró nada.», «Intentar de
  *   nuevo · $ X» sobre el MISMO pedido y «Pagar con otro método» (las pasarelas activas de la
  *   tienda). Cobra por /api/checkout/init: el servidor valida el pedido y cambia su método.
- * - `CuponCheckout`: el código de cupón dentro de Pago, en mayúsculas y sin autocorrección.
+ * - `CuponCheckout`: el código de cupón dentro de Pago, en mayúsculas y sin autocorrección. Con
+ *   `plegado` (2026-11-25, el dueño: el campo abierto confunde), primero un enlace «¿Tienes un cupón
+ *   de descuento?» que abre el campo; con un cupón aplicado, el cupón aplicado con «Quitar».
  */
 
-import { useState, type ReactNode } from 'react'
-import { CreditCard, FileText, Loader2, RefreshCw, ShoppingBag, Truck, User, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { CreditCard, FileText, Loader2, RefreshCw, ShoppingBag, Tag, Truck, User, XCircle } from 'lucide-react'
 import Enlace from '@/components/site/Enlace'
 
 export interface FilaRevisar {
@@ -205,22 +207,75 @@ export function CuponCheckout({
   cargando,
   error,
   aplicado,
+  plegado = false,
+  cuponAplicado = null,
+  fmt,
 }: {
   codigo: string
   onCodigo: (v: string) => void
   onAplicar: () => void
   cargando: boolean
   error: string | null
-  /** Con cupón aplicado no se pinta (se quita desde el resumen). */
+  /** Con cupón aplicado no se pinta (se quita desde el resumen), salvo con `cuponAplicado`. */
   aplicado: boolean
+  /** Enlace «¿Tienes un cupón de descuento?» que abre el campo. Sin valor, el campo abierto (lo de antes). */
+  plegado?: boolean
+  /** Cupón aplicado: se muestra aplicado con «Quitar», sin abrir nada. */
+  cuponAplicado?: { codigo: string; descuento: number; onQuitar: () => void } | null
+  /** Formato del descuento del cupón aplicado. */
+  fmt?: (n: number) => string
 }): ReactNode {
-  if (aplicado) return null
+  const [abierto, setAbierto] = useState(false)
+  const campo = useRef<HTMLInputElement>(null)
+  const pidioAbrir = useRef(false)
+  useEffect(() => {
+    if (abierto && pidioAbrir.current) {
+      pidioAbrir.current = false
+      campo.current?.focus()
+    }
+  }, [abierto])
+  if (aplicado) {
+    if (!cuponAplicado) return null
+    return (
+      <div className="mt-6 flex items-center gap-2 border-t pt-5 text-sm" data-cupon-checkout="" data-cupon-aplicado="">
+        <Tag className="h-4 w-4 flex-shrink-0 text-green-600" aria-hidden="true" />
+        <span className="min-w-0 flex-1 text-gray-700">
+          Cupón <strong className="font-mono text-gray-900">{cuponAplicado.codigo}</strong> aplicado
+          {fmt && cuponAplicado.descuento > 0 ? <span className="text-green-600"> · −{fmt(cuponAplicado.descuento)}</span> : null}
+        </span>
+        <button type="button" onClick={cuponAplicado.onQuitar} className="flex-shrink-0 font-semibold text-gray-600 underline underline-offset-4 hover:text-red-600">
+          Quitar
+        </button>
+      </div>
+    )
+  }
+  // Plegado: el enlace, salvo que ya haya algo escrito o un error que mostrar (no se esconde).
+  if (plegado && !abierto && !codigo.trim() && !error) {
+    return (
+      <div className="mt-6 border-t pt-5" data-cupon-checkout="" data-cupon-plegado="">
+        <button
+          type="button"
+          onClick={() => {
+            pidioAbrir.current = true
+            setAbierto(true)
+          }}
+          aria-expanded={false}
+          aria-controls="checkout-cupon"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 underline underline-offset-4 hover:text-gray-900"
+        >
+          <Tag className="h-4 w-4" aria-hidden="true" />
+          ¿Tienes un cupón de descuento?
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="mt-6 border-t pt-5" data-cupon-checkout="">
       <p className="mb-3 text-base font-semibold text-gray-900">Cupón de descuento</p>
       <label htmlFor="checkout-cupon" className="mb-1 block text-sm font-medium text-gray-700">Código del cupón</label>
       <div className="flex gap-2">
         <input
+          ref={campo}
           id="checkout-cupon"
           value={codigo}
           onChange={(e) => onCodigo(e.target.value.toUpperCase())}

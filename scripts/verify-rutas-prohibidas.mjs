@@ -214,6 +214,24 @@ const PROHIBIDAS = [
  *   Sin cambios en /api/orders, /api/checkout/init, webhooks, lib/cart ni lib/checkout.
  * Vence el 2026-12-12. Comprobado por scripts/verify-checkout-v2.mjs (y verify-barra-pago,
  * verify-contraentrega, verify-zonas-envio, verify-escalones-tienda, verify-domicilio-transportadora).
+ *
+ * 2026-11-25 — Cuatro arreglos del dueño en el checkout (tienda de la org 358). Lo nuevo vive FUERA
+ * de las rutas del dinero (lib/shipping/tiempoEntrega.ts, lib/carrito/cantidadLinea.ts,
+ * components/site/checkout/sesionCheckout.ts, ResumenPedido, RevisarPedido, cuenta/eventos.ts,
+ * cuenta/AccesoCuenta.tsx y app/checkout/page.tsx). En la ruta protegida, solo:
+ * - components/site/CheckoutWizard.tsx: (1) el tiempo de la tarjeta de domicilio sale de
+ *   `tiempoEntregaCheckout` (zona → días de tarifas web → «Pedidos online» guardado → nada), y el
+ *   aviso y el resumen leen ese mismo valor; el resumen ya no pinta el DEFAULT de la columna
+ *   `shipping_flat_rate_description` (un texto propio, como hoy). (2) «¿Ya compraste aquí?» y el
+ *   «Ingresar» de contraentrega abren la ventana de acceso si está montada (si no, el enlace de
+ *   siempre a /auth?siguiente=/checkout); los datos de la cuenta se piden otra vez al entrar y solo
+ *   llenan lo vacío (`mezclarDatosCuenta`; al abrir con sesión, lo de siempre). (3) − / + y «Quitar»
+ *   en el resumen con `cambiarCantidadLinea` / `quitarLineaCarrito` (la misma regla del carrito
+ *   lateral y /carrito), guardando el carrito igual que `removeItem`; de solo lectura mientras se
+ *   cobra o se reintenta el MISMO pedido. (4) Cupón plegado (`plegado`) y aplicado con «Quitar».
+ *   No toca el payload de /api/orders, el cobro, `handleSubmit` ni el servidor: /api/orders sigue
+ *   recalculando precios, promociones, envío y stock.
+ * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -243,6 +261,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/lookup/route.ts', hasta: '2026-12-11', motivo: 'Consultar pedido v2: búsqueda por correo retirada (410)' },
   { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-08', motivo: 'Consultar pedido: motivo de cancelación sin códigos de pasarela ni notas internas' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Checkout v2 fase 1: piezas extraídas, validación única, botón que dice la verdad y pago rechazado sobre el mismo pedido' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Arreglos del dueño 2026-11-25: tiempo de entrega único, ingresar sin salir del pago, − / + en el resumen y cupón plegado' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

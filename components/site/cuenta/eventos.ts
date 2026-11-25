@@ -15,6 +15,17 @@ export interface DetalleAbrirAcceso {
   vista?: VistaAcceso
   /** Quien la abrió: la ventana se cuelga de él y el foco vuelve a él al cerrar. */
   origen?: HTMLElement | null
+  /**
+   * Al entrar se queda en la página aunque el editor diga «Ir a Mi cuenta» (el checkout: el
+   * carrito y lo escrito no se pierden y los datos de la cuenta se llenan solos). Sin valor, lo
+   * del editor, como hoy.
+   */
+  quedarse?: boolean
+  /**
+   * Página a la que ir si el acceso no se abre como ventana (la vista manda a la página): la del
+   * checkout lleva `?siguiente=/checkout`. Sin valor, la ruta de siempre de la vista.
+   */
+  paginaRespaldo?: string
 }
 
 let anfitriones = 0
@@ -53,11 +64,25 @@ export function alTocarEnlaceCuenta(
   e: { defaultPrevented: boolean; button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; currentTarget: EventTarget | null; preventDefault: () => void },
   respaldo: string,
   vista?: VistaAcceso,
+  extra?: Pick<DetalleAbrirAcceso, 'quedarse' | 'paginaRespaldo'>,
 ) {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
   if (anfitriones === 0) return
   e.preventDefault()
-  abrirAccesoCuenta({ origen: e.currentTarget instanceof HTMLElement ? e.currentTarget : null, respaldo, vista })
+  abrirAccesoCuenta({ origen: e.currentTarget instanceof HTMLElement ? e.currentTarget : null, respaldo, vista, ...(extra ?? {}) })
+}
+
+/**
+ * «¿Ya compraste aquí? Ingresa con un código» y el «Ingresar» de contraentrega en el checkout:
+ * con la ventana de acceso montada (cualquier modo del editor menos «Página»), la abre en
+ * «Ingresar» y, al entrar, el cliente se queda en el pago. Sin ella, el enlace sigue a
+ * `href` (/auth?siguiente=/checkout), como hoy.
+ */
+export function alTocarIngresarCheckout(
+  e: Parameters<typeof alTocarEnlaceCuenta>[0],
+  href: string,
+) {
+  alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })
 }
 
 let abierto = false

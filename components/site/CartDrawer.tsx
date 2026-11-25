@@ -9,6 +9,7 @@ import { ContadoresDe } from './ContadorPublico'
 import { conversionManda } from '@/lib/website/conversion'
 import { Price } from './CurrencyProvider'
 import { getCartKey } from '@/lib/utils'
+import { cambiarCantidadLinea, quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
 import { useCartPromotions } from '@/lib/hooks/useCartPromotions'
 import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
 import { AhorroPromociones, DesglosePromociones, PreciosPromoLinea } from './volumen/PromocionesCarrito'
@@ -116,21 +117,16 @@ export function CartDrawer({ isOpen, onClose, primaryColor, organizationSubdomai
     }
   }, [cartKey])
   
+  // Una sola regla con /carrito y el checkout (lib/carrito/cantidadLinea.ts): mínimo 1 y el stock.
   const updateQuantity = (id: number | string, delta: number) => {
-    const updatedItems = items.map(item => {
-      if (item.id === id) {
-        const newQty = Math.max(1, item.quantity + delta)
-        return { ...item, quantity: newQty }
-      }
-      return item
-    })
+    const updatedItems = cambiarCantidadLinea(items, id, delta)
     setItems(updatedItems)
     localStorage.setItem(cartKey, JSON.stringify(updatedItems))
     window.dispatchEvent(new CustomEvent('cart-updated'))
   }
   
   const removeItem = (id: number | string) => {
-    const updatedItems = items.filter(item => item.id !== id)
+    const updatedItems = quitarLineaCarrito(items, id)
     setItems(updatedItems)
     localStorage.setItem(cartKey, JSON.stringify(updatedItems))
     window.dispatchEvent(new CustomEvent('cart-updated'))

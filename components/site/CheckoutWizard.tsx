@@ -1,7 +1,11 @@
 'use client'
 
 import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { alTocarIngresarCheckout } from '@/components/site/cuenta/eventos'
+import { mezclarDatosCuenta } from './checkout/sesionCheckout'
+import { cambiarCantidadLinea, puedeSumarLinea, quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowRight, ShoppingBag, Loader2, MapPin, ChevronDown, AlertTriangle, Lock, Plus, User, UtensilsCrossed } from 'lucide-react'
@@ -9,6 +13,7 @@ import Link from '@/components/site/Enlace'
 import { type OrderType, type OpcionDomicilio } from '@/components/site/OrderTypeSelector'
 import { gruposActivos, resumenDomicilio, tarifasDelGrupo, textoDias, type GrupoEnvio } from '@/lib/shipping/opcionesDomicilio'
 import { barraEnvioGratis, detalleZona, envioDeZona, llegadaZona, type CotizacionPublica } from '@/lib/shipping/domicilioZonas'
+import { descripcionEnvioPropia, tiempoConfiguradoTexto, tiempoEntregaCheckout, type TiemposEntregaTienda } from '@/lib/shipping/tiempoEntrega'
 import { TipSelector } from '@/components/site/TipSelector'
 import { ScheduleSelector } from '@/components/site/ScheduleSelector'
 import { OrderConfirmation, type ResumenPedidoConfirmado } from '@/components/site/OrderConfirmation'
@@ -142,6 +147,8 @@ interface CheckoutSettings {
   availableDeliveryTypes?: string[]
   shippingTitle?: string
   shippingDescription?: string
+  /** Tiempos guardados en «Pedidos online» del ERP (lib/shipping/tiempoEntrega.ts); null sin fila. */
+  tiemposEntrega?: TiemposEntregaTienda | null
   showTrustBadges?: boolean
   trustBadges?: TrustBadge[]
   showStockWarning?: boolean
@@ -475,48 +482,43 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   }, [])
 
 
-  // Precargar datos del usuario autenticado via API server-side
-  useEffect(() => {
-    const loadAuthData = async () => {
-      try {
-        const res = await fetch(`/api/customer/me?organizationId=${organizationId}`)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!data.authenticated) return
+  // Precargar datos del usuario autenticado via API server-side. `trasIngreso`: el cliente acaba de
+  // entrar desde la ventana de acceso sin salir del pago; lo que ya escribió se respeta y la cuenta
+  // llena lo vacío (mezclarDatosCuenta). Al abrir el checkout con sesión, lo de siempre.
+  const autenticadoRef = useRef(false)
+  const cargarDatosCuenta = useCallback(async (trasIngreso: boolean) => {
+    try {
+      const res = await fetch(`/api/customer/me?organizationId=${organizationId}`)
+      if (!res.ok) return
+      const data = await res.json()
+      if (!data.authenticated) return
 
-        setIsAuthenticated(true)
-        if (data.customerId) setCustomerId(data.customerId)
+      autenticadoRef.current = true
+      setIsAuthenticated(true)
+      if (data.customerId) setCustomerId(data.customerId)
 
-        setCustomerData((prev: any) => ({
-          ...prev,
-          firstName: data.firstName || prev.firstName,
-          lastName: data.lastName || prev.lastName,
-          email: data.email || prev.email,
-          phone: data.phone || prev.phone,
-          address: data.address || prev.address,
-          city: data.city || prev.city,
-        }))
-
-        if (data.addresses && data.addresses.length > 0) {
-          setSavedAddresses(data.addresses)
-          const defaultAddr = data.addresses.find((a: any) => a.is_default) || data.addresses[0]
-          if (defaultAddr) {
-            setCustomerData((prev: any) => ({
-              ...prev,
-              address: defaultAddr.address_line1 || prev.address,
-              city: defaultAddr.city || prev.city,
-              countryCode: defaultAddr.country_code || prev.countryCode,
-              stateName: defaultAddr.department || prev.stateName,
-              department: defaultAddr.department || prev.department,
-            }))
-          }
-        }
-      } catch (err) {
-        console.error('Error loading auth data:', err)
-      }
+      const direcciones = Array.isArray(data.addresses) && data.addresses.length > 0 ? data.addresses : null
+      setCustomerData((prev: any) => mezclarDatosCuenta(prev, data, direcciones, trasIngreso))
+      if (direcciones) setSavedAddresses(direcciones)
+    } catch (err) {
+      console.error('Error loading auth data:', err)
     }
-    loadAuthData()
   }, [organizationId])
+
+  useEffect(() => {
+    void cargarDatosCuenta(false)
+  }, [cargarDatosCuenta])
+
+  // Entró desde la ventana de acceso (AccesoCuenta, sin recargar): se piden los datos de la cuenta
+  // otra vez para llenar nombre, correo, celular y direcciones guardadas. Con sesión desde el
+  // principio, no hace nada (ya se cargaron arriba).
+  useEffect(() => {
+    const { data } = createClient().auth.onAuthStateChange((evento) => {
+      if (evento !== 'SIGNED_IN' || autenticadoRef.current) return
+      void cargarDatosCuenta(true)
+    })
+    return () => data.subscription.unsubscribe()
+  }, [cargarDatosCuenta])
 
   // «Atrás» y «adelante» del navegador entre pasos (?paso=).
   useEffect(() => {
@@ -577,11 +579,23 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
   const removeItem = (id: number | string) => {
     setCartItems(items => {
-      const updated = items.filter(item => item.id !== id)
+      const updated = quitarLineaCarrito(items, id)
       const subdomain = organizationSubdomain || ''
       // F5: carrito separado por outlet cuando hay branchId.
       const cartKey = getCartKey(subdomain, branchId)
       localStorage.setItem(cartKey, JSON.stringify(updated))
+      window.dispatchEvent(new CustomEvent('cart-updated'))
+      return updated
+    })
+  }
+
+  // − / + del resumen (como antes del checkout v2): la misma regla del carrito lateral y /carrito
+  // (lib/carrito/cantidadLinea.ts: mínimo 1, tope del stock). Se guarda igual que removeItem;
+  // promociones, impuesto, envío, contraentrega y total se recalculan solos con cartItems.
+  const cambiarCantidad = (id: number | string, delta: number) => {
+    setCartItems(items => {
+      const updated = cambiarCantidadLinea(items, id, delta)
+      localStorage.setItem(getCartKey(organizationSubdomain || '', branchId), JSON.stringify(updated))
       window.dispatchEvent(new CustomEvent('cart-updated'))
       return updated
     })
@@ -848,7 +862,8 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         grupo: g,
         titulo: 'Domicilio',
         detalle: detalleZona(cotZona),
-        tiempo: e.ok ? llegadaZona(cotZona, fechaCorta) : null,
+        // Con zona, la zona decide sola (tiempoEntregaCheckout): lo de hoy.
+        tiempo: tiempoEntregaCheckout({ conZona: true, zona: e.ok ? llegadaZona(cotZona, fechaCorta) : null, tarifas: null, configurado: null }),
         precio: !e.ok ? '—' : e.costo === 0 ? 'Gratis' : fmtPrice(e.costo),
       }
     }
@@ -863,7 +878,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       grupo: g,
       titulo: r.titulo,
       detalle: r.detalle,
-      tiempo: r.tiempo,
+      // Días de las tarifas web (lo de hoy); sin ellos, el tiempo de «Pedidos online» que guardó la
+      // tienda; sin ninguno, sin tiempo (nunca uno inventado). Una sola regla para tarjeta, aviso y resumen.
+      tiempo: tiempoEntregaCheckout({ conZona: false, zona: null, tarifas: r.tiempo, configurado: tiempoConfiguradoTexto(settings.tiemposEntrega, g, sedeMetodos) }),
       precio: r.costo === 0 ? 'Gratis' : `${r.desde ? 'desde ' : ''}${fmtPrice(r.costo)}`,
     }
   })
@@ -1831,7 +1848,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
               {/* Contraentrega con condiciones: motivo si no aplica, desglose y pasarela del anticipo si sí. */}
               {method.id === 'cash' && ce.estado && (
                 !ce.estado.disponible
-                  ? <MotivoContraentrega estado={ce.estado} fmt={fmtPrice} hrefSeguirComprando={conPrefijo('/productos', prefijoSede)} hrefIngresar={isAuthenticated ? null : hrefIngresar} ciudad={customerData.city} onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican} />
+                  ? <MotivoContraentrega estado={ce.estado} fmt={fmtPrice} hrefSeguirComprando={conPrefijo('/productos', prefijoSede)} hrefIngresar={isAuthenticated ? null : hrefIngresar} onIngresar={(e) => alTocarIngresarCheckout(e, hrefIngresar)} ciudad={customerData.city} onCambiarDireccion={cambiarDireccionContraentrega} onQuitar={quitarNoAplican} />
                   : paymentMethod === 'cash' && (
                     <DetalleContraentrega estado={ce.estado} total={total} fmt={fmtPrice} pasarela={ce.pasarela} onPasarela={ce.setPasarela} color={primaryColor} sinMontos />
                   )
@@ -1853,6 +1870,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         cargando={couponLoading}
         error={couponError}
         aplicado={!!appliedCoupon}
+        // Plegado tras «¿Tienes un cupón de descuento?» (3 pasos y 1 paso, celular y computador); el
+        // cupón aplicado se ve aplicado con «Quitar» (y sigue en el resumen, como hoy).
+        plegado
+        cuponAplicado={appliedCoupon ? { codigo: appliedCoupon.code, descuento: couponDiscount, onQuitar: removeCoupon } : null}
+        fmt={fmtPrice}
       />
     </div>
   )
@@ -1963,6 +1985,7 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     descuento: promoItemDiscounts[String(item.id)] || 0,
     promo: <PromoDeLinea promos={promotionsForItem(appliedPromotions, item.id)} pista={promoVolumeHints?.[String(item.id)] ?? null} fmt={fmtPrice} />,
     avisoStock: settings.showStockWarning ? avisoStock(item.stock, umbralStock, plantillaStock) : null,
+    puedeSumar: puedeSumarLinea(cartItems, item.id),
   }))
 
   const resumen = (
@@ -1971,6 +1994,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       fmt={fmtPrice}
       color={primaryColor}
       hrefCarrito={hrefCarrito}
+      // Cantidades editables en el resumen (celular y computador). Mientras se cobra o se reintenta
+      // el MISMO pedido, el resumen es de solo lectura (lo de hoy).
+      editarCantidad={submitting || reintento ? null : { onCambiar: cambiarCantidad, onQuitar: removeItem }}
       chipEntrega={(hasDelivery || hasPickup) ? (
         <ChipEntregaResumen
           tipo={(orderType === 'delivery' ? (etiquetaDomicilio === 'Transportadora' ? 'transportadora' : 'domicilio') : orderType === 'pickup' ? 'recoger' : 'comer_aqui') satisfies TipoEntregaResumen}
@@ -1986,7 +2012,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           titulo: settings.shippingTitle || (isRestaurant ? 'Domicilio' : 'Envío'),
           valor: shipping,
           detalle: envioZona?.ok && cotZona ? llegadaZona(cotZona, fechaCorta) : tiempoDomicilio,
-          descripcion: settings.shippingDescription || null,
+          // El DEFAULT de la columna (DESCRIPCION_ENVIO_POR_DEFECTO) no es un tiempo configurado: no se
+          // muestra. Un texto propio de la tienda, como hoy (descripcionEnvioPropia).
+          descripcion: descripcionEnvioPropia(settings.shippingDescription),
           calculando: conZonaPropia && cotizandoZona,
         }
         : null}
@@ -2039,7 +2067,9 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
       ) : (
         <>
           <span>Compras como invitado, sin crear cuenta.</span>
-          <Link href={hrefIngresar} className="font-semibold underline underline-offset-4" style={{ color: primaryColor }}>
+          {/* Con la ventana de acceso montada (opción del editor distinta de «Página») se abre ahí y el
+              cliente sigue en el pago; si no, el enlace a /auth?siguiente=/checkout de siempre. */}
+          <Link href={hrefIngresar} onClick={(e) => alTocarIngresarCheckout(e, hrefIngresar)} className="font-semibold underline underline-offset-4" style={{ color: primaryColor }}>
             ¿Ya compraste aquí? Ingresa con un código
           </Link>
         </>

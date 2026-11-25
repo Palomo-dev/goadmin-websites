@@ -9,7 +9,7 @@
  * pinta nada y el checkout queda exactamente como hoy.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Clock, Info, MapPin, Package, ShieldCheck, User } from 'lucide-react'
 import Enlace from '@/components/site/Enlace'
 import type { MedioAlRecibir, MotivoNoDisponible, AnticipoContraentrega, TipoEntregaPedido } from '@/lib/contraentrega/reglaContraentrega'
@@ -100,6 +100,7 @@ export function MotivoContraentrega({
   fmt,
   hrefSeguirComprando,
   hrefIngresar,
+  onIngresar,
   ciudad,
   onCambiarDireccion,
   onQuitar,
@@ -108,6 +109,8 @@ export function MotivoContraentrega({
   fmt: (n: number) => string
   hrefSeguirComprando?: string | null
   hrefIngresar?: string | null
+  /** Clic en «Ingresar»: el checkout abre ahí la ventana de acceso (si está montada). Sin él, el enlace. */
+  onIngresar?: ((e: MouseEvent<HTMLAnchorElement>) => void) | null
   ciudad?: string | null
   onCambiarDireccion?: (() => void) | null
   /** Quita del carrito los productos que no aplican (09 E «Quitar» / «Quitarlos y pagar contra entrega»). */
@@ -133,7 +136,7 @@ export function MotivoContraentrega({
           ) : accion === 'Cambiar dirección' && onCambiarDireccion ? (
             <button type="button" className="mt-1 font-medium underline" onClick={onCambiarDireccion}>{accion}</button>
           ) : enlace ? (
-            <Enlace href={enlace} className="mt-1 inline-block font-medium underline">{accion}</Enlace>
+            <Enlace href={enlace} onClick={accion === 'Ingresar' && onIngresar ? onIngresar : undefined} className="mt-1 inline-block font-medium underline">{accion}</Enlace>
           ) : null}
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
 import { EncabezadoPagina } from '@/components/site/volver/EncabezadoPagina'
 import { INICIO, type Miga } from '@/lib/navegacion/volver'
 import { getCartKey } from '@/lib/utils'
+import { cambiarCantidadLinea, quitarLineaCarrito } from '@/lib/carrito/cantidadLinea'
 import { useCartPromotions, promotionsForItem, promotionBadgeLabel } from '@/lib/hooks/useCartPromotions'
 import { subtotalParaEnvioGratis } from '@/lib/shipping/envioGratisDescontado'
 import { isParentProduct, padreSinVariantes, TEXTO_PADRE_SIN_VARIANTES } from '@/components/sections/products/ProductCard'
@@ -139,16 +140,13 @@ export function CartPageClient({
     window.dispatchEvent(new CustomEvent('cart-updated'))
   }
 
+  // Una sola regla con el carrito lateral y el checkout (lib/carrito/cantidadLinea.ts).
   const updateQuantity = (id: number | string, delta: number) => {
-    saveCart(
-      items.map(item =>
-        item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-      )
-    )
+    saveCart(cambiarCantidadLinea(items, id, delta))
   }
 
   const removeItem = (id: number | string) => {
-    saveCart(items.filter(item => item.id !== id))
+    saveCart(quitarLineaCarrito(items, id))
   }
 
   const clearCart = () => {

@@ -20,6 +20,14 @@
  *   que el pedido sigue pendiente, cobro del MISMO pedido por /api/checkout/init (el navegador nunca
  *   escribe el método del pedido).
  * - Sin complemento ni factura, lo que viaja a /api/orders es lo de siempre.
+ *
+ * 2026-11-25 — cuatro arreglos del dueño (tienda de la org 358):
+ * - Tiempo de entrega: una sola regla (lib/shipping/tiempoEntrega.ts) para tarjeta, aviso y resumen;
+ *   el DEFAULT «Entrega en 3-5 días hábiles» de la columna ya no se muestra como si fuera suyo.
+ * - «¿Ya compraste aquí?» y el «Ingresar» de contraentrega abren la ventana de acceso de la tienda
+ *   (si está montada) y el cliente se queda en el pago con sus datos; si no, /auth?siguiente=.
+ * - − / + y «Quitar» en el resumen con la regla del carrito (lib/carrito/cantidadLinea.ts).
+ * - Cupón plegado tras «¿Tienes un cupón de descuento?»; aplicado, se ve aplicado con «Quitar».
  */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -61,6 +69,16 @@ import {
 } from '../components/site/checkout/pedidoPendiente.ts'
 import { PAIS_POR_DEFECTO, buscarMunicipios, crearCargadorUbicacion, etiquetaMunicipio, municipioExacto, normalizarTexto, paisParaLista } from '../components/site/checkout/municipios.ts'
 import { contenidoBarraPago } from '../components/site/checkout/barraPago.ts'
+import {
+  DESCRIPCION_ENVIO_POR_DEFECTO,
+  descripcionEnvioPropia,
+  duracionLegible,
+  leerTiemposEntregaTienda,
+  tiempoConfiguradoTexto,
+  tiempoEntregaCheckout,
+} from '../lib/shipping/tiempoEntrega.ts'
+import { mezclarDatosCuenta } from '../components/site/checkout/sesionCheckout.ts'
+import { cambiarCantidadLinea, cupoLinea, puedeSumarLinea, quitarLineaCarrito } from '../lib/carrito/cantidadLinea.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const fuente = (r) => readFileSync(join(ROOT, r), 'utf8')
@@ -337,9 +355,99 @@ igual('municipio: texto libre si no está en la lista, y los campos de siempre s
 const municipiosRuta = fuente('app/api/locations/municipios/route.ts')
 igual('municipios: columnas verificadas por MCP', municipiosRuta.includes(".from('municipalities')") && municipiosRuta.includes(".select('code, name, state_code, state_name')"), true)
 
+// ── 2026-11-25 · Fallo 1: tiempo de entrega (una sola regla) ────────────────────────────────────
+igual('el DEFAULT de la columna no es un tiempo configurado', descripcionEnvioPropia(DESCRIPCION_ENVIO_POR_DEFECTO), null)
+igual('el DEFAULT con espacios o mayúsculas tampoco', descripcionEnvioPropia('  ENTREGA EN 3-5 DÍAS HÁBILES '), null)
+igual('vacío: nada', [descripcionEnvioPropia(''), descripcionEnvioPropia(null), descripcionEnvioPropia(undefined)], [null, null, null])
+igual('texto propio de la tienda: tal cual (lo de hoy)', descripcionEnvioPropia('Despachamos con Servientrega'), 'Despachamos con Servientrega')
+// Lo que tiene guardado la org 358 en «Pedidos online» (MCP 2026-11-25).
+const tiempos358 = leerTiemposEntregaTienda({
+  por_sede: {},
+  por_tipo: {
+    recoger: { alistar: { valor: 1, unidad: 'dias' } },
+    domicilio: { alistar: { valor: 2, unidad: 'dias' }, entrega: { valor: 12, unidad: 'dias' } },
+    transportadora: { alistar: { valor: 2, unidad: 'dias' }, entrega: { valor: 15, unidad: 'dias' } },
+  },
+  contar_desde_apertura: false,
+  usar_en_confirmacion_automatica: false,
+})
+igual('org 358 domicilio: alistar 2 + entrega 12 = 14 días', tiempoConfiguradoTexto(tiempos358, 'own', null), 'Llega en aprox. 14 días')
+igual('org 358 transportadora: 2 + 15 = 17 días', tiempoConfiguradoTexto(tiempos358, 'third_party', null), 'Llega en aprox. 17 días')
+igual('sin fila de tiempos: null (no se inventa)', [leerTiemposEntregaTienda(null), tiempoConfiguradoTexto(null, 'own', null)], [null, null])
+igual('fila vacía: null', leerTiemposEntregaTienda({ por_tipo: {}, por_sede: {} }), null)
+igual('solo «Recoger» guardado: sin tiempo de envío', tiempoConfiguradoTexto(leerTiemposEntregaTienda({ por_tipo: { recoger: { alistar: { valor: 1, unidad: 'dias' } } } }), 'own', null), null)
+igual('solo alistar (sin entrega): no se usa la entrega de fábrica', tiempoConfiguradoTexto(leerTiemposEntregaTienda({ por_tipo: { domicilio: { alistar: { valor: 2, unidad: 'dias' } } } }), 'own', null), null)
+const conSede = leerTiemposEntregaTienda({ por_tipo: { domicilio: { alistar: { valor: 30, unidad: 'minutos' }, entrega: { valor: 2, unidad: 'horas' } } }, por_sede: { '7': { domicilio: { entrega: { valor: 45, unidad: 'minutos' } } }, abc: { domicilio: { entrega: { valor: 1, unidad: 'dias' } } } } })
+igual('general en minutos y horas: 30 min + 2 h = 3 horas', tiempoConfiguradoTexto(conSede, 'own', null), 'Llega en aprox. 3 horas')
+igual('la sede manda campo por campo: 30 min (general) + 45 min (sede) = 2 horas', tiempoConfiguradoTexto(conSede, 'own', 7), 'Llega en aprox. 2 horas')
+igual('sede sin tiempos propios: los generales', tiempoConfiguradoTexto(conSede, 'own', 99), 'Llega en aprox. 3 horas')
+igual('clave de sede inválida se ignora', Object.keys(conSede.porSede), ['7'])
+igual('unidades en inglés y números en texto (como el ERP)', tiempoConfiguradoTexto(leerTiemposEntregaTienda({ por_tipo: { domicilio: { entrega: { valor: '40', unidad: 'minutes' } } } }), 'own'), 'Llega en aprox. 40 min')
+igual('duración: redondea hacia arriba', [duracionLegible(1441), duracionLegible(61), duracionLegible(1440), duracionLegible(0)], ['2 días', '2 horas', '1 día', null])
+igual('orden: con zona, la zona decide sola', tiempoEntregaCheckout({ conZona: true, zona: 'Sale hoy · llega en 2–3 días', tarifas: '5 días', configurado: 'Llega en aprox. 14 días' }), 'Sale hoy · llega en 2–3 días')
+igual('zona que no reparte: sin tiempo (no se cae a otro)', tiempoEntregaCheckout({ conZona: true, zona: null, tarifas: '5 días', configurado: 'Llega en aprox. 14 días' }), null)
+igual('sin zona: días de las tarifas web primero (lo de hoy)', tiempoEntregaCheckout({ conZona: false, zona: null, tarifas: '2–5 días', configurado: 'Llega en aprox. 14 días' }), '2–5 días')
+igual('sin zona ni días de tarifa: el de «Pedidos online» (org 358)', tiempoEntregaCheckout({ conZona: false, zona: null, tarifas: null, configurado: 'Llega en aprox. 14 días' }), 'Llega en aprox. 14 días')
+igual('sin nada configurado: sin tiempo', tiempoEntregaCheckout({ conZona: false, zona: null, tarifas: null, configurado: null }), null)
+const wizTiempo = fuente('components/site/CheckoutWizard.tsx')
+igual('tarjeta de domicilio con la regla única (con y sin zona)', (wizTiempo.match(/tiempo: tiempoEntregaCheckout\(/g) ?? []).length, 2)
+igual('aviso «Domicilio a …» y resumen leen el mismo tiempo de la tarjeta', wizTiempo.includes("const tiempoDomicilio = orderType === 'delivery' ? opcionesDomicilio.find((o) => o.grupo === grupoEnvio)?.tiempo ?? null : null") && wizTiempo.includes('detalle: tiempoDomicilio, pista: null') && wizTiempo.includes('detalle: envioZona?.ok && cotZona ? llegadaZona(cotZona, fechaCorta) : tiempoDomicilio'), true)
+igual('el resumen ya no pinta el DEFAULT «3-5 días hábiles»', wizTiempo.includes('descripcion: descripcionEnvioPropia(settings.shippingDescription)') && !wizTiempo.includes('descripcion: settings.shippingDescription || null'), true)
+igual('ningún «3-5 días hábiles» fijo en el checkout', /3-5 d[ií]as/.test(wizTiempo), false)
+const paginaCheckout = fuente('app/checkout/page.tsx')
+igual('la página lee «Pedidos online» (organization_settings, org del contexto)', paginaCheckout.includes(".from('organization_settings')") && paginaCheckout.includes(".eq('organization_id', organization.id)") && paginaCheckout.includes(".eq('key', CLAVE_TIEMPOS_PEDIDOS)") && paginaCheckout.includes('tiemposEntrega: leerTiemposEntregaTienda('), true)
+
+// ── 2026-11-25 · Fallo 2: «¿Ya compraste aquí?» abre la ventana de acceso ─────────────────────
+igual('el enlace abre la ventana de acceso (y si no está montada, sigue a /auth?siguiente=)', wizTiempo.includes('onClick={(e) => alTocarIngresarCheckout(e, hrefIngresar)}') && wizTiempo.includes("const hrefIngresar = `${conPrefijo('/auth', prefijoSede)}?siguiente=${encodeURIComponent(conPrefijo('/checkout', prefijoSede))}`"), true)
+igual('contraentrega «Ingresar»: misma ventana', wizTiempo.includes('onIngresar={(e) => alTocarIngresarCheckout(e, hrefIngresar)}'), true)
+const contraentregaFuente = fuente('components/site/contraentrega/OpcionContraentrega.tsx')
+igual('contraentrega: el onClick solo en «Ingresar»', contraentregaFuente.includes("onClick={accion === 'Ingresar' && onIngresar ? onIngresar : undefined}"), true)
+const eventosFuente = fuente('components/site/cuenta/eventos.ts')
+igual('sin ventana montada no se intercepta el clic (navega a la página)', /if \(anfitriones === 0\) return\n\s+e\.preventDefault\(\)/.test(eventosFuente), true)
+igual('el checkout pide quedarse y su página de respaldo', eventosFuente.includes("alTocarEnlaceCuenta(e, href, 'ingresar', { quedarse: true, paginaRespaldo: href })"), true)
+const accesoFuente = fuente('components/site/cuenta/AccesoCuenta.tsx')
+igual('al entrar desde el checkout se queda aunque el editor diga «Ir a Mi cuenta»', accesoFuente.includes("if (opciones.despues === 'cuenta' && !quedarse.current) {"), true)
+igual('modo que manda a la página: la del checkout con ?siguiente=', accesoFuente.includes('router.push(detalle.paginaRespaldo)') && accesoFuente.includes("router.push(conSesion ? '/mi-cuenta' : rutaAcceso(pedida))"), true)
+igual('la página del checkout monta la ventana con la misma condición que el layout', paginaCheckout.includes("const conAccesoCuenta = !ctx.frozenReason && opCuenta.modo !== 'pagina'") && paginaCheckout.includes('<AccesoCuenta opciones={opCuenta}'), true)
+igual('tras entrar se vuelven a pedir los datos de la cuenta', wizTiempo.includes("if (evento !== 'SIGNED_IN' || autenticadoRef.current) return") && wizTiempo.includes('void cargarDatosCuenta(true)') && wizTiempo.includes('void cargarDatosCuenta(false)'), true)
+const escrito = { firstName: 'Laura', lastName: '', email: 'laura@correo.co', phone: '', address: 'Cra 7 # 45-12', city: 'Medellín', countryCode: 'CO', stateName: 'Antioquia', department: 'Antioquia' }
+const cuenta = { firstName: 'Laurita', lastName: 'Pérez', email: 'otra@correo.co', phone: '3001234567', address: 'Calle 1', city: 'Bogotá' }
+const dirs = [{ address_line1: 'Calle 10 # 5-20', city: 'Envigado', country_code: 'CO', department: 'Antioquia', is_default: true }]
+igual('tras entrar: lo escrito se respeta y se llena lo vacío', mezclarDatosCuenta(escrito, cuenta, dirs, true), { ...escrito, lastName: 'Pérez', phone: '3001234567' })
+igual('tras entrar sin dirección escrita: la guardada por defecto', mezclarDatosCuenta({ ...escrito, address: '', city: '' }, cuenta, dirs, true).address, 'Calle 10 # 5-20')
+igual('al abrir con sesión: lo de siempre (la cuenta manda y la dirección por defecto encima)', mezclarDatosCuenta(escrito, cuenta, dirs, false), { ...escrito, firstName: 'Laurita', lastName: 'Pérez', email: 'otra@correo.co', phone: '3001234567', address: 'Calle 10 # 5-20', city: 'Envigado' })
+igual('al abrir con sesión sin direcciones: los datos de la cuenta', mezclarDatosCuenta(escrito, cuenta, null, false).address, 'Calle 1')
+
+// ── 2026-11-25 · − / + en el resumen (regla del carrito) ───────────────────────────────────────
+const lineasCarrito = [
+  { id: 5, quantity: 2, stock: 3 },
+  { id: '5_9', productId: 5, quantity: 1, stock: 3 },
+  { id: 8, quantity: 1 },
+]
+igual('«−» no baja de 1', cambiarCantidadLinea([{ id: 1, quantity: 1 }], 1, -1)[0].quantity, 1)
+igual('«−» resta', cambiarCantidadLinea(lineasCarrito, 5, -1)[0].quantity, 1)
+igual('«+» sin stock conocido: sin tope (lo de hoy)', cambiarCantidadLinea(lineasCarrito, 8, 1)[2].quantity, 2)
+igual('stock del producto sumando todas sus líneas: 2 + 1 = 3 → ya no sube', [cupoLinea(lineasCarrito, 5), puedeSumarLinea(lineasCarrito, 5), cambiarCantidadLinea(lineasCarrito, 5, 1)[0].quantity], [0, false, 2])
+igual('empujón «+6» hasta el cupo', cambiarCantidadLinea([{ id: 3, quantity: 1, stock: 4 }], 3, 6)[0].quantity, 4)
+igual('línea por encima del stock: «+» no le quita unidades', cambiarCantidadLinea([{ id: 3, quantity: 6, stock: 4 }], 3, 1)[0].quantity, 6)
+igual('quitar saca solo esa línea', quitarLineaCarrito(lineasCarrito, '5_9').map((l) => l.id), [5, 8])
+igual('no muta las líneas', (() => { const a = [{ id: 1, quantity: 2 }]; cambiarCantidadLinea(a, 1, 1); return a[0].quantity })(), 2)
+igual('el resumen trae − / + y «Quitar» (solo lectura al cobrar o reintentar)', wizTiempo.includes('editarCantidad={submitting || reintento ? null : { onCambiar: cambiarCantidad, onQuitar: removeItem }}') && wizTiempo.includes('puedeSumar: puedeSumarLinea(cartItems, item.id)'), true)
+igual('el checkout guarda el carrito igual que removeItem', wizTiempo.includes('const updated = cambiarCantidadLinea(items, id, delta)') && wizTiempo.includes('const updated = quitarLineaCarrito(items, id)'), true)
+const resumenFuente = fuente('components/site/checkout/ResumenPedido.tsx')
+igual('ResumenPedido pinta los controles con editarCantidad', resumenFuente.includes('{editarCantidad ? <ControlCantidad linea={l} editar={editarCantidad} /> : null}') && resumenFuente.includes('disabled={linea.cantidad <= 1}') && resumenFuente.includes('disabled={!sumar}'), true)
+igual('carrito lateral y /carrito usan la misma regla (sin copias)', fuente('components/site/CartDrawer.tsx').includes('cambiarCantidadLinea(items, id, delta)') && fuente('app/carrito/CartPageClient.tsx').includes('saveCart(cambiarCantidadLinea(items, id, delta))'), true)
+
+// ── 2026-11-25 · Cupón plegado ──────────────────────────────────────────────────────────────────
+const cuponFuente = fuente('components/site/checkout/RevisarPedido.tsx')
+igual('cupón: enlace «¿Tienes un cupón de descuento?» que abre el campo', cuponFuente.includes('¿Tienes un cupón de descuento?') && cuponFuente.includes('if (plegado && !abierto && !codigo.trim() && !error) {'), true)
+igual('cupón aplicado: se ve aplicado con «Quitar» sin abrir', cuponFuente.includes('data-cupon-aplicado=""') && cuponFuente.includes('onClick={cuponAplicado.onQuitar}'), true)
+igual('cupón sin `plegado`: el campo abierto de antes', cuponFuente.includes('plegado = false,'), true)
+igual('el checkout lo usa plegado y con el cupón aplicado (3 pasos y 1 paso comparten seccionPago)', /<CuponCheckout[\s\S]*?\n\s+plegado\n\s+cuponAplicado=\{appliedCoupon \?/.test(wizTiempo) && wizTiempo.includes('{seccionPago}</TarjetaCheckout>'), true)
+
 if (fallos.length > 0) {
   console.error(`✗ verify-checkout-v2: ${fallos.length} de ${casos} fallaron`)
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones)`)
+console.log(`✓ verify-checkout-v2: ${casos} comprobaciones (botón, validación única, pasos en la URL, factura, campos, pago rechazado, municipios, conexiones, tiempo de entrega, acceso, cantidades, cupón)`)

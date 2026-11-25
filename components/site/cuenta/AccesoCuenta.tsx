@@ -264,6 +264,8 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
   const origen = useRef<HTMLElement | null>(null)
   const inicioToque = useRef<number | null>(null)
   const conHistorial = useRef(false)
+  // Quien abrió pidió quedarse en la página al entrar (el checkout).
+  const quedarse = useRef(false)
   const sesionRef = useRef(sesion)
   sesionRef.current = sesion
 
@@ -289,9 +291,15 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
       const modo = conSesion || celular ? opciones.modo : destinoVistaAcceso(opciones, pedida)
       const fmt = formatoAcceso(modo, celular)
       if (!fmt) {
-        router.push(conSesion ? '/mi-cuenta' : rutaAcceso(pedida))
+        if (!conSesion && detalle.paginaRespaldo) {
+          // El checkout: la página de acceso con ?siguiente=/checkout.
+          router.push(detalle.paginaRespaldo)
+        } else {
+          router.push(conSesion ? '/mi-cuenta' : rutaAcceso(pedida))
+        }
         return
       }
+      quedarse.current = detalle.quedarse === true
       origen.current = detalle.origen ?? (document.activeElement as HTMLElement | null)
       if (fmt === 'ventana' && origen.current) {
         const r = origen.current.getBoundingClientRect()
@@ -343,9 +351,11 @@ export function AccesoCuenta({ opciones, google = false, organizationId, organiz
 
   const alEntrar = useCallback(
     async (_tipo: TipoEntrada) => {
-      if (opciones.despues === 'cuenta') {
+      if (opciones.despues === 'cuenta' && !quedarse.current) {
         window.location.href = '/mi-cuenta'
         return
+      } else {
+        // «Quedarse» del editor, o lo pidió quien abrió (el checkout): se queda en la página.
       }
       // Quedarse: se cierra y la página se refresca en su lugar (carrito y pago intactos).
       cerrar()
