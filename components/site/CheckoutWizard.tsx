@@ -59,7 +59,8 @@ import { RevisarPedido, PagoRechazado, CuponCheckout, type FilaRevisar } from '.
 import { FacturaEmpresaCampos } from './checkout/FacturaEmpresaCampos'
 import { MunicipioBuscador } from './checkout/MunicipioBuscador'
 import { DireccionesGuardadas } from './checkout/DireccionesGuardadas'
-import { camposDelCheckout, campo as campoDe } from './checkout/camposCheckout'
+import { camposDelCheckout, campo as campoDe, sinOpcional, type AjusteCampo, type ClaveCampo } from './checkout/camposCheckout'
+import { ejemploPropio, filasContacto, planEntrega } from './checkout/ordenCampos'
 import { documentoFactura, erroresFactura, FACTURA_VACIA, facturaParaPedido, notasConFactura, type DatosFactura } from './checkout/facturaEmpresa'
 import { facturaParaGuardar, leerPerfilFactura, mezclarFacturaPerfil } from './checkout/facturaPerfil'
 import {
@@ -164,6 +165,11 @@ interface CheckoutSettings {
   countdownConfig?: CountdownConfig
   /** Estilo de la barra fija del pago en celular (ERP › Ventas en línea › Checkout). Sin valor: C. */
   barraPagoMovil?: EstiloBarraPago | null
+  /**
+   * Formulario del checkout del ERP (Parte F: qué campos, orden, obligatorios y textos;
+   * organization_settings `checkout_formulario`). null o ausente: el formulario de siempre.
+   */
+  formularioCampos?: AjusteCampo[] | null
 }
 
 /** Sede del pedido (restaurante): la misma que usa /api/orders para validar el horario. */
@@ -337,7 +343,10 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   // Checkout v2: «Nombre y apellido» en un campo (se parte en firstName/lastName al escribir, que es
   // lo que viaja a /api/orders como siempre), complemento de la dirección, factura a nombre de
   // empresa y lo que necesita la validación por campo.
-  const camposCheckout = useMemo(() => camposDelCheckout(null), [])
+  // Parte F: la configuración del ERP (orden, visibles, obligatorios y textos); sin ella, la lista
+  // de siempre (camposDelCheckout(null)).
+  const formularioCampos = checkoutSettings?.formularioCampos ?? null
+  const camposCheckout = useMemo(() => camposDelCheckout(formularioCampos), [formularioCampos])
   const [nombreCompleto, setNombreCompleto] = useState('')
   const [complemento, setComplemento] = useState('')
   const [factura, setFactura] = useState<DatosFactura>(FACTURA_VACIA)
@@ -990,6 +999,12 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
     entrega: orderType,
     mesaFaltante,
     momentoBloqueado,
+    // Parte F: solo cuentan si el ERP volvió obligatorios apto, barrio o indicaciones.
+    complemento,
+    barrio: customerData.barrio,
+    notas: customerData.notes,
+    direccionManual: savedAddresses.length === 0 || usandoOtraDireccion || !savedAddresses.some((a) => a.address_line1 === customerData.address),
+    barrioPedido: orderType === 'delivery' && grupoEnvio === 'own' && !!cotZona,
   }, camposCheckout, isoTelefono)
   const datosCompletos = errores.length === 0
   const verError = (c: CampoValidado) => (mostrarErrores || tocados[c] ? errorDe(errores, c) : null)
@@ -1509,10 +1524,15 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
 
   // ── Secciones (las mismas en 3 pasos y en 1 paso) ──────────────────────────────────────────
 
-  const seccionContacto = (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  // Parte F: cada campo de «Contacto» por su clave; `filasContacto` (ordenCampos.ts) da el orden y
+  // junta correo y celular en una fila. Sin configuración: correo · celular, nombre y factura, como
+  // siempre.
+  const cCelular = campoDe(camposCheckout, 'celular')
+  const campoContacto = (clave: ClaveCampo) => {
+    if (clave === 'email') {
+      return (
         <CampoCheckout
+          key="email"
           def={campoDe(camposCheckout, 'email')}
           valor={customerData.email}
           onCambio={(v) => setCustomerData((prev) => ({ ...prev, email: v }))}
@@ -1521,8 +1541,11 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           onSalir={() => tocar('email')}
           color={primaryColor}
         />
-        <div onBlur={() => tocar('celular')}>
-          <label htmlFor={idCampo('celular')} className="mb-1 block text-sm font-medium text-gray-700">{campoDe(camposCheckout, 'celular').etiqueta}</label>
+      )
+    } else if (clave === 'celular') {
+      return (
+        <div key="celular" onBlur={() => tocar('celular')}>
+          <label htmlFor={idCampo('celular')} className="mb-1 block text-sm font-medium text-gray-700">{cCelular.etiqueta}</label>
           <TelefonoPais
             id={idCampo('celular')}
             name="celular"
@@ -1530,26 +1553,32 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             onChange={(value) => setCustomerData((prev) => ({ ...prev, phone: value }))}
             paisPorDefecto={isoTelefono}
             mostrarError={false}
+            placeholder={ejemploPropio(camposCheckout, 'celular')}
             className={`h-11 rounded-lg border bg-white text-[15px] [&_input]:h-full ${verError('celular') ? 'border-red-500' : 'border-gray-300'}`}
           />
           {verError('celular') ? (
             <ErrorDeCampo id={idCampo('celular')} error={verError('celular')} />
-          ) : (
-            <p className="mt-1 text-xs text-gray-500">{campoDe(camposCheckout, 'celular').ayuda}</p>
-          )}
+          ) : cCelular.ayuda ? (
+            <p className="mt-1 text-xs text-gray-500">{cCelular.ayuda}</p>
+          ) : null}
         </div>
-      </div>
-      <CampoCheckout
-        def={campoDe(camposCheckout, 'nombre')}
-        valor={nombreCompleto}
-        onCambio={cambiarNombre}
-        error={errorDe(errores, 'nombre')}
-        mostrarError={mostrarErrores || !!tocados.nombre}
-        onSalir={() => tocar('nombre')}
-        color={primaryColor}
-      />
-      {campoDe(camposCheckout, 'factura').visible && (
-        <div>
+      )
+    } else if (clave === 'nombre') {
+      return (
+        <CampoCheckout
+          key="nombre"
+          def={campoDe(camposCheckout, 'nombre')}
+          valor={nombreCompleto}
+          onCambio={cambiarNombre}
+          error={errorDe(errores, 'nombre')}
+          mostrarError={mostrarErrores || !!tocados.nombre}
+          onSalir={() => tocar('nombre')}
+          color={primaryColor}
+        />
+      )
+    } else if (clave === 'factura') {
+      return (
+        <div key="factura">
           <CasillaCheckout
             id="checkout-factura"
             marcada={factura.activa}
@@ -1562,9 +1591,100 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             <FacturaEmpresaCampos factura={factura} onCambio={setFactura} errores={erroresFactura(factura)} mostrarErrores={mostrarErrores} color={primaryColor} nombreCliente={nombreCompleto} />
           )}
         </div>
+      )
+    } else {
+      return null
+    }
+  }
+
+  const seccionContacto = (
+    <div className="space-y-4">
+      {filasContacto(camposCheckout).map((fila) =>
+        fila.length > 1 ? (
+          <div key={fila.join('-')} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {fila.map(campoContacto)}
+          </div>
+        ) : (
+          campoContacto(fila[0])
+        ),
       )}
     </div>
   )
+
+  // Parte F: cada campo de la dirección por su clave (el orden lo da `planEntrega`).
+  const barrioConZona = orderType === 'delivery' && grupoEnvio === 'own' && !!cotZona
+  const cComplemento = campoDe(camposCheckout, 'complemento')
+  const cBarrio = campoDe(camposCheckout, 'barrio')
+  const cNotas = campoDe(camposCheckout, 'notas')
+  const campoEntrega = (clave: ClaveCampo) => {
+    if (clave === 'direccion') {
+      return (
+        <CampoCheckout
+          key="direccion"
+          def={campoDe(camposCheckout, 'direccion')}
+          valor={customerData.address}
+          onCambio={(v) => setCustomerData((prev) => ({ ...prev, address: v }))}
+          error={errorDe(errores, 'direccion')}
+          mostrarError={mostrarErrores || !!tocados.direccion}
+          onSalir={() => tocar('direccion')}
+          color={primaryColor}
+        />
+      )
+    } else if (clave === 'complemento') {
+      // Opcional (lo de siempre): sin error ni check. Obligatorio por el ERP: valida como los demás.
+      return (
+        <CampoCheckout
+          key="complemento"
+          def={cComplemento}
+          valor={complemento}
+          onCambio={setComplemento}
+          error={cComplemento.obligatorio ? errorDe(errores, 'complemento') : null}
+          mostrarError={cComplemento.obligatorio ? mostrarErrores || !!tocados.complemento : false}
+          onSalir={cComplemento.obligatorio ? () => tocar('complemento') : undefined}
+          color={primaryColor}
+          maxLength={80}
+        />
+      )
+    } else if (clave === 'ciudad') {
+      return (
+        <div key="ciudad">
+          <label htmlFor={idCampo('ciudad')} className="mb-1 block text-sm font-medium text-gray-700">{campoDe(camposCheckout, 'ciudad').etiqueta}</label>
+          <MunicipioBuscador
+            id={idCampo('ciudad')}
+            valor={{ countryCode: customerData.countryCode, stateCode: customerData.stateCode, stateName: customerData.stateName, city: customerData.city }}
+            onCambio={(data) => setCustomerData((prev) => ({
+              ...prev,
+              countryCode: data.countryCode,
+              stateCode: data.stateCode,
+              stateName: data.stateName,
+              city: data.city,
+              department: data.stateName,
+            }))}
+            color={primaryColor}
+            error={verError('ciudad')}
+            ayuda={campoDe(camposCheckout, 'ciudad').ayuda}
+            placeholder={ejemploPropio(camposCheckout, 'ciudad')}
+            fallbackCities={['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Cúcuta','Bucaramanga','Pereira','Santa Marta','Ibagué','Pasto','Manizales','Neiva','Villavicencio','Armenia','Valledupar','Montería','Sincelejo','Popayán','Tunja','Riohacha','Florencia','Quibdó','Yopal','Mocoa','Leticia','San Andrés','Arauca','Mitú','Puerto Carreño','Inírida','Envigado','Bello','Itagüí','Sabaneta','Rionegro','Soacha','Chía','Zipaquirá','Fusagasugá','Girardot','Tuluá','Palmira','Buenaventura','Barrancabermeja','Sogamoso','Duitama','Girón','Piedecuesta','Soledad','Malambo','Dosquebradas','Apartadó','Turbo','Lorica','Magangué','Aguachica','Ocaña','Pamplona','Tumaco','Ipiales','Cartago','Buga','Jamundí']}
+          />
+        </div>
+      )
+    } else if (clave === 'barrio') {
+      return (
+        <CampoCheckout
+          key="barrio"
+          def={cBarrio}
+          valor={customerData.barrio}
+          onCambio={(v) => setCustomerData({ ...customerData, barrio: v })}
+          error={cBarrio.obligatorio ? errorDe(errores, 'barrio') : null}
+          mostrarError={cBarrio.obligatorio ? mostrarErrores || !!tocados.barrio : false}
+          onSalir={cBarrio.obligatorio ? () => tocar('barrio') : undefined}
+          color={primaryColor}
+        />
+      )
+    } else {
+      return null
+    }
+  }
 
   const seccionEntrega = (
     <div className="space-y-5">
@@ -1676,58 +1796,19 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
             color={primaryColor}
           />
 
-          {camposDireccionVisibles && (
-            <>
-              <CampoCheckout
-                def={campoDe(camposCheckout, 'direccion')}
-                valor={customerData.address}
-                onCambio={(v) => setCustomerData((prev) => ({ ...prev, address: v }))}
-                error={errorDe(errores, 'direccion')}
-                mostrarError={mostrarErrores || !!tocados.direccion}
-                onSalir={() => tocar('direccion')}
-                color={primaryColor}
-              />
-              <CampoCheckout
-                def={campoDe(camposCheckout, 'complemento')}
-                valor={complemento}
-                onCambio={setComplemento}
-                error={null}
-                mostrarError={false}
-                color={primaryColor}
-                maxLength={80}
-              />
-              <div>
-                <label htmlFor={idCampo('ciudad')} className="mb-1 block text-sm font-medium text-gray-700">{campoDe(camposCheckout, 'ciudad').etiqueta}</label>
-                <MunicipioBuscador
-                  id={idCampo('ciudad')}
-                  valor={{ countryCode: customerData.countryCode, stateCode: customerData.stateCode, stateName: customerData.stateName, city: customerData.city }}
-                  onCambio={(data) => setCustomerData((prev) => ({
-                    ...prev,
-                    countryCode: data.countryCode,
-                    stateCode: data.stateCode,
-                    stateName: data.stateName,
-                    city: data.city,
-                    department: data.stateName,
-                  }))}
-                  color={primaryColor}
-                  error={verError('ciudad')}
-                  fallbackCities={['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Cúcuta','Bucaramanga','Pereira','Santa Marta','Ibagué','Pasto','Manizales','Neiva','Villavicencio','Armenia','Valledupar','Montería','Sincelejo','Popayán','Tunja','Riohacha','Florencia','Quibdó','Yopal','Mocoa','Leticia','San Andrés','Arauca','Mitú','Puerto Carreño','Inírida','Envigado','Bello','Itagüí','Sabaneta','Rionegro','Soacha','Chía','Zipaquirá','Fusagasugá','Girardot','Tuluá','Palmira','Buenaventura','Barrancabermeja','Sogamoso','Duitama','Girón','Piedecuesta','Soledad','Malambo','Dosquebradas','Apartadó','Turbo','Lorica','Magangué','Aguachica','Ocaña','Pamplona','Tumaco','Ipiales','Cartago','Buga','Jamundí']}
-                />
-              </div>
-            </>
+          {/* Parte F: dirección, apto, municipio (y el barrio si el ERP lo subió) en el orden elegido;
+              `planEntrega` (ordenCampos.ts). Sin configuración: dirección, apto y municipio, y el
+              barrio con la zona, como siempre. */}
+          {planEntrega(camposCheckout).bloque.map((clave) =>
+            clave === 'barrio'
+              ? (barrioConZona ? campoEntrega('barrio') : null)
+              : (camposDireccionVisibles ? campoEntrega(clave) : null),
           )}
 
           {/* Domicilio por zona (Figma 2830:75378 y 2830:75453): barrio, zona y envío gratis */}
-          {orderType === 'delivery' && grupoEnvio === 'own' && cotZona && (
+          {barrioConZona && (
             <div className="space-y-3">
-              <CampoCheckout
-                def={campoDe(camposCheckout, 'barrio')}
-                valor={customerData.barrio}
-                onCambio={(v) => setCustomerData({ ...customerData, barrio: v })}
-                error={null}
-                mostrarError={false}
-                color={primaryColor}
-              />
+              {planEntrega(camposCheckout).barrioEnZona ? campoEntrega('barrio') : null}
               {envioZona && !envioZona.ok && (
                 <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                   {bloqueoZona}
@@ -1845,15 +1926,17 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
         </div>
       )}
 
-      {/* Indicaciones (opcional): plegadas hasta que el cliente las pide */}
-      {notasAbiertas || customerData.notes ? (
+      {/* Indicaciones (opcional): plegadas hasta que el cliente las pide. Parte F: ocultas por el ERP,
+          no salen; obligatorias, salen abiertas y se validan; con etiqueta propia, esa. */}
+      {!cNotas.visible ? null : notasAbiertas || customerData.notes || cNotas.obligatorio ? (
         <CampoCheckout
-          def={campoDe(camposCheckout, 'notas')}
-          etiqueta={etiquetaNotas}
+          def={cNotas}
+          etiqueta={cNotas.etiquetaPropia ? cNotas.etiqueta : cNotas.obligatorio ? sinOpcional(etiquetaNotas) : etiquetaNotas}
           valor={customerData.notes}
           onCambio={(v) => setCustomerData((prev) => ({ ...prev, notes: v }))}
-          error={null}
-          mostrarError={false}
+          error={cNotas.obligatorio ? errorDe(errores, 'notas') : null}
+          mostrarError={cNotas.obligatorio ? mostrarErrores || !!tocados.notas : false}
+          onSalir={cNotas.obligatorio ? () => tocar('notas') : undefined}
           color={primaryColor}
           maxLength={500}
         />

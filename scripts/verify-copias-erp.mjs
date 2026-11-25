@@ -78,6 +78,8 @@ export const COPIAS = [
   ['lib/promociones/precioVolumen.ts', 'src/lib/promotions/precioVolumen.ts'],
   // Contraentrega con condiciones: la tienda decide la opción y el anticipo con la misma regla que el ERP muestra.
   ['lib/contraentrega/reglaContraentrega.ts', 'src/lib/contraentrega/reglaContraentrega.ts'],
+  // Formulario del checkout (Parte F): el ERP lo configura y la tienda lo pinta y lo valida con la misma regla.
+  ['lib/website/formularioCheckout.ts', 'src/lib/website/formularioCheckout.ts'],
 ]
 
 /**

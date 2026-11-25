@@ -40,6 +40,7 @@ export function MunicipioBuscador({
   color,
   error,
   ayuda,
+  placeholder,
   fallbackCities,
 }: {
   /** Id del campo (el resumen de errores lleva aquí). */
@@ -49,6 +50,8 @@ export function MunicipioBuscador({
   color: string
   error: string | null
   ayuda?: string | null
+  /** Texto de ejemplo del ERP (Parte F). Sin él, el de siempre. */
+  placeholder?: string
   fallbackCities?: string[]
 }) {
   const listaId = useId()
@@ -166,7 +169,7 @@ export function MunicipioBuscador({
           aria-describedby={conError ? `${id}-error` : `${id}-ayuda`}
           autoComplete="address-level2"
           value={texto}
-          placeholder={lista === null ? 'Escribe tu ciudad o municipio' : 'Escribe para buscar'}
+          placeholder={placeholder ?? (lista === null ? 'Escribe tu ciudad o municipio' : 'Escribe para buscar')}
           onFocus={() => setAbierta(true)}
           onChange={(e) => {
             setTexto(e.target.value)

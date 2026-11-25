@@ -277,6 +277,23 @@ const PROHIBIDAS = [
  *   de debajo del resumen (decisión del dueño). El espaciador mide la barra. En 3 pasos, nada cambia.
  *   No toca el payload de /api/orders, el cobro ni `handleSubmit`.
  * Vence el 2026-12-09. Comprobado por scripts/verify-barra-pago.mjs y verify-checkout-v2.mjs.
+ *
+ * 2026-11-25 — Checkout v2, Parte F: formulario del checkout configurable desde el ERP (Figma «16
+ * Sitio web» 3141-93709, encargo aprobado por el dueño). La regla vive FUERA de las rutas del dinero
+ * (lib/website/formularioCheckout.ts, copia byte a byte del ERP; components/site/checkout/
+ * camposCheckout.ts, ordenCampos.ts y reglasCheckout.ts; lib/orders/formularioPedido.ts). En las
+ * rutas protegidas, solo:
+ * - components/site/CheckoutWizard.tsx: EXTRACCIÓN de cada campo de Contacto y de la dirección a
+ *   `campoContacto`/`campoEntrega` (el mismo JSX) que se pintan en el orden de `filasContacto` y
+ *   `planEntrega`; la lista sale de `camposDelCheckout(config)`. Sin configuración (`null`) la lista,
+ *   el orden y el DOM son los de siempre (verify-formulario-checkout). Apto, barrio e indicaciones
+ *   solo validan si el ERP los volvió obligatorios (`else`: sin error ni check, como hoy). No toca el
+ *   payload de /api/orders, el cobro ni `handleSubmit`.
+ * - app/api/orders/route.ts: un bloque tras la mesa: con formulario configurado y sin ronda de mesa,
+ *   faltan correo/nombre (o dirección y municipio a domicilio, o lo que el ERP volvió obligatorio) →
+ *   400 DATOS_INCOMPLETOS. Cada `if` con su `else` de hoy: sin configuración o si la lectura falla,
+ *   nada nuevo. No toca precios, envío, stock, cobro ni la respuesta del pedido creado.
+ * Vence el 2026-12-12. Comprobado por scripts/verify-formulario-checkout.mjs y verify-checkout-v2.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -313,6 +330,8 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra fija de pago en computador de vuelta (1 paso), como antes del checkout v2' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Moneda del checkout: «Se cobra en COP» junto al total (solo pinta; el cobro sigue en la moneda base)' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra de pago en computador A/B/C (solo pinta; mismo handleSubmit y mismo disabled)' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Checkout v2 Parte F: campos en el orden del ERP (extracción; sin configuración, el DOM de siempre)' },
+  { ruta: 'app/api/orders/route.ts', hasta: '2026-12-12', motivo: 'Checkout v2 Parte F: con formulario configurado, 400 DATOS_INCOMPLETOS si faltan los indispensables' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

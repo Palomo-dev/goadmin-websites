@@ -44,6 +44,7 @@ import { buscarMesaDeOrganizacion, notaMesa, type MesaPedido } from '@/lib/order
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
 import { leerFacturaDelPedido } from '@/components/site/checkout/facturaEmpresa'
 import { guardarDocumentoPedido } from '@/lib/orders/documentoCliente'
+import { faltantesFormularioPedido, mensajeFaltantes } from '@/lib/orders/formularioPedido'
 import { avisarErpRondaMesa, buscarRondaPorClave, claveRondaValida, comensalDeRonda, esRondaDuplicada, filasConComensal, filasSinComensal, rechazaClaveRonda, rechazaComensal, tieneCorreo, type ResultadoRondaMesa } from '@/lib/orders/rondaMesa'
 
 export const dynamic = 'force-dynamic'
@@ -245,6 +246,30 @@ export async function POST(request: NextRequest) {
       resolvedShipping = 0
     } else {
       // Domicilio o recoger: sin mesa, exactamente como antes.
+    }
+
+    // ── Formulario del checkout del ERP (Parte F; lib/orders/formularioPedido.ts) ──
+    // Solo si la organización lo configuró: los indispensables siempre (correo, nombre; dirección y
+    // municipio a domicilio) y lo que el ERP volvió obligatorio. Sin configuración, la ronda de la
+    // mesa o un fallo de lectura: nada nuevo, exactamente como antes.
+    if (!mesaPedido) {
+      const faltan = await faltantesFormularioPedido(supabase as any, contextOrgId, {
+        email: customer.email,
+        phone: customer.phone,
+        firstName: customer.firstName,
+        address: deliveryType === 'delivery' ? (deliveryAddress?.address ?? customer.address) : customer.address,
+        city: deliveryType === 'delivery' ? (deliveryAddress?.city ?? customer.city) : customer.city,
+        notes: customer.notes,
+        entrega: deliveryType,
+      })
+      if (faltan.length > 0) {
+        console.warn('[Orders] Pedido sin los datos del formulario del checkout', { organizationId: contextOrgId, faltan })
+        return NextResponse.json({ error: mensajeFaltantes(faltan), code: 'DATOS_INCOMPLETOS', campos: faltan }, { status: 400 })
+      } else {
+        // Completo (o sin configuración): sigue como siempre.
+      }
+    } else {
+      // Ronda de la mesa (Carta QR): no pide estos datos, como antes.
     }
 
     // ── Carta QR: idempotencia de la ronda (lib/orders/rondaMesa.ts) ──

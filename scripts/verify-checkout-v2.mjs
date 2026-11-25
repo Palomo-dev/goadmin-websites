@@ -236,7 +236,8 @@ igual('sin configuración (lista vacía): igual', camposDelCheckout([]), CAMPOS_
 igual('autocompletar y teclado', ['email', 'celular', 'nombre', 'direccion', 'ciudad'].map((k) => [campo(CAMPOS_CHECKOUT_POR_DEFECTO, k).autoComplete, campo(CAMPOS_CHECKOUT_POR_DEFECTO, k).inputMode]), [['email', 'email'], ['tel-national', 'tel'], ['name', 'text'], ['address-line1', 'text'], ['address-level2', 'text']])
 igual('nombre, dirección y municipio no se pueden esconder', ['nombre', 'direccion', 'ciudad'].map((k) => campo(camposDelCheckout([{ clave: k, visible: false, obligatorio: false }]), k)).map((c) => [c.visible, c.obligatorio]), [[true, true], [true, true], [true, true]])
 igual('correo o celular: al menos uno', campo(camposDelCheckout([{ clave: 'email', obligatorio: false }, { clave: 'celular', visible: false }]), 'email').obligatorio, true)
-igual('una etiqueta propia se aplica', campo(camposDelCheckout([{ clave: 'barrio', etiqueta: 'Barrio o vereda' }]), 'barrio').etiqueta, 'Barrio o vereda')
+// Parte F (2026-11-25): con configuración, «(opcional)» se agrega solo a los campos opcionales (Figma F).
+igual('una etiqueta propia se aplica', campo(camposDelCheckout([{ clave: 'barrio', etiqueta: 'Barrio o vereda' }]), 'barrio').etiqueta, 'Barrio o vereda (opcional)')
 
 // ── 6. Pago rechazado: copia del pedido y reintento ─────────────────────────────────────────────
 const memoria = () => {

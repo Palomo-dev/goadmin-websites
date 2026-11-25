@@ -23,6 +23,7 @@ import { CLAVE_TIEMPOS_PEDIDOS, leerTiemposEntregaTienda } from '@/lib/shipping/
 import { AccesoCuenta } from '@/components/site/cuenta/AccesoCuenta'
 import { opcionesCuenta, opcionesMoneda } from '@/lib/website/v2/cabeceraTienda'
 import { googleEnAcceso } from '@/lib/cuenta/reglasCuenta'
+import { CLAVE_FORMULARIO_CHECKOUT, leerFormularioCheckout } from '@/lib/website/formularioCheckout'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,12 +105,23 @@ export default async function CheckoutPage() {
   // Tiempos de «Pedidos online» del ERP (organization_settings, una fila por organización y clave;
   // columnas verificadas por MCP 2026-11-25). Solo pinta el tiempo de entrega del checkout
   // (lib/shipping/tiempoEntrega.ts); un fallo cuenta como «sin tiempos» y el checkout sigue igual.
-  const { data: filaTiempos } = await (supabaseWs as any)
-    .from('organization_settings')
-    .select('settings')
-    .eq('organization_id', organization.id)
-    .eq('key', CLAVE_TIEMPOS_PEDIDOS)
-    .maybeSingle()
+  // Formulario del checkout del ERP (Parte F: Ventas en línea › Opciones del checkout › Formulario;
+  // misma tabla, otra clave). En paralelo con los tiempos. Sin fila o con un fallo: null y el
+  // formulario de siempre.
+  const [{ data: filaTiempos }, { data: filaFormulario }] = await Promise.all([
+    (supabaseWs as any)
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', organization.id)
+      .eq('key', CLAVE_TIEMPOS_PEDIDOS)
+      .maybeSingle(),
+    (supabaseWs as any)
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', organization.id)
+      .eq('key', CLAVE_FORMULARIO_CHECKOUT)
+      .maybeSingle(),
+  ])
 
   const checkoutSettings = {
     checkoutMode: (wsRow?.checkout_mode as 'steps' | 'one_page') || 'steps',
@@ -136,6 +148,8 @@ export default async function CheckoutPage() {
     // Barra fija del pago en celular (A/B/C, ERP › Ventas en línea › Checkout). Se lee de la fila
     // completa (select('*')), como countdown_style: sin la columna o sin valor, C.
     barraPagoMovil: normalizarEstiloBarraPago((organization.website_settings as { checkout_mobile_bar_style?: unknown } | null)?.checkout_mobile_bar_style),
+    // Qué campos pide, en qué orden, cuáles obligatorios y con qué textos (ERP). null: los de siempre.
+    formularioCampos: leerFormularioCheckout(filaFormulario?.settings ?? null),
     showCountdown: wsRow?.checkout_show_countdown ?? false,
     countdownConfig: {
       countdown_enabled: wsRow?.countdown_enabled ?? false,

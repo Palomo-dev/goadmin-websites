@@ -134,6 +134,17 @@ export interface DatosValidar {
   mesaFaltante?: boolean
   /** Restaurante con la sede cerrada y sin hora programada. */
   momentoBloqueado?: boolean
+  /**
+   * Parte F (formulario configurado en el ERP): lo que escribió el cliente en los campos que el ERP
+   * puede volver obligatorios. Ausentes (`undefined`) no se revisan: lo de siempre.
+   */
+  complemento?: string
+  barrio?: string
+  notas?: string
+  /** Se ven los campos de la dirección (no eligió una dirección guardada). Por defecto, sí. */
+  direccionManual?: boolean
+  /** El checkout muestra el barrio (domicilio propio con zona). Por defecto, no. */
+  barrioPedido?: boolean
 }
 
 export interface ErrorCampo {
@@ -236,6 +247,28 @@ export function validarDatosCheckout(d: DatosValidar, campos: readonly CampoChec
     // Ciudad: de la lista o escrita a mano (texto libre, como hoy). El país no se exige: el checkout
     // de 3 pasos de hoy no lo pedía.
     if (!(d.city || '').trim()) poner('ciudad', 'Escribe o elige tu ciudad o municipio.')
+    // Parte F: apto y barrio solo si el ERP los volvió obligatorios y el cliente los ve; si no, nada
+    // (lo de siempre: son opcionales).
+    const cComplemento = campo(campos, 'complemento')
+    if (cComplemento.visible && cComplemento.obligatorio && d.complemento !== undefined && d.direccionManual !== false && !d.complemento.trim()) {
+      poner('complemento', 'Escribe el apto, la casa o la oficina.')
+    } else {
+      // Opcional, oculto o con una dirección guardada: no se pide.
+    }
+    const cBarrio = campo(campos, 'barrio')
+    if (cBarrio.obligatorio && d.barrioPedido === true && d.barrio !== undefined && !d.barrio.trim()) {
+      poner('barrio', 'Escribe tu barrio para saber la zona del envío.')
+    } else {
+      // Opcional o sin zona: no se pide.
+    }
+  }
+
+  // Parte F: indicaciones obligatorias (cualquier tipo de entrega) si el ERP las pidió.
+  const cNotas = campo(campos, 'notas')
+  if (cNotas.visible && cNotas.obligatorio && d.notas !== undefined && !d.notas.trim()) {
+    poner('notas', 'Escribe las indicaciones para tu pedido.')
+  } else {
+    // Opcionales u ocultas: no se piden (lo de siempre).
   }
 
   if (d.mesaFaltante) poner('mesa', 'Escribe el número de tu mesa.')
@@ -256,7 +289,7 @@ export function tituloResumenErrores(n: number): string {
 /** Campos de la sección «Contacto» (para el check de la tarjeta numerada del 1 paso). */
 export const CAMPOS_CONTACTO: readonly CampoValidado[] = ['email', 'celular', 'nombre', 'factura_numero', 'factura_dv', 'factura_razon', 'factura_correo']
 /** Campos de la sección «Entrega». */
-export const CAMPOS_ENTREGA: readonly CampoValidado[] = ['direccion', 'ciudad', 'mesa', 'momento']
+export const CAMPOS_ENTREGA: readonly CampoValidado[] = ['direccion', 'ciudad', 'complemento', 'barrio', 'notas', 'mesa', 'momento']
 
 export function seccionCompleta(errores: readonly ErrorCampo[], campos: readonly CampoValidado[]): boolean {
   return !errores.some((e) => campos.includes(e.campo))
