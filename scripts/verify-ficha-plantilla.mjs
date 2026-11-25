@@ -33,7 +33,8 @@ const check = (cond, msg) => {
   if (!cond) problemas.push(msg)
 }
 const igual = (a, b, msg) => check(isDeepStrictEqual(a, b), `${msg}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)
-const fuente = (ruta) => readFile(join(ROOT, ruta), 'utf8')
+// Los fuentes viven con CRLF en Windows (autocrlf): se comparan siempre con LF.
+const fuente = async (ruta) => (await readFile(join(ROOT, ruta), 'utf8')).replace(/\r\n/g, '\n')
 
 // ─── Carga de los módulos puros ──────────────────────────────────────────────────────────────
 const dir = join(ROOT, '.verify-ficha-plantilla-tmp')
@@ -48,7 +49,7 @@ async function cargarTexto(ts, nombre, reemplazos = []) {
   await writeFile(join(dir, nombre), js)
   return import(pathToFileURL(join(dir, nombre)).href)
 }
-let defHoy, defMain, contrato, ficha
+let defHoy, defMain, contrato, ficha, anclas
 try {
   defHoy = await cargarTexto(await fuente('lib/defaultProductDetailSections.ts'), 'defHoy.mjs')
   const tsMain = execFileSync('git', ['show', 'main:lib/defaultProductDetailSections.ts'], { cwd: ROOT, encoding: 'utf8' })
@@ -57,6 +58,7 @@ try {
   ficha = await cargarTexto(await fuente('components/sections/product-detail/fichaTienda.ts'), 'fichaTienda.mjs', [
     ["from '@/lib/website/v2/contrato/seccionesTienda'", "from './seccionesTienda.mjs'"],
   ])
+  anclas = await cargarTexto(await fuente('components/sections/product-detail/anclasFicha.ts'), 'anclasFicha.mjs')
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
@@ -182,6 +184,59 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
     check(lecturas > 0 && conOrg >= lecturas, `${ruta}: cada lectura de products filtra por organization_id (${conOrg}/${lecturas})`)
     check(src.includes('cacheCatalog(') && src.includes('cache('), `${ruta}: caché por organización y por petición`)
   }
+}
+
+// ─── 4b. Pestañas ancla y ficha técnica (arreglo 2026-11-25) ─────────────────────────────────
+// El dueño: «clic en Envío: la pestaña se marca pero el contenido no cambia». En Panorama
+// «Resumen» y «Envío» van encima de las pestañas; el salto del navegador subía poco o nada.
+{
+  const base = { scrollY: 1000, alturaEncabezado: 146, alturaPestanas: 45 }
+  // Destino encima de las pestañas (Envío): queda bajo el encabezado, sin restar las pestañas.
+  igual(anclas.destinoSaltoAncla({ ...base, topDestino: -209, pestanasEncima: false }), 1000 - 209 - 146 - 16, 'salto a un bloque encima de las pestañas')
+  // Destino después de las pestañas (Características): también bajo las pestañas pegadas.
+  igual(anclas.destinoSaltoAncla({ ...base, topDestino: 462, pestanasEncima: true }), 1000 + 462 - 146 - 45 - 16, 'salto a un bloque debajo de las pestañas fijas')
+  igual(anclas.destinoSaltoAncla({ ...base, scrollY: 0, topDestino: 100, pestanasEncima: true }), 0, 'el salto nunca es negativo')
+  igual(anclas.destinoSaltoAncla({ ...base, topDestino: Number.NaN, pestanasEncima: false }), 0, 'medida rota: arriba del todo, no NaN')
+  igual(anclas.destinoSaltoAncla({ ...base, topDestino: 300.4, pestanasEncima: false }), Math.round(1000 + 300.4 - 146 - 16), 'salto en píxeles enteros')
+
+  const cuatro = contrato.normalizarPestanasAncla(null).items
+  igual(anclas.pestanasConContenido(cuatro, null).map((p) => p.target), cuatro.map((p) => p.target), 'sin medir (servidor): todas las pestañas')
+  igual(
+    anclas.pestanasConContenido(cuatro, { product_info: true, product_specs: false, product_shipping: true, product_reviews: true }).map((p) => p.label),
+    ['Resumen', 'Envío', 'Reseñas'],
+    'un bloque que no pinta nada (características sin datos) no deja pestaña',
+  )
+  igual(anclas.pestanasConContenido(cuatro, { product_info: true }).map((p) => p.target), ['product_info'], 'destino sin medir = sin contenido')
+  igual(anclas.pestanasConContenido(cuatro, {}), [], 'nada pinta: sin pestañas')
+  const visibles = [{ target: 'product_info' }, { target: 'product_shipping' }]
+  igual(anclas.pestanaActivaValida('product_shipping', visibles), 'product_shipping', 'la pestaña tocada queda marcada')
+  igual(anclas.pestanaActivaValida('product_specs', visibles), 'product_info', 'si la marcada se oculta, la primera visible')
+  igual(anclas.pestanaActivaValida('product_specs', []), '', 'sin pestañas, ninguna marcada')
+
+  const nav = await fuente('components/sections/product-detail/NavAnclasCliente.tsx')
+  check(nav.includes('evento.preventDefault()') && nav.includes('destinoSaltoAncla({') && nav.includes("window.scrollTo({ top, behavior: suave ? 'smooth' : 'auto' })"), 'pestañas: el salto lo calcula el componente, no el navegador')
+  check(nav.includes('href={`#${p.target}`}'), 'pestañas: sin JavaScript siguen siendo enlaces #destino')
+  check(/evento\.metaKey \|\| evento\.ctrlKey/.test(nav), 'pestañas: clic con modificadores = lo del navegador')
+  check(nav.includes('window.history.replaceState(window.history.state,'), 'pestañas: el hash se actualiza sin pisar el estado del router de Next')
+  check(nav.includes('destino.focus({ preventScroll: true })'), 'pestañas: el bloque destino recibe el foco')
+  check(nav.includes('if (Date.now() < saltoHasta.current) return'), 'pestañas: el observador no pisa la pestaña tocada durante el salto')
+  check(nav.includes('pestanasConContenido(pestanas, conContenido)') && nav.includes('if (visibles.length === 0) return null'), 'pestañas: sin contenido, sin pestaña; sin ninguna, sin barra')
+  check(nav.includes("aria-current={esActiva ? 'location' : undefined}") && !nav.includes('role="tablist"'), 'pestañas: navegación con aria-current (son enlaces, no tablist)')
+  check(nav.includes("matchMedia('(prefers-reduced-motion: reduce)')"), 'pestañas: sin animación si el usuario la reduce')
+
+  // Ficha técnica icon_grid: sin celdas vacías ni textos montados (mismo estilo).
+  const specsSrc = await fuente('components/sections/product-detail/ProductSpecsVariantes.tsx')
+  const iconos = specsSrc.slice(specsSrc.indexOf('export function ProductSpecsIconos'), specsSrc.indexOf('ProductSpecsIconos.CONTENT_KEYS'))
+  check(iconos.length > 0, 'ProductSpecsIconos no se encontró')
+  check(!/grid-cols-\d|sm:grid-cols/.test(iconos), 'ficha técnica: sin columnas fijas (dejaban la 4.ª celda vacía)')
+  check(iconos.includes('flex flex-wrap') && iconos.includes('flex: `1 1 ${ANCHO_MIN_CELDA}`'), 'ficha técnica: celdas que llenan cada fila')
+  check(/className="flex min-w-0 items-start/.test(iconos) && iconos.includes('flex min-w-0 flex-1 flex-col-reverse'), 'ficha técnica: min-w-0 en la celda y en el texto')
+  check(iconos.includes('[overflow-wrap:anywhere]') && iconos.includes('tabular-nums'), 'ficha técnica: la referencia larga corta en su celda y con cifras tabulares')
+  check(iconos.indexOf('<dt') < iconos.indexOf('<dd'), 'ficha técnica: dt antes que dd')
+  check(/export const ANCHO_MIN_CELDA = '9\.5rem'/.test(specsSrc), 'ficha técnica: ancho mínimo de celda declarado')
+  // Celdas por fila con 9.5rem (152 px) mínimo: nunca más celdas que datos (sin huecos).
+  const porFila = (ancho, n) => Math.max(1, Math.min(n, Math.floor(ancho / 152)))
+  igual([porFila(560, 3), porFila(343, 3), porFila(1200, 6), porFila(140, 2)], [3, 2, 6, 1], 'celdas por fila: columna de escritorio, celular, ancho completo, muy angosta')
 }
 
 // ─── 5. Esquema ──────────────────────────────────────────────────────────────────────────────

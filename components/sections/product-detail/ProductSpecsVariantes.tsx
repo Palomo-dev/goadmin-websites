@@ -93,7 +93,18 @@ export function filasFichaTecnica(content: Record<string, unknown> | null | unde
   return { titulo: ficha.title, filas }
 }
 
-/** `product_specs · icon_grid`: rejilla con ícono, valor y rótulo (Panorama). */
+/**
+ * `product_specs · icon_grid`: rejilla con ícono, valor y rótulo (Panorama).
+ *
+ * Arreglo 2026-11-25 (mismo estilo): antes eran 2 columnas fijas en el celular y 4 desde `sm`,
+ * así que con 3 datos quedaba una celda vacía; en la columna de información (≈45 % del ancho)
+ * cada celda medía ~140 px, la marca se partía en tres líneas y una referencia larga sin
+ * espacios (un EAN de 13 dígitos) se montaba sobre el ícono de la celda de al lado. Ahora las
+ * celdas se reparten en filas que se llenan solas (`flex-wrap`, mínimo {@link ANCHO_MIN_CELDA}):
+ * cuantas quepan por fila y la última se estira, sin huecos; el valor corta donde haga falta.
+ */
+export const ANCHO_MIN_CELDA = '9.5rem'
+
 export function ProductSpecsIconos({ content, data }: PropsFichaTecnica) {
   const { titulo, filas } = filasFichaTecnica(content, data?.product, data?.categoriaFicha?.name)
   if (filas.length === 0) return null
@@ -101,19 +112,24 @@ export function ProductSpecsIconos({ content, data }: PropsFichaTecnica) {
     <div data-ficha-tecnica="icon_grid">
       <h2 className="sr-only">{titulo}</h2>
       <dl
-        className="grid grid-cols-2 overflow-hidden rounded-[var(--radio-sitio,0.75rem)] border sm:grid-cols-4"
+        className="flex flex-wrap overflow-hidden rounded-[var(--radio-sitio,0.75rem)] border"
         style={{ borderColor: 'color-mix(in srgb, var(--text-color, #111827) 12%, transparent)' }}
       >
         {filas.map(({ icono: Icono, etiqueta, valor }) => (
           <div
             key={etiqueta}
-            className="flex items-start gap-2.5 p-3"
-            style={{ boxShadow: '0 0 0 0.5px color-mix(in srgb, var(--text-color, #111827) 12%, transparent)' }}
+            data-celda-ficha=""
+            className="flex min-w-0 items-start gap-2.5 p-3"
+            style={{
+              flex: `1 1 ${ANCHO_MIN_CELDA}`,
+              boxShadow: '0 0 0 0.5px color-mix(in srgb, var(--text-color, #111827) 12%, transparent)',
+            }}
           >
             <Icono className="mt-0.5 h-4 w-4 flex-shrink-0 opacity-70" aria-hidden="true" />
-            <div className="min-w-0">
-              <dd className="text-sm font-medium text-gray-900 dark:text-white">{valor}</dd>
+            {/* dt antes que dd (orden válido de `dl`); a la vista, el valor arriba como siempre. */}
+            <div className="flex min-w-0 flex-1 flex-col-reverse">
               <dt className="text-xs text-gray-500 dark:text-gray-400">{etiqueta}</dt>
+              <dd className="text-sm font-medium tabular-nums text-gray-900 [overflow-wrap:anywhere] dark:text-white">{valor}</dd>
             </div>
           </div>
         ))}
