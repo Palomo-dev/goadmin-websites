@@ -8,11 +8,15 @@
  * `planColumnasCategoria` devuelve `null` y la página apila sus secciones como siempre.
  */
 
+// Relativo (no `@/`): este archivo es puro y lo cargan los verify con node.
+import { normalizarOrdenFiltrosCategoria } from '../../../lib/website/v2/contrato/seccionesTienda'
+
 /** Lo mínimo de una sección de la plantilla `category_detail`. */
 export interface SeccionCategoria {
   section_type: string
   section_variant: string
   is_visible?: boolean | null
+  content?: unknown
 }
 
 export const VARIANTE_FILTROS_LATERALES = 'sidebar_facets'
@@ -20,8 +24,14 @@ export const VARIANTE_FILTROS_LATERALES = 'sidebar_facets'
 /** Secciones que acompañan a la columna lateral (van a su derecha si la siguen sin cortes). */
 export const TIPOS_COLUMNA_PRINCIPAL: readonly string[] = ['category_filters', 'category_subcategories', 'category_products']
 
+/**
+ * Columna lateral: la variante `sidebar_facets`, o los filtros de siempre con «Posición de los
+ * filtros · Columna lateral» (`filter_position: 'sidebar'`, Figma «16 Sitio web» bloque 6).
+ */
 export function esFiltrosLaterales(s: SeccionCategoria): boolean {
-  return s.section_type === 'category_filters' && s.section_variant === VARIANTE_FILTROS_LATERALES && s.is_visible !== false
+  if (s.section_type !== 'category_filters' || s.is_visible === false) return false
+  if (s.section_variant === VARIANTE_FILTROS_LATERALES) return true
+  return s.section_variant === 'default' && normalizarOrdenFiltrosCategoria(s.content as Record<string, unknown> | null).posicion === 'sidebar'
 }
 
 export type BloqueCategoria<S> =
@@ -60,19 +70,26 @@ export function planColumnasCategoria<S extends SeccionCategoria>(secciones: rea
  * los valores por defecto (`best_selling`, `grid`, vacío) no van en la URL, y cambiar de
  * filtro vuelve a la página 1.
  */
-export function urlListadoCategoria(slug: string, valores: { orden?: string; sub?: string; vista?: string }): string {
+export function urlListadoCategoria(
+  slug: string,
+  valores: { orden?: string; sub?: string; vista?: string; page?: number; hasta?: number },
+  ordenPorDefecto = 'best_selling',
+): string {
   const params = new URLSearchParams()
-  const pares: Array<[string, string | undefined]> = [['orden', valores.orden], ['sub', valores.sub], ['vista', valores.vista]]
-  for (const [clave, valor] of pares) {
-    if (valor && valor !== 'best_selling' && valor !== '1' && valor !== 'grid' && valor !== '') params.set(clave, valor)
-  }
+  // El orden va en la URL solo si no es el de entrada («Orden al entrar» del bloque de filtros).
+  if (valores.orden && valores.orden !== ordenPorDefecto) params.set('orden', valores.orden)
+  if (valores.sub) params.set('sub', valores.sub)
+  if (valores.vista && valores.vista !== 'grid') params.set('vista', valores.vista)
+  // Paginación (CategoryProducts): conserva orden, subcategoría y vista.
+  if (valores.page && valores.page > 1) params.set('page', String(valores.page))
+  if (valores.hasta && valores.hasta > 1) params.set('hasta', String(valores.hasta))
   const qs = params.toString()
   return `/categorias/${slug}${qs ? `?${qs}` : ''}`
 }
 
-/** Cuántos filtros hay puestos: subcategoría elegida y orden distinto del de siempre. */
-export function filtrosActivos(subcategoria: string | undefined, orden: string | undefined): number {
-  return (subcategoria ? 1 : 0) + (orden && orden !== 'best_selling' ? 1 : 0)
+/** Cuántos filtros hay puestos: subcategoría elegida y orden distinto del de entrada. */
+export function filtrosActivos(subcategoria: string | undefined, orden: string | undefined, ordenPorDefecto = 'best_selling'): number {
+  return (subcategoria ? 1 : 0) + (orden && orden !== ordenPorDefecto ? 1 : 0)
 }
 
 /** Nodo del árbol de `getMenuCategories` (categorías activas de la organización). */

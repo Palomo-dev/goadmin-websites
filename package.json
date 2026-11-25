@@ -114,6 +114,7 @@
     "verify:select-tarjeta": "node --env-file=.env.local scripts/verify-select-tarjeta.mjs",
     "verify:categoria-plantilla": "node --env-file-if-exists=.env.local --disable-warning=ExperimentalWarning scripts/verify-categoria-plantilla.mjs",
     "verify:ficha-plantilla": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-ficha-plantilla.mjs",
+    "verify:ficha-editable": "node --experimental-strip-types --import ./scripts/resolver-ts.mjs --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-ficha-editable.mjs",
     "verify:pestanas-ficha": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-pestanas-ficha.mjs",
     "verify:portada-tienda": "node --disable-warning=ExperimentalWarning scripts/verify-portada-tienda.mjs",
     "verify:secciones-tienda": "node --env-file-if-exists=.env.local --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-secciones-tienda.mjs",

@@ -56,6 +56,10 @@ interface StickyAddToCartProps {
   escritorio?: OpcionesBarraEscritorio | null
   /** Logo de «en lugar de la cabecera» (el mismo componente de la cabecera). */
   organization?: OrganizationWithDetails | null
+  /** «Que el cliente elija» (`product_actions.initial_variant`): la barra no elige talla sola. */
+  clienteElige?: boolean
+  /** «Elige tu {opción}» del editor (`choose_text`). */
+  textoElegir?: string
 }
 
 /** Contenedor de la barra del celular según el estilo (Figma 2857:71321). `flat` = el de hoy. */
@@ -94,6 +98,8 @@ export function StickyAddToCart({
   celular = null,
   escritorio = null,
   organization = null,
+  clienteElige = false,
+  textoElegir,
 }: StickyAddToCartProps) {
   // Una sola lógica de compra para las dos barras (variantes, stock, tope, agregar).
   const compra = useCompraBarraFija({
@@ -109,6 +115,8 @@ export function StickyAddToCart({
     stockLevels,
     branchId,
     ordenAtributos,
+    clienteElige,
+    textoElegir,
   })
   const op = celular ?? CELULAR_POR_DEFECTO
   // «Compra más, paga menos» (Figma «16 Sitio web» S2): la cantidad elegida en un escalón pone su

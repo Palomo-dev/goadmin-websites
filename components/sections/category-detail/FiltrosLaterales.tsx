@@ -20,7 +20,7 @@
 
 import { Check } from 'lucide-react'
 import { EnlaceSitio } from '@/components/site/EnlaceSitio'
-import { normalizarFiltrosLaterales } from '@/lib/website/v2/contrato/seccionesTienda'
+import { normalizarFiltrosLaterales, type OrdenCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
 import { filtrosActivos, urlListadoCategoria, type NodoCategoria } from './columnasCategoria'
 import { SelectorOrdenLateral } from './SelectorOrdenLateral'
 
@@ -37,6 +37,9 @@ interface FiltrosLateralesProps {
     currentSort?: string
     currentSubcategory?: string
     currentView?: string
+    /** Opciones de orden del bloque (filtros de siempre en «Columna lateral»). Ausente = las seis. */
+    ordenesCategoria?: OrdenCategoria[]
+    ordenPorDefecto?: string
   }
 }
 
@@ -82,19 +85,21 @@ export function FiltrosLaterales({ content, primaryColor = '#111827', data }: Fi
   const ajustes = normalizarFiltrosLaterales(content)
   const slug = data?.categorySlug || data?.category?.slug || ''
   if (!slug) return null
-  const orden = data?.currentSort || 'best_selling'
+  const porDefecto = data?.ordenPorDefecto || 'best_selling'
+  const orden = data?.currentSort || porDefecto
   const sub = data?.currentSubcategory || ''
   const vista = data?.currentView || 'grid'
   const hermanas = data?.categoriasHermanas ?? []
   const subcategorias = ajustes.showSubcategories ? (data?.subcategories ?? []).filter((s: any) => s?.slug) : []
-  const activos = filtrosActivos(sub, orden)
+  const activos = filtrosActivos(sub, orden, porDefecto)
+  const url = (s: string, v: Parameters<typeof urlListadoCategoria>[1]) => urlListadoCategoria(s, v, porDefecto)
 
   const grupos = (idOrden: string) => (
     <div className="flex flex-col gap-5">
       {ajustes.showSort && (
         <div className="border-b border-gray-200 pb-5 dark:border-gray-700">
           <label htmlFor={idOrden} className="mb-3 block text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-white">Ordenar por</label>
-          <SelectorOrdenLateral id={idOrden} categorySlug={slug} currentSort={orden} currentSubcategory={sub} currentView={vista} primaryColor={primaryColor} />
+          <SelectorOrdenLateral id={idOrden} categorySlug={slug} currentSort={orden} currentSubcategory={sub} currentView={vista} primaryColor={primaryColor} ordenes={data?.ordenesCategoria} ordenPorDefecto={porDefecto} />
         </div>
       )}
       {hermanas.length >= 2 && (
@@ -102,7 +107,7 @@ export function FiltrosLaterales({ content, primaryColor = '#111827', data }: Fi
           {hermanas.map((c) => (
             <Opcion
               key={c.id}
-              href={c.slug === slug ? urlListadoCategoria(slug, { orden, sub, vista }) : urlListadoCategoria(c.slug, { orden, vista })}
+              href={c.slug === slug ? url(slug, { orden, sub, vista }) : url(c.slug, { orden, vista })}
               marcada={c.slug === slug}
               nombre={c.name}
               color={primaryColor}
@@ -115,7 +120,7 @@ export function FiltrosLaterales({ content, primaryColor = '#111827', data }: Fi
           {subcategorias.map((s: any) => (
             <Opcion
               key={s.id}
-              href={urlListadoCategoria(slug, { orden, sub: s.slug === sub ? undefined : s.slug, vista })}
+              href={url(slug, { orden, sub: s.slug === sub ? undefined : s.slug, vista })}
               marcada={s.slug === sub}
               nombre={s.name}
               conteo={typeof s.product_count === 'number' ? s.product_count : null}
@@ -128,7 +133,7 @@ export function FiltrosLaterales({ content, primaryColor = '#111827', data }: Fi
         <div className="flex flex-col items-start gap-3">
           <p className="text-xs text-gray-500 dark:text-gray-400">{activos === 1 ? '1 filtro activo' : `${activos} filtros activos`}</p>
           <EnlaceSitio
-            href={urlListadoCategoria(slug, { vista })}
+            href={url(slug, { vista })}
             scroll={false}
             className="inline-flex items-center justify-center px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: primaryColor }}

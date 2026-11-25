@@ -57,7 +57,13 @@ check(!/settings\.gallery_scroll_height/.test(fuente), '2m: gallery_scroll_heigh
 
 // ─── 3. Los demás modos, como estaban ──────────────────────────────────────
 const carrusel = fuente.slice(fin)
-check(/aspect-square rounded-2xl overflow-hidden relative/.test(carrusel) && /object-cover/.test(carrusel), '3a: cambió la foto del carrusel')
+// Bloque 3 de la ficha (2026-11-25): la proporción sale de «Proporción de la foto»; sin la clave,
+// cuadrada (`square: 'aspect-square'`) y recortada (object-cover), como siempre.
+check(
+  /\$\{claseProporcion\} rounded-2xl overflow-hidden relative/.test(carrusel) && /object-cover/.test(carrusel) &&
+    /square: 'aspect-square'/.test(fuente) && /CLASE_PROPORCION\[opciones\?\.proporcion \?\? 'square'\]/.test(fuente),
+  '3a: cambió la foto del carrusel (sin opciones debe seguir cuadrada y recortada)',
+)
 check(/aria-label="Imagen anterior"/.test(carrusel) && /border-2/.test(carrusel), '3b: cambiaron las flechas o las miniaturas del carrusel')
 check(/if \(layout === 'grid'\)/.test(fuente) && /if \(layout === 'mosaic'\)/.test(fuente) && /if \(layout === 'show_all'\)/.test(fuente), '3c: falta algún modo')
 

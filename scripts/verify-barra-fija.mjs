@@ -230,7 +230,7 @@ const efectos = leer('components/site/barraFija/efectosBarraFija.ts')
 check(efectos.includes('[data-gochat-widget]') && efectos.includes('--empuje-chat-barra-fija'), 'el chat sube sobre la barra')
 check(efectos.includes("'(prefers-reduced-motion: reduce)'"), 'con «menos movimiento» no vuela')
 check(leer('components/site/CartIndicator.tsx').includes('data-icono-carrito'), 'el ícono del carrito es el destino del vuelo')
-check(leer('components/sections/product-detail/ProductActions.tsx').includes("'preset', 'sticky']"), 'CONTENT_KEYS declara `sticky`')
+check(leer('components/sections/product-detail/ProductActions.tsx').includes("'preset', 'sticky',"), 'CONTENT_KEYS declara `sticky`')
 
 if (problemas.length > 0) {
   console.error(`✗ verify-barra-fija: ${problemas.length} de ${casos} fallaron`)

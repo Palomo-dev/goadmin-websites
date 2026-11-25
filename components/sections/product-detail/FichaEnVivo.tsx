@@ -33,7 +33,7 @@ interface FichaEnVivoProps {
    * vivo). `null` si la ficha no admite barra (sin precio, grupo obligatorio, padre sin variantes).
    * `organization` es la del logo «en lugar de la cabecera».
    */
-  barra: Omit<PropsBarra, 'precioEnBoton' | 'celular' | 'escritorio' | 'organization'> | null
+  barra: Omit<PropsBarra, 'precioEnBoton' | 'celular' | 'escritorio' | 'organization' | 'clienteElige' | 'textoElegir'> | null
 }
 
 /** La plantilla con las secciones en vivo (sin plantilla, una mínima: el renderer solo lee esto). */
@@ -58,6 +58,8 @@ export function FichaEnVivo({ ficha, barra }: FichaEnVivoProps) {
               <StickyAddToCart
                 {...barra}
                 precioEnBoton={opciones.precioEnBarra}
+                clienteElige={opciones.selector.inicial === 'customer'}
+                textoElegir={opciones.selector.textoElegir}
                 celular={opciones.opciones.celular}
                 escritorio={opciones.opciones.escritorio}
                 organization={opciones.barraEscritorio && opciones.opciones.escritorio.posicion === 'replace' ? ficha.organization : null}

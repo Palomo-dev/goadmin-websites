@@ -1471,12 +1471,24 @@ function ordenarConsultaIds(query: any, sort: string) {
   return query.order('name', { ascending: true }).order('id', { ascending: true })
 }
 
-/** Ids con un precio vigente. Lanza si la lectura falla: no se cachea un total a medias. */
+/** Orden por precio vigente, estable (exportado para el verify). */
+export function ordenarPorPrecio<T extends { id: number }>(filas: readonly T[], precios: ReadonlyMap<number, number>, sort: 'price_asc' | 'price_desc'): T[] {
+  const signo = sort === 'price_asc' ? 1 : -1
+  return filas
+    .map((f, i) => ({ f, i, p: precios.get(f.id) ?? 0 }))
+    .sort((a, b) => (a.p - b.p) * signo || a.i - b.i)
+    .map((x) => x.f)
+}
+
+/**
+ * Ids con un precio vigente, con ese precio (el menor si hubiera dos vigentes): con él se ordena
+ * «Precio: menor a mayor» / «mayor a menor». Lanza si la lectura falla: no se cachea un total a medias.
+ */
 async function idsConPrecioVigente(
   supabase: ReturnType<typeof getSupabaseForPublicRead>,
   ids: number[],
-): Promise<Set<number>> {
-  const vigentes = new Set<number>()
+): Promise<Map<number, number>> {
+  const vigentes = new Map<number, number>()
   const CHUNK = 150
   for (let i = 0; i < ids.length; i += CHUNK) {
     const lote = ids.slice(i, i + CHUNK)
@@ -1484,13 +1496,18 @@ async function idsConPrecioVigente(
     while (true) {
       const { data, error } = await supabase
         .from('product_prices')
-        .select('product_id')
+        .select('product_id, price')
         .in('product_id', lote)
         .is('effective_to', null)
         .order('product_id', { ascending: true })
         .range(desde, desde + IDS_POR_PAGINA_LISTADO - 1)
       if (error) throw new Error(error.message || 'product_prices')
-      for (const fila of data || []) vigentes.add(Number((fila as { product_id: number }).product_id))
+      for (const fila of (data || []) as { product_id: number; price: number | string | null }[]) {
+        const id = Number(fila.product_id)
+        const precio = Number.isFinite(Number(fila.price)) ? Number(fila.price) : 0
+        const previo = vigentes.get(id)
+        if (previo === undefined || precio < previo) vigentes.set(id, precio)
+      }
       if (!data || data.length < IDS_POR_PAGINA_LISTADO) break
       desde += IDS_POR_PAGINA_LISTADO
     }
@@ -1595,6 +1612,11 @@ async function getOrdenListadoCategoriaUncached(
   const vigentes = await idsConPrecioVigente(supabase, filas.map((f) => f.id))
   const conPrecio = filas.filter((f) => vigentes.has(f.id))
   if (conPrecio.length === 0) return []
+  // «Precio: menor a mayor» / «mayor a menor»: antes caían al orden por nombre. Empates: el orden por
+  // nombre de la consulta (sort estable).
+  if (sort === 'price_asc' || sort === 'price_desc') {
+    return ordenarPorPrecio(conPrecio, vigentes, sort).map((f) => f.id)
+  }
   if (sort !== 'best_selling') return conPrecio.map((f) => f.id)
 
   const salesMap = await getWebSalesByProduct(organizationId)

@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { escucharVariante } from '@/lib/products/varianteSeleccionada'
+import type { GaleriaFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 import { celdasMosaico } from '@/components/sections/product-detail/fichaTienda'
 import { useVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
 import { InsigniaVolumenFoto } from '@/components/site/volumen/PrecioVolumenFicha'
@@ -29,11 +31,32 @@ export interface GallerySettings {
   gallery_scroll_height?: number
 }
 
+/**
+ * Opciones de la galería del bloque «Galería» de la ficha (`normalizarGaleriaFicha`). Ausente (ficha
+ * legacy con `page_settings`) = la galería de siempre.
+ */
+export type OpcionesFotoFicha = GaleriaFicha & {
+  /** Primera foto de cada variante, para «Cambiar la foto al elegir talla o color». */
+  fotosVariante?: Record<number, string>
+}
+
+/** Clases literales (Tailwind las necesita escritas tal cual). `auto` = la proporción de la foto. */
+const CLASE_PROPORCION: Record<GaleriaFicha['proporcion'], string> = {
+  square: 'aspect-square',
+  '4/5': 'aspect-[4/5]',
+  '3/4': 'aspect-[3/4]',
+  '4/3': 'aspect-[4/3]',
+  '16/9': 'aspect-video',
+  auto: '',
+}
+
 interface ProductImageGalleryProps {
   images: string[]
   productName: string
   primaryColor: string
   settings?: GallerySettings
+  /** Bloque «Galería» de la ficha V2. Ausente = la de siempre. */
+  opciones?: OpcionesFotoFicha | null
 }
 
 /**
@@ -56,8 +79,31 @@ export function ProductImageGallery(props: ProductImageGalleryProps) {
 }
 
 /** `superposicion`: lo que va sobre la foto principal (etiquetas A). Ausente = la galería de siempre. */
-function GaleriaFotos({ images, productName, primaryColor, settings = {}, superposicion = null }: ProductImageGalleryProps & { superposicion?: ReactNode }) {
+function GaleriaFotos({ images, productName, primaryColor, settings = {}, opciones = null, superposicion = null }: ProductImageGalleryProps & { superposicion?: ReactNode }) {
   const [selected, setSelected] = useState(0)
+  // «Cambiar la foto al elegir talla o color»: foto de la opción que no está entre las del producto.
+  const [fotoOpcion, setFotoOpcion] = useState<string | null>(null)
+  const [ampliada, setAmpliada] = useState(false)
+  const ORIGEN = useId()
+  const sigueVariante = opciones?.sigueVariante === true
+  const fotosVariante = opciones?.fotosVariante
+  useEffect(() => {
+    if (!sigueVariante || !fotosVariante) return
+    return escucharVariante(ORIGEN, (id) => {
+      const url = fotosVariante[id]
+      if (!url) return
+      const i = images.indexOf(url)
+      if (i >= 0) {
+        setFotoOpcion(null)
+        setSelected(i)
+      } else {
+        setFotoOpcion(url)
+      }
+    })
+  }, [sigueVariante, fotosVariante, images, ORIGEN])
+  const claseProporcion = CLASE_PROPORCION[opciones?.proporcion ?? 'square']
+  const zoom = opciones?.zoom ?? 'none'
+  const ladoMiniatura = opciones?.miniatura ?? 64
   // Modo scroll: fotos de escritorio (para saltar desde las miniaturas y saber cuál se ve) y el
   // carrusel del celular (para los puntos).
   const fotosRef = useRef<Array<HTMLElement | null>>([])
@@ -66,8 +112,8 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
   const layout = settings.gallery_layout || 'carousel'
   const thumbsPos = settings.thumbnails_position ?? 'bottom'
   const showArrows = settings.gallery_arrows !== false
-  const showDots = settings.gallery_dots !== false
-  const gridCols = settings.gallery_grid_columns ?? 3
+  const showDots = opciones ? opciones.puntos : settings.gallery_dots !== false
+  const gridCols = opciones ? opciones.columnas : settings.gallery_grid_columns ?? 3
   const modoScroll = layout === 'scroll' && images.length > 0
 
   // Escritorio, modo scroll: la miniatura activa es la foto que más se ve.
@@ -116,14 +162,14 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
         {images.map((url, i) => (
           <div
             key={i}
-            className={`aspect-square rounded-lg overflow-hidden cursor-pointer${i === 0 && superposicion ? ' relative' : ''}`}
+            className={`${claseProporcion} rounded-lg overflow-hidden cursor-pointer${i === 0 && superposicion ? ' relative' : ''}`}
             onClick={() => setSelected(i)}
           >
             {i === 0 && superposicion}
             <img
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
-              className="w-full h-full object-cover hover:scale-105 transition-transform"
+              className={`w-full ${claseProporcion ? 'h-full object-cover' : 'h-auto object-contain'} hover:scale-105 transition-transform`}
             />
           </div>
         ))}
@@ -162,14 +208,14 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
         {images.map((url, i) => (
           <div
             key={i}
-            className={`aspect-square rounded-xl overflow-hidden${i === 0 && superposicion ? ' relative' : ''}`}
+            className={`${claseProporcion} rounded-xl overflow-hidden${i === 0 && superposicion ? ' relative' : ''}`}
             style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, ${primaryColor}05 100%)` }}
           >
             {i === 0 && superposicion}
             <img
               src={url}
               alt={`${productName} - imagen ${i + 1}`}
-              className="w-full h-full object-cover"
+              className={`w-full ${claseProporcion ? 'h-full object-cover' : 'h-auto object-contain'}`}
             />
           </div>
         ))}
@@ -239,7 +285,10 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
         {/* Escritorio: columna de fotos que baja con la página */}
         <div className="hidden gap-4 md:flex">
           {conMiniaturas && (
-            <div className="sticky top-[calc(var(--header-h,72px)+1rem)] flex w-14 shrink-0 flex-col gap-2 self-start">
+            <div
+              className="sticky top-[calc(var(--header-h,72px)+1rem)] flex w-14 shrink-0 flex-col gap-2 self-start"
+              style={opciones ? { width: ladoMiniatura } : undefined}
+            >
               {images.map((url, i) => (
                 <button
                   key={i}
@@ -283,29 +332,38 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
   }
 
   // ---- Modo carousel (default) ----
+  const fotoGrande = fotoOpcion ?? images[selected]
   const mainImage = (
     <div
-      className="aspect-square rounded-2xl overflow-hidden relative"
+      className={`${claseProporcion} rounded-2xl overflow-hidden relative`}
       style={{ background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)` }}
     >
-      <img
-        src={images[selected]}
+      <FotoConZoom
+        src={fotoGrande}
         alt={`${productName} - imagen ${selected + 1}`}
-        className="w-full h-full object-cover"
+        zoom={zoom}
+        ajustada={Boolean(claseProporcion)}
+        alAmpliar={() => setAmpliada(true)}
       />
       {superposicion}
       {/* Flechas de navegación */}
       {images.length > 1 && showArrows && (
         <>
           <button
-            onClick={prev}
+            onClick={() => {
+              setFotoOpcion(null)
+              prev()
+            }}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 active:scale-95 transition-all"
             aria-label="Imagen anterior"
           >
             <ChevronLeft className="h-6 w-6 text-gray-800 dark:text-white" />
           </button>
           <button
-            onClick={next}
+            onClick={() => {
+              setFotoOpcion(null)
+              next()
+            }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 active:scale-95 transition-all"
             aria-label="Imagen siguiente"
           >
@@ -319,7 +377,11 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
           {images.map((_, i) => (
             <button
               key={i}
-              onClick={() => setSelected(i)}
+              onClick={() => {
+                setFotoOpcion(null)
+                setSelected(i)
+              }}
+              aria-label={`Ver imagen ${i + 1}`}
               className={`h-2 rounded-full transition-all ${
                 i === selected ? 'w-6 bg-white shadow' : 'w-2 bg-white/60'
               }`}
@@ -339,11 +401,17 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
       {images.map((url, i) => (
         <button
           key={i}
-          onClick={() => setSelected(i)}
+          onClick={() => {
+            setFotoOpcion(null)
+            setSelected(i)
+          }}
           className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
-            i === selected ? 'ring-2 ring-offset-1' : 'border-transparent opacity-70 hover:opacity-100'
+            i === selected && !fotoOpcion ? 'ring-2 ring-offset-1' : 'border-transparent opacity-70 hover:opacity-100'
           }`}
-          style={i === selected ? { borderColor: primaryColor } : {}}
+          style={{
+            ...(i === selected && !fotoOpcion ? { borderColor: primaryColor } : {}),
+            ...(opciones ? { width: ladoMiniatura, height: ladoMiniatura } : {}),
+          }}
         >
           <img src={url} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
         </button>
@@ -351,12 +419,24 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
     </div>
   )
 
+  // «Ampliar» (zoom `lightbox`): la foto a pantalla completa, con flechas y Esc.
+  const visor = ampliada ? (
+    <VisorFoto
+      images={images}
+      inicial={fotoOpcion ? -1 : selected}
+      fotoOpcion={fotoOpcion}
+      productName={productName}
+      alCerrar={() => setAmpliada(false)}
+    />
+  ) : null
+
   // Layout según posición de thumbnails
   if (thumbsPos === 'left') {
     return (
       <div className="flex gap-3">
         <div className="flex-shrink-0">{thumbnails}</div>
         <div className="flex-1 space-y-3">{mainImage}</div>
+        {visor}
       </div>
     )
   }
@@ -366,6 +446,7 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
       <div className="flex gap-3">
         <div className="flex-1 space-y-3">{mainImage}</div>
         <div className="flex-shrink-0">{thumbnails}</div>
+        {visor}
       </div>
     )
   }
@@ -375,6 +456,167 @@ function GaleriaFotos({ images, productName, primaryColor, settings = {}, superp
     <div className="space-y-3">
       {mainImage}
       {thumbnails}
+      {visor}
+    </div>
+  )
+}
+
+/**
+ * Foto grande del carrusel con el zoom del bloque «Galería»:
+ * - `none`: la foto de siempre (sin envoltorio extra de comportamiento).
+ * - `hover` («Al pasar»): con el ratón encima, la foto se agranda 2× siguiendo el puntero.
+ * - `click` («Al tocar»): un toque agranda en ese punto; otro toque vuelve.
+ * - `lightbox` («Ampliar»): un toque abre la foto a pantalla completa.
+ * Con «reducir movimiento» del sistema, el agrandado es instantáneo (sin transición).
+ */
+function FotoConZoom({
+  src,
+  alt,
+  zoom,
+  ajustada,
+  alAmpliar,
+}: {
+  src: string
+  alt: string
+  zoom: GaleriaFicha['zoom']
+  ajustada: boolean
+  alAmpliar: () => void
+}) {
+  const [origen, setOrigen] = useState('50% 50%')
+  const [activo, setActivo] = useState(false)
+  const clases = `w-full ${ajustada ? 'h-full object-cover' : 'h-auto object-contain'}`
+  if (zoom === 'none') return <img src={src} alt={alt} className={clases} />
+  if (zoom === 'lightbox') {
+    return (
+      <button type="button" onClick={alAmpliar} className="block h-full w-full cursor-zoom-in" aria-label="Ampliar foto" data-zoom-galeria="lightbox">
+        <img src={src} alt={alt} className={clases} />
+      </button>
+    )
+  }
+  const mover = (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    setOrigen(`${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`)
+  }
+  const estilo = { transformOrigin: origen, transform: activo ? 'scale(2)' : 'scale(1)' }
+  if (zoom === 'hover') {
+    return (
+      <div
+        className="h-full w-full overflow-hidden"
+        data-zoom-galeria="hover"
+        onMouseEnter={() => setActivo(true)}
+        onMouseLeave={() => setActivo(false)}
+        onMouseMove={mover}
+      >
+        <img src={src} alt={alt} className={`${clases} transition-transform duration-200 motion-reduce:transition-none`} style={estilo} />
+      </div>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={`block h-full w-full overflow-hidden ${activo ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+      aria-label={activo ? 'Alejar foto' : 'Acercar foto'}
+      aria-pressed={activo}
+      data-zoom-galeria="click"
+      onClick={(e) => {
+        mover(e)
+        setActivo((a) => !a)
+      }}
+      onMouseMove={activo ? mover : undefined}
+    >
+      <img src={src} alt={alt} className={`${clases} transition-transform duration-200 motion-reduce:transition-none`} style={estilo} />
+    </button>
+  )
+}
+
+/** «Ampliar»: foto a pantalla completa. Esc o la X cierran; flechas (y ← →) cambian de foto. */
+function VisorFoto({
+  images,
+  inicial,
+  fotoOpcion,
+  productName,
+  alCerrar,
+}: {
+  images: string[]
+  /** -1 = se abrió sobre la foto de la opción elegida (`fotoOpcion`). */
+  inicial: number
+  fotoOpcion: string | null
+  productName: string
+  alCerrar: () => void
+}) {
+  const fotos = inicial < 0 && fotoOpcion ? [fotoOpcion, ...images] : images
+  const [i, setI] = useState(Math.max(0, inicial))
+  const cerrarRef = useRef<HTMLButtonElement | null>(null)
+  const anterior = () => setI((x) => (x === 0 ? fotos.length - 1 : x - 1))
+  const siguiente = () => setI((x) => (x === fotos.length - 1 ? 0 : x + 1))
+  useEffect(() => {
+    const previo = document.activeElement as HTMLElement | null
+    cerrarRef.current?.focus()
+    const alTeclado = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') alCerrar()
+      else if (e.key === 'ArrowLeft') anterior()
+      else if (e.key === 'ArrowRight') siguiente()
+    }
+    window.addEventListener('keydown', alTeclado)
+    const desborde = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', alTeclado)
+      document.body.style.overflow = desborde
+      previo?.focus?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Fotos de ${productName}`}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
+      onClick={alCerrar}
+      data-visor-galeria=""
+    >
+      <img
+        src={fotos[i]}
+        alt={`${productName} - imagen ${i + 1}`}
+        className="max-h-full max-w-full object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        ref={cerrarRef}
+        type="button"
+        onClick={alCerrar}
+        aria-label="Cerrar"
+        className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+      >
+        <X className="h-6 w-6" aria-hidden="true" />
+      </button>
+      {fotos.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              anterior()
+            }}
+            aria-label="Imagen anterior"
+            className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+          >
+            <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              siguiente()
+            }}
+            aria-label="Imagen siguiente"
+            className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+          >
+            <ChevronRight className="h-6 w-6" aria-hidden="true" />
+          </button>
+        </>
+      )}
     </div>
   )
 }

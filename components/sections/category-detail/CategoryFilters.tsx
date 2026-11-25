@@ -9,23 +9,25 @@
  */
 
 import { useRouter } from 'next/navigation'
-import { Grid3X3, List, Search, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
+import { Grid3X3, List, Search, SlidersHorizontal, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
-import { normalizarAjustesFiltrosCategoria, TEXTO_BUSCADOR_CATEGORIA } from '@/lib/website/v2/contrato/seccionesTienda'
+import {
+  CLAVES_ORDEN_FILTROS_CATEGORIA,
+  ETIQUETAS_ORDEN_CATEGORIA,
+  ORDENES_CATEGORIA,
+  normalizarAjustesFiltrosCategoria,
+  normalizarOrdenFiltrosCategoria,
+  TEXTO_BUSCADOR_CATEGORIA,
+} from '@/lib/website/v2/contrato/seccionesTienda'
 import { IconoGuardado } from '@/components/site/IconoGuardado'
 import { CarrilChips } from '@/components/site/carrusel/CarrilChips'
+import { filtrosActivos, urlListadoCategoria } from './columnasCategoria'
 
-export const CONTENT_KEYS = ['filter_position', 'show_sort', 'show_view_toggle', 'subcategory_style', 'search'] as const
+export const CONTENT_KEYS = ['filter_position', 'show_sort', 'show_view_toggle', 'subcategory_style', 'search', ...CLAVES_ORDEN_FILTROS_CATEGORIA] as const
 
-export const SORT_OPTIONS = [
-  { value: 'best_selling', label: 'Más vendidos' },
-  { value: 'name_asc', label: 'Nombre A-Z' },
-  { value: 'name_desc', label: 'Nombre Z-A' },
-  { value: 'price_asc', label: 'Precio: Menor a Mayor' },
-  { value: 'price_desc', label: 'Precio: Mayor a Menor' },
-  { value: 'newest', label: 'Más recientes' },
-]
+/** Las seis opciones de siempre (las usa el listado legacy). */
+export const SORT_OPTIONS = ORDENES_CATEGORIA.map((value) => ({ value, label: ETIQUETAS_ORDEN_CATEGORIA[value] }))
 
 interface CategoryFiltersProps {
   content: {
@@ -36,6 +38,8 @@ interface CategoryFiltersProps {
     subcategory_style?: string
     /** Plantillas de tienda: buscador en píldora que busca en toda la tienda (`/search?q=`). */
     search?: boolean
+    /** Opciones de orden, orden al entrar y conteo (Figma «16 Sitio web», bloque 6). */
+    [clave: string]: unknown
   }
   primaryColor?: string
   data?: {
@@ -45,6 +49,9 @@ interface CategoryFiltersProps {
     currentSort?: string
     currentSubcategory?: string
     currentView?: string
+    ordenPorDefecto?: string
+    /** El encabezado ya muestra «N productos»: aquí no se repite. */
+    conteoEnEncabezado?: boolean
   }
 }
 
@@ -53,7 +60,8 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
   const subcategories = data?.subcategories || []
   const categorySlug = data?.categorySlug || ''
   const total = data?.total ?? 0
-  const currentSort = data?.currentSort || 'best_selling'
+  const porDefecto = data?.ordenPorDefecto || 'best_selling'
+  const currentSort = data?.currentSort || porDefecto
   const currentSubcategory = data?.currentSubcategory || ''
   const currentView = data?.currentView || 'grid'
 
@@ -64,24 +72,21 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
   const showViewToggle = content.show_view_toggle !== false
   // Ausentes = `chips` y sin buscador: la fila de siempre.
   const ajustes = normalizarAjustesFiltrosCategoria(content as Record<string, unknown>)
+  // Ausentes = arriba, las seis opciones de siempre y el conteo (si el encabezado no lo muestra).
+  const orden = normalizarOrdenFiltrosCategoria(content as Record<string, unknown>)
+  const enPanel = orden.posicion === 'drawer'
+  const conConteo = orden.mostrarConteo && data?.conteoEnEncabezado !== true
+  const activos = filtrosActivos(currentSubcategory, currentSort, porDefecto)
   const { ruta } = useRutaSitio()
 
-  const buildUrl = (overrides: Record<string, string | undefined>) => {
-    const params = new URLSearchParams()
-    const values = {
-      orden: currentSort,
-      sub: currentSubcategory || undefined,
-      vista: view,
-      ...overrides,
-    }
-    Object.entries(values).forEach(([key, val]) => {
-      if (val && val !== 'best_selling' && val !== '1' && val !== 'grid' && val !== '') {
-        params.set(key, val)
-      }
-    })
-    const qs = params.toString()
-    return `/categorias/${categorySlug}${qs ? `?${qs}` : ''}`
-  }
+  const buildUrl = (overrides: { orden?: string; sub?: string; vista?: string }) =>
+    ruta(
+      urlListadoCategoria(
+        categorySlug,
+        { orden: currentSort, sub: currentSubcategory || undefined, vista: view, ...overrides },
+        porDefecto,
+      ),
+    )
 
   const handleSortChange = (newSort: string) => {
     router.push(buildUrl({ orden: newSort }))
@@ -187,8 +192,10 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
 
   return (
     <div>
-      {/* Subcategorías (+ buscador, si la plantilla lo pide) */}
-      {buscador ? (
+      {/* Subcategorías (+ buscador, si la plantilla lo pide). Con «Panel», van dentro del panel. */}
+      {enPanel ? (
+        buscador ? <div className="mb-6">{buscador}</div> : null
+      ) : buscador ? (
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           {filaSubcategoriasHoy ?? (filaSubcategoriasNueva ? <div className="min-w-0 flex-1">{filaSubcategoriasNueva}</div> : <div className="hidden md:block" />)}
           {buscador}
@@ -202,31 +209,38 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
       {/* Toolbar: ordenamiento + vista */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg border dark:border-gray-700 text-sm"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filtros
-          </button>
-          {showSort && (
+          {(showSort || subcategories.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              aria-expanded={showFilters}
+              className={`${enPanel ? '' : 'md:hidden '}flex items-center gap-2 px-3 py-2 rounded-lg border dark:border-gray-700 text-sm`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filtros{activos > 0 ? ` (${activos})` : ''}
+            </button>
+          )}
+          {showSort && !enPanel && (
             <select
               value={currentSort}
               onChange={(e) => handleSortChange(e.target.value)}
               className="px-3 py-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-0"
               style={{ ['--tw-ring-color' as any]: primaryColor }}
             >
-              {SORT_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {orden.ordenes.map((o) => (
+                <option key={o} value={o}>{ETIQUETAS_ORDEN_CATEGORIA[o]}</option>
               ))}
             </select>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
-            {total} {total === 1 ? 'producto' : 'productos'}
-          </span>
+          {conConteo && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
+              {total} {total === 1 ? 'producto' : 'productos'}
+            </span>
+          )}
           {showViewToggle && (
             <div className="flex border dark:border-gray-700 rounded-lg overflow-hidden">
               <button
@@ -245,6 +259,145 @@ export function CategoryFilters({ content, primaryColor = '#3B82F6', data }: Cat
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {showFilters && (
+        <PanelFiltros
+          ordenes={showSort ? orden.ordenes : []}
+          subcategorias={subcategories}
+          ordenActual={currentSort}
+          subActual={currentSubcategory}
+          total={total}
+          primaryColor={primaryColor}
+          alCerrar={() => setShowFilters(false)}
+          alAplicar={(o, sub) => {
+            setShowFilters(false)
+            router.push(buildUrl({ orden: o, sub: sub || undefined }))
+          }}
+          alLimpiar={() => {
+            setShowFilters(false)
+            router.push(buildUrl({ orden: porDefecto, sub: undefined }))
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Panel del botón «Filtros» (celular siempre; computador con «Posición · Panel»): «Ordenar por»
+ * con las opciones del bloque y las subcategorías. Se aplica con «Ver N productos»; «Limpiar»
+ * vuelve al orden de entrada y a todas las subcategorías. Esc o la X cierran.
+ */
+function PanelFiltros({
+  ordenes,
+  subcategorias,
+  ordenActual,
+  subActual,
+  total,
+  primaryColor,
+  alCerrar,
+  alAplicar,
+  alLimpiar,
+}: {
+  ordenes: readonly string[]
+  subcategorias: any[]
+  ordenActual: string
+  subActual: string
+  total: number
+  primaryColor: string
+  alCerrar: () => void
+  alAplicar: (orden: string, sub: string) => void
+  alLimpiar: () => void
+}) {
+  const [o, setO] = useState(ordenActual)
+  const [sub, setSub] = useState(subActual)
+  const cerrarRef = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    const previo = document.activeElement as HTMLElement | null
+    cerrarRef.current?.focus()
+    const alTeclado = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') alCerrar()
+    }
+    window.addEventListener('keydown', alTeclado)
+    const desborde = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', alTeclado)
+      document.body.style.overflow = desborde
+      previo?.focus?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 md:items-center" onClick={alCerrar} data-panel-filtros="">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-panel-filtros"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl md:max-w-md md:rounded-2xl dark:bg-gray-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 id="titulo-panel-filtros" className="text-base font-semibold text-gray-900 dark:text-white">Filtros</h2>
+          <button ref={cerrarRef} type="button" onClick={alCerrar} aria-label="Cerrar" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        {ordenes.length > 0 && (
+          <fieldset className="mb-5">
+            <legend className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Ordenar por</legend>
+            {ordenes.map((valor) => (
+              <label key={valor} className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="radio"
+                  name="orden-panel"
+                  value={valor}
+                  checked={o === valor}
+                  onChange={() => setO(valor)}
+                  className="h-4 w-4"
+                  style={{ accentColor: primaryColor }}
+                />
+                {ETIQUETAS_ORDEN_CATEGORIA[valor as keyof typeof ETIQUETAS_ORDEN_CATEGORIA] ?? valor}
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {subcategorias.length > 0 && (
+          <div className="mb-5">
+            <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Subcategorías</p>
+            <div className="flex flex-wrap gap-2">
+              {[{ id: '__todas', slug: '', name: 'Todas' }, ...subcategorias].map((s: any) => {
+                const activa = (s.slug || '') === (sub || '')
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSub(s.slug || '')}
+                    aria-pressed={activa}
+                    className={`min-h-[40px] rounded-full px-4 text-sm font-medium transition-colors ${activa ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'}`}
+                    style={activa ? { backgroundColor: primaryColor } : undefined}
+                  >
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        <div className="flex gap-3 border-t pt-4 dark:border-gray-700">
+          <button type="button" onClick={alLimpiar} className="min-h-[44px] flex-1 rounded-lg border text-sm font-semibold dark:border-gray-700">
+            Limpiar
+          </button>
+          <button
+            type="button"
+            onClick={() => alAplicar(o, sub)}
+            className="min-h-[44px] flex-1 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {o === ordenActual && (sub || '') === (subActual || '') ? `Ver ${total} ${total === 1 ? 'producto' : 'productos'}` : 'Ver productos'}
+          </button>
         </div>
       </div>
     </div>

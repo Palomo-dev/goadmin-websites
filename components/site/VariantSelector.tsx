@@ -13,7 +13,7 @@ import { useCurrency } from './CurrencyProvider'
 import { ProductModifierSelector, type ModifierGroup, type ProductModifierSelectorRef, type SelectedModifier } from './ProductModifierSelector'
 import { gruposDeProducto, mapaGruposDeVariantes } from '@/lib/products/modificadores'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
-import { textoAyudaVariante, textoBotonConPrecio } from '@/lib/website/v2/contrato/seccionesTienda'
+import { normalizarSelectorFicha, textoElegirOpcion, textoBotonConPrecio, type SelectorFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 import type { AgregarFicha, CantidadFicha, ComprarFicha } from './ficha/FilasAccionesFicha'
 
 interface VariantProduct {
@@ -83,12 +83,11 @@ interface VariantSelectorProps {
   /** Plantillas de tienda: «Agregar al carrito · $ X» con la variante elegida. Ausente = hoy. */
   precioEnBoton?: boolean
   /**
-   * Plantillas de tienda (`button_hint: 'auto'`): mientras no haya variante elegida, el botón dice
-   * qué falta («Elige tu talla», con el nombre del atributo). Desde el 2026-11-25 la primera
-   * variante disponible se preselecciona siempre, también con esta opción, así que el texto solo
-   * llega a verse el instante previo a la preselección.
+   * Ficha: lo que configura «Botones de compra» (`product_actions`, Figma «16 Sitio web» bloque 1):
+   * talla al abrir («primera disponible» o «que el cliente elija»), cabecera, recuadro de la opción
+   * elegida y textos. Ausente (diálogo de la tarjeta) = lo de siempre: primera disponible y todo visible.
    */
-  ayudaVariante?: boolean
+  selector?: SelectorFicha
   /**
    * Ficha (modo `inline`): pinta la cantidad y los botones con la distribución del bloque
    * `product_actions` en vez de los de siempre. Ausente = los de siempre (p. ej. el diálogo).
@@ -96,9 +95,12 @@ interface VariantSelectorProps {
   pintarAcciones?: (acciones: AccionesVarianteFicha) => ReactNode
 }
 
+/** Sin configuración de la ficha (diálogo de la tarjeta): primera disponible, cabecera y recuadro. */
+const SELECTOR_DE_SIEMPRE: SelectorFicha = normalizarSelectorFicha(null)
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
-function getVariantImageUrl(variant: VariantProduct): string | null {
+export function getVariantImageUrl(variant: Pick<VariantProduct, 'product_images'>): string | null {
   if (!variant.product_images || variant.product_images.length === 0) return null
   const primary = variant.product_images.find(img => img.is_primary) || variant.product_images[0]
   const path = primary.storage_path || primary.shared_images?.storage_path
@@ -120,9 +122,11 @@ export function VariantSelector({
   organizationSubdomain,
   branchId,
   precioEnBoton = false,
-  ayudaVariante = false,
+  selector,
   pintarAcciones,
 }: VariantSelectorProps) {
+  const cfg = selector ?? SELECTOR_DE_SIEMPRE
+  const clienteElige = cfg.inicial === 'customer'
   const modifierRef = useRef<ProductModifierSelectorRef>(null)
   const [mods, setMods] = useState<SelectedModifier[]>([])
   const extras = mods.reduce((t, m) => t + (m.extraPrice || 0), 0)
@@ -170,17 +174,17 @@ export function VariantSelector({
     return result
   }, [variants, ordenAtributos])
 
-  // Preseleccionar la primera variante disponible, SIEMPRE y en todas las plantillas (decisión del
-  // dueño, 2026-11-25). Las plantillas de tienda con `button_hint: 'auto'` no preseleccionaban: la
-  // ficha abría con el precio de la primera talla ya pintado y la barra fija ya en esa talla, pero
-  // el selector vacío y «Agregar» y «Comprar ahora» apagados con «Elige tu talla».
+  // Preseleccionar la primera variante disponible: lo de siempre en todas las plantillas (decisión
+  // del dueño, 2026-11-25). Solo «Al abrir la ficha · Que el cliente elija» (`initial_variant:
+  // 'customer'`) deja el selector vacío y el botón dice qué falta.
   useEffect(() => {
+    if (clienteElige) return
     if (variants.length > 0 && !selectedVariant) {
       const inicial = primeraVarianteDisponible(variants)!
       setSelectedVariant(inicial)
       setSelectedAttributes(inicial.variant_data || {})
     }
-  }, [variants])
+  }, [variants, clienteElige])
 
   // Sincroniza con el otro selector de la ficha (barra fija ⇄ selector principal).
   useEffect(() => {
@@ -250,19 +254,21 @@ export function VariantSelector({
   const imageUrl = selectedVariant ? getVariantImageUrl(selectedVariant) : null
   const hasAttributeGroups = Object.keys(attributeGroups).length > 0
 
+  /** «Elige tu talla»: el primer atributo sin elegir (o el primero), con el texto del editor. */
+  const textoFalta = () =>
+    textoElegirOpcion(cfg.textoElegir, Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0])
+
   /** Los mismos estados y acciones de los botones de siempre, para la distribución de la ficha. */
   const accionesFicha = (): AccionesVarianteFicha => {
-    const ayuda = ayudaVariante && !selectedVariant
-      ? textoAyudaVariante(Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0])
-      : null
+    const ayuda = clienteElige && !selectedVariant ? textoFalta() : null
     const reemplazo = added
-      ? { texto: '¡Agregado al carrito!', estado: 'exito' as const }
+      ? { texto: cfg.textos.agregado, estado: 'exito' as const }
       : variants.length === 0
         ? { texto: 'No disponible', estado: 'deshabilitado' as const }
         : ayuda
           ? { texto: ayuda, estado: 'deshabilitado' as const }
           : outOfStock
-            ? { texto: 'Sin stock', estado: 'deshabilitado' as const }
+            ? { texto: cfg.textos.sinStock, estado: 'deshabilitado' as const }
             : null
     return {
       cantidad: {
@@ -270,6 +276,7 @@ export function VariantSelector({
         onMenos: () => setQuantity((q) => Math.max(1, q - 1)),
         onMas: () => setQuantity((q) => siguienteCantidad(q, cupo)),
         masDeshabilitado: cupo !== null && quantity >= cupo,
+        texto: cfg.textos.cantidad,
       },
       agregar: {
         onClick: handleAddToCart,
@@ -298,11 +305,13 @@ export function VariantSelector({
 
   const content = (
     <div className="space-y-4">
-      {/* Nombre del producto padre */}
-      <div className="text-center pb-3 border-b">
-        <h3 className="font-semibold text-lg text-gray-900">{parentName}</h3>
-        <p className="text-sm text-gray-500">Selecciona una variante</p>
-      </div>
+      {/* Nombre del producto padre (la ficha lo puede apagar: «Cabecera del selector») */}
+      {cfg.cabecera && (
+        <div className="text-center pb-3 border-b" data-selector-cabecera="">
+          <h3 className="font-semibold text-lg text-gray-900">{parentName}</h3>
+          <p className="text-sm text-gray-500">{cfg.textoCabecera}</p>
+        </div>
+      )}
 
       {/* Selectores de atributos */}
       {hasAttributeGroups ? (
@@ -390,9 +399,9 @@ export function VariantSelector({
         </div>
       )}
 
-      {/* Variante seleccionada — preview */}
-      {selectedVariant && (
-        <div className="p-4 rounded-lg bg-gray-50 border">
+      {/* Variante seleccionada — preview (la ficha lo puede apagar: «Recuadro de la opción elegida») */}
+      {selectedVariant && cfg.recuadro && (
+        <div className="p-4 rounded-lg bg-gray-50 border" data-selector-recuadro="">
           <div className="flex items-center gap-4">
             {imageUrl && (
               <div className="w-16 h-16 rounded-lg overflow-hidden relative flex-shrink-0">
@@ -434,7 +443,7 @@ export function VariantSelector({
                 <p className="text-sm text-red-500">Sin precio</p>
               )}
               {outOfStock && (
-                <p className="text-xs text-red-500 font-medium">Agotado</p>
+                <p className="text-xs text-red-500 font-medium">{cfg.textos.agotado}</p>
               )}
             </div>
           </div>
@@ -460,7 +469,7 @@ export function VariantSelector({
       <>
       {/* Selector de cantidad */}
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700">Cantidad:</span>
+        <span className="text-sm font-medium text-gray-700">{cfg.textos.cantidad}:</span>
         <div className="flex items-center border rounded-lg">
           <button
             type="button"
@@ -499,16 +508,16 @@ export function VariantSelector({
         {added ? (
           <>
             <Check className="h-5 w-5 mr-2" />
-            ¡Agregado al carrito!
+            {cfg.textos.agregado}
           </>
         ) : variants.length === 0 ? (
           // Padre sin variantes activas: no hay talla que elegir y el padre no se vende solo.
           'No disponible'
-        ) : ayudaVariante && !selectedVariant ? (
-          // Plantillas de tienda: el botón dice qué falta elegir (sigue deshabilitado).
-          textoAyudaVariante(Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0])
+        ) : clienteElige && !selectedVariant ? (
+          // «Que el cliente elija»: el botón dice qué falta elegir (sigue deshabilitado).
+          textoFalta()
         ) : outOfStock ? (
-          'Sin stock'
+          cfg.textos.sinStock
         ) : (
           <>
             <ShoppingCart className="h-5 w-5 mr-2" />

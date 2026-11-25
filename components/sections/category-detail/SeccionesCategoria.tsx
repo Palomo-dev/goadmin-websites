@@ -10,6 +10,33 @@
 import { SectionRenderer, SECTION_MAP } from '@/components/sections/SectionRenderer'
 import type { OrganizationWithDetails, WebsitePageSection } from '@/types/database'
 import { planColumnasCategoria, VARIANTE_FILTROS_LATERALES, type NodoCategoria } from './columnasCategoria'
+import { normalizarOrdenFiltrosCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
+
+/**
+ * Datos de las secciones según la plantilla (Figma «16 Sitio web», bloque 6): las opciones de orden
+ * del bloque de filtros (las usa también la columna lateral) y si el encabezado ya muestra
+ * «N productos» (entonces la barra de filtros no lo repite).
+ */
+function datosDeSecciones(secciones: readonly WebsitePageSection[], sectionData: Record<string, any>): Record<string, any> {
+  const visible = (tipo: string) => secciones.find((s) => s.section_type === tipo && s.is_visible !== false)
+  const filtros = visible('category_filters')
+  const encabezado = visible('category_header')
+  return {
+    ...sectionData,
+    ordenesCategoria: normalizarOrdenFiltrosCategoria((filtros?.content ?? null) as Record<string, unknown> | null).ordenes,
+    conteoEnEncabezado: Boolean(encabezado) && (encabezado?.content as Record<string, unknown> | null)?.show_count !== false,
+  }
+}
+
+/**
+ * Los filtros de siempre en «Columna lateral» (`filter_position: 'sidebar'`) se pintan con la
+ * misma columna de `sidebar_facets`: subcategorías con casilla y el orden (si está encendido).
+ */
+function comoColumnaLateral(s: WebsitePageSection): WebsitePageSection {
+  if (s.section_variant === VARIANTE_FILTROS_LATERALES) return s
+  const c = (s.content ?? {}) as Record<string, unknown>
+  return { ...s, section_variant: VARIANTE_FILTROS_LATERALES, content: { ...c, show_subcategories: true, show_sort: c.show_sort !== false } }
+}
 
 /** ¿Estas secciones arman la columna lateral? (entonces hacen falta las categorías hermanas). */
 export function usaColumnaLateral(secciones: readonly WebsitePageSection[]): boolean {
@@ -25,7 +52,8 @@ interface SeccionesCategoriaProps {
   hermanas: NodoCategoria[] | null
 }
 
-export function SeccionesCategoria({ secciones, organization, primaryColor, sectionData, hermanas }: SeccionesCategoriaProps) {
+export function SeccionesCategoria({ secciones, organization, primaryColor, sectionData: datosBase, hermanas }: SeccionesCategoriaProps) {
+  const sectionData = datosDeSecciones(secciones, datosBase)
   const esPrimera = (i: number) => i === 0 || secciones.slice(0, i).every((s) => s.is_visible === false)
   const plan = planColumnasCategoria(secciones, Boolean(SECTION_MAP.category_filters?.[VARIANTE_FILTROS_LATERALES]))
 
@@ -47,7 +75,7 @@ export function SeccionesCategoria({ secciones, organization, primaryColor, sect
           <div key={`columnas-${bloque.lateral.id}`} className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-x-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-12">
             <div className="min-w-0">
               <SectionRenderer
-                section={bloque.lateral}
+                section={comoColumnaLateral(bloque.lateral)}
                 organization={organization}
                 primaryColor={primaryColor}
                 data={dataLateral}

@@ -9,7 +9,7 @@
  * - `sticky`: opciones de la barra al bajar (celular y computador, `leerBarraFija`).
  */
 import { leerBarraFija, type BarraFijaLeida } from '@/lib/website/v2/barraFija'
-import { normalizarAjustesAccionesFicha } from '@/lib/website/v2/contrato/seccionesTienda'
+import { normalizarAjustesAccionesFicha, normalizarSelectorFicha, type SelectorFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 
 interface SeccionFicha {
   section_type: string
@@ -24,6 +24,8 @@ export interface BarraDeFicha {
   barraEscritorio: boolean
   precioEnBarra: boolean
   opciones: BarraFijaLeida
+  /** Talla al abrir y textos del selector: la barra no elige talla si el cliente debe elegirla. */
+  selector: SelectorFicha
 }
 
 export function barraDeFicha(secciones: readonly SeccionFicha[]): BarraDeFicha {
@@ -35,5 +37,6 @@ export function barraDeFicha(secciones: readonly SeccionFicha[]): BarraDeFicha {
     barraEscritorio: opciones.escritorio.encendida,
     precioEnBarra: normalizarAjustesAccionesFicha(contenido).showPriceInButton,
     opciones,
+    selector: normalizarSelectorFicha(contenido),
   }
 }

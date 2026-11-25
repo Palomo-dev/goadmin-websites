@@ -13,6 +13,7 @@ import { porPaginaDeCampo } from '@/lib/website/v2/paginacionCarrusel'
 import { navegacionCategoria } from '@/lib/navegacion/volver'
 import { colorCabeceraDe } from '@/lib/navegacion/coloresVolver'
 import { BarraVolverMovil } from '@/components/site/volver/BarraVolverMovil'
+import { ORDENES_CATEGORIA, normalizarOrdenFiltrosCategoria, normalizarProductosCategoria, type OrdenCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,9 +52,25 @@ export default async function CategoriaSlugPage({
   ])
   if (!category) return notFound()
 
+  // F9.4 — Plantilla de detalle de categoría editable (antes de los productos: su orden al entrar
+  // y sus productos por página deciden la consulta). Sitio V2: la revisión publicada; legacy: igual.
+  const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
+    () => getWebsitePageByType(organization.id, 'category_detail'))
+  const seccionVisible = (tipo: string) =>
+    categoryDetailTemplate?.website_page_sections?.find((x: any) => x.section_type === tipo && x.is_visible !== false) ?? null
+  // Figma «16 Sitio web», bloque 6: sin claves, «Más vendidos», el tamaño de página del sitio y números.
+  const filtrosPlantilla = normalizarOrdenFiltrosCategoria((seccionVisible('category_filters')?.content ?? null) as Record<string, unknown> | null)
+  const productosPlantilla = normalizarProductosCategoria((seccionVisible('category_products')?.content ?? null) as Record<string, unknown> | null)
+
   // Parámetros de búsqueda
-  const page = Math.max(1, parseInt(typeof resolvedSearchParams.page === 'string' ? resolvedSearchParams.page : '1', 10))
-  const sort = (typeof resolvedSearchParams.orden === 'string' ? resolvedSearchParams.orden : 'best_selling') as any
+  const page = Math.max(1, parseInt(typeof resolvedSearchParams.page === 'string' ? resolvedSearchParams.page : '1', 10) || 1)
+  const ordenPedido = typeof resolvedSearchParams.orden === 'string' ? resolvedSearchParams.orden : ''
+  const sort: OrdenCategoria = (ORDENES_CATEGORIA as readonly string[]).includes(ordenPedido)
+    ? (ordenPedido as OrdenCategoria)
+    : filtrosPlantilla.ordenInicial
+  // «Ver más» / «Al bajar»: `?hasta=N` trae de la página 1 a la N juntas (tope 10).
+  const acumula = productosPlantilla.paginacion !== 'numbers'
+  const hasta = acumula ? Math.min(10, Math.max(1, parseInt(typeof resolvedSearchParams.hasta === 'string' ? resolvedSearchParams.hasta : '1', 10) || 1)) : 1
   const subcategorySlug = typeof resolvedSearchParams.sub === 'string' ? resolvedSearchParams.sub : undefined
   const view = typeof resolvedSearchParams.vista === 'string' ? resolvedSearchParams.vista : 'grid'
 
@@ -68,12 +85,13 @@ export default async function CategoriaSlugPage({
   }
 
   const sitio = await getSitioPublicoV2(organization.id, branchId)
-  const limite = porPaginaDeCampo(sitio?.documento?.tema?.paginacion, TAMANO_PAGINA_CATEGORIA)
+  // «Productos por página» del bloque; sin elegir, el ajuste general del sitio (lo de hoy).
+  const limite = productosPlantilla.porPagina ?? porPaginaDeCampo(sitio?.documento?.tema?.paginacion, TAMANO_PAGINA_CATEGORIA)
 
   // Obtener productos paginados
   const { products, total } = await getProductsByCategoryPaginated(organization.id, category.id, {
-    page,
-    limit: limite,
+    page: acumula ? 1 : page,
+    limit: limite * hasta,
     sort,
     subcategoryId,
     branchId
@@ -87,11 +105,6 @@ export default async function CategoriaSlugPage({
 
   const totalPages = Math.ceil(total / limite)
 
-  // F9.4 — Buscar plantilla de detalle de categoría editable
-  // Sitio V2: la plantilla sale de la revisión publicada; legacy: igual que antes.
-  const categoryDetailTemplate = await getPlantillaPublica(organization.id, 'category_detail', ctx.branchId,
-    () => getWebsitePageByType(organization.id, 'category_detail'))
-
   // F9.5 — JSON-LD ItemList para categoría (URLs de la sede si la página es de una sede)
   const baseUrl = ctx.urlBase
   const itemListJsonLd: Record<string, any> = {
@@ -100,7 +113,7 @@ export default async function CategoriaSlugPage({
     name: category.name,
     description: category.description || undefined,
     numberOfItems: total,
-    itemListElement: products.slice(0, limite).map((p: any, i: number) => ({
+    itemListElement: products.slice(0, limite * hasta).map((p: any, i: number) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: p.name,
@@ -130,8 +143,9 @@ export default async function CategoriaSlugPage({
         products={products}
         total={total}
         totalPages={totalPages}
-        currentPage={page}
+        currentPage={acumula ? hasta : page}
         currentSort={sort}
+        ordenPorDefecto={filtrosPlantilla.ordenInicial}
         currentSubcategory={subcategorySlug || ''}
         currentView={view}
         categorySlug={slug}

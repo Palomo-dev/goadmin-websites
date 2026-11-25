@@ -94,8 +94,8 @@ function contenidoDe(seccion: { content?: unknown }): Record<string, unknown> {
  * 24-48 horas hábiles» y «Envío rápido · 24-48 horas»; «Devoluciones · 30 días» y «Garantía ·
  * 30 días». El comercio veía la ficha «con todo doble» (2026-11-25).
  *
- * Se queda «Beneficios» porque sus textos sí se editan desde el panel; los de «Envío y
- * devoluciones» son fijos (solo se encienden o apagan).
+ * Se queda «Beneficios» (sus textos se editan desde el panel). Desde el 2026-11-25 los de «Envío y
+ * devoluciones» también se editan (bloque 2): si el comercio escribe uno, el bloque ya está tocado.
  *
  * Solo aplica al caso de fábrica. Cualquiera de estas cosas deja los dos bloques como están:
  * - el comercio tocó «Envío y devoluciones» (título, mensaje, un interruptor, estilo…);

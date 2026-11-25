@@ -194,6 +194,9 @@ function sinVolver(html) {
   return h
 }
 
+/** Quita el botón «Filtros» del celular (el único con el ícono de ajustes). */
+const sinBotonFiltros = (html) => html.replace(/<button[^>]*>(?:(?!<\/button>).)*?Filtros(?:(?!<\/button>).)*?<\/button>/s, '')
+
 const VARIANTES_DATOS = [DATOS_PAGINA, { ...DATOS_PAGINA, currentSubcategory: 'sofas', currentSort: 'newest', total: 1 }, { ...DATOS_PAGINA, subcategories: [], category: { ...DATOS_PAGINA.category, image_url: null, description: null } }]
 for (const data of VARIANTES_DATOS) {
   for (const content of [{}, { show_image: false }, { show_breadcrumb: false, show_count: false }, { layout: 'stack' }, { layout: 'raro' }, { layout: 'split_text', show_image: true }]) {
@@ -204,7 +207,12 @@ for (const data of VARIANTES_DATOS) {
   }
   for (const content of [{}, { show_sort: false }, { show_view_toggle: false }, { subcategory_style: 'chips' }, { subcategory_style: 'raro', search: 'si' }, { search: false }]) {
     const props = { content, data, primaryColor: '#1F3FD8' }
-    check(pintar(filtrosA.CategoryFilters, props) === pintar(filtrosB.CategoryFilters, props), `CategoryFilters ${JSON.stringify(content)}: cambió frente a ${BASE_REF}`)
+    // Figma «16 Sitio web», bloque 6: el botón «Filtros» del celular (md:hidden) ya abre su panel
+    // (antes no hacía nada) y solo sale si hay algo que filtrar. Fuera de ese botón, igual que main.
+    const a = pintar(filtrosA.CategoryFilters, props)
+    check(sinBotonFiltros(a) === sinBotonFiltros(pintar(filtrosB.CategoryFilters, props)), `CategoryFilters ${JSON.stringify(content)}: cambió frente a ${BASE_REF} (fuera del botón «Filtros»)`)
+    const conAlgo = content.show_sort !== false || (data.subcategories ?? []).length > 0
+    check(conAlgo === /aria-haspopup="dialog"[^>]*>.*?Filtros/.test(a), `CategoryFilters ${JSON.stringify(content)}: el botón «Filtros» abre el panel solo si hay algo que filtrar`)
   }
 }
 notas.push(`render = ${BASE_REF}: ${iguales} configuraciones de la rejilla, + tarjeta, encabezado y filtros`)

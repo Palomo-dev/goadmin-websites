@@ -4,6 +4,10 @@ import { Truck, RotateCcw, Clock, MapPin } from 'lucide-react'
 import { buildCardStyle } from '@/lib/sectionStyle'
 import type { ResumenEnvioFicha } from './anclasFicha'
 import { pedirPestanaFicha } from './eventosPestanas'
+import { filasEnvioFicha, type ClaveFilaEnvio } from './filasEnvio'
+import { CLAVES_TEXTOS_ENVIO } from '@/lib/website/v2/seccionesFicha'
+
+export const CONTENT_KEYS = ['title', 'show_delivery_time', 'show_shipping_cost', 'show_return_policy', 'custom_message', ...CLAVES_TEXTOS_ENVIO] as const
 
 interface ProductShippingProps {
   content: Record<string, any>
@@ -11,11 +15,13 @@ interface ProductShippingProps {
   primaryColor?: string
 }
 
-/** Textos de siempre (fijos: el bloque solo los enciende o apaga). */
-const ENTREGA_DE_SIEMPRE = '24-48 horas hábiles'
-const COSTO_DE_SIEMPRE = 'Calculado al finalizar la compra'
-const DEVOLUCION_DE_SIEMPRE = '30 días para devoluciones'
-const COBERTURA_DE_SIEMPRE = 'Envíos a todo el país'
+/** Título e ícono de cada línea. El texto sale de `filasEnvioFicha` (dato real o el del editor). */
+const LINEAS: Record<ClaveFilaEnvio, { icono: typeof Clock; titulo: string; tituloPestana: string }> = {
+  entrega: { icono: Clock, titulo: 'Tiempo de entrega', tituloPestana: 'Tiempo de entrega' },
+  costo: { icono: Truck, titulo: 'Costo de envío', tituloPestana: 'Costo de envío' },
+  devoluciones: { icono: RotateCcw, titulo: 'Devoluciones', tituloPestana: 'Cambios y devoluciones' },
+  cobertura: { icono: MapPin, titulo: 'Cobertura', tituloPestana: 'Cobertura' },
+}
 
 /**
  * «Envío y devoluciones» de la ficha.
@@ -32,9 +38,7 @@ export function ProductShipping({ content, data }: ProductShippingProps) {
   if (data?.enPestanaFicha === true) return <DetalleEnvio content={content} resumen={resumen} />
 
   const title = content.title || 'Envío y devoluciones'
-  const showDeliveryTime = content.show_delivery_time ?? true
-  const showShippingCost = content.show_shipping_cost ?? true
-  const showReturnPolicy = content.show_return_policy ?? true
+  const filas = filasEnvioFicha(content, resumen)
   const customMessage = content.custom_message || ''
   const columns = Number(content.columns ?? 2)
   const gap = content.gap ?? 16
@@ -53,43 +57,18 @@ export function ProductShipping({ content, data }: ProductShippingProps) {
       <h2 className="titulo-legado text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
 
       <div className={`grid grid-cols-1 ${smGridColsClass}`} style={{ gap: `${gap}px` }}>
-        {showDeliveryTime && (
-          <div className={`flex items-start gap-3 p-4 border rounded-lg dark:border-gray-700 ${cardClassName}`} style={cardStyle}>
-            <Clock className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Tiempo de entrega</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{ENTREGA_DE_SIEMPRE}</p>
+        {filas.map(({ clave, texto }) => {
+          const { icono: Icono, titulo } = LINEAS[clave]
+          return (
+            <div key={clave} className={`flex items-start gap-3 p-4 border rounded-lg dark:border-gray-700 ${cardClassName}`} style={cardStyle}>
+              <Icono className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{titulo}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{texto}</p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {showShippingCost && (
-          <div className={`flex items-start gap-3 p-4 border rounded-lg dark:border-gray-700 ${cardClassName}`} style={cardStyle}>
-            <Truck className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Costo de envío</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{COSTO_DE_SIEMPRE}</p>
-            </div>
-          </div>
-        )}
-
-        {showReturnPolicy && (
-          <div className={`flex items-start gap-3 p-4 border rounded-lg dark:border-gray-700 ${cardClassName}`} style={cardStyle}>
-            <RotateCcw className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Devoluciones</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{DEVOLUCION_DE_SIEMPRE}</p>
-            </div>
-          </div>
-        )}
-
-        <div className={`flex items-start gap-3 p-4 border rounded-lg dark:border-gray-700 ${cardClassName}`} style={cardStyle}>
-          <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Cobertura</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{COBERTURA_DE_SIEMPRE}</p>
-          </div>
-        </div>
+          )
+        })}
       </div>
 
       {customMessage && (
@@ -133,22 +112,7 @@ function ResumenEnvio({ resumen }: { resumen: ResumenEnvioFicha | null }) {
 
 /** Detalle completo en la pestaña «Envío y devoluciones» (lista con ícono, mensaje propio al final). */
 function DetalleEnvio({ content, resumen }: { content: Record<string, any>; resumen: ResumenEnvioFicha | null }) {
-  const filas: { icono: typeof Clock; titulo: string; texto: string }[] = []
-  if (content.show_delivery_time ?? true) {
-    filas.push({ icono: Clock, titulo: 'Tiempo de entrega', texto: resumen?.llega ? resumen.llega.replace(/^Llega en /, '') : ENTREGA_DE_SIEMPRE })
-  }
-  if (content.show_shipping_cost ?? true) {
-    const umbral = resumen?.umbral
-    filas.push({
-      icono: Truck,
-      titulo: 'Costo de envío',
-      texto: umbral
-        ? `Gratis en compras desde $ ${Math.round(umbral).toLocaleString('es-CO')}. Por debajo, se calcula al finalizar la compra.`
-        : COSTO_DE_SIEMPRE,
-    })
-  }
-  if (content.show_return_policy ?? true) filas.push({ icono: RotateCcw, titulo: 'Cambios y devoluciones', texto: DEVOLUCION_DE_SIEMPRE })
-  filas.push({ icono: MapPin, titulo: 'Cobertura', texto: COBERTURA_DE_SIEMPRE })
+  const filas = filasEnvioFicha(content, resumen).map(({ clave, texto }) => ({ icono: LINEAS[clave].icono, titulo: LINEAS[clave].tituloPestana, texto }))
   const mensaje = typeof content.custom_message === 'string' ? content.custom_message.trim() : ''
   return (
     <div className="space-y-4" data-envio-pestana="">

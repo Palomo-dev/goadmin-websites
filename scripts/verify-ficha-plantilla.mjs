@@ -194,28 +194,40 @@ check(contrato.VALORES_NUEVOS_TIENDA['product_gallery.gallery_layout'].includes(
 
   const pagina = await fuente('app/productos/[id]/page.tsx')
   // Relacionados elegidos a mano / comprados juntos (verify-secciones-ficha): solo si la sección los pide.
-  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conEnvioEnPestana) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
-  check(pagina.includes('conEnvioEnPestana || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null)'), 'las zonas de envío solo con la pestaña «Envío y devoluciones» (o en el lienzo)')
+  check(pagina.includes('if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conBloqueEnvio) {'), 'la página consulta solo si la plantilla trae los bloques nuevos')
+  // Bloque 2 (opción B, 2026-11-25): las líneas del bloque «Envío y devoluciones» usan el tiempo real
+  // de las zonas: se leen con el bloque visible (pestaña o no) o en el lienzo. Lectura cacheada.
+  check(pagina.includes("const conBloqueEnvio = conEnvioEnPestana || tieneBloque(seccionesFicha, 'product_shipping')")
+    && pagina.includes('conBloqueEnvio || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null)'), 'las zonas de envío solo con el bloque «Envío y devoluciones» visible (o en el lienzo)')
   check(pagina.includes("conPaginador ? getPaginadorFicha(") && pagina.includes('look\n        ? getCompletaElLook('), 'cada consulta detrás de su bloque')
   check(pagina.includes('const seccionesFicha = hasTemplateSections ? productDetailTemplate.website_page_sections : []'), 'la ficha legacy monolítica no consulta nada nuevo')
 
   const acciones = await fuente('app/productos/[id]/ProductDetailActions.tsx')
-  check(acciones.includes('precioEnBoton = false,') && acciones.includes('ayudaVariante = false,'), 'acciones: las opciones nuevas valen false por defecto')
+  check(acciones.includes('precioEnBoton = false,') && acciones.includes('selector = SELECTOR_DE_SIEMPRE,'), 'acciones: sin configuración, el selector de siempre')
   // Botones configurables (Figma 2779:65038, 2026-11-22): el precio llega solo con la opción y
   // FilasAccionesFicha lo agrega al texto de «Agregar» (scripts/verify-acciones-ficha.mjs).
   check(acciones.includes('precio: precioEnBoton ? formatPrice(effectivePrice) : null,'), 'acciones: sin precio en el botón, la etiqueta de siempre')
   const boton = await fuente('components/site/AddToCartButton.tsx')
   check(boton.includes("{etiqueta ?? 'Agregar al carrito'}"), 'botón: sin etiqueta, «Agregar al carrito»')
   const selector = await fuente('components/site/VariantSelector.tsx')
-  check(selector.includes('ayudaVariante = false,') && selector.includes('precioEnBoton = false,'), 'selector: opciones nuevas en false por defecto')
-  // 2026-11-25: la primera variante disponible se preselecciona SIEMPRE (también con `button_hint: 'auto'`).
+  check(selector.includes('const cfg = selector ?? SELECTOR_DE_SIEMPRE') && selector.includes('precioEnBoton = false,'), 'selector: sin configuración (diálogo de la tarjeta), el de siempre')
+  // 2026-11-25: la primera variante disponible se preselecciona (lo de todas las tiendas). Solo
+  // «Al abrir la ficha · Que el cliente elija» (`initial_variant: 'customer'`) lo evita; la pista de
+  // antes (`button_hint: 'auto'`) ya no cambia nada.
   {
     const efecto = selector.slice(selector.indexOf('// Preseleccionar la primera variante disponible'), selector.indexOf('// Sincroniza con el otro selector de la ficha'))
     check(efecto.includes('if (variants.length > 0 && !selectedVariant) {') && efecto.includes('primeraVarianteDisponible(variants)'), 'selector: se preselecciona la primera variante disponible')
-    check(!efecto.includes('ayudaVariante'), 'selector: la preselección no depende de la pista del botón')
+    check(efecto.includes('if (clienteElige) return') && !efecto.includes('button_hint') , 'selector: solo «Que el cliente elija» evita la preselección')
+    igual(contrato.normalizarSelectorFicha({ button_hint: 'auto' }).inicial, 'first_available', 'la pista de antes no cambia la talla al abrir')
+  }
+  // La barra fija nunca agrega el producto padre sin talla (con «Que el cliente elija» no elige sola).
+  {
+    const barra = await fuente('components/site/barraFija/useCompraBarraFija.ts')
+    check(barra.includes('if (isParent && variants.length > 0 && !selectedVariant) {'), 'barra fija: sin talla elegida no agrega el padre')
+    check(barra.includes('if (clienteElige) return'), 'barra fija: respeta «Que el cliente elija»')
   }
   const accionesBloque = await fuente('components/sections/product-detail/ProductActions.tsx')
-  check(accionesBloque.includes('normalizarAjustesAccionesFicha(content'), 'el bloque de acciones lee sus claves con el normalizador del contrato')
+  check(accionesBloque.includes('normalizarAjustesAccionesFicha(content') && accionesBloque.includes('normalizarSelectorFicha(content'), 'el bloque de acciones lee sus claves con los normalizadores del contrato')
   igual(contrato.normalizarAjustesAccionesFicha({}), { showPriceInButton: false, buttonHint: 'none' }, 'acciones sin claves = hoy')
 
   // Nada de dinero: ni checkout, ni pedidos, ni carrito propio.

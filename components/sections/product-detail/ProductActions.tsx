@@ -1,10 +1,12 @@
 'use client'
 
 import { ProductDetailActions } from '@/app/productos/[id]/ProductDetailActions'
-import { normalizarAjustesAccionesFicha } from '@/lib/website/v2/contrato/seccionesTienda'
+import { CLAVES_SELECTOR_FICHA, normalizarAjustesAccionesFicha, normalizarSelectorFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 import { leerAccionesFicha } from '@/lib/website/v2/accionesFicha'
 
-export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'button_hint', 'actions', 'preset', 'sticky'] as const
+// `button_hint` (la «Pista antes de elegir variante» de antes) ya no se lee: la reemplaza
+// `initial_variant` (`customer` = el botón dice qué falta). Lo guardado se conserva y se ignora.
+export const CONTENT_KEYS = ['sticky_mobile', 'buttons_layout', 'show_price_in_button', 'actions', 'preset', 'sticky', ...CLAVES_SELECTOR_FICHA] as const
 
 interface ProductActionsProps {
   content: {
@@ -13,8 +15,10 @@ interface ProductActionsProps {
     buttons_layout?: 'stacked' | 'inline' | 'split'
     /** Plantillas de tienda: «Agregar al carrito · $ X». Ausente = lo de hoy. */
     show_price_in_button?: boolean
-    /** Plantillas de tienda: `auto` = «Elige tu talla» hasta elegir variante. Ausente = lo de hoy. */
+    /** Antes: «Pista antes de elegir variante». Ya no se lee (ver `initial_variant`). */
     button_hint?: 'none' | 'auto'
+    /** Talla al abrir, cabecera, recuadro y textos: `normalizarSelectorFicha` (contrato). */
+    [clave: string]: unknown
     /** Botones configurables (Figma 2779:65038): lista ordenada; ver lib/website/v2/accionesFicha.ts. */
     actions?: unknown
     /** Distribución lista que coincide con `actions` (la escribe el editor). */
@@ -73,7 +77,7 @@ export function ProductActions({ content, primaryColor = '#3B82F6', data }: Prod
         puedePedir={data?.puedePedir ?? true}
         ordenAtributos={data?.ordenAtributos ?? null}
         precioEnBoton={ajustes.showPriceInButton}
-        ayudaVariante={ajustes.buttonHint === 'auto'}
+        selector={normalizarSelectorFicha(content as Record<string, unknown>)}
       />
     </div>
   )

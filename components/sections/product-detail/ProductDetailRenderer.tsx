@@ -62,6 +62,7 @@ import {
 } from './fichaTienda'
 import type { RelacionadosFichaDatos } from './RelatedProductsSection'
 import { resumenEnvioFicha, type PromesaZona } from './anclasFicha'
+import { filasEnvioFicha } from './filasEnvio'
 import type { DatosPestanasFicha } from './NavAnclas'
 import { configResenasDeSeccion } from '@/components/site/reviews/types'
 import { ProveedorEtiquetasFicha } from '@/components/site/etiquetas/EtiquetasFicha'
@@ -233,17 +234,18 @@ export function ProductDetailRenderer({
   const { columns, stickyColumn, galleryWidth, showBreadcrumb } = resolverDisenoFicha(templatePage?.page_settings ?? null, secciones)
 
   // Plantillas de tienda: datos de los bloques nuevos, solo si la página los trae.
-  if (envioEnPestana) {
-    // Línea corta de envío junto al botón: datos reales de la tienda (sin datos, no sale).
-    const ajustesEnvio = organization.website_settings as { enable_shipping?: boolean | null; free_shipping_threshold?: unknown } | null
-    sectionData.resumenEnvio = resumenEnvioFicha({
-      envioActivo: ajustesEnvio?.enable_shipping !== false,
-      umbralSitio: ajustesEnvio?.free_shipping_threshold,
-      zonas: extrasFicha?.zonasEnvio ?? null,
-    })
-  } else {
-    // Sin pestaña de envío: el bloque de siempre.
-  }
+  // Datos reales de envío de la tienda (sin consultas: ajustes del sitio y las zonas si se leyeron).
+  // Con pestaña: la línea corta junto al botón (sin datos, no sale). Siempre: las líneas del bloque
+  // «Envío y devoluciones» y de la parte «Envío» de la Descripción (bloque 2, opción B: dato real o
+  // el texto del editor, que sin tocar es la frase de siempre).
+  const ajustesEnvio = organization.website_settings as { enable_shipping?: boolean | null; free_shipping_threshold?: unknown } | null
+  sectionData.resumenEnvio = resumenEnvioFicha({
+    envioActivo: ajustesEnvio?.enable_shipping !== false,
+    umbralSitio: ajustesEnvio?.free_shipping_threshold,
+    zonas: extrasFicha?.zonasEnvio ?? null,
+  })
+  const bloqueEnvio = visibles.find((s) => s.section_type === 'product_shipping') ?? envioEnPestana
+  sectionData.filasEnvio = filasEnvioFicha((bloqueEnvio?.content ?? null) as Record<string, unknown> | null, sectionData.resumenEnvio)
   if (extrasFicha) {
     sectionData.paginadorFicha = extrasFicha.paginador ?? null
     sectionData.lookFicha = extrasFicha.look ?? []

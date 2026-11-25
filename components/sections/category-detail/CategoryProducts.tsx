@@ -11,7 +11,9 @@ import { urlPublicaStorage } from '@/lib/storage/urlPublica'
 import { useRouter } from 'next/navigation'
 import Link from '@/components/site/Enlace'
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CLAVES_PRODUCTOS_CATEGORIA_NUEVAS, normalizarProductosCategoria } from '@/lib/website/v2/contrato/seccionesTienda'
+import { urlListadoCategoria } from './columnasCategoria'
 import { ProductCard } from '@/components/sections/products/ProductCard'
 import { getCartKey } from '@/lib/utils'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
@@ -19,7 +21,18 @@ import { separacionTarjetas } from '@/lib/website/tarjetaProducto'
 import { useEstiloTarjeta } from '@/components/site/TarjetaProductoContext'
 import { rejillaConLineas } from '@/lib/website/tarjetaPlantillasTienda'
 
-export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message'] as const
+export const CONTENT_KEYS = ['columns', 'max_items', 'empty_message', ...CLAVES_PRODUCTOS_CATEGORIA_NUEVAS] as const
+
+/**
+ * Clases literales de la rejilla (Tailwind las necesita escritas tal cual). 4 columnas = la de
+ * siempre (3 desde `lg`, 4 desde `xl`). Figma «16 Sitio web», bloque 6.
+ */
+const COLUMNAS_COMPUTADOR: Record<number, string> = {
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-3 xl:grid-cols-4',
+  5: 'lg:grid-cols-4 xl:grid-cols-5',
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -28,6 +41,8 @@ interface CategoryProductsProps {
     columns?: number
     max_items?: number
     empty_message?: string
+    /** Columnas en el celular y paginación: `normalizarProductosCategoria`. */
+    [clave: string]: unknown
   }
   primaryColor?: string
   data?: {
@@ -37,6 +52,9 @@ interface CategoryProductsProps {
     totalPages?: number
     currentPage?: number
     currentView?: string
+    currentSort?: string
+    currentSubcategory?: string
+    ordenPorDefecto?: string
     organizationSubdomain?: string
     showBuyNow?: boolean
     branchId?: number | null
@@ -69,27 +87,47 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
   const showBuyNow = data?.showBuyNow ?? true
   const branchId = data?.branchId ?? null
   const emptyMessage = content.empty_message || 'No hay productos en esta categoría'
+  // Sin claves: 2 columnas en el celular, 3-4 en computador y números (la rejilla de siempre).
+  const rejilla = normalizarProductosCategoria(content as Record<string, unknown>)
+  const claseRejilla = `${rejilla.columnasCelular === 1 ? 'grid-cols-1' : 'grid-cols-2'} sm:grid-cols-2 ${COLUMNAS_COMPUTADOR[rejilla.columnas] ?? COLUMNAS_COMPUTADOR[4]}`
 
   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
 
-  const buildUrl = (overrides: Record<string, string | undefined>) => {
-    const params = new URLSearchParams()
-    const values = {
-      page: String(currentPage),
-      ...overrides,
-    }
-    Object.entries(values).forEach(([key, val]) => {
-      if (val && val !== '1') {
-        params.set(key, val)
-      }
-    })
-    const qs = params.toString()
-    return `/categorias/${categorySlug}${qs ? `?${qs}` : ''}`
-  }
+  // La paginación conserva el orden, la subcategoría y la vista (antes los perdía).
+  const urlCon = (pagina: { page?: number; hasta?: number }) =>
+    ruta(
+      urlListadoCategoria(
+        categorySlug,
+        { orden: data?.currentSort, sub: data?.currentSubcategory || undefined, vista: view, ...pagina },
+        data?.ordenPorDefecto || 'best_selling',
+      ),
+    )
 
   const handlePageChange = (newPage: number) => {
-    router.push(buildUrl({ page: String(newPage) }))
+    router.push(urlCon({ page: newPage }))
   }
+
+  // «Ver más» y «Al bajar»: `currentPage` = cuántas páginas van cargadas juntas (`?hasta=`).
+  const hayMas = rejilla.paginacion !== 'numbers' && currentPage < totalPages
+  const [cargando, setCargando] = useState(false)
+  useEffect(() => setCargando(false), [currentPage])
+  const cargarMas = () => {
+    if (cargando) return
+    setCargando(true)
+    router.push(urlCon({ hasta: currentPage + 1 }), { scroll: false })
+  }
+  const centinela = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (rejilla.paginacion !== 'infinite' || !hayMas || typeof IntersectionObserver === 'undefined') return
+    const el = centinela.current
+    if (!el) return
+    const obs = new IntersectionObserver((e) => {
+      if (e.some((x) => x.isIntersecting)) cargarMas()
+    }, { rootMargin: '400px 0px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rejilla.paginacion, hayMas, currentPage])
 
   const addToCart = (product: any) => {
     const price = product.product_prices?.[0]?.price || 0
@@ -146,7 +184,7 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
   return (
     <>
       {view === 'grid' ? (
-        <div className={`grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6${lineas ? ` ${lineas.className}` : ''}`} style={lineas ? { ...separacion, ...lineas.style } : separacion}>
+        <div className={`grid ${claseRejilla} gap-3 sm:gap-6${lineas ? ` ${lineas.className}` : ''}`} style={lineas ? { ...separacion, ...lineas.style } : separacion}>
           {products.map((product: any) => (
             <ProductCard
               key={product.id}
@@ -181,8 +219,23 @@ export function CategoryProducts({ content, primaryColor = '#3B82F6', data }: Ca
         </div>
       )}
 
+      {/* «Ver más» / «Al bajar» (el botón queda también como respaldo de «Al bajar») */}
+      {hayMas && (
+        <div ref={centinela} className="mt-10 flex justify-center" data-paginacion-categoria={rejilla.paginacion}>
+          <button
+            type="button"
+            onClick={cargarMas}
+            disabled={cargando}
+            aria-busy={cargando}
+            className="min-h-[44px] rounded-lg border px-6 text-sm font-semibold transition-colors hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:hover:bg-gray-800"
+          >
+            {cargando ? 'Cargando…' : 'Ver más productos'}
+          </button>
+        </div>
+      )}
+
       {/* Paginación */}
-      {totalPages > 1 && (
+      {rejilla.paginacion === 'numbers' && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-10">
           <button
             onClick={() => handlePageChange(currentPage - 1)}

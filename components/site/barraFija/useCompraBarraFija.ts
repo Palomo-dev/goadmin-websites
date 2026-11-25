@@ -8,6 +8,7 @@ import { emitirVariante, escucharVariante, escucharCantidad } from '@/lib/produc
 import { getCartKey as getCartKeyUtil } from '@/lib/utils'
 import { ordenarValoresAtributo, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { useIrAlCheckout } from '@/components/site/ficha/useIrAlCheckout'
+import { TEXTOS_SELECTOR_FICHA, textoElegirOpcion } from '@/lib/website/v2/contrato/seccionesTienda'
 
 /**
  * Lógica de compra de la barra fija de la ficha (celular y computador): variantes y su
@@ -41,6 +42,13 @@ export interface DatosCompraBarraFija {
   branchId?: number | null
   /** `display_order` del catálogo. Sin él, XS…XXXL y números de menor a mayor. */
   ordenAtributos?: OrdenAtributos | null
+  /**
+   * «Botones de compra › Al abrir la ficha · Que el cliente elija» (`initial_variant: 'customer'`):
+   * la barra tampoco elige talla sola. Ausente = primera disponible (lo de siempre).
+   */
+  clienteElige?: boolean
+  /** Texto de «Elige tu {opción}» del editor (`choose_text`). Ausente = el de siempre. */
+  textoElegir?: string
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
@@ -71,6 +79,8 @@ export function useCompraBarraFija({
   stockLevels,
   branchId,
   ordenAtributos = null,
+  clienteElige = false,
+  textoElegir = TEXTOS_SELECTOR_FICHA.elegir,
 }: DatosCompraBarraFija) {
   const [added, setAdded] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -117,14 +127,15 @@ export function useCompraBarraFija({
     return result
   }, [variants, ordenAtributos])
 
-  // Pre-seleccionar primera variante
+  // Pre-seleccionar primera variante (salvo «Que el cliente elija»)
   useEffect(() => {
+    if (clienteElige) return
     if (variants.length > 0 && !selectedVariant) {
       const inicial = primeraVarianteDisponible(variants)!
       setSelectedVariant(inicial)
       setSelectedAttributes(inicial.variant_data || {})
     }
-  }, [variants])
+  }, [variants, clienteElige])
 
   // Sincroniza con el otro selector de la ficha (barra fija ⇄ selector principal).
   useEffect(() => {
@@ -182,6 +193,14 @@ export function useCompraBarraFija({
    */
   const escribirLinea = (reemplazar: boolean): boolean => {
     if (outOfStock) return false
+    // Producto con tallas y ninguna elegida («Que el cliente elija»): nunca se agrega el padre.
+    if (isParent && variants.length > 0 && !selectedVariant) {
+      setAviso(textoElegirOpcion(textoElegir, Object.keys(attributeGroups).find((a) => !selectedAttributes[a]) ?? Object.keys(attributeGroups)[0]))
+      setTimeout(() => setAviso(null), 3000)
+      const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      document.getElementById('product-actions')?.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth', block: 'center' })
+      return false
+    }
     try {
       const cartKey = getCartKey(organizationSubdomain, branchId)
       const cart = reemplazar ? [] : JSON.parse(localStorage.getItem(cartKey) || '[]')

@@ -43,6 +43,8 @@ interface CategoryDetailRendererProps {
   totalPages: number
   currentPage: number
   currentSort: string
+  /** «Orden al entrar» del bloque de filtros (sin `?orden=`). Ausente = «Más vendidos». */
+  ordenPorDefecto?: string
   currentSubcategory: string
   currentView: string
   categorySlug: string
@@ -63,6 +65,7 @@ export async function CategoryDetailRenderer({
   totalPages,
   currentPage,
   currentSort,
+  ordenPorDefecto = 'best_selling',
   currentSubcategory,
   currentView,
   categorySlug,
@@ -81,6 +84,7 @@ export async function CategoryDetailRenderer({
     totalPages,
     currentPage,
     currentSort,
+    ordenPorDefecto,
     currentSubcategory,
     currentView,
     categorySlug,

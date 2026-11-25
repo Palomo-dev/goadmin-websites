@@ -36,6 +36,8 @@ export interface CantidadFicha {
   onMas: () => void
   masDeshabilitado: boolean
   deshabilitado?: boolean
+  /** Rótulo junto al selector («Botones de compra › Textos de la compra»). Ausente = «Cantidad». */
+  texto?: string
 }
 
 export interface AgregarFicha {
@@ -83,7 +85,7 @@ function enlaceFicha(): string {
 function SelectorCantidad({ cantidad, etiqueta }: { cantidad: CantidadFicha; etiqueta: boolean }) {
   return (
     <div className="flex shrink-0 items-center gap-3" data-accion-ficha="cantidad">
-      {etiqueta && <span className="text-[15px] font-medium text-gray-700">Cantidad</span>}
+      {etiqueta && <span className="text-[15px] font-medium text-gray-700">{cantidad.texto || 'Cantidad'}</span>}
       <div className={`flex h-12 items-center rounded-[10px] border border-gray-300 bg-white ${cantidad.deshabilitado ? 'pointer-events-none opacity-50' : ''}`}>
         <button
           type="button"

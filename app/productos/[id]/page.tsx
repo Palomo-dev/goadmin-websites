@@ -438,15 +438,18 @@ export default async function ProductoDetailPage({
   const conPestanasFicha = tieneBloque(seccionesFicha, TIPO_PESTANAS_ANCLA)
   const conEnvioEnPestana = conPestanasFicha
     && (planPestanasFicha(seccionesFicha.filter((s) => s.is_visible !== false))?.items.some((i) => i.target === 'product_shipping') ?? false)
-  const conFichaTecnica = enLienzo || conPestanasFicha || seccionesFicha.some((s) => (s.section_type === 'product_specs'
-    && (s.section_variant === 'icon_grid' || s.section_variant === 'panel') && s.is_visible !== false)
+  // «Envío y devoluciones» visible (bloque 2): sus líneas usan el tiempo de entrega real de las
+  // zonas de envío (una lectura cacheada) cuando lo hay.
+  const conBloqueEnvio = conEnvioEnPestana || tieneBloque(seccionesFicha, 'product_shipping')
+  // Especificaciones en cualquier variante: «Por defecto» también lee la ficha técnica (bloque 5).
+  const conFichaTecnica = enLienzo || conPestanasFicha || seccionesFicha.some((s) => (s.section_type === 'product_specs' && s.is_visible !== false)
     // Descripción con opciones (Figma 2990:74500): su ficha técnica también lleva «Categoría».
     || (s.section_type === 'product_description' && s.is_visible !== false && leerOpcionesDescripcion(s.content as Record<string, unknown> | null).conOpciones))
   // Relacionados elegidos a mano y comprados juntos (Figma 2988:73769): solo si la sección los
   // pide; en el lienzo, siempre (así cambiar la fuente o el estilo se ve en vivo).
   const pideRelacionados = bloqueRelacionados ? relacionadosPideDatos(bloqueRelacionados.content as Record<string, unknown> | null) : { manual: false, juntos: false }
   const conRelacionados = enLienzo || pideRelacionados.manual || pideRelacionados.juntos
-  if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conEnvioEnPestana) {
+  if (conPaginador || bloqueLook || conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos || conBloqueEnvio) {
     const look = bloqueLook ? normalizarCompletaElLook(bloqueLook.content as Record<string, unknown> | null) : null
     const [paginador, productosLook, relacionados, zonasEnvio] = await Promise.all([
       conPaginador ? getPaginadorFicha(organization.id, product.category_id ?? null, Number(product.id), branchId) : Promise.resolve(null),
@@ -456,7 +459,7 @@ export default async function ProductoDetailPage({
       conRelacionados
         ? getRelacionadosFicha(organization.id, Number(product.id), enLienzo || pideRelacionados.juntos, branchId)
         : Promise.resolve(null),
-      conEnvioEnPestana || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null),
+      conBloqueEnvio || enLienzo ? getZonasEnvioFicha(organization.id) : Promise.resolve(null),
     ])
     // «Categoría» de la ficha técnica y «Ver todos» de los relacionados (en memoria, sin consulta).
     const categoria = (conFichaTecnica || conRelacionados || opcionesRelacionados.verTodos) && product.category_id
@@ -479,7 +482,7 @@ export default async function ProductoDetailPage({
   const whatsappFicha = (await getAjustesSitio(organization.id)).whatsapp?.numero ?? null
   // Barra fija al bajar (Figma 2836:69391, propuesta 9): opciones del celular y barra del
   // computador (`sticky`). Sin claves, la de hoy en el celular y ninguna en el computador.
-  const { barraFija, barraEscritorio, precioEnBarra, opciones: opcionesBarra } = barraDeFicha(seccionesFicha)
+  const { barraFija, barraEscritorio, precioEnBarra, opciones: opcionesBarra, selector: selectorFicha } = barraDeFicha(seccionesFicha)
   // Lo que la barra no toma de la plantilla (en el lienzo, FichaEnVivo le pone las opciones en
   // vivo). Un padre sin variantes no tiene nada que agregar: sin barra fija.
   const barraBase = price && stickyPermitido && !(isParent && variants.length === 0)
@@ -731,6 +734,8 @@ export default async function ProductoDetailPage({
         <StickyAddToCart
           {...barraBase}
           precioEnBoton={precioEnBarra}
+          clienteElige={selectorFicha.inicial === 'customer'}
+          textoElegir={selectorFicha.textoElegir}
           celular={opcionesBarra.celular}
           escritorio={opcionesBarra.escritorio}
           organization={barraEscritorio && opcionesBarra.escritorio.posicion === 'replace' ? organization : null}

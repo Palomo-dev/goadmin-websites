@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { PestanasFicha } from './PestanasFicha'
+import { filasEnvioFicha, type ClaveFilaEnvio, type FilaEnvioFicha } from './filasEnvio'
 import { ChevronDown, Clock, RefreshCw, Truck } from 'lucide-react'
 import { ExpandableDescription, renderRichText } from '@/components/site/ExpandableDescription'
 import { textoPlano } from '@/lib/texto/textoPlano'
@@ -30,6 +31,8 @@ interface ProductDescriptionProps {
     product?: any
     categoriaFicha?: { name?: string | null } | null
     faqFicha?: Array<{ question?: string; answer?: string }> | null
+    /** Líneas de envío (bloque 2): las calcula ProductDetailRenderer. */
+    filasEnvio?: FilaEnvioFicha[] | null
     /** Dentro de la pestaña «Descripción» de la ficha (PestanasFicha). */
     enPestanaFicha?: boolean
   }
@@ -51,13 +54,13 @@ export function ProductDescription({ content, primaryColor = '#3B82F6', data }: 
   const opciones = useMemo(() => leerOpcionesDescripcion(content as Record<string, unknown>), [content])
   if (data?.enPestanaFicha === true) {
     return product
-      ? <DescripcionEnPestana o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} />
+      ? <DescripcionEnPestana o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} envio={data?.filasEnvio ?? null} />
       : null
   } else {
     // Fuera de las pestañas de la ficha: lo de siempre.
   }
   if (opciones.conOpciones && product) {
-    return <DescripcionConOpciones o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} />
+    return <DescripcionConOpciones o={opciones} product={product} categoria={data?.categoriaFicha?.name ?? null} faq={data?.faqFicha ?? null} primaryColor={primaryColor} envio={data?.filasEnvio ?? null} />
   } else {
     // Sin opciones nuevas: lo de siempre.
   }
@@ -102,11 +105,12 @@ export function filasFicha(product: any, categoria: string | null, o: Pick<Opcio
 /** Fila corta bajo la descripción en su pestaña (Figma 3256-99475): solo datos reales. */
 const FILAS_EN_PESTANA = { filas: ['marca', 'referencia', 'categoria'] as FilaFicha[], ocultarVacias: true, filasPropias: false }
 
-const ENVIO = [
-  { icono: Clock, titulo: 'Tiempo de entrega', texto: '24-48 horas hábiles' },
-  { icono: Truck, titulo: 'Costo de envío', texto: 'Calculado al finalizar la compra' },
-  { icono: RefreshCw, titulo: 'Cambios y devoluciones', texto: '30 días para devoluciones' },
-]
+/** Parte «Envío»: las mismas líneas del bloque «Envío y devoluciones» (sin «Cobertura», como siempre). */
+const LINEAS_ENVIO: Partial<Record<ClaveFilaEnvio, { icono: typeof Clock; titulo: string }>> = {
+  entrega: { icono: Clock, titulo: 'Tiempo de entrega' },
+  costo: { icono: Truck, titulo: 'Costo de envío' },
+  devoluciones: { icono: RefreshCw, titulo: 'Cambios y devoluciones' },
+}
 
 interface PropsConOpciones {
   o: OpcionesDescripcion
@@ -114,6 +118,8 @@ interface PropsConOpciones {
   categoria: string | null
   faq: Array<{ question?: string; answer?: string }> | null
   primaryColor: string
+  /** Líneas de envío de la ficha (`filasEnvioFicha`). Sin ellas, las frases de siempre. */
+  envio?: FilaEnvioFicha[] | null
 }
 
 /**
@@ -121,9 +127,9 @@ interface PropsConOpciones {
  * se eligió otro corte), la fila Marca · Referencia · Categoría y, si se eligieron, las demás
  * partes apiladas con su título. Sin nada que mostrar, nada (y la pestaña no aparece).
  */
-function DescripcionEnPestana({ o, product, categoria, faq }: PropsConOpciones) {
+function DescripcionEnPestana({ o, product, categoria, faq, envio }: PropsConOpciones) {
   const opciones = useMemo<OpcionesDescripcion>(() => ({ ...o, estilo: 'ver_mas', lineas: o.lineas ?? 5 }), [o])
-  const partes = usePartes(opciones, product, categoria, faq)
+  const partes = usePartes(opciones, product, categoria, faq, envio)
   const fila = useMemo(() => filasFicha(product, categoria, FILAS_EN_PESTANA), [product, categoria])
   const conFila = fila.length > 0 && !partes.lista.includes('especificaciones')
   if (partes.lista.length === 0 && !conFila) return null
@@ -160,7 +166,8 @@ function DescripcionEnPestana({ o, product, categoria, faq }: PropsConOpciones) 
 }
 
 /** Partes con contenido y el cuerpo de cada una (lo comparten todos los estilos). */
-function usePartes(o: OpcionesDescripcion, product: any, categoria: string | null, faq: PropsConOpciones['faq']) {
+function usePartes(o: OpcionesDescripcion, product: any, categoria: string | null, faq: PropsConOpciones['faq'], envio: PropsConOpciones['envio'] = null) {
+  const lineasEnvio = (envio ?? filasEnvioFicha(null, null)).filter((f) => LINEAS_ENVIO[f.clave])
   const descripcion = useMemo(() => textoPlano(product?.description ?? ''), [product?.description])
   const filas = useMemo(() => filasFicha(product, categoria, o), [product, categoria, o])
   const preguntas = (faq ?? []).filter((f) => f?.question && f?.answer)
@@ -195,15 +202,18 @@ function usePartes(o: OpcionesDescripcion, product: any, categoria: string | nul
     if (p === 'envio') {
       return (
         <ul className="space-y-3">
-          {ENVIO.map(({ icono: Icono, titulo, texto }) => (
-            <li key={titulo} className="flex items-start gap-3">
+          {lineasEnvio.map(({ clave, texto }) => {
+            const { icono: Icono, titulo } = LINEAS_ENVIO[clave]!
+            return (
+            <li key={clave} className="flex items-start gap-3">
               <Icono className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" aria-hidden="true" />
               <span>
                 <span className="block text-sm font-medium text-gray-900 dark:text-white">{titulo}</span>
                 <span className="block text-sm text-gray-600 dark:text-gray-300">{texto}</span>
               </span>
             </li>
-          ))}
+            )
+          })}
         </ul>
       )
     }
@@ -222,8 +232,8 @@ function usePartes(o: OpcionesDescripcion, product: any, categoria: string | nul
   return { lista, tabla, cuerpo, ancho }
 }
 
-function DescripcionConOpciones({ o, product, categoria, faq, primaryColor }: PropsConOpciones) {
-  const { lista: partes, tabla, cuerpo, ancho } = usePartes(o, product, categoria, faq)
+function DescripcionConOpciones({ o, product, categoria, faq, primaryColor, envio }: PropsConOpciones) {
+  const { lista: partes, tabla, cuerpo, ancho } = usePartes(o, product, categoria, faq, envio)
   if (partes.length === 0) return null
 
   // A · Texto con «Ver más»: cada parte con su título, apiladas.

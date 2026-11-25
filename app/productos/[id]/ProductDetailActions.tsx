@@ -17,6 +17,7 @@ import { leerAccionesFicha, type AccionFicha } from '@/lib/website/v2/accionesFi
 import { AvisoContraentregaFicha } from '@/components/site/contraentrega/AvisoContraentregaFicha'
 import { useResolverVolumenFicha } from '@/components/site/volumen/EscalonesTiendaContext'
 import { botonConVolumen, type BotonVolumen } from '@/lib/promociones/escalonesTienda'
+import { normalizarSelectorFicha, type SelectorFicha } from '@/lib/website/v2/contrato/seccionesTienda'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co'
 
@@ -68,12 +69,14 @@ interface ProductDetailActionsProps {
    */
   precioEnBoton?: boolean
   /**
-   * Plantillas de tienda (`product_actions.button_hint: 'auto'`): sin variante elegida el botón
-   * dice «Elige tu talla». Desde el 2026-11-25 la primera variante disponible viene elegida
-   * siempre (ver `VariantSelector`), con o sin esta opción.
+   * «Botones de compra» (`product_actions`): talla al abrir, cabecera y recuadro del selector y
+   * textos de la compra. Ausente = lo de siempre (`normalizarSelectorFicha(null)`).
    */
-  ayudaVariante?: boolean
+  selector?: SelectorFicha
 }
+
+/** Sin «Botones de compra» configurado: primera disponible, cabecera, recuadro y textos de siempre. */
+const SELECTOR_DE_SIEMPRE: SelectorFicha = normalizarSelectorFicha(null)
 
 export function ProductDetailActions({
   product,
@@ -95,8 +98,9 @@ export function ProductDetailActions({
   puedePedir = true,
   ordenAtributos = null,
   precioEnBoton = false,
-  ayudaVariante = false,
+  selector = SELECTOR_DE_SIEMPRE,
 }: ProductDetailActionsProps) {
+  const textoSinUnidades = restaurante ? selector.textos.agotado : selector.textos.sinStock
   const botones = acciones ?? leerAccionesFicha({ buttons_layout: buttonsLayout }).acciones
   // La carta del restaurante no lleva corazón (como siempre).
   const favorito = restaurante ? null : { productId: Number(product.id), precio: price }
@@ -237,7 +241,7 @@ export function ProductDetailActions({
           organizationSubdomain={organizationSubdomain}
           branchId={branchId}
           precioEnBoton={precioEnBoton}
-          ayudaVariante={ayudaVariante}
+          selector={selector}
           pintarAcciones={(a) => (
             <FilasAccionesFicha
               acciones={botones}
@@ -333,18 +337,19 @@ export function ProductDetailActions({
             onMas: () => setQuantity((q) => siguienteCantidad(q, cupo)),
             masDeshabilitado: cupo !== null && quantity >= cupo,
             deshabilitado: outOfStock,
+            texto: selector.textos.cantidad,
           }}
           agregar={agregarConVolumen({
             onClick: handleAddWithQuantity,
             deshabilitado: outOfStock || sinCupo,
-            reemplazo: outOfStock ? { texto: restaurante ? 'Agotado' : 'Sin stock', estado: 'deshabilitado' } : null,
+            reemplazo: outOfStock ? { texto: textoSinUnidades, estado: 'deshabilitado' } : null,
             precio: precioEnBoton ? formatPrice(effectivePrice) : null,
           }, botonConVolumen(volumenDe(null), effectivePrice, quantity))}
           comprar={{
             onClick: handleBuyNowSimple,
             deshabilitado: outOfStock || comprando,
             pendiente: comprando,
-            agotado: outOfStock ? (restaurante ? 'Agotado' : 'Sin stock') : null,
+            agotado: outOfStock ? textoSinUnidades : null,
           }}
           favorito={favorito}
           whatsapp={{ numero: whatsapp, producto: product.name }}
