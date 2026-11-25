@@ -85,11 +85,19 @@ export function checkRateLimit(
  * Considera proxies (x-forwarded-for) y Vercel.
  */
 export function getClientIP(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for')
+  return ipDeCabeceras(request.headers)
+}
+
+/**
+ * Lo mismo que `getClientIP`, desde las cabeceras sueltas: para los server components, que no
+ * reciben el `Request` sino `headers()` de `next/headers` (p. ej. /consultar-pedido?guia=).
+ */
+export function ipDeCabeceras(headers: { get(nombre: string): string | null }): string {
+  const forwarded = headers.get('x-forwarded-for')
   if (forwarded) {
     return forwarded.split(',')[0].trim()
   }
-  const realIP = request.headers.get('x-real-ip')
+  const realIP = headers.get('x-real-ip')
   if (realIP) return realIP.trim()
   return 'unknown'
 }

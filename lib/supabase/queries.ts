@@ -14,6 +14,7 @@ import { leerPreciosSede } from '@/lib/products/precio-servidor-lectura'
 import { exigeEleccion, type GrupoReglas } from '@/lib/products/modificadores'
 import { normalizarNombre, type OrdenAtributos } from '@/lib/products/ordenAtributos'
 import { descendientesPorNivel, fotosDeRespaldo, hijasPorPadre, type NodoCategoria } from '@/lib/website/fotoCategoria'
+import { ZONA_RESPALDO, type DatosGuia, type GuiaNormalizada } from '@/lib/orders/consultaGuia'
 
 function getSupabaseForPublicRead() {
   return createAdminClient() || createPublicClient()
@@ -3198,84 +3199,123 @@ export async function getTripById(tripId: string, organizationId: number) {
 }
 
 /**
- * Obtiene un envío por número de tracking para seguimiento público.
+ * Envío por número de guía para «Consultar pedido» › «Número de guía» (Figma 3240:97997,
+ * 2026-11-25). Devuelve los datos crudos que `vistaGuiaPublica` (lib/orders/consultaGuia.ts)
+ * recorta a lo que puede ver quien tiene la guía en la mano; la página nunca pasa estas filas
+ * al navegador.
  *
- * Esta función devolvía `null` para CUALQUIER guía: seleccionaba seis columnas que
- * no existen en `shipments` (`sender_city`, `sender_department`, `receiver_city`,
- * `receiver_department`, `total_weight_kg`, `total_packages`) y tres que no existen
- * en `proof_of_delivery` (`receiver_name`, `relationship`, `confirmed_at`). El select
- * fallaba, el error se colapsaba en `return null`, y la página lo mostraba como
- * "envío no encontrado" — indistinguible de una guía inexistente.
+ * Acepta, en este orden:
+ * 1. `shipment_number` («DEL-WO-…», el número impreso en la guía; único por organización);
+ * 2. `tracking_number`: la guía de la transportadora o, por compatibilidad, el «TRK…» interno de
+ *    antes (se busca, pero nunca se muestra).
+ * Antes solo comparaba `tracking_number`, así que el número impreso en la caja no encontraba nada.
  *
- * Nombres reales verificados contra el esquema; la referencia de columnas correctas
- * es `app/api/orders/[id]/delivery/route.ts`, que sí funciona.
+ * `organizationId` es obligatorio y sale SIEMPRE del host: sin él, el sitio de cualquier
+ * organización rastreaba guías de cualquier otra, y `tracking_number` no es único entre
+ * organizaciones (`idx_shipments_tracking` no es UNIQUE). Por eso `.maybeSingle()` sobre el más
+ * reciente, nunca `.single()`. Columnas verificadas por MCP el 2026-11-25; el contrato lo comprueba
+ * scripts/verify-tracking.mjs contra la base real.
  *
- * `organizationId` es obligatorio: sin él, el sitio de cualquier organización podía
- * rastrear guías de cualquier otra, y `tracking_number` no es único entre organizaciones
- * (`idx_shipments_tracking` no es un índice único). Por eso también `.maybeSingle()`
- * sobre el más reciente en vez de `.single()`, que lanza con 0 filas y con más de una.
+ * No se leen: la dirección, el contacto, el monto de la contraentrega (solo `cod_status`), la
+ * `description` interna de los eventos, el teléfono ni la placa del domiciliario, ni la prueba de
+ * entrega. El origen del envío no vive en `shipments`.
  *
- * El origen del envío no vive en `shipments`, así que ya no se devuelve.
+ * Devuelve `null` si no existe en esta organización (el mismo resultado si es de otra tienda) y
+ * `'error'` si la base falló.
  */
 export async function getShipmentByTracking(
-  trackingNumber: string,
-  organizationId: number
-) {
-  const supabase = getSupabaseForPublicRead()
+  guia: GuiaNormalizada,
+  organizationId: number,
+  zonaOrganizacion: string | null
+): Promise<DatosGuia | null | 'error'> {
+  const supabase = getSupabaseForPublicRead() as any
 
-  const { data: shipment, error } = await supabase
-    .from('shipments')
-    .select(`
-      id, organization_id, shipment_number, tracking_number, service_level,
-      delivery_city, delivery_department,
-      weight_kg, package_count,
-      expected_delivery_date, delivered_at,
-      status, created_at
+  const buscar = (columna: 'shipment_number' | 'tracking_number', valores: string[]) =>
+    supabase
+      .from('shipments')
+      .select(`
+      id, organization_id, branch_id, shipment_number, tracking_number, status, fulfillment_mode,
+      delivery_city, delivery_department, package_count, weight_kg, cod_status,
+      driver_id, carrier_id, external_tracking_url, expected_delivery_date,
+      picked_at, dispatched_at, delivered_at, assigned_at, created_at, source_type, source_id
     `)
-    .eq('tracking_number', trackingNumber)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) {
-    console.error('[getShipmentByTracking] error consultando shipments:', error)
-    return null
-  }
-  if (!shipment) return null
-
-  // `as any` a conciencia: types/database.ts hoy resuelve a `never` para todo (ver aviso en ese
-  // archivo). El contrato de columnas lo verifica scripts/verify-tracking.mjs contra la base real.
-  const shipmentId = (shipment as any).id
-
-  // Timeline de eventos
-  const { data: events } = await supabase
-    .from('transport_events')
-    .select('event_type, event_time, location_text, description')
-    .eq('reference_type', 'shipment')
-    .eq('reference_id', shipmentId)
-    .order('event_time', { ascending: false })
-
-  // Prueba de entrega si se entregó: SOLO la fecha. Quien rastrea por guía no prueba que sea el
-  // cliente (la guía se adivina o se comparte), así que no ve quién recibió ni su parentesco
-  // (2026-11-23). El detalle con datos personales vive en el enlace seguro del correo
-  // (/pedido/[id]?t=…, rastreoPublico.ts). Tampoco fotos ni firma: el bucket es privado.
-  let pod = null
-  if ((shipment as any).status === 'delivered') {
-    const { data: podData } = await supabase
-      .from('proof_of_delivery')
-      .select('delivered_at')
-      .eq('shipment_id', shipmentId)
-      .order('delivered_at', { ascending: false })
+      .eq('organization_id', organizationId)
+      .in(columna, valores)
+      .order('created_at', { ascending: false })
       .limit(1)
+      .maybeSingle()
 
-    pod = podData?.[0] || null
+  const valores = [guia.compacta, ...(guia.conEspacios ? [guia.conEspacios] : [])]
+  let encontradoPor: DatosGuia['encontradoPor'] = 'numero'
+  let r = await buscar('shipment_number', [guia.compacta])
+  if (!r.error && !r.data) {
+    encontradoPor = 'guia'
+    r = await buscar('tracking_number', valores)
   }
+  if (r.error) {
+    console.error('[getShipmentByTracking] error consultando shipments:', r.error.message)
+    return 'error'
+  }
+  const envio = r.data
+  if (!envio) return null
 
+  const [eventos, pedido, domiciliario, transportadora, sede] = await Promise.all([
+    // Historial: solo el estado canónico, la hora y el motivo; los textos los pone el código.
+    supabase
+      .from('transport_events')
+      .select('canonical_status, event_type, event_time, location_text, reason_code')
+      .eq('organization_id', organizationId)
+      .eq('reference_type', 'shipment')
+      .eq('reference_id', envio.id)
+      .order('event_time', { ascending: false })
+      .limit(50),
+    envio.source_type === 'web_order' && envio.source_id
+      ? supabase
+          .from('web_orders')
+          .select('created_at, confirmed_at, estimated_delivery_at, payment_status')
+          .eq('organization_id', organizationId)
+          .eq('id', envio.source_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    // Solo el nombre: aquí se recorta al de pila; nada de teléfono, documento ni vehículo.
+    envio.driver_id
+      ? supabase
+          .from('driver_credentials')
+          .select('full_name')
+          .eq('organization_id', organizationId)
+          .eq('id', envio.driver_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    envio.carrier_id
+      ? supabase
+          .from('transport_carriers')
+          .select('name, tracking_url_template')
+          .eq('organization_id', organizationId)
+          .eq('id', envio.carrier_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    // Zona de la sede del envío → la de la organización → America/Bogota (fn_timezone_for).
+    envio.branch_id
+      ? supabase
+          .from('branches')
+          .select('timezone')
+          .eq('organization_id', organizationId)
+          .eq('id', envio.branch_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const t = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
   return {
-    ...(shipment as any),
-    events: events || [],
-    proof_of_delivery: pod,
+    envio,
+    eventos: Array.isArray(eventos.data) ? eventos.data : [],
+    pedido: pedido.data ?? null,
+    domiciliarioNombreCompleto: t(domiciliario.data?.full_name),
+    transportadora: transportadora.data
+      ? { nombre: t(transportadora.data.name), plantillaUrl: t(transportadora.data.tracking_url_template) }
+      : null,
+    zona: t(sede.data?.timezone) ?? t(zonaOrganizacion) ?? ZONA_RESPALDO,
+    encontradoPor,
   }
 }
 

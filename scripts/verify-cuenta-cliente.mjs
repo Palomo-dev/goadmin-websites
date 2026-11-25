@@ -446,7 +446,7 @@ const tracking = leer('app/tracking/page.tsx')
 check(/redirect\(/.test(tracking) && /\/consultar-pedido\?guia=/.test(tracking), '/tracking redirige a /consultar-pedido con la guía (enlaces viejos)')
 const rastrear = leer('app/rastrear/page.tsx')
 check(/redirect\(/.test(rastrear) && /\/consultar-pedido/.test(rastrear), '/rastrear redirige a /consultar-pedido (enlaces viejos)')
-check(/getShipmentByTracking\(guia, organization\.id\)/.test(leer('app/consultar-pedido/page.tsx')), '/consultar-pedido: guía con la organización del host')
+check(/getShipmentByTracking\(guia, organization\.id, zonaOrg\)/.test(leer('app/consultar-pedido/page.tsx')), '/consultar-pedido: guía con la organización del host')
 check(!/recipient_name|recipient_relationship/.test(leer('components/site/rastreo/ResultadoGuia.tsx')), 'rastreo por guía: no pinta quién recibió')
 
 const detalle = leer('app/mi-cuenta/pedidos/[id]/page.tsx')

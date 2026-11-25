@@ -11,21 +11,29 @@
  * - Resultado EN LA MISMA PÁGINA: `OrderTracker` incrustado, el de /pedido/<n> (estado, pasos,
  *   pago, envío, productos, totales, ayuda), con el token de seguimiento que devuelve
  *   /api/cuenta/buscar-pedido. El token no se pone en la URL.
- * La organización y la comparación del correo o teléfono las decide el servidor. Con la guía de
- * transportadora, la búsqueda de siempre (`?guia=`), que pinta la página en el servidor.
+ * La organización y la comparación del correo o teléfono las decide el servidor.
+ *
+ * «Número de guía» (Figma 3240:97997, aprobado 2026-11-25; antes «Guía de transportadora»): el
+ * número impreso en la guía (DEL-…), la guía de la transportadora o el TRK viejo, por `?guia=`. La
+ * página busca en el servidor con la organización del host y el límite de intentos, y entrega aquí
+ * `consultaGuia`, ya recortada (`vistaGuiaPublica`): el resultado (G2/G3/M2/M3) ocupa la página,
+ * «no encontrada» (M4) es UN solo aviso para «no existe» y «es de otra tienda», y si escriben un
+ * número de pedido (WO-… sin DEL-) se sugiere la otra pestaña con el número ya escrito.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  AlertCircle, Clock, CreditCard, HelpCircle, Loader2, Mail, MapPin, MessageSquare, Package, Search,
-  ShoppingBag, Truck, WifiOff,
+  AlertCircle, Barcode, Clock, CreditCard, HelpCircle, Info, Loader2, Lock, Mail, MapPin, MessageSquare, Package,
+  ScanBarcode, Search, ShoppingBag, Truck, User, WifiOff,
 } from 'lucide-react'
 import { abrirAccesoCuenta } from '@/components/site/cuenta/eventos'
 import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar'
 import Link from '@/components/site/Enlace'
 import { SiluetaPedido } from '@/components/site/rastreo/SiluetaPedido'
+import { ResultadoGuia } from '@/components/site/rastreo/ResultadoGuia'
 import { OrderTracker } from '@/app/pedido/[id]/OrderTracker'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { normalizarNumeroPedido, tipoContacto } from '@/lib/cuenta/reglasCuenta'
+import { pareceNumeroPedido, type ConsultaGuia } from '@/lib/orders/consultaGuia'
 
 const CAMPO =
   'h-12 w-full rounded-[10px] border border-slate-300 bg-white pl-10 pr-3 text-[15px] text-slate-900 placeholder:text-slate-400 outline-none focus:border-[var(--primary-color)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--primary-color)_25%,transparent)] disabled:bg-slate-50 disabled:text-slate-500'
@@ -60,12 +68,15 @@ const QUE_VERAS: { icono: typeof Truck; titulo: string; detalle: string }[] = [
   { icono: ShoppingBag, titulo: 'Tus productos', detalle: 'Con foto, cantidades y el total.' },
 ]
 
-/** Lo mismo para la guía de transportadora: lo que pinta `ResultadoGuia`. */
+/** Lo mismo para el número de guía (G1/M1): lo que pinta `ResultadoGuia`. */
 const QUE_VERAS_GUIA: { icono: typeof Truck; titulo: string; detalle: string }[] = [
-  { icono: Truck, titulo: 'En qué va', detalle: 'Recibido, en camino o entregado.' },
-  { icono: MapPin, titulo: 'El destino', detalle: 'La ciudad de entrega y la fecha estimada.' },
-  { icono: Clock, titulo: 'El historial', detalle: 'Cada movimiento del envío, con su fecha.' },
+  { icono: Truck, titulo: 'En qué va', detalle: 'Recibido, preparando, en camino o entregado, con la hora de cada paso.' },
+  { icono: User, titulo: 'Quién lo lleva', detalle: 'El nombre del domiciliario de la tienda, o la transportadora con su guía y su enlace.' },
+  { icono: Clock, titulo: 'Cuándo llega', detalle: 'La hora o el día estimado de entrega.' },
 ]
+
+/** Ejemplo del número impreso en la guía (G1/M1). */
+const EJEMPLO_GUIA = 'DEL-WO-452-MX4K2P7F-A3QZ'
 
 /**
  * «Aquí verás tu pedido» (D1 3104:84146 / M1 3105:84304): solo informa, no tiene acciones. Con la
@@ -92,7 +103,7 @@ function PanelPrimerIngreso({ modo = 'pedido' }: { modo?: 'pedido' | 'guia' }) {
       <h2 id="consultar-aqui-veras" className="text-lg font-semibold text-slate-900">{guia ? 'Aquí verás tu envío' : 'Aquí verás tu pedido'}</h2>
       <p className="hidden text-center text-[15px] text-slate-600 lg:block">
         {guia
-          ? 'Escribe el número de guía que te dio la transportadora. Te mostramos:'
+          ? 'Escribe el número de la guía. Te mostramos:'
           : 'Escribe el número y el correo o teléfono de tu compra. En segundos te mostramos:'}
       </p>
       <ul className="flex w-full flex-col gap-3">
@@ -112,6 +123,17 @@ function PanelPrimerIngreso({ modo = 'pedido' }: { modo?: 'pedido' | 'guia' }) {
           </li>
         ))}
       </ul>
+      {guia && (
+        <div className="flex w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4" data-aviso-direccion="">
+          <Lock aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-600" />
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold text-slate-900">Tu dirección no se muestra aquí</p>
+            <p className="text-[13px] text-slate-600">
+              La guía va pegada por fuera de la caja y cualquiera puede leerla. Por eso, solo con la guía no mostramos tu dirección, tu nombre ni tu teléfono. Para verlos abre el enlace del correo de confirmación o inicia sesión.
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -119,23 +141,32 @@ function PanelPrimerIngreso({ modo = 'pedido' }: { modo?: 'pedido' | 'guia' }) {
 export function SeguirPedido({
   modoInicial,
   guiaInicial,
+  numeroInicial = '',
+  consultaGuia = null,
   whatsapp,
+  whatsappGuia = null,
+  telefonoTienda = null,
   primaryColor,
   rutaSeguirPidiendo,
-  children,
 }: {
   modoInicial: 'pedido' | 'guia'
   guiaInicial: string
+  /** `?numero=`: el número de pedido ya escrito. */
+  numeroInicial?: string
+  /** Lo que encontró la página con `?guia=` (ya sin datos personales), o null si no se buscó. */
+  consultaGuia?: ConsultaGuia | null
   whatsapp: string | null
+  /** WhatsApp con la guía ya escrita, para «¿Dudas con tu envío?». */
+  whatsappGuia?: string | null
+  telefonoTienda?: string | null
   primaryColor: string
   /** «Seguir comprando/pidiendo» del resultado (la carta o el catálogo). */
   rutaSeguirPidiendo: string
-  children?: ReactNode
 }) {
   const [modo, setModo] = useState<'pedido' | 'guia'>(modoInicial)
   const { sesion } = useAvatarCuenta()
   const { ruta } = useRutaSitio()
-  const [numero, setNumero] = useState('')
+  const [numero, setNumero] = useState(numeroInicial)
   const [contacto, setContacto] = useState('')
   const [guia, setGuia] = useState(guiaInicial)
   const [enviando, setEnviando] = useState(false)
@@ -144,6 +175,12 @@ export function SeguirPedido({
   const [ayudaNumero, setAyudaNumero] = useState(false)
   const [resultado, setResultado] = useState<{ numero: string; token: string | null } | null>(null)
   const [anuncio, setAnuncio] = useState('')
+  // Número de guía: el resultado de la página y el aviso bajo el campo (se borra al escribir).
+  const [verResultadoGuia, setVerResultadoGuia] = useState(consultaGuia?.tipo === 'encontrada')
+  const [avisoGuia, setAvisoGuia] = useState<ConsultaGuia | null>(consultaGuia && consultaGuia.tipo !== 'encontrada' ? consultaGuia : null)
+  const refGuia = useRef<HTMLInputElement>(null)
+  const refFormGuia = useRef<HTMLFormElement>(null)
+  const buscarGuiaIgual = useRef(false)
   const refNumero = useRef<HTMLInputElement>(null)
   const refContacto = useRef<HTMLInputElement>(null)
   const refResultado = useRef<HTMLDivElement>(null)
@@ -261,6 +298,36 @@ export function SeguirPedido({
   // siempre, para que el lector de pantalla la escuche cuando cambia.
   const region = <p className="sr-only" aria-live="polite">{anuncio}</p>
 
+  /** De la guía a «Número de pedido», con el número ya escrito si se conoce (decisión E del Figma). */
+  const pasarANumeroPedido = (valor: string | null) => {
+    setVerResultadoGuia(false)
+    setAvisoGuia(null)
+    setModo('pedido')
+    setError(null)
+    setErrores({})
+    if (valor) setNumero(valor)
+    requestAnimationFrame(() => (valor ? refContacto : refNumero).current?.focus())
+  }
+
+  if (verResultadoGuia && consultaGuia?.tipo === 'encontrada') {
+    return (
+      <div className="mx-auto w-full max-w-xl lg:max-w-5xl" data-seguir-pedido="" data-consulta="resultado-guia">
+        <ResultadoGuia
+          vista={consultaGuia.vista}
+          whatsapp={whatsappGuia}
+          telefonoTienda={telefonoTienda}
+          onBuscarOtra={() => {
+            setVerResultadoGuia(false)
+            setModo('guia')
+            setGuia('')
+            requestAnimationFrame(() => refGuia.current?.focus())
+          }}
+          onVerPedido={pasarANumeroPedido}
+        />
+      </div>
+    )
+  }
+
   if (resultado) {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-3 text-slate-900 lg:max-w-5xl" data-seguir-pedido="" data-consulta="resultado">
@@ -295,7 +362,7 @@ export function SeguirPedido({
         {(
           [
             ['pedido', 'Número de pedido'],
-            ['guia', 'Guía de transportadora'],
+            ['guia', 'Número de guía'],
           ] as const
         ).map(([clave, texto]) => (
           <button
@@ -307,6 +374,7 @@ export function SeguirPedido({
               setModo(clave)
               setError(null)
               setErrores({})
+              setAvisoGuia(null)
             }}
             data-pestana-consulta={clave}
             className={`flex-1 rounded-lg py-2 text-[13px] ${modo === clave ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-600 hover:text-slate-900'}`}
@@ -399,26 +467,117 @@ export function SeguirPedido({
           </button>
         </form>
       ) : (
-        <>
-          <form method="GET" action="/consultar-pedido" className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="rastrear-guia" className="text-[13px] font-medium">Número de guía</label>
-              <div className="relative">
-                <Truck aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input id="rastrear-guia" name="guia" required className={CAMPO} placeholder="Ej.: TRK-ABC123" value={guia} onChange={(e) => setGuia(e.target.value)} />
-              </div>
-              <p className="text-xs text-slate-600">La guía que te dio la transportadora.</p>
+        <form
+          ref={refFormGuia}
+          method="GET"
+          action="/consultar-pedido"
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            // Un número de pedido (WO-… sin DEL-) se busca en la otra pestaña: se sugiere antes de
+            // gastar una búsqueda. «Es una guía, buscarla igual» deja pasar el envío.
+            const pedido = buscarGuiaIgual.current ? null : pareceNumeroPedido(guia)
+            buscarGuiaIgual.current = false
+            if (pedido) {
+              e.preventDefault()
+              setAvisoGuia({ tipo: 'parece_pedido', numero: pedido })
+            }
+          }}
+        >
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="rastrear-guia" className="text-[13px] font-medium">Número de guía</label>
+            <div className="relative">
+              <ScanBarcode aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={refGuia}
+                id="rastrear-guia"
+                name="guia"
+                required
+                autoComplete="off"
+                className={`${CAMPO} uppercase ${avisoGuia?.tipo === 'no_encontrada' ? CAMPO_ERROR : ''}`}
+                placeholder={`Ej.: ${EJEMPLO_GUIA}`}
+                value={guia}
+                onChange={(e) => {
+                  setGuia(e.target.value)
+                  if (avisoGuia) setAvisoGuia(null)
+                }}
+                aria-invalid={avisoGuia?.tipo === 'no_encontrada' ? true : undefined}
+                aria-describedby="rastrear-guia-ayuda"
+              />
             </div>
-            <button
-              type="submit"
-              className="flex h-12 items-center justify-center gap-2 rounded-[10px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--primary-color)' }}
-            >
-              <Search aria-hidden="true" className="h-4 w-4" />
-              Rastrear envío
-            </button>
-          </form>
-        </>
+            <p id="rastrear-guia-ayuda" className="text-xs text-slate-600">
+              Es el número que está debajo del código de barras en la guía pegada a tu paquete. También sirve la guía que te dio la transportadora.
+            </p>
+          </div>
+          {!avisoGuia && (
+            <div aria-hidden="true" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <Barcode className="h-8 w-12 flex-shrink-0 text-slate-900" strokeWidth={1.5} />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[11px] text-slate-500">Así se ve en tu guía</span>
+                <span className="self-start truncate rounded border px-1.5 py-0.5 text-xs font-bold text-slate-900" style={{ borderColor: 'var(--primary-color)' }}>{EJEMPLO_GUIA}</span>
+              </div>
+            </div>
+          )}
+          {avisoGuia?.tipo === 'no_encontrada' ? (
+            <div role="alert" className="flex gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-700" data-error-guia="no_encontrada">
+              <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold">No encontramos esa guía</p>
+                <p>Revisa el número completo: está debajo del código de barras y empieza por DEL- (ej.: {EJEMPLO_GUIA}), o es la guía que te dio la transportadora.</p>
+                {enlaceWhatsapp}
+              </div>
+            </div>
+          ) : avisoGuia?.tipo === 'muchas' ? (
+            <div role="alert" className="flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-800" data-error-guia="muchas">
+              <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold">Hiciste muchas búsquedas</p>
+                <p>Por seguridad, espera 10 minutos y vuelve a intentar.</p>
+              </div>
+            </div>
+          ) : avisoGuia?.tipo === 'error' ? (
+            <div role="alert" className="flex gap-2.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-[13px] text-slate-700" data-error-guia="error">
+              <WifiOff aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold text-slate-900">No pudimos buscar tu guía</p>
+                <p>Intenta de nuevo en unos segundos.</p>
+              </div>
+            </div>
+          ) : avisoGuia?.tipo === 'parece_pedido' ? (
+            <div role="alert" className="flex gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[13px] text-slate-700" data-error-guia="parece_pedido">
+              <Info aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-700" />
+              <div className="flex flex-col items-start gap-1.5">
+                <p className="font-semibold text-blue-700">Eso parece un número de pedido</p>
+                <p>Los pedidos se buscan con su número y el correo o teléfono de la compra.</p>
+                <button
+                  type="button"
+                  onClick={() => pasarANumeroPedido(avisoGuia.numero)}
+                  className="font-semibold hover:underline"
+                  style={{ color: 'var(--primary-color)' }}
+                >
+                  Buscar como número de pedido →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    buscarGuiaIgual.current = true
+                    refFormGuia.current?.requestSubmit()
+                  }}
+                  className="text-xs font-medium text-slate-600 hover:underline"
+                >
+                  Es una guía, buscarla igual
+                </button>
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="submit"
+            className="flex h-12 items-center justify-center gap-2 rounded-[10px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--primary-color)' }}
+          >
+            <Search aria-hidden="true" className="h-4 w-4" />
+            Rastrear envío
+          </button>
+        </form>
       )}
 
       {/* Con sesión no se invita a «Ingresar»: se lleva a sus pedidos (la misma fuente de sesión que
@@ -463,9 +622,9 @@ export function SeguirPedido({
   // cambiar (antes la guía pasaba a una columna centrada, las pestañas saltaban bajo el puntero y
   // en el computador parecía que el resaltado no cambiaba). A la derecha (abajo en el celular):
   // - Número: «Aquí verás tu pedido» o, mientras se busca, la silueta.
-  // - Guía: el resultado de la guía (`children`, pintado en el servidor) o «Aquí verás tu envío».
+  // - Guía: «Aquí verás tu envío» (el resultado de la guía ocupa la página entera, arriba).
   const panel = modo === 'guia'
-    ? children ?? <PanelPrimerIngreso modo="guia" />
+    ? <PanelPrimerIngreso modo="guia" />
     : enviando ? <SiluetaPedido /> : <PanelPrimerIngreso />
   return (
     <div className="mx-auto grid w-full max-w-xl gap-6 text-slate-900 lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-8" data-seguir-pedido="" data-modo-consulta={modo}>

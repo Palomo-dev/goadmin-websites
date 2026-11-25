@@ -103,7 +103,7 @@ check(!/OrganizationLayout|SeguirPedido/.test(rastrear), '/rastrear ya no pinta 
 const tracking = sinComentarios(leer('app/tracking/page.tsx'))
 check(/\/consultar-pedido\?guia=\$\{encodeURIComponent\(q\)\}/.test(tracking) && /'\/consultar-pedido\?modo=guia'/.test(tracking), '/tracking → /consultar-pedido (guía o pestaña de guía)')
 const pagina = sinComentarios(leer('app/consultar-pedido/page.tsx'))
-check(/getShipmentByTracking\(guia, organization\.id\)/.test(pagina), '/consultar-pedido: la guía se busca con la organización del host')
+check(/getShipmentByTracking\(guia, organization\.id, zonaOrg\)/.test(pagina), '/consultar-pedido: la guía se busca con la organización del host')
 check(/robots: \{ index: false, follow: false \}/.test(pagina), '/consultar-pedido: no se indexa')
 check(/action="\/consultar-pedido"/.test(pantalla), 'la búsqueda por guía se queda en /consultar-pedido')
 const enlacesViejos = fuentes.filter((r) => !r.startsWith('app/rastrear/') && /href="\/rastrear"/.test(leer(r)))
@@ -112,7 +112,9 @@ check(enlacesViejos.length === 0, `ningún enlace propio apunta a /rastrear${enl
 // ─── 6. Arreglos del 2026-11-24 (probado en vivo por el dueño) ───────────────────────────────
 // 6.1 Pestañas: la misma cuadrícula en las dos, para que no salten bajo el puntero.
 check(!/if \(modo === 'guia'\) \{\s*return/.test(pantalla), 'pestañas: la guía ya no cambia a otra maqueta (las pestañas no saltan)')
-check(/const panel = modo === 'guia'\s*\?\s*children \?\? <PanelPrimerIngreso modo="guia" \/>/.test(pantalla), 'pestañas: con la guía, el resultado o «Aquí verás tu envío» en el mismo lugar del panel')
+// Desde el 2026-11-25 (Figma 3240:97997) el resultado de la guía ocupa la página entera (como el
+// del número de pedido) y el panel de la guía es siempre «Aquí verás tu envío».
+check(/const panel = modo === 'guia'\s*\?\s*<PanelPrimerIngreso modo="guia" \/>/.test(pantalla), 'pestañas: con la guía, «Aquí verás tu envío» en el mismo lugar del panel')
 check(/aria-selected=\{modo === clave\}/.test(pantalla) && !/role="tab"[\s\S]{0,400}transition-colors/.test(pantalla), 'pestañas: aria-selected sigue al estado y el resaltado no se desvanece (sin transition-colors)')
 check(/Aquí verás tu envío/.test(pantalla), 'pestañas: panel de primer ingreso de la guía')
 
