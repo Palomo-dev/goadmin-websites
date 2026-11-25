@@ -10,6 +10,7 @@ import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBusc
 import type { ColoresCaja } from './ContenedorIcono'
 import { ajustesBuscadorMovil, buscadorIgualEscritorio, buscadorMovilConEstilo, buscadorMovilElegido } from '@/lib/website/opcionUnica'
 import { iconoBuscar } from './iconoBuscar'
+import { lupaSoloDibujo } from '../iconos/GlifoTienda'
 import {
   ajustesConApariencia,
   aparienciaActiva,
@@ -92,6 +93,9 @@ export function BuscadorCromo({
   colores?: ColoresCaja
 }) {
   const { ruta } = useRutaSitio()
+  // Lupa y botón DENTRO de la barra: solo el dibujo de Buscar. El fondo, la sombra y el tamaño del
+  // «Estilo de los íconos» son de los íconos sueltos (aquí, solo «Ícono que abre encima»).
+  const IconoBarra = lupaSoloDibujo(Icono)
   // Apariencia del buscador (search_appearance): solo con subclaves guardadas; sin ella, lo de hoy.
   const res = presentacion.apariencia && presentacion.tipo !== 'icon_overlay'
     ? resolverApariencia(presentacion.apariencia, presentacion.tipo, { primary: primaryColor, accent: colores?.accent }, dispositivo)
@@ -146,7 +150,7 @@ export function BuscadorCromo({
           ...(pegado ? {} : { height: res.alto }),
         }}
       >
-        {res.boton !== 'text' && <Icono className="h-4 w-4" aria-hidden="true" />}
+        {res.boton !== 'text' && <IconoBarra className="h-4 w-4" aria-hidden="true" />}
         {(res.boton === 'text' || res.boton === 'icon_text') && <span>{res.botonTexto}</span>}
       </button>
     ) : null
@@ -256,7 +260,7 @@ export function BuscadorCromo({
           style={{ backgroundColor: primaryColor, borderRadius: presentacion.radius === 'pill' ? 999 : 8 }}
           aria-label="Buscar"
         >
-          {presentacion.button === 'icon' ? <Icono className="h-4 w-4" /> : 'Buscar'}
+          {presentacion.button === 'icon' ? <IconoBarra className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
     </div>
@@ -319,7 +323,7 @@ export function BuscadorCromo({
           style={{ backgroundColor: primaryColor, borderRadius: radioInterno }}
           aria-label="Buscar"
         >
-          {presentacion.button === 'icon' ? <Icono className="h-4 w-4" /> : 'Buscar'}
+          {presentacion.button === 'icon' ? <IconoBarra className="h-4 w-4" /> : 'Buscar'}
         </button>
       )}
     </div>
@@ -357,7 +361,8 @@ export function BuscadorCromoCompacto({
 }) {
   const { ruta } = useRutaSitio()
   // El botón lleva el mismo dibujo que la lupa del campo (el elegido en el editor).
-  const IconoBoton: LucideIcon = icon ?? iconoBuscar(settings)
+  // Dentro de la barra: solo el dibujo (sin el fondo ni la sombra del «Estilo de los íconos»).
+  const IconoBoton: LucideIcon = lupaSoloDibujo(icon ?? iconoBuscar(settings))
   // Misma presentación que BuscadorCromo en computador; sin cromo, cuadrada con puntas redondeadas.
   const cromo = leerConstructor(settings)?.buscador
   const radio = cromo && cromo.radius !== 'pill' && cromo.radius !== 'circle' ? cromo.radius : 'rounded'

@@ -15,6 +15,7 @@ import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 import { useAparienciaBuscador } from './buscador/AparienciaBuscadorContext'
 import { CLASES_CAJA_APARIENCIA, CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia'
 import { PanelFlotanteEncabezado } from './header/PanelFlotanteEncabezado'
+import { lupaSoloDibujo } from './iconos/GlifoTienda'
 import {
   SOMBRA_DESPLEGABLE_CSS,
   estiloCajaApariencia,
@@ -70,6 +71,9 @@ export function ProductSearch({
   // Formas «Ícono» e «Ícono que abre encima»: la apariencia (si la hay) va al campo que se abre y al
   // desplegable; el ícono suelto sigue el estilo de «Íconos». Sin apariencia, lo de hoy.
   const ctxApariencia = useAparienciaBuscador()
+  // El disparador es un ícono suelto (toma el fondo, la sombra y el tamaño del «Estilo de los
+  // íconos»); la lupa del campo que se abre va dentro de una barra: solo el dibujo.
+  const LupaCampo = lupaSoloDibujo(SearchIconComp)
   const ap = ctxApariencia
     ? resolverApariencia(ctxApariencia.apariencia, 'icon', { primary: primaryColor }, pantallaCompleta ? 'celular' : ctxApariencia.dispositivo)
     : null
@@ -275,7 +279,7 @@ export function ProductSearch({
               {ap ? (
                 <CampoConApariencia
                   ap={ap}
-                  icono={SearchIconComp}
+                  icono={LupaCampo}
                   inputRef={inputRef}
                   valor={query}
                   onCambiar={setQuery}
@@ -285,7 +289,7 @@ export function ProductSearch({
                   }}
                 />
               ) : (<>
-              <SearchIconComp className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <LupaCampo className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <input
                 ref={inputRef}
                 type="text"
@@ -316,7 +320,7 @@ export function ProductSearch({
             {ap ? (
               <CampoConApariencia
                 ap={ap}
-                icono={SearchIconComp}
+                icono={LupaCampo}
                 valor={query}
                 onCambiar={setQuery}
                 autoFocus
@@ -326,7 +330,7 @@ export function ProductSearch({
                 }}
               />
             ) : (<>
-            <SearchIconComp className="h-5 w-5 text-gray-400 flex-shrink-0" />
+            <LupaCampo className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input
               type="text"
               value={query}

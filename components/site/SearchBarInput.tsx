@@ -11,6 +11,7 @@ import { useEncabezadoPie } from './EncabezadoPieContext';
 import { SOMBRA_DESPLEGABLE_CSS, rellenoCampo, type AparienciaResuelta } from '@/lib/website/v2/aparienciaBuscador';
 import { CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia';
 import { PanelFlotanteEncabezado } from './header/PanelFlotanteEncabezado';
+import { lupaSoloDibujo } from './iconos/GlifoTienda';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -86,7 +87,7 @@ export function SearchBarInput({
   className = '',
   placeholder = 'Buscar productos...',
   size = 'md',
-  icon: SearchIconComp = Search,
+  icon: IconoBuscar = Search,
   cromo,
   filtroCategoria,
   categoriaSlug,
@@ -95,6 +96,9 @@ export function SearchBarInput({
   apariencia,
 }: SearchBarInputProps) {
   const panelId = useId();
+  // La lupa va DENTRO del campo: solo el dibujo de Buscar, nunca el fondo, la sombra ni el tamaño
+  // del «Estilo de los íconos» de la cabecera (con fondo se salía del campo y corría el texto).
+  const SearchIconComp = lupaSoloDibujo(IconoBuscar);
   const ap = cromo?.enBarra ? apariencia : undefined;
   const ayuda = ap?.ayuda ?? placeholder;
   const { ruta } = useRutaSitio();

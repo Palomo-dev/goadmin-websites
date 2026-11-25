@@ -202,5 +202,55 @@ const menuHtml = renderToStaticMarkup(h(TemaColoresProvider, { value: true }, h(
 check(menuHtml.includes('/api/iconos/duotone/House.svg#g') && menuHtml.includes('/api/iconos/duotone/Basket.svg#g'), 'menú: Duotono para todos (Inicio por su equivalente, Carrito del catálogo)')
 check((menuHtml.match(/data-glifo-fondo="circle"/g) ?? []).length === 2, 'menú: cada ícono en su círculo')
 
+// ─── 4. Lupa dentro de la barra (bug 2026-11-25: «Fondo del ícono» cuadrado deformaba el buscador)
+// El «Estilo de los íconos» de la cabecera (fondo círculo/cuadrado, sombra, tamaño) es de los íconos
+// SUELTOS: carrito, cuenta, favoritos, moneda y la lupa de las formas «Ícono» e «Ícono que abre
+// encima». La lupa DENTRO de una barra (visible, compacta, grande, píldora, el campo que abre la lupa
+// y el botón de la barra) solo toma el dibujo; color y tamaño, de la apariencia del buscador.
+const { lupaSoloDibujo, estiloSoloDibujo } = await importar('components/site/iconos/GlifoTienda.tsx')
+const { SearchBarInput } = await importar('components/site/SearchBarInput.tsx')
+const { ProductSearch } = await importar('components/site/ProductSearch.tsx')
+const { BuscadorCromo } = await importar('components/site/header/BuscadorCromo.tsx')
+const { resolverApariencia, normalizarAparienciaBuscador } = await importar('lib/website/v2/aparienciaBuscador.ts')
+check(estiloSoloDibujo(null) === null && estiloSoloDibujo({ bg: { shape: 'square' }, shadow: 'strong', size: 30 }) === null, 'solo fondo, sombra y tamaño: la barra no toma nada (null)')
+check(JSON.stringify(estiloSoloDibujo({ weight: 'fill', size: 30, shadow: 'soft', bg: { shape: 'circle', color: '#111111' }, scope: 'item' })) === '{"weight":"fill","scope":"item"}', 'la barra conserva el dibujo (peso y alcance) y suelta fondo, sombra y tamaño')
+check(lupaSoloDibujo(Search) === Search && lupaSoloDibujo(undefined) === undefined, 'la lupa de Lucide de hoy pasa tal cual')
+for (const forma of ['square', 'circle']) {
+  for (const extra of [{}, { header_iconos: { glifos: { buscar: { set: 'phosphor', name: 'MagnifyingGlass' } } } }, { search_icon: 'scan-search' }]) {
+    const ajustes = { ...extra, header_iconos: { ...(extra.header_iconos ?? {}), iconStyle: { bg: { shape: forma, color: '#0F172A' }, shadow: 'strong', size: 30 } } }
+    const etiqueta = `fondo ${forma} ${JSON.stringify(extra)}`
+    const Suelto = iconoBuscar(ajustes)
+    const Lupa = lupaSoloDibujo(Suelto)
+    check(pintar(Suelto).includes(`data-glifo-fondo="${forma}"`), `${etiqueta}: la lupa suelta (forma «Ícono») sí lleva el fondo`)
+    const lupa = pintar(Lupa, { className: 'absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5' })
+    check(!lupa.includes('data-glifo-fondo') && !lupa.includes('<span') && !lupa.includes('padding') && !lupa.includes('box-shadow') && !lupa.includes('drop-shadow') && !lupa.includes('width:30px'), `${etiqueta}: la lupa de la barra sin caja, fondo, sombra ni tamaño`)
+    check(lupa.startsWith('<svg') && /class="[^"]*absolute left-3 top-1\/2 -translate-y-1\/2 h-5 w-5"/.test(lupa), `${etiqueta}: la lupa de la barra es el svg posicionado por la barra`)
+    if (extra.header_iconos) check(lupa.includes('/api/iconos/regular/MagnifyingGlass.svg#g'), `${etiqueta}: la barra conserva el dibujo del catálogo`)
+    if (extra.search_icon) check(Lupa !== Search, `${etiqueta}: la barra conserva el dibujo elegido (scan-search)`)
+    // Barra visible (SearchBarInput, de todas las composiciones y del celular): ni caja ni fondo.
+    const barra = renderToStaticMarkup(h(SearchBarInput, { primaryColor: '#2563EB', icon: Suelto }))
+    check(!barra.includes('data-glifo-fondo') && /<svg[^>]*class="[^"]*absolute left-3 top-1\/2 -translate-y-1\/2/.test(barra), `${etiqueta}: barra visible con la lupa dentro del campo`)
+    const ap = resolverApariencia(normalizarAparienciaBuscador({ border_width: 2 }), 'bar', { primary: '#2563EB' }, 'computador')
+    const barraAp = renderToStaticMarkup(h(SearchBarInput, { primaryColor: '#2563EB', icon: Suelto, cromo: { enBarra: true }, apariencia: ap }))
+    check(!barraAp.includes('data-glifo-fondo'), `${etiqueta}: barra con apariencia sin el fondo del ícono`)
+    // Forma «Ícono»: el disparador sí lleva el fondo; abierto, el campo no.
+    const disparador = renderToStaticMarkup(h(ProductSearch, { primaryColor: '#2563EB', icon: Suelto }))
+    check((disparador.match(/data-glifo-fondo=/g) ?? []).length === 1, `${etiqueta}: forma «Ícono»: el ícono suelto con su fondo`)
+    for (const tipo of ['bar', 'mini', 'mega', 'pill']) {
+      const cromo = { tipo, radius: 'pill', border: 'thin', button: 'icon', iconSide: 'left' }
+      const html = renderToStaticMarkup(h(BuscadorCromo, { presentacion: cromo, primaryColor: '#2563EB', icono: Suelto, categorias: [] }))
+      check(!html.includes('data-glifo-fondo'), `${etiqueta}: BuscadorCromo «${tipo}» (lupa y botón) sin el fondo del ícono`)
+      const movil = renderToStaticMarkup(h(BuscadorCromo, { presentacion: cromo, primaryColor: '#2563EB', icono: Suelto, categorias: [], lupaEnCampo: true, enFila: false, dispositivo: 'celular' }))
+      check(!movil.includes('data-glifo-fondo'), `${etiqueta}: BuscadorCromo «${tipo}» en el celular sin el fondo del ícono`)
+    }
+    const encima = renderToStaticMarkup(h(BuscadorCromo, { presentacion: { tipo: 'icon_overlay', radius: 'pill' }, primaryColor: '#2563EB', icono: Suelto }))
+    check((encima.match(/data-glifo-fondo=/g) ?? []).length === 1, `${etiqueta}: «Ícono que abre encima»: la lupa suelta con su fondo`)
+  }
+}
+// El campo que se abre (ProductSearch) pinta LupaCampo, nunca el ícono suelto.
+const fuentePS = await readFile(join(ROOT, 'components/site/ProductSearch.tsx'), 'utf8')
+check(/const LupaCampo = lupaSoloDibujo\(SearchIconComp\)/.test(fuentePS) && (fuentePS.match(/icono=\{LupaCampo\}/g) ?? []).length === 2 && (fuentePS.match(/<LupaCampo className=/g) ?? []).length === 2, 'el campo que abre la lupa (computador y pantalla completa) usa la lupa sin estilo')
+check(!/<SearchIconComp className="h-5 w-5 text-gray-400/.test(fuentePS), 'ningún campo de ProductSearch pinta el ícono suelto')
+
 console.log(`verify-glifos-tienda: ${total - fallos}/${total} comprobaciones OK (${rutas} dibujos leídos)`)
 if (fallos) process.exit(1)

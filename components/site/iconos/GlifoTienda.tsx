@@ -37,6 +37,8 @@ export function glifoConCambios(op: OpcionesGlifo): boolean {
 }
 
 const cache = new WeakMap<LucideIcon, Map<string, LucideIcon>>()
+/** De qué ícono y opciones salió cada componente de `conGlifo` (para `lupaSoloDibujo`). */
+const origen = new WeakMap<LucideIcon, { base: LucideIcon; op: OpcionesGlifo }>()
 
 /**
  * Componente con la forma de un ícono de Lucide que pinta el dibujo y el estilo elegidos.
@@ -57,7 +59,35 @@ export function conGlifo(base: LucideIcon, op: OpcionesGlifo): LucideIcon {
   }) as unknown as LucideIcon
   ;(Comp as { displayName?: string }).displayName = 'GlifoTienda'
   porBase.set(clave, Comp)
+  origen.set(Comp, { base, op })
   return Comp
+}
+
+/**
+ * Lo que la lupa DENTRO de una barra de búsqueda toma del «Estilo de los íconos»: solo el dibujo
+ * (peso: Línea, Relleno, Duotono, Gruesa, y «Propio por botón»). Nunca el fondo (círculo o
+ * cuadrado), la sombra ni el tamaño: esos son de los íconos sueltos de la cabecera. El color y el
+ * tamaño de la lupa los pone la apariencia del buscador.
+ */
+export function estiloSoloDibujo(estilo: EstiloGlifos | null | undefined): EstiloGlifos | null {
+  if (!estilo) return null
+  const r: EstiloGlifos = {}
+  if (estilo.weight) r.weight = estilo.weight
+  if (estilo.scope) r.scope = estilo.scope
+  return Object.keys(r).length > 0 ? r : null
+}
+
+/**
+ * La lupa de una barra de búsqueda (visible, compacta, grande, píldora, el campo que abre la lupa y
+ * su botón): el mismo dibujo que el ícono de Buscar, sin fondo, caja, sombra, tamaño ni relleno del
+ * estilo de los íconos. Con el fondo, `pintarGlifo` envuelve el svg en una caja en línea y la lupa,
+ * que la barra posiciona con `absolute`, quedaba fuera del campo (arriba a la izquierda) con el
+ * texto corrido. Un ícono que no salió de `conGlifo` (Lucide de hoy) vuelve tal cual.
+ */
+export function lupaSoloDibujo<T>(Icono: T): T {
+  const o = origen.get(Icono as unknown as LucideIcon)
+  if (!o) return Icono
+  return conGlifo(o.base, { glifo: o.op.glifo ?? null, nombre: o.op.nombre ?? null, estilo: estiloSoloDibujo(o.op.estilo) }) as unknown as T
 }
 
 /** Props del trazo que no aplican a un dibujo relleno (Phosphor) o que pisa el peso elegido. */
