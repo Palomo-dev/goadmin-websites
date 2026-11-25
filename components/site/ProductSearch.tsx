@@ -1,7 +1,7 @@
 'use client'
 import { IconoConCirculo } from './header/IconoEncabezado'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ComponentType, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react'
 import Link from '@/components/site/Enlace'
@@ -12,6 +12,16 @@ import { useBusquedasRecientes, useCerrarBuscador, usePosicionPanel, useResultad
 import { useEncabezadoPie } from './EncabezadoPieContext'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/ContenedorIcono'
 import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
+import { useAparienciaBuscador } from './buscador/AparienciaBuscadorContext'
+import { CLASES_CAJA_APARIENCIA, CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia'
+import {
+  SOMBRA_DESPLEGABLE_CSS,
+  estiloCajaApariencia,
+  rellenoCampo,
+  resolverApariencia,
+  variablesApariencia,
+  type AparienciaResuelta,
+} from '@/lib/website/v2/aparienciaBuscador'
 
 interface ProductSearchProps {
   primaryColor: string
@@ -56,6 +66,12 @@ export function ProductSearch({
   const { ruta } = useRutaSitio()
   // Populares: las de la tienda (search_popular) o sus primeras categorías del menú; nunca genéricas.
   const { busquedasPopulares: popularSearches } = useEncabezadoPie()
+  // Formas «Ícono» e «Ícono que abre encima»: la apariencia (si la hay) va al campo que se abre y al
+  // desplegable; el ícono suelto sigue el estilo de «Íconos». Sin apariencia, lo de hoy.
+  const ctxApariencia = useAparienciaBuscador()
+  const ap = ctxApariencia
+    ? resolverApariencia(ctxApariencia.apariencia, 'icon', { primary: primaryColor }, pantallaCompleta ? 'celular' : ctxApariencia.dispositivo)
+    : null
   const controlado = abierto !== undefined
   const [interno, setInterno] = useState(false)
   const isOpen = controlado ? abierto : interno
@@ -119,7 +135,7 @@ export function ProductSearch({
               onClick={() => handleResultClick(product)}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden relative flex-shrink-0">
+              {ap?.desplegableImagenes !== false && <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden relative flex-shrink-0">
                 {product.imageUrl ? (
                   <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="48px" />
                 ) : (
@@ -127,10 +143,10 @@ export function ProductSearch({
                     <Package className="h-5 w-5 text-gray-300" />
                   </div>
                 )}
-              </div>
+              </div>}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
+                {ap?.desplegablePrecios !== false && <div className="flex items-center gap-2 mt-0.5">
                   {product.price && (
                     <span className="text-sm font-bold" style={{ color: primaryColor }}>
                       ${Number(product.price).toLocaleString('es-CO')}
@@ -141,7 +157,7 @@ export function ProductSearch({
                       ${Number(product.comparePrice).toLocaleString('es-CO')}
                     </span>
                   )}
-                </div>
+                </div>}
                 {(product.category || product.tag) && (
                   <div className="flex items-center gap-1 mt-0.5">
                     {product.category && (
@@ -239,8 +255,25 @@ export function ProductSearch({
           style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
           data-panel-buscador=""
         >
-          <div className="bg-white dark:bg-gray-900 w-full rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col" data-superficie-propia="">
+          <div
+            className={`bg-white dark:bg-gray-900 w-full ${ap ? '' : 'rounded-xl shadow-xl '}border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col`}
+            style={ap ? { borderRadius: ap.desplegableRadio, boxShadow: SOMBRA_DESPLEGABLE_CSS[ap.desplegableSombra] } : undefined}
+            data-superficie-propia=""
+          >
             <div className="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
+              {ap ? (
+                <CampoConApariencia
+                  ap={ap}
+                  icono={SearchIconComp}
+                  inputRef={inputRef}
+                  valor={query}
+                  onCambiar={setQuery}
+                  onTecla={(tecla) => {
+                    if (tecla === 'Enter') handleSearchSubmit(query)
+                    if (tecla === 'Escape') cerrar()
+                  }}
+                />
+              ) : (<>
               <SearchIconComp className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <input
                 ref={inputRef}
@@ -248,7 +281,7 @@ export function ProductSearch({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar productos..."
-                className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 outline-none text-base"
+                className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder:text-[#6B7280] outline-none text-base"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSearchSubmit(query)
                   if (e.key === 'Escape') cerrar()
@@ -259,6 +292,7 @@ export function ProductSearch({
                   <X className="h-4 w-4 text-gray-400" />
                 </button>
               )}
+              </>)}
             </div>
             {renderContent()}
           </div>
@@ -269,13 +303,26 @@ export function ProductSearch({
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div ref={mobilePortalRef} data-superficie-propia="" className={`${pantallaCompleta ? '' : 'md:hidden '}fixed inset-0 z-[9999] bg-white dark:bg-gray-900 flex flex-col`}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+            {ap ? (
+              <CampoConApariencia
+                ap={ap}
+                icono={SearchIconComp}
+                valor={query}
+                onCambiar={setQuery}
+                autoFocus
+                onTecla={(tecla) => {
+                  if (tecla === 'Enter') handleSearchSubmit(query)
+                  if (tecla === 'Escape') cerrar()
+                }}
+              />
+            ) : (<>
             <SearchIconComp className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar productos..."
-              className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 outline-none text-base"
+              className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder:text-[#6B7280] outline-none text-base"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearchSubmit(query)
@@ -287,6 +334,7 @@ export function ProductSearch({
                 <X className="h-4 w-4 text-gray-400" />
               </button>
             )}
+            </>)}
             <button
               onClick={() => { cerrar(); setQuery('') }}
               className="text-sm font-medium ml-1 flex-shrink-0"
@@ -298,6 +346,62 @@ export function ProductSearch({
           {renderContent()}
         </div>,
         document.body
+      )}
+    </div>
+  )
+}
+
+/**
+ * Campo que abre la lupa con la apariencia del buscador: la misma caja, estados y anillo de foco
+ * que la barra (variables `--bq-*`), con la lupa del sitio y el botón para limpiar.
+ */
+function CampoConApariencia({
+  ap,
+  icono: Icono,
+  inputRef,
+  valor,
+  onCambiar,
+  onTecla,
+  autoFocus = false,
+}: {
+  ap: AparienciaResuelta
+  icono: ComponentType<{ className?: string; style?: CSSProperties; 'aria-hidden'?: boolean | 'true' }>
+  inputRef?: RefObject<HTMLInputElement>
+  valor: string
+  onCambiar: (v: string) => void
+  onTecla: (tecla: string) => void
+  autoFocus?: boolean
+}) {
+  const ayuda = ap.ayuda ?? 'Buscar productos...'
+  return (
+    <div
+      className={`relative flex min-w-0 flex-1 items-center ${CLASES_CAJA_APARIENCIA}`}
+      style={{ ...variablesApariencia(ap), ...estiloCajaApariencia(ap) } as CSSProperties}
+      data-apariencia=""
+    >
+      {ap.iconoLado !== 'none' && !(ap.iconoLado === 'right' && valor) && (
+        <Icono
+          aria-hidden="true"
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${ap.iconoLado === 'right' ? 'right-3' : 'left-3'}`}
+          style={{ width: ap.iconoTamano, height: ap.iconoTamano, color: 'var(--bq-icono)' }}
+        />
+      )}
+      <input
+        ref={inputRef}
+        type="text"
+        value={valor}
+        onChange={(e) => onCambiar(e.target.value)}
+        placeholder={ayuda}
+        aria-label={ayuda}
+        autoFocus={autoFocus}
+        className={`h-full w-full text-base ${CLASES_CAMPO_APARIENCIA}`}
+        style={{ ...rellenoCampo(ap), ...(valor ? { paddingRight: 36 } : {}) }}
+        onKeyDown={(e) => onTecla(e.key)}
+      />
+      {valor && (
+        <button type="button" onClick={() => onCambiar('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-black/5" aria-label="Limpiar">
+          <X className="h-4 w-4" style={{ color: 'var(--bq-icono)' }} />
+        </button>
       )}
     </div>
   )

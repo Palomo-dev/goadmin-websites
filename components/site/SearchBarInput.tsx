@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { useBusquedasRecientes, useCerrarBuscador, usePosicionPanel, useResultadosBusqueda, type ResultadoBusqueda } from './buscador/comportamiento';
 import { Search, X, TrendingUp, Clock, Package } from 'lucide-react';
 import Link from '@/components/site/Enlace'
@@ -8,6 +8,8 @@ import Image from 'next/image';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
 import { useEncabezadoPie } from './EncabezadoPieContext';
+import { SOMBRA_DESPLEGABLE_CSS, rellenoCampo, type AparienciaResuelta } from '@/lib/website/v2/aparienciaBuscador';
+import { CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -50,6 +52,12 @@ interface SearchBarInputProps {
   onQueryChange?: (q: string) => void
   /** Texto que trae la URL de /search: se muestra en el campo al llegar. Ausente: vacío. */
   valorInicial?: string
+  /**
+   * Apariencia del buscador ya resuelta (search_appearance, Figma 3241:99000), solo dentro de la
+   * barra con apariencia de BuscadorCromo (`cromo.enBarra`): texto, ayuda, lupa y desplegable. La
+   * caja (borde, fondo, foco) la pinta la barra con las variables `--bq-*`. Ausente: lo de hoy.
+   */
+  apariencia?: AparienciaResuelta
 }
 
 type SearchResult = ResultadoBusqueda;
@@ -83,7 +91,11 @@ export function SearchBarInput({
   categoriaSlug,
   onQueryChange,
   valorInicial,
+  apariencia,
 }: SearchBarInputProps) {
+  const panelId = useId();
+  const ap = cromo?.enBarra ? apariencia : undefined;
+  const ayuda = ap?.ayuda ?? placeholder;
   const { ruta } = useRutaSitio();
   // Populares: las de la tienda (search_popular) o sus primeras categorías del menú; nunca genéricas.
   const { busquedasPopulares: popularSearches } = useEncabezadoPie();
@@ -115,8 +127,16 @@ export function SearchBarInput({
   return (
     <div ref={containerRef} className={`relative ${className}`} data-superficie-propia="">
       {/* Input visible tipo marketplace */}
-      <div className="relative">
-        {!cromo?.sinIcono && <SearchIconComp
+      <div className={ap ? 'relative h-full' : 'relative'}>
+        {ap ? (
+          ap.iconoLado !== 'none' && !(ap.iconoLado === 'right' && query) && (
+            <SearchIconComp
+              aria-hidden="true"
+              className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${ap.iconoLado === 'right' ? 'right-3' : 'left-3'}`}
+              style={{ width: ap.iconoTamano, height: ap.iconoTamano, color: 'var(--bq-icono)' }}
+            />
+          )
+        ) : !cromo?.sinIcono && <SearchIconComp
           className={cromo
             ? `absolute top-1/2 -translate-y-1/2 ${cfg.icon} pointer-events-none ${cromo.iconSide === 'right' ? 'right-3' : 'left-3'} ${cromo.iconColor ? '' : 'text-gray-400'}`
             : `absolute left-3 top-1/2 -translate-y-1/2 ${cfg.icon} text-gray-400 pointer-events-none`}
@@ -138,13 +158,21 @@ export function SearchBarInput({
               inputRef.current?.blur();
             }
           }}
-          placeholder={placeholder}
-          className={cromo?.enBarra
-            ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-3' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} border-0 bg-transparent outline-none text-gray-900 placeholder-gray-400`
+          placeholder={ayuda}
+          aria-label={ayuda}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-haspopup="dialog"
+          aria-expanded={abiertoPanel}
+          aria-controls={abiertoPanel ? panelId : undefined}
+          className={ap
+            ? `h-full w-full ${CLASES_CAMPO_APARIENCIA} ${ap.alto >= 48 ? 'text-base' : 'text-sm'}`
+            : cromo?.enBarra
+            ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-3' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} border-0 bg-transparent outline-none text-gray-900 placeholder:text-[#6B7280]`
             : cromo
-            ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-4' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`
-            : `w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
-          style={cromo?.enBarra ? undefined : { ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
+            ? `w-full ${cfg.input} ${cromo.sinIcono ? 'px-4' : cromo.iconSide === 'right' ? 'pl-3 pr-10' : cfg.padding} ${cromo.background ? '' : 'bg-gray-50 dark:bg-gray-800'} ${cromo.border === 'none' ? 'border-0' : cromo.border === 'thick' ? 'border-2' : 'border border-gray-200 dark:border-gray-700'} ${cromo.radius === 'square' ? 'rounded-none' : cromo.radius === 'rounded' ? 'rounded-md' : cromo.radius === 'semi' ? 'rounded-lg' : 'rounded-full'} outline-none transition-all text-gray-900 dark:text-white placeholder:text-[#6B7280] focus:bg-white dark:focus:bg-gray-900 focus:border-2`
+            : `w-full ${cfg.input} ${cfg.padding} bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full outline-none transition-all text-gray-900 dark:text-white placeholder:text-[#6B7280] focus:bg-white dark:focus:bg-gray-900 focus:border-2`}
+          style={ap ? { ...rellenoCampo(ap), ...(query ? { paddingRight: 36 } : {}) } : cromo?.enBarra ? undefined : { ['--tw-border-color' as string]: primaryColor, ...(cromo?.background ? { backgroundColor: cromo.background } : {}), ...(cromo?.borderColor ? { borderColor: cromo.borderColor } : {}) }}
           onFocusCapture={(e) => {
             if (cromo?.enBarra) return;
             (e.target as HTMLInputElement).style.borderColor = primaryColor;
@@ -173,8 +201,14 @@ export function SearchBarInput({
           className={`absolute top-full mt-2 z-[100]${posicion ? '' : ' left-0 right-0'}`}
           style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
           data-panel-buscador=""
+          id={panelId}
+          role="dialog"
+          aria-label="Sugerencias de búsqueda"
         >
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden">
+          <div
+            className={`bg-white dark:bg-gray-900 ${ap ? '' : 'rounded-xl shadow-2xl '}border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden`}
+            style={ap ? { borderRadius: ap.desplegableRadio, boxShadow: SOMBRA_DESPLEGABLE_CSS[ap.desplegableSombra] } : undefined}
+          >
             {loading && (
               <div className="flex items-center justify-center py-8">
                 <div
@@ -193,7 +227,7 @@ export function SearchBarInput({
                     onClick={() => handleResultClick(product)}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <div className="w-11 h-11 rounded-lg bg-gray-100 overflow-hidden relative flex-shrink-0">
+                    {ap?.desplegableImagenes !== false && <div className="w-11 h-11 rounded-lg bg-gray-100 overflow-hidden relative flex-shrink-0">
                       {product.imageUrl ? (
                         <Image
                           src={product.imageUrl}
@@ -207,12 +241,12 @@ export function SearchBarInput({
                           <Package className="h-5 w-5 text-gray-300" />
                         </div>
                       )}
-                    </div>
+                    </div>}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {product.name}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      {ap?.desplegablePrecios !== false && <div className="flex items-center gap-2 mt-0.5">
                         {product.price && (
                           <span className="text-sm font-bold" style={{ color: primaryColor }}>
                             ${Number(product.price).toLocaleString('es-CO')}
@@ -225,7 +259,7 @@ export function SearchBarInput({
                               ${Number(product.comparePrice).toLocaleString('es-CO')}
                             </span>
                           )}
-                      </div>
+                      </div>}
                     </div>
                   </Link>
                 ))}

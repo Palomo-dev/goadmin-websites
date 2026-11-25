@@ -3,13 +3,23 @@
 import { Search, type LucideIcon } from 'lucide-react'
 import { ProductSearch } from '../ProductSearch'
 import { SearchBarInput } from '../SearchBarInput'
-import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type CSSProperties, type ReactNode } from 'react'
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
 import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda'
 import { buscadorEnBarra, leerConstructor, type ContenedorIconos, type CromoBuscador } from '@/lib/website/constructorEncabezado'
 import type { ColoresCaja } from './ContenedorIcono'
-import { ajustesBuscadorMovil, buscadorIgualEscritorio, buscadorMovilConEstilo } from '@/lib/website/opcionUnica'
+import { ajustesBuscadorMovil, buscadorIgualEscritorio, buscadorMovilConEstilo, buscadorMovilElegido } from '@/lib/website/opcionUnica'
 import { iconoBuscar } from './iconoBuscar'
+import {
+  ajustesConApariencia,
+  aparienciaActiva,
+  estiloCajaApariencia,
+  normalizarAparienciaBuscador,
+  resolverApariencia,
+  variablesApariencia,
+  type DispositivoBuscador,
+} from '@/lib/website/v2/aparienciaBuscador'
+import { CLASES_CAJA_APARIENCIA } from '../buscador/clasesApariencia'
 
 /** La barra de hoy si no hay cromo nuevo. El overlay no ocupa la barra. */
 export function barraSiCromo(
@@ -27,7 +37,8 @@ export function barraSiCromo(
 ): ReactNode {
   const cromo = leerConstructor(settings)?.buscador
   if (!cromo || !buscadorEnBarra(cromo.tipo)) return actual
-  const categorias = cromo.tipo === 'mega'
+  // «Buscador grande» y, con apariencia, cualquier forma con «Todas» encendido.
+  const categorias = cromo.tipo === 'mega' || cromo.apariencia
     ? (props.categorias ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
     : undefined
   return <BuscadorCromo presentacion={cromo} primaryColor={props.primaryColor} organizationId={props.organizationId} className={props.className} categorias={categorias} enFila={props.enFila ?? true} icono={iconoBuscar(settings)} />
@@ -55,7 +66,10 @@ export function BuscadorCromo({
   lupaEnCampo = false,
   enFila = true,
   icono: Icono = Search,
+  dispositivo = 'computador',
 }: {
+  /** Celular: alto mínimo 44 px, botón pegado y solo ícono, «Todas» se esconde si no cabe. */
+  dispositivo?: DispositivoBuscador
   /**
    * Dibujo de Buscar elegido en el editor (`iconoBuscar(settings)`): la lupa del campo, el botón de
    * la barra y el ícono que abre encima. Sin él, la lupa de hoy.
@@ -78,9 +92,14 @@ export function BuscadorCromo({
   colores?: ColoresCaja
 }) {
   const { ruta } = useRutaSitio()
+  // Apariencia del buscador (search_appearance): solo con subclaves guardadas; sin ella, lo de hoy.
+  const res = presentacion.apariencia && presentacion.tipo !== 'icon_overlay'
+    ? resolverApariencia(presentacion.apariencia, presentacion.tipo, { primary: primaryColor, accent: colores?.accent }, dispositivo)
+    : null
+  const conCategorias = presentacion.tipo === 'mega' || !!res?.categorias
   const [categoria, setCategoria] = useState('')
   const [texto, setTexto] = useState('')
-  const elegida = presentacion.tipo === 'mega' ? categorias.find((c) => String(c.id) === categoria) : undefined
+  const elegida = conCategorias ? categorias.find((c) => String(c.id) === categoria) : undefined
   const buscar = () => {
     const q = texto.trim()
     if (q) window.location.href = ruta(urlResultadosBusqueda(q, elegida?.slug))
@@ -88,7 +107,7 @@ export function BuscadorCromo({
   }
   // Elegir la categoría solo la selecciona; navegar es cosa del botón o de Enter.
   const cambiarCategoria = (valor: string) => setCategoria(valor)
-  const desdeUrl = useBusquedaDeUrl(presentacion.tipo === 'mega' ? categorias : [])
+  const desdeUrl = useBusquedaDeUrl(conCategorias ? categorias : [])
   useEffect(() => {
     if (desdeUrl.categoriaId) setCategoria(desdeUrl.categoriaId)
     if (desdeUrl.q) setTexto(desdeUrl.q)
@@ -102,6 +121,90 @@ export function BuscadorCromo({
         contenedor={contenedor}
         colores={colores}
       />
+    )
+  }
+  if (res) {
+    // Barra con apariencia (Figma 3242:99098 y 3248:99253): una caja con las variables `--bq-*`;
+    // «Todas» a la izquierda, el campo y el botón pegado (dentro) o separado (al lado).
+    const celular = res.dispositivo === 'celular'
+    const conBoton = res.boton !== 'none'
+    const pegado = conBoton && res.botonPegado
+    const vars = variablesApariencia(res) as CSSProperties
+    const { maxWidth, width, marginLeft, marginRight, ...cajaPropia } = estiloCajaApariencia(res, presentacion.width) as Record<string, string | number>
+    const ubicacion = { maxWidth, width, marginLeft, marginRight } as CSSProperties
+    const radioBotonCelular = Math.max(0, res.radio - res.bordeAncho)
+    const botonNodo = conBoton ? (
+      <button
+        type="button"
+        onClick={buscar}
+        aria-label={res.boton === 'icon' ? 'Buscar' : undefined}
+        className={`inline-flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--bq-borde-foco)] focus-visible:ring-offset-1 motion-reduce:transition-none ${pegado ? (celular ? 'min-w-[44px] self-stretch px-3' : 'min-w-10 self-stretch px-3') : 'min-w-[44px] px-4'}`}
+        style={{
+          backgroundColor: 'var(--bq-boton-fondo)',
+          color: 'var(--bq-boton-texto)',
+          borderRadius: pegado && celular ? `0 ${radioBotonCelular}px ${radioBotonCelular}px 0` : res.botonRadio,
+          ...(pegado ? {} : { height: res.alto }),
+        }}
+      >
+        {res.boton !== 'text' && <Icono className="h-4 w-4" aria-hidden="true" />}
+        {(res.boton === 'text' || res.boton === 'icon_text') && <span>{res.botonTexto}</span>}
+      </button>
+    ) : null
+    const selector = conCategorias ? (
+      <select
+        aria-label="Categoría"
+        value={categoria}
+        onChange={(e) => cambiarCategoria(e.target.value)}
+        className={`w-auto max-w-[9rem] shrink-0 cursor-pointer pl-3 pr-2 text-sm font-medium outline-none ${res.categoriasEstilo === 'boxed' ? 'my-1 ml-1 rounded-md border border-gray-200 bg-white text-gray-900' : 'h-full border-0 bg-transparent'} ${res.categoriasSeparador ? 'border-r border-r-gray-200' : ''} ${res.categoriasSiCabe ? 'hidden min-[400px]:block' : ''}`}
+        style={res.categoriasEstilo === 'boxed' ? undefined : { color: 'var(--bq-texto)' }}
+      >
+        <option value="">{res.categoriasTexto}</option>
+        {categorias.slice(0, 12).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+    ) : null
+    const compactaAp = presentacion.tipo === 'mini' && enFila && !celular
+    const separado = conBoton && !pegado
+    const barra = (
+      <div
+        className={`flex min-w-0 items-stretch ${pegado && !celular ? 'gap-1 p-1' : ''} ${CLASES_CAJA_APARIENCIA} ${separado || compactaAp ? 'w-full flex-1' : className}`}
+        style={{ ...(separado || compactaAp ? {} : { ...vars, ...ubicacion }), ...(cajaPropia as CSSProperties) }}
+        data-buscador={separado || compactaAp ? undefined : presentacion.tipo}
+        data-apariencia=""
+      >
+        {selector}
+        <div className="min-w-0 flex-1">
+          <SearchBarInput
+            primaryColor={primaryColor}
+            className="h-full w-full"
+            icon={Icono}
+            cromo={{ enBarra: true }}
+            apariencia={res}
+            {...(presentacion.placeholder ? { placeholder: presentacion.placeholder } : {})}
+            {...(elegida ? { filtroCategoria: elegida.name, categoriaSlug: elegida.slug } : {})}
+            onQueryChange={setTexto}
+            {...(conCategorias && desdeUrl.q ? { valorInicial: desdeUrl.q } : {})}
+          />
+        </div>
+        {pegado && botonNodo}
+      </div>
+    )
+    if (compactaAp) {
+      // «Barra compacta»: reserva 9rem en la fila y al enfocarla se abre a 24rem hacia la izquierda.
+      return (
+        <div className={`relative w-36 shrink-0 ${className.includes('mx-') ? 'mx-4' : ''}`} style={{ ...vars, height: res.alto }} data-buscador="mini" data-apariencia="">
+          <div className="absolute right-0 top-1/2 z-30 flex w-36 -translate-y-1/2 items-center gap-2 transition-[width] duration-200 focus-within:w-96 motion-reduce:transition-none">
+            {barra}
+            {separado && botonNodo}
+          </div>
+        </div>
+      )
+    }
+    if (!separado) return barra
+    return (
+      <div className={`flex min-w-0 items-center gap-2 ${className}`} style={{ ...vars, ...ubicacion }} data-buscador={presentacion.tipo} data-apariencia="">
+        {barra}
+        {botonNodo}
+      </div>
     )
   }
   const compacta = presentacion.tipo === 'mini' && enFila
@@ -359,9 +462,14 @@ export function hayCromoEnBarra(settings: unknown): boolean {
  *   tipo del celular y el resto del estilo de computador. «Barra visible» sigue con la de siempre.
  */
 export function ajustesCromoMovil(settings: unknown): unknown | null {
-  const s = settings as Record<string, unknown> | null | undefined
-  if (buscadorIgualEscritorio(s)) return hayCromoEnBarra(settings) ? settings : null
-  if (!buscadorMovilConEstilo(s)) return null
+  // Apariencia del celular (mobile_search_appearance o, vacía, la del computador) en
+  // `search_appearance`. Sin apariencia guardada es el MISMO objeto: lo de hoy.
+  const base = ajustesConApariencia(settings, 'celular')
+  const s = base as Record<string, unknown> | null | undefined
+  if (buscadorIgualEscritorio(s)) return hayCromoEnBarra(base) ? base : null
+  // «Barra visible» con apariencia también se pinta con estilo (sin ella, la barra de siempre).
+  const barraConApariencia = buscadorMovilElegido(s) === 'bar' && aparienciaActiva(normalizarAparienciaBuscador(s?.search_appearance))
+  if (!buscadorMovilConEstilo(s) && !barraConApariencia) return null
   const movil = ajustesBuscadorMovil(s)
   return hayCromoEnBarra(movil) ? movil : null
 }
@@ -381,6 +489,21 @@ export function BuscadorMovilComoEscritorio(props: {
   placeholder?: string
 }) {
   const cromo = leerConstructor(props.settings)?.buscador
+  // Con apariencia, la misma barra que computador con las reglas del celular (44 px, botón pegado).
+  if (cromo?.apariencia) {
+    return (
+      <BuscadorCromo
+        presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }}
+        primaryColor={props.primaryColor}
+        categorias={props.categorias ?? []}
+        className={`w-full ${props.className ?? ''}`}
+        icono={props.icon ?? iconoBuscar(props.settings)}
+        lupaEnCampo
+        enFila={false}
+        dispositivo="celular"
+      />
+    )
+  }
   if (cromo?.tipo === 'mega') return <BuscadorCromoCompacto {...props} categorias={props.categorias ?? []} />
   if (!cromo) return null
   return <BuscadorCromo presentacion={{ ...cromo, width: undefined, ...(props.placeholder && !cromo.placeholder ? { placeholder: props.placeholder } : {}) }} primaryColor={props.primaryColor} className={`w-full ${props.className ?? ''}`} icono={props.icon ?? iconoBuscar(props.settings)} lupaEnCampo enFila={false} />

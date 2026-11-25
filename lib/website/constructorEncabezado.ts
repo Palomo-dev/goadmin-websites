@@ -1,3 +1,5 @@
+import { aparienciaActiva, normalizarAparienciaBuscador, type AparienciaBuscador } from './v2/aparienciaBuscador'
+
 /**
  * Constructor del encabezado. Sin `header_builder` y con `search_style` en
  * icon | bar | hidden (o ausente), devuelve null: el header, el círculo de
@@ -158,6 +160,12 @@ export interface MegaItem {
 
 export interface CromoBuscador {
   tipo: BuscadorNuevo
+  /**
+   * Apariencia del buscador (`search_appearance`, Figma 3241:99000) sobre lo que traiga
+   * `header_builder.search` (pasado a subclaves con `aparienciaDesdeConstructor`). Solo viene si
+   * tiene alguna subclave visual: sin ella el buscador se pinta exactamente como hoy.
+   */
+  apariencia?: AparienciaBuscador
   placeholder?: string
   width?: number
   border: 'none' | 'thin' | 'thick'
@@ -509,12 +517,41 @@ function leerMenu(valor: unknown, i: number): MenuConstruido | null {
   }
 }
 
-function leerBuscador(crudo: unknown, estiloSitio: unknown): CromoBuscador | null {
+/**
+ * `header_builder.search` (lo que ya leía la tienda) en subclaves de la apariencia nueva, para que
+ * una tienda con las dos cosas no pierda lo del Constructor: lo de `search_appearance` manda encima.
+ */
+export function aparienciaDesdeConstructor(crudo: unknown): AparienciaBuscador {
   const o = objeto(crudo) ?? {}
+  const r: Record<string, unknown> = {}
+  const borde = enLista(['none', 'thin', 'thick'] as const, o.border)
+  if (borde) r.border_width = borde === 'none' ? 0 : borde === 'thick' ? 2 : 1
+  if (color(o.border_color)) r.border_color = color(o.border_color)
+  const forma = enLista(FORMAS, o.radius)
+  if (forma === 'square') r.radius = 'square'
+  else if (forma === 'rounded') r.radius = 'soft'
+  else if (forma === 'semi') { r.radius = 'soft'; r.radius_px = 8 }
+  else if (forma === 'pill' || forma === 'circle') r.radius = 'pill'
+  if (o.shadow === true) r.shadow = 'lg'
+  if (color(o.background)) r.bg = color(o.background)
+  if (o.icon_side === 'left' || o.icon_side === 'right') r.icon_side = o.icon_side
+  if (color(o.icon_color)) r.icon_color = color(o.icon_color)
+  const boton = enLista(['none', 'text', 'icon'] as const, o.button)
+  if (boton) r.button = boton
+  if (texto(o.placeholder, 60)) r.placeholder = texto(o.placeholder, 60)
+  const ancho = entero(o.width, 160, 960)
+  if (ancho) r.max_width = ancho
+  return normalizarAparienciaBuscador(r) ?? {}
+}
+
+function leerBuscador(crudo: unknown, estiloSitio: unknown, aparienciaCruda?: unknown): CromoBuscador | null {
+  const o = objeto(crudo) ?? {}
+  const propia = normalizarAparienciaBuscador(aparienciaCruda)
+  const conApariencia = aparienciaActiva(propia)
   const tipoNuevo = enLista(BUSCADORES_NUEVOS, o.type) ?? enLista(BUSCADORES_NUEVOS, estiloSitio)
-  const tipoBarra = (o.type === 'bar' || estiloSitio === 'bar') && (o.placeholder || o.border || o.radius || o.shadow || o.background || o.icon || o.button)
+  const tipoBarra = (o.type === 'bar' || estiloSitio === 'bar') && (conApariencia || o.placeholder || o.border || o.radius || o.shadow || o.background || o.icon || o.button)
   if (!tipoNuevo && !tipoBarra) return null
-  return {
+  const cromo: CromoBuscador = {
     tipo: tipoNuevo ?? 'bar',
     placeholder: texto(o.placeholder, 60),
     width: entero(o.width, 120, 960),
@@ -530,13 +567,16 @@ function leerBuscador(crudo: unknown, estiloSitio: unknown): CromoBuscador | nul
     button: enLista(['none', 'text', 'icon'] as const, o.button) ?? (tipoNuevo === 'mega' ? 'icon' : 'none'),
     mobile: enLista(['icon', 'bar', 'fullscreen'] as const, o.mobile) ?? 'icon',
   }
+  // Sin apariencia nueva, el mismo objeto de siempre (sin la clave): nada cambia de camino.
+  if (conApariencia) cromo.apariencia = { ...aparienciaDesdeConstructor(o), ...propia }
+  return cromo
 }
 
 /** null = header y buscador de hoy. */
 export function leerConstructor(settings: unknown): ConstructorEncabezado | null {
   const s = objeto(settings) ?? {}
   const builder = objeto(s.header_builder)
-  const buscador = leerBuscador(builder?.search, s.search_style)
+  const buscador = leerBuscador(builder?.search, s.search_style, s.search_appearance)
   if (!builder && !buscador) return null
   const zonas = builder ? leerZonas(builder.zones) : null
   const iconosCrudos = objeto(builder?.icons)

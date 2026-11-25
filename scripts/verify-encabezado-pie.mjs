@@ -62,7 +62,7 @@ const nuevas = Object.entries(m.OPCIONES_SHELL).filter(([, d]) => d.nueva)
 // JSON del documento, sin columna ni regla escalar: un objeto se conserva tal cual.
 // Cabecera de la tienda (2026-11-22): header_iconos, header_moneda, header_carrito y header_favoritos los valida
 // lib/website/v2/cabeceraTienda.ts (scripts/verify-cabecera-tienda.mjs).
-const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder', 'header_iconos', 'header_moneda', 'header_carrito', 'header_favoritos', 'header_cuenta'])
+const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'header_menu4_links', 'header_icons_box', 'mobile_header', 'header_builder', 'header_iconos', 'header_moneda', 'header_carrito', 'header_favoritos', 'header_cuenta', 'search_appearance', 'mobile_search_appearance'])
 // 70 + las 6 de las plantillas de tienda (P0 2026-11: header_cta_shape, buttons_uppercase_active,
 // footer_brand_display, footer_brand_figure_url, footer_inset, footer_links_style) + las 15 del
 // encabezado píldora y el botón principal (2026-11-07: header_cta_size/width/height/style/icon/
@@ -73,7 +73,7 @@ const JSON_SIN_REGLA = new Set(['header_menu2_links', 'header_menu3_links', 'hea
 // +3 (2026-11-22): header_iconos, header_moneda y header_carrito (cabecera de la tienda, Figma 2747:57859).
 // +1 (2026-11-22): header_favoritos (corazón, panel y página /favoritos, Figma 2762:61067).
 // +1 (2026-11-22): header_cuenta (iniciar sesión: página, panel, ventana o diálogo, Figma 2834:68670).
-check(nuevas.length === 105, `se esperaban 105 opciones nuevas y hay ${nuevas.length}`)
+check(nuevas.length === 107, `se esperaban 107 opciones nuevas y hay ${nuevas.length}`)
 for (const [col, def] of nuevas) {
   check(!!def.regla || JSON_SIN_REGLA.has(col), `${col} no declara regla`)
   if (def.regla && def.porDefecto !== null) check(m.cumpleRegla(def.regla, def.porDefecto), `${col}: su default no cumple su regla`)
@@ -218,6 +218,9 @@ const CONSUMIDORES = {
   header_scroll: ['components/site/SiteHeader.tsx', 'header_scroll'],
   mobile_header: ['lib/website/menuMovil.ts', 'mobile_header'],
   header_builder: ['lib/website/constructorEncabezado.ts', 'header_builder'],
+  // Apariencia del buscador (Figma 3241:99000): un objeto con su normalizador (aparienciaBuscador.ts).
+  search_appearance: ['lib/website/v2/aparienciaBuscador.ts', 'a.search_appearance'],
+  mobile_search_appearance: ['lib/website/v2/aparienciaBuscador.ts', 'a.mobile_search_appearance'],
   header_cta3_text: ['lib/website/constructorEncabezado.ts', 'header_cta3_text'],
   header_cta3_url: ['lib/website/constructorEncabezado.ts', 'header_cta3_url'],
   header_cta4_text: ['lib/website/constructorEncabezado.ts', 'header_cta4_text'],

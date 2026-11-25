@@ -44,6 +44,7 @@ import { useMenuDeslizable } from './header/menuDeslizable'
 import { menusAdicionales } from '@/lib/website/constructorEncabezado'
 import { pildoraMovil as leerPildoraMovil } from '@/lib/website/pildora'
 import { EstiloEnLinea } from '@/components/site/EstiloEnLinea'
+import { ProveedorAparienciaBuscador } from './buscador/AparienciaBuscadorContext'
 
 interface SiteHeaderProps {
   organization: OrganizationWithDetails
@@ -443,7 +444,13 @@ export default function SiteHeader({
   // El Constructor ya no cambia de encabezado (HeaderPorZonas): ninguna fila guardada tiene zonas
   // ni menús propios. Lo que sí traiga (menús, botones, caja de íconos, buscador) se lee en los
   // encabezados normales, igual que las opciones de Encabezado.
-  const varianteBase = elegirVariante()
+  // Apariencia del buscador (search_appearance) para el campo que abre la lupa, ya del dispositivo.
+  // Sin subclaves guardadas el proveedor devuelve la variante tal cual.
+  const varianteBase = (
+    <ProveedorAparienciaBuscador settings={settings} dispositivo={isMobile ? 'celular' : 'computador'}>
+      {elegirVariante()}
+    </ProveedorAparienciaBuscador>
+  )
   const cssBp = cssBreakpointHeader(mobileBreakpoint, isMobile ? 'movil' : 'escritorio')
   const variante = cssBp ? (
     <div data-hdr-bp={isMobile ? 'movil' : 'escritorio'} style={{ display: 'contents' }}>

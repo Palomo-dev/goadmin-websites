@@ -34,7 +34,9 @@ export interface AjustesVivos {
 /** Columnas que el editor puede cambiar en vivo (encabezado, pie y tema). */
 const PREFIJOS_PERMITIDOS = ['header_', 'footer_', 'mobile_', 'topbar_', 'cta_', 'nav_', 'show_', 'logo_', 'countdown_']
 const CLAVES_PERMITIDAS = new Set([
-  'menu_position', 'search_style', 'search_popular', 'categories_menu_style', 'mega_menu_columns', 'accent_color',
+  'menu_position', 'search_style', 'search_popular',
+  // Apariencia del buscador (la del celular entra por el prefijo `mobile_`).
+  'search_appearance', 'categories_menu_style', 'mega_menu_columns', 'accent_color',
   'cart_icon', 'search_icon', 'auth_icon', 'currency_icon', 'minimal_menu_style', 'actions_order',
   'primary_color', 'secondary_color', 'background_color', 'text_color', 'theme_mode',
   'social_links', 'business_hours',

@@ -52,6 +52,8 @@ export const COPIAS = [
   // Secciones de la ficha (Figma 2983:72501): Beneficios, Reseñas, Relacionados y Descripción.
   ['lib/website/v2/seccionesFicha.ts', 'src/lib/website/v2/seccionesFicha.ts'],
   ['lib/website/v2/colorMarca.ts', 'src/lib/website/v2/colorMarca.ts'],
+  // Apariencia del buscador (Figma 3241:99000): claves, valores de hoy, plantillas y contraste.
+  ['lib/website/v2/aparienciaBuscador.ts', 'src/lib/website/v2/aparienciaBuscador.ts'],
   ['lib/website/v2/fuenteTema.ts', 'src/lib/website/v2/fuenteTema.ts'],
   // Tarjeta de producto: el editor (ERP) y la tienda leen el mismo preset y la misma fusión.
   ['lib/website/tarjetaProducto.ts', 'src/lib/website/tarjetaProducto.ts'],

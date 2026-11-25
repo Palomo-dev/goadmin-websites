@@ -100,7 +100,7 @@ for (const f of ['HeaderMovilConfigurable', 'MobileDrawer', 'MobileTabs', 'Mobil
   check(src.includes('<SearchBarInline'), `${f} conserva la barra de siempre`)
 }
 const cromo = readFileSync(new URL('../components/site/header/BuscadorCromo.tsx', import.meta.url), 'utf8')
-check(cromo.includes('export function ajustesCromoMovil(') && cromo.includes('if (buscadorIgualEscritorio(s)) return hayCromoEnBarra(settings) ? settings : null') && cromo.includes('if (!buscadorMovilConEstilo(s)) return null'), 'ajustesCromoMovil: en conjunto el de computador; por separado solo compacta, grande y píldora')
+check(cromo.includes('export function ajustesCromoMovil(') && cromo.includes('if (buscadorIgualEscritorio(s)) return hayCromoEnBarra(base) ? base : null') && cromo.includes('if (!buscadorMovilConEstilo(s) && !barraConApariencia) return null') && cromo.includes("const base = ajustesConApariencia(settings, 'celular')"), 'ajustesCromoMovil: en conjunto el de computador; por separado solo compacta, grande y píldora (y «Barra visible» con apariencia)')
 const conf = readFileSync(new URL('../components/site/header/mobile/HeaderMovilConfigurable.tsx', import.meta.url), 'utf8')
 check(/buscadorIgualEscritorio\(settings as Record<string, unknown>\)\n\s+\? \(presentacion\.buscador === 'fullscreen' && efectivo === 'icon' \? 'fullscreen' : efectivo\)\n\s+: presentacion\.buscador \?\? efectivo/.test(conf), 'configurable: en conjunto manda computador; por separado, mobile_header.search de antes')
 check(cromo.includes("sinIcono: presentacion.button !== 'none' && !lupaEnCampo"), 'escritorio: sin lupa en el campo cuando hay botón de buscar')
@@ -108,7 +108,7 @@ check(/<BuscadorCromo presentacion=\{\{ \.\.\.cromo[^\n]*lupaEnCampo enFila=\{fa
 const zonas = readFileSync(new URL('../components/site/header/HeaderPorZonas.tsx', import.meta.url), 'utf8')
 check(zonas.includes("lupaEnCampo={dispositivo === 'mobile'}"), 'HeaderPorZonas: el celular conserva la lupa')
 const campo = readFileSync(new URL('../components/site/SearchBarInput.tsx', import.meta.url), 'utf8')
-check(campo.includes('{!cromo?.sinIcono && <SearchIconComp') && campo.includes("cromo.sinIcono ? 'px-4'"), 'SearchBarInput: sin lupa y con px-4 solo con sinIcono')
+check(campo.includes(': !cromo?.sinIcono && <SearchIconComp') && campo.includes("cromo.sinIcono ? 'px-4'"), 'SearchBarInput: sin lupa y con px-4 solo con sinIcono')
 check(cromo.includes("cromo?.tipo === 'mega'") && cromo.includes('<BuscadorCromoCompacto'), 'Buscador grande usa el compacto con Todas')
 
 if (problemas.length) {
