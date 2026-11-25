@@ -257,13 +257,26 @@ const pedidoDe = (db) => db.tablas.web_orders[0]
 {
   globalThis.__efectosPago = []
   const db = baseFalsa({ web_orders: [pedidoBase()], payments: [] })
+  // Decisión del dueño (2026-11-24): un rechazo NO cancela ni libera el stock; el pedido sigue
+  // «Pendiente» con el pago rechazado hasta que venza (expire_pending_web_orders).
   await silenciar(() => aplicarPagoPedidoWeb(db, pedidoDe(db), resultado({ estado: 'failed', transaccionId: 'TX-R' }), 'webhook'))
-  check(pedidoDe(db).payment_status === 'failed' && pedidoDe(db).status === 'cancelled' && contar('erpReleaseStock') === 1, '6n: un rechazo no cancela ni libera el stock')
+  check(pedidoDe(db).payment_status === 'failed' && pedidoDe(db).status === 'pending', '6n: un rechazo cancela el pedido (debe seguir «Pendiente» con el pago rechazado)')
+  check(pedidoDe(db).cancelled_at === undefined && pedidoDe(db).cancellation_reason === undefined, '6n2: un rechazo deja fecha o motivo de cancelación')
+  check(contar('erpReleaseStock') === 0, '6n3: un rechazo libera el stock antes de vencer')
   const otraVez = await silenciar(() => aplicarPagoPedidoWeb(db, pedidoDe(db), resultado({ estado: 'failed', transaccionId: 'TX-R' }), 'webhook'))
-  check(otraVez.desenlace === 'carrera' && contar('erpReleaseStock') === 1, '6o: un rechazo repetido libera stock dos veces')
-  // El cliente reintenta con la misma referencia y paga.
+  check(otraVez.desenlace === 'actualizado' && contar('erpReleaseStock') === 0 && pedidoDe(db).status === 'pending', '6o: un rechazo repetido cambia el pedido o libera stock')
+  check(db.tablas.payments.filter((p) => p.reference === 'TX-R').length === 1, '6o2: un rechazo repetido duplica el registro del pago fallido')
+  // El cliente reintenta con la misma referencia y paga: «Confirmado» con la reserva intacta.
   const reintento = await silenciar(() => aplicarPagoPedidoWeb(db, pedidoDe(db), resultado({ transaccionId: 'TX-OK' }), 'webhook'))
-  check(reintento.desenlace === 'actualizado' && pedidoDe(db).payment_status === 'paid', '6p: el pago tras un rechazo no marca pagado')
+  check(reintento.desenlace === 'actualizado' && pedidoDe(db).payment_status === 'paid' && pedidoDe(db).status === 'confirmed', '6p: el pago tras un rechazo no marca pagado y confirmado')
+  check(contar('erpReleaseStock') === 0 && contar('erpAutoConfirm') === 1, '6p2: el pago tras un rechazo no confirma una sola vez o liberó stock')
+}
+{
+  // Un rechazo a un pedido que el equipo ya confirmó a mano (o que está cerrado) no lo toca.
+  globalThis.__efectosPago = []
+  const db = baseFalsa({ web_orders: [pedidoBase({ status: 'confirmed' })], payments: [] })
+  const r = await silenciar(() => aplicarPagoPedidoWeb(db, pedidoDe(db), resultado({ estado: 'failed', transaccionId: 'TX-X' }), 'webhook'))
+  check(r.desenlace === 'carrera' && pedidoDe(db).status === 'confirmed' && pedidoDe(db).payment_status === 'pending', '6u: un rechazo cambia un pedido ya confirmado')
 }
 {
   globalThis.__efectosPago = []

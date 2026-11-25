@@ -158,6 +158,23 @@ const PROHIBIDAS = [
  *   y aplica al pedido (contraentrega no disponible no se fuerza); el cliente lo cambia; sin
  *   parámetro, su `else`: el primer método, como hoy.
  * Vence el 2026-12-10. Comprobado por scripts/verify-barra-pago.mjs (3 estilos × 4 casos).
+ *
+ * 2026-11-24 — Pagos del pedido: método e intentos (Figma «05 POS y ventas» 3087:201491, aprobado
+ * por el dueño; ERP 20261125001000). Lo nuevo vive fuera de las rutas del dinero
+ * (lib/payments/intentosPagoReglas.ts, puro; lib/payments/intentosPago.ts, el único que registra) y
+ * la regla del rechazo en lib/payments/pagoPedidoWeb.ts (`camposPedidoPorPago`). En ellas, solo:
+ * - app/api/checkout/init/route.ts: tras generar la URL, «Enlace de pago creado» para pedido web y
+ *   anticipo (`registrarIntentoPago`, nunca lanza), con su `else` sin registro para las demás
+ *   fuentes. No toca el cobro, el pedido ni la respuesta.
+ * - app/api/webhooks/bold/route.ts y mercadopago/route.ts: pasan `intento` (recortado: nunca la
+ *   respuesta completa) a `aplicarPagoPedidoWeb` / `aplicarAnticipoPasarela`, después de la firma o
+ *   de la conexión dueña del pago. Sin `if` nuevos.
+ * - app/api/webhooks/wompi_co/route.ts: registra el intento después de la verificación de firma
+ *   (también PENDING); decisión del dueño: un DECLINED/ERROR ya NO cancela el pedido ni libera el
+ *   stock: queda «Pendiente» con el pago rechazado hasta que venza (`camposPedidoPorPago`, la misma
+ *   regla que Bold y Mercado Pago), y solo si el pedido sigue «Pendiente», con su `else` de antes
+ *   para pagado/pendiente/reembolsado.
+ * Vence el 2026-12-11. Comprobado por scripts/verify-intentos-pago.mjs y verify-pasarelas-bold-mp.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -180,6 +197,10 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-10', motivo: 'Contraentrega: anticipo en la consulta del pedido' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-10', motivo: 'Contraentrega: opción con condiciones y pago del anticipo' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-10', motivo: 'Barra del pago en celular A/B/C, «Confirmar pedido» sin anticipo, resumen v1, tarjetas de pago y ?metodo= del chat' },
+  { ruta: 'app/api/checkout/init/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: «Enlace de pago creado» en el historial de intentos' },
+  { ruta: 'app/api/webhooks/bold/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Bold al historial (pieza común)' },
+  { ruta: 'app/api/webhooks/mercadopago/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Mercado Pago al historial (pieza común)' },
+  { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Wompi al historial; el rechazo ya no cancela (decisión del dueño)' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

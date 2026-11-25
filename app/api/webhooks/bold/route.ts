@@ -13,6 +13,7 @@ import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 import { aplicarAnticipoPasarela } from '@/lib/contraentrega/anticipoWebhook'
 import { METODO_PEDIDO_BOLD } from '@/lib/payments/consultaPasarelaTienda'
 import { debeReenviarAlErp, reenviarBoldAlErp } from '@/lib/payments/wompi-reenvio-erp'
+import { intentoDeBold } from '@/lib/payments/intentosPagoReglas'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
         pasarela: 'bold_link',
         metodo: metodoPago,
         respuesta: body,
+        intento: intentoDeBold(body),
       })
       await registrarEvento(supabase, firmante, type, transactionId, body)
       return NextResponse.json(r.body, { status: r.status })
@@ -167,6 +169,8 @@ export async function POST(request: NextRequest) {
         respuesta: body,
         proveedor: 'Bold',
         detalle: type,
+        // Historial de intentos del pedido (Bold no manda motivo ni «pendiente»).
+        intento: intentoDeBold(body),
       },
       'webhook'
     )

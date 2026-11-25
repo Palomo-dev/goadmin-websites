@@ -22,6 +22,7 @@ import {
 } from '@/lib/payments/pasarelasTienda'
 import { BOLD_CONECTOR_LINK_ID } from '@/lib/payments/firmanteBold'
 import type { ResultadoPasarela } from '@/lib/payments/pagoPedidoWeb'
+import { intentoDeComprobanteBold, intentoDeMercadoPago } from '@/lib/payments/intentosPagoReglas'
 
 const MP_CONECTOR_ID = 'b00cfe3f-efa6-4656-93da-f42bf3073ab4'
 const TIEMPO_LIMITE_MS = 5000
@@ -99,6 +100,7 @@ export async function consultarMercadoPago(
     respuesta: pago,
     proveedor: 'Mercado Pago',
     detalle: [pago.status, pago.status_detail].filter(Boolean).join(' · '),
+    intento: intentoDeMercadoPago(pago),
   }
 }
 
@@ -126,5 +128,6 @@ export async function consultarBold(
     respuesta: json,
     proveedor: 'Bold',
     detalle: json.payment_status ?? null,
+    intento: intentoDeComprobanteBold(json),
   }
 }

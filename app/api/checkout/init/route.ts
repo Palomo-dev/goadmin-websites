@@ -12,6 +12,8 @@ import { resolverCredenciales } from '@/lib/payments/secretosConexion'
 import { urlNotificacionMercadoPago } from '@/lib/payments/pasarelasTienda'
 import { ESTADOS_SIN_ENTREGA } from '@/lib/orders/estados-pedido'
 import { FUENTE_COBRO_ANTICIPO, anticipoPorCobrar, pasarelaPermitidaParaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
+import { registrarIntentoPago } from '@/lib/payments/intentosPago'
+import { intentoEnlaceCreado } from '@/lib/payments/intentosPagoReglas'
 
 export const dynamic = 'force-dynamic'
 
@@ -744,6 +746,19 @@ export async function POST(request: NextRequest) {
         { error: 'No se pudo generar la URL de pago. Verifica las credenciales de la pasarela.' },
         { status: 500 }
       )
+    }
+
+    // 4b. «Enlace de pago creado» en el historial de intentos del pedido (ninguna pasarela lo
+    //     avisa). Pedido web y anticipo de contraentrega, de la organización ya validada contra el
+    //     host; nunca bloquea el cobro.
+    if (esPedidoWeb || isAnticipo) {
+      await registrarIntentoPago(
+        supabase,
+        { organizationId: Number(order.organization_id), webOrderId: order.id, concepto: isAnticipo ? 'advance' : 'order' },
+        intentoEnlaceCreado(resolvedGateway, order.total, order.currency ?? null)
+      )
+    } else {
+      // Reservas, mesas, facturas, pases y boletos: sin historial de intentos.
     }
 
     // 5. Actualizar orden/reservación/membresía/ticket/pase con el gateway seleccionado

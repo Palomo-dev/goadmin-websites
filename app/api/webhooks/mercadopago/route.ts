@@ -12,6 +12,7 @@ import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
 import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 import { aplicarAnticipoPasarela } from '@/lib/contraentrega/anticipoWebhook'
 import { METODO_PEDIDO_MP } from '@/lib/payments/consultaPasarelaTienda'
+import { intentoDeMercadoPago } from '@/lib/payments/intentosPagoReglas'
 
 export const dynamic = 'force-dynamic'
 
@@ -294,6 +295,7 @@ export async function POST(request: NextRequest) {
         pasarela: 'mp_checkout',
         metodo: mapToPaymentMethodCode(paymentMethodId || paymentTypeId, 'mercadopago'),
         respuesta: paymentData,
+        intento: intentoDeMercadoPago(paymentData),
       })
       await (supabase as any).from('integration_events').insert({
         connection_id: matchedConnection.id,
@@ -438,6 +440,8 @@ export async function POST(request: NextRequest) {
         respuesta: paymentData,
         proveedor: 'Mercado Pago',
         detalle: [mpStatus, statusDetail].filter(Boolean).join(' · '),
+        // Historial de intentos del pedido, también los pendientes (pending, in_process).
+        intento: intentoDeMercadoPago(paymentData),
       },
       'webhook'
     )

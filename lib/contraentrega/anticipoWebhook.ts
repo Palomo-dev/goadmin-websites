@@ -29,6 +29,8 @@ import { estadoDepositoWompi } from '@/lib/restaurant/deposito-modelo'
 import { FUENTE_COBRO_ANTICIPO, idDeReferenciaAnticipo } from './contraentregaServidor'
 import { enviarCorreoAnticipoPagado } from './correoAnticipo'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
+import { registrarIntentoPago } from '@/lib/payments/intentosPago'
+import { intentoDeWompi, type DatosIntento } from '@/lib/payments/intentosPagoReglas'
 
 async function pedidoDelAnticipo(supabase: any, referencia: string, organizationId: number | null) {
   const id = idDeReferenciaAnticipo(referencia)
@@ -66,7 +68,9 @@ export async function procesarAnticipoWompi(supabase: any, body: Record<string, 
         p_metodo: mapToPaymentMethodCode(transaction.payment_method_type, 'wompi'),
         p_respuesta: transaction,
       }),
-    despues: async (_db, pedido, resultado) => {
+    despues: async (db, pedido, resultado, transaction) => {
+      // Historial de intentos del ANTICIPO (firma ya verificada por procesarCobroFirmadoWompi).
+      await registrarIntentoPago(db, { organizationId: pedido.organizationId, webOrderId: pedido.id, concepto: 'advance' }, intentoDeWompi(transaction))
       if (resultado?.status === 'pagado') {
         await enviarCorreoAnticipoPagado(pedido.id)
         await notifyErpAutoConfirm(pedido.id)
@@ -97,6 +101,8 @@ export interface AvisoAnticipo {
   pasarela: string
   metodo: string
   respuesta: unknown
+  /** Intento para el historial del anticipo (recortado: nunca la respuesta completa). */
+  intento?: DatosIntento | null
 }
 
 /** Bold y Mercado Pago. Devuelve status y cuerpo para el webhook (un no-200 hace que reintenten). */
@@ -106,6 +112,8 @@ export async function aplicarAnticipoPasarela(supabase: any, a: AvisoAnticipo): 
     console.error('[Anticipo] Pedido no encontrado en la organización que firmó', { referencia: a.referencia, organizationId: a.organizationId })
     return { status: 404, body: { error: 'Pedido no encontrado', reference: a.referencia } }
   }
+  // Historial de intentos del ANTICIPO (organización ya verificada por el webhook).
+  await registrarIntentoPago(supabase, { organizationId: pedido.organizationId, webOrderId: pedido.id, concepto: 'advance' }, a.intento)
   const { data, error } = await supabase.rpc('fn_web_order_anticipo_resultado', {
     p_organization_id: pedido.organizationId,
     p_order_id: pedido.id,

@@ -12,7 +12,9 @@ import { MetaPixelPurchase } from '@/components/site/MetaPixelEvents'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
 import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
 import { etiquetaPago } from '@/lib/orders/estados-pedido'
-import { aplicarPagoPedidoWeb } from '@/lib/payments/pagoPedidoWeb'
+import { aplicarPagoPedidoWeb, camposPedidoPorPago, ESTADO_PEDIDO_QUE_ADMITE_RECHAZO } from '@/lib/payments/pagoPedidoWeb'
+import { registrarIntentoPago } from '@/lib/payments/intentosPago'
+import { intentoDeWompi } from '@/lib/payments/intentosPagoReglas'
 import { redirect } from 'next/navigation'
 import { idDeReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
@@ -131,6 +133,17 @@ async function checkWompiTransactionStatus(supabase: any, order: any, transactio
 
   if (!tx) return null
 
+  // La transacción tiene que ser DE este pedido: `?id=` viene en la URL y la consulta de Wompi es
+  // pública, así que con el id de un pago aprobado ajeno se marcaba pagado cualquier pedido.
+  if (tx.reference !== order.order_number) {
+    console.warn('[Resultado] La transacción de Wompi no es de este pedido', { pedido: order.order_number })
+    return null
+  } else {
+    // Wompi consultado por la organización del pedido (host): el intento entra al historial; si el
+    // webhook ya lo registró, la base no lo duplica.
+    await registrarIntentoPago(supabase, { organizationId: order.organization_id, webOrderId: order.id, concepto: 'order' }, intentoDeWompi(tx))
+  }
+
   const statusMap: Record<string, string> = {
     APPROVED: 'paid', DECLINED: 'failed', VOIDED: 'refunded', ERROR: 'failed', PENDING: 'pending',
   }
@@ -139,14 +152,21 @@ async function checkWompiTransactionStatus(supabase: any, order: any, transactio
   if (newStatus === 'pending') return null // Sin cambio
 
   // Actualizar la orden, solo si sigue pendiente: si el webhook ya la pasó a pagada, no se repite
-  // nada (ni el aviso al ERP ni el correo).
-  const { data: actualizadas } = await supabase.from('web_orders').update({
+  // nada (ni el aviso al ERP ni el correo). Un rechazo ya no la cancela (decisión del dueño,
+  // 2026-11-24, `camposPedidoPorPago`): sigue «Pendiente» con su reserva hasta que venza.
+  const ahora = new Date().toISOString()
+  let consulta = supabase.from('web_orders').update({
     payment_status: newStatus,
     payment_reference: String(tx.id),
-    updated_at: new Date().toISOString(),
-    ...(newStatus === 'paid' && { status: 'confirmed', confirmed_at: new Date().toISOString() }),
-    ...(newStatus === 'failed' && { status: 'cancelled', cancelled_at: new Date().toISOString() }),
-  }).eq('id', order.id).eq('payment_status', 'pending').select('id')
+    updated_at: ahora,
+    ...(newStatus === 'paid' || newStatus === 'failed' ? camposPedidoPorPago(newStatus, ahora) : {}),
+  }).eq('id', order.id).eq('payment_status', 'pending')
+  if (newStatus === 'failed') {
+    consulta = consulta.eq('status', ESTADO_PEDIDO_QUE_ADMITE_RECHAZO)
+  } else {
+    // Pagado o reembolsado: la condición de siempre.
+  }
+  const { data: actualizadas } = await consulta.select('id')
 
   // Notificar al ERP para crear venta, factura, cuenta por cobrar, stock y envío, y mandar al
   // cliente «Pago confirmado» (el mismo correo que envía el webhook en la transición pending → paid).

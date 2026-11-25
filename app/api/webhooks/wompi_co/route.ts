@@ -9,7 +9,6 @@ import { isInvoiceReference, handleInvoicePayment, organizacionesCandidatasFactu
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
-import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
 import { mapToPaymentMethodCode } from '@/lib/payments/mapPaymentMethod'
 import {
@@ -28,6 +27,9 @@ import { procesarAbonoMesaWompi } from '@/lib/restaurant/abono-mesa-webhook'
 import { esReferenciaAnticipo } from '@/lib/contraentrega/contraentregaServidor'
 import { procesarAnticipoWompi } from '@/lib/contraentrega/anticipoWebhook'
 import { debeReenviarAlErp, reenviarWompiAlErp } from '@/lib/payments/wompi-reenvio-erp'
+import { registrarIntentoPago } from '@/lib/payments/intentosPago'
+import { intentoDeWompi } from '@/lib/payments/intentosPagoReglas'
+import { camposPedidoPorPago, ESTADO_PEDIDO_QUE_ADMITE_RECHAZO } from '@/lib/payments/pagoPedidoWeb'
 
 export const dynamic = 'force-dynamic'
 
@@ -331,6 +333,10 @@ export async function POST(request: NextRequest) {
     // 3. Mapear estado de Wompi → payment_status
     const paymentStatus = mapWompiStatus(wompiStatus)
 
+    // Historial de intentos del pedido (también PENDING, que antes no quedaba en ningún lado), con
+    // la organización del pedido y después de la verificación de firma de arriba.
+    await registrarIntentoPago(supabase, { organizationId, webOrderId: (webOrder as any).id, concepto: 'order' }, intentoDeWompi(transaction))
+
     // Evento de integración + fecha del último webhook: se registra SIEMPRE, también cuando el
     // pedido ya estaba pagado y el evento no cambia nada.
     const registrarEventoIntegracion = async () => {
@@ -408,21 +414,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 4. Actualizar web_order
+    // 4. Actualizar web_order. Pagado: «Confirmado». Rechazado (DECLINED/ERROR): el pedido sigue
+    //    «Pendiente» con el pago rechazado y su reserva hasta que venza (decisión del dueño,
+    //    2026-11-24; la misma regla que Bold y Mercado Pago: `camposPedidoPorPago`).
+    //    En un rechazo el método del pedido NO cambia: el plazo para pagar depende de él
+    //    (`fn_web_order_plazo_minutos`: «pse» aparta 24 h) y el pedido sigue esperando el pago con
+    //    la pasarela que eligió el cliente; el medio del intento queda en el historial.
+    const ahoraPago = new Date().toISOString()
     const camposPago = {
       payment_status: paymentStatus,
-      payment_method: paymentMethodType?.toLowerCase() || 'card',
+      ...(paymentStatus === 'failed' ? {} : { payment_method: paymentMethodType?.toLowerCase() || 'card' }),
       payment_reference: transactionId,
-      updated_at: new Date().toISOString(),
-      ...(paymentStatus === 'paid' && {
-        status: 'confirmed',
-        confirmed_at: new Date().toISOString(),
-      }),
-      ...(paymentStatus === 'failed' && {
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        cancellation_reason: `Pago rechazado por Wompi: ${wompiStatus}`,
-      }),
+      updated_at: ahoraPago,
+      ...(paymentStatus === 'paid' || paymentStatus === 'failed' ? camposPedidoPorPago(paymentStatus, ahoraPago) : {}),
     }
     // Pago aprobado: la MISMA actualización, condicionada a que el pedido aún no esté pagado. Si
     // afecta la fila, este webhook es quien hizo la transición a «pagado» y solo él envía el
@@ -438,12 +442,19 @@ export async function POST(request: NextRequest) {
       paymentStatus === 'refunded'
         ? 'payment_status.is.null,payment_status.neq.refunded'
         : 'payment_status.is.null,payment_status.neq.paid'
-    const actualizacion = await (supabase as any)
+    let consultaPedido = (supabase as any)
       .from('web_orders')
       .update(camposPago as any)
       .eq('id', (webOrder as any).id)
       .or(condicion)
-      .select('id')
+    if (paymentStatus === 'failed') {
+      // El rechazo solo marca el pago de un pedido que sigue «Pendiente» (nunca uno confirmado a
+      // mano, vencido o cancelado).
+      consultaPedido = consultaPedido.eq('status', ESTADO_PEDIDO_QUE_ADMITE_RECHAZO)
+    } else {
+      // Pagado, pendiente o reembolsado: la condición de siempre.
+    }
+    const actualizacion = await consultaPedido.select('id')
     const updateError: unknown = actualizacion.error
     const hizoTransicion =
       !actualizacion.error && Array.isArray(actualizacion.data) && actualizacion.data.length > 0
@@ -523,11 +534,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Liberar stock reservado si el pago falló
+    // Pago rechazado: el pedido sigue apartado hasta que venza; el stock lo libera
+    // `expire_pending_web_orders`, no este aviso (antes se liberaba aquí y un pago posterior
+    // confirmaba el pedido sin reserva).
     if (paymentStatus === 'failed' && hizoTransicion) {
-      notifyErpReleaseStock((webOrder as any).id).catch(err =>
-        console.error('[Wompi Webhook] ERP release-stock error:', err)
-      )
+      console.log(`[Wompi Webhook] Pedido ${reference}: pago rechazado; sigue pendiente hasta vencer`)
+    } else {
+      // Sin rechazo nuevo: nada que avisar.
     }
 
     // Procesar reembolso (nota crédito + devolución de stock + asiento reversión)

@@ -11,15 +11,19 @@
  * Además, lo que el webhook de Wompi no revisa: un «aprobado» por menos del total no marca el
  * pedido como pagado (se registra y se deja pendiente para revisión humana).
  *
+ * Desde el 2026-11-24 (decisión del dueño): un rechazo NO cancela el pedido ni libera el stock; el
+ * pedido sigue «Pendiente» con el pago rechazado hasta que venza (`camposPedidoPorPago`). Cada
+ * resultado deja además su renglón en el historial de intentos (`r.intento`, lib/payments/intentosPago.ts).
+ *
  * El pedido llega ya resuelto POR ORGANIZACIÓN (el número de pedido no es único entre tiendas).
  */
 import { uploadGoogleAdsConversion } from '@/lib/google-ads/upload-conversion'
 import { sendMetaCAPIEvent } from '@/lib/meta/send-capi-event'
 import { notifyErpAutoConfirm } from '@/lib/erp-auto-confirm'
-import { notifyErpReleaseStock } from '@/lib/erp-release-stock'
 import { notifyErpRefund } from '@/lib/erp-refund'
 import { enviarCorreoPedidoPagado } from '@/lib/orders/correoPedidoPagado'
 import { montoCubreTotal, type EstadoPagoTienda } from '@/lib/payments/pasarelasTienda'
+import { registrarIntentoPago, type DatosIntento } from '@/lib/payments/intentosPago'
 
 export interface PedidoWebCobrable {
   id: number | string
@@ -47,6 +51,11 @@ export interface ResultadoPasarela {
   proveedor: 'Bold' | 'Mercado Pago'
   /** Detalle del rechazo, si lo hay. */
   detalle?: string | null
+  /**
+   * El intento tal como se guarda en el historial del pedido (`web_order_payment_attempts`), ya
+   * recortado: nunca la respuesta completa. Sin él (o null) no se registra intento.
+   */
+  intento?: DatosIntento | null
 }
 
 export type DesenlacePago =
@@ -61,9 +70,33 @@ export type DesenlacePago =
 const CONDICION: Record<Exclude<EstadoPagoTienda, 'pending'>, string> = {
   // Un rechazo previo no impide pagar después: el cliente reintenta con la misma referencia.
   paid: 'payment_status.is.null,payment_status.in.(pending,failed,partial)',
-  failed: 'payment_status.is.null,payment_status.eq.pending',
+  // Un segundo rechazo (el cliente reintentó y volvió a fallar) también actualiza la referencia.
+  failed: 'payment_status.is.null,payment_status.in.(pending,failed)',
   refunded: 'payment_status.eq.paid',
 }
+
+/**
+ * Lo que un resultado de la pasarela le escribe al pedido además de `payment_status`, la pasarela
+ * y la referencia. Lo usan esta pieza (Bold y Mercado Pago) y el webhook de Wompi: una sola regla.
+ *
+ * Decisión del dueño (2026-11-24, diseño «Pagos del pedido: método e intentos»): un RECHAZO ya no
+ * cancela el pedido. Queda «Pendiente» con `payment_status = 'failed'` y su reserva de stock hasta
+ * que venza el plazo (`expire_pending_web_orders`), para que el cliente reintente o se le reenvíe
+ * el enlace. Antes se cancelaba y se liberaba el stock, y si el cliente pagaba después el pedido
+ * volvía a «Confirmado» con el stock ya liberado.
+ */
+export function camposPedidoPorPago(estado: Exclude<EstadoPagoTienda, 'pending'>, ahora: string): Record<string, unknown> {
+  if (estado === 'paid') {
+    return { status: 'confirmed', confirmed_at: ahora }
+  } else {
+    // Rechazado: el pedido sigue «Pendiente» (sin cancelled_at ni motivo de cancelación).
+    // Reembolsado: el estado lo lleva el ERP (notifyErpRefund), como siempre.
+    return {}
+  }
+}
+
+/** Un rechazo solo toca un pedido que sigue «Pendiente» (nunca uno confirmado a mano o cerrado). */
+export const ESTADO_PEDIDO_QUE_ADMITE_RECHAZO = 'pending'
 
 export async function aplicarPagoPedidoWeb(
   supabase: any,
@@ -73,6 +106,14 @@ export async function aplicarPagoPedidoWeb(
 ): Promise<{ desenlace: DesenlacePago; transicion: boolean }> {
   const etiqueta = `[${r.proveedor} ${origen}]`
   const organizationId = pedido.organization_id
+
+  // Historial de intentos (también pendientes, rechazos tardíos y montos insuficientes): la
+  // organización ya la verificó quien llama. Nunca bloquea ni cambia lo que sigue.
+  if (r.intento) {
+    await registrarIntentoPago(supabase, { organizationId, webOrderId: pedido.id, concepto: 'order' }, r.intento)
+  } else {
+    // Sin datos del intento: como antes.
+  }
 
   if (r.estado === 'pending') return { desenlace: 'sin_cambio', transicion: false }
 
@@ -111,20 +152,21 @@ export async function aplicarPagoPedidoWeb(
     payment_method: r.metodoPedido,
     payment_reference: r.transaccionId,
     updated_at: ahora,
-    ...(r.estado === 'paid' && { status: 'confirmed', confirmed_at: ahora }),
-    ...(r.estado === 'failed' && {
-      status: 'cancelled',
-      cancelled_at: ahora,
-      cancellation_reason: `Pago rechazado por ${r.proveedor}${r.detalle ? `: ${r.detalle}` : ''}`,
-    }),
+    ...camposPedidoPorPago(r.estado, ahora),
   }
-  const actualizacion = await supabase
+  let consulta = supabase
     .from('web_orders')
     .update(campos)
     .eq('id', pedido.id)
     .eq('organization_id', organizationId)
     .or(CONDICION[r.estado])
-    .select('id')
+  if (r.estado === 'failed') {
+    // El rechazo no cancela: solo marca el pago de un pedido que sigue «Pendiente».
+    consulta = consulta.eq('status', ESTADO_PEDIDO_QUE_ADMITE_RECHAZO)
+  } else {
+    // Pagado o reembolsado: la condición de siempre.
+  }
+  const actualizacion = await consulta.select('id')
   if (actualizacion.error) {
     console.error(`${etiqueta} Error actualizando el pedido ${pedido.order_number}:`, actualizacion.error)
     return { desenlace: 'error', transicion: false }
@@ -174,7 +216,9 @@ export async function aplicarPagoPedidoWeb(
     notifyErpAutoConfirm(String(pedido.id)).catch((err) => console.error(`${etiqueta} ERP auto-confirm:`, err))
     enviarCorreoPedidoPagado(String(pedido.id)).catch((err) => console.error(`${etiqueta} Correo de pago confirmado:`, err))
   } else if (r.estado === 'failed') {
-    notifyErpReleaseStock(String(pedido.id)).catch((err) => console.error(`${etiqueta} ERP release-stock:`, err))
+    // El pedido sigue apartado hasta que venza (expire_pending_web_orders libera el stock): no se
+    // libera aquí. `notifyErpReleaseStock` queda para quien sí cierra el pedido.
+    console.log(`${etiqueta} Pedido ${pedido.order_number}: pago rechazado; sigue pendiente hasta vencer`)
   } else {
     notifyErpRefund(String(pedido.id), { reason: `Reembolso procesado por ${r.proveedor}` }).catch((err) =>
       console.error(`${etiqueta} ERP refund:`, err)
