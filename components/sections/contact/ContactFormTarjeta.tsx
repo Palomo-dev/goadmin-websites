@@ -24,7 +24,9 @@ import {
   camposVisibles,
   datosContactoDe,
   textoConDatos,
+  whatsappDeTienda,
 } from '@/lib/website/v2/contrato/paginaContacto'
+import { FUENTE_CUERPO, FUENTE_TITULOS } from '@/lib/website/tarjetaPlantillasTienda'
 import { whatsappDe } from '@/lib/website/menuInferior'
 import { urlLlamar } from '@/lib/maps/comoLlegar'
 import { filasHorario, normalizarDias, parseHorario, ZONA_POR_DEFECTO, type HorarioSemana } from '@/lib/restaurant/horario'
@@ -87,7 +89,9 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
 
   const ajustes = organization?.website_settings ?? null
   const datos = datosContactoDe(organization, ajustes)
-  const whatsapp = datos.whatsapp ? whatsappDe(datos.whatsapp) : null
+  // El de Configuración o, si no hay, el teléfono de contacto cuando es un celular (misma regla que el canal).
+  const numeroWhatsapp = whatsappDeTienda(datos)?.numero ?? null
+  const whatsapp = numeroWhatsapp ? whatsappDe(numeroWhatsapp) : null
   const titulo = txt(content.title)
   const subtitulo = txt(content.subtitle)
   const centrado = content.title_align === 'center'
@@ -119,7 +123,7 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
       <span className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400">
         <Check aria-hidden="true" className="h-8 w-8" strokeWidth={2.5} />
       </span>
-      <h3 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl" style={{ fontFamily: FUENTE_TITULOS }}>
         {textoConDatos(txt(content.success_title) || TITULO_ENVIADO, { nombre: lastSent?.name, correo: lastSent?.email })}
       </h3>
       <p className="max-w-xl text-gray-600 dark:text-gray-300">
@@ -192,13 +196,13 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
           </p>
         )}
       </div>
-      {status === 'error' && whatsapp && datos.whatsapp && (
+      {status === 'error' && whatsapp && numeroWhatsapp && (
         <p className="flex items-center gap-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
           <MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-green-600" />
           <span>
             ¿Sigue sin funcionar?{' '}
             <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="font-medium underline-offset-2 hover:underline">
-              Escríbenos por WhatsApp al {datos.whatsapp}
+              Escríbenos por WhatsApp al {numeroWhatsapp}
             </a>
             .
           </span>
@@ -208,11 +212,15 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
   )
 
   return (
-    <div id={ancla} className={cn('grid grid-cols-1 gap-6', lado && 'lg:grid-cols-[minmax(0,1fr)_360px]')}>
+    <div id={ancla} className={cn('grid grid-cols-1 gap-6', lado && 'lg:grid-cols-[minmax(0,1fr)_360px]')} style={{ fontFamily: FUENTE_CUERPO }}>
       <div className={cn(enTarjeta ? tarjeta : '', 'min-w-0')}>
         {!exito && (titulo || subtitulo) && (
           <div className={cn('mb-6', centrado && 'text-center')}>
-            {titulo && <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{titulo}</h2>}
+            {titulo && (
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white" style={{ fontFamily: FUENTE_TITULOS }}>
+                {titulo}
+              </h2>
+            )}
             {subtitulo && <p className="mt-2 text-gray-600 dark:text-gray-300">{subtitulo}</p>}
           </div>
         )}
@@ -223,7 +231,7 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
           {atencion && (
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                <h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white" style={{ fontFamily: FUENTE_TITULOS }}>
                   <Clock aria-hidden="true" className="h-5 w-5" style={{ color: primaryColor }} />
                   Horario de atención
                 </h3>
@@ -241,7 +249,7 @@ export function ContactFormTarjeta({ content, organization, primaryColor = '#3B8
           )}
           {conPedido && (
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-              <h3 className="font-semibold text-gray-900 dark:text-white">¿Ya hiciste un pedido?</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white" style={{ fontFamily: FUENTE_TITULOS }}>¿Ya hiciste un pedido?</h3>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Mira en qué va con tu número de pedido, sin escribirnos.</p>
               <Link href="/consultar-pedido" className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 dark:border-gray-600 dark:text-white dark:hover:bg-gray-800">
                 <ArrowUpRight aria-hidden="true" className="h-4 w-4" />

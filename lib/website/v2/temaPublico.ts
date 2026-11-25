@@ -261,6 +261,20 @@ export function ejesDeFamilia(familia: string, variantes?: VariantesFuente): str
 }
 
 /**
+ * Familias con que el sitio pinta `--font-heading` y `--font-body`, con la misma precedencia que
+ * {@link atributosTema}: el par tipográfico de las perillas (`tokens.tipografia.par`) gana sobre las
+ * fuentes de títulos y cuerpo. Antes la hoja solo pedía estas dos, y los sitios que eligieron la
+ * fuente con el par (plantillas de tienda) apuntaban a una familia que nunca se descargaba.
+ */
+export function familiasTema(t: TemaPublico | null): string[] {
+  if (!t) return []
+  const par = t.tokens?.tipografia?.par
+  const delPar = par && par.mode === 'value' ? familiasDePar(par.value) : []
+  if (delPar.length > 0) return delPar
+  return [t.fuenteTitulos, t.fuenteCuerpo].filter((f): f is string => !!f)
+}
+
+/**
  * Hoja de Google Fonts para las familias pedidas (sin repetir, máximo 6), o `null` si no hay
  * ninguna. Solo familias que pasan `familiaSegura`. Pesos 400-700 (los del estilo por sección),
  * salvo las familias de {@link EJES_POR_FAMILIA}. Sin `variantes`, la URL de hoy.

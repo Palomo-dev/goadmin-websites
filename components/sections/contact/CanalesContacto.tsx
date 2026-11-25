@@ -5,21 +5,17 @@
  *
  * Tarjetas WhatsApp, Teléfono, Correo, Dirección y canales propios. Cada canal toma el dato de la
  * organización o del sitio (Configuración) o un texto propio de la sección (`source: 'own'`). Un
- * canal sin dato no se muestra en la tienda. Contrato: `lib/website/v2/contrato/paginaContacto.ts`.
+ * canal sin dato no se muestra en la tienda. Sin WhatsApp en Configuración, el teléfono de contacto
+ * hace de WhatsApp si es un celular y la tarjeta Teléfono no se repite (`canalesConDato`).
+ * Contrato: `lib/website/v2/contrato/paginaContacto.ts`.
  */
 
 import { Link2, Mail, MapPin, MessageCircle, Phone, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { EditorHint } from '@/components/sections/restaurant/EditorHint'
-import {
-  CLAVES_CANALES,
-  datosContactoDe,
-  enlaceCanalPropio,
-  leerCanales,
-  valorDeCanal,
-  type CanalContacto,
-  type TipoCanal,
-} from '@/lib/website/v2/contrato/paginaContacto'
+import { CLAVES_CANALES, enlaceCanalPropio, type CanalContacto, type TipoCanal } from '@/lib/website/v2/contrato/paginaContacto'
+import { canalesDeSeccion } from './datosSeccionesContacto'
+import { FUENTE_CUERPO, FUENTE_TITULOS } from '@/lib/website/tarjetaPlantillasTienda'
 import { whatsappDe } from '@/lib/website/menuInferior'
 import { urlComoLlegar, urlLlamar } from '@/lib/maps/comoLlegar'
 
@@ -68,13 +64,9 @@ export function enlaceDeCanal(canal: CanalContacto, valor: string): { href: stri
 }
 
 export function CanalesContacto({ content, organization, primaryColor = '#3B82F6' }: Props) {
-  const datos = datosContactoDe(organization, organization?.website_settings ?? null)
   const conAyuda = content.show_help !== false
   const whatsappPrincipal = content.whatsapp_primary !== false
-  const canales = leerCanales(content.channels)
-    .filter((c) => c.visible)
-    .map((c) => ({ canal: c, valor: valorDeCanal(c, datos) }))
-    .filter((x): x is { canal: CanalContacto; valor: string } => x.valor !== null)
+  const canales = canalesDeSeccion(content, organization)
   const titulo = txt(content.title)
   const subtitulo = txt(content.subtitle)
 
@@ -88,10 +80,14 @@ export function CanalesContacto({ content, organization, primaryColor = '#3B82F6
 
   const columnas = canales.length >= 4 ? 'lg:grid-cols-4' : canales.length === 3 ? 'lg:grid-cols-3' : canales.length === 2 ? 'sm:grid-cols-2' : ''
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" style={{ fontFamily: FUENTE_CUERPO }}>
       {(titulo || subtitulo) && (
         <div>
-          {titulo && <h2 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">{titulo}</h2>}
+          {titulo && (
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl" style={{ fontFamily: FUENTE_TITULOS }}>
+              {titulo}
+            </h2>
+          )}
           {subtitulo && <p className="mt-1 text-gray-600 dark:text-gray-300">{subtitulo}</p>}
         </div>
       )}

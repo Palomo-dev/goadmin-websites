@@ -196,6 +196,7 @@ import { AntesDespues } from './tienda/AntesDespues'
 import { RasgosConFoto } from './tienda/RasgosConFoto'
 import { RejillaEditorial } from './tienda/RejillaEditorial'
 import { motivoSeccionTiendaVacia } from './tienda/datosTienda'
+import { seccionContactoVacia } from './contact/datosSeccionesContacto'
 import { EditorHint } from './restaurant/EditorHint'
 
 // Plantilla «Café de especialidad»: cuatro variantes de tipos que ya existen (solo las usa quien
@@ -638,6 +639,12 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
   const vaciaTienda = motivoSeccionTiendaVacia(section.section_type, section.section_variant, content, data)
   if (vaciaTienda) return <EditorHint title={vaciaTienda.titulo}>{vaciaTienda.texto}</EditorHint>
 
+  // Contacto v2 sin datos (ningún canal con dato, ninguna red con enlace): la sección pinta solo el
+  // aviso del editor y, en la tienda, nada; sin SectionWrapper no deja su relleno como hueco en blanco.
+  if (seccionContactoVacia(section.section_type, content, organization)) {
+    return <Component content={content} organization={organization} primaryColor={primaryColor} data={data} sectionVariant={section.section_variant} sectionId={section.id} />
+  }
+
   // La ventana de bienvenida es una capa fija: no lleva SectionWrapper (ni margen ni fondo).
   if (section.section_type === 'welcome_popup') {
     return <Component content={content} organization={organization} primaryColor={primaryColor} data={data} sectionVariant={section.section_variant} sectionId={section.id} />
@@ -645,14 +652,14 @@ export function SectionRenderer({ section, organization, primaryColor, data, isF
 
   if (section.section_type === 'newsletter' && leerBoletin(content)) {
     return (
-      <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
+      <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null} pagina={typeof data?.pageSlug === 'string' ? data.pageSlug : null}>
         <NewsletterSection content={content} primaryColor={primaryColor} organization={organization} sectionId={section.id} />
       </SectionWrapper>
     )
   }
 
   return (
-    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null}>
+    <SectionWrapper settings={settings} content={content} primaryColor={primaryColor} sectionType={section.section_type} sectionVariant={section.section_variant} sectionId={section.id} estiloGlobal={(organization.website_settings as { section_style?: unknown } | null)?.section_style} isFirst={isFirst} ajustesSitio={organization.website_settings as Record<string, unknown> | null} pagina={typeof data?.pageSlug === 'string' ? data.pageSlug : null}>
       {section.section_type === 'hero' && (
         <ContadoresDe settings={organization.website_settings as { conversion?: import('@/lib/website/conversion').ConversionSitio }} ubicacion="hero" primaryColor={primaryColor || '#3B82F6'} variante="banner" />
       )}

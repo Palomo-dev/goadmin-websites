@@ -13,7 +13,9 @@ import { Facebook, Instagram, Linkedin, Share2, Twitter, Youtube } from 'lucide-
 import { cn } from '@/lib/utils'
 import { EditorHint } from '@/components/sections/restaurant/EditorHint'
 import { IconoTikTok } from '@/components/site/footer/PieExtras'
-import { CLAVES_REDES, formaRedes, redesDeSeccion, type IdRedSocial } from '@/lib/website/v2/contrato/paginaContacto'
+import { CLAVES_REDES, formaRedes, type IdRedSocial } from '@/lib/website/v2/contrato/paginaContacto'
+import { redesDeLaSeccion } from './datosSeccionesContacto'
+import { FUENTE_CUERPO, FUENTE_TITULOS } from '@/lib/website/tarjetaPlantillasTienda'
 
 interface Props {
   content: Record<string, unknown>
@@ -35,7 +37,7 @@ function txt(v: unknown): string {
 }
 
 export function RedesSociales({ content, organization }: Props) {
-  const redes = redesDeSeccion(organization?.website_settings?.social_links, content.networks)
+  const redes = redesDeLaSeccion(content, organization)
   const soloIcono = formaRedes(content.display) === 'icon'
   const titulo = txt(content.title)
   const subtitulo = txt(content.subtitle)
@@ -49,10 +51,14 @@ export function RedesSociales({ content, organization }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between" style={{ fontFamily: FUENTE_CUERPO }}>
       {(titulo || subtitulo) && (
         <div>
-          {titulo && <h2 className="text-xl font-bold text-gray-900 dark:text-white md:text-2xl">{titulo}</h2>}
+          {titulo && (
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white md:text-2xl" style={{ fontFamily: FUENTE_TITULOS }}>
+              {titulo}
+            </h2>
+          )}
           {subtitulo && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{subtitulo}</p>}
         </div>
       )}

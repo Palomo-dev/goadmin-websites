@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { MigasTienda } from '@/components/site/volver/EncabezadoPagina'
 import { HeroButtons, type HeroButtonItem } from './HeroButtons'
 import { CLAVES_ENCABEZADO_PAGINA } from '@/lib/website/v2/contrato/paginaContacto'
+import { FUENTE_CUERPO, FUENTE_TITULOS } from '@/lib/website/tarjetaPlantillasTienda'
 
 interface Props {
   content: Record<string, unknown>
@@ -54,12 +55,12 @@ export function EncabezadoPaginaSeccion({ content, primaryColor = '#3B82F6', dat
   return (
     <div
       className={cn('grid items-center gap-8 py-6 md:py-10', conTono && 'rounded-2xl px-6 md:px-10', imagen && 'md:grid-cols-[minmax(0,1fr)_minmax(0,420px)]')}
-      style={conTono ? { backgroundColor: `color-mix(in srgb, ${primaryColor} 7%, transparent)` } : undefined}
+      style={{ fontFamily: FUENTE_CUERPO, ...(conTono ? { backgroundColor: `color-mix(in srgb, ${primaryColor} 7%, transparent)` } : {}) }}
     >
       <div className="flex min-w-0 flex-col gap-4">
         {conMigas && pagina && <MigasTienda migas={[{ etiqueta: 'Inicio', href: '/' }, { etiqueta: pagina }]} />}
         {conTitulo && titulo && (
-          <h1 className="text-4xl font-bold leading-tight text-gray-900 dark:text-white md:text-5xl" style={{ fontFamily: 'var(--font-heading)' }}>
+          <h1 className="text-4xl font-bold leading-tight text-gray-900 dark:text-white md:text-5xl" style={{ fontFamily: FUENTE_TITULOS }}>
             {titulo}
           </h1>
         )}

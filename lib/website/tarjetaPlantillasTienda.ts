@@ -34,6 +34,9 @@ export const FONDO_BOTON_SUAVE = 'color-mix(in srgb, var(--text-color, #111827) 
 /** Fuente de títulos del tema (misma pila que `app/globals.css` para h1-h6). */
 export const FUENTE_TITULOS = 'var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif'
 
+/** Fuente de cuerpo del tema (misma pila que `app/globals.css` para `[data-tema-fuente]`). */
+export const FUENTE_CUERPO = 'var(--font-body), ui-sans-serif, system-ui, sans-serif'
+
 function texto(valor: unknown): string {
   return typeof valor === 'string' ? valor.trim() : ''
 }

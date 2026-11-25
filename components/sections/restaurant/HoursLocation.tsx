@@ -16,6 +16,7 @@ import { HoursLocationView, type HoursLocationVariant, type SedeVista } from './
 import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
 import { whatsappDe } from '@/lib/website/menuInferior'
+import { datosContactoDe, whatsappDeTienda } from '@/lib/website/v2/contrato/paginaContacto'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
 export const CONTENT_KEYS = [
@@ -98,9 +99,12 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
   const showCall = bool(content.show_call, true)
   const showDirections = bool(content.show_directions, true)
   // WhatsApp por sede: la sede no tiene número propio en `branches`, así que usa el del sitio
-  // (Configuración › WhatsApp) con un mensaje que nombra la sede. Apagado por defecto: las secciones
-  // guardadas antes no cambian.
-  const numeroWhatsapp = bool(content.show_whatsapp, false) ? str(organization.website_settings?.whatsapp_number) : null
+  // (Configuración › WhatsApp o, si no hay, el teléfono de contacto cuando es un celular: la misma
+  // regla del canal WhatsApp de Contacto) con un mensaje que nombra la sede. Apagado por defecto: las
+  // secciones guardadas antes no cambian.
+  const numeroWhatsapp = bool(content.show_whatsapp, false)
+    ? whatsappDeTienda(datosContactoDe(organization, organization.website_settings))?.numero ?? null
+    : null
   const destacada = Number(content.featured_branch_id)
 
   const sedes: SedeVista[] = (datos?.sedes ?? [])

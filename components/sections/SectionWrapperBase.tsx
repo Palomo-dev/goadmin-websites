@@ -1,7 +1,7 @@
 import type { Json } from '@/types/database'
 import { buildSectionStyle } from '@/lib/sectionStyle'
 import { heroSolapa, margenExplicito, offsetPrimeraPx, paddingExplicito, pxEnRango } from '@/lib/website/espacioHeader'
-import { espacioSeccion, leerMargenPropio, rellenoPorDispositivo } from '@/lib/website/espacioSeccion'
+import { espacioSeccion, leerMargenPropio, rellenoPorDefecto, rellenoPorDispositivo } from '@/lib/website/espacioSeccion'
 import { presentacionSeccion } from '@/lib/website/v2/estiloSeccionPublico'
 import { urlGoogleFonts } from '@/lib/website/v2/temaPublico'
 import { EntradaSeccion } from './EntradaSeccion'
@@ -32,6 +32,8 @@ export interface SectionWrapperProps {
   isFirst?: boolean
   /** Ajustes del sitio (`header_transparent_over_hero`, `first_section_offset_px`). */
   ajustesSitio?: Record<string, unknown> | null
+  /** Slug de la página: en Contacto, «Horario y sedes» va con el relleno de Contacto v2. */
+  pagina?: string | null
   children: React.ReactNode
 }
 
@@ -88,7 +90,7 @@ const SIN_RELLENO_POR_DEFECTO: ReadonlySet<string> = new Set([
   'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
 ])
 
-export function SectionWrapperBase({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, estiloGlobal, isFirst = false, ajustesSitio, children }: SectionWrapperProps) {
+export function SectionWrapperBase({ settings, content: contentGuardado, primaryColor, sectionType, sectionVariant, sectionId, estiloGlobal, isFirst = false, ajustesSitio, pagina, children }: SectionWrapperProps) {
   // Estilo por sección y visibilidad por dispositivo del editor (lib/website/v2/estiloSeccionPublico).
   // Sin estilo guardado devuelve el mismo `content` y ningún atributo: la sección sale igual que antes.
   const presentacion = presentacionSeccion(settings as Record<string, unknown>, contentGuardado)
@@ -101,8 +103,10 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   const mtExplicito = margenExplicito(content?.margin_top)
   const ptPx = pxEnRango(content?.padding_top_px, 0, 480)
   const pbPx = pxEnRango(content?.padding_bottom_px, 0, 480)
-  const paddingTop = ptExplicito ? String(content.padding_top) : (sinRelleno || cartaQr ? 'none' : 'lg')
-  const paddingBottom = content?.padding_bottom || (sinRelleno ? 'none' : 'lg')
+  // Sin valor del editor ni del estilo: `lg`, salvo la Carta QR (`none`) y Contacto v2 (`md`).
+  const rellenoBase = rellenoPorDefecto(sectionType, sectionVariant, pagina)
+  const paddingTop = ptExplicito ? String(content.padding_top) : (cartaQr ? 'none' : rellenoBase)
+  const paddingBottom = content?.padding_bottom || rellenoBase
   const paddingX = content?.padding_x || (sinRelleno ? 'none' : 'md')
   const marginTop = content?.margin_top || 'none'
   const marginBottom = content?.margin_bottom || 'none'
@@ -216,7 +220,7 @@ export function SectionWrapperBase({ settings, content: contentGuardado, primary
   // Relleno en px por dispositivo (Estilo › Espaciado). Solo con `padding_*_mobile`; sin él, todo como antes.
   if (rellenoPorDispositivo(content)) {
     const bruto = (content?.section_background ?? {}) as Record<string, unknown>
-    const e = espacioSeccion(content, { tipo: sectionType, variante: sectionVariant, primera: isFirst, ajustesSitio })
+    const e = espacioSeccion(content, { tipo: sectionType, variante: sectionVariant, primera: isFirst, ajustesSitio, pagina })
     const v = style as Record<string, unknown>
     if (bruto.padding_top_mobile != null) {
       v['--sec-pt'] = `${e.rellenoArriba.computador}px`

@@ -41,7 +41,7 @@ import { RutaSitioProvider } from '@/lib/outlet/RutaSitioContext'
 import { SelectorSede } from './header/SelectorSede'
 import { MobileCTABar, rutaConBarraMovil } from './restaurant/MobileCTABar'
 import { usePathname } from 'next/navigation'
-import { atributosTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
+import { atributosTema, familiasTema, urlGoogleFonts, type TemaPublico } from '@/lib/website/v2/temaPublico'
 import { botonesTemaActivo } from '@/lib/website/v2/botonesTema'
 import { TarjetaProductoProvider } from './TarjetaProductoContext'
 import { ProveedorListaCarrusel } from './listaCarrusel'
@@ -372,7 +372,8 @@ export function OrganizationLayoutCliente({
   // `buttons_theme_active`: forma, relleno y tamaño de `tokens.boton` en los botones de las
   // secciones. Sin la clave (false), atributosTema da exactamente lo de hoy.
   const temaVars = atributosTema(temaEfectivo, { mayusculasActivas: opcionesTienda.mayusculasBotones, cursiva: variantesFuente.cursiva, botonesTemaActivos: botonesTemaActivo(settings) })
-  const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo], variantesFuente) : null
+  // Hoja de las fuentes del tema en TODAS las páginas (también las del par tipográfico de las perillas).
+  const hojaFuentesTema = temaEfectivo ? urlGoogleFonts(familiasTema(temaEfectivo), variantesFuente) : null
   // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de
   // las láminas (fondo del tema, «Reservar» relleno y el resto en contorno). Legacy (sin tema): la
   // barra de siempre, sin cambios.
