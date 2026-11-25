@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type HTMLAttributes,
   type ReactNode,
 } from 'react'
 import { listaDelInspector, type ListaVisual } from '@/lib/website/cascaronSeccion'
@@ -69,11 +70,13 @@ export const SiLista = forwardRef<HTMLDivElement, {
   onScroll?: () => void
   /** Rejillas: con la lista del inspector, la «Proporción» va en cada celda. */
   proporcionCeldas?: boolean
+  /** Atributos extra del contenedor de hoy (p. ej. `role`, `aria-label` y `tabIndex` de un carrusel). */
+  atributos?: Omit<HTMLAttributes<HTMLDivElement>, 'className' | 'style' | 'children'>
   children: ReactNode
-}>(function SiLista({ content, className, style, onScroll, proporcionCeldas, children }, ref) {
+}>(function SiLista({ content, className, style, onScroll, proporcionCeldas, atributos, children }, ref) {
   const lista = listaDelInspector(content)
   if (!lista) {
-    return <div ref={ref} className={className} style={style} onScroll={onScroll}>{children}</div>
+    return <div ref={ref} {...atributos} className={className} style={style} onScroll={onScroll}>{children}</div>
   }
   const conserva = lista.mode === 'grid'
     && lista.columnsDesktop == null

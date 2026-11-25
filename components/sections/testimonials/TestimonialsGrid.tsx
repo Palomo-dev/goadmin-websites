@@ -4,7 +4,8 @@ import { useState } from 'react'
 import {
   resolveTestimonialItems,
   useShuffledTestimonials,
-  gridColumnsClass,
+  clasesColumnasTestimonios,
+  atributosCarruselCelular,
   cardRadiusClass,
   cardShadowClass,
   cardHoverClass,
@@ -16,6 +17,7 @@ import {
   lineClampClass,
   textSizeClass,
   textAlignClass,
+  CLASE_ESTRELLAS,
   type TestimonialsContent,
   type TestimonialsData,
   type NormalizedTestimonial,
@@ -43,7 +45,6 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
   const resolved = resolveTestimonialItems(content, data)
   const items = useShuffledTestimonials(resolved, content.randomize_order)
 
-  const columns = content.columns
   const gap = Number(content.gap ?? 16)
   const cardPadding = Number(content.card_padding ?? 16)
   const showRating = content.show_rating !== false
@@ -64,7 +65,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
   const maxLines = content.text_max_lines
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
-  const gridCls = gridColumnsClass(columns)
+  const cols = clasesColumnasTestimonios(content, 'grid')
   const radiusCls = cardRadiusClass(content.card_radius)
   const shadowCls = cardShadowClass(content.card_shadow)
   const hoverCls = cardHoverClass(content.card_hover)
@@ -83,7 +84,7 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
             <p>No hay testimonios disponibles aún</p>
           </div>
         ) : (
-        <SiLista content={content} proporcionCeldas className={`grid ${gridCls} ${proporcionHijos(content)}`} style={{ gap: `${gap}px` }}>
+        <SiLista content={content} proporcionCeldas className={`${cols.lista} ${proporcionHijos(content)}`} style={{ gap: `${gap}px` }} atributos={cols.carruselCelular ? atributosCarruselCelular(title) : undefined}>
           {items.map((item) => {
             const isExpanded = expanded[item.id]
             const stars = ratingStars(item.rating)
@@ -92,11 +93,11 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
             return (
               <div
                 key={item.id}
-                className={`bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 flex flex-col`}
+                className={`relative min-w-0 bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 flex flex-col ${cols.tarjeta}`}
                 style={{ padding: `${cardPadding}px`, backgroundColor: cardBg }}
               >
                 {showRating && ratingStyle !== 'compact' && (
-                  <div className="flex items-center gap-1 mb-3">
+                  <div className={CLASE_ESTRELLAS}>
                     {stars.map((s) => (
                       <span
                         key={s.index}
@@ -155,9 +156,9 @@ export function TestimonialsGrid({ content, primaryColor = '#3B82F6', data }: Te
                     />
                   )}
                   <div className="min-w-0">
-                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{item.name}</p>
+                    <p className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 break-words">{item.name}</p>
                     {(item.role || item.company) && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 break-words">
                         {item.role || item.company}
                       </p>
                     )}

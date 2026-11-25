@@ -160,8 +160,11 @@ const BASE = {
   'gallery.carousel': '7f1201ef45ef8df1',
   'testimonials.quotes': 'fc514528f6b56c38',
   'testimonials.quotes vacío': '5c902fda57b36735',
-  'testimonials.grid': '809b513422501e7b',
-  'testimonials.carousel': '85712b31da91d41f',
+  // 2026-11-25: columnas por dispositivo en Grid y Carrusel (1 por fila o carrusel en el celular,
+  // `md:` tableta, `lg:` computador), estrellas que bajan de línea y nombre en 2 líneas. Cambio
+  // a propósito: antes salían 3 columnas en el celular. Lo fija `verify-columnas-testimonios.mjs`.
+  'testimonials.grid': 'b4612052f47640ec',
+  'testimonials.carousel': '47900233af980369',
   'testimonials.minimal': 'b8a3638269112b30',
   'promo_banners.grid': '49410a425fc9e032',
   'promo_banners.grid vacío': '194cc883b099cdc2',

@@ -94,12 +94,9 @@ export function ProductBenefits({ content, primaryColor = '#3B82F6', data }: Pro
   const items = content.items?.length ? content.items : DEFAULT_BENEFITS
   const columns = content.columns ?? 2
 
-  const gridColsClass = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-2',
-    3: 'grid-cols-3',
-    4: 'grid-cols-4',
-  }[columns] || 'grid-cols-2'
+  // Celular: como mucho 2 columnas (con 3 o 4 el texto quedaba de una palabra por línea);
+  // desde `md`, las columnas elegidas.
+  const gridColsClass = `${COLS_BASE[Math.min(Number(columns) || 2, 2)] ?? 'grid-cols-2'} ${COLS_ESCRITORIO[Number(columns)] ?? 'md:grid-cols-2'}`
 
   const conEstiloTarjeta = Object.keys(content).some((clave) => clave.startsWith('card_'))
   const { className: cardClassName, style: cardStyle } = conEstiloTarjeta
@@ -209,7 +206,8 @@ function BeneficiosConOpciones({ items, opciones: o, primaryColor }: { items: Be
     )
   }
 
-  const colsCelular = COLS_BASE[o.columnasCelular ?? o.columnas] ?? 'grid-cols-2'
+  // Sin «Columnas en celular», como mucho 2 en el celular (nunca las 3 o 4 del computador).
+  const colsCelular = COLS_BASE[o.columnasCelular ?? Math.min(o.columnas, 2)] ?? 'grid-cols-2'
   const colsEscritorio = COLS_ESCRITORIO[o.columnas] ?? 'md:grid-cols-2'
 
   // Tarjetas: un recuadro por beneficio, ícono arriba.

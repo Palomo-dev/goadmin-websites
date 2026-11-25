@@ -7,7 +7,8 @@ import { useEsMovilLista, useListaCarrusel } from '@/components/site/listaCarrus
 import {
   resolveTestimonialItems,
   useShuffledTestimonials,
-  gridColumnsClass,
+  clasesColumnasTestimonios,
+  atributosCarruselCelular,
   cardRadiusClass,
   cardShadowClass,
   cardHoverClass,
@@ -19,6 +20,7 @@ import {
   lineClampClass,
   textSizeClass,
   textAlignClass,
+  CLASE_ESTRELLAS,
   type TestimonialsContent,
   type TestimonialsData,
   type NormalizedTestimonial,
@@ -45,8 +47,6 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
   const resolved = resolveTestimonialItems(content, data)
   const items = useShuffledTestimonials(resolved, content.randomize_order)
 
-  // Por defecto grid de 3 columnas (comportamiento histórico de esta variante).
-  const columns = content.columns ?? 3
   const gap = Number(content.gap ?? 16)
   const cardPadding = Number(content.card_padding ?? 16)
   const showRating = content.show_rating !== false
@@ -75,7 +75,8 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
   const paginaSegura = Math.min(paginaCarrusel, totalCarrusel - 1)
   const lista = carrusel.activo ? items.slice(paginaSegura * porVista, paginaSegura * porVista + porVista) : items
 
-  const gridCls = gridColumnsClass(columns)
+  // Computador 3 columnas por defecto; celular, carrusel deslizable (`columns_mobile`).
+  const cols = clasesColumnasTestimonios(content, 'carousel')
   const radiusCls = cardRadiusClass(content.card_radius)
   const shadowCls = cardShadowClass(content.card_shadow)
   const hoverCls = cardHoverClass(content.card_hover)
@@ -98,8 +99,9 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
       <SiLista
         proporcionCeldas
         content={content}
-        className={`flex sm:grid ${gridCls} overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 ${proporcionHijos(content)}`}
+        className={`${cols.lista} ${proporcionHijos(content)}`}
         style={{ gap: `${gap}px` }}
+        atributos={cols.carruselCelular ? atributosCarruselCelular(content.title) : undefined}
       >
         {lista.map((item) => {
           const isExpanded = expanded[item.id]
@@ -109,11 +111,11 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
           return (
             <div
               key={item.id}
-              className={`relative bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 p-4 sm:p-6 snap-start flex-shrink-0 sm:flex-shrink-1 w-[85%] sm:w-auto`}
+              className={`relative min-w-0 bg-white dark:bg-gray-800 ${radiusCls} ${shadowCls} ${hoverCls} border dark:border-gray-700 p-4 sm:p-6 ${cols.tarjeta}`}
               style={{ padding: `${cardPadding}px`, backgroundColor: cardBg }}
             >
               {showRating && ratingStyle !== 'compact' && (
-                <div className="flex gap-1 mb-3">
+                <div className={CLASE_ESTRELLAS}>
                   {stars.map((s) => (
                     <span
                       key={s.index}
@@ -172,9 +174,9 @@ export function TestimonialsCarousel({ content, primaryColor = '#8B6914', data }
                   />
                 )}
                 <div className="min-w-0">
-                  <span className="font-medium text-gray-900 dark:text-white">{item.name}</span>
+                  <p className="font-medium text-gray-900 dark:text-white line-clamp-2 break-words">{item.name}</p>
                   {(item.role || item.company) && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 break-words">
                       {item.role || item.company}
                     </p>
                   )}

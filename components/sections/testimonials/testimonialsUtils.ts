@@ -10,6 +10,8 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { TestimonialRow } from '@/lib/supabase/queries'
+// Relativo (no `@/`): los verify con strip-types importan este módulo tal cual.
+import { columnasTestimonios } from '../../../lib/website/v2/contrato/seccionesTienda'
 
 export interface NormalizedTestimonial {
   id: string
@@ -149,30 +151,66 @@ export function useShuffledTestimonials(
 
 // ─── Helpers de render ───────────────────────────────────────────────────────
 
+// Clases literales (Tailwind solo emite las que encuentra escritas tal cual en el código).
+const COLS_CELULAR: Record<'1' | '2', string> = { 1: 'grid-cols-1', 2: 'grid-cols-2' }
+const COLS_TABLETA: Record<1 | 2 | 3, string> = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }
+const COLS_ESCRITORIO: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
+  1: 'lg:grid-cols-1',
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5',
+  6: 'lg:grid-cols-6',
+}
+
+export interface ClasesColumnasTestimonios {
+  /** Contenedor de las tarjetas. */
+  lista: string
+  /** Cada tarjeta (ancho y encaje del carrusel del celular). */
+  tarjeta: string
+  /** En el celular las tarjetas van en un carrusel que se desliza con el dedo. */
+  carruselCelular: boolean
+}
+
 /**
- * Devuelve las clases Tailwind de grid según `columns` (responsive).
- * `columns` puede ser un número o `{ desktop, tablet, mobile }`.
+ * Columnas por dispositivo de «Grid» y «Carrusel» (`columns` = computador, `columns_tablet`,
+ * `columns_mobile`; contrato en `seccionesTienda.ts`). Celular por debajo de 768 px, tableta
+ * desde 768 y computador desde 1024.
+ *
+ * Antes las tres clases salían sin prefijo («grid-cols-1 grid-cols-2 grid-cols-3») y ganaba la
+ * última: 3 columnas de ~90 px en el celular (QA 2026-11-25, org 338).
+ */
+export function clasesColumnasTestimonios(content: TestimonialsContent | null | undefined, variante: string): ClasesColumnasTestimonios {
+  const col = columnasTestimonios(content ?? {}, variante)
+  const tableta = `${COLS_TABLETA[col.tableta]} ${COLS_ESCRITORIO[col.escritorio]}`
+  if (col.celular === 'carousel') {
+    return {
+      lista: `flex overflow-x-auto snap-x snap-mandatory scroll-px-4 scrollbar-hide -mx-4 px-4 pb-2 md:grid md:overflow-visible md:snap-none md:scroll-px-0 md:mx-0 md:px-0 md:pb-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${tableta}`,
+      tarjeta: 'w-[85%] shrink-0 snap-start md:w-auto md:shrink',
+      carruselCelular: true,
+    }
+  }
+  return { lista: `grid ${COLS_CELULAR[col.celular]} ${tableta}`, tarjeta: '', carruselCelular: false }
+}
+
+/**
+ * El carrusel del celular se desliza con el dedo (scroll nativo con encaje) y con el teclado: la
+ * lista recibe foco (Tab) y las flechas la desplazan. El lector de pantalla la anuncia por su título.
+ */
+export function atributosCarruselCelular(titulo?: unknown): { role: 'region'; 'aria-label': string; tabIndex: number } {
+  const t = typeof titulo === 'string' && titulo.trim() ? titulo.trim() : 'Testimonios'
+  return { role: 'region', 'aria-label': t, tabIndex: 0 }
+}
+
+/** Fila de estrellas: si la tarjeta es angosta, bajan de línea en vez de salirse. */
+export const CLASE_ESTRELLAS = 'flex max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 mb-3'
+
+/**
+ * Clases de rejilla según `columns` (número o `{ desktop, tablet, mobile }`): celular, tableta
+ * (`md:`) y computador (`lg:`). Equivale a `clasesColumnasTestimonios` de «Grid».
  */
 export function gridColumnsClass(columns: any): string {
-  const resolve = (val: any, fallback: number) => {
-    if (val == null) return fallback
-    const n = Number(val)
-    return Number.isFinite(n) && n > 0 ? Math.min(n, 8) : fallback
-  }
-  // Si columns es un número, usar defaults responsivos: mobile=1, tablet=2, desktop=columns
-  const isObj = typeof columns === 'object' && columns !== null
-  const desktop = resolve(isObj ? columns?.desktop : columns, 3)
-  const tablet = resolve(isObj ? columns?.tablet : undefined, 2)
-  const mobile = resolve(isObj ? columns?.mobile : undefined, 1)
-  const map: Record<number, string> = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-2',
-    3: 'grid-cols-3',
-    4: 'grid-cols-4',
-    5: 'grid-cols-5',
-    6: 'grid-cols-6',
-  }
-  return `${map[mobile] ?? 'grid-cols-1'} ${map[tablet] ?? 'md:grid-cols-2'} ${map[desktop] ?? 'lg:grid-cols-3'}`
+  return clasesColumnasTestimonios({ columns }, 'grid').lista.replace(/^grid /, '')
 }
 
 /** Clases de radio de tarjeta. */
