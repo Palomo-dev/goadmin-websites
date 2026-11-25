@@ -14,8 +14,16 @@
  * Cuatro casos en los tres: pago normal, contraentrega con anticipo, contraentrega sin anticipo
  * (no se cobra nada en línea: «Confirmar pedido») y pasarela de nombre largo.
  *
- * Puro (sin React, sin imports): lo usan `BarraPagoMovil.tsx`, la página del checkout y
- * `scripts/verify-barra-pago.mjs`. Los montos llegan ya formateados con la moneda de la tienda.
+ * Computador (Figma «16 Sitio web» › «Barra de pago en computador» 3214:110908, aprobada por el
+ * dueño el 2026-11-25): los MISMOS tres estilos y el mismo ajuste, con el resumen corto a la
+ * izquierda (miniaturas, «N productos», «Ver resumen» y la línea de contexto) y, a la derecha, lo
+ * del estilo. `contenidoBarraPagoComputador` parte de `contenidoBarraPago` y solo cambia lo que el
+ * computador tiene espacio para decir (la pasarela dentro del botón de A y en la acción de C; la
+ * palabra «anticipo» en A; la etiqueta «hoy» del monto de C con anticipo).
+ *
+ * Puro (sin React, sin imports): lo usan `BarraPagoMovil.tsx`, `BarraPagoComputador.tsx`, la página
+ * del checkout y `scripts/verify-barra-pago.mjs`. Los montos llegan ya formateados con la moneda de
+ * la tienda.
  */
 
 export const ESTILOS_BARRA_PAGO = ['dos_filas', 'dos_lineas', 'partido'] as const
@@ -102,19 +110,26 @@ function contextoPago(c: Extract<CasoBarraPago, { tipo: 'pago' }>): string {
   return partes.join(' · ')
 }
 
-/** A: «Pagar $ X con Pasarela»; si no cabe, sin «con …». */
-function textoBotonA(monto: string, pasarela: string | null): string {
-  const corto = `Pagar ${monto}`
+/** «<corto> con Pasarela» si cabe en `max`; si no (o sin pasarela), `corto`. */
+function conPasarela(corto: string, pasarela: string | null, max: number): string {
   if (!pasarela) return corto
   const largo = `${corto} con ${pasarela}`
-  return largo.length <= MAX_TEXTO_BOTON_A ? largo : corto
+  return largo.length <= max ? largo : corto
 }
 
-/** C: «Pagar anticipo con Bold»; si no cabe, «Pagar con Mercado Pago» (y el CSS recorta con «…»). */
-export function accionAnticipoC(pasarela: string | null): string {
+/** A: «Pagar $ X con Pasarela»; si no cabe, sin «con …». */
+function textoBotonA(monto: string, pasarela: string | null): string {
+  return conPasarela(`Pagar ${monto}`, pasarela, MAX_TEXTO_BOTON_A)
+}
+
+/**
+ * C: «Pagar anticipo con Bold»; si no cabe, «Pagar con Mercado Pago» (y el CSS recorta con «…»).
+ * `max`: caracteres de la acción (por defecto los del celular; el computador tiene más espacio).
+ */
+export function accionAnticipoC(pasarela: string | null, max: number = MAX_ACCION_C): string {
   if (!pasarela) return 'Pagar anticipo'
   const largo = `Pagar anticipo con ${pasarela}`
-  return largo.length <= MAX_ACCION_C ? largo : `Pagar con ${pasarela}`
+  return largo.length <= max ? largo : `Pagar con ${pasarela}`
 }
 
 function boton(icono: IconoBoton, texto: string, extra: Partial<Omit<BotonBarra, 'icono' | 'texto'>> = {}): BotonBarra {
@@ -210,7 +225,133 @@ export function contenidoBarraPago(estilo: EstiloBarraPago, caso: CasoBarraPago)
 }
 
 /** Texto accesible del botón (lectores de pantalla): todo lo que dice, en una frase. */
-export function etiquetaAccesibleBoton(c: ContenidoBarraPago): string {
+export function etiquetaAccesibleBoton(c: Pick<ContenidoBarraPago, 'boton'>): string {
   const b = c.boton
   return [b.texto, b.linea2, b.monto ? [b.montoEtiqueta, b.monto].filter(Boolean).join(' ') : null].filter(Boolean).join(', ')
+}
+
+// ── Computador (3214:110908) ─────────────────────────────────────────────────────────────────────
+
+/** Caracteres del botón de A en computador (≈ 340 px a 16 px seminegrita, con el ícono). */
+export const MAX_TEXTO_BOTON_A_COMPUTADOR = 44
+/** Caracteres de la acción de C en computador (botón de 440 px; el monto se queda con su lado). */
+export const MAX_ACCION_C_COMPUTADOR = 32
+
+/** Lo que la barra de computador dice a la izquierda, además del caso. Montos ya formateados. */
+export interface ResumenCortoBarra {
+  /** Unidades del carrito. */
+  productos: number
+  /** A domicilio: «Envío incluido» / «Envío gratis»; recoger o comer aquí: null. */
+  envio: 'incluido' | 'gratis' | null
+  /** Descuento de promociones, formateado; null sin descuento. */
+  ahorro: string | null
+  /** «Se cobra en COP: $ X» (`textoCobroEnBase`) si los precios se ven en otra moneda; si no, null. */
+  cobroEnBase: string | null
+}
+
+export type IconoContexto = 'paquete' | 'porcentaje' | 'billete'
+
+/** Una pieza de la línea de contexto (se separan con «·»). */
+export interface PiezaContexto {
+  texto: string
+  icono: IconoContexto | null
+  /** Verde: el ahorro y «Pagas todo al recibir». */
+  verde: boolean
+  /** Es el «Se cobra en …» (lleva `data-cobro-base`). */
+  cobroEnBase: boolean
+}
+
+export interface ContenidoBarraComputador {
+  estilo: EstiloBarraPago
+  /** «3 productos». */
+  productos: string
+  /** Línea de contexto bajo «N productos». */
+  contexto: PiezaContexto[]
+  /** A: columnas de montos junto al botón (1, o 3 con anticipo). B y C: vacío. */
+  columnas: ColumnaMonto[]
+  /** B: «Total $ X» junto al botón. A y C: null. */
+  total: string | null
+  /** Las piezas del botón (A texto; B dos líneas; C acción + monto). */
+  boton: BotonBarra
+}
+
+function pieza(texto: string, icono: IconoContexto | null = null, verde = false, cobroEnBase = false): PiezaContexto {
+  return { texto, icono, verde, cobroEnBase }
+}
+
+/** Línea de contexto de la izquierda (igual en los tres estilos, salvo el anticipo). */
+function contextoComputador(estilo: EstiloBarraPago, caso: CasoBarraPago, r: ResumenCortoBarra): PiezaContexto[] {
+  const envio = r.envio === 'incluido' ? pieza('Envío incluido', 'paquete') : r.envio === 'gratis' ? pieza('Envío gratis', 'paquete') : null
+  let partes: (PiezaContexto | null)[]
+  if (caso.tipo === 'anticipo') {
+    partes = estilo === 'partido'
+      // C: el monto de hoy va en el botón; aquí, el total y lo de la puerta.
+      ? [pieza(`Total ${caso.total}`, 'billete'), pieza(`al recibir ${caso.alRecibir}`)]
+      : [envio, pieza(estilo === 'dos_lineas' ? 'Contraentrega con anticipo' : 'Contraentrega', 'billete')]
+  } else if (caso.tipo === 'sin_anticipo') {
+    partes = [envio, pieza(`Pagas todo al recibir: ${caso.medios}`, 'billete', true)]
+  } else if (caso.tipo === 'confirmar') {
+    partes = [envio, pieza(`Pagas con ${caso.medio}`)]
+  } else {
+    partes = [envio]
+  }
+  if (r.ahorro) partes.push(pieza(`Ahorras ${r.ahorro}`, 'porcentaje', true))
+  if (r.cobroEnBase) partes.push(pieza(r.cobroEnBase, null, false, true))
+  return partes.filter((p): p is PiezaContexto => p !== null)
+}
+
+/**
+ * Contenido de la barra de computador para un estilo y un caso. El botón sale de la MISMA regla del
+ * celular (`contenidoBarraPago`); el computador solo cambia:
+ * - A: la pasarela dentro del botón también en el pago normal («Pagar $ X con Wompi») y la palabra
+ *   «anticipo» («Pagar anticipo $ 20.000 con Bold»); si no cabe, sin «con …».
+ * - C: la pasarela en la acción («Pagar con Wompi», «Pagar anticipo con Bold») y la etiqueta «hoy»
+ *   sobre el monto del anticipo.
+ * - B: igual que en celular.
+ */
+export function contenidoBarraPagoComputador(estilo: EstiloBarraPago, caso: CasoBarraPago, r: ResumenCortoBarra): ContenidoBarraComputador {
+  const movil = contenidoBarraPago(estilo, caso)
+  const base: ContenidoBarraComputador = {
+    estilo,
+    productos: plural(r.productos, 'producto', 'productos'),
+    contexto: contextoComputador(estilo, caso, r),
+    columnas: [],
+    total: null,
+    boton: movil.boton,
+  }
+
+  if (estilo === 'dos_filas') {
+    const columnas = caso.tipo === 'anticipo' ? movil.columnas : [{ etiqueta: 'Total', valor: caso.total, destacado: true }]
+    if (caso.tipo === 'pago') {
+      return { ...base, columnas, boton: { ...movil.boton, texto: conPasarela(`Pagar ${caso.total}`, caso.pasarela, MAX_TEXTO_BOTON_A_COMPUTADOR) } }
+    }
+    if (caso.tipo === 'anticipo') {
+      return { ...base, columnas, boton: { ...movil.boton, texto: conPasarela(`Pagar anticipo ${caso.hoy}`, caso.pasarela, MAX_TEXTO_BOTON_A_COMPUTADOR) } }
+    }
+    return { ...base, columnas }
+  }
+
+  if (estilo === 'dos_lineas') {
+    return { ...base, total: caso.total }
+  }
+
+  // C · botón partido (por defecto)
+  if (caso.tipo === 'pago') {
+    return { ...base, boton: { ...movil.boton, texto: conPasarela('Pagar', caso.pasarela, MAX_ACCION_C_COMPUTADOR) } }
+  }
+  if (caso.tipo === 'anticipo') {
+    return { ...base, boton: { ...movil.boton, texto: accionAnticipoC(caso.pasarela, MAX_ACCION_C_COMPUTADOR), montoEtiqueta: 'hoy' } }
+  }
+  return base
+}
+
+/**
+ * Estado apagado de la barra de computador: el motivo que el checkout YA conoce (hoy, la
+ * contraentrega que no aplica) solo si el botón está apagado y no se está procesando el pago. Sin
+ * motivo: null (solo el botón apagado, como antes).
+ */
+export function motivoBarraApagada(deshabilitado: boolean, procesando: boolean, motivo: string | null | undefined): string | null {
+  if (!deshabilitado || procesando) return null
+  const texto = typeof motivo === 'string' ? motivo.trim() : ''
+  return texto ? texto : null
 }

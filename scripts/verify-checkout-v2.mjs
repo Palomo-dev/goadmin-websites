@@ -342,7 +342,7 @@ igual('Enlace en vez de next/link', /from ['"]next\/link['"]/.test(wiz), false)
 igual('sin emojis en el checkout', /\p{Extended_Pictographic}/u.test(wizCodigo), false)
 igual('pasos con nombre', wiz.includes('<PasosCheckout'), true)
 igual('un solo resumen', (wiz.match(/<ResumenPedido\b/g) || []).length, 1)
-igual('1 paso: la barra fija de computador de vuelta (el dueño, 2026-11-25)', wiz.includes('z-40 px-4 py-3 hidden md:block'), true)
+igual('1 paso: la barra fija de computador de vuelta (el dueño, 2026-11-25), ahora A/B/C', wiz.includes('<BarraPagoComputador'), true)
 igual('celular: la barra A/B/C sigue', wiz.includes('<BarraPagoMovil') && wiz.includes('normalizarEstiloBarraPago(settings.barraPagoMovil)'), true)
 igual('se conserva: ?metodo= del chat', wiz.includes('metodoDeTraspaso(metodoParam, metodoEnCliente)'), true)
 igual('se conserva: contraentrega (motivo, desglose, anticipo)', wiz.includes('<MotivoContraentrega') && wiz.includes('<DetalleContraentrega') && wiz.includes("source: 'anticipo_pedido'"), true)
@@ -526,10 +526,12 @@ const botonVolverFuente = fuente('components/site/volver/BotonVolver.tsx')
 igual('el cuadrado conserva su fondo claro sobre una cabecera oscura (fondo propio, no el de la cabecera)', botonVolverFuente.includes('bg-[var(--volver-fondo)] text-[var(--volver-flecha)]'), true)
 
 // ── 2026-11-25 (3) · Barra fija de pago en computador ──────────────────────────────────────────
+// 2026-11-25 (5): la barra vieja pasa a A/B/C (BarraPagoComputador, Figma 3214:110908); el caso
+// (total, contraentrega/anticipo, ahorro) y el estilo son los de la barra del celular.
 const wizBarra = fuente('components/site/CheckoutWizard.tsx')
-igual('computador 1 paso: barra fija con total, contraentrega/anticipo, ahorro y el botón de la regla única', /\{isOnePage && cartItems\.length > 0 && \(\s*<div className="fixed bottom-0[^"]*z-40 px-4 py-3 hidden md:block"[\s\S]*?<ResumenPagoContraentrega estado=\{ce\.estado\} fmt=\{fmtPrice\} compacto \/>[\s\S]*?Ahorras[\s\S]*?\{contenidoBotonPagar\}/.test(wizBarra), true)
-igual('la barra de computador no se puede pulsar dos veces ni con contraentrega bloqueada', /data-barra-pago-computador=""[\s\S]*?disabled=\{submitting \|\| ceBloqueada\}/.test(wizBarra), true)
-igual('espaciador de computador de siempre (h-20)', wizBarra.includes('<div className="hidden h-20 md:block" aria-hidden="true" />'), true)
+igual('computador 1 paso: barra fija A/B/C con el caso de la barra del celular (total, contraentrega/anticipo, ahorro)', /\{isOnePage && cartItems\.length > 0 && \(\s*<BarraPagoComputador\b[\s\S]*?contenido=\{contenidoBarraComputador\}/.test(wizBarra) && wizBarra.includes('contenidoBarraPagoComputador(normalizarEstiloBarraPago(settings.barraPagoMovil), casoBarra,') && wizBarra.includes('ahorro: promoDiscount > 0 ? fmtPrice(promoDiscount) : null,'), true)
+igual('la barra de computador no se puede pulsar dos veces ni con contraentrega bloqueada', /<BarraPagoComputador\b[\s\S]*?deshabilitado=\{submitting \|\| ceBloqueada\}[\s\S]*?procesando=\{submitting\}[\s\S]*?onPagar=\{\(\) => handleSubmit\(\)\}/.test(wizBarra) && fuente('components/site/checkout/BarraPagoComputador.tsx').includes('data-barra-pago-computador=""'), true)
+igual('espaciador de computador con el alto real de la barra', wizBarra.includes('<div className="hidden md:block" style={{ height: altoBarraComputador }} aria-hidden="true" data-espaciador-barra-computador="" />'), true)
 igual('el celular sigue con su barra A/B/C y el botón del resumen se conserva', wizBarra.includes('<BarraPagoMovil') && /accion=\{isOnePage \? \(/.test(wizBarra), true)
 
 // ── 2026-11-25 (4) · Moneda en el checkout: el mismo estado que la tienda ──────────────────────
@@ -542,7 +544,7 @@ const proveedorMoneda = fuente('components/site/CurrencyProvider.tsx')
 igual('la elección se guarda igual que en la tienda (site_currency) y vuelve a pedir la tasa', proveedorMoneda.includes("const STORAGE_KEY = 'site_currency'") && /setCurrency = useCallback\(\(code: string\) => \{[\s\S]*?localStorage\.setItem\(STORAGE_KEY, code\)[\s\S]*?fetchCurrency\(code\)/.test(proveedorMoneda), true)
 const wizMoneda = fuente('components/site/CheckoutWizard.tsx')
 igual('los montos del checkout se pintan con la moneda elegida (formatPrice del proveedor)', wizMoneda.includes('const { formatPrice: fmtPrice, currency: displayCurrency, baseCurrency, loading } = useCurrency()'), true)
-igual('«Se cobra en …» junto al total del resumen y de la barra de computador', wizMoneda.includes('cobroEnBase={textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}') && /data-barra-pago-computador=""[\s\S]*?textoCobroEnBase\(total, baseCurrency, displayCurrency, loading\)/.test(wizMoneda) && fuente('components/site/checkout/ResumenPedido.tsx').includes('data-cobro-base=""'), true)
+igual('«Se cobra en …» junto al total del resumen y en la barra de computador', wizMoneda.includes('cobroEnBase={textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}') && /contenidoBarraPagoComputador\([\s\S]*?cobroEnBase: textoCobroEnBase\(total, baseCurrency, displayCurrency, loading\)/.test(wizMoneda) && fuente('components/site/checkout/BarraPagoComputador.tsx').includes("data-cobro-base={p.cobroEnBase ? '' : undefined}") && fuente('components/site/checkout/ResumenPedido.tsx').includes('data-cobro-base=""'), true)
 igual('el cobro sigue en la moneda base: el pedido no lleva la moneda de visualización', !/displayCurrency[^\n]*orderPayload|orderPayload\.[a-zA-Z]+ = [^\n]*displayCurrency/.test(wizMoneda), true)
 
 // ── 2026-11-25 · ← sobre la cabecera oscura: variante oscura del botón (no el naranja claro) ──

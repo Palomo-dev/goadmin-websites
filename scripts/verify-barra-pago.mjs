@@ -8,7 +8,10 @@
  * los CUATRO casos del diseño, que sin ajuste sale C, que contraentrega sin anticipo dice
  * «Confirmar pedido» (no «Pagar $ X»), que cada ícono que el ERP deja elegir se pinta como ícono
  * (nunca la palabra) y revisa en el fuente que el checkout siga conectado (área segura, espaciador,
- * chat 12 px por encima, else de computador). Sin dependencias ni base.
+ * chat 12 px por encima). Desde el 2026-11-25 también la barra de computador (Figma 3214:110908):
+ * los tres estilos con los cuatro casos, el resumen corto de la izquierda, el estado apagado con
+ * motivo y que el botón siga siendo el mismo (`handleSubmit`, mismo `disabled`). Sin dependencias
+ * ni base.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -17,9 +20,13 @@ import {
   ESTILOS_BARRA_PAGO,
   ESTILO_BARRA_POR_DEFECTO,
   MAX_ACCION_C,
+  MAX_ACCION_C_COMPUTADOR,
+  MAX_TEXTO_BOTON_A_COMPUTADOR,
   accionAnticipoC,
   contenidoBarraPago,
+  contenidoBarraPagoComputador,
   etiquetaAccesibleBoton,
+  motivoBarraApagada,
   normalizarEstiloBarraPago,
 } from '../components/site/checkout/barraPago.ts'
 import {
@@ -180,7 +187,7 @@ const wiz = fuente('components/site/CheckoutWizard.tsx')
 const barra = fuente('components/site/checkout/BarraPagoMovil.tsx')
 igual('el checkout pinta la barra del celular', wiz.includes('<BarraPagoMovil'), true)
 // 2026-11-25: el dueño quiere de vuelta la barra fija en computador («sticky cart»): la de siempre.
-igual('en computador, la barra de siempre (su else)', wiz.includes('z-40 px-4 py-3 hidden md:block'), true)
+igual('en computador, la barra A/B/C (BarraPagoComputador) con el mismo estilo de la tienda', wiz.includes('<BarraPagoComputador') && wiz.includes('contenidoBarraPagoComputador(normalizarEstiloBarraPago(settings.barraPagoMovil), casoBarra,'), true)
 igual('la barra nueva es solo de celular', barra.includes('md:hidden'), true)
 igual('área segura del iPhone', barra.includes('env(safe-area-inset-bottom)'), true)
 igual('el espaciador usa el alto real', wiz.includes('style={{ height: altoBarraMovil }}'), true)
@@ -190,9 +197,92 @@ igual('la página lee el estilo del ERP', fuente('app/checkout/page.tsx').includ
 igual('opciones de pago: radio a la izquierda', fuente('components/site/checkout/TarjetaMetodoPago.tsx').includes('role="radio"'), true)
 igual('contraentrega: el desglose sigue dentro de la tarjeta', wiz.includes('sinMontos />') && wiz.includes('<MotivoContraentrega'), true)
 
+// ── Computador (Figma 3214:110908, aprobada 2026-11-25) ────────────────────────────────────────
+const R = { productos: 3, envio: 'incluido', ahorro: null, cobroEnBase: null }
+const casoT = { tipo: 'confirmar', total: '$ 64.900', productos: 3, envio: 'incluido', medio: 'transferencia' }
+const vistaPc = (estilo, caso, r = R) => {
+  const c = contenidoBarraPagoComputador(estilo, caso, r)
+  return {
+    productos: c.productos,
+    contexto: c.contexto.map((p) => `${p.icono ? `[${p.icono}]` : ''}${p.texto}${p.verde ? '(verde)' : ''}`),
+    cols: c.columnas.map((x) => `${x.etiqueta}=${x.valor}${x.destacado ? '*' : ''}`),
+    total: c.total,
+    icono: c.boton.icono,
+    texto: c.boton.texto,
+    linea2: c.boton.linea2,
+    monto: c.boton.monto,
+    montoEtiqueta: c.boton.montoEtiqueta,
+  }
+}
+const ahorro5 = { ...R, ahorro: '$ 5.000' }
+
+// A · los montos al lado del botón; la pasarela y «anticipo» caben dentro
+igual('pc A1 pago Wompi', vistaPc('dos_filas', casoA, ahorro5), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[porcentaje]Ahorras $ 5.000(verde)'], cols: ['Total=$ 64.900*'], total: null, icono: 'candado', texto: 'Pagar $ 64.900 con Wompi', linea2: null, monto: null, montoEtiqueta: null })
+igual('pc A2 anticipo Bold', vistaPc('dos_filas', casoB), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[billete]Contraentrega'], cols: ['Total=$ 64.900', 'Hoy pagas=$ 20.000*', 'Al recibir=$ 44.900'], total: null, icono: 'candado', texto: 'Pagar anticipo $ 20.000 con Bold', linea2: null, monto: null, montoEtiqueta: null })
+igual('pc A3 transferencia', vistaPc('dos_filas', casoT), { productos: '3 productos', contexto: ['[paquete]Envío incluido', 'Pagas con transferencia'], cols: ['Total=$ 64.900*'], total: null, icono: 'check', texto: 'Confirmar pedido', linea2: null, monto: null, montoEtiqueta: null })
+igual('pc A sin anticipo: «Confirmar pedido» y todo al recibir en verde', vistaPc('dos_filas', casoC), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[billete]Pagas todo al recibir: efectivo, datáfono o Nequi(verde)'], cols: ['Total=$ 64.900*'], total: null, icono: 'check', texto: 'Confirmar pedido', linea2: null, monto: null, montoEtiqueta: null })
+igual('pc A Mercado Pago cabe', vistaPc('dos_filas', casoD).texto, 'Pagar anticipo $ 20.000 con Mercado Pago')
+igual('pc A nombre que no cabe: sin «con …»', vistaPc('dos_filas', { ...casoB, pasarela: 'Pasarela De Pagos Internacional' }).texto, 'Pagar anticipo $ 20.000')
+igual('pc A el texto nunca pasa su máximo', ['Wompi', 'Mercado Pago', 'Pasarela De Pagos Internacional'].every((p) => vistaPc('dos_filas', { ...casoB, pasarela: p }).texto.length <= MAX_TEXTO_BOTON_A_COMPUTADOR), true)
+igual('pc A sin pasarela: «Pagar $ X» (lo de hoy)', vistaPc('dos_filas', { ...casoA, pasarela: null }).texto, 'Pagar $ 64.900')
+
+// B · igual que en celular (la regla del botón no se duplica)
+igual('pc B1 pago Wompi', vistaPc('dos_lineas', casoA, ahorro5), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[porcentaje]Ahorras $ 5.000(verde)'], cols: [], total: '$ 64.900', icono: 'candado', texto: 'Pagar $ 64.900', linea2: 'Pago seguro con Wompi', monto: null, montoEtiqueta: null })
+igual('pc B2 anticipo Bold', vistaPc('dos_lineas', casoB), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[billete]Contraentrega con anticipo'], cols: [], total: '$ 64.900', icono: 'candado', texto: 'Pagar anticipo · $ 20.000', linea2: 'con Bold · al recibir $ 44.900', monto: null, montoEtiqueta: null })
+igual('pc B3 transferencia', vistaPc('dos_lineas', casoT), { productos: '3 productos', contexto: ['[paquete]Envío incluido', 'Pagas con transferencia'], cols: [], total: '$ 64.900', icono: 'check', texto: 'Confirmar pedido', linea2: 'Pagas con transferencia', monto: null, montoEtiqueta: null })
+for (const caso of [casoA, casoB, casoC, casoD, casoT]) {
+  igual(`pc B = botón del celular (${caso.tipo}${caso.pasarela ? ` ${caso.pasarela}` : ''})`, contenidoBarraPagoComputador('dos_lineas', caso, R).boton, contenidoBarraPago('dos_lineas', caso).boton)
+}
+
+// C · botón partido (por defecto): acción con la pasarela, monto siempre a la derecha
+igual('pc C1 pago Wompi', vistaPc('partido', casoA, ahorro5), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[porcentaje]Ahorras $ 5.000(verde)'], cols: [], total: null, icono: 'candado', texto: 'Pagar con Wompi', linea2: null, monto: '$ 64.900', montoEtiqueta: null })
+igual('pc C2 anticipo Bold: «hoy» sobre el monto, total y puerta a la izquierda', vistaPc('partido', casoB), { productos: '3 productos', contexto: ['[billete]Total $ 64.900', 'al recibir $ 44.900'], cols: [], total: null, icono: 'candado', texto: 'Pagar anticipo con Bold', linea2: null, monto: '$ 20.000', montoEtiqueta: 'hoy' })
+igual('pc C3 transferencia', vistaPc('partido', casoT), { productos: '3 productos', contexto: ['[paquete]Envío incluido', 'Pagas con transferencia'], cols: [], total: null, icono: 'check', texto: 'Confirmar pedido', linea2: null, monto: '$ 64.900', montoEtiqueta: null })
+igual('pc C sin anticipo: «al recibir» sobre el monto', vistaPc('partido', casoC), { productos: '3 productos', contexto: ['[paquete]Envío incluido', '[billete]Pagas todo al recibir: efectivo, datáfono o Nequi(verde)'], cols: [], total: null, icono: 'check', texto: 'Confirmar pedido', linea2: null, monto: '$ 64.900', montoEtiqueta: 'al recibir' })
+igual('pc C Mercado Pago: en computador sí cabe «anticipo»', vistaPc('partido', casoD).texto, 'Pagar anticipo con Mercado Pago')
+igual('pc C nombre largo: «Pagar con …» (el CSS recorta)', accionAnticipoC('Pasarela De Pagos Internacional', MAX_ACCION_C_COMPUTADOR), 'Pagar con Pasarela De Pagos Internacional')
+igual('pc C sin pasarela: «Pagar»', vistaPc('partido', { ...casoA, pasarela: null }).texto, 'Pagar')
+igual('celular C sigue igual con Mercado Pago (máximo del celular)', vista('partido', casoD).texto, 'Pagar con Mercado Pago')
+
+// Resumen corto de la izquierda
+igual('pc recoger: sin envío', vistaPc('partido', { ...casoA, envio: null }, { ...R, productos: 1, envio: null }).contexto, [])
+igual('pc 1 producto en singular', vistaPc('partido', casoA, { ...R, productos: 1 }).productos, '1 producto')
+igual('pc envío gratis', vistaPc('partido', casoA, { ...R, envio: 'gratis' }).contexto, ['[paquete]Envío gratis'])
+{
+  const c = contenidoBarraPagoComputador('partido', casoA, { ...R, cobroEnBase: 'Se cobra en COP: $ 64.900' })
+  igual('pc «Se cobra en COP» al final del contexto, marcado', c.contexto[c.contexto.length - 1], { texto: 'Se cobra en COP: $ 64.900', icono: null, verde: false, cobroEnBase: true })
+}
+// Contraentrega SIN anticipo nunca dice «Pagar» en computador
+for (const e of ESTILOS_BARRA_PAGO) {
+  const c = contenidoBarraPagoComputador(e, casoC, R)
+  igual(`pc ${e}: sin anticipo nunca «Pagar»`, /pagar/i.test(etiquetaAccesibleBoton(c)), false)
+}
+igual('pc etiqueta accesible de C con anticipo', etiquetaAccesibleBoton(contenidoBarraPagoComputador('partido', casoB, R)), 'Pagar anticipo con Bold, hoy $ 20.000')
+
+// Estado apagado: solo con un motivo que el checkout ya conoce
+igual('apagado con motivo', motivoBarraApagada(true, false, 'No llega a tu dirección con pago contra entrega.'), 'No llega a tu dirección con pago contra entrega.')
+igual('apagado sin motivo: solo el botón apagado', [motivoBarraApagada(true, false, null), motivoBarraApagada(true, false, '  '), motivoBarraApagada(true, false, undefined)], [null, null, null])
+igual('procesando: nunca motivo', motivoBarraApagada(true, true, 'algo'), null)
+igual('encendido: nunca motivo', motivoBarraApagada(false, false, 'algo'), null)
+
+// Conexiones de la barra de computador
+{
+  const pc = fuente('components/site/checkout/BarraPagoComputador.tsx')
+  igual('pc solo computador, fija abajo, z-40, fondo blanco', pc.includes('fixed inset-x-0 bottom-0 z-40 hidden border-t bg-white') && pc.includes('md:block'), true)
+  igual('pc componente cliente sin módulos de servidor', /^'use client'\r?\n/.test(pc) && !/from '@\/lib\/supabase|server-only|next\/headers/.test(pc), true)
+  igual('pc el botón usa la etiqueta accesible y el mismo spinner', pc.includes("'aria-label': procesando ? undefined : etiquetaAccesibleBoton(c)") && pc.includes('Procesando...'), true)
+  igual('pc foco visible en los botones', pc.includes('focus-visible:ring-2'), true)
+  igual('pc estado apagado: «Falta un dato para pagar» + «Ir al campo»', pc.includes('Falta un dato para pagar') && pc.includes('Ir al campo'), true)
+  igual('pc siempre visible: sin IntersectionObserver ni inert', !/IntersectionObserver|inert/.test(pc), true)
+  igual('pc el checkout la pinta con handleSubmit y el disabled de siempre', /<BarraPagoComputador[\s\S]*?deshabilitado=\{submitting \|\| ceBloqueada\}[\s\S]*?onPagar=\{\(\) => handleSubmit\(\)\}/.test(wiz), true)
+  igual('pc «Ver resumen» = irAlResumen; motivo solo el que ya existe (contraentrega)', /<BarraPagoComputador[\s\S]*?onDetalle=\{irAlResumen\}/.test(wiz) && wiz.includes('motivoBarraApagada(submitting || ceBloqueada, submitting, motivoCe)'), true)
+  igual('pc espaciador con el alto real de la barra', wiz.includes('style={{ height: altoBarraComputador }}'), true)
+  igual('pc la barra vieja ya no está', !wiz.includes('z-40 px-4 py-3 hidden md:block'), true)
+}
+
 if (problemas.length > 0) {
   console.error(`✗ verify-barra-pago: ${problemas.length} de ${casos} fallaron`)
   for (const p of problemas) console.error(`  - ${p}`)
   process.exit(1)
 }
-console.log(`✓ verify-barra-pago: ${casos} comprobaciones (3 estilos × 4 casos, resumen v1, íconos de la tienda)`)
+console.log(`✓ verify-barra-pago: ${casos} comprobaciones (3 estilos × 4 casos en celular y en computador, resumen v1, íconos de la tienda)`)

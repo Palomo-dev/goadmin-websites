@@ -10,7 +10,7 @@
  * - La burbuja del chat sube 12 px sobre la barra (opción 4a) con `useEmpujeChat`, la misma regla
  *   del menú inferior y de la barra de la ficha: nunca queda encima del botón.
  *
- * Solo celular (`md:hidden`); en computador sigue la barra de siempre.
+ * Solo celular (`md:hidden`); en computador va `BarraPagoComputador` (mismos estilos).
  */
 
 import { useEffect, useId, useRef } from 'react'

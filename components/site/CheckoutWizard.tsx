@@ -42,9 +42,10 @@ import { trackMetaPurchase } from '@/components/site/MetaPixelEvents'
 import { abrirBoldDesdeUrl, cargarLibreriaBold } from '@/lib/payments/boldCheckoutCliente'
 import { aplicarPreciosNuevos, esCuponNoValido, mensajeErrorPedido, mensajePreciosCambiados, preciosCambiados } from '@/lib/checkout/respuesta-pedido'
 import { DetalleContraentrega, MotivoContraentrega, ResumenPagoContraentrega, lineaOpcionContraentrega, textoBotonAnticipo, useContraentrega } from '@/components/site/contraentrega/OpcionContraentrega'
-import { textoMedios } from '@/lib/contraentrega/textosContraentrega'
+import { textoMedios, textoMotivo } from '@/lib/contraentrega/textosContraentrega'
 import { BarraPagoMovil } from './checkout/BarraPagoMovil'
-import { contenidoBarraPago, normalizarEstiloBarraPago, type CasoBarraPago, type EstiloBarraPago } from './checkout/barraPago'
+import { BarraPagoComputador } from './checkout/BarraPagoComputador'
+import { contenidoBarraPago, contenidoBarraPagoComputador, motivoBarraApagada, normalizarEstiloBarraPago, type CasoBarraPago, type EstiloBarraPago } from './checkout/barraPago'
 import { descripcionMetodo, iconoMetodo, metodoDeRespaldo, metodoDeTraspaso, metodoPreseleccionado, nombrePasarelaMetodo, type TipoEntregaResumen } from './checkout/resumenPago'
 import { ChipEntregaResumen, MediosPagoAceptados, SellosConfianza } from './checkout/ResumenPagoPiezas'
 import { TarjetaMetodoPago } from './checkout/TarjetaMetodoPago'
@@ -719,6 +720,28 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
   // Alto real de la barra del celular (con el área segura) para el espaciador; 0 en computador.
   const [altoBarraMovil, setAltoBarraMovil] = useState(0)
   const ponerAltoBarra = useCallback((alto: number) => setAltoBarraMovil(alto), [])
+  // Barra fija del pago en computador (Figma 3214:110908): el mismo caso y el mismo estilo de la
+  // tienda; a la izquierda el resumen corto (antes: total, «Se cobra en COP», contraentrega y ahorro).
+  const contenidoBarraComputador = contenidoBarraPagoComputador(normalizarEstiloBarraPago(settings.barraPagoMovil), casoBarra, {
+    productos: cartItems.reduce((n, i) => n + i.quantity, 0),
+    envio: orderType === 'delivery' ? (shipping > 0 ? 'incluido' : 'gratis') : null,
+    ahorro: promoDiscount > 0 ? fmtPrice(promoDiscount) : null,
+    cobroEnBase: textoCobroEnBase(total, baseCurrency, displayCurrency, loading),
+  })
+  // Botón apagado: solo el motivo que el checkout YA conoce (contraentrega que no aplica, el mismo
+  // texto de la tarjeta). Sin motivo, solo el botón apagado, como antes.
+  const motivoCe = ceBloqueada && ce.estado?.motivos[0] ? textoMotivo(ce.estado.motivos[0], fmtPrice, customerData.city).texto : null
+  const motivoBarra = motivoBarraApagada(submitting || ceBloqueada, submitting, motivoCe)
+  // «Ir al campo»: la tarjeta de contraentrega, donde están el motivo y sus acciones.
+  const irAlMotivo = () => {
+    const tarjeta = document.querySelector<HTMLElement>('[data-metodo-pago="cash"]')
+    if (!tarjeta) return
+    tarjeta.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    tarjeta.querySelector<HTMLElement>('[role="radio"]')?.focus({ preventScroll: true })
+  }
+  // Alto real de la barra de computador para su espaciador (96 px hasta medirla).
+  const [altoBarraComputador, setAltoBarraComputador] = useState(96)
+  const ponerAltoBarraComputador = useCallback((alto: number) => setAltoBarraComputador(alto), [])
   // «Detalle» de la barra: abre el resumen (plegado en celular) y baja hasta él.
   const irAlResumen = () => {
     setResumenAbierto(true)
@@ -2319,41 +2342,29 @@ export function CheckoutWizard({ organizationId, primaryColor, paymentMethods: t
           onAlto={ponerAltoBarra}
         />
       )}
-      {/* Computador (md en adelante), 1 paso: la barra fija de siempre, de vuelta (el dueño, 2026-11-25:
-          «sticky cart»). Misma barra de antes del checkout v2: total, contraentrega/anticipo,
-          ahorro y el botón con la regla única (textoBotonPago: pagar, anticipo, confirmar pedido).
-          El botón de debajo del resumen se conserva. */}
+      {/* Computador (md en adelante), 1 paso: la barra fija en el estilo de la tienda (A, B o C; por
+          defecto C; Figma 3214:110908). Siempre a la vista, junto con el botón de debajo del resumen
+          (el dueño, 2026-11-25). Mismo handleSubmit y mismo disabled que ese botón. */}
       {isOnePage && cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-40 px-4 py-3 hidden md:block" data-barra-pago-computador="">
-          <div className="container mx-auto flex items-center justify-between gap-4">
-            <div className="text-sm text-gray-600">
-              Total: <span className="text-lg font-bold text-gray-900">{fmtPrice(total)}</span>
-              {textoCobroEnBase(total, baseCurrency, displayCurrency, loading) ? (
-                <span className="block text-xs text-gray-500" data-cobro-base="">{textoCobroEnBase(total, baseCurrency, displayCurrency, loading)}</span>
-              ) : null}
-              {paymentMethod === 'cash' && <ResumenPagoContraentrega estado={ce.estado} fmt={fmtPrice} compacto />}
-              {promoDiscount > 0 && (
-                <span className="block text-xs text-green-600">Ahorras {fmtPrice(promoDiscount)} en promociones</span>
-              )}
-            </div>
-            <Button
-              type="button"
-              className="px-8 h-11 font-semibold"
-              style={{ backgroundColor: primaryColor }}
-              onClick={() => handleSubmit()}
-              disabled={submitting || ceBloqueada}
-            >
-              {contenidoBotonPagar}
-            </Button>
-          </div>
-        </div>
+        <BarraPagoComputador
+          contenido={contenidoBarraComputador}
+          color={primaryColor}
+          imagenes={cartItems.slice(0, 3).map((i) => i.imageUrl ?? null)}
+          deshabilitado={submitting || ceBloqueada}
+          procesando={submitting}
+          onPagar={() => handleSubmit()}
+          onDetalle={irAlResumen}
+          motivoApagado={motivoBarra}
+          onIrAlCampo={motivoBarra ? irAlMotivo : null}
+          onAlto={ponerAltoBarraComputador}
+        />
       )}
 
-      {/* Espaciador de la barra: en celular, su alto real (con el área segura del iPhone); en computador, el de siempre. */}
+      {/* Espaciador de la barra: en celular y en computador, el alto real de cada una (en celular con el área segura del iPhone). */}
       {isOnePage && cartItems.length > 0 && (
         <>
           <div className="md:hidden" style={{ height: altoBarraMovil }} aria-hidden="true" />
-          <div className="hidden h-20 md:block" aria-hidden="true" />
+          <div className="hidden md:block" style={{ height: altoBarraComputador }} aria-hidden="true" data-espaciador-barra-computador="" />
         </>
       )}
     </div>

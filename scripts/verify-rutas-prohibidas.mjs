@@ -263,6 +263,20 @@ const PROHIBIDAS = [
  * «Se cobra en COP: $ X» (textoCobroEnBase) junto al total del resumen y de la barra de computador
  * cuando los precios se ven en otra moneda. No toca el payload de /api/orders ni el cobro.
  * Vence el 2026-12-09. Comprobado por scripts/verify-checkout-v2.mjs.
+ *
+ * 2026-11-25 (quinta ronda) — barra de pago en computador con los estilos A, B y C (Figma «16
+ * Sitio web» 3214:110908, aprobada por el dueño; por defecto C). Lo nuevo vive FUERA de las rutas
+ * del dinero (components/site/checkout/barraPago.ts: `contenidoBarraPagoComputador` y
+ * `motivoBarraApagada`, puros; BarraPagoComputador.tsx). En la ruta protegida, solo:
+ * - components/site/CheckoutWizard.tsx: la barra fija de computador (1 paso) se pinta con
+ *   `BarraPagoComputador` en el estilo de la tienda (el mismo ajuste del celular) y el mismo caso
+ *   (`casoBarra`); total, «Se cobra en COP», contraentrega/anticipo y ahorro siguen en ella. El botón
+ *   llama el mismo `handleSubmit()` con el mismo `disabled={submitting || ceBloqueada}`; con la
+ *   contraentrega bloqueada pinta el motivo que ya mostraba la tarjeta (`textoMotivo`) y «Ir al
+ *   campo» baja a esa tarjeta; sin motivo, solo el botón apagado. Siempre visible, junto al botón
+ *   de debajo del resumen (decisión del dueño). El espaciador mide la barra. En 3 pasos, nada cambia.
+ *   No toca el payload de /api/orders, el cobro ni `handleSubmit`.
+ * Vence el 2026-12-09. Comprobado por scripts/verify-barra-pago.mjs y verify-checkout-v2.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -298,6 +312,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Factura estructurada a /api/orders, token a /api/checkout/init y prellenado desde la cuenta' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra fija de pago en computador de vuelta (1 paso), como antes del checkout v2' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Moneda del checkout: «Se cobra en COP» junto al total (solo pinta; el cobro sigue en la moneda base)' },
+  { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra de pago en computador A/B/C (solo pinta; mismo handleSubmit y mismo disabled)' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */
