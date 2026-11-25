@@ -46,6 +46,7 @@ import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
 import { empujeChatBarra } from '@/lib/website/v2/barraFija'
 import { CLASE_FONDO_ENCABEZADO, estiloBarraEncabezado, marcaFondoEncabezado, variablesEncabezado, useTemaMenuMovil, type HeaderVariantProps } from './header/HeaderShared'
 import { ModalCategorias, useUnidadesCarrito } from './header/mobile/MobileTabs'
+import { pedirAbrirMenuMovil } from './header/CapaEncabezado'
 import { InsigniaContador } from './header/AccionCabecera'
 import { ProductSearch } from './ProductSearch'
 import { iconoBuscar, dibujoBuscar } from './header/iconoBuscar'
@@ -224,7 +225,9 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
     else if (d.evento === 'categories') setCategorias(true)
     else if (d.evento === 'cart') onCartClick?.()
     else if (d.evento === 'favorites') abrirPanelFavoritos()
-    else document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')?.click()
+    // «Menú»: el encabezado lo abre por evento (aunque su botón esté oculto o no exista). Una
+    // plantilla sin oyente sigue con lo de antes: tocar su botón «Abrir menú».
+    else if (!pedirAbrirMenuMovil()) document.querySelector<HTMLButtonElement>('header button[aria-label="Abrir menú"]')?.click()
   }
   const href = (d: DestinoBoton) => (d.tipo === 'ruta' ? ruta(d.href) : d.tipo === 'externo' ? d.href : '')
   const cuentaDe = (b: BotonMenu) =>

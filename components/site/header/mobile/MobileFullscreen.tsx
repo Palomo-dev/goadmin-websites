@@ -4,7 +4,8 @@ import { FilaFavoritosMenu } from '@/components/site/favoritos/FilaFavoritosMenu
 import { opcionesCuenta } from '@/lib/website/v2/cabeceraTienda';
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { FilaLogoMovil } from './FilaLogoMovil';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from '@/components/site/Enlace'
@@ -61,6 +62,9 @@ export default function MobileFullscreen({
   const [open, setOpen] = useState(false);
   // Abierta, la página de atrás no se desplaza (un solo scroll: el de la pantalla del menú).
   useBloqueoScrollFondo(open);
+  // «Menú» del menú inferior: abre la pantalla aunque el botón del encabezado esté oculto.
+  useAbrirMenuMovil(() => setOpen(true));
+  const botonMenuRef = useRef<HTMLButtonElement>(null);
   const isLoggedIn = useAuthState();
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
@@ -98,8 +102,10 @@ export default function MobileFullscreen({
   // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
   const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);
 
+  const estiloHeader = { ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) };
+
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={estiloHeader} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -124,7 +130,7 @@ export default function MobileFullscreen({
                   isMobile={true}
                 />
                 {pildoraMovil && (
-                  <button type="button" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                  <button ref={botonMenuRef} type="button" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
                     {open ? 'Cerrar' : 'Menú'}
                   </button>
                 )}
@@ -133,6 +139,7 @@ export default function MobileFullscreen({
             }
             menu={pildoraMovil ? undefined : (
               <button
+                ref={botonMenuRef}
                 onClick={() => setOpen((v) => !v)}
                 aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
                 className={`p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors${mp.claseBorde}${mp.verMenu ? "" : " hidden"}`}
@@ -160,15 +167,18 @@ export default function MobileFullscreen({
         </div>
       </div>
 
-      {/* Overlay fullscreen */}
+      {/* Overlay fullscreen. En CapaEncabezado (portal fuera del <header>): con «Al bajar» el
+          envoltorio del encabezado lleva transform y un `fixed` dentro quedaba recortado. */}
+      <CapaEncabezado abierta={open} alCerrar={() => setOpen(false)} variables={estiloHeader} retorno={botonMenuRef}>
       {open && (
-        <div className={`fixed inset-0 z-[70] ${CLASE_FONDO_ENCABEZADO} overflow-y-auto overscroll-contain shadow-2xl`} data-scroll-menu="" style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+        <div className={`fixed inset-0 h-[100dvh] z-[70] ${CLASE_FONDO_ENCABEZADO} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overscroll-contain shadow-2xl`} data-scroll-menu="" role="dialog" aria-modal="true" aria-label="Menú" style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
           <div className="flex items-center justify-between px-4 border-b border-[color:var(--mm-divider)]" style={{ minHeight: mp.altoFila }}>
             <HeaderLogo organization={organization} primaryColor={primaryColor} height={Math.max(32, Math.round((settings?.logo_height || 48) * 0.7))} />
             <button
               onClick={() => setOpen(false)}
               aria-label="Cerrar menú"
               className="p-2 rounded-lg text-[var(--mm-title)] hover:bg-[var(--mm-hover-bg)] transition-colors"
+              data-foco-inicial=""
             >
               <X className="h-5 w-5" />
             </button>
@@ -193,6 +203,7 @@ export default function MobileFullscreen({
           </nav>
         </div>
       )}
+      </CapaEncabezado>
       <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );

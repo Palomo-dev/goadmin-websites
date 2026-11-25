@@ -255,15 +255,20 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
    [data-tema-colores] (sitio V2 cuyo tema define fondo o texto); los sitios legacy no llevan el
    atributo y se pintan igual que antes. Un color elegido a mano en el editor (`header_bg_color`,
    `footer_background` 'primary' o 'custom') llega como estilo en línea o sin estas clases y sigue
-   mandando. Las variables con !important ganan a las que `headerBgStyle` pone en línea. */
-[data-tema-colores] header [class*='--header-bg-light'] {
+   mandando. Las variables con !important ganan a las que `headerBgStyle` pone en línea.
+   `:where([data-capa-encabezado])` (aquí y en las reglas `header …` del menú más abajo): los menús y
+   hojas del encabezado se pintan fuera del <header> (components/site/header/CapaEncabezado.tsx, por
+   el transform de «Al bajar») y se ven igual; `:where` no sube la especificidad de ninguna regla. */
+[data-tema-colores] header [class*='--header-bg-light'],
+[data-tema-colores] :where([data-capa-encabezado]) [class*='--header-bg-light'] {
   --header-bg-light: color-mix(in srgb, var(--background-color) 95%, transparent) !important;
   --header-bg-dark: color-mix(in srgb, var(--background-color) 95%, transparent) !important;
   color: var(--text-color);
 }
 /* Encabezados móviles (components/site/header/mobile/*): barra, menú lateral y hojas.
    `data-superficie-propia` (buscador, hoja de moneda) conserva su fondo y su texto. */
-[data-tema-colores] header :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']):not([data-superficie-propia]) {
+[data-tema-colores] header :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']):not([data-superficie-propia]),
+[data-tema-colores] :where([data-capa-encabezado]) :is(div, nav):is([class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']):not([data-superficie-propia]) {
   background-color: var(--background-color) !important;
   color: var(--text-color);
 }
@@ -283,17 +288,19 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
    franja del selector de sede. Un color en línea (`color:`) o un fondo en línea por encima (color
    elegido en el editor) siguen mandando. Los selectores de estilo exigen inicio, `;` o `; ` delante
    para no confundir `--hover-color` ni la variable `--background-color` de la raíz. */
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='text-gray-']:not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), :where([data-capa-encabezado]) :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='text-gray-']:not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: color-mix(in srgb, var(--text-color) 72%, var(--background-color)) !important;
 }
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) :is([class~='text-gray-900'], [class~='text-gray-800'], [class~='dark:text-white'], [class*='text-gray-']:hover):not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), :where([data-capa-encabezado]) :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) :is([class~='text-gray-900'], [class~='text-gray-800'], [class~='dark:text-white'], [class*='text-gray-']:hover):not([data-superficie-propia] *):not([style^='color'], [style*=';color'], [style*='; color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: var(--text-color) !important;
 }
-[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='hover:bg-gray-']:hover:not([data-superficie-propia] *):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-tema-colores] :is(header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), :where([data-capa-encabezado]) :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']), [data-franja-sede]) [class*='hover:bg-gray-']:hover:not([data-superficie-propia] *):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   background-color: color-mix(in srgb, var(--text-color) 8%, var(--background-color)) !important;
 }
 [data-tema-colores] header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800'])[class*='border-gray-'],
 [data-tema-colores] header :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']) [class*='border-gray-'],
+[data-tema-colores] :where([data-capa-encabezado]) :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800'])[class*='border-gray-'],
+[data-tema-colores] :where([data-capa-encabezado]) :is([style*='--header-bg-light'], [class~='bg-white'], [class~='dark:bg-gray-900'], [class~='dark:bg-gray-800']) [class*='border-gray-'],
 [data-tema-colores] [data-franja-sede],
 [data-tema-colores] [data-franja-sede] [class*='border-gray-'] {
   border-color: color-mix(in srgb, var(--text-color) 10%, var(--background-color)) !important;
@@ -799,7 +806,8 @@ header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) :i
 [data-raiz-sitio] section[data-section-id] {
   scroll-margin-top: var(--header-h, 72px);
 }
-[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([data-superficie-propia] *):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
+[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] header:not(main *) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([data-superficie-propia] *):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *),
+[data-encabezado-texto][data-encabezado-texto][data-encabezado-texto] :where([data-capa-encabezado]) :is([class*='text-gray-'], [class~='dark:text-white'], [class~='text-white']):not([data-superficie-propia] *):not([class~='bg-gray-900'] *):not([style^='color'], [style*=';color'], [style*='; color'], [style^='background-color'], [style*=';background-color'], [style*='; background-color']):not(:is([style^='background-color'], [style*=';background-color'], [style*='; background-color']) *) {
   color: var(--encabezado-texto) !important;
 }
 [data-encabezado-texto] header:not(main *) > div:not([style*='background-color']) {
@@ -897,15 +905,19 @@ header:is([data-encabezado-transparente='sobre'], [data-movil-sobre-portada]) :i
   --mm-logout: #f87171;
 }
 /* El buscador y la moneda son paneles claros: no heredan el lavado del encabezado oscuro. */
-header .bg-white {
+header .bg-white,
+:where([data-capa-encabezado]) .bg-white {
   --header-hover: rgba(0, 0, 0, 0.08);
 }
 .dark header .bg-white,
-[data-tema-fondo='oscuro'] header .bg-white {
+[data-tema-fondo='oscuro'] header .bg-white,
+.dark :where([data-capa-encabezado]) .bg-white,
+[data-tema-fondo='oscuro'] :where([data-capa-encabezado]) .bg-white {
   --header-hover: rgba(255, 255, 255, 0.1);
 }
 /* En el encabezado, el hover del menú sigue al de la barra salvo que el resolvedor lo fije. */
-header {
+header,
+:where([data-capa-encabezado]) {
   --mm-hover-bg: var(--header-hover);
 }
 /* El color del menú móvil lo resuelven --mm-* (lib/headerColors.ts).
@@ -922,7 +934,8 @@ header {
   background-color: color-mix(in srgb, var(--mm-active) 10%, transparent);
 }
 /* Hoja de moneda y buscador: su propio fondo, aunque el encabezado sea oscuro. */
-header [data-superficie-propia][data-superficie-propia] {
+header [data-superficie-propia][data-superficie-propia],
+:where([data-capa-encabezado]) [data-superficie-propia][data-superficie-propia] {
   --header-hover: rgba(0, 0, 0, 0.08);
   --mm-hover-bg: rgba(0, 0, 0, 0.08);
   --mm-fg: #374151;
@@ -931,7 +944,8 @@ header [data-superficie-propia][data-superficie-propia] {
   --mm-cur-text: #6b7280;
   --mm-cur-value: #111827;
 }
-.dark header [data-superficie-propia][data-superficie-propia] {
+.dark header [data-superficie-propia][data-superficie-propia],
+.dark :where([data-capa-encabezado]) [data-superficie-propia][data-superficie-propia] {
   --header-hover: rgba(255, 255, 255, 0.1);
   --mm-hover-bg: rgba(255, 255, 255, 0.1);
   --mm-fg: #d1d5db;
@@ -1281,7 +1295,8 @@ nav[data-menu-inferior][data-oculto]:not([inert]):focus-within {
 html[data-carrito-abierto] [data-gochat-widget],
 html[data-favoritos-abierto] [data-gochat-widget],
 html[data-moneda-abierta] [data-gochat-widget],
-html[data-cuenta-abierta] [data-gochat-widget] {
+html[data-cuenta-abierta] [data-gochat-widget],
+html[data-menu-movil-abierto] [data-gochat-widget] {
   display: none !important;
 }
 

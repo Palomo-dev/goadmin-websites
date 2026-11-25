@@ -455,9 +455,12 @@ function esOscuroTexto(texto, fondo) {
       check(/(^|\s)fixed(\s|$)/.test(clase) && /(^|\s)bottom-0(\s|$)/.test(clase), `${ruta}: <Drawer.Content> sin «fixed … bottom-0» (la hoja no queda abajo)`)
     }
     check(/<Drawer\.Overlay\b/.test(src), `${ruta}: la hoja no tiene <Drawer.Overlay>`)
-    // El portal va al propio <header>: así heredan el tema V2 y el modo oscuro de la raíz.
-    check(/<Drawer\.Portal\s+container=\{headerEl\}/.test(src) && /<header\s+ref=\{setHeaderEl\}/.test(src),
-      `${ruta}: el portal de la hoja ya no va al <header> (perdería el tema V2 y el modo oscuro)`)
+    // El portal va a CapaEncabezado (raíz del sitio, con las variables del <header> y
+    // `data-capa-encabezado`): hereda el tema V2 y el modo oscuro, y ya no va DENTRO del <header>,
+    // donde el transform de «Al bajar» la recortaba al alto del encabezado (2026-11-25).
+    check(/<Drawer\.Portal\s+container=\{capaEl\}/.test(src) && /<CapaEncabezado\b[^>]*refCapa=\{setCapaEl\}/.test(src),
+      `${ruta}: el portal de la hoja no va a CapaEncabezado (perdería el tema V2 o quedaría recortada por el transform del encabezado)`)
+    check(!/container=\{headerEl\}/.test(src), `${ruta}: el portal de la hoja volvió al <header> (el transform de «Al bajar» la recorta)`)
     // Abierta, por encima de las barras fijas del celular (BarraMovilGiro / MobileCTABar, z-40).
     check(src.includes("open ? 'z-[60]' : 'z-40'"), `${ruta}: abierta, la hoja queda bajo la barra fija del celular`)
   }

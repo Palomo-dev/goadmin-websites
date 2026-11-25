@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import type { EstiloMenuMovil, PanelMenu } from '@/lib/website/menuMovil'
+import { CapaEncabezado } from '../CapaEncabezado'
 
 const PANEL_BASE: PanelMenu = {
   width: 85,
@@ -18,6 +19,10 @@ const PANEL_BASE: PanelMenu = {
 /**
  * Cajón, hoja, cortina o pantalla del menú móvil. Solo se monta cuando la sección
  * pidió un estilo o un panel nuevo. La variante de hoy no pasa por aquí.
+ *
+ * Va en CapaEncabezado (portal a la raíz del sitio): dentro del envoltorio de «Al bajar» (que lleva
+ * transform) el `fixed` quedaba recortado al alto del encabezado. `comoEncabezado={false}`: ya iba
+ * fuera del <header>, sin sus variables ni sus reglas, y así sigue.
  */
 export function MobileMenuShell({
   abierto,
@@ -81,7 +86,8 @@ export function MobileMenuShell({
     : 'right-0 top-0 h-full'
 
   return (
-    <div className="fixed inset-0 z-[60]" data-menu-shell={estilo} data-menu-animacion={p.animation}>
+    <CapaEncabezado abierta={abierto} persistente={montado} alCerrar={onCerrar} comoEncabezado={false}>
+    <div className="fixed inset-0 z-[60] h-[100dvh]" data-menu-shell={estilo} data-menu-animacion={p.animation}>
       <button
         type="button"
         aria-label="Cerrar menú"
@@ -89,11 +95,12 @@ export function MobileMenuShell({
         style={{ backgroundColor: `rgba(0,0,0,${(activo ? p.overlay : 0) / 100})`, transition: 'background-color 280ms ease' }}
         onClick={onCerrar}
       />
-      <div className={`absolute flex flex-col shadow-2xl ${ancla}`} style={caja}>
+      <div role="dialog" aria-modal="true" aria-label="Menú" className={`absolute flex flex-col shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${ancla}`} style={caja}>
         {lado === 'bottom' && <span className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-gray-300" aria-hidden="true" />}
         {children}
       </div>
     </div>
+    </CapaEncabezado>
   )
 }
 

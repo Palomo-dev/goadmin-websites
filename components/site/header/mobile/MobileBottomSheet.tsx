@@ -6,6 +6,7 @@ import { SelectorSedeHoja } from '../SelectorSedeEncabezado';
 import { useEncabezadoPie } from '../../EncabezadoPieContext';
 import { useTemaColores } from '../../TemaColoresContext';
 import { useState } from 'react';
+import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from '@/components/site/Enlace'
@@ -57,11 +58,15 @@ export default function MobileBottomSheet({
   pildoraMovil,
 }: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
-  // La hoja se monta dentro del propio <header> (portal) y no en la fila de botones: así queda
-  // fija abajo, hereda el tema V2 (reglas `[data-tema-colores] header …` de app/globals.css) y el
-  // modo oscuro de la raíz del layout. Sin el portal, vaul la pintaba en línea dentro de la fila
-  // del encabezado: encabezado altísimo y la hoja recortada a la derecha.
-  const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
+  // La hoja va con portal y no en la fila de botones (sin el portal, vaul la pintaba en línea dentro
+  // de la fila: encabezado altísimo y la hoja recortada a la derecha). El portal ya no va al propio
+  // <header>: con «Al bajar» su envoltorio lleva transform y la hoja `fixed` quedaba recortada al
+  // alto del encabezado. Va a CapaEncabezado (raíz del sitio), que conserva lo que heredaba del
+  // <header>: sus variables, las reglas del tema V2 (`[data-capa-encabezado] …` de app/globals.css)
+  // y el modo oscuro de la raíz del layout.
+  const [capaEl, setCapaEl] = useState<HTMLDivElement | null>(null);
+  // «Menú» del menú inferior: abre la hoja aunque el botón del encabezado esté oculto.
+  useAbrirMenuMovil(() => setOpen(true));
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
@@ -75,10 +80,14 @@ export default function MobileBottomSheet({
   const cromoMovil = ajustesCromoMovil(settings);
   const SearchIconComp = iconoBuscar(settings);
 
+  const estiloHeader = { ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) };
+
   return (
     // Abierta, el encabezado sube por encima de las barras fijas del celular (z-40, más abajo en el
     // DOM) para que no tapen el pie de la hoja. Cerrada, z-40 como siempre.
-    <header ref={setHeaderEl} className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
+    <header className={`md:hidden sticky top-0 ${open ? 'z-[60]' : 'z-40'} w-full`} style={estiloHeader} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
+      {/* Contenedor de la hoja fuera del <header> (vaul maneja el foco y el Esc). */}
+      <CapaEncabezado abierta={open} persistente gestionarFoco={false} variables={estiloHeader} refCapa={setCapaEl} />
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -124,7 +133,7 @@ export default function MobileBottomSheet({
               </Drawer.Trigger>
             )}
           />
-                <Drawer.Portal container={headerEl}>
+                <Drawer.Portal container={capaEl}>
                 <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" data-hoja-menu-fondo="" />
                 <Drawer.Content
                   className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-[var(--header-bg-light)] dark:bg-[var(--header-bg-dark)] rounded-t-2xl max-h-[80vh] outline-none"

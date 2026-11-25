@@ -1,7 +1,8 @@
 'use client';
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from '@/components/site/Enlace'
@@ -67,6 +68,9 @@ export default function MobileTabs({
 }: HeaderVariantProps) {
   // Píldora: «Menú» abre el mismo panel de categorías que la pestaña «Categorías».
   const [categoriasPildora, setCategoriasPildora] = useState(false);
+  // Píldora: «Menú» del menú inferior abre lo mismo que su botón «Menú» (las categorías).
+  useAbrirMenuMovil(() => setCategoriasPildora(true), !!pildoraMovil);
+  const botonMenuRef = useRef<HTMLButtonElement>(null);
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
@@ -76,9 +80,10 @@ export default function MobileTabs({
   const searchStyle = buscadorMovilEfectivo(settings as Record<string, unknown>);
   const cromoMovil = ajustesCromoMovil(settings);
   const SearchTabIcon = iconoCabecera(getLucideIcon(resolverIconoEncabezado('search', settings).nombre, Search), 'buscar', resolverIconoEncabezado('search', settings).nombre, settings);
+  const estiloHeader = { ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) };
 
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={estiloHeader} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -103,7 +108,7 @@ export default function MobileTabs({
                   isMobile={true}
                   branchId={branchId}
                 />
-                <button type="button" onClick={() => setCategoriasPildora(true)} aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                <button ref={botonMenuRef} type="button" onClick={() => setCategoriasPildora(true)} aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
                   Menú
                 </button>
                 <HeaderCTAMovil settings={settings} primaryColor={primaryColor} pildora />
@@ -147,9 +152,13 @@ export default function MobileTabs({
       {/* Lo que la barra heredaba de este <header> (color de íconos, fondo transparente sobre
           la portada) va explícito: con «Al bajar» la barra se pinta fuera de él. */}
       {leerMenuInferior(settings) === null && <BarraPestanas organization={organization} primaryColor={primaryColor} navTree={navTree} settings={settings} onCartClick={onCartClick} menuCategories={menuCategories} branchId={branchId} estiloHeredado={{ ...mp.estilo, ...transparente }} />}
+      {/* Fuera del <header> (CapaEncabezado): con «Al bajar» su envoltorio lleva transform y la
+          hoja `fixed` quedaba recortada al alto del encabezado. */}
+      <CapaEncabezado abierta={!!pildoraMovil && categoriasPildora} alCerrar={() => setCategoriasPildora(false)} variables={estiloHeader} retorno={botonMenuRef}>
       {pildoraMovil && categoriasPildora && (
         <ModalCategorias settings={settings} primaryColor={primaryColor} navTree={navTree} menuCategories={menuCategories} onClose={() => setCategoriasPildora(false)} />
       )}
+      </CapaEncabezado>
       <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );

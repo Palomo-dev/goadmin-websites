@@ -2,7 +2,8 @@
 
 import { FilaSedeMovil } from '../SelectorSedeEncabezado';
 import { FilaLogoMovil } from './FilaLogoMovil';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from '@/components/site/Enlace'
@@ -67,6 +68,9 @@ export default function MobileDrawer({
   const [open, setOpen] = useState(false);
   // Abierto, la página de atrás no se desplaza (un solo scroll: el del cajón).
   useBloqueoScrollFondo(open);
+  // «Menú» del menú inferior: abre el cajón aunque el botón del encabezado esté oculto.
+  useAbrirMenuMovil(() => setOpen(true));
+  const botonMenuRef = useRef<HTMLButtonElement>(null);
   const temaMenu = useTemaMenuMovil(primaryColor);
   const mp = movilPlantilla(settings);
   const transparente = useTransparenteMovil(settings);
@@ -109,8 +113,10 @@ export default function MobileDrawer({
   // Con el botón «Todas las categorías» encendido, las categorías van de primeras y con su texto.
   const allItems = menuConCategorias(navItems, categoriesItem, settings as Record<string, unknown>);
 
+  const estiloHeader = { ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) };
+
   return (
-    <header className="md:hidden sticky top-0 z-40 w-full" style={{ ...variablesEncabezado(settings, temaMenu), ...posicionMovil(settings), ...mp.estilo, ...transparente, ...variablesPildoraMovil(settings, pildoraMovil) }} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
+    <header className="md:hidden sticky top-0 z-40 w-full" style={estiloHeader} data-movil-sobre-portada={sobrePortadaMovil ? '' : undefined} {...atributosPildoraMovil(settings, pildoraMovil)}>
       {barraSuperiorMovil(settings as Record<string, unknown>) && <HeaderTopbar organization={organization} settings={settings} forceVisible />}
 
       <div className={CLASE_FONDO_ENCABEZADO} style={estiloBarraEncabezado(settings, 'bottom')} {...marcaFondoEncabezado(settings)}>
@@ -136,7 +142,7 @@ export default function MobileDrawer({
                 />
                 {/* Píldora: «Menú» y el botón, a la derecha del logo (Figma P5 b). */}
                 {pildoraMovil && (
-                  <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
+                  <button ref={botonMenuRef} type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" data-pildora-menu="" className={CLASE_BOTON_MENU_PILDORA}>
                     Menú
                   </button>
                 )}
@@ -145,6 +151,7 @@ export default function MobileDrawer({
             }
             menu={pildoraMovil ? undefined : (
               <button
+                ref={botonMenuRef}
                 onClick={() => setOpen(true)}
                 aria-label="Abrir menú"
                 className={`p-2 rounded-lg text-[var(--hdr-mobile-icon)] hover:bg-[var(--header-hover)] transition-colors${mp.claseBorde}${mp.verMenu ? "" : " hidden"}`}
@@ -172,16 +179,19 @@ export default function MobileDrawer({
         </div>
       </div>
 
-      {/* Mobile Drawer — restaurado al estilo del header original */}
+      {/* Mobile Drawer — restaurado al estilo del header original. Va en CapaEncabezado (portal
+          fuera del <header>): con «Al bajar» el envoltorio del encabezado lleva transform y un
+          `fixed` dentro quedaba recortado al alto del encabezado. */}
+      <CapaEncabezado abierta={open} alCerrar={() => setOpen(false)} variables={estiloHeader} retorno={botonMenuRef}>
       {open && (
-        <div className="md:hidden fixed inset-0 z-[60]">
+        <div className="md:hidden fixed inset-0 z-[60] h-[100dvh]">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
           {/* Drawer panel */}
-          <div className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] ${CLASE_FONDO_ENCABEZADO} shadow-2xl flex flex-col`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
+          <div role="dialog" aria-modal="true" aria-label="Menú" className={`absolute right-0 top-0 h-full w-80 max-w-[85vw] ${CLASE_FONDO_ENCABEZADO} shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`} style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
             {/* Drawer header */}
             <div className="flex items-center justify-between p-4 border-b border-[color:var(--mm-divider)]">
               <span className="font-bold text-[var(--mm-title)]">Menú</span>
@@ -189,6 +199,7 @@ export default function MobileDrawer({
                 onClick={() => setOpen(false)}
                 className="p-2 rounded-lg hover:bg-[var(--header-hover)]"
                 aria-label="Cerrar menú"
+                data-foco-inicial=""
               >
                 <X className="h-5 w-5 text-[var(--mm-title)]" />
               </button>
@@ -274,6 +285,7 @@ export default function MobileDrawer({
           </div>
         </div>
       )}
+      </CapaEncabezado>
       <FilaSedeMovil primaryColor={primaryColor} />
     </header>
   );

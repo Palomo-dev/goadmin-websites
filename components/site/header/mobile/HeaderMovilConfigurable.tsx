@@ -31,6 +31,7 @@ import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
 import { BarraPestanas } from './MobileTabs'
 import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { ProductSearch } from '../../ProductSearch'
+import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado'
 
 /**
  * Header de celular cuando hay estilo, panel, disposición o íconos nuevos.
@@ -81,6 +82,9 @@ export function HeaderMovilConfigurable({
   const menuV2 = leerMenuInferior(settings) !== null
   const pestanasPlantilla = !menuV2 && !barra && presentacion.estilo === 'tabs'
   const showMenu = iconos?.showMenu !== false && presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs'
+  // «Menú» del menú inferior: abre el panel aunque el ícono del menú esté apagado (antes buscaba el
+  // botón en el DOM y, sin él, no hacía nada). Sin panel («none», «tabs») no escucha.
+  useAbrirMenuMovil(() => setAbierto(true), presentacion.estilo !== 'none' && presentacion.estilo !== 'tabs')
 
   useEffect(() => {
     if (!layout?.hideOnScroll && !transparenteHero) return
@@ -178,6 +182,8 @@ export function HeaderMovilConfigurable({
         />
       </MobileMenuShell>
 
+      {/* Fuera del envoltorio de «Al bajar» (transform): el `fixed` no queda recortado. */}
+      <CapaEncabezado abierta={buscar} alCerrar={() => setBuscar(false)} comoEncabezado={false}>
       {buscar && (
         <div className="fixed inset-0 z-[70] bg-white p-4 dark:bg-gray-950">
           <div className="mb-3 flex justify-end">
@@ -186,6 +192,7 @@ export function HeaderMovilConfigurable({
           <SearchBarInline primaryColor={primaryColor} organizationId={organizationId} className="w-full" icon={SearchIconComp} />
         </div>
       )}
+      </CapaEncabezado>
 
       {panelBuscar && (
         <ProductSearch primaryColor={primaryColor} icon={SearchIconComp} abierto sinDisparador pantallaCompleta alCerrar={() => setPanelBuscar(false)} />
@@ -272,7 +279,7 @@ function ContenidoMenu({
     <>
       <div className="flex items-center justify-between p-4">
         {panel?.showLogo ? <HeaderLogo organization={organization} primaryColor={primaryColor} height={36} /> : <span className="font-bold">Menú</span>}
-        <button type="button" aria-label="Cerrar menú" onClick={onCerrar} className="p-2"><X className="h-5 w-5" /></button>
+        <button type="button" aria-label="Cerrar menú" onClick={onCerrar} className="p-2" data-foco-inicial=""><X className="h-5 w-5" /></button>
       </div>
       {/* Un solo scroll (con overscroll contenido) para todo lo de abajo: la lista de monedas
           desplegada no abre un segundo scroll. El bloqueo del body lo hace MobileMenuShell. */}

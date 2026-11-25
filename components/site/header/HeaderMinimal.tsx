@@ -29,6 +29,7 @@ import {
   headerTextColor,
 } from '../header/HeaderShared';
 import { SelectorSedeEncabezado } from './SelectorSedeEncabezado';
+import { CapaEncabezado } from './CapaEncabezado';
 import { barraSiCromo } from './BuscadorCromo';
 import { useBarraAbajo } from './barraEnFila';
 import {
@@ -69,6 +70,7 @@ export default function HeaderMinimal({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const botonMenuRef = useRef<HTMLButtonElement>(null);
   const organizationId = organization.id;
   const searchStyle = settings?.search_style;
   const ctaText = settings?.header_cta_text ?? '';
@@ -213,6 +215,7 @@ export default function HeaderMinimal({
               {/* Botón menú hamburguesa desktop */}
               <div className="relative" ref={menuRef}>
                 <button
+                  ref={botonMenuRef}
                   onClick={openMenu}
                   className={`p-2 rounded-lg hover:bg-[var(--header-hover)] transition-colors ${headerTextColor(settings) ? 'text-current' : 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'}`}
                   aria-label="Abrir menú de navegación"
@@ -282,7 +285,10 @@ export default function HeaderMinimal({
         </DrawerContent>
       </Drawer>
 
-      {/* Pantalla completa (minimal_menu_style='fullscreen') */}
+      {/* Pantalla completa (minimal_menu_style='fullscreen'). En CapaEncabezado (portal fuera del
+          <header>): con «Al bajar» el envoltorio del encabezado lleva transform y el `fixed`
+          quedaba recortado al alto del encabezado. */}
+      <CapaEncabezado abierta={fullscreenOpen} alCerrar={() => setFullscreenOpen(false)} variables={variablesEncabezado(settings)} retorno={botonMenuRef}>
       {fullscreenOpen && (
         <div
           role="dialog"
@@ -307,6 +313,7 @@ export default function HeaderMinimal({
           </div>
         </div>
       )}
+      </CapaEncabezado>
     </header>
   );
 }
