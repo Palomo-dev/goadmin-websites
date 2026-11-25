@@ -25,10 +25,15 @@
  * Abierta: Esc cierra, el Tab no sale de la capa, al cerrar el foco vuelve al botón que la abrió
  * y el botón flotante del chat se oculta (`html[data-menu-movil-abierto]`), como con el carrito.
  *
+ * Un buscador dentro del menú (barra del panel, pantalla de búsqueda) despliega sus sugerencias
+ * dentro de la capa, como antes: la capa de desplegables de la cabecera (z 40) quedaría detrás del
+ * menú (z 60). Por eso aquí se quita (ProveedorCapaDesplegables en null).
+ *
  * No lo pintes dentro del <header> otra vez: scripts/verify-menu-fuera-del-encabezado.mjs lo impide.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { ProveedorCapaDesplegables } from './PanelFlotanteEncabezado'
 
 /** Evento con el que el menú inferior pide abrir el menú del encabezado, sin buscar su botón. */
 export const EVENTO_ABRIR_MENU_MOVIL = 'gw:abrir-menu-movil'
@@ -217,7 +222,7 @@ export function CapaEncabezado({
       data-capa-menu=""
       data-hdr-bp={puntoDeCorte}
     >
-      {children}
+      <ProveedorCapaDesplegables value={null}>{children}</ProveedorCapaDesplegables>
     </div>,
     destino,
   )

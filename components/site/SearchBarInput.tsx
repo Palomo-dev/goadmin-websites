@@ -10,6 +10,7 @@ import { urlResultadosBusqueda } from '@/lib/products/urlBusqueda';
 import { useEncabezadoPie } from './EncabezadoPieContext';
 import { SOMBRA_DESPLEGABLE_CSS, rellenoCampo, type AparienciaResuelta } from '@/lib/website/v2/aparienciaBuscador';
 import { CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia';
+import { PanelFlotanteEncabezado } from './header/PanelFlotanteEncabezado';
 
 interface SearchBarInputProps {
   primaryColor: string;
@@ -103,6 +104,8 @@ export function SearchBarInput({
   const [focused, setFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // El desplegable se pinta fuera del <header> (PanelFlotanteEncabezado): el clic adentro no cierra.
+  const panelRef = useRef<HTMLDivElement>(null);
   const cfg = sizeConfig[size];
   // Al llegar a /search el campo muestra lo buscado (solo cuando cambia el valor de la URL).
   useEffect(() => {
@@ -112,7 +115,7 @@ export function SearchBarInput({
   // resultados desde 2 caracteres, recientes, cierre por clic afuera y Escape, y posición propia.
   const { resultados: results, cargando: loading, sugiere } = useResultadosBusqueda(query, categoriaSlug);
   const { recientes: recentSearches, guardar: saveRecentSearch } = useBusquedasRecientes(focused);
-  useCerrarBuscador(focused, () => setFocused(false), [containerRef]);
+  useCerrarBuscador(focused, () => setFocused(false), [containerRef, panelRef]);
   const abiertoPanel = focused && (!query || sugiere);
   // El desplegable tiene ancho propio (mín. 360px, dentro de la pantalla): nunca el del input.
   const posicion = usePosicionPanel(abiertoPanel, containerRef);
@@ -195,18 +198,25 @@ export function SearchBarInput({
         )}
       </div>
 
-      {/* Dropdown de resultados */}
-      {abiertoPanel && (
-        <div
-          className={`absolute top-full mt-2 z-[100]${posicion ? '' : ' left-0 right-0'}`}
-          style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
+      {/* Dropdown de resultados. En la cabecera va en su capa, fuera del <header> (recorte de la
+          fila del celular, transform de «Al bajar», z-index de la cabecera): ver
+          PanelFlotanteEncabezado. Fuera de una cabecera, donde siempre. */}
+      <PanelFlotanteEncabezado
+        abierto={abiertoPanel}
+        ancla={containerRef}
+        posicion={posicion}
+        refPanel={panelRef}
+        enLinea={{
+          className: `absolute top-full mt-2 z-[100]${posicion ? '' : ' left-0 right-0'}`,
+          style: posicion ? { left: posicion.left, width: posicion.width } : undefined,
+        }}
           data-panel-buscador=""
           id={panelId}
           role="dialog"
           aria-label="Sugerencias de búsqueda"
         >
           <div
-            className={`bg-white dark:bg-gray-900 ${ap ? '' : 'rounded-xl shadow-2xl '}border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col overflow-hidden`}
+            className={`bg-white dark:bg-gray-900 ${ap ? '' : 'rounded-xl shadow-2xl '}border border-gray-200 dark:border-gray-700 max-h-[min(70vh,var(--alto-panel,70vh))] flex flex-col overflow-hidden`}
             style={ap ? { borderRadius: ap.desplegableRadio, boxShadow: SOMBRA_DESPLEGABLE_CSS[ap.desplegableSombra] } : undefined}
           >
             {loading && (
@@ -276,7 +286,7 @@ export function SearchBarInput({
             )}
 
             {!query && (
-              <div className="p-4 space-y-5">
+              <div className="p-4 space-y-5 overflow-y-auto">
                 {recentSearches.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
@@ -316,8 +326,7 @@ export function SearchBarInput({
               </div>
             )}
           </div>
-        </div>
-      )}
+      </PanelFlotanteEncabezado>
     </div>
   );
 }

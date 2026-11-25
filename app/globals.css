@@ -1028,6 +1028,23 @@ header a[data-categoria-activa][data-categoria-activa] {
     -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
     mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
   }
+  /* Con un submenú abierto (NavDropdown, megamenú, «Todas las categorías»: paneles `absolute
+     top-full` anclados fuera de la caja que se desliza) la máscara se quita mientras dure: la
+     máscara recorta todo lo que pinta el <nav>, también lo que sale de su caja, y el panel quedaba
+     invisible (2026-11-25, auditoría de capas: lib/website/capasSitio.ts). */
+  header nav[data-nav-desliza][data-nav-oculto]:has(.absolute.top-full) {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* Sugerencias del buscador de la cabecera abiertas en el celular (PanelFlotanteEncabezado marca
+   <html>): la burbuja del chat (Shadow DOM, z-index máximo) no tapa los resultados, como con el
+   carrito y el menú. En computador la burbuja queda lejos del panel y se sigue viendo. */
+@media (max-width: 767px) {
+  html[data-buscador-abierto] [data-gochat-widget] {
+    display: none !important;
+  }
 }
 
 /* Menú inferior (Figma 2836:69391 «Menú inferior: propuestas de mejora», aprobado 2026-11-23).

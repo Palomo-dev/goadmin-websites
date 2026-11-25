@@ -87,7 +87,9 @@ for (const [n, src] of [['SearchBarInput', barra], ['ProductSearch', lupa]]) {
   check(!src.includes("document.addEventListener('mousedown'") && !src.includes('fetch('), `${n}: sin lógica propia de cierre ni de búsqueda`)
   check(src.includes('data-panel-buscador'), `${n}: el desplegable se marca para las pruebas`)
 }
-check(barra.includes('style={posicion ? { left: posicion.left, width: posicion.width } : undefined}') && !barra.includes('<div className="absolute left-0 right-0 top-full mt-2 z-[100]">'), 'la barra: el desplegable no hereda el ancho del input')
+// Con la capa de la cabecera (PanelFlotanteEncabezado) la posición va en `enLinea.style` (sin capa) y
+// el panel la suma a la del campo (con capa): la misma medida, nunca el ancho del input.
+check(/style(=\{|: )posicion \? \{ left: posicion\.left, width: posicion\.width \} : undefined/.test(barra) && !barra.includes('<div className="absolute left-0 right-0 top-full mt-2 z-[100]">'), 'la barra: el desplegable no hereda el ancho del input')
 check(lupa.includes("usePosicionPanel(!!isOpen && !pantallaCompleta, containerRef, { ancho: 384, minimo: 320, alinear: 'derecha' })"), 'la lupa: panel de 384 dentro de la pantalla')
 check(lupa.includes('window.location.href = ruta(urlResultadosBusqueda(term.trim()))'), 'Enter en la lupa lleva a /search, como la barra')
 const comp = leer('components/site/buscador/comportamiento.ts')

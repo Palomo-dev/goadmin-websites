@@ -10,6 +10,11 @@
  * en producto, categoría, carrito, checkout, etc. faltaban las columnas de los menús del pie.
  * Si la página no los pasa, se resuelven aquí (lib/website/pieSitio.ts) con las mismas lecturas
  * cacheadas que getOrgContext. La comodín siempre los pasa (también vacíos), así que no se leen dos veces.
+ *
+ * Cabecera igual en todas las páginas (2026-11-25): lo mismo con los datos de la cabecera
+ * (categorías, árbol del menú, menú mega). Solo la comodín los pasaba todos; en /consultar-pedido,
+ * /favoritos, /carrito, /pedido… faltaba el botón «Todas las categorías». Si la página no los pasa,
+ * salen del mismo getOrgContext() que ya leyó (react.cache). Ver lib/website/datosCabecera.ts.
  */
 
 import { getDatosSedeLayout } from '@/lib/outlet/sedeLayout'
@@ -26,6 +31,8 @@ import { getEscalonesTienda } from '@/lib/promociones/escalonesTienda.server'
 import { ProveedorEscalonesTienda } from './volumen/EscalonesTiendaContext'
 import { getEtiquetasPromoTienda } from '@/lib/promociones/etiquetasPromocion.server'
 import { ProveedorPromosEtiqueta } from './etiquetas/PromosEtiquetaContext'
+import { getOrgContext } from '@/lib/get-org-context'
+import { completarDatosCabecera, faltanDatosCabecera } from '@/lib/website/datosCabecera'
 
 export type { OrganizationLayoutProps }
 
@@ -33,7 +40,7 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
   const settings = (props.effectiveSettings ?? props.organization.website_settings ?? null) as OrganizationLayoutProps['effectiveSettings']
   const sedePromos = props.outlet?.branchId ?? props.branchId ?? null
   const zonaPromos = (props.organization as { timezone?: string | null }).timezone ?? null
-  const [datosSede, temaSitio, pixeles, ajustes, categoriasBusqueda, escalones, etiquetasPromo] = await Promise.all([
+  const [datosSede, temaSitio, pixeles, ajustes, categoriasBusqueda, escalones, etiquetasPromo, contextoCabecera] = await Promise.all([
     getDatosSedeLayout(props.organization, props.outlet ?? null, settings ?? null),
     getTemaSitio(props.organization.id, props.outlet?.branchId ?? undefined),
     getPixelesSitio(props.organization.id),
@@ -50,7 +57,22 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
     // Etiquetas de las promociones reales («2 X 1», «−20 %», Figma «16 Sitio web» 3036:78040):
     // igual que el volumen, una lectura por organización cacheada; tarjetas y ficha en memoria.
     getEtiquetasPromoTienda(props.organization.id, sedePromos, zonaPromos),
+    // Datos de la cabecera que la página no pasó: el getOrgContext() que la página ya leyó
+    // (react.cache, sin consultas nuevas). La comodín los pasa todos y no entra aquí.
+    faltanDatosCabecera(props) ? getOrgContext().catch(() => null) : Promise.resolve(null),
   ])
+  const cabecera = completarDatosCabecera(
+    { organizationId: props.organization.id, headerNav: props.headerNav, headerNavTree: props.headerNavTree, menuCategories: props.menuCategories, megaMenuItems: props.megaMenuItems },
+    contextoCabecera
+      ? {
+          organizationId: contextoCabecera.organization.id,
+          headerNav: contextoCabecera.headerNav,
+          headerNavTree: contextoCabecera.headerNavTree,
+          menuCategories: contextoCabecera.menuCategories,
+          megaMenuItems: contextoCabecera.megaMenuItems,
+        }
+      : null,
+  )
   // Al cliente solo viajan los nombres de las primeras raíces (no el árbol: hasta ~74 KB en
   // tiendas grandes, en cada página). 8 por si hay nombres vacíos o repetidos.
   const nombresBusqueda = categoriasBusqueda.slice(0, 8).map((c) => ({ name: c.name }))
@@ -78,6 +100,10 @@ export async function OrganizationLayout(props: OrganizationLayoutProps) {
   return (
     <OrganizationLayoutCliente
       {...props}
+      headerNav={cabecera.headerNav}
+      headerNavTree={cabecera.headerNavTree}
+      menuCategories={cabecera.menuCategories}
+      megaMenuItems={cabecera.megaMenuItems}
       menus={pie.menus}
       footerNav={pie.footerNav}
       footerNavTree={pie.footerNavTree}

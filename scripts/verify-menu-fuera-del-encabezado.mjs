@@ -69,9 +69,7 @@ const EXCEPCIONES = {
   // Sin uso: nadie los importa (el Constructor ya no cambia de encabezado). Se comprueba abajo.
   'components/site/header/HeaderPorZonas.tsx': 'sin uso',
   'components/site/header/MenusEncabezado.tsx': 'sin uso',
-  // Confirmación «¿Cambiar de sede?»: también se pinta en la franja fuera del encabezado y solo con
-  // 2+ sedes publicadas (hoy ninguna organización). Pendiente: llevarla a CapaEncabezado.
-  'components/site/header/SelectorSede.tsx': 'pendiente (2+ sedes)',
+  // (SelectorSede ya no es excepción: su confirmación va en CapaEncabezado desde 2026-11-25.)
 }
 const todos = archivos('components/site/header')
 const SIN_USO = ['HeaderPorZonas', 'MenusEncabezado']

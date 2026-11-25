@@ -28,6 +28,7 @@ import HeaderCommerce from './header/HeaderCommerce'
 import HeaderPill from './header/HeaderPill'
 import { useScrollEncabezado } from './header/useScrollEncabezado'
 import { ProveedorCapaFija } from './header/CapaFijaEncabezado'
+import { ProveedorCapaDesplegables } from './header/PanelFlotanteEncabezado'
 import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes'
 import { BarraReservaHotel } from './header/BarraReservaHotel'
 import { useEncabezadoPie } from './EncabezadoPieContext'
@@ -424,6 +425,9 @@ export default function SiteHeader({
   )
   // Capa hermana del envoltorio que se mueve (CapaFijaEncabezado): ahí va la barra inferior.
   const [capaFija, setCapaFija] = useState<HTMLDivElement | null>(null)
+  // Capa de los desplegables pegados a un campo (sugerencias del buscador, panel de la lupa): justo
+  // después del encabezado en el DOM, fuera de su transform y de su z-index (lib/website/capasSitio.ts).
+  const [capaDesplegables, setCapaDesplegables] = useState<HTMLDivElement | null>(null)
 
   const pildora = leerPildoraMovil(settings as Record<string, unknown> | null | undefined)
 
@@ -473,11 +477,23 @@ export default function SiteHeader({
   ) : (
     variante
   )
-  return envolverScroll(nodo)
+  return envolverScroll(<ProveedorCapaDesplegables value={capaDesplegables}>{nodo}</ProveedorCapaDesplegables>)
 
-  /** Sin «Al bajar» activo, el árbol de hoy. Con él, el envoltorio toma el fijo del <header>. */
+  /**
+   * Sin «Al bajar» activo, el árbol de hoy. Con él, el envoltorio toma el fijo del <header>. En los
+   * dos casos, la capa de los desplegables va justo después del encabezado (sin caja): a igual
+   * z-index que la cabecera, gana por ir después; las barras de abajo van más tarde y la tapan.
+   */
   function envolverScroll(contenido: ReactNode) {
-    if (!scroll.activo) return contenido
+    const capaDeDesplegables = <div ref={setCapaDesplegables} className="contents" data-capa-desplegables-encabezado="" />
+    if (!scroll.activo) {
+      return (
+        <>
+          {contenido}
+          {capaDeDesplegables}
+        </>
+      )
+    }
     // Lo fijo a la pantalla (barra inferior) sale del envoltorio por la capa hermana: el
     // transform del envoltorio lo arrastraba (ver CapaFijaEncabezado).
     return (
@@ -485,6 +501,7 @@ export default function SiteHeader({
         <div className={['sticky top-0 z-40', scroll.oculto ? '-translate-y-full transition-transform motion-reduce:transform-none' : scroll.encogido ? 'origin-top scale-[0.98] transition-transform motion-reduce:transform-none' : ''].filter(Boolean).join(' ')}>
           <ProveedorCapaFija value={capaFija}>{contenido}</ProveedorCapaFija>
         </div>
+        {capaDeDesplegables}
         <div ref={setCapaFija} className="contents" data-capa-fija-encabezado="" />
       </>
     )

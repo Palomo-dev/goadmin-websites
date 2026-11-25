@@ -25,6 +25,7 @@ import { Check, ChevronDown, MapPin } from 'lucide-react'
 import { cn, getCartKey } from '@/lib/utils'
 import type { HorarioSemana } from '@/lib/restaurant/horario'
 import { OpenStatusBadge, useEstadosEnVivo } from '@/components/sections/restaurant/EstadoApertura'
+import { CapaEncabezado } from './CapaEncabezado'
 
 export interface SedeSelector {
   id: number
@@ -237,6 +238,11 @@ export function SelectorSede({
         </div>
       )}
 
+      {/* Confirmación «¿Cambiar de sede?» en CapaEncabezado (portal a la raíz del sitio): dentro del
+          encabezado, el `backdrop-blur` de la fila de escritorio y el transform de «Al bajar» volvían
+          a la fila el bloque contenedor del `fixed` y el diálogo quedaba metido en la cabecera. Desde
+          la franja bajo el encabezado se ve igual que antes. */}
+      <CapaEncabezado abierta={!!destino} alCerrar={() => setDestino(null)}>
       {destino && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center" onClick={() => setDestino(null)}>
           <div
@@ -284,6 +290,7 @@ export function SelectorSede({
           </div>
         </div>
       )}
+      </CapaEncabezado>
     </div>
   )
 }

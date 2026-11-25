@@ -14,6 +14,7 @@ import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './header/Con
 import type { ContenedorIconos } from '@/lib/website/constructorEncabezado'
 import { useAparienciaBuscador } from './buscador/AparienciaBuscadorContext'
 import { CLASES_CAJA_APARIENCIA, CLASES_CAMPO_APARIENCIA } from './buscador/clasesApariencia'
+import { PanelFlotanteEncabezado } from './header/PanelFlotanteEncabezado'
 import {
   SOMBRA_DESPLEGABLE_CSS,
   estiloCajaApariencia,
@@ -90,11 +91,13 @@ export function ProductSearch({
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mobilePortalRef = useRef<HTMLDivElement>(null)
+  // Panel de escritorio fuera del <header> (PanelFlotanteEncabezado): el clic adentro no cierra.
+  const panelRef = useRef<HTMLDivElement>(null)
   // Comportamiento común con la barra (components/site/buscador/comportamiento.ts): resultados
   // desde 2 caracteres, recientes, cierre por clic afuera y Escape en todo el documento.
   const { resultados: results, cargando: loading, sugiere } = useResultadosBusqueda(query)
   const { recientes: recentSearches, guardar: saveRecentSearch } = useBusquedasRecientes(!!isOpen)
-  useCerrarBuscador(!!isOpen, cerrar, [containerRef, mobilePortalRef])
+  useCerrarBuscador(!!isOpen, cerrar, [containerRef, mobilePortalRef, panelRef])
   // Panel de escritorio: 384px (w-96) pegado al borde derecho de la lupa y siempre dentro de la pantalla.
   const posicion = usePosicionPanel(!!isOpen && !pantallaCompleta, containerRef, { ancho: 384, minimo: 320, alinear: 'derecha' })
 
@@ -248,15 +251,23 @@ export function ProductSearch({
         </button>
       )}
 
-      {/* Desktop: dropdown. En el menú móvil va pantalla completa: ese menú se usa también en tablet. */}
-      {isOpen && !pantallaCompleta && (
-        <div
-          className={`hidden md:block absolute top-full mt-2 z-[100]${posicion ? '' : ' right-0'}`}
-          style={posicion ? { left: posicion.left, width: posicion.width } : undefined}
+      {/* Desktop: dropdown. En el menú móvil va pantalla completa: ese menú se usa también en tablet.
+          En la cabecera va en su capa, fuera del <header> (PanelFlotanteEncabezado). */}
+      <PanelFlotanteEncabezado
+        abierto={!!isOpen && !pantallaCompleta}
+        ancla={containerRef}
+        posicion={posicion}
+        alinear="derecha"
+        refPanel={panelRef}
+        className="hidden md:block"
+        enLinea={{
+          className: `absolute top-full mt-2 z-[100]${posicion ? '' : ' right-0'}`,
+          style: posicion ? { left: posicion.left, width: posicion.width } : undefined,
+        }}
           data-panel-buscador=""
         >
           <div
-            className={`bg-white dark:bg-gray-900 w-full ${ap ? '' : 'rounded-xl shadow-xl '}border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col`}
+            className={`bg-white dark:bg-gray-900 w-full ${ap ? '' : 'rounded-xl shadow-xl '}border border-gray-200 dark:border-gray-700 max-h-[min(80vh,var(--alto-panel,80vh))] flex flex-col`}
             style={ap ? { borderRadius: ap.desplegableRadio, boxShadow: SOMBRA_DESPLEGABLE_CSS[ap.desplegableSombra] } : undefined}
             data-superficie-propia=""
           >
@@ -296,8 +307,7 @@ export function ProductSearch({
             </div>
             {renderContent()}
           </div>
-        </div>
-      )}
+      </PanelFlotanteEncabezado>
 
       {/* Pantalla completa vía portal (evita el stacking context del header). */}
       {isOpen && typeof document !== 'undefined' && createPortal(
