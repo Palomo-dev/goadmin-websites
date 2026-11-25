@@ -31,6 +31,7 @@ import type { IconosMovil, PresentacionMovil } from '@/lib/website/menuMovil'
 import { BarraPestanas } from './MobileTabs'
 import { leerMenuInferior } from '@/lib/website/menuInferior'
 import { itemCategoriasMenu } from '@/lib/website/botonCategorias'
+import { FilaCategoriaMovil } from './CategoriasMovil'
 import { ProductSearch } from '../../ProductSearch'
 import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado'
 
@@ -319,6 +320,9 @@ function ContenidoMenu({
 }
 
 function ItemNav({ item, onCerrar, anidado = false, verTodo = anidado }: { item: NavItem; onCerrar: () => void; anidado?: boolean; verTodo?: boolean }) {
+  // «Lista con imagen redonda» / «Tarjetas» (el panel es angosto: como lista redonda). Sin la
+  // clave (por defecto), la fila de texto de siempre.
+  if (item.avatar) return <FilaCategoriaMovil item={item} onNavigate={onCerrar} />
   if (item.children && item.children.length > 0) {
     // Una categoría con subcategorías dentro de «Categorías» se despliega igual, con «Ver todo».
     return (

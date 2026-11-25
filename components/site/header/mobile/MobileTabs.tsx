@@ -6,7 +6,7 @@ import { CapaEncabezado, useAbrirMenuMovil } from '../CapaEncabezado';
 import { buscadorMovilEfectivo, barraSuperiorMovil } from '@/lib/website/opcionUnica';
 import { BuscadorMovilComoEscritorio, ajustesCromoMovil } from '../BuscadorCromo';
 import Link from '@/components/site/Enlace'
-import { ChevronDown, Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Home, LayoutGrid, Search, ShoppingBag, User, X } from 'lucide-react';
 import { iconoCabecera } from '@/components/site/iconos/iconoCabecera';
 import { ProductSearch } from '../../ProductSearch';
 import { contarUnidadesCarrito } from '@/lib/cart';
@@ -46,7 +46,9 @@ import { FilaLogoMovil } from './FilaLogoMovil';
 import { leerMenuInferior } from '@/lib/website/menuInferior';
 import { FueraDelEncabezado } from '../CapaFijaEncabezado';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { entradasCategoriasCabecera } from '@/lib/website/botonCategorias';
+import { entradasCategoriasCabecera, itemsCategoriaMovil } from '@/lib/website/botonCategorias';
+import { estiloCategoriasMovil } from '@/lib/website/v2/categoriasCabecera';
+import { CuadriculaCategorias, ListaCategoriasMovil } from './CategoriasMovil';
 
 /**
  * MobileTabs
@@ -326,6 +328,12 @@ export function ModalCategorias({
   const navItems = buildNavItems(navTree);
   const { ruta } = useRutaSitio();
   const entradas = entradasCategoriasCabecera(settings as Record<string, unknown>, menuCategories, megaMenuItems, ruta, { sinAjuste: true });
+  // «Categorías en el menú» (Figma 3292:102173): con «Lista con ícono» (por defecto), la hoja de siempre.
+  const estilo = estiloCategoriasMovil(settings as Record<string, unknown>);
+  const conAvatar = estilo !== 'icono' && entradas.length > 0 ? itemsCategoriaMovil(entradas, true) : null;
+  // «Tarjetas»: la tarjeta con hijas abre el segundo nivel dentro de la hoja («‹ Nombre» arriba).
+  const [nivel, setNivel] = useState<number | null>(null);
+  const abierta = estilo === 'tarjetas' && conAvatar && nivel !== null ? conAvatar[nivel] : undefined;
   // Montada solo mientras está abierta: la página de atrás no se desplaza.
   useBloqueoScrollFondo(true);
   return (
@@ -337,7 +345,16 @@ export function ModalCategorias({
       />
       <div className={`relative w-full sm:max-w-md ${CLASE_FONDO_ENCABEZADO} rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto overscroll-contain`} data-scroll-menu="" style={estiloPanelMenu(settings, temaMenu)} {...marcaFondoEncabezado(settings)} {...atributosMenuMovil(settings, temaMenu)}>
         <div className="flex items-center justify-between px-4 h-14 border-b border-[color:var(--mm-divider)]">
-          <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
+          {abierta ? (
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            <button type="button" autoFocus onClick={() => setNivel(null)} className="-ml-2 flex min-h-11 min-w-0 items-center gap-1 rounded-lg pr-2 font-semibold text-[var(--mm-title)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current">
+              <ChevronLeft aria-hidden="true" className="h-5 w-5 flex-shrink-0" />
+              <span className="sr-only">Volver a las categorías: </span>
+              <span className="truncate">{abierta.name}</span>
+            </button>
+          ) : (
+            <h3 className="font-semibold text-[var(--mm-title)]">Categorías</h3>
+          )}
           <button
             onClick={onClose}
             aria-label="Cerrar"
@@ -346,6 +363,15 @@ export function ModalCategorias({
             <X className="h-5 w-5" />
           </button>
         </div>
+        {conAvatar ? (
+          <div className="p-4">
+            {estilo === 'tarjetas' ? (
+              <CuadriculaCategorias items={conAvatar} primaryColor={primaryColor} onNavigate={onClose} abierta={nivel} onAbrir={setNivel} conVolver={false} />
+            ) : (
+              <ListaCategoriasMovil items={conAvatar} onNavigate={onClose} />
+            )}
+          </div>
+        ) : (
         <div className="p-4 space-y-1">
           {entradas.length > 0
             ? entradas.map((cat) => cat.hijos.length > 0 ? (
@@ -389,6 +415,7 @@ export function ModalCategorias({
                 />
               ))}
         </div>
+        )}
 
         <BloqueMonedaMovil primaryColor={primaryColor} settings={settings} className="px-4 pb-4 pt-3 border-t border-[color:var(--mm-divider)]" />
       </div>

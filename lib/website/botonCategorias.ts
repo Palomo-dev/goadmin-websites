@@ -13,7 +13,10 @@
  *
  * Puro: servidor, navegador y scripts/verify-boton-categorias.mjs.
  */
-import { estiloDeHeaderLayout, normalizarOpcionShell } from './v2/mapeoAjustes'
+import { normalizarOpcionShell } from './v2/mapeoAjustes'
+import { avatarCategoria, estiloCategoriasMovil, usaMenuArmado, type AvatarCategoria, type EstiloCategoriasMovil } from './v2/categoriasCabecera'
+
+export { colorTextoSobre, colorCategoriaPropio } from './v2/categoriasCabecera'
 
 export const TEXTO_BOTON_CATEGORIAS = 'Todas las categorías'
 
@@ -158,20 +161,20 @@ export function completarMenuMega<T extends ItemMenu>(items: readonly T[], arbol
 }
 
 /**
- * ¿La cabecera usa el mega menú del editor? Solo con la composición «mega» (HeaderMega), igual que
- * siempre: el editor lo explica en esa composición y las demás nunca lo pintaron. Misma regla que
- * SiteHeader para elegir la variante.
+ * ¿La cabecera usa el menú armado en el editor (el mega menú)? «Contenido del botón»
+ * (`header_categories_source`, Figma 3298:97349): `auto` (por defecto) = la regla de siempre, solo
+ * con la composición «mega»; `menu` = en todas; `inventory` = nunca (lib/website/v2/categoriasCabecera.ts).
  */
 export function usaMenuMega(ajustes: Ajustes): boolean {
-  const estilo = estiloDeHeaderLayout(ajustes?.header_layout) || ajustes?.header_style || 'default'
-  return estilo === 'mega'
+  return usaMenuArmado(ajustes)
 }
 
 /**
  * Las categorías de la cabecera: UNA fuente para el botón de computador (todas las composiciones),
  * el menú del celular (cajón, pantalla completa, configurable), el encabezado mínimo y la hoja de
  * categorías (pestañas y menú inferior).
- * - Composición mega con mega menú: sus ítems (ya completados con `completarMenuMega`).
+ * - Con el menú armado (`usaMenuMega`: «Contenido del botón»; en Automático, la composición mega)
+ *   y con ítems: sus ítems (ya completados con `completarMenuMega`).
  * - Si no: el árbol de categorías de la tienda, con `show_categories_in_header` encendido (la hoja
  *   de categorías, que el comprador abre a propósito, pasa `sinAjuste`: lo de antes).
  */
@@ -212,6 +215,28 @@ export interface ItemNavCategorias {
   href: string
   icon?: string | null
   children?: ItemNavCategorias[]
+  /**
+   * Solo con «Categorías en el menú» distinto de «Lista con ícono» (Figma 3290:101848): el círculo
+   * de la categoría. Sin esta clave, cada menú pinta la fila de siempre.
+   */
+  avatar?: AvatarCategoria
+  /** En el ítem «Categorías»: el estilo elegido (sin la clave = «Lista con ícono», lo de hoy). */
+  estiloCategorias?: Exclude<EstiloCategoriasMovil, 'icono'>
+}
+
+/**
+ * Filas de categorías como ítems del menú del celular. `conAvatar` (estilo distinto de «Lista con
+ * ícono») suma el círculo de cada categoría; sin él, el ítem de siempre.
+ */
+export function itemsCategoriaMovil(entradas: readonly EntradaCategoria[], conAvatar = false): ItemNavCategorias[] {
+  return entradas.map((e) => ({
+    name: e.nombre,
+    href: e.href,
+    icon: e.icono,
+    // Subcategorías: la padre se despliega dentro del menú (SubmenuCategoria / FilaCategoriaMovil).
+    ...(e.hijos.length > 0 ? { children: e.hijos.map((h) => ({ name: h.nombre, href: h.href, icon: h.icono })) } : {}),
+    ...(conAvatar ? { avatar: avatarCategoria({ nombre: e.nombre, imagen: e.imagen, icono: e.icono, color: e.color }) } : {}),
+  }))
 }
 
 /**
@@ -226,16 +251,12 @@ export function itemCategoriasMenu(
 ): ItemNavCategorias | null {
   const entradas = entradasCategoriasCabecera(ajustes, categorias, itemsMega)
   if (entradas.length === 0) return null
+  const estilo = estiloCategoriasMovil(ajustes)
   return {
     name: 'Categorías',
     href: '/categorias',
-    children: entradas.map((e) => ({
-      name: e.nombre,
-      href: e.href,
-      icon: e.icono,
-      // Subcategorías: la padre se despliega dentro del menú (SubmenuCategoria).
-      ...(e.hijos.length > 0 ? { children: e.hijos.map((h) => ({ name: h.nombre, href: h.href, icon: h.icono })) } : {}),
-    })),
+    children: itemsCategoriaMovil(entradas, estilo !== 'icono'),
+    ...(estilo !== 'icono' ? { estiloCategorias: estilo } : {}),
   }
 }
 
@@ -247,18 +268,4 @@ export function menuConCategorias<T extends { name: string }>(items: readonly T[
   if (!categorias) return [...items]
   const { activo, texto } = opcionBotonCategorias(ajustes)
   return activo ? [{ ...categorias, name: texto }, ...items] : [...items, categorias]
-}
-
-/** Texto blanco o casi negro sobre `fondo` (#RGB o #RRGGBB), el de mejor contraste; otro formato: blanco. */
-export function colorTextoSobre(fondo: string | null | undefined): '#FFFFFF' | '#111827' {
-  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec((fondo || '').trim())
-  if (!m) return '#FFFFFF'
-  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1]
-  const canal = (i: number) => {
-    const v = parseInt(h.slice(i, i + 2), 16) / 255
-    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-  }
-  const L = 0.2126 * canal(0) + 0.7152 * canal(2) + 0.0722 * canal(4)
-  // Contraste con blanco (1.05/(L+0.05)) frente a #111827 (L≈0.0123).
-  return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0623 ? '#FFFFFF' : '#111827'
 }

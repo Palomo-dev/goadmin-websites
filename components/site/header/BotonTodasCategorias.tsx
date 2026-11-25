@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from '@/components/site/Enlace'
 import { ArrowRight, ChevronDown, ChevronRight, Menu } from 'lucide-react';
 import { IconoGuardado } from '@/components/site/IconoGuardado';
-import { colorTextoSobre, type EntradaCategoria } from '@/lib/website/botonCategorias';
+import { colorCategoriaPropio, colorTextoSobre, type EntradaCategoria } from '@/lib/website/botonCategorias';
 
 const MAX_HIJOS = 12;
 
@@ -108,7 +108,8 @@ export function BotonTodasCategorias({
               <ul className="max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain py-1.5 [scrollbar-width:thin] [scrollbar-color:#D1D5DB_transparent]">
                 {entradas.map((e) => {
                   const marcada = e.clave === activa;
-                  const color = e.color || primaryColor;
+                  // El morado por defecto de la base (#6366F1, nadie lo eligió) cuenta como «sin color».
+                  const color = colorCategoriaPropio(e.color) || primaryColor;
                   return (
                     <li key={e.clave}>
                       <Link
