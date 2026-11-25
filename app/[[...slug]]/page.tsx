@@ -51,6 +51,8 @@ import { ProductGrid } from '@/components/site/ProductGrid'
 import { MenuView } from '@/components/site/MenuView'
 import { pedidoEnLineaApagado } from '@/lib/orders/disponibilidadPedido'
 import { ContactSection } from '@/components/site/sections/ContactSection'
+import { contactoEscritoAMano, seccionesContactoRespaldo } from '@/lib/website/contactoRespaldo'
+import { VARIANTE_FORMULARIO_TARJETA } from '@/lib/website/v2/contrato/paginaContacto'
 import { getBusinessTypeConfig } from '@/types/organization'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
 import { OrganizationLayout } from '@/components/site/OrganizationLayout'
@@ -253,7 +255,10 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // La carta también la usa: horario de la sede («Cerrado ahora»), su nombre y si acepta reservas.
     // reservation_cta (límites de personas de la sede) y private_events (selector de sede del
     // lead) leen lo mismo: sin la precarga caían a los límites de la base y sin selector.
-    if (esVistaPrevia || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview' || t === 'table_service' || t === 'table_order' || t === 'table_bill')) {
+    // Contacto v2: el formulario «Tarjeta con horario al lado» usa el horario de la sede principal
+    // cuando el sitio no tiene horario propio (misma consulta cacheada).
+    const formularioConHorario = page.website_page_sections.some((s) => s.section_type === 'contact_form' && s.section_variant === VARIANTE_FORMULARIO_TARJETA)
+    if (esVistaPrevia || formularioConHorario || sectionTypes.some((t) => t === 'hours_location' || t === 'reservation' || t === 'reservation_cta' || t === 'private_events' || t === 'restaurant_hero' || t === 'menu_full' || t === 'menu_preview' || t === 'table_service' || t === 'table_order' || t === 'table_bill')) {
       data.sedesRestaurante = await getSedesRestaurante(organization.id)
     }
     // Reserva con plano de mesas (plantilla «Café de especialidad»): solo si la página tiene
@@ -308,6 +313,8 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
     // `menu_preview` solo es la carta en la página /menu; en la home es un avance y sigue con
     // `data.products` (no se carga el catálogo completo en la portada: incidente 2026-09-14).
     data.pageSlug = currentSlug
+    // «Encabezado de página» (hero · page_header): el nombre de la página para las migas.
+    data.pageTitle = page.title
     const seccionesCarta = page.website_page_sections.filter(
       (s) => s.section_type === 'menu_full' || (s.section_type === 'menu_preview' && currentSlug === 'menu')
     )
@@ -1038,6 +1045,22 @@ async function renderSlugFallback(
 
     case 'contacto': {
       const settings = organization.website_settings
+      // Contacto v2: sin página por secciones, la tienda la arma con las secciones por defecto del
+      // editor (lib/website/contactoRespaldo.ts). La versión escrita a mano queda de respaldo.
+      if (!contactoEscritoAMano()) {
+        const secciones = seccionesContactoRespaldo(Number(organization.id))
+        const sedesRestaurante = await getSedesRestaurante(organization.id)
+        return (
+          <Layout>
+            <PreviewableSections
+              sections={secciones}
+              organization={organization}
+              primaryColor={primaryColor}
+              data={{ branchId, pageSlug: 'contacto', pageTitle: 'Contacto', sedesRestaurante }}
+            />
+          </Layout>
+        )
+      }
       return (
         <Layout>
           <section className="relative py-16 md:py-24" style={{ background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)` }}>

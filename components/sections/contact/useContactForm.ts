@@ -68,7 +68,19 @@ interface UseContactFormOptions {
    */
   /** Id de la sección: el servidor lee ahí su «Email de destino» (email_to) para avisar por correo. */
   sectionId?: string | number | null
-  extraPayload?: (values: ContactFormValues) => { branchId?: number | null; details?: Record<string, unknown> } | undefined
+  /**
+   * Contacto v2: `consent` (casilla de datos) y `fields` (campos propios) viajan aparte para que el
+   * servidor valide los obligatorios con la regla de la sección (`camposFaltantes`).
+   */
+  extraPayload?: (values: ContactFormValues) => { branchId?: number | null; details?: Record<string, unknown>; consent?: boolean; fields?: Record<string, string> } | undefined
+}
+
+/** Lo que el visitante envió (para el mensaje de enviado: «Tu mensaje · Asunto: …»). */
+export interface EnvioContacto {
+  name: string
+  email: string
+  subject: string
+  message: string
 }
 
 export function useContactForm({
@@ -86,6 +98,9 @@ export function useContactForm({
   const [status, setStatus] = useState<ContactFormStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  /** Campos que el servidor marcó como faltantes (`fields` de la respuesta 400). */
+  const [fieldErrors, setFieldErrors] = useState<string[]>([])
+  const [lastSent, setLastSent] = useState<EnvioContacto | null>(null)
 
   const setField = useCallback(
     (field: keyof ContactFormValues, value: string) => {
@@ -100,6 +115,8 @@ export function useContactForm({
     setStatus('idle')
     setErrorMessage('')
     setSuccessMessage('')
+    setFieldErrors([])
+    setLastSent(null)
   }, [baseValues])
 
   const submit = useCallback(
@@ -131,6 +148,7 @@ export function useContactForm({
 
       setStatus('submitting')
       setErrorMessage('')
+      setFieldErrors([])
 
       const extra = extraPayload?.(values)
 
@@ -150,6 +168,8 @@ export function useContactForm({
             ...(sectionId !== undefined && sectionId !== null && sectionId !== '' ? { sectionId: String(sectionId) } : {}),
             ...(extra?.branchId ? { branchId: extra.branchId } : {}),
             ...(extra?.details ? { details: extra.details } : {}),
+            ...(extra?.consent !== undefined ? { consent: extra.consent } : {}),
+            ...(extra?.fields && Object.keys(extra.fields).length > 0 ? { fields: extra.fields } : {}),
             website: values.website, // honeypot
           }),
         })
@@ -161,10 +181,12 @@ export function useContactForm({
           setErrorMessage(
             data?.error || 'No pudimos enviar tu mensaje. Inténtalo de nuevo.'
           )
+          if (Array.isArray(data?.fields)) setFieldErrors(data.fields.filter((f: unknown): f is string => typeof f === 'string'))
           return
         }
 
         setStatus('success')
+        setLastSent({ name, email, subject, message: composed ? values.message.trim() : message })
         setSuccessMessage(data.message || 'Mensaje recibido. Te contactaremos pronto.')
         setValues(baseValues)
       } catch {
@@ -181,6 +203,8 @@ export function useContactForm({
     status,
     errorMessage,
     successMessage,
+    fieldErrors,
+    lastSent,
     submit,
     reset,
     isSubmitting: status === 'submitting',

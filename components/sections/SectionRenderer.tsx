@@ -35,6 +35,11 @@ import { GalleryFullscreen } from './gallery/GalleryFullscreen'
 import { ContactFormDefault } from './contact/ContactFormDefault'
 import { ContactFormSplit } from './contact/ContactFormSplit'
 import { ContactFormWithMap } from './contact/ContactFormWithMap'
+// Contacto v2 (Figma 3104:84056): formulario en tarjeta, canales, redes y encabezado de página.
+import { ContactFormTarjeta } from './contact/ContactFormTarjeta'
+import { CanalesContacto } from './contact/CanalesContacto'
+import { RedesSociales } from './contact/RedesSociales'
+import { EncabezadoPaginaSeccion } from './hero/EncabezadoPaginaSeccion'
 // Secciones universales — Image + Text
 import { ImageTextRight } from './image-text/ImageTextRight'
 import { ImageTextLeft } from './image-text/ImageTextLeft'
@@ -220,6 +225,8 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     split_products: HeroSplitProductos,
     // Café de especialidad: fotos que rotan con texto y botones fijos.
     carousel_editorial: SeccionPortadaEditorial,
+    // Contacto v2: migas, título, texto, chips e imagen opcional.
+    page_header: EncabezadoPaginaSeccion,
   },
   testimonials: {
     carousel: TestimonialsCarousel,
@@ -251,6 +258,13 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
     simple: ContactFormDefault,
     split: ContactFormSplit,
     with_map: ContactFormWithMap,
+    card_hours: ContactFormTarjeta,
+  },
+  contact_channels: {
+    cards: CanalesContacto,
+  },
+  social_networks: {
+    row: RedesSociales,
   },
   image_text: {
     image_right: ImageTextRight,

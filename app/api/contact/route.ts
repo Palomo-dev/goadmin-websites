@@ -3,7 +3,8 @@ import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getOrganizationByHost } from '@/lib/supabase/queries'
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit'
-import { correoDestinoContacto } from '@/lib/website/correoDestinoContacto'
+import { destinoDeSeccion, seccionContacto } from '@/lib/website/correoDestinoContacto'
+import { camposDeSeccion, camposFaltantes, origenCrm } from '@/lib/website/v2/contrato/paginaContacto'
 import { sendContactNotice } from '@/lib/email/send-contact-notice'
 
 export const dynamic = 'force-dynamic'
@@ -194,17 +195,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const argsLead = {
-      p_organization_id: organization.id,
-      p_name: name,
-      p_email: email,
-      p_message: message,
-      p_phone: phone || null,
-      p_company: company || null,
-      p_subject: subject || null,
-      p_source_form: sourceForm || null,
-    }
-
     // Sede y detalles estructurados (eventos privados, migración D6). La sede
     // se valida contra la organización del HOST: nunca se confía en el body.
     const branchPedida = (body as any).branchId
@@ -221,6 +211,44 @@ export async function POST(request: NextRequest) {
       branchId = n
     }
     const detalles = detallesSaneados((body as any).details)
+
+    // ── 4b. Contacto v2: la sección del formulario (leída aquí, nunca del body) decide qué campos
+    // son obligatorios, el origen en el CRM y a qué correo va la copia. Sin sección (formularios
+    // de otras páginas) o sin `form_fields`, la validación de siempre (arriba) basta.
+    const seccion = await seccionContacto(supabase, Number(organization.id), (body as any).sectionId, branchId)
+    const campos = seccion ? camposDeSeccion(seccion.contenido, seccion.variante) : null
+    if (campos) {
+      const extraCrudo = (body as any).fields
+      const extra: Record<string, string> = {}
+      if (extraCrudo && typeof extraCrudo === 'object' && !Array.isArray(extraCrudo)) {
+        for (const [k, v] of Object.entries(extraCrudo as Record<string, unknown>).slice(0, 20)) {
+          if (typeof v === 'string') extra[k.slice(0, 40)] = v.slice(0, 500)
+        }
+      }
+      const faltan = camposFaltantes(campos, {
+        name, email, phone, subject, company, message,
+        consent: (body as any).consent === true,
+        extra,
+      })
+      if (faltan.length > 0) {
+        return NextResponse.json(
+          { error: 'Completa los campos obligatorios.', fields: faltan },
+          { status: 400 }
+        )
+      }
+    }
+    const origen = seccion ? origenCrm(seccion.contenido.crm_source) : null
+
+    const argsLead = {
+      p_organization_id: organization.id,
+      p_name: name,
+      p_email: email,
+      p_message: message,
+      p_phone: phone || null,
+      p_company: company || null,
+      p_subject: subject || null,
+      p_source_form: origen ?? (sourceForm || null),
+    }
 
     let respuesta: { data: any; error: any }
     if (branchId !== null || detalles !== null) {
@@ -278,7 +306,12 @@ export async function POST(request: NextRequest) {
 
     // ── 6. CONTAC-03: copia al «Email de destino» de la sección (si lo tiene). Best-effort:
     // el mensaje ya quedó guardado; un fallo del correo no cambia la respuesta.
-    const destino = await correoDestinoContacto(supabase, Number(organization.id), (body as any).sectionId, branchId)
+    // La sección ya se leyó arriba (con la sede del body, como antes). El formulario de respaldo
+    // de la tienda va al correo de contacto del sitio.
+    const destino = destinoDeSeccion(seccion, {
+      contact_email: (organization as { website_settings?: { contact_email?: unknown } | null }).website_settings?.contact_email,
+      email: (organization as { email?: unknown }).email,
+    })
     if (destino.length > 0) {
       await sendContactNotice({
         destinatarios: destino,

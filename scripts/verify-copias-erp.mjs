@@ -31,6 +31,8 @@ export const COPIAS = [
   ['lib/website/v2/contrato/seccionesTienda.ts', 'src/lib/website/contrato/seccionesTienda.ts'],
   // Plantilla «Café de especialidad»: variantes carousel_editorial, chapters, dotted y floor_plan (láminas 11-15).
   ['lib/website/v2/contrato/seccionesCafe.ts', 'src/lib/website/contrato/seccionesCafe.ts'],
+  // Página «Contacto v2 editable» (Figma 3104:84056): canales, redes, campos del formulario y secciones por defecto.
+  ['lib/website/v2/contrato/paginaContacto.ts', 'src/lib/website/contrato/paginaContacto.ts'],
   ['lib/website/v2/mapeoAjustes.ts', 'src/lib/website/v2/mapeoAjustes.ts'],
   ['lib/website/menuMovil.ts', 'src/lib/website/menuMovil.ts'],
   ['lib/website/menuInferior.ts', 'src/lib/website/menuInferior.ts'],

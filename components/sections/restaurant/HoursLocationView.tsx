@@ -16,7 +16,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from '@/components/site/Enlace'
-import { ChevronRight, ImageIcon, MapPin, Phone } from 'lucide-react'
+import { ChevronRight, ImageIcon, MapPin, MessageCircle, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildCardStyle, resolveImageFitClass, resolveImageRatioClass } from '@/lib/sectionStyle'
 import { useIsPreviewMode } from '@/components/sections/PreviewBridge'
@@ -41,6 +41,8 @@ export interface SedeVista {
   /** Enlace a la reserva con la sede preseleccionada; null si no acepta reservas. */
   reservar: string | null
   pedir: string | null
+  /** wa.me con el número del sitio y el nombre de la sede; null si la sección no lo muestra. */
+  whatsapp?: string | null
 }
 
 interface HoursLocationViewProps {
@@ -114,6 +116,14 @@ function Acciones({ sede, abierta, compacto }: { sede: SedeVista; abierta: boole
     items.push(
       <a key="llamar" href={sede.telHref} className={cn(botonBase, tam, compacto ? 'hover:underline' : 'border hover:bg-muted')} style={{ borderColor: ACCENT, color: ACCENT }}>
         Llamar<span className="sr-only"> a {sede.nombre}</span>
+      </a>,
+    )
+  }
+  if (sede.whatsapp) {
+    items.push(
+      <a key="whatsapp" href={sede.whatsapp} target="_blank" rel="noopener noreferrer" className={cn(botonBase, tam, compacto ? 'hover:underline' : 'border hover:bg-muted')} style={{ borderColor: ACCENT, color: ACCENT }}>
+        <MessageCircle className="h-4 w-4" aria-hidden="true" />
+        WhatsApp<span className="sr-only"> de {sede.nombre} (se abre en una pestaña nueva)</span>
       </a>,
     )
   }

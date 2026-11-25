@@ -15,6 +15,7 @@ import { direccionCompleta, sedeAceptaReservas, type SedesRestaurante } from '@/
 import { HoursLocationView, type HoursLocationVariant, type SedeVista } from './HoursLocationView'
 import { urlComoLlegar, urlLlamar, urlMapaEmbebido } from '@/lib/maps/comoLlegar'
 import { conPrefijo } from '@/lib/outlet/rutaSitio'
+import { whatsappDe } from '@/lib/website/menuInferior'
 
 /** Claves de `content` que lee la sección (contrato editor ↔ sitio, F0.6). */
 export const CONTENT_KEYS = [
@@ -30,6 +31,9 @@ export const CONTENT_KEYS = [
   'reserve_url',
   'show_order',
   'order_url',
+  // Contacto v2 (Figma 3112:86965): sede que se abre primero y botón de WhatsApp por sede.
+  'featured_branch_id',
+  'show_whatsapp',
 ] as const
 
 const VARIANTS: readonly HoursLocationVariant[] = ['hours_map', 'cards', 'list']
@@ -93,6 +97,11 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
   const orderUrl = orderUrlConfigurada ?? '/menu'
   const showCall = bool(content.show_call, true)
   const showDirections = bool(content.show_directions, true)
+  // WhatsApp por sede: la sede no tiene número propio en `branches`, así que usa el del sitio
+  // (Configuración › WhatsApp) con un mensaje que nombra la sede. Apagado por defecto: las secciones
+  // guardadas antes no cambian.
+  const numeroWhatsapp = bool(content.show_whatsapp, false) ? str(organization.website_settings?.whatsapp_number) : null
+  const destacada = Number(content.featured_branch_id)
 
   const sedes: SedeVista[] = (datos?.sedes ?? [])
     .filter((s) => (sedePagina !== null && elegidas.length === 0 ? s.id === sedePagina : true))
@@ -121,8 +130,14 @@ export function HoursLocation({ content, organization, data, sectionVariant, sec
         lng: s.lng,
         reservar: showReserve && datos && sedeAceptaReservas(s, datos) ? conSede(reserveUrl, s.id) : null,
         pedir,
+        whatsapp: numeroWhatsapp ? whatsappDe(numeroWhatsapp, `Hola, les escribo por la sede ${s.nombre}`) : null,
       }
     })
+  // «Sede que se abre primero»: va de primera (y es la que se ve en «Horario y mapa»).
+  if (Number.isInteger(destacada) && destacada > 0) {
+    const i = sedes.findIndex((s) => s.id === destacada)
+    if (i > 0) sedes.unshift(...sedes.splice(i, 1))
+  }
 
   return (
     <HoursLocationView

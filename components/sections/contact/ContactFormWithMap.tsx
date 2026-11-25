@@ -1,6 +1,6 @@
 'use client'
 
-import { ContactFormFeedback } from './ContactFormFeedback'
+import { ContactFormFeedback, mensajeExito, textoBoton } from './ContactFormFeedback'
 import { CONTACT_MAX_LENGTHS, HONEYPOT_FIELD_PROPS, useContactForm, type ContactFormValues } from './useContactForm'
 import { CamposPropios, camposFormulario, useCamposPropios } from './CamposPropios'
 import { TelefonoPais } from '@/components/site/TelefonoPais'
@@ -21,12 +21,12 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
   // CONTAC-04: campos del formulario (form_fields). Sin la clave, los de siempre.
   const campos = camposFormulario((content as { form_fields?: unknown }).form_fields)
   const propios = useCamposPropios(campos)
-  const { values, setField, status, errorMessage, successMessage, submit, isSubmitting } =
+  const { values, setField, status, errorMessage, successMessage, submit, isSubmitting, lastSent } =
     useContactForm({
       organizationId: organization?.id,
       sourceForm: 'contact_form_with_map',
       sectionId,
-      ...(campos ? { requireMessage: false, composeMessage: (v: ContactFormValues) => propios.componer(v) } : {}),
+      ...(campos ? { requireMessage: false, composeMessage: (v: ContactFormValues) => propios.componer(v), extraPayload: () => propios.payload() } : {}),
     })
 
   const inputClass =
@@ -43,7 +43,7 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
             onSubmit={campos ? propios.alEnviar(submit, values) : submit}
             noValidate
           >
-            <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={successMessage} />
+            <ContactFormFeedback status={status} errorMessage={errorMessage} successMessage={mensajeExito(content, successMessage, lastSent)} />
 
             {/* Campo trampa anti-bots */}
             <input
@@ -105,7 +105,7 @@ export function ContactFormWithMap({ content, organization, primaryColor = '#3B8
               className="px-6 py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: primaryColor }}
             >
-              {isSubmitting ? 'Enviando...' : 'Enviar mensaje'}
+              {isSubmitting ? 'Enviando...' : textoBoton((content as { button_text?: unknown }).button_text, 'Enviar mensaje')}
             </button>
           </form>
           {showMap && (

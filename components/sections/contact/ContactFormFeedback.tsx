@@ -1,6 +1,24 @@
 'use client'
 
-import type { ContactFormStatus } from './useContactForm'
+import type { ContactFormStatus, EnvioContacto } from './useContactForm'
+import { textoConDatos } from '@/lib/website/v2/contrato/paginaContacto'
+
+/** «Texto del botón» de la sección; vacío = el de siempre de la variante. */
+export function textoBoton(valor: unknown, porDefecto: string): string {
+  return typeof valor === 'string' && valor.trim() !== '' ? valor.trim().slice(0, 40) : porDefecto
+}
+
+/**
+ * Contacto v2: título y texto de enviado propios (con {nombre} y {correo}). Sin ellos, el mensaje
+ * del servidor, como siempre.
+ */
+export function mensajeExito(content: unknown, delServidor: string, envio: EnvioContacto | null): string {
+  const c = (content ?? {}) as { success_title?: unknown; success_text?: unknown }
+  const titulo = typeof c.success_title === 'string' ? c.success_title.trim() : ''
+  const texto = typeof c.success_text === 'string' ? c.success_text.trim() : ''
+  if (!titulo && !texto) return delServidor
+  return textoConDatos([titulo, texto].filter(Boolean).join(' '), { nombre: envio?.name, correo: envio?.email })
+}
 
 interface ContactFormFeedbackProps {
   status: ContactFormStatus
