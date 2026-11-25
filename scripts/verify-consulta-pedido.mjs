@@ -90,6 +90,48 @@ caso('cada vista tiene 4 pasos', () => {
   }
 })
 
+caso('recoger en tienda «Listo»: Listo es el paso actual y Recogido queda pendiente (2026-11-24)', () => {
+  for (const [tipo, final, medio] of [['pickup', 'Recogido', 'Listo'], ['dine_in', 'Servido', 'Listo'], ['delivery_own', 'Entregado', 'En camino']]) {
+    const pasos = c.pasosPedido('listo', tipo, false, tipo === 'dine_in' ? 'Mesa 4' : null)
+    assert.deepEqual(pasos.map((p) => p.estado), ['hecho', 'hecho', 'actual', 'pendiente'], tipo)
+    assert.equal(pasos[2].etiqueta, medio, tipo)
+    assert.equal(pasos[3].etiqueta, final, tipo)
+  }
+  // Recoger en tienda en todos los estados: nunca un paso de color DESPUÉS de uno gris.
+  for (const v of ['pagar', 'pago_fallido', 'vencido', 'recibido', 'preparando', 'listo', 'en_camino', 'entregado', 'cancelado']) {
+    const estados = c.pasosPedido(v, 'pickup', false).map((p) => p.estado)
+    const primeroPendiente = estados.indexOf('pendiente')
+    if (primeroPendiente >= 0) assert.ok(estados.slice(primeroPendiente).every((e) => e === 'pendiente'), `${v}: ${estados.join(',')}`)
+  }
+  assert.ok(c.pasosPedido('entregado', 'pickup', false).every((p) => p.estado === 'hecho'))
+})
+
+caso('motivo de cancelación: nunca códigos de pasarela ni notas internas', () => {
+  const rechazo = 'El pago no fue aprobado. No se hizo ningún cobro.'
+  for (const m of [
+    'Pago rechazado por Bold: SALE_REJECTED',
+    'Pago rechazado por Bold: REJECTED',
+    'Pago rechazado por Wompi: DECLINED',
+    'Pago rechazado por Wompi: ERROR',
+    'Pago rechazado por Mercado Pago: rejected · cc_rejected_high_risk',
+    'Pago rechazado por PayU: DECLINED (5) Transacción rechazada',
+    'Pago rechazado por Stripe: payment_intent.payment_failed (card_declined)',
+  ]) {
+    const t = c.motivoCancelacionPublico(m, 'failed')
+    assert.equal(t, rechazo, m)
+    assert.doesNotMatch(t, /bold|wompi|mercado|payu|stripe|SALE_|DECLINED|ERROR|rejected/i)
+  }
+  assert.equal(c.motivoCancelacionPublico('Expirado por falta de pago', 'failed'), 'El pedido no se pagó a tiempo. No se hizo ningún cobro.')
+  assert.equal(c.motivoCancelacionPublico('Anticipo sin pagar', 'failed'), 'El anticipo no se pagó a tiempo. No se hizo ningún cobro.')
+  // Notas internas o desconocidas: nada (la pantalla pone su frase de siempre).
+  assert.equal(c.motivoCancelacionPublico('prueba', 'pending'), null)
+  assert.equal(c.motivoCancelacionPublico('Cliente pidió cancelar por WhatsApp, devolver a caja 2', 'pending'), null)
+  assert.equal(c.motivoCancelacionPublico('', 'failed'), null)
+  assert.equal(c.motivoCancelacionPublico(null, 'failed'), null)
+  // Pagado: la frase de la devolución, nunca «no se hizo ningún cobro».
+  assert.equal(c.motivoCancelacionPublico('Pago rechazado por Wompi: ERROR', 'paid'), null)
+})
+
 caso('nombre público de la sede', () => {
   assert.equal(c.nombrePublicoSede('Sucursal 562'), null)
   assert.equal(c.nombrePublicoSede('sede #3'), null)
@@ -123,6 +165,11 @@ caso('la consulta ligera no relee productos, medios de pago ni factura', () => {
   assert.match(tracking, /porPagar && !ligero \? getWebsitePaymentMethods\(orgId\)/)
   assert.match(tracking, /ligero\s*\?\s*Promise\.resolve\(\{ data: null, error: null \}\)\s*:\s*supabase\s*\.from\('web_order_items'\)/)
   assert.match(tracking, /verificado && !ligero && order\.sale_id/)
+})
+
+caso('el motivo de cancelación sale por el filtro público (sin «SALE_REJECTED» al comprador)', () => {
+  assert.match(tracking, /cancellationReason: ESTADOS_SIN_ENTREGA\.has\(order\.status\) \? motivoCancelacionPublico\(order\.cancellation_reason, order\.payment_status\) : null/)
+  assert.doesNotMatch(tracking, /cancellationReason: [^\n]*\? order\.cancellation_reason\b/)
 })
 
 caso('el apartado sale del plazo único de la base y la sede pasa por el filtro público', () => {

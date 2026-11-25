@@ -107,5 +107,44 @@ check(/action="\/consultar-pedido"/.test(pantalla), 'la búsqueda por guía se q
 const enlacesViejos = fuentes.filter((r) => !r.startsWith('app/rastrear/') && /href="\/rastrear"/.test(leer(r)))
 check(enlacesViejos.length === 0, `ningún enlace propio apunta a /rastrear${enlacesViejos.length ? ` (${enlacesViejos.join(', ')})` : ''}`)
 
+// ─── 6. Arreglos del 2026-11-24 (probado en vivo por el dueño) ───────────────────────────────
+// 6.1 Pestañas: la misma cuadrícula en las dos, para que no salten bajo el puntero.
+check(!/if \(modo === 'guia'\) \{\s*return/.test(pantalla), 'pestañas: la guía ya no cambia a otra maqueta (las pestañas no saltan)')
+check(/const panel = modo === 'guia'\s*\?\s*children \?\? <PanelPrimerIngreso modo="guia" \/>/.test(pantalla), 'pestañas: con la guía, el resultado o «Aquí verás tu envío» en el mismo lugar del panel')
+check(/aria-selected=\{modo === clave\}/.test(pantalla) && !/role="tab"[\s\S]{0,400}transition-colors/.test(pantalla), 'pestañas: aria-selected sigue al estado y el resaltado no se desvanece (sin transition-colors)')
+check(/Aquí verás tu envío/.test(pantalla), 'pestañas: panel de primer ingreso de la guía')
+
+// 6.2 Dirección completa en la consulta validada; incompleta con el enlace del correo; nada sin token.
+check(/<OrderTracker\s+incrustado\s+direccionCompleta/.test(pantalla), 'dirección: la consulta validada pide la dirección completa')
+check(/direccionCompleta: conDireccionCompleta = false/.test(tracker), 'dirección: /pedido/<n> sin la prop sigue con la incompleta')
+check(/const direccionVista = data\.verificado\s*\?/.test(tracker) && /:\s*null\s*\n/.test(tracker.slice(tracker.indexOf('const direccionVista'), tracker.indexOf('const direccionVista') + 300)), 'dirección: sin token válido, ninguna dirección')
+check(!/order\.deliveryAddress\s*\?\?|titulo=\{order\.deliveryAddress/.test(tracker), 'dirección: la completa nunca se pinta sin pasar por el token')
+const rastreoPublico = leer('lib/orders/rastreoPublico.ts')
+check(/export function direccionCompleta\(dir: unknown\)/.test(rastreoPublico), 'dirección: direccionCompleta en lib/orders/rastreoPublico.ts')
+const rutaTracking = leer('app/api/orders/[id]/tracking/route.ts')
+check(/deliveryAddress: verificado \? order\.delivery_address : null/.test(rutaTracking), 'dirección: la ruta solo entrega la dirección con el token válido')
+
+// 6.3 Fotos de los productos: sin carga diferida y sin recuadro gris si falla.
+check(/<FotoLinea url=\{i\.imageUrl\} \/>/.test(tracker), 'fotos: cada línea usa FotoLinea')
+const foto = tracker.slice(tracker.indexOf('function FotoLinea'), tracker.indexOf('function FilaInfo'))
+check(!/loading="lazy"/.test(foto) && /onError=\{\(\) => setFallo\(true\)\}/.test(foto) && /<Package /.test(foto), 'fotos: sin loading="lazy" y con el ícono si la foto no carga')
+
+// 6.4 Motivo de cancelación sin códigos de pasarela (la regla pura en verify-consulta-pedido).
+check(/motivoCancelacionPublico\(order\.cancellation_reason, order\.payment_status\)/.test(rutaTracking), 'motivo: la ruta filtra el motivo antes de enviarlo')
+check(!/SALE_REJECTED|DECLINED/.test(tracker + pantallaCruda), 'motivo: la pantalla no conoce códigos de pasarela')
+
+// 6.5 Ícono de cuenta: una sola fuente en todas las rutas y en los menús inferiores.
+const eventos = sinComentarios(leer('components/site/cuenta/eventos.ts'))
+check(/export function alTocarEnlaceCuenta\(/.test(eventos) && /if \(anfitriones === 0\) return/.test(eventos) && /e\.preventDefault\(\)/.test(eventos), 'cuenta: alTocarEnlaceCuenta abre el acceso del layout o deja el enlace (modo «Página»)')
+check(/e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey/.test(eventos), 'cuenta: Ctrl/⌘/Mayús siguen abriendo la página en otra pestaña')
+const tabs = sinComentarios(leer('components/site/header/mobile/MobileTabs.tsx'))
+check(/<TabButton href=\{ruta\('\/auth'\)\} onClickEnlace=\{\(e\) => alTocarEnlaceCuenta\(e, ruta\('\/auth'\)\)\}/.test(tabs) && /onClick=\{onClickEnlace\}/.test(tabs), 'cuenta: «Cuenta» de las pestañas del celular sigue la opción del editor')
+const menuInf = sinComentarios(leer('components/site/MenuInferior.tsx'))
+check(/b\.action === 'account' && d\.tipo === 'ruta' && \(d\.href === '\/auth' \|\| d\.href === '\/mi-cuenta'\)/.test(menuInf) && /alTocarEnlaceCuenta\(e, href\(d\)\)/.test(menuInf), 'cuenta: «Cuenta» del menú inferior V2 sigue la opción del editor')
+const zonas = sinComentarios(leer('components/site/header/HeaderPorZonas.tsx'))
+check((zonas.match(/onClick=\{\(e\) => alTocarEnlaceCuenta\(e, '\/mi-cuenta'\)\}/g) || []).length === 2, 'cuenta: la cabecera por zonas sigue la opción del editor')
+const layoutCliente = sinComentarios(leer('components/site/OrganizationLayoutCliente.tsx'))
+check(/opCuenta\.modo !== 'pagina' && \(\s*<AccesoCuenta/.test(layoutCliente), 'cuenta: el acceso lo monta el layout de TODAS las páginas con el modo de los ajustes')
+
 console.log(`\n${casos - fallos}/${casos} casos OK`)
 if (fallos) process.exit(1)

@@ -107,6 +107,22 @@ export function direccionIncompleta(dir: unknown): string | null {
   return partes.length ? partes.join(' · ') : null
 }
 
+/**
+ * «Cra 45 #12-34 apto 502 · Chapinero, Bogotá, Cundinamarca»: la dirección entera. Solo para quien
+ * ya probó que el pedido es suyo (número + correo o teléfono en /consultar-pedido) y con el token
+ * válido (la ruta solo entrega `deliveryAddress` con él). Texto suelto (pedidos viejos): tal cual.
+ * Vacío → null.
+ */
+export function direccionCompleta(dir: unknown): string | null {
+  if (typeof dir === 'string') return texto(dir)
+  const d = dir && typeof dir === 'object' ? (dir as Record<string, unknown>) : {}
+  const departamento = texto(d.department) ?? texto(d.state)
+  const ciudad = texto(d.city)
+  const lugar = [texto(d.neighborhood), ciudad, departamento && departamento !== ciudad ? departamento : null].filter(Boolean).join(', ')
+  const partes = [texto(d.address), lugar].filter(Boolean)
+  return partes.length ? partes.join(' · ') : null
+}
+
 export interface CanalesAyuda {
   whatsapp: string | null
   telefono: string | null

@@ -182,6 +182,15 @@ const PROHIBIDAS = [
  *   (/consultar-pedido usa /api/cuenta/buscar-pedido: número + correo o teléfono). No toca la
  *   creación de pedidos, el cobro ni el stock.
  * Vence el 2026-12-11. Comprobado por scripts/verify-consultar-pedido.mjs.
+ *
+ * 2026-11-24 — Consultar pedido: sin códigos de pasarela ante el comprador (probado en vivo: un
+ * pedido cancelado por pago rechazado decía «Pago rechazado por Bold: SALE_REJECTED»).
+ * - app/api/orders/[id]/tracking/route.ts: UNA línea. `cancellationReason` pasa por
+ *   `motivoCancelacionPublico` (lib/orders/consultaPedido.ts, puro, fuera de las rutas del
+ *   dinero): rechazo de cualquier pasarela → «El pago no fue aprobado. No se hizo ningún cobro.»;
+ *   vencido o anticipo sin pagar → su frase; nota interna o texto desconocido → null (la pantalla
+ *   pone su frase de siempre). No toca el pedido, el cobro, el token ni el resto de la respuesta.
+ * Vence el 2026-12-08. Comprobado por scripts/verify-consultar-pedido.mjs.
  */
 const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-07', motivo: 'Logística Fase 1: envío decidido en el servidor' },
@@ -209,6 +218,7 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'app/api/webhooks/mercadopago/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Mercado Pago al historial (pieza común)' },
   { ruta: 'app/api/webhooks/wompi_co/route.ts', hasta: '2026-12-11', motivo: 'Pagos del pedido: intento de Wompi al historial; el rechazo ya no cancela (decisión del dueño)' },
   { ruta: 'app/api/orders/lookup/route.ts', hasta: '2026-12-11', motivo: 'Consultar pedido v2: búsqueda por correo retirada (410)' },
+  { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-08', motivo: 'Consultar pedido: motivo de cancelación sin códigos de pasarela ni notas internas' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

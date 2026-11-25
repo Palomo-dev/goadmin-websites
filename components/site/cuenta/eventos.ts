@@ -40,6 +40,26 @@ export function abrirAccesoCuenta(detalle: DetalleAbrirAcceso & { respaldo?: str
   window.dispatchEvent(new CustomEvent<DetalleAbrirAcceso>(EVENTO_ABRIR_ACCESO, { detail: detalle }))
 }
 
+/**
+ * Clic en un enlace de cuenta (/auth o /mi-cuenta) de cualquier menú: el botón «Cuenta» del menú
+ * inferior del celular (pestañas y menú V2) y la cuenta de la cabecera por zonas. UNA sola fuente
+ * para «Al tocar el ícono de cuenta» del editor: el AccesoCuenta que monta el layout solo existe
+ * cuando `header_cuenta.modo` NO es «Página» (OrganizationLayoutCliente). Montado: se abre ahí
+ * (panel, ventana o diálogo; en el celular, la hoja inferior; con sesión, el menú de cuenta).
+ * Sin él (modo «Página», cuenta congelada, Carta QR): el enlace sigue a la página, como siempre.
+ * Ctrl/⌘/Mayús/clic central abren la página en otra pestaña, como cualquier enlace.
+ */
+export function alTocarEnlaceCuenta(
+  e: { defaultPrevented: boolean; button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; currentTarget: EventTarget | null; preventDefault: () => void },
+  respaldo: string,
+  vista?: VistaAcceso,
+) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  if (anfitriones === 0) return
+  e.preventDefault()
+  abrirAccesoCuenta({ origen: e.currentTarget instanceof HTMLElement ? e.currentTarget : null, respaldo, vista })
+}
+
 let abierto = false
 const oyentes = new Set<() => void>()
 

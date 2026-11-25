@@ -60,26 +60,43 @@ const QUE_VERAS: { icono: typeof Truck; titulo: string; detalle: string }[] = [
   { icono: ShoppingBag, titulo: 'Tus productos', detalle: 'Con foto, cantidades y el total.' },
 ]
 
-/** «Aquí verás tu pedido» (D1 3104:84146 / M1 3105:84304): solo informa, no tiene acciones. */
-function PanelPrimerIngreso() {
+/** Lo mismo para la guía de transportadora: lo que pinta `ResultadoGuia`. */
+const QUE_VERAS_GUIA: { icono: typeof Truck; titulo: string; detalle: string }[] = [
+  { icono: Truck, titulo: 'En qué va', detalle: 'Recibido, en camino o entregado.' },
+  { icono: MapPin, titulo: 'El destino', detalle: 'La ciudad de entrega y la fecha estimada.' },
+  { icono: Clock, titulo: 'El historial', detalle: 'Cada movimiento del envío, con su fecha.' },
+]
+
+/**
+ * «Aquí verás tu pedido» (D1 3104:84146 / M1 3105:84304): solo informa, no tiene acciones. Con la
+ * pestaña de la guía, «Aquí verás tu envío» en el mismo lugar: las dos pestañas usan la misma
+ * cuadrícula, así el formulario y las pestañas no saltan de sitio al cambiar (en el computador,
+ * después del salto quedaba bajo el puntero la otra pestaña y parecía que el resaltado no cambiaba).
+ */
+function PanelPrimerIngreso({ modo = 'pedido' }: { modo?: 'pedido' | 'guia' }) {
+  const guia = modo === 'guia'
   return (
     <section
       aria-labelledby="consultar-aqui-veras"
       className="flex flex-col gap-4 rounded-2xl border border-dashed border-slate-300 bg-white p-5 lg:items-center lg:px-10 lg:py-12"
-      data-panel-consulta="primer-ingreso"
+      data-panel-consulta={guia ? 'primer-ingreso-guia' : 'primer-ingreso'}
     >
       <div aria-hidden="true" className="relative hidden h-16 w-16 lg:block">
-        <Package className="h-14 w-14" style={{ color: 'var(--primary-color)' }} strokeWidth={1.5} />
+        {guia
+          ? <Truck className="h-14 w-14" style={{ color: 'var(--primary-color)' }} strokeWidth={1.5} />
+          : <Package className="h-14 w-14" style={{ color: 'var(--primary-color)' }} strokeWidth={1.5} />}
         <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white">
           <Search className="h-4 w-4" />
         </span>
       </div>
-      <h2 id="consultar-aqui-veras" className="text-lg font-semibold text-slate-900">Aquí verás tu pedido</h2>
+      <h2 id="consultar-aqui-veras" className="text-lg font-semibold text-slate-900">{guia ? 'Aquí verás tu envío' : 'Aquí verás tu pedido'}</h2>
       <p className="hidden text-center text-[15px] text-slate-600 lg:block">
-        Escribe el número y el correo o teléfono de tu compra. En segundos te mostramos:
+        {guia
+          ? 'Escribe el número de guía que te dio la transportadora. Te mostramos:'
+          : 'Escribe el número y el correo o teléfono de tu compra. En segundos te mostramos:'}
       </p>
       <ul className="flex w-full flex-col gap-3">
-        {QUE_VERAS.map(({ icono: Icono, titulo, detalle }) => (
+        {(guia ? QUE_VERAS_GUIA : QUE_VERAS).map(({ icono: Icono, titulo, detalle }) => (
           <li key={titulo} className="flex items-start gap-3">
             <span
               aria-hidden="true"
@@ -257,6 +274,7 @@ export function SeguirPedido({
         <div ref={refResultado} tabIndex={-1} aria-label={`Pedido ${resultado.numero}`} className="outline-none" data-resultado-consulta="">
           <OrderTracker
             incrustado
+            direccionCompleta
             orderIdentifier={resultado.numero}
             token={resultado.token}
             primaryColor={primaryColor}
@@ -289,7 +307,8 @@ export function SeguirPedido({
               setError(null)
               setErrores({})
             }}
-            className={`flex-1 rounded-lg py-2 text-[13px] transition-colors ${modo === clave ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-600 hover:text-slate-900'}`}
+            data-pestana-consulta={clave}
+            className={`flex-1 rounded-lg py-2 text-[13px] ${modo === clave ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-600 hover:text-slate-900'}`}
           >
             {texto}
           </button>
@@ -398,7 +417,6 @@ export function SeguirPedido({
               Rastrear envío
             </button>
           </form>
-          {children}
         </>
       )}
 
@@ -440,21 +458,19 @@ export function SeguirPedido({
     </div>
   )
 
-  // Con la guía, una sola columna como en /rastrear; con el número, el panel a la derecha (abajo
-  // en el celular): «Aquí verás tu pedido» o, mientras se busca, la silueta.
-  if (modo === 'guia') {
-    return (
-      <div className="mx-auto w-full max-w-xl text-slate-900" data-seguir-pedido="">
-        {region}
-        {formulario}
-      </div>
-    )
-  }
+  // La MISMA cuadrícula en las dos pestañas: el formulario y las pestañas se quedan quietos al
+  // cambiar (antes la guía pasaba a una columna centrada, las pestañas saltaban bajo el puntero y
+  // en el computador parecía que el resaltado no cambiaba). A la derecha (abajo en el celular):
+  // - Número: «Aquí verás tu pedido» o, mientras se busca, la silueta.
+  // - Guía: el resultado de la guía (`children`, pintado en el servidor) o «Aquí verás tu envío».
+  const panel = modo === 'guia'
+    ? children ?? <PanelPrimerIngreso modo="guia" />
+    : enviando ? <SiluetaPedido /> : <PanelPrimerIngreso />
   return (
-    <div className="mx-auto grid w-full max-w-xl gap-6 text-slate-900 lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-8" data-seguir-pedido="">
+    <div className="mx-auto grid w-full max-w-xl gap-6 text-slate-900 lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-8" data-seguir-pedido="" data-modo-consulta={modo}>
       {region}
       {formulario}
-      <div className="lg:pt-[5.25rem]">{enviando ? <SiluetaPedido /> : <PanelPrimerIngreso />}</div>
+      <div className="lg:pt-[5.25rem]">{panel}</div>
     </div>
   )
 }

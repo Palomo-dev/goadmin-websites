@@ -39,6 +39,7 @@ import {
 } from '../HeaderShared';
 import { useRutaSitio } from '@/lib/outlet/RutaSitioContext';
 import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar';
+import { alTocarEnlaceCuenta } from '@/components/site/cuenta/eventos';
 import { AvatarMenuInferior, useEtiquetaCuenta, useHojaCuentaMenu } from '@/components/site/cuenta/avatar/CuentaMenuInferior';
 import { FilaLogoMovil } from './FilaLogoMovil';
 import { leerMenuInferior } from '@/lib/website/menuInferior';
@@ -266,7 +267,9 @@ export function BarraPestanas({
               </span>
             </button>
           ) : (
-            <TabButton href={ruta('/auth')} icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
+            // Sin sesión: «Al tocar el ícono de cuenta» del editor, igual que el ícono de la cabecera
+            // (panel, ventana o diálogo se abren como hoja inferior); con «Página», /auth como siempre.
+            <TabButton href={ruta('/auth')} onClickEnlace={(e) => alTocarEnlaceCuenta(e, ruta('/auth'))} icon={iconoTab(AuthTabIcon, 'account')} label="Cuenta" />
           )}
         </div>
       </nav>
@@ -399,12 +402,15 @@ export function useUnidadesCarrito(subdomain: string, branchId?: number | null) 
 function TabButton({
   href,
   onClick,
+  onClickEnlace,
   icon,
   label,
   ariaLabel,
 }: {
   href?: string;
   onClick?: () => void;
+  /** Clic del enlace (con `href`): puede abrir otra cosa en su lugar con `preventDefault`. */
+  onClickEnlace?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
   icon: React.ReactNode;
   label: string;
   ariaLabel?: string;
@@ -418,7 +424,7 @@ function TabButton({
 
   if (href) {
     return (
-      <Link href={href} className="flex items-center justify-center">
+      <Link href={href} className="flex items-center justify-center" onClick={onClickEnlace}>
         {content}
       </Link>
     );

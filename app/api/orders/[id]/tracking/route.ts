@@ -19,7 +19,7 @@ import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
 import { fotosDeProductos } from '@/lib/orders/fotosLinea'
 import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 import { decisionRetoma } from '@/lib/orders/compraPendiente'
-import { apartadoHasta, nombrePublicoSede, vistaPedido } from '@/lib/orders/consultaPedido'
+import { apartadoHasta, motivoCancelacionPublico, nombrePublicoSede, vistaPedido } from '@/lib/orders/consultaPedido'
 import { cobroEnPuerta, CONDICIONES_POR_DEFECTO } from '@/lib/contraentrega/reglaContraentrega'
 import { fraseMedios, nombrePasarela } from '@/lib/contraentrega/textosContraentrega'
 import { leerCondicionesContraentrega } from '@/lib/contraentrega/contraentregaServidor'
@@ -280,7 +280,9 @@ export async function GET(
         // Sin token, solo el nombre de pila.
         customerName: verificado ? order.customer_name : String(order.customer_name || '').split(' ')[0],
         customerNotes: verificado ? order.customer_notes : null,
-        cancellationReason: ESTADOS_SIN_ENTREGA.has(order.status) ? order.cancellation_reason : null,
+        // Nunca el texto técnico de la pasarela («Pago rechazado por Bold: SALE_REJECTED») ni una
+        // nota interna: la frase clara para el comprador, o null (la pantalla pone la de siempre).
+        cancellationReason: ESTADOS_SIN_ENTREGA.has(order.status) ? motivoCancelacionPublico(order.cancellation_reason, order.payment_status) : null,
         createdAt: order.created_at,
         organizationId: order.organization_id,
         branchId: order.branch_id,

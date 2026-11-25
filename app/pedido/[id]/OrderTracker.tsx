@@ -32,7 +32,7 @@ import { DeliveryMap } from '@/components/site/DeliveryMap'
 import { esDomicilio, esEstadoFinal, etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
 import { diaPedido, fechaHoraPedido, horaPedido } from '@/lib/restaurant/ventanaPedido'
 import { etiquetaMesa } from '@/lib/orders/nombreMesa'
-import { enlaceWhatsApp, type CanalesAyuda, type RastreoLogistica } from '@/lib/orders/rastreoPublico'
+import { direccionCompleta, enlaceWhatsApp, type CanalesAyuda, type RastreoLogistica } from '@/lib/orders/rastreoPublico'
 import {
   encabezadoPedido,
   minutosRestantes,
@@ -144,6 +144,13 @@ interface OrderTrackerProps {
    * Sin esta prop, /pedido/<n> se ve exactamente como antes.
    */
   incrustado?: boolean
+  /**
+   * El cliente ya probó que el pedido es suyo con el número + el correo o teléfono de la compra
+   * (/consultar-pedido): con el token válido se muestra la dirección COMPLETA, como hacía el
+   * /rastrear anterior. Sin esta prop (el enlace del correo, /pedido/<n>) sigue la incompleta del
+   * Figma 2804:13320; sin token, ninguna.
+   */
+  direccionCompleta?: boolean
 }
 
 const POLL_INTERVAL = 15000 // 15 segundos
@@ -196,6 +203,31 @@ const pesos = (n: number | null | undefined) => `$ ${Math.round(Number(n) || 0).
 
 function Tarjeta({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return <section className={`rounded-2xl border bg-white p-4 ${className}`} style={style}>{children}</section>
+}
+
+/**
+ * Foto de una línea del pedido (48 px). El 2026-11-24 se vieron recuadros grises en el computador
+ * (en el celular cargaban). Por eso: sin `loading="lazy"` (son pocas y la lista se abre al tocar:
+ * no se espera a que el navegador decida pedirlas), y si una foto no carga (enlace roto o un sitio
+ * que no deja enlazarla), el ícono del paquete: nunca un recuadro gris vacío. `no-referrer`: las
+ * fotos recuperadas de otras tiendas no se bloquean por el origen de la página.
+ */
+function FotoLinea({ url }: { url: string | null }) {
+  const [fallo, setFallo] = useState(false)
+  if (!url || fallo) return <Package className="h-5 w-5 text-slate-400" aria-hidden="true" />
+  return (
+    <img
+      src={url}
+      alt=""
+      width={48}
+      height={48}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFallo(true)}
+      className="h-full w-full object-cover"
+      data-foto-linea=""
+    />
+  )
 }
 
 function FilaInfo({ icono: Icono, titulo, detalle, color }: { icono: typeof Clock; titulo: string; detalle?: string | null; color?: string }) {
@@ -284,7 +316,7 @@ function LineaActualiza({
   )
 }
 
-export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/', incrustado = false }: OrderTrackerProps) {
+export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnlace, rutaSeguirPidiendo = '/', incrustado = false, direccionCompleta: conDireccionCompleta = false }: OrderTrackerProps) {
   // En el servidor, el del enlace; en el navegador, además, el guardado de esta pestaña.
   const [token] = useState<string | null>(() =>
     tokenDelEnlace ?? (typeof window !== 'undefined' ? leerTokenGuardado(orderIdentifier) : null),
@@ -507,6 +539,12 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
   const otros = (data.pago?.metodos ?? []).filter((m) => anticipoPendiente
     ? codigoConector(m.code) !== null && codigoConector(m.code) !== codigoConector(anticipo?.pasarela)
     : m.code !== metodoPedido)
+  // Dirección: completa en la consulta validada (número + correo o teléfono), incompleta con el
+  // enlace del correo; sin token, ninguna (la ruta no la entrega).
+  const direccionVista = data.verificado
+    ? (conDireccionCompleta ? direccionCompleta(order.deliveryAddress) : null) ?? order.direccionIncompleta ?? null
+    : null
+  const direccionEsCompleta = data.verificado && conDireccionCompleta && !!direccionCompleta(order.deliveryAddress)
   const entregadoEn = order.status === 'delivered'
     ? data.timeline.find((e) => e.key === 'delivered')?.timestamp ?? shipment?.deliveredAt ?? null
     : null
@@ -792,7 +830,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             <FilaInfo
               icono={PackageCheck}
               titulo={entregadoEn ? `${encabezado.insignia} ${cuando(entregadoEn, zona)}` : encabezado.insignia}
-              detalle={data.verificado && order.direccionIncompleta ? `En ${order.direccionIncompleta}.` : null}
+              detalle={direccionVista ? `En ${direccionVista}.` : null}
               color="#16A34A"
             />
           </Tarjeta>
@@ -920,9 +958,7 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
                   {items.map((i, idx) => (
                     <li key={`${i.productId ?? 'x'}-${idx}`} className="flex items-center gap-3">
                       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-slate-100">
-                        {i.imageUrl
-                          ? <img src={i.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                          : <Package className="h-5 w-5 text-slate-400" aria-hidden="true" />}
+                        <FotoLinea url={i.imageUrl} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900">{i.name}</p>
@@ -964,8 +1000,8 @@ export function OrderTracker({ orderIdentifier, primaryColor, token: tokenDelEnl
             ].filter(Boolean).join(' · ') || null}
             color={primaryColor}
           />
-          {data.verificado && order.direccionIncompleta && (
-            <FilaInfo icono={MapPin} titulo={order.direccionIncompleta} detalle="Mostramos la dirección incompleta para cuidar tus datos." />
+          {direccionVista && (
+            <FilaInfo icono={MapPin} titulo={direccionVista} detalle={direccionEsCompleta ? null : 'Mostramos la dirección incompleta para cuidar tus datos.'} />
           )}
           {order.sede && <FilaInfo icono={Store} titulo={`${domicilio ? 'Despacha' : 'Recoges en'}: ${order.sede}`} />}
           {!data.verificado && (

@@ -123,6 +123,11 @@ igual(conToken.eventos.map((e) => e.etiqueta), ['Pedido confirmado', 'Recogido']
 igual(rp.leerRastreoLogistica({ ...RAW, estado: 'failed_attempt', motivo_novedad: 'not_home' }, true).novedad, 'No había nadie para recibirlo', 'novedad en palabras del cliente')
 igual(rp.direccionIncompleta({ address: 'Cra 45 #12-34 apto 502', neighborhood: 'Chapinero', city: 'Bogotá' }), 'Cra 45 #12-… · Chapinero, Bogotá', 'dirección incompleta')
 igual(rp.direccionIncompleta({ address: 'Km 5 vía La Calera', city: 'La Calera' }), 'Km 5… · La Calera', 'sin placa: dos palabras')
+// Consulta validada (número + correo o teléfono, 2026-11-24): la dirección entera.
+igual(rp.direccionCompleta({ address: 'Cra 45 #12-34 apto 502', neighborhood: 'Chapinero', city: 'Bogotá', department: 'Cundinamarca' }), 'Cra 45 #12-34 apto 502 · Chapinero, Bogotá, Cundinamarca', 'dirección completa')
+igual(rp.direccionCompleta({ address: 'Calle 10 # 5-20', city: 'Bogotá', department: 'Bogotá' }), 'Calle 10 # 5-20 · Bogotá', 'dirección completa: sin repetir la ciudad')
+igual(rp.direccionCompleta('Calle 1 # 2-3'), 'Calle 1 # 2-3', 'dirección completa: texto suelto tal cual')
+igual(rp.direccionCompleta(null), null, 'dirección completa: vacía → null')
 igual(rp.enlaceWhatsApp('+57 300 123 4567', 'WO-1'), 'https://wa.me/573001234567?text=' + encodeURIComponent('Hola, tengo una pregunta sobre mi pedido WO-1.'), 'WhatsApp con el pedido')
 igual(rp.enlaceWhatsApp('12', 'WO-1'), null, 'número inválido: sin enlace')
 

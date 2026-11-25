@@ -58,6 +58,7 @@ import { registrarEmpujeChat } from './barraFija/efectosBarraFija'
 import { useBarraFijaCelularVisible } from './menuInferior/estadoMenuInferior'
 import { alTocarMenu, useAltoMenu, useEsconderAlBajar, useMarcaDeslizante } from './menuInferior/efectosMenu'
 import { useAvatarCuenta } from '@/components/site/cuenta/avatar/datosAvatar'
+import { alTocarEnlaceCuenta } from '@/components/site/cuenta/eventos'
 import { AvatarMenuInferior, useEtiquetaCuenta, useHojaCuentaMenu } from '@/components/site/cuenta/avatar/CuentaMenuInferior'
 
 const ICONO: Record<IconoMenu, typeof Home> = {
@@ -323,6 +324,12 @@ export function MenuInferior({ menu, destinos, organization, primaryColor, navTr
     if (d.tipo === 'externo') {
       const nueva = /^https?:\/\//i.test(d.href)
       return <a href={d.href} {...(nueva ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={clase} style={estilo} aria-label={etiqueta} {...marcas}>{contenido}</a>
+    }
+    // «Cuenta» sin sesión, a la cuenta de siempre (/auth o /mi-cuenta): lo que diga «Al tocar el
+    // ícono de cuenta» del editor, igual que el ícono de la cabecera (en el celular panel, ventana y
+    // diálogo son la hoja inferior). Con «Página», el enlace de siempre. Un destino propio, tal cual.
+    if (b.action === 'account' && d.tipo === 'ruta' && (d.href === '/auth' || d.href === '/mi-cuenta')) {
+      return <Link href={href(d)} onClick={(e) => alTocarEnlaceCuenta(e, href(d))} className={clase} style={estilo} aria-label={etiqueta} {...marcas}>{contenido}</Link>
     }
     return <Link href={href(d)} className={clase} style={estilo} aria-label={etiqueta} {...marcas}>{contenido}</Link>
   }

@@ -23,7 +23,7 @@ import { CurrencySelector } from '../CurrencySelector'
 import { MENU_MOVIL, zonasConMenus, type BotonHeader, type ConstructorEncabezado, type ElementoZona, type IconoElemento, type MegaItem, type ZonaHeader } from '@/lib/website/constructorEncabezado'
 import { ContenedorIcono, trazoContenedor, type ColoresCaja } from './ContenedorIcono'
 import { MenuBarra, MenusMovil } from './MenusEncabezado'
-import { CuentaConAvatar } from '@/components/site/cuenta'
+import { CuentaConAvatar, alTocarEnlaceCuenta } from '@/components/site/cuenta'
 
 const FILA_TOP = ['topbar_left', 'topbar_center', 'topbar_right'] as const
 const FILA = ['header_left', 'header_center', 'header_right'] as const
@@ -163,12 +163,13 @@ function Elemento(props: {
       <CartIndicator primaryColor={icono?.color || primaryColor} onClick={onCartClick} organizationSubdomain={organization.subdomain || ''} branchId={branchId} icon={getLucideIcon(icono?.icon, Search)} relleno={icono?.weight === 'relleno'} />
     </CajaIcono>
   )
-  // Con sesión, el avatar con su menú (Figma «16 Sitio web» 3044:78726); sin sesión, el enlace de hoy.
+  // Con sesión, el avatar con su menú (Figma «16 Sitio web» 3044:78726); sin sesión, el enlace de hoy,
+  // que con «Al tocar el ícono de cuenta» distinto de «Página» abre el acceso (alTocarEnlaceCuenta).
   else if (el.type === 'account') nodo = (
     <CuentaConAvatar primaryColor={primaryColor} whatsapp={typeof settings?.whatsapp_number === 'string' ? settings.whatsapp_number : null}>
       {constructor.contenedor ? (
-        <Link href="/mi-cuenta" aria-label="Cuenta"><ContenedorIcono base={constructor.contenedor} clave="account" colores={colores}><User style={trazoContenedor(constructor.contenedor, 'account')} /></ContenedorIcono></Link>
-      ) : <Link href="/mi-cuenta" aria-label="Cuenta"><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>}
+        <Link href="/mi-cuenta" aria-label="Cuenta" onClick={(e) => alTocarEnlaceCuenta(e, '/mi-cuenta')}><ContenedorIcono base={constructor.contenedor} clave="account" colores={colores}><User style={trazoContenedor(constructor.contenedor, 'account')} /></ContenedorIcono></Link>
+      ) : <Link href="/mi-cuenta" aria-label="Cuenta" onClick={(e) => alTocarEnlaceCuenta(e, '/mi-cuenta')}><CajaIcono icono={icono} primary={primaryColor}><User style={estiloTrazo(icono)} /></CajaIcono></Link>}
     </CuentaConAvatar>
   )
   // Favoritos: panel lateral o /favoritos según Encabezado › Favoritos (Figma 2772:62317), con contador.

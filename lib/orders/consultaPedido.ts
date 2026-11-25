@@ -124,7 +124,10 @@ export function pasosPedido(vista: VistaPedido, deliveryType: string | null, esR
     case 'preparando':
       return marcar(['Confirmado', preparar, medio, final], 1, 1)
     case 'listo':
-      return marcar(['Confirmado', preparar, medio, final], 2, domicilio ? 2 : 3)
+      // «Listo» (o «En camino» a domicilio) es el paso ACTUAL y «Recogido»/«Entregado» queda
+      // pendiente. Antes, en recoger en tienda, el actual era el 4.º: «Listo» salía gris y
+      // «Recogido» de color, como si ya lo hubiera recogido (probado en vivo el 2026-11-24).
+      return marcar(['Confirmado', preparar, medio, final], 2, 2)
     case 'en_camino':
       return marcar(['Confirmado', preparar, medio, final], 2, 2)
     case 'entregado':
@@ -132,6 +135,26 @@ export function pasosPedido(vista: VistaPedido, deliveryType: string | null, esR
     case 'cancelado':
       return marcar(['Recibido', 'Confirmado', medio, final], 0, 0, true)
   }
+}
+
+/**
+ * Motivo de cancelación que puede leer el comprador. `web_orders.cancellation_reason` lo escriben
+ * los webhooks y el vencimiento con texto técnico («Pago rechazado por Bold: SALE_REJECTED»,
+ * «… Mercado Pago: rejected · cc_rejected_high_risk») o el equipo de la tienda con notas internas
+ * («prueba»). Al comprador nunca le llegan códigos de pasarela ni notas internas:
+ * - pago rechazado (cualquier pasarela) → «El pago no fue aprobado. No se hizo ningún cobro.»
+ * - vencido por falta de pago / anticipo sin pagar → la frase clara de cada uno.
+ * - cualquier otro texto (escrito a mano, desconocido) → `null`: la pantalla pone su frase de
+ *   siempre («No se hizo ningún cobro.» o «Si pagaste, la tienda te devuelve el dinero.»).
+ * Con el pago registrado como pagado, `null` también: la frase de la devolución es la correcta.
+ */
+export function motivoCancelacionPublico(motivo: string | null | undefined, paymentStatus: string | null | undefined): string | null {
+  const texto = (motivo ?? '').trim()
+  if (!texto || paymentStatus === 'paid') return null
+  if (/^pago rechazado\b/i.test(texto)) return 'El pago no fue aprobado. No se hizo ningún cobro.'
+  if (/^expirado por falta de pago\b/i.test(texto)) return 'El pedido no se pagó a tiempo. No se hizo ningún cobro.'
+  if (/^anticipo sin pagar\b/i.test(texto)) return 'El anticipo no se pagó a tiempo. No se hizo ningún cobro.'
+  return null
 }
 
 /**
