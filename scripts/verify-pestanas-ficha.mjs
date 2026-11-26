@@ -239,6 +239,7 @@ igual(anclas.destinoSaltoAncla({ topDestino: 900, scrollY: 0, alturaEncabezado: 
   check(nav.includes('<PestanasFicha') && nav.includes('escuchar') && nav.includes('medir'), 'el bloque «Pestañas de la ficha» pinta la pieza única')
   const desc = await fuente('components/sections/product-detail/ProductDescription.tsx')
   check(desc.includes('<PestanasFicha') && !desc.includes('function PestanasOAcordeon'), 'el estilo «Pestañas» de la descripción pinta la pieza única')
+  check(desc.includes("partes: enTabla ? ['descripcion', 'especificaciones'] : ['descripcion']") && desc.includes('data-descripcion="pestana-tabla"'), 'descripción en su pestaña: solo el texto (las partes las da el bloque de pestañas); «Ficha en tabla» aplica, «Pestañas» y «Acordeón» no')
 
   const renderer = await fuente('components/sections/product-detail/ProductDetailRenderer.tsx')
   check(renderer.includes("renderSection(section, { envioFicha: 'resumen' })"), 'envío con pestaña: arriba la línea corta')

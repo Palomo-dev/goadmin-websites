@@ -45,9 +45,9 @@ interface ProductDescriptionProps {
  * partes Descripción, Especificaciones, Envío y devoluciones y Preguntas frecuentes.
  *
  * Los estilos Pestañas y Acordeón pintan la pieza única de pestañas de la tienda (PestanasFicha).
- * Dentro de la pestaña «Descripción» de la ficha (`data.enPestanaFicha`, Figma 3255-99475): el
- * texto con «Ver más» a las 5 líneas (o las elegidas), la fila Marca · Referencia · Categoría y
- * las demás partes elegidas, apiladas con su título (sin pestañas dentro de pestañas).
+ * Dentro de la pestaña «Descripción» de la ficha (`data.enPestanaFicha`, Figma 3255-99475): solo
+ * el texto, con «Ver más» a las 5 líneas (o las elegidas) y la fila Marca · Referencia · Categoría,
+ * o en «Ficha en tabla» texto y tabla (sin pestañas dentro de pestañas).
  */
 export function ProductDescription({ content, primaryColor = '#3B82F6', data }: ProductDescriptionProps) {
   const product = data?.product
@@ -123,44 +123,58 @@ interface PropsConOpciones {
 }
 
 /**
- * Descripción dentro de la pestaña «Descripción» de la ficha: texto con «Ver más» (5 líneas si no
- * se eligió otro corte), la fila Marca · Referencia · Categoría y, si se eligieron, las demás
- * partes apiladas con su título. Sin nada que mostrar, nada (y la pestaña no aparece).
+ * Descripción dentro de la pestaña «Descripción» de la ficha. Solo la parte «Descripción»: las
+ * demás (Características, Envío y devoluciones, Reseñas…) son pestañas del bloque «Pestañas de la
+ * ficha». Del «Estilo» valen «Texto con Ver más» (con «Líneas antes de Ver más», 5 si no se eligió)
+ * y «Ficha en tabla» (texto a la izquierda, tabla a la derecha); «Pestañas» y «Acordeón» serían
+ * pestañas dentro de pestañas y se ven como «Texto con Ver más». Sin nada que mostrar, nada (y la
+ * pestaña no aparece).
  */
 function DescripcionEnPestana({ o, product, categoria, faq, envio }: PropsConOpciones) {
-  const opciones = useMemo<OpcionesDescripcion>(() => ({ ...o, estilo: 'ver_mas', lineas: o.lineas ?? 5 }), [o])
+  const enTabla = o.estilo === 'tabla'
+  const opciones = useMemo<OpcionesDescripcion>(
+    () => ({
+      ...o,
+      estilo: enTabla ? 'tabla' : 'ver_mas',
+      lineas: o.lineas ?? 5,
+      partes: enTabla ? ['descripcion', 'especificaciones'] : ['descripcion'],
+    }),
+    [o, enTabla],
+  )
   const partes = usePartes(opciones, product, categoria, faq, envio)
   const fila = useMemo(() => filasFicha(product, categoria, FILAS_EN_PESTANA), [product, categoria])
-  const conFila = fila.length > 0 && !partes.lista.includes('especificaciones')
-  if (partes.lista.length === 0 && !conFila) return null
-  const resto = partes.lista.filter((p) => p !== 'descripcion')
+  const conTexto = partes.lista.includes('descripcion')
+  if (enTabla) {
+    const conTabla = partes.lista.includes('especificaciones')
+    if (!conTexto && !conTabla) return null
+    return (
+      <div className="grid gap-8 lg:grid-cols-2" data-descripcion="pestana-tabla">
+        {conTexto && <div>{partes.cuerpo('descripcion', false)}</div>}
+        {conTabla && partes.tabla}
+      </div>
+    )
+  } else {
+    // Texto con «Ver más» (también con Pestañas y Acordeón: dentro de una pestaña no aplican).
+  }
+  const conFila = fila.length > 0
+  if (!conTexto && !conFila) return null
   return (
-    <div className={`space-y-8 ${partes.ancho}`} data-descripcion="pestana">
-      {(partes.lista.includes('descripcion') || conFila) && (
-        <div>
-          {partes.lista.includes('descripcion') && partes.cuerpo('descripcion', true)}
-          {conFila && (
-            <dl
-              className={`inline-flex flex-wrap gap-x-8 gap-y-3 border-t pt-4 text-sm ${partes.lista.includes('descripcion') ? 'mt-6' : ''}`}
-              style={{ borderColor: 'color-mix(in srgb, var(--text-color, #111827) 12%, transparent)' }}
-              data-fila-descripcion=""
-            >
-              {fila.map((f) => (
-                <div key={f.nombre} className="flex min-w-0 flex-col-reverse">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">{f.nombre}</dt>
-                  <dd className="font-medium text-gray-900 [overflow-wrap:anywhere] dark:text-white">{f.valor}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
+    <div className={partes.ancho} data-descripcion="pestana">
+      {conTexto && partes.cuerpo('descripcion', true)}
+      {conFila && (
+        <dl
+          className={`inline-flex flex-wrap gap-x-8 gap-y-3 border-t pt-4 text-sm ${conTexto ? 'mt-6' : ''}`}
+          style={{ borderColor: 'color-mix(in srgb, var(--text-color, #111827) 12%, transparent)' }}
+          data-fila-descripcion=""
+        >
+          {fila.map((f) => (
+            <div key={f.nombre} className="flex min-w-0 flex-col-reverse">
+              <dt className="text-xs text-gray-500 dark:text-gray-400">{f.nombre}</dt>
+              <dd className="font-medium text-gray-900 [overflow-wrap:anywhere] dark:text-white">{f.valor}</dd>
+            </div>
+          ))}
+        </dl>
       )}
-      {resto.map((p) => (
-        <section key={p}>
-          <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{o.titulos[p]}</h3>
-          {partes.cuerpo(p, true)}
-        </section>
-      ))}
     </div>
   )
 }
