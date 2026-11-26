@@ -14,6 +14,7 @@
 
 import { getWebsitePaymentMethods } from '@/lib/checkout/metodosPagoSitio'
 import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
+import { sirveAnticipo } from '@/lib/payments/usoPasarela'
 import {
   condicionesDeSede,
   evaluarContraentrega,
@@ -54,12 +55,29 @@ export async function leerCondicionesContraentrega(
   }
 }
 
-/** Pasarelas activas del sitio en la sede, como códigos de conector y sin repetir. */
-export async function pasarelasActivasSede(organizationId: number, branchId: number | null): Promise<string[]> {
-  const metodos = (await getWebsitePaymentMethods(organizationId)) as { code: string; type: string; branchIds?: number[] | null }[]
-  const enSede = filtrarMetodosPorSede(metodos, branchId)
-  const codigos = enSede.filter((m) => m.type === 'gateway').map((m) => codigoConector(m.code)).filter((c): c is string => !!c)
+type MetodoSitio = { code: string; type: string; branchIds?: number[] | null; uso?: unknown }
+
+/** Códigos de conector de las pasarelas, sin repetir y en el orden de Finanzas. */
+function codigosPasarela(metodos: MetodoSitio[]): string[] {
+  const codigos = metodos.filter((m) => m.type === 'gateway').map((m) => codigoConector(m.code)).filter((c): c is string => !!c)
   return Array.from(new Set(codigos))
+}
+
+/**
+ * Pasarelas activas del sitio en la sede que cobran el anticipo, como códigos de conector y sin
+ * repetir. Una pasarela «Solo pago completo» (ERP `website_usage`) no cuenta; sin ajuste, todas
+ * (lo de siempre), en el mismo orden: «la primera» sigue siendo la primera que permite anticipo.
+ */
+export async function pasarelasActivasSede(organizationId: number, branchId: number | null): Promise<string[]> {
+  const metodos = (await getWebsitePaymentMethods(organizationId)) as MetodoSitio[]
+  const enSede = filtrarMetodosPorSede(metodos, branchId)
+  return codigosPasarela(enSede.filter(sirveAnticipo))
+}
+
+/** Todas las pasarelas activas del sitio en la sede, sin mirar su uso (anticipos ya en curso). */
+async function pasarelasSedeSinUso(organizationId: number, branchId: number | null): Promise<string[]> {
+  const metodos = (await getWebsitePaymentMethods(organizationId)) as MetodoSitio[]
+  return codigosPasarela(filtrarMetodosPorSede(metodos, branchId))
 }
 
 /** Pedidos entregados y rechazos en la puerta del cliente de la SESIÓN. */
@@ -261,10 +279,14 @@ export async function anticipoPorCobrar(
   }
 }
 
-/** Una pasarela pedida para el anticipo: activa en la sede y permitida por las condiciones. */
+/**
+ * Una pasarela pedida para el anticipo: activa en la sede y permitida por las condiciones. Un
+ * anticipo ya en curso con la pasarela que ya tenía asignada se sigue cobrando aunque luego la
+ * marcaran «Solo pago completo» (los pedidos anteriores no cambian).
+ */
 export async function pasarelaPermitidaParaAnticipo(
   supabase: Cliente,
-  anticipo: Pick<AnticipoPorCobrar, 'organization_id' | 'branch_id'>,
+  anticipo: Pick<AnticipoPorCobrar, 'organization_id' | 'branch_id'> & { advance_gateway?: string | null },
   gateway: unknown,
 ): Promise<string | null> {
   const codigo = codigoConector(typeof gateway === 'string' ? gateway : null)
@@ -274,5 +296,14 @@ export async function pasarelaPermitidaParaAnticipo(
     pasarelasActivasSede(anticipo.organization_id, anticipo.branch_id),
   ])
   const permitidas = condiciones ? pasarelasAnticipo(condiciones, activas) : activas
-  return permitidas.includes(codigo) ? codigo : null
+  if (permitidas.includes(codigo)) {
+    return codigo
+  } else if (codigo === codigoConector(anticipo.advance_gateway ?? null)) {
+    // La que ya tenía el anticipo: sirve si sigue activa en la sede (y la fija de las condiciones lo permite).
+    const todas = await pasarelasSedeSinUso(anticipo.organization_id, anticipo.branch_id)
+    const enCurso = condiciones ? pasarelasAnticipo(condiciones, todas) : todas
+    return enCurso.includes(codigo) ? codigo : null
+  } else {
+    return null
+  }
 }

@@ -16,6 +16,7 @@ import { direccionIncompleta, leerRastreoLogistica, type CanalesAyuda } from '@/
 import { grupoDeTransportadora } from '@/lib/shipping/opcionesDomicilio'
 import { getWebsitePaymentMethods } from '@/lib/checkout/metodosPagoSitio'
 import { filtrarMetodosPorSede } from '@/lib/payments/metodosPorSucursal'
+import { sirveAnticipo, sirvePagoCompleto } from '@/lib/payments/usoPasarela'
 import { fotosDeProductos } from '@/lib/orders/fotosLinea'
 import { rutaRetomar } from '@/lib/orders/tokenSeguimiento'
 import { decisionRetoma } from '@/lib/orders/compraPendiente'
@@ -213,8 +214,11 @@ export async function GET(
     if (itemsRes.error) console.error('[Tracking] No se pudieron leer los productos', { orgId, error: itemsRes.error.message })
     const MANUALES = new Set(['transfer', 'cash', 'bancolombia_transfer', 'bancolombia_collect', 'pse', 'mesa'])
     const esPasarela = porPagar && !!metodoPedido && !MANUALES.has(metodoPedido) && nativoRes.data === false
+    // «Usar en la tienda para» (ERP `website_usage`): con el anticipo pendiente se ofrecen las que
+    // cobran anticipo; si no, las de pago completo. Sin ajuste, todas (lo de siempre).
+    const sirve = Number(order.advance_amount) > 0 && order.advance_status === 'pending' ? sirveAnticipo : sirvePagoCompleto
     const metodosPasarela = metodosSitio
-      ? filtrarMetodosPorSede(metodosSitio, order.branch_id).filter((m: any) => m.type === 'gateway').map((m: any) => ({ code: String(m.code), name: String(m.name) }))
+      ? filtrarMetodosPorSede(metodosSitio, order.branch_id).filter((m: any) => m.type === 'gateway' && sirve(m)).map((m: any) => ({ code: String(m.code), name: String(m.name) }))
       : null
     const nombreMetodo = metodosPasarela?.find((m) => m.code === metodoPedido)?.name ?? null
     const vista = vistaPedido({ status: order.status, paymentStatus: order.payment_status, esPasarela })

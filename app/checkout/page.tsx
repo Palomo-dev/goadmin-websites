@@ -1,4 +1,5 @@
 import { getWebsitePaymentMethods } from '@/lib/checkout/metodosPagoSitio'
+import { metodosPagoCompleto } from '@/lib/payments/usoPasarela'
 import { getOrgContext } from '@/lib/get-org-context'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 import { NotFoundPage } from '@/components/site/NotFoundPage'
@@ -41,7 +42,9 @@ export default async function CheckoutPage() {
 
   const { organization, primaryColor, branchId, outlet, sedePorPrefijo } = ctx
   const isRestaurant = organization.type_id === 1
-  const metodosPromesa = getWebsitePaymentMethods(organization.id)
+  // Opciones de pago del checkout: sin las pasarelas «Solo anticipo de contraentrega» (ERP
+  // `website_usage`; esas solo cobran el anticipo, por /api/contraentrega). Sin ajuste, todas.
+  const metodosPromesa = getWebsitePaymentMethods(organization.id).then(metodosPagoCompleto)
   const conSedes = (ms: Awaited<typeof metodosPromesa>) => ms.some((m) => Array.isArray(m.branchIds) && m.branchIds.length > 0)
   const [paymentMethods, metaPixelId, googleAdsConfig, sucursales, datosSede, pixeles, ajustesSitio] = await Promise.all([
     metodosPromesa,

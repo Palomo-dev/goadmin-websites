@@ -66,6 +66,17 @@ const PROHIBIDAS = [
  *   o reembolsado) ya no se cobra (409 PEDIDO_CERRADO), con su `else` de antes para lo demás.
  * Vence el 2026-12-08. Comprobado por scripts/verify-consulta-pedido.mjs.
  *
+ * 2026-11-26 — «Usar en la tienda para» de cada pasarela (ERP Finanzas › Métodos de pago,
+ * `website_usage`, migración 20261126120000; encargo aprobado por el dueño):
+ * - lib/checkout/metodosPagoSitio.ts: lee `website_usage` y lo devuelve como `uso`; si la columna
+ *   no existe, la lectura de antes (`else` con lo de hoy). No filtra: el filtro vive fuera del
+ *   dinero, en lib/payments/usoPasarela.ts (checkout: app/checkout/page.tsx; anticipo:
+ *   lib/contraentrega/contraentregaServidor.ts).
+ * - app/api/orders/[id]/tracking/route.ts: «Pagar con otro medio» lista las que sirven para lo
+ *   que falta (anticipo pendiente → las que cobran anticipo; si no, las de pago completo). Sin
+ *   ajuste, todas, como hoy. No toca el cobro, init ni los webhooks.
+ * Vence el 2026-12-10. Comprobado por scripts/verify-uso-pasarela.mjs.
+ *
  * 2026-11-24 — Correo «Recibimos tu pedido» con el texto correcto (decía «llegó al restaurante» en
  * todas las tiendas):
  * - app/api/orders/route.ts: SOLO el bloque del correo, después de crear el pedido. Pasa
@@ -332,6 +343,8 @@ const PERMITIDAS_TEMPORALES = [
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-09', motivo: 'Barra de pago en computador A/B/C (solo pinta; mismo handleSubmit y mismo disabled)' },
   { ruta: 'components/site/CheckoutWizard.tsx', hasta: '2026-12-12', motivo: 'Checkout v2 Parte F: campos en el orden del ERP (extracción; sin configuración, el DOM de siempre)' },
   { ruta: 'app/api/orders/route.ts', hasta: '2026-12-12', motivo: 'Checkout v2 Parte F: con formulario configurado, 400 DATOS_INCOMPLETOS si faltan los indispensables' },
+  { ruta: 'lib/checkout/metodosPagoSitio.ts', hasta: '2026-12-10', motivo: 'Uso de la pasarela en la tienda: lee website_usage (sin la columna, la lectura de antes)' },
+  { ruta: 'app/api/orders/[id]/tracking/route.ts', hasta: '2026-12-10', motivo: 'Uso de la pasarela: «Pagar con otro medio» sin las «solo anticipo» (o sin las «solo pago completo» si falta el anticipo)' },
 ]
 
 /** Día calendario de hoy en Bogotá (YYYY-MM-DD), sin pasar por UTC. */

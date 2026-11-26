@@ -6,6 +6,7 @@
  */
 
 import { esColumnaAusente } from '@/lib/payments/metodosPorSucursal'
+import { usoTienda } from '@/lib/payments/usoPasarela'
 import { createAdminClient, createPublicClient } from '@/lib/supabase/server'
 
 export async function getWebsitePaymentMethods(organizationId: number) {
@@ -25,7 +26,14 @@ export async function getWebsitePaymentMethods(organizationId: number) {
     .eq('is_active', true)
     .eq('show_on_website', true)
     .order('website_display_order', { ascending: true, nullsFirst: false })
-  let { data: orgMethods, error: orgError } = await leer(', branch_ids')
+  // `website_usage` («Usar en la tienda para», ERP 20261126120000): si la columna aún no existe,
+  // se lee como antes y todas las pasarelas quedan en `ambos` (lo de siempre).
+  let { data: orgMethods, error: orgError } = await leer(', branch_ids, website_usage')
+  if (orgError && esColumnaAusente(orgError, 'website_usage')) {
+    ({ data: orgMethods, error: orgError } = await leer(', branch_ids'))
+  } else {
+    // Con la columna (o con otro error, que sigue su camino de siempre).
+  }
   if (orgError && esColumnaAusente(orgError, 'branch_ids')) {
     ({ data: orgMethods, error: orgError } = await leer(''))
   }
@@ -39,6 +47,7 @@ export async function getWebsitePaymentMethods(organizationId: number) {
     connectionId: m.integration_connection_id || null,
     type: m.integration_connection_id ? 'gateway' as const : 'native' as const,
     branchIds: Array.isArray(m.branch_ids) && m.branch_ids.length > 0 ? (m.branch_ids as number[]) : null,
+    uso: usoTienda(m.website_usage),
   }))
 
   // 2. Pasarelas de pago online (integration_connections activas/conectadas)
@@ -67,6 +76,8 @@ export async function getWebsitePaymentMethods(organizationId: number) {
       requiresReference: false,
       connectionId: conn.id,
       type: 'gateway' as const,
+      // Sin fila propia no hay uso guardado: pago completo y anticipo, como siempre.
+      uso: usoTienda(null),
     }))
 
   return [...methods, ...gatewayMethods]
